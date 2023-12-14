@@ -1,0 +1,318 @@
+import datetime as dt
+import timeit
+
+import numpy as np
+import pandas as pd
+import pytest
+
+import skfolio.measures as mt
+from skfolio import (
+    ExtraRiskMeasure,
+    MultiPeriodPortfolio,
+    PerfMeasure,
+    Portfolio,
+    RatioMeasure,
+    RiskMeasure,
+)
+from skfolio.datasets import load_sp500_dataset
+from skfolio.preprocessing import prices_to_returns
+from skfolio.utils.stats import rand_weights
+from skfolio.utils.tools import args_names
+
+
+def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array:
+    r"""
+    Compute the portfolio returns from its assets returns and weights
+    """
+    n, m = asset_returns.shape
+    returns = np.zeros(n)
+    for i in range(m):
+        returns += asset_returns[:, i] * weights[i]
+    return returns
+
+
+def _dominate(fitness_1: np.ndarray, fitness_2: np.ndarray) -> bool:
+    return np.all(fitness_1 >= fitness_2) and np.any(fitness_1 > fitness_2)
+
+
+@pytest.fixture(scope="module")
+def prices():
+    prices = load_sp500_dataset()
+    prices = prices.loc[dt.date(2017, 1, 1) :]
+    return prices
+
+
+@pytest.fixture(scope="module")
+def X(prices):
+    X = prices_to_returns(X=prices)
+    return X
+
+
+@pytest.fixture(scope="module")
+def periods():
+    periods = [
+        (dt.date(2018, 1, 1), dt.date(2018, 3, 1)),
+        (dt.date(2018, 3, 15), dt.date(2018, 5, 1)),
+        (dt.date(2018, 5, 1), dt.date(2018, 8, 1)),
+    ]
+    return periods
+
+
+@pytest.fixture(scope="function")
+def portfolio_and_returns(prices, periods):
+    n = 10
+    returns = np.array([])
+    portfolios = []
+    for i, period in enumerate(periods):
+        X = prices_to_returns(X=prices[period[0] : period[1]])
+        n_assets = X.shape[1]
+        weights = rand_weights(n=n_assets, zeros=n_assets - n)
+        returns = np.concatenate([returns, _portfolio_returns(X.to_numpy(), weights)])
+        portfolios.append(Portfolio(X=X, weights=weights, name=f"portfolio_{i}"))
+    portfolio = MultiPeriodPortfolio(
+        portfolios=portfolios,
+        name="mpp",
+        tag="my_tag",
+    )
+    return portfolio, returns
+
+
+@pytest.fixture(
+    scope="module",
+    params=list(PerfMeasure)
+    + list(RiskMeasure)
+    + list(RiskMeasure)
+    + list(ExtraRiskMeasure),
+)
+def measure(request):
+    return request.param
+
+
+@pytest.fixture(
+    scope="module",
+    params=[None, 100, 1],
+)
+def annualized_factor(request):
+    return request.param
+
+
+def test_portfolio_annualized(portfolio_and_returns, annualized_factor):
+    portfolio, returns = portfolio_and_returns
+    if annualized_factor is not None:
+        portfolio.annualized_factor = annualized_factor
+
+    if annualized_factor is None:
+        annualized_factor = 255.0
+    assert portfolio.annualized_factor == annualized_factor
+
+    np.testing.assert_almost_equal(
+        portfolio.annualized_mean, portfolio.mean * annualized_factor
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_variance, portfolio.variance * annualized_factor
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_semi_variance, portfolio.semi_variance * annualized_factor
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_standard_deviation,
+        portfolio.standard_deviation * np.sqrt(annualized_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_semi_deviation,
+        portfolio.semi_deviation * np.sqrt(annualized_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sharpe_ratio,
+        portfolio.sharpe_ratio * np.sqrt(annualized_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sortino_ratio,
+        portfolio.sortino_ratio * np.sqrt(annualized_factor),
+    )
+
+
+def test_portfolio_methods(portfolio_and_returns, periods):
+    portfolio, returns = portfolio_and_returns
+    assert len(portfolio) == returns.shape[0]
+    np.testing.assert_almost_equal(returns, portfolio.returns)
+    np.testing.assert_almost_equal(returns.mean(), portfolio.mean)
+    np.testing.assert_almost_equal(returns.std(ddof=1), portfolio.standard_deviation)
+    np.testing.assert_almost_equal(
+        np.sqrt(
+            np.sum(np.minimum(0, returns - returns.mean()) ** 2) / (len(returns) - 1)
+        ),
+        portfolio.semi_deviation,
+    )
+    np.testing.assert_almost_equal(
+        portfolio.mean / portfolio.standard_deviation, portfolio.sharpe_ratio
+    )
+    np.testing.assert_almost_equal(
+        portfolio.mean / portfolio.semi_deviation, portfolio.sortino_ratio
+    )
+    np.testing.assert_almost_equal(
+        portfolio.fitness, np.array([portfolio.mean, -portfolio.variance])
+    )
+    portfolio.fitness_measures = [PerfMeasure.MEAN, RiskMeasure.SEMI_DEVIATION]
+    np.testing.assert_almost_equal(
+        portfolio.fitness, np.array([portfolio.mean, -portfolio.semi_deviation])
+    )
+    portfolio.fitness_measures = [
+        PerfMeasure.MEAN,
+        RiskMeasure.SEMI_DEVIATION,
+        RiskMeasure.MAX_DRAWDOWN,
+    ]
+    np.testing.assert_almost_equal(
+        portfolio.fitness,
+        np.array([portfolio.mean, -portfolio.semi_deviation, -portfolio.max_drawdown]),
+    )
+    assert len(portfolio.assets) == len(periods)
+    assert portfolio.composition.shape[1] == len(periods)
+    portfolio.clear()
+    assert portfolio.plot_returns()
+    assert portfolio.plot_cumulative_returns()
+    assert isinstance(portfolio.composition, pd.DataFrame)
+    assert portfolio.plot_composition()
+    assert isinstance(portfolio.summary(), pd.Series)
+    assert isinstance(portfolio.summary(formatted=False), pd.Series)
+
+
+def test_mpp_magic_methods(portfolio_and_returns, periods):
+    mpp, returns = portfolio_and_returns
+    assert mpp[1] == mpp.portfolios[1]
+    for i, p in enumerate(mpp):
+        assert p.name == f"portfolio_{i}"
+    p_1 = mpp[1]
+    assert mpp == mpp
+    assert p_1 in mpp
+    assert 3 not in mpp
+    assert -mpp[1] == -p_1
+    assert abs(mpp)[1] == abs(p_1)
+    assert round(mpp, 2)[1] == round(p_1, 2)
+    assert (mpp + mpp)[1] == p_1 * 2
+    assert (mpp - mpp * 0.5)[1] == p_1 * 0.5
+    assert (mpp - mpp * 0.4)[1] != p_1 * 0.5
+    assert (mpp - mpp * 0.4)[1] != p_1 * 0.5
+    assert (mpp / 2)[1] == p_1 * 0.5
+    assert (mpp // 2)[1] == p_1 // 2
+    del mpp[1]
+    assert p_1 not in mpp
+    mpp[1] = p_1
+    assert p_1 in mpp
+    mpp.portfolios = [mpp[0], p_1]
+    assert mpp[0] != p_1
+    assert mpp[1] == p_1
+
+
+def test_portfolio_dominate(X):
+    n_assets = X.shape[1]
+    for _ in range(1000):
+        weights_1 = rand_weights(n=n_assets)
+        weights_2 = rand_weights(n=n_assets)
+        portfolio_1 = Portfolio(
+            X=X,
+            weights=weights_1,
+            fitness_measures=[
+                PerfMeasure.MEAN,
+                RiskMeasure.SEMI_DEVIATION,
+                RiskMeasure.MAX_DRAWDOWN,
+            ],
+        )
+        portfolio_2 = Portfolio(
+            X=X,
+            weights=weights_2,
+            fitness_measures=[
+                PerfMeasure.MEAN,
+                RiskMeasure.SEMI_DEVIATION,
+                RiskMeasure.MAX_DRAWDOWN,
+            ],
+        )
+
+        # Doesn't dominate itself (same front)
+        assert portfolio_1.dominates(portfolio_1) is False
+        assert _dominate(
+            portfolio_1.fitness, portfolio_2.fitness
+        ) == portfolio_1.dominates(portfolio_2)
+
+
+def test_portfolio_metrics(portfolio_and_returns, measure):
+    portfolio, returns = portfolio_and_returns
+    m = getattr(portfolio, measure.value)
+    assert isinstance(m, float)
+    assert not np.isnan(m)
+
+
+def test_portfolio_slots(portfolio_and_returns):
+    portfolio, returns = portfolio_and_returns
+    for attr in portfolio._slots():
+        if attr[0] == "_":
+            try:
+                getattr(portfolio, attr[1:])
+            except AttributeError:
+                pass
+        getattr(portfolio, attr)
+
+
+def test_portfolio_cache(portfolio_and_returns, periods, measure):
+    portfolio, returns = portfolio_and_returns
+    # time for accessing cached attributes
+    n = int(1e5)
+
+    first_access_time = timeit.timeit(
+        lambda: getattr(portfolio, measure.value), number=1
+    )
+    cached_access_time = (
+        timeit.timeit(lambda: getattr(portfolio, measure.value), number=n) / n
+    )
+    assert first_access_time > 10 * cached_access_time
+
+
+def test_portfolio_clear_cache(portfolio_and_returns, periods, measure):
+    portfolio, returns = portfolio_and_returns
+    if measure.is_ratio:
+        r = measure.linked_risk_measure
+    else:
+        r = measure
+    if r.is_annualized:
+        r = r.non_annualized_measure
+    func = getattr(mt, r.value)
+
+    args = [
+        arg if arg in Portfolio._measure_global_args else f"{r.value}_{arg}"
+        for arg in args_names(func)
+    ]
+    args = [arg for arg in args if arg not in Portfolio._read_only_attrs]
+    # default
+    m = getattr(portfolio, measure.value)
+    for arg in args:
+        if arg == "drawdowns":
+            arg = "compounded"
+        if arg == "compounded":
+            a = not getattr(portfolio, arg)
+        else:
+            a = np.random.uniform(0.2, 1)
+        setattr(portfolio, arg, a)
+        assert getattr(portfolio, arg) == a
+        new_m = getattr(portfolio, str(measure.value))
+        assert m != new_m
+        if isinstance(measure, RatioMeasure):
+            assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+
+
+def test_portfolio_read_only(portfolio_and_returns, periods):
+    portfolio, returns = portfolio_and_returns
+    for attr in MultiPeriodPortfolio._read_only_attrs:
+        try:
+            setattr(portfolio, attr, 0)
+            raise
+        except AttributeError as e:
+            assert str(e) == f"can't set attribute '{attr}' because it is read-only"
+
+
+def test_portfolio_delete_attr(portfolio_and_returns, periods):
+    portfolio, returns = portfolio_and_returns
+    try:
+        delattr(portfolio, "dummy")
+        raise
+    except AttributeError as e:
+        assert str(e) == "`MultiPeriodPortfolio` object has no attribute 'dummy'"

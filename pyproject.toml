@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "skfolio"
+version = "0.0.1"
+maintainers = [
+    { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+]
+authors = [
+    { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+]
+description = "Portfolio optimization built on scikit-learn's API"
+readme = "README.rst"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26.2",
+    "scipy>=1.11.4",
+    "pandas>=2.1.4",
+    'cvxpy>=1.4.1',
+    'joblib>=1.3.2',
+    'scikit-learn>=1.3.2',
+    'plotly>=5.18.0'
+]
+keywords = [
+    "portfolio",
+    "optimization",
+    "optimisation",
+    "finance",
+    "asset",
+    "allocation",
+    "quantitative",
+    "quant",
+    "investment",
+    "startegy",
+    "machine-learning",
+    "scikit-learn",
+    "data-mining",
+    "data-science",
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: Unix",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    'Topic :: Office/Business :: Financial :: Investment',
+    "Topic :: Software Development",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pydata-sphinx-theme",
+    "Sphinx>=7.2.6",
+    "sphinx-gallery",
+]
+
+[project.urls]
+"API Reference" = "https://www.skfolio.org/api_reference.html"
+Documentation = "https://www.skfolio.org"
+Tutorials = "https://www.skfolio.org"
+Repository = "https://github.com/skfolio/skfolio"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target_version = ["py310", "py311"]
+preview = true
+
+[tool.ruff]
+select = [
+    "E", # pycodestyle
+    "F", # pyflakes
+    "I", # isort
+    "A", # prevent using keywords that clobber python builtins
+    "B", # bugbear: security warnings
+    "E", # pycodestyle
+    "F", # pyflakes
+    "ISC", # implicit string concatenation
+    "UP", # alert you when better syntax is available in your python version
+    "RUF", # the ruff developer's own rules
+]
+ignore = ["E203"]
+# Same as Black.
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.isort]
+case-sensitive = true
+
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]

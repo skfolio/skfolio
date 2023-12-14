@@ -1,0 +1,90 @@
+
+/* plotly */
+
+.plotly-graph-div {
+    min-width: 700px;
+}
+
+
+div:has(.plotly-graph-div) {
+     overflow-x: auto;
+}
+
+
+div:has(.plotly-graph-div)::-webkit-scrollbar {
+    height: .7rem;
+    width: .7rem
+}
+
+div:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-muted);
+    border-radius: .35rem
+}
+
+div:has(.plotly-graph-div):-webkit-scrollbar-track {
+    background: transparent
+}
+
+div:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-muted)
+}
+
+div:has(.plotly-graph-div)::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-base)
+}
+
+div:has(.plotly-graph-div)::-webkit-scrollbar-track {
+    background: var(--pst-color-on-surface)
+}
+
+
+/* Pandas dataframe css */
+
+.rendered_html {
+    overflow-x: auto;
+}
+
+.rendered_html table {
+    width: 100%;
+}
+
+table.dataframe thead th {
+    width: 100px;
+}
+table.dataframe thead th:first-child {
+    width: 142px;
+}
+
+.rendered_html::-webkit-scrollbar {
+    height: .7rem;
+    width: .7rem
+}
+
+.rendered_html::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-muted);
+    border-radius: .35rem
+}
+
+.rendered_html::-webkit-scrollbar-track {
+    background: transparent
+}
+
+.rendered_html::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-muted)
+}
+
+.rendered_html::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
+    background: var(--pst-color-text-base)
+}
+
+.rendered_html::-webkit-scrollbar-track {
+    background: var(--pst-color-on-surface)
+}
+
+a:visited {
+    color: var(--pst-color-link);
+}
+
+
+
+
