@@ -35,7 +35,7 @@
 ===============
 |icon|  skfolio
 ===============
-.. |icon| image:: ./doc/_static/logo.ico
+.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/logo.ico
     :width: 100
     :target: https://skfolio.org/
 
@@ -44,7 +44,7 @@
 It provides a unified interface and `sklearn` compatible tools to build, tune and
 cross-validate portfolio models. It is distributed under the 3-Clause BSD license.
 
-.. image:: ./doc/_static/expo.jpg
+.. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
 
 Important links
 ~~~~~~~~~~~~~~~
