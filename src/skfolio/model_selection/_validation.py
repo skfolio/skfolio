@@ -165,14 +165,12 @@ def cross_val_predict(
                 path_id = path_ids[i, j]
                 portfolios[path_id].append(p)
         name = portfolio_params.pop("name", "path")
-        pred = Population(
-            [
-                MultiPeriodPortfolio(
-                    name=f"{name}_{i}", portfolios=portfolios[i], **portfolio_params
-                )
-                for i in range(path_nb)
-            ]
-        )
+        pred = Population([
+            MultiPeriodPortfolio(
+                name=f"{name}_{i}", portfolios=portfolios[i], **portfolio_params
+            )
+            for i in range(path_nb)
+        ])
     else:
         # We need to re-order the test folds in case they were un-ordered by the
         # CV generator.

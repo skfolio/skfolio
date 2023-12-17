@@ -11,6 +11,7 @@ Highly correlated assets tend to increase the instability of mean-variance optim
 In this example we will compare a mean-variance optimization with and without
 pre-selection.
 """
+
 # %%
 # Data
 # ====
@@ -49,12 +50,10 @@ model1.weights_
 # fit it on the training set:
 set_config(transform_output="pandas")
 
-model2 = Pipeline(
-    [
-        ("pre_selection", DropCorrelated(threshold=0.5)),
-        ("optimization", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
-    ]
-)
+model2 = Pipeline([
+    ("pre_selection", DropCorrelated(threshold=0.5)),
+    ("optimization", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
+])
 model2.fit(X_train)
 model2.named_steps["optimization"].weights_
 

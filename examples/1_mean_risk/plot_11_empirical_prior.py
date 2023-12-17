@@ -24,6 +24,7 @@ In this tutorial we will build a Maximum Sharpe Ratio portfolio using the
 `EmpiricalPrior` estimator with James-Stein shrinkage for the estimation of expected
 returns and Denoising for the estimation of the covariance matrix.
 """
+
 # %%
 # Data
 # ====

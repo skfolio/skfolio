@@ -80,6 +80,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         Bootstrap",
         Patton, Politis & White (2009).
     """
+
     prior_estimator_: BasePrior
 
     def __init__(

@@ -401,19 +401,17 @@ class Portfolio(BasePortfolio):
     """
 
     _read_only_attrs: ClassVar[set] = BasePortfolio._read_only_attrs.copy()
-    _read_only_attrs.update(
-        {
-            "X",
-            "assets",
-            "weights",
-            "previous_weights",
-            "transaction_costs",
-            "management_fees",
-            "n_assets",
-            "total_cost",
-            "total_fee",
-        }
-    )
+    _read_only_attrs.update({
+        "X",
+        "assets",
+        "weights",
+        "previous_weights",
+        "transaction_costs",
+        "management_fees",
+        "n_assets",
+        "total_cost",
+        "total_fee",
+    })
 
     __slots__ = {
         # read-only

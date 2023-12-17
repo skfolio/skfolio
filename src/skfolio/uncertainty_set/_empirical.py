@@ -71,6 +71,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         Optimization: A Journal of Mathematical Programming and Operations Research,
         Schöttle & Werner (2009).
     """
+
     prior_estimator_: BasePrior
 
     def __init__(
@@ -178,6 +179,7 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Optimization: A Journal of Mathematical Programming and Operations Research,
         Schöttle & Werner (2009).
     """
+
     prior_estimator_: BasePrior
 
     def __init__(

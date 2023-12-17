@@ -9,7 +9,7 @@
 .. _Codecov: https://codecov.io/gh/scikit-learn/scikit-learn
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
-.. _PythonVersion: https://pypi.org/project/scikit-learn/
+.. _PythonVersion: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/scikit-learn
 .. _PyPi: https://pypi.org/project/scikit-learn
@@ -22,14 +22,13 @@
 
 
 .. |PythonMinVersion| replace:: 3.10
-.. |NumpyMinVersion| replace:: 1.26
-.. |ScipyMinVersion| replace:: 1.11
-.. |PandasMinVersion| replace:: 2.1
-.. |NumbaMinVersion| replace:: 0.58
-.. |CvxpyMinVersion| replace:: 1.4
-.. |SklearnMinVersion| replace:: 1.3
-.. |JoblibMinVersion| replace:: 1.3
-.. |PlotlyMinVersion| replace:: 5.18
+.. |NumpyMinVersion| replace:: 1.23.4
+.. |ScipyMinVersion| replace:: 1.8.0
+.. |PandasMinVersion| replace:: 1.4.1
+.. |CvxpyMinVersion| replace:: 1.4.1
+.. |SklearnMinVersion| replace:: 1.3.2
+.. |JoblibMinVersion| replace:: 1.3.2
+.. |PlotlyMinVersion| replace:: 5.15.0
 
 
 ===============
@@ -193,8 +192,6 @@ The current release contains:
 Quickstart
 ~~~~~~~~~~
 The code snippets below are designed to introduce ``skfolio``'s functionality so you can start using it quickly.
-For more detailed information see the :ref:`general_examples`,  :ref:`user_guide` and :ref:`api` .
-
 
 Preparing the data
 ------------------

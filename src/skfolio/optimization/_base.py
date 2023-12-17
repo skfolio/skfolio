@@ -89,17 +89,15 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # For a 2D array we return a population of portfolios.
         if self.weights_.ndim == 2:
             n_portfolios = self.weights_.shape[0]
-            return Population(
-                [
-                    Portfolio(
-                        X=X,
-                        weights=self.weights_[i],
-                        name=f"ptf{i} - {name}",
-                        **ptf_kwargs,
-                    )
-                    for i in range(n_portfolios)
-                ]
-            )
+            return Population([
+                Portfolio(
+                    X=X,
+                    weights=self.weights_[i],
+                    name=f"ptf{i} - {name}",
+                    **ptf_kwargs,
+                )
+                for i in range(n_portfolios)
+            ])
         return Portfolio(X=X, weights=self.weights_, name=name, **ptf_kwargs)
 
     def score(self, X: npt.ArrayLike, y: npt.ArrayLike = None) -> float:

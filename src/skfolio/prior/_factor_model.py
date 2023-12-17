@@ -109,12 +109,10 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
         )
-        self.intercepts_ = np.array(
-            [
-                self.multi_output_regressor_.estimators_[i].intercept_
-                for i in range(n_assets)
-            ]
-        )
+        self.intercepts_ = np.array([
+            self.multi_output_regressor_.estimators_[i].intercept_
+            for i in range(n_assets)
+        ])
 
 
 class FactorModel(BasePrior):

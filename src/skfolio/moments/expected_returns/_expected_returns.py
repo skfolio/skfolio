@@ -315,6 +315,7 @@ class ShrunkMu(BaseMu):
     .. [3] "Optimal shrinkage estimator for high-dimensional mean vector"
         Bodnar, Okhrin and Parolya (2019)
     """
+
     covariance_estimator_: BaseCovariance
     mu_target_: np.ndarray
     alpha_: float

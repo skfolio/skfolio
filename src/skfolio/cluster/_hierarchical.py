@@ -149,6 +149,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+
     n_clusters_: int
     labels_: np.ndarray
     linkage_matrix_: np.ndarray

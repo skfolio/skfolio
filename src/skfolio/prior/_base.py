@@ -36,6 +36,7 @@ class PriorModel:
         some optimizations (for example in mean-variance) to improve performance and
         convergence. The default is `None`.
     """
+
     mu: np.ndarray
     covariance: np.ndarray
     returns: np.ndarray

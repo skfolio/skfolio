@@ -28,22 +28,18 @@ def test_transformer(X):
     portfolio = pipe.predict(X_test)
     _ = portfolio.sharpe_ratio
 
-    pipe = Pipeline(
-        [
-            ("pre_selection", SelectNonDominated(min_n_assets=15, threshold=0)),
-            ("mean_risk", MeanRisk()),
-        ]
-    )
+    pipe = Pipeline([
+        ("pre_selection", SelectNonDominated(min_n_assets=15, threshold=0)),
+        ("mean_risk", MeanRisk()),
+    ])
     pipe.fit(X_train)
     portfolio = pipe.predict(X_test)
     _ = portfolio.sharpe_ratio
 
-    pipe = Pipeline(
-        [
-            ("pre_selection", SelectKExtremes(k=10, highest=True)),
-            ("optimization", MeanRisk()),
-        ]
-    )
+    pipe = Pipeline([
+        ("pre_selection", SelectKExtremes(k=10, highest=True)),
+        ("optimization", MeanRisk()),
+    ])
     pipe.fit(X_train)
     portfolio = pipe.predict(X_test)
     _ = portfolio.sharpe_ratio

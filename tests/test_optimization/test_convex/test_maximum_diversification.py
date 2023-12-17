@@ -2,7 +2,6 @@ import datetime as dt
 
 import numpy as np
 import pytest
-
 from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.optimization.convex import MaximumDiversification
 from skfolio.preprocessing import prices_to_returns

@@ -11,6 +11,7 @@ In this example we will use a `Pipeline` to assemble the pre-selection step with
 minimum variance optimization. Then we will use cross-validation to find the optimal
 number of pre-selected assets to maximize the mean out-of-sample Sharpe Ratio.
 """
+
 # %%
 # Data
 # ====
@@ -96,56 +97,54 @@ print(model)
 # Let's plot the train and test scores as a function of the number of pre-selected
 # assets. The vertical line represents the best test score and the selected model:
 cv_results = grid_search.cv_results_
-fig = go.Figure(
-    [
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_train_score"],
-            name="Train",
-            mode="lines",
-            line=dict(color="rgb(31, 119, 180)"),
-        ),
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_train_score"] + cv_results["std_train_score"],
-            mode="lines",
-            line=dict(width=0),
-            showlegend=False,
-        ),
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_train_score"] - cv_results["std_train_score"],
-            mode="lines",
-            line=dict(width=0),
-            showlegend=False,
-            fillcolor="rgba(31, 119, 180,0.15)",
-            fill="tonexty",
-        ),
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_test_score"],
-            name="Test",
-            mode="lines",
-            line=dict(color="rgb(255,165,0)"),
-        ),
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_test_score"] + cv_results["std_test_score"],
-            mode="lines",
-            line=dict(width=0),
-            showlegend=False,
-        ),
-        go.Scatter(
-            x=cv_results["param_pre_selection__k"],
-            y=cv_results["mean_test_score"] - cv_results["std_test_score"],
-            line=dict(width=0),
-            mode="lines",
-            fillcolor="rgba(255,165,0, 0.15)",
-            fill="tonexty",
-            showlegend=False,
-        ),
-    ]
-)
+fig = go.Figure([
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_train_score"],
+        name="Train",
+        mode="lines",
+        line=dict(color="rgb(31, 119, 180)"),
+    ),
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_train_score"] + cv_results["std_train_score"],
+        mode="lines",
+        line=dict(width=0),
+        showlegend=False,
+    ),
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_train_score"] - cv_results["std_train_score"],
+        mode="lines",
+        line=dict(width=0),
+        showlegend=False,
+        fillcolor="rgba(31, 119, 180,0.15)",
+        fill="tonexty",
+    ),
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_test_score"],
+        name="Test",
+        mode="lines",
+        line=dict(color="rgb(255,165,0)"),
+    ),
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_test_score"] + cv_results["std_test_score"],
+        mode="lines",
+        line=dict(width=0),
+        showlegend=False,
+    ),
+    go.Scatter(
+        x=cv_results["param_pre_selection__k"],
+        y=cv_results["mean_test_score"] - cv_results["std_test_score"],
+        line=dict(width=0),
+        mode="lines",
+        fillcolor="rgba(255,165,0, 0.15)",
+        fill="tonexty",
+        showlegend=False,
+    ),
+])
 fig.add_vline(
     x=grid_search.best_params_["pre_selection__k"],
     line_width=2,

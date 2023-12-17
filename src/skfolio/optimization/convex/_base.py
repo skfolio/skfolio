@@ -46,6 +46,7 @@ class ObjectiveFunction(AutoEnum):
     MAXIMIZE_UTILITY : str
         Maximize the ratio  :math:`\frac{w^T\mu - R_{f}}{risk(w)}`.
     """
+
     MINIMIZE_RISK = auto()
     MAXIMIZE_RETURN = auto()
     MAXIMIZE_UTILITY = auto()
@@ -364,14 +365,17 @@ class ConvexOptimization(BaseOptimization, ABC):
         It is a function that must take as argument the weights `w` and returns a
         CVPXY expression.
 
-    solver : str, optional
-        The solver to use. For example, "ECOS", "SCS", or "OSQP".
-        The default (`None`) is set depending on the problem.
+    solver : str, default="CLARABEL"
+        The solver to use. The default is "CLARABEL" which is written in Rust and has
+        better numerical stability and performance than ECOS and SCS. Cvxpy will replace
+        its default solver "ECOS" by "CLARABEL" in future releases.
         For more details about available solvers, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
 
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
+        for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
 
@@ -384,6 +388,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         Scale each constraint element by this value.
         It can be used to increase the optimization accuracies in specific cases.
         The default (`None`) is set depending on the problem.
+
+    save_problem : bool, default=False
+        If this is set to True, the CVXPY Problem is saved in `problem_`.
+        The default is `False`.
 
     raise_on_failure : bool, default=True
         If this is set to True, an error is raised when the optimization fail otherwise
@@ -400,9 +408,6 @@ class ConvexOptimization(BaseOptimization, ABC):
     weights_ : ndarray of shape (n_assets,) or (n_optimizations, n_assets)
         Weights of the assets.
 
-    problem_: cvxpy.Problem
-        CVXPY problem used for the optimization.
-
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
 
@@ -414,12 +419,17 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     covariance_uncertainty_set_estimator_ : BaseCovarianceUncertaintySet
         Fitted `covariance_uncertainty_set_estimator` if provided.
+
+    problem_: cvxpy.Problem
+        CVXPY problem used for the optimization. Only when `save_problem` is set to
+        `True`.
     """
-    _solver: str
+
+    _solver_params: dict
     _scale_objective: cp.Constant
     _scale_constraints: cp.Constant
+    _cvx_cache: dict
 
-    _cvx_cache = dict
     problem_: cp.Problem
     problem_values_: dict[str, float] | list[dict[str, float]]
     prior_estimator_: BasePrior
@@ -448,18 +458,20 @@ class ConvexOptimization(BaseOptimization, ABC):
         l1_coef: float = 0.0,
         l2_coef: float = 0.0,
         mu_uncertainty_set_estimator: BaseMuUncertaintySet | None = None,
-        covariance_uncertainty_set_estimator: BaseCovarianceUncertaintySet
-        | None = None,
+        covariance_uncertainty_set_estimator: (
+            BaseCovarianceUncertaintySet | None
+        ) = None,
         risk_free_rate: float = 0.0,
         min_acceptable_return: skt.Target | None = None,
         cvar_beta: float = 0.95,
         evar_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        solver: str | None = None,
+        solver: str = "CLARABEL",
         solver_params: dict | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
+        save_problem: bool = False,
         raise_on_failure: bool = True,
         add_objective: skt.ExpressionFunction | None = None,
         add_constraints: skt.ExpressionFunction | None = None,
@@ -501,6 +513,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.overwrite_expected_return = overwrite_expected_return
         self.solver = solver
         self.solver_params = solver_params
+        self.save_problem = save_problem
         self.raise_on_failure = raise_on_failure
         self.scale_objective = scale_objective
         self.scale_constraints = scale_constraints
@@ -508,6 +521,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.evar_beta = evar_beta
         self.cdar_beta = cdar_beta
         self.edar_beta = edar_beta
+
+        self._clear_models_cache()
 
     def _call_custom_func(
         self, func: skt.ExpressionFunction, w: cp.Variable, name: str = "custom_func"
@@ -757,21 +772,19 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         return constraints
 
-    def _set_solver(self, default: str) -> None:
-        """Set solver by saving its value in `_solver`.
+    def _set_solver_params(self, default: dict | None) -> None:
+        """Set the solver params by saving its value in `_solver_params`.
         It uses `solver` if provided otherwise it uses the `default` solver.
 
         Parameters
         ----------
         default : str
-            The default solver to use when `solver` is `None`.
+            The default solver params to use when `solver_params` is `None`.
         """
-        if self.solver is None:
-            self._solver = default
+        if self.solver_params is None:
+            self._solver_params = default if default is not None else {}
         else:
-            self._solver = self.solver
-        if self._solver not in INSTALLED_SOLVERS:
-            raise ValueError(f"The solver {self._solver} is not installed.")
+            self._solver_params = self.solver_params
 
     def _set_scale_objective(self, default: float) -> None:
         """Set the objective scale by saving its value in `_scale_objective`.
@@ -894,6 +907,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         factor: cvxpy Variable | cvxpy Constant
            CVXPY Variable or Constant used for RatioMeasure optimization problems.
         """
+        if self.solver not in INSTALLED_SOLVERS:
+            raise ValueError(f"The solver {self.solver} is not installed.")
+
         if parameters_values is None:
             parameters_values = []
 
@@ -920,7 +936,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         solver_params = self.solver_params
         if solver_params is None:
-            solver_params = {}
+            solver_params = {"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
         all_weights = []
         all_problem_values = []
         optimal = True
@@ -932,7 +948,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 # We suppress cvxpy warning as it is redundant with our warning
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    problem.solve(solver=self._solver, **solver_params)
+                    problem.solve(solver=self.solver, **solver_params)
 
                 if w.value is None:
                     raise cp.SolverError("No solution found")
@@ -965,7 +981,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 if len(params_string) != 0:
                     params_string = f" with parameters {params_string}"
                 msg = (
-                    f"Solver '{self._solver}' failed{params_string}. Try another"
+                    f"Solver '{self.solver}' failed for {params_string}. Try another"
                     " solver, or solve with solver_params=dict(verbose=True) for more"
                     " information"
                 )
@@ -988,7 +1004,10 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.weights_ = np.array(all_weights, dtype=float)
             self.problem_values_ = all_problem_values
 
-        self.problem_ = problem
+        if self.save_problem:
+            self.problem_ = problem
+
+        self._clear_models_cache()
 
     @cache_method("_cvx_cache")
     def _cvx_mu_uncertainty_set(

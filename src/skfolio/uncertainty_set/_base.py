@@ -37,6 +37,7 @@ class UncertaintySet:
     sigma : ndarray of shape (n_assets)
         Shape of the ellipsoid :math:`S`
     """
+
     k: float
     sigma: np.ndarray
 

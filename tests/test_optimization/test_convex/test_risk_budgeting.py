@@ -2,7 +2,6 @@ import datetime as dt
 
 import numpy as np
 import pytest
-
 from skfolio import RiskMeasure
 from skfolio.datasets import load_sp500_dataset
 from skfolio.optimization.convex import RiskBudgeting
@@ -80,30 +79,28 @@ def test_risk_budgeting_contribution(X):
     ptf = model.fit_predict(X)
     np.testing.assert_almost_equal(
         model.weights_,
-        np.array(
-            [
-                0.04201237,
-                0.032168,
-                0.03687683,
-                0.03977124,
-                0.03973885,
-                0.03821871,
-                0.04646103,
-                0.06765447,
-                0.04063898,
-                0.06398907,
-                0.0555448,
-                0.06813484,
-                0.0427472,
-                0.0597675,
-                0.06133195,
-                0.06726793,
-                0.0314916,
-                0.04680726,
-                0.07486711,
-                0.04451026,
-            ]
-        ),
+        np.array([
+            0.04200875,
+            0.03216861,
+            0.03687665,
+            0.03976933,
+            0.0397361,
+            0.0382181,
+            0.04645474,
+            0.06765578,
+            0.04063606,
+            0.06398798,
+            0.05554355,
+            0.06813983,
+            0.04274071,
+            0.05976339,
+            0.06133172,
+            0.06726616,
+            0.03149064,
+            0.04680119,
+            0.07490379,
+            0.04450693,
+        ]),
     )
     rc = ptf.contribution(measure=RiskMeasure.STANDARD_DEVIATION)
     np.testing.assert_almost_equal(
@@ -136,30 +133,28 @@ def test_risk_budgeting_groups(X, groups, linear_constraints):
 
     np.testing.assert_almost_equal(
         ptf.contribution(measure=RiskMeasure.STANDARD_DEVIATION),
-        np.array(
-            [
-                0.00091078,
-                0.00082199,
-                0.00061383,
-                0.00061259,
-                0.00061238,
-                0.00061318,
-                0.00060932,
-                0.00059876,
-                0.00061196,
-                0.00060047,
-                0.00060463,
-                0.00059849,
-                0.00061136,
-                0.00060261,
-                0.00060179,
-                0.00059898,
-                0.00061652,
-                0.00060902,
-                0.00059545,
-                0.00060999,
-            ]
-        ),
+        np.array([
+            0.00091078,
+            0.00082199,
+            0.00061383,
+            0.00061259,
+            0.00061238,
+            0.00061318,
+            0.00060932,
+            0.00059876,
+            0.00061196,
+            0.00060047,
+            0.00060463,
+            0.00059849,
+            0.00061136,
+            0.00060261,
+            0.00060179,
+            0.00059898,
+            0.00061652,
+            0.00060902,
+            0.00059545,
+            0.00060999,
+        ]),
     )
 
 

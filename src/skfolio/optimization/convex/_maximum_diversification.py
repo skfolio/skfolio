@@ -267,14 +267,17 @@ class MaximumDiversification(MeanRisk):
         It is a function that must take as argument the weights `w` and returns a
         CVPXY expression or a list of CVPXY expressions.
 
-    solver : str, optional
-        The solver to use. For example, "ECOS", "SCS", or "OSQP".
-        The default (`None`) is set depending on the problem.
+    solver : str, default="CLARABEL"
+        The solver to use. The default is "CLARABEL" which is written in Rust and has
+        better numerical stability and performance than ECOS and SCS. Cvxpy will replace
+        its default solver "ECOS" by "CLARABEL" in future releases.
         For more details about available solvers, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
 
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
+        for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
 
@@ -287,6 +290,10 @@ class MaximumDiversification(MeanRisk):
         Scale each constraint element by this value.
         It can be used to increase the optimization accuracies in specific cases.
         The default (`None`) is set depending on the problem.
+
+    save_problem : bool, default=False
+        If this is set to True, the CVXPY Problem is saved in `problem_`.
+        The default is `False`.
 
     raise_on_failure : bool, default=True
         If this is set to True, an error is raised when the optimization fail otherwise
@@ -303,14 +310,15 @@ class MaximumDiversification(MeanRisk):
     weights_ : ndarray of shape (n_assets,) or (n_optimizations, n_assets)
         Weights of the assets.
 
-    problem_: cvxpy.Problem
-        CVXPY problem used for the optimization.
-
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
+
+    problem_: cvxpy.Problem
+        CVXPY problem used for the optimization. Only when `save_problem` is set to
+        `True`.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -343,10 +351,11 @@ class MaximumDiversification(MeanRisk):
         min_return: skt.Target | None = None,
         max_tracking_error: skt.Target | None = None,
         max_turnover: skt.Target | None = None,
-        solver: str | None = None,
+        solver: str = "CLARABEL",
         solver_params: dict | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
+        save_problem: bool = False,
         raise_on_failure: bool = True,
         add_objective: skt.ExpressionFunction | None = None,
         add_constraints: skt.ExpressionFunction | None = None,
@@ -380,6 +389,7 @@ class MaximumDiversification(MeanRisk):
             solver_params=solver_params,
             scale_objective=scale_objective,
             scale_constraints=scale_constraints,
+            save_problem=save_problem,
             raise_on_failure=raise_on_failure,
             add_objective=add_objective,
             add_constraints=add_constraints,
