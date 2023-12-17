@@ -403,7 +403,7 @@ def test_portfolio_rolling_measure(X, weights):
 
     for measure in _MEASURES:
         res = portfolio.rolling_measure(measure=measure, window=30)
-        np.testing.assert_almost_equal(res[-1], getattr(ref, measure.value))
+        np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
 
 
 def test_portfolio_expected_returns_from_assets(X, weights):

@@ -54,7 +54,7 @@ def multi_period_portfolio(X):
         (dt.date(2017, 5, 1), dt.date(2017, 8, 1)),
     ]
 
-    mpp = MultiPeriodPortfolio(
+    multi_period_portfolio = MultiPeriodPortfolio(
         name="mmp",
         fitness_measures=[
             PerfMeasure.MEAN,
@@ -69,8 +69,8 @@ def multi_period_portfolio(X):
             weights=rand_weights(n=n_assets, zeros=n_assets - 5),
             name=f"ptf_period_{i}",
         )
-        mpp.append(portfolio)
-    return mpp
+        multi_period_portfolio.append(portfolio)
+    return multi_period_portfolio
 
 
 def test_magic_methods(population):

@@ -46,7 +46,7 @@ def test_nco_hierarchical_clustering(X, linkage_method):
 
 def test_nco_kmeans(X):
     model = NestedClustersOptimization(
-        clustering_estimator=skc.KMeans(),
+        clustering_estimator=skc.KMeans(n_init="auto"),
     )
     model.fit(X)
 

@@ -136,7 +136,7 @@ def download_dataset(
         representing the asset price of a given observation.
     """
     url = (
-        "https://github.com/HugoDelatte/portfolio-optimization/raw/main/datasets/"
+        "https://github.com/skfolio/skfolio/raw/main/datasets/"
         f"{data_filename}.csv.gz"
     )
 

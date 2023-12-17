@@ -754,7 +754,7 @@ class Population(list):
             fronts = self.non_denominated_sort(first_front_only=False)
             if tags is not None:
                 ValueError("Cannot plot front with tags selected")
-            df["front"] = -1
+            df["front"] = str(-1)
             for i, front in enumerate(fronts):
                 for idx in front:
                     df.iloc[idx, -1] = str(i)
