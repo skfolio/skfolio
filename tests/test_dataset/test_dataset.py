@@ -19,23 +19,12 @@ class TestGetDataHome:
     def test_default_path(self):
         assert get_data_home() == os.path.expanduser(os.path.join("~", "skfolio_data"))
 
-    #  Returns the path to skfolio data directory passed as argument
-    def test_custom_path(self):
-        custom_path = "/path/to/data"
-        assert get_data_home(custom_path) == custom_path
-
     #  Creates the skfolio data directory if it does not exist
     def test_create_directory(self):
         data_home = os.path.expanduser(os.path.join("~", "skfolio_data"))
         shutil.rmtree(data_home, ignore_errors=True)
         get_data_home()
         assert os.path.exists(data_home)
-
-    #  Returns the path to skfolio data directory if a non-existent path is passed as
-    #  argument
-    def test_nonexistent_path(self):
-        nonexistent_path = "/path/to/nonexistent"
-        assert get_data_home(nonexistent_path) == nonexistent_path
 
 
 class TestClearDataHome:

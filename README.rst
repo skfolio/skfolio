@@ -5,20 +5,20 @@
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 .. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
 
-.. |Codecov| image:: https://codecov.io/gh/scikit-learn/scikit-learn/branch/main/graph/badge.svg?token=Pk8G9gg3y9
-.. _Codecov: https://codecov.io/gh/scikit-learn/scikit-learn
+.. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/branch/main/graph/badge.svg
+.. _Codecov: https://codecov.io/gh/skfolio/skfolio
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
 .. _PythonVersion: https://pypi.org/project/skfolio/
 
-.. |PyPi| image:: https://img.shields.io/pypi/v/scikit-learn
-.. _PyPi: https://pypi.org/project/scikit-learn
+.. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
+.. _PyPi: https://pypi.org/project/skfolio
 
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
 .. _Black: https://github.com/psf/black
 
 .. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/sktime/sktime/wheels.yml?logo=github
-.. _CI/CD: https://github.com/skfolio/skfolio/blob/main/LICENSE
+.. _CI/CD: https://github.com/skfolio/skfolio/raw/main/LICENSE
 
 
 .. |PythonMinVersion| replace:: 3.10

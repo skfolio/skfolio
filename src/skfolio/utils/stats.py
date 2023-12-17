@@ -100,7 +100,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
     n = len(x)
 
     def func(y: float):
-        y = int(y)
+        y = y[0]
         if y <= 0:
             return np.inf
         bin_edges = np.linspace(x[0], x[-1], int(y) + 1)

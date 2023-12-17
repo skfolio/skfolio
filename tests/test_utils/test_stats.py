@@ -85,7 +85,7 @@ def test_n_bins_freedman(returns):
 
 def test_n_bins_knuth(returns):
     n_bins = n_bins_knuth(returns)
-    assert n_bins == 345
+    assert n_bins == 346
 
 
 def test_cov_nearest(nasdaq_X):
