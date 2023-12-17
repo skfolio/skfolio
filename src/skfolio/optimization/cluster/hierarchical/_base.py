@@ -7,14 +7,12 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization
-from skfolio.population import Population
 from skfolio.portfolio import Portfolio
 from skfolio.prior import BasePrior, PriorModel
 from skfolio.utils.tools import input_to_array

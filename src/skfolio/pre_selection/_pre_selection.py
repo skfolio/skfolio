@@ -296,13 +296,13 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
             )
 
         # Add pairs with correlation below threshold with minimum variance
-        # ptf_variance = 𝜎1^2 𝑤1^2 + 𝜎2^2 𝑤2^2 + 2 𝜎12 𝑤1 𝑤2 (1)
-        # with 𝑤1 + 𝑤2 = 1
-        # To find the minimum we substitute 𝑤2 = 1 - 𝑤1 in (1) and differentiate with
-        # respect to 𝑤1 and set to zero.
+        # ptf_variance = sigma1^2 w1^2 + sigma2^2 w2^2 + 2 sigma12 w1 w2 (1)
+        # with w1 + w2 = 1
+        # To find the minimum we substitute w2 = 1 - w1 in (1) and differentiate with
+        # respect to w1 and set to zero.
         # By solving the obtained equation, we get:
-        # 𝑤1 = (𝜎2^2 - 𝜎12) / (𝜎1^2 + 𝜎2^2 - 2 𝜎12)
-        # 𝑤2 = 1 - 𝑤1
+        # w1 = (sigma2^2 - sigma12) / (sigma1^2 + sigma2^2 - 2 sigma12)
+        # w2 = 1 - w1
 
         corr = np.corrcoef(X.T)
         covariance = np.cov(X.T)

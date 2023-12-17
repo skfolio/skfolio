@@ -64,7 +64,7 @@ class EmpiricalPrior(BasePrior):
 
     References
     ----------
-    .. [1]  "Linear vs. Compounded Returns – Common Pitfalls in Portfolio Management".
+    .. [1]  "Linear vs. Compounded Returns - Common Pitfalls in Portfolio Management".
         GARP Risk Professional.
         Attilio Meucci (2010).
     """

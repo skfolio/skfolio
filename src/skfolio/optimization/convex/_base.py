@@ -1912,7 +1912,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         The Gini mean difference (GMD) is a measure of dispersion introduced in the
         context of portfolio optimization by Yitzhaki (1982).
         The initial formulation was not used by practitioners due to the high number of
-        variables that increases proportional to T(T−1)/2 ,
+        variables that increases proportional to T(T-1)/2 ,
 
         Cajas (2021) proposed an alternative reformulation based on the ordered weighted
         averaging (OWA) operator for monotonic weights proposed by Chassein and
