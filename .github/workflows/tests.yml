@@ -33,6 +33,7 @@ jobs:
         run: ruff --output-format=github
 
       - name: Run and write pytest
-        run: |
-            set -o pipefail
-            pytest --cov=skfolio --cov-report=html
+        run: pytest --cov=./ --cov-report=xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
