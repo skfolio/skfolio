@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Sphinx Docs
         working-directory: ./docs
-        run: make html
+        run: sphinx-build . _build
 
       - name: Deploy Sphinx Docs
         uses: peaceiris/actions-gh-pages@v3
