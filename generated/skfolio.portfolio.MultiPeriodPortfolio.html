@@ -1,0 +1,1248 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>skfolio.portfolio.MultiPeriodPortfolio &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/skfolio.portfolio.MultiPeriodPortfolio';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="skfolio.population.Population" href="skfolio.population.Population.html" />
+    <link rel="prev" title="skfolio.portfolio.Portfolio" href="skfolio.portfolio.Portfolio.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.BaseMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.BaseMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.PerfMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.PerfMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ExtraRiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ExtraRiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RatioMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RatioMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_cumulative_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_cumulative_returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_drawdowns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_drawdowns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.standard_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.standard_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.third_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.third_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cvar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cvar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean_absolute_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean_absolute_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.value_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.value_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.worst_realization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.worst_realization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.first_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.first_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.entropic_risk_measure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.entropic_risk_measure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.evar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.evar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.drawdown_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.drawdown_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cdar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cdar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.max_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.max_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.average_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.average_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.edar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.edar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ulcer_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ulcer_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.gini_mean_difference.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.gini_mean_difference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.owa_gmd_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.owa_gmd_weights</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.BasePortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.BasePortfolio</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.Portfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.Portfolio</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.MultiPeriodPortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.population.Population.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code>.Population</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.EqualWeighted.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.EqualWeighted</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.InverseVolatility.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.InverseVolatility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.Random.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.Random</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.ObjectiveFunction.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ObjectiveFunction</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.ConvexOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ConvexOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MeanRisk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MeanRisk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.RiskBudgeting.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.RiskBudgeting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MaximumDiversification.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MaximumDiversification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.DistributionallyRobustCVaR.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.DistributionallyRobustCVaR</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseHierarchicalOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseHierarchicalOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalRiskParity.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalRiskParity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalEqualRiskContribution.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalEqualRiskContribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.NestedClustersOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.NestedClustersOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseComposition.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseComposition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.StackingOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.StackingOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.PriorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.PriorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BasePrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BasePrior</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.EmpiricalPrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.EmpiricalPrior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BlackLitterman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BlackLitterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.FactorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.FactorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BaseLoadingMatrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BaseLoadingMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.LoadingMatrixRegression.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.LoadingMatrixRegression</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseMu</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EquilibriumMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EquilibriumMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMuMethods.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMuMethods</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseCovariance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GerberCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GerberCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoiseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoiseCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoteCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoteCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.LedoitWolf.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.LedoitWolf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.PearsonDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.PearsonDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.KendallDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.KendallDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.SpearmanDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.SpearmanDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.CovarianceDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.CovarianceDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.DistanceCorrelation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.DistanceCorrelation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.MutualInformation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.MutualInformation</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.HierarchicalClustering.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.HierarchicalClustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.LinkageMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.LinkageMethod</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.UncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.UncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalCovarianceUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.CombinatorialPurgedCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.CombinatorialPurgedCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.WalkForward.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.WalkForward</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.cross_val_predict.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.cross_val_predict</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.metrics.make_scorer.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>.make_scorer</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_factors_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_factors_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_ftse100_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_ftse100_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_nasdaq_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_nasdaq_dataset</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.preprocessing.prices_to_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>.prices_to_returns</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.NBinsMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.NBinsMethod</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_freedman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_freedman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_knuth.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_knuth</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.is_cholesky_dec.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.is_cholesky_dec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_square.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_square</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_symmetric.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_symmetric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_distance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_nearest.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_nearest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_to_corr.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_to_corr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.corr_to_cov.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.corr_to_cov</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.commutation_matrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.commutation_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.compute_optimal_n_clusters.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.compute_optimal_n_clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights_dirichlet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights_dirichlet</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="skfolio-portfolio-multiperiodportfolio">
+<h1><a class="reference internal" href="../api.html#module-skfolio.portfolio" title="skfolio.portfolio"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code></a>.MultiPeriodPortfolio<a class="headerlink" href="#skfolio-portfolio-multiperiodportfolio" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.portfolio.</span></span><span class="sig-name descname"><span class="pre">MultiPeriodPortfolio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">portfolios</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">risk_free_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">annualized_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">255.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fitness_measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compounded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_acceptable_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_at_risk_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entropic_risk_measure_theta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entropic_risk_measure_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drawdown_at_risk_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cdar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_observations_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_multi_period_portfolio.html#MultiPeriodPortfolio"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio" title="Link to this definition">#</a></dt>
+<dd><p>Multi-Period Portfolio class.</p>
+<p>A Multi-Period Portfolio is composed of a list of <a class="reference internal" href="skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a>.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>portfolios</strong><span class="classifier">list[Portfolio], optional</span></dt><dd><p>A list of <a class="reference internal" href="skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a>. The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to initialize with an
+empty list.</p>
+</dd>
+<dt><strong>name</strong><span class="classifier">str, optional</span></dt><dd><p>Name of the multi-period portfolio.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use the object id.</p>
+</dd>
+<dt><strong>tag</strong><span class="classifier">str, optional</span></dt><dd><p>Tag given to the multi-period portfolio.
+Tags are used to manipulate groups of portfolios from a <code class="docutils literal notranslate"><span class="pre">Population</span></code>.</p>
+</dd>
+<dt><strong>fitness_measures</strong><span class="classifier">list[measures], optional</span></dt><dd><p>List of fitness measures.
+Fitness measures are used to compute the portfolio fitness which is used to
+compute domination.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]</p>
+</dd>
+<dt><strong>annualized_factor</strong><span class="classifier">float, default=255.0</span></dt><dd><p>Factor used to annualize the below measures using the square-root rule:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Annualized Mean = Mean * factor</p></li>
+<li><p>Annualized Variance = Variance * factor</p></li>
+<li><p>Annualized Semi-Variance = Semi-Variance * factor</p></li>
+<li><p>Annualized Standard-Deviation = Standard-Deviation * sqrt(factor)</p></li>
+<li><p>Annualized Semi-Deviation = Semi-Deviation * sqrt(factor)</p></li>
+<li><p>Annualized Sharpe Ratio = Sharpe Ratio * sqrt(factor)</p></li>
+<li><p>Annualized Sortino Ratio = Sortino Ratio * sqrt(factor)</p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>risk_free_rate</strong><span class="classifier">float, default=0.0</span></dt><dd><p>Risk-free rate. The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+</dd>
+<dt><strong>compounded</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, cumulative returns are compounded.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+<dt><strong>min_acceptable_return</strong><span class="classifier">float, optional</span></dt><dd><p>The minimum acceptable return used to distinguish “downside” and “upside”
+returns for the computation of lower partial moments:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>First Lower Partial Moment</p></li>
+<li><p>Semi-Variance</p></li>
+<li><p>Semi-Deviation</p></li>
+</ul>
+</div></blockquote>
+<p>The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use the mean.</p>
+</dd>
+<dt><strong>value_at_risk_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio VaR (Value At Risk) which represents
+the return on the worst (1-beta)% observations.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>entropic_risk_measure_theta</strong><span class="classifier">float, default=1.0</span></dt><dd><p>The risk aversion level of the portfolio Entropic Risk Measure.
+The default value is <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.</p>
+</dd>
+<dt><strong>entropic_risk_measure_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio Entropic Risk Measure.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>cvar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio CVaR (Conditional Value at Risk) which
+represents the expected VaR on the worst (1-beta)% observations.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>evar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio EVaR (Entropic Value at Risk).
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>drawdown_at_risk_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio Drawdown at Risk (DaR) which represents
+the drawdown on the worst (1-beta)% observations.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>cdar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio CDaR (Conditional Drawdown at Risk) which
+represents the expected drawdown on the worst (1-beta)% observations.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>edar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>The confidence level of the portfolio EDaR (Entropic Drawdown at Risk).
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>check_observations_order</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, and if the list of portfolios is not chronologically
+sorted, an error is raised. The chronological order is determined by comparing
+the first and last observations of each portfolio.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>n_observations</strong><span class="classifier">float</span></dt><dd><p>Number of observations.</p>
+</dd>
+<dt><strong>mean</strong><span class="classifier">float</span></dt><dd><p>Mean of the portfolio returns.</p>
+</dd>
+<dt><strong>annualized_mean</strong><span class="classifier">float</span></dt><dd><p>Mean annualized by <span class="math notranslate nohighlight">\(mean \times annualization\_factor\)</span></p>
+</dd>
+<dt><strong>mean_absolute_deviation</strong><span class="classifier">float</span></dt><dd><p>Mean Absolute Deviation. The deviation is the difference between the
+return and a minimum acceptable return (<code class="docutils literal notranslate"><span class="pre">min_acceptable_return</span></code>).</p>
+</dd>
+<dt><strong>first_lower_partial_moment</strong><span class="classifier">float</span></dt><dd><p>First Lower Partial Moment. The First Lower Partial Moment is the mean of the
+returns below a minimum acceptable return (<code class="docutils literal notranslate"><span class="pre">min_acceptable_return</span></code>).</p>
+</dd>
+<dt><strong>variance</strong><span class="classifier">float</span></dt><dd><p>Variance (Second Moment)</p>
+</dd>
+<dt><strong>annualized_variance</strong><span class="classifier">float</span></dt><dd><p>Variance annualized by <span class="math notranslate nohighlight">\(variance \times annualization\_factor\)</span></p>
+</dd>
+<dt><strong>semi_variance</strong><span class="classifier">float</span></dt><dd><p>Semi-variance (Second Lower Partial Moment).
+The semi-variance is the variance of the returns below a minimum acceptable
+return (<code class="docutils literal notranslate"><span class="pre">min_acceptable_return</span></code>).</p>
+</dd>
+<dt><strong>annualized_semi_variance</strong><span class="classifier">float</span></dt><dd><p>Semi-variance annualized by
+<span class="math notranslate nohighlight">\(semi\_variance \times annualization\_factor\)</span></p>
+</dd>
+<dt><strong>standard_deviation</strong><span class="classifier">float</span></dt><dd><p>Standard Deviation (Square Root of the Second Moment).</p>
+</dd>
+<dt><strong>annualized_standard_deviation</strong><span class="classifier">float</span></dt><dd><p>Standard Deviation annualized by
+<span class="math notranslate nohighlight">\(standard\_deviation \times \sqrt{annualization\_factor}\)</span></p>
+</dd>
+<dt><strong>semi_deviation</strong><span class="classifier">float</span></dt><dd><p>Semi-deviation (Square Root of the Second Lower Partial Moment).
+The Semi Standard Deviation is the Standard Deviation of the returns below a
+minimum acceptable return (<code class="docutils literal notranslate"><span class="pre">min_acceptable_return</span></code>).</p>
+</dd>
+<dt><strong>annualized_semi_deviation</strong><span class="classifier">float</span></dt><dd><p>Semi-deviation annualized by
+<span class="math notranslate nohighlight">\(semi\_deviation \times \sqrt{annualization\_factor}\)</span></p>
+</dd>
+<dt><strong>skew</strong><span class="classifier">float</span></dt><dd><p>Skew. The Skew is a measure of the lopsidedness of the distribution.
+A symmetric distribution have a Skew of zero.
+Higher Skew corresponds to longer right tail.</p>
+</dd>
+<dt><strong>kurtosis</strong><span class="classifier">float</span></dt><dd><p>Kurtosis. It is a measure of the heaviness of the tail of the distribution.
+Higher Kurtosis corresponds to greater extremity of deviations (fat tails).</p>
+</dd>
+<dt><strong>fourth_central_moment</strong><span class="classifier">float</span></dt><dd><p>Fourth Central Moment.</p>
+</dd>
+<dt><strong>fourth_lower_partial_moment</strong><span class="classifier">float</span></dt><dd><p>Fourth Lower Partial Moment. It is a measure of the heaviness of the downside
+tail of the returns below a minimum acceptable return (<code class="docutils literal notranslate"><span class="pre">min_acceptable_return</span></code>).
+Higher Fourth Lower Partial Moment corresponds to greater extremity of downside
+deviations (downside fat tail).</p>
+</dd>
+<dt><strong>worst_realization</strong><span class="classifier">float</span></dt><dd><p>Worst Realization which is the worst return.</p>
+</dd>
+<dt><strong>value_at_risk</strong><span class="classifier">float</span></dt><dd><p>Historical VaR (Value at Risk).
+The VaR is the maximum loss at a given confidence level (<code class="docutils literal notranslate"><span class="pre">value_at_risk_beta</span></code>).</p>
+</dd>
+<dt><strong>cvar</strong><span class="classifier">float</span></dt><dd><p>Historical CVaR (Conditional Value at Risk). The CVaR (or Tail VaR) represents
+the mean shortfall at a specified confidence level (<code class="docutils literal notranslate"><span class="pre">cvar_beta</span></code>).</p>
+</dd>
+<dt><strong>entropic_risk_measure</strong><span class="classifier">float</span></dt><dd><p>Historical Entropic Risk Measure. It is a risk measure which depends on the
+risk aversion defined by the investor (<code class="docutils literal notranslate"><span class="pre">entropic_risk_measure_theta</span></code>) through
+the exponential utility function at a given confidence level
+(<code class="docutils literal notranslate"><span class="pre">entropic_risk_measure_beta</span></code>).</p>
+</dd>
+<dt><strong>evar</strong><span class="classifier">float</span></dt><dd><p>Historical EVaR (Entropic Value at Risk). It is a coherent risk measure which
+is an upper bound for the VaR and the CVaR, obtained from the Chernoff
+inequality at a given confidence level (<code class="docutils literal notranslate"><span class="pre">evar_beta</span></code>). The EVaR can be
+represented by using the concept of relative entropy.</p>
+</dd>
+<dt><strong>drawdown_at_risk</strong><span class="classifier">float</span></dt><dd><p>Historical Drawdown at Risk. It is the maximum drawdown at a given
+confidence level (<code class="docutils literal notranslate"><span class="pre">drawdown_at_risk_beta</span></code>).</p>
+</dd>
+<dt><strong>cdar</strong><span class="classifier">float</span></dt><dd><p>Historical CDaR (Conditional Drawdown at Risk) at a given confidence level
+(<code class="docutils literal notranslate"><span class="pre">cdar_beta</span></code>).</p>
+</dd>
+<dt><strong>max_drawdown</strong><span class="classifier">float</span></dt><dd><p>Maximum Drawdown.</p>
+</dd>
+<dt><strong>average_drawdown</strong><span class="classifier">float</span></dt><dd><p>Average Drawdown.</p>
+</dd>
+<dt><strong>edar</strong><span class="classifier">float</span></dt><dd><p>EDaR (Entropic Drawdown at Risk). It is a coherent risk measure which is an
+upper bound for the Drawdown at Risk and the CDaR, obtained from the Chernoff
+inequality at a given confidence level (<code class="docutils literal notranslate"><span class="pre">edar_beta</span></code>). The EDaR can be
+represented by using the concept of relative entropy.</p>
+</dd>
+<dt><strong>ulcer_index</strong><span class="classifier">float</span></dt><dd><p>Ulcer Index</p>
+</dd>
+<dt><strong>gini_mean_difference</strong><span class="classifier">float</span></dt><dd><p>Gini Mean Difference (GMD). It is the expected absolute difference between two
+realizations. The GMD is a superior measure of variability  for non-normal
+distribution than the variance. It can be used to form necessary conditions
+for second-degree stochastic dominance, while the variance cannot.</p>
+</dd>
+<dt><strong>mean_absolute_deviation_ratio</strong><span class="classifier">float</span></dt><dd><p>Mean Absolute Deviation ratio.
+It is the excess mean (mean - risk_free_rate) divided by the MaD.</p>
+</dd>
+<dt><strong>first_lower_partial_moment_ratio</strong><span class="classifier">float</span></dt><dd><p>First Lower Partial Moment ratio.
+It is the excess mean (mean - risk_free_rate) divided by the First Lower
+Partial Moment.</p>
+</dd>
+<dt><strong>sharpe_ratio</strong><span class="classifier">float</span></dt><dd><p>Sharpe ratio.
+It is the excess mean (mean - risk_free_rate) divided by the standard-deviation.</p>
+</dd>
+<dt><strong>annualized_sharpe_ratio</strong><span class="classifier">float</span></dt><dd><p>Sharpe ratio annualized by
+<span class="math notranslate nohighlight">\(sharpe\_ratio \times \sqrt{annualization\_factor}\)</span>.</p>
+</dd>
+<dt><strong>sortino_ratio</strong><span class="classifier">float</span></dt><dd><p>Sortino ratio.
+It is the excess mean (mean - risk_free_rate) divided by the semi
+standard-deviation.</p>
+</dd>
+<dt><strong>annualized_sortino_ratio</strong><span class="classifier">float</span></dt><dd><p>Sortino ratio annualized by
+<span class="math notranslate nohighlight">\(sortino\_ratio \times \sqrt{annualization\_factor}\)</span>.</p>
+</dd>
+<dt><strong>value_at_risk_ratio</strong><span class="classifier">float</span></dt><dd><p>VaR ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Value at Risk
+(VaR).</p>
+</dd>
+<dt><strong>cvar_ratio</strong><span class="classifier">float</span></dt><dd><p>CVaR ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Conditional Value
+at Risk (CVaR).</p>
+</dd>
+<dt><strong>entropic_risk_measure_ratio</strong><span class="classifier">float</span></dt><dd><p>Entropic risk measure ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Entropic risk
+measure.</p>
+</dd>
+<dt><strong>evar_ratio</strong><span class="classifier">float</span></dt><dd><p>EVaR ratio.
+It is the excess mean (mean - risk_free_rate) divided by the EVaR (Entropic
+Value at Risk).</p>
+</dd>
+<dt><strong>worst_realization_ratio</strong><span class="classifier">float</span></dt><dd><p>Worst Realization ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Worst Realization
+(worst return).</p>
+</dd>
+<dt><strong>drawdown_at_risk_ratio</strong><span class="classifier">float</span></dt><dd><p>Drawdown at Risk ratio.
+It is the excess mean (mean - risk_free_rate) divided by the drawdown at
+risk.</p>
+</dd>
+<dt><strong>cdar_ratio</strong><span class="classifier">float</span></dt><dd><p>CDaR ratio.
+It is the excess mean (mean - risk_free_rate) divided by the CDaR (conditional
+drawdown at risk).</p>
+</dd>
+<dt><strong>calmar_ratio</strong><span class="classifier">float</span></dt><dd><p>Calmar ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Maximum Drawdown.</p>
+</dd>
+<dt><strong>average_drawdown_ratio</strong><span class="classifier">float</span></dt><dd><p>Average Drawdown ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Average Drawdown.</p>
+</dd>
+<dt><strong>edar_ratio</strong><span class="classifier">float</span></dt><dd><p>EDaR ratio.
+It is the excess mean (mean - risk_free_rate) divided by the EDaR (Entropic
+Drawdown at Risk).</p>
+</dd>
+<dt><strong>ulcer_index_ratio</strong><span class="classifier">float</span></dt><dd><p>Ulcer Index ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Ulcer Index.</p>
+</dd>
+<dt><strong>gini_mean_difference_ratio</strong><span class="classifier">float</span></dt><dd><p>Gini Mean Difference ratio.
+It is the excess mean (mean - risk_free_rate) divided by the Gini Mean
+Difference.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.append" title="skfolio.portfolio.MultiPeriodPortfolio.append"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append</span></code></a>(portfolio)</p></td>
+<td><p>Append a Portfolio to the Portfolio list.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.clear" title="skfolio.portfolio.MultiPeriodPortfolio.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>
+<td><p>CLear all measures, fitness, cumulative returns and drawdowns in slots</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.copy" title="skfolio.portfolio.MultiPeriodPortfolio.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<td><p>Copy the Portfolio attributes without its measures values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.dominates" title="skfolio.portfolio.MultiPeriodPortfolio.dominates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dominates</span></code></a>(other[, idx])</p></td>
+<td><p>Portfolio domination.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.get_measure" title="skfolio.portfolio.MultiPeriodPortfolio.get_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_measure</span></code></a>(measure)</p></td>
+<td><p>Returns the value of a given measure.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_composition" title="skfolio.portfolio.MultiPeriodPortfolio.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>()</p></td>
+<td><p>Plot the Portfolio composition.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_cumulative_returns" title="skfolio.portfolio.MultiPeriodPortfolio.plot_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cumulative_returns</span></code></a>([log_scale, idx])</p></td>
+<td><p>Plot the Portfolio cumulative returns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_returns" title="skfolio.portfolio.MultiPeriodPortfolio.plot_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_returns</span></code></a>([idx])</p></td>
+<td><p>Plot the Portfolio returns</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_rolling_measure" title="skfolio.portfolio.MultiPeriodPortfolio.plot_rolling_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_rolling_measure</span></code></a>([measure, window])</p></td>
+<td><p>Plot the measure over a rolling window.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.rolling_measure" title="skfolio.portfolio.MultiPeriodPortfolio.rolling_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rolling_measure</span></code></a>([measure, window])</p></td>
+<td><p>Compute the measure over a rolling window.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.MultiPeriodPortfolio.summary" title="skfolio.portfolio.MultiPeriodPortfolio.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a>([formatted])</p></td>
+<td><p>Portfolio summary of all its measures.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.annualized_factor">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">annualized_factor</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.annualized_factor" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio annualized factor.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">portfolio</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_multi_period_portfolio.html#MultiPeriodPortfolio.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.append" title="Link to this definition">#</a></dt>
+<dd><p>Append a Portfolio to the Portfolio list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>portfolio</strong><span class="classifier">Portfolio</span></dt><dd><p>The Portfolio to append.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.assets">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">assets</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.assets" title="Link to this definition">#</a></dt>
+<dd><p>List of assets names in each Portfolio.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.clear" title="Link to this definition">#</a></dt>
+<dd><p>CLear all measures, fitness, cumulative returns and drawdowns in slots</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.composition">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">composition</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.composition" title="Link to this definition">#</a></dt>
+<dd><p>DataFrame of the Portfolio composition.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.copy" title="Link to this definition">#</a></dt>
+<dd><p>Copy the Portfolio attributes without its measures values.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.cumulative_returns">
+<span class="sig-name descname"><span class="pre">cumulative_returns</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.cumulative_returns" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio cumulative returns array.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.cumulative_returns_df">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cumulative_returns_df</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.cumulative_returns_df" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio cumulative returns Series.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.dominates">
+<span class="sig-name descname"><span class="pre">dominates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.dominates" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio domination.</p>
+<p>Returns true if each objective of the current portfolio fitness is not
+strictly worse than the corresponding objective of the other portfolio fitness
+and at least one objective is strictly better.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>other</strong><span class="classifier">BasePortfolio</span></dt><dd><p>The other portfolio.</p>
+</dd>
+<dt><strong>idx</strong><span class="classifier">slice | array, optional</span></dt><dd><p>Indexes or slice indicating on which objectives the domination is performed.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use all objectives.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>value</strong><span class="classifier">bool</span></dt><dd><p>Returns True if the Portfolio dominates the other one.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.drawdowns">
+<span class="sig-name descname"><span class="pre">drawdowns</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.drawdowns" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio drawdowns array.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.fitness">
+<span class="sig-name descname"><span class="pre">fitness</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.fitness" title="Link to this definition">#</a></dt>
+<dd><p>The Portfolio fitness.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.fitness_measures">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fitness_measures</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.fitness_measures" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio fitness measures.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.get_measure">
+<span class="sig-name descname"><span class="pre">get_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.get_measure" title="Link to this definition">#</a></dt>
+<dd><p>Returns the value of a given measure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure</span></dt><dd><p>The input measure.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>value</strong><span class="classifier">float</span></dt><dd><p>The measure value.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.measures_df">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">measures_df</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.measures_df" title="Link to this definition">#</a></dt>
+<dd><p>DataFrame of all measures.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.plot_composition">
+<span class="sig-name descname"><span class="pre">plot_composition</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_composition" title="Link to this definition">#</a></dt>
+<dd><p>Plot the Portfolio composition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.plot_cumulative_returns">
+<span class="sig-name descname"><span class="pre">plot_cumulative_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_cumulative_returns" title="Link to this definition">#</a></dt>
+<dd><p>Plot the Portfolio cumulative returns.
+Non-compounded cumulative returns start at 0.
+Compounded cumulative returns are rescaled to start at 1000.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>log_scale</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the cumulative returns are displayed with a
+logarithm scale on the y-axis and rebased at 1000. The cumulative returns
+must be compounded otherwise an exception is raised.</p>
+</dd>
+<dt><strong>idx</strong><span class="classifier">slice | array, optional</span></dt><dd><p>Indexes or slice of the observations to plot.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to plot all observations.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.plot_returns">
+<span class="sig-name descname"><span class="pre">plot_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_returns" title="Link to this definition">#</a></dt>
+<dd><p>Plot the Portfolio returns</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>idx</strong><span class="classifier">slice | array, optional</span></dt><dd><p>Indexes or slice of the observations to plot.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to plot all observations.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.plot_rolling_measure">
+<span class="sig-name descname"><span class="pre">plot_rolling_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">RatioMeasure.SHARPE_RATIO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.plot_rolling_measure" title="Link to this definition">#</a></dt>
+<dd><p>Plot the measure over a rolling window.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">ct.Measure, default = RatioMeasure.SHARPE_RATIO</span></dt><dd><p>The measure.</p>
+</dd>
+<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.portfolios">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">portfolios</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.portfolios" title="Link to this definition">#</a></dt>
+<dd><p>List of portfolios composing the mutli-period portfolio.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.returns_df">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">returns_df</span></span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.returns_df" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio returns DataFrame.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.rolling_measure">
+<span class="sig-name descname"><span class="pre">rolling_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">RatioMeasure.SHARPE_RATIO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.rolling_measure" title="Link to this definition">#</a></dt>
+<dd><p>Compute the measure over a rolling window.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">ct.Measure, default=RatioMeasure.SHARPE_RATIO</span></dt><dd><p>The measure. The default measure is the Sharpe Ratio.</p>
+</dd>
+<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size. The default value is <code class="docutils literal notranslate"><span class="pre">30</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>series</strong><span class="classifier">pandas Series</span></dt><dd><p>The rolling measure Series.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.MultiPeriodPortfolio.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">formatted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_multi_period_portfolio.html#MultiPeriodPortfolio.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.MultiPeriodPortfolio.summary" title="Link to this definition">#</a></dt>
+<dd><p>Portfolio summary of all its measures.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>formatted</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, the measures are formatted into rounded string with
+units.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>summary</strong><span class="classifier">series</span></dt><dd><p>Portfolio summary of all its measures.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="clearer"></div></section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="skfolio.portfolio.Portfolio.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.Portfolio</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="skfolio.population.Population.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code>.Population</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

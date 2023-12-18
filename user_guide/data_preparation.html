@@ -1,0 +1,693 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>Data Preparation &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/data_preparation';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Examples" href="../auto_examples/index.html" />
+    <link rel="prev" title="Datasets" href="datasets.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimization.html">Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="population.html">Population</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prior.html">Prior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="expected_returns.html">Expected Returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="covariance.html">Covariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distance.html">Distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uncertainty_set.html">Uncertainty Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre_selection.html">Pre-Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model_selection.html">Model Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hyper_parameters_tuning.html">Hyper-Parameters Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Data Preparation</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Data Preparation</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="data-preparation">
+<span id="id1"></span><h1>Data Preparation<a class="headerlink" href="#data-preparation" title="Link to this heading">#</a></h1>
+<p>Most <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods of <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> estimators take the assets returns as input <code class="docutils literal notranslate"><span class="pre">X</span></code>.
+This means that the choice of methodology to convert prices to returns is left to the user.</p>
+<p>There are two different notions of return:</p>
+<section id="linear-return">
+<h2>Linear return<a class="headerlink" href="#linear-return" title="Link to this heading">#</a></h2>
+<p>Linear return (or simple return) is defined as:</p>
+<div class="math notranslate nohighlight">
+\[R^{Lin}_{t} = \frac{S_{t}}{S_{t-1}} - 1\]</div>
+<p><strong>Linear returns aggregates across securities</strong>, meaning that the linear return
+of a portfolio is the sum of the weighted linear returns of its components:</p>
+<div class="math notranslate nohighlight">
+\[R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}\]</div>
+<p>This property is needed to properly compute portfolio return and risk.
+However, linear returns cannot be aggregated across time.</p>
+</section>
+<section id="logarithmic-return">
+<h2>Logarithmic return<a class="headerlink" href="#logarithmic-return" title="Link to this heading">#</a></h2>
+<p>Logarithmic return (or continuously compounded return) is defined as:</p>
+<div class="math notranslate nohighlight">
+\[R^{Log}_{t} = ln\Biggl(\frac{S_{t}}{S_{t-1}}\Biggr)\]</div>
+<p><strong>Logarithmic returns aggregates across time</strong>, meaning that the logarithmic return over
+k periods is the sum of all single-period logarithmic returns:</p>
+<div class="math notranslate nohighlight">
+\[R^{Log}_{t..k} = ln\Biggl(\frac{S_{t+k}}{S_{t}}\Biggr) = \sum_{j=1}^{k} ln\Biggl(\frac{S_{t+j}}{S_{t+j-1}}\Biggr)= \sum_{j=1}^{k-1} R^{Log}_{t+j}\]</div>
+<p>Given this property, it is easy to scale logarithmic return from one time period to another.
+However, logarithmic return cannot be aggregated across securities:</p>
+<div class="math notranslate nohighlight">
+\[R^{Log}_{t} = ln\Biggl(\frac{S_{t}}{S_{t-1}}\Biggr) = ln\Biggl(1+\sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}\Biggr)\]</div>
+</section>
+<section id="pitfall-in-portfolio-optimization">
+<h2>Pitfall in Portfolio Optimization<a class="headerlink" href="#pitfall-in-portfolio-optimization" title="Link to this heading">#</a></h2>
+<p>Given the similarities of linear and logarithmic returns in the short run, they are
+sometimes used interchangeably.
+It is not uncommon to witness the following steps <a class="footnote-reference brackets" href="#id3" id="id2" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>:</p>
+<ol class="arabic simple">
+<li><p>Take the daily prices <span class="math notranslate nohighlight">\(S_{t}, S_{t+1}, ...,\)</span> for all the n securities</p></li>
+<li><p>Transform the daily prices to daily logarithmic returns</p></li>
+<li><p>Estimate the expected retruns vector <span class="math notranslate nohighlight">\(\mu\)</span> and covariance matrix <span class="math notranslate nohighlight">\(\Sigma\)</span> from the daily logarithmic returns</p></li>
+<li><p>Determine the investment horizon, for example k = 255 days</p></li>
+<li><p>Project the expected returns and covariance to the horizon using the square-root rule: <span class="math notranslate nohighlight">\(\mu_{k} ≡ k \times \mu\)</span> and <span class="math notranslate nohighlight">\(\Sigma_{k} ≡ k \times \Sigma\)</span></p></li>
+<li><p>Compute the mean-variance efficient frontier <span class="math notranslate nohighlight">\(\max_{w} \Biggl\{ w^T \mu - \lambda \times w^T \Sigma w \Biggr\}\)</span></p></li>
+</ol>
+<p>The above approach is incorrect. First, the square-root rule in (5) only applies under
+the assumption that the logarithmic returns are invariants (they behave identically and
+independently across time). It is approximately true for stocks, but it is not true for
+bonds nor most derivatives like options.
+Secondly, even for stocks, the optimization (6) is ill-posed: <span class="math notranslate nohighlight">\(w^T \mu\)</span>
+is not the expected return of the portfolio over the horizon and <span class="math notranslate nohighlight">\(w^T \Sigma w\)</span>
+is not its variance.
+These would lead to suboptimal allocations and the efficient frontier would not depend on
+the investment horizon.</p>
+</section>
+<section id="the-correct-approach">
+<h2>The correct approach<a class="headerlink" href="#the-correct-approach" title="Link to this heading">#</a></h2>
+<p>The correct general approach is the following:</p>
+<ol class="arabic simple">
+<li><p>Find the market invariants (logarithmic return for stocks, change in yield to maturity for bonds, etc…)</p></li>
+<li><p>Estimate the joint distribution of the market invariant over the time period of estimation</p></li>
+<li><p>Project the distribution of invariants to the time period of investment</p></li>
+<li><p>Map the distribution of invariants into the distribution of security prices at the investment horizon through a pricing function</p></li>
+<li><p>Compute the distribution of linear returns from the distribution of prices</p></li>
+</ol>
+</section>
+<section id="example-for-stocks">
+<h2>Example for stocks<a class="headerlink" href="#example-for-stocks" title="Link to this heading">#</a></h2>
+<ol class="arabic">
+<li><p>Take the prices <span class="math notranslate nohighlight">\(S_{t}, S_{t+1}, ...,\)</span> (for example daily) for all the n securities</p></li>
+<li><p>Transform the daily prices to daily logarithmic returns. Note that linear return is also a market invariant for stock, however logarithmic return is going to simplify step 3) and 4).</p></li>
+<li><p>Estimate the joint distribution of market invariants by fitting parametrically the daily logarithmic returns to a multivariate normal distribution: estimate the joint distribution parameters <span class="math notranslate nohighlight">\(\mu^{Log}_{daily}\)</span> and <span class="math notranslate nohighlight">\(\Sigma^{Log}_{daily}\)</span></p></li>
+<li><p>Project the distribution of invariants to the time period of investment (for example one year i.e. 255 business days). Because logarithmic returns are additive across time, we have:</p>
+<blockquote>
+<div><ul>
+<li><div class="math notranslate nohighlight">
+\[\mu^{Log}_{yearly} = 255 \times \mu^{Log}_{daily}\]</div>
+</li>
+<li><div class="math notranslate nohighlight">
+\[\Sigma^{Log}_{yearly} = 255 \times \Sigma^{Log}_{daily}\]</div>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Compute the distribution of linear returns at the investment horizon. Using the characteristic function of the normal distribution, and the pricing function <span class="math notranslate nohighlight">\(S_{yearly} = S_{0} e^{R^{Log}_{yearly}}\)</span>, we get:</p>
+<blockquote>
+<div><ul>
+<li><div class="math notranslate nohighlight">
+\[\mathbb{E}(S_{yearly}) = \pmb{s}_{0} \circ exp\Biggl(\pmb{\mu}^{Log}_{yearly} + \frac{1}{2} diag\Biggl(\pmb{\Sigma}^{Log}_{yearly}\Biggr)\Biggr)\]</div>
+</li>
+<li><div class="math notranslate nohighlight">
+\[Cov(S_{yearly}) = \mathbb{E}(S_{yearly})\mathbb{E}(S_{yearly})^T \circ \Biggl(exp\Biggl(\pmb{\Sigma}^{Log}_{yearly}\Biggr)-1\Biggr)\]</div>
+</li>
+</ul>
+</div></blockquote>
+<p>From which we can estimate the moments of the linear returns at the time horizon:</p>
+<blockquote>
+<div><ul>
+<li><div class="math notranslate nohighlight">
+\[\pmb{\mu}^{Lin}_{yearly} = \frac{1}{\pmb{s}_{0} } \circ \mathbb{E}(S_{yearly}) -1\]</div>
+</li>
+<li><div class="math notranslate nohighlight">
+\[\pmb{\Sigma}^{Lin}_{yearly} = \frac{1}{\pmb{s}_{0}\pmb{s}_{0}^{T} } \circ Cov(S_{yearly})\]</div>
+</li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+<p>Where <span class="math notranslate nohighlight">\(\circ\)</span> denotes the Hadamard product (element-wise product).</p>
+<p>Note that we could have derived the distribution of linear returns from the distribution of logarithmic returns directly in this case.
+Here we demonstrated the general procedure.</p>
+</section>
+<section id="in-skfolio">
+<h2>In skfolio<a class="headerlink" href="#in-skfolio" title="Link to this heading">#</a></h2>
+<p>In <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>, the above can be achieved using <a class="reference internal" href="../generated/skfolio.prior.EmpiricalPrior.html#skfolio.prior.EmpiricalPrior" title="skfolio.prior.EmpiricalPrior"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmpiricalPrior</span></code></a>
+by setting <code class="docutils literal notranslate"><span class="pre">is_log_normal</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code> and providing <code class="docutils literal notranslate"><span class="pre">investment_horizon</span></code>. The input <code class="docutils literal notranslate"><span class="pre">X</span></code>
+must be linear returns. The conversion to logarithmic returns is performed inside the estimator.</p>
+<p>However, as seen in the example <a class="reference internal" href="../auto_examples/8_data_preparation/plot_1_investment_horizon.html#sphx-glr-auto-examples-8-data-preparation-plot-1-investment-horizon-py"><span class="std std-ref">Investment Horizon</span></a>,
+for frequently rebalanced portfolios (investment horizon less than a year), the general procedure and the
+below simplified one will give very close results:</p>
+<ol class="arabic simple">
+<li><p>Take the prices <span class="math notranslate nohighlight">\(S_{t}, S_{t+1}, ...,\)</span> (for example daily) for all the n securities</p></li>
+<li><p>Transform the daily prices to daily linear returns</p></li>
+<li><p>Estimate the expected retruns vector <span class="math notranslate nohighlight">\(\mu\)</span> and covariance matrix <span class="math notranslate nohighlight">\(\Sigma\)</span> from the daily linear returns</p></li>
+<li><p>Compute the mean-variance efficient frontier <span class="math notranslate nohighlight">\(\max_{w} \Biggl\{w^T \mu - \lambda \times w^T \Sigma w\Biggr\}\)</span></p></li>
+</ol>
+<p>This simplified procedure is the default one used in all <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> examples as most
+portfolios are rebalanced with a frequency less than a year.</p>
+<p><strong>In both cases, it is highly recommended to use linear return for the input `X`</strong>
+If you need to estimate the moments from logarithmic returns, the conversion from linear
+to logarithmic returns should be reformed inside the estimator.</p>
+<p>For bonds and options, the general procedure will be implemented in a future release. In the meantime
+you can use your own custom <a class="reference internal" href="prior.html#prior"><span class="std std-ref">prior estimator</span></a>.</p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id2">1</a><span class="fn-bracket">]</span></span>
+<p>Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)</p>
+</aside>
+<aside class="footnote brackets" id="id4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<p>Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)</p>
+</aside>
+</aside>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id5" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>4<span class="fn-bracket">]</span></span>
+<p>Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.</p>
+</aside>
+<aside class="footnote brackets" id="id6" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>5<span class="fn-bracket">]</span></span>
+<p>Note on simple and logarithmic return, Panna Miskolczi (2017)</p>
+</aside>
+<aside class="footnote brackets" id="id7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>6<span class="fn-bracket">]</span></span>
+<p>Portfolio optimization and long-term dependence, Carlos León and Alejandro Reveiz</p>
+</aside>
+<aside class="footnote brackets" id="id8" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>7<span class="fn-bracket">]</span></span>
+<p>Portfolio Optimization Cookbook, Mosek</p>
+</aside>
+</aside>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="datasets.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Datasets</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../auto_examples/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Examples</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

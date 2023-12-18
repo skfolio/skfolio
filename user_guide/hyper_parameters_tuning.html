@@ -1,0 +1,807 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>Hyper-Parameters Tuning &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/hyper_parameters_tuning';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Datasets" href="datasets.html" />
+    <link rel="prev" title="Model Selection" href="model_selection.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimization.html">Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="population.html">Population</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prior.html">Prior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="expected_returns.html">Expected Returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="covariance.html">Covariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distance.html">Distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uncertainty_set.html">Uncertainty Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre_selection.html">Pre-Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model_selection.html">Model Selection</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Hyper-Parameters Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_preparation.html">Data Preparation</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Hyper-Parame...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="hyper-parameters-tuning">
+<span id="id1"></span><h1>Hyper-Parameters Tuning<a class="headerlink" href="#hyper-parameters-tuning" title="Link to this heading">#</a></h1>
+<p>Hyper-parameters tuning ìn <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> follows the same API as <code class="docutils literal notranslate"><span class="pre">scikit-learn</span></code>.</p>
+<p>Hyper-parameters are parameters that are not directly learnt within estimators.
+They are passed as arguments to the constructor of the estimator classes.</p>
+<p>It is possible and recommended to search the hyper-parameter space for the
+best <a class="reference internal" href="model_selection.html#cross-validation"><span class="std std-ref">cross validation</span></a> score.</p>
+<p>Any parameter provided when constructing an estimator may be optimized in this
+manner. Specifically, to find the names and current values for all parameters
+for a given estimator, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">estimator</span><span class="o">.</span><span class="n">get_params</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>A search consists of:</p>
+<ul class="simple">
+<li><p>an estimator (such as <a class="reference internal" href="../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a>)</p></li>
+<li><p>a parameter space</p></li>
+<li><p>a method for searching or sampling candidates</p></li>
+<li><p>a cross-validation scheme</p></li>
+<li><p>a <a class="reference internal" href="#gridsearch-scoring"><span class="std std-ref">score function</span></a></p></li>
+</ul>
+<p>Two generic approaches to parameter search are provided in
+scikit-learn: for given values, <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.GridSearchCV</span></code> exhaustively considers
+all parameter combinations, while <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.RandomizedSearchCV</span></code> can sample a
+given number of candidates from a parameter space with a specified
+distribution.</p>
+<p>After describing these tools we detail <a class="reference internal" href="#grid-search-tips"><span class="std std-ref">best practices</span></a> applicable to these approaches.</p>
+<section id="exhaustive-grid-search">
+<h2>Exhaustive Grid Search<a class="headerlink" href="#exhaustive-grid-search" title="Link to this heading">#</a></h2>
+<p>The grid search provided by <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.GridSearchCV</span></code> exhaustively generates
+candidates from a grid of parameter values specified with the <code class="docutils literal notranslate"><span class="pre">param_grid</span></code>
+parameter. For instance, the following <code class="docutils literal notranslate"><span class="pre">param_grid</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">param_grid</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s1">&#39;l1_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">SEMI_VARIANCE</span><span class="p">]},</span>
+    <span class="p">{</span><span class="s1">&#39;l1_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="s1">&#39;l2_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">]},</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<p>specifies that two grids should be explored: one with a Semi-Variance risk measure and
+l1_coef values in [0.001, 0.01, 0.1], and the second one with a CVaR risk measure,
+and the cross-product of l1_coef values ranging in [0.001, 0.01, 0.1] and l2_coef
+values in  [0.01, 0.1, 1].</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code> instance implements the usual estimator API: when
+“fitting” it on a dataset all the possible combinations of parameter values are
+evaluated and the best combination is retained.</p>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s1">&#39;l1_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">SEMI_VARIANCE</span><span class="p">]},</span>
+    <span class="p">{</span><span class="s1">&#39;l1_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">],</span> <span class="s1">&#39;l2_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">]},</span>
+<span class="p">]</span>
+
+<span class="n">grid_search</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">MeanRisk</span><span class="p">(</span><span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(),</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="n">param_grid</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span>  <span class="c1"># using all cores</span>
+<span class="p">)</span>
+<span class="n">grid_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">grid_search</span><span class="o">.</span><span class="n">cv_results_</span><span class="p">)</span>
+
+<span class="n">best_model</span> <span class="o">=</span> <span class="n">grid_search</span><span class="o">.</span><span class="n">best_estimator_</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">best_model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="randomized-parameter-optimization">
+<span id="randomized-parameter-search"></span><h2>Randomized Parameter Optimization<a class="headerlink" href="#randomized-parameter-optimization" title="Link to this heading">#</a></h2>
+<p>While using a grid of parameter settings is currently the most widely used
+method for parameter optimization, other search methods have more
+favorable properties.
+<code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.RandomizedSearchCV</span></code> implements a randomized search over parameters,
+where each setting is sampled from a distribution over possible parameter values.
+This has two main benefits over an exhaustive search:</p>
+<ul class="simple">
+<li><p>A budget can be chosen independent of the number of parameters and possible values.</p></li>
+<li><p>Adding parameters that do not influence the performance does not decrease efficiency.</p></li>
+</ul>
+<p>Specifying how parameters should be sampled is done using a dictionary, very
+similar to specifying parameters for <code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code>. Additionally,
+a computation budget, being the number of sampled candidates or sampling
+iterations, is specified using the <code class="docutils literal notranslate"><span class="pre">n_iter</span></code> parameter.
+For each parameter, either a distribution over possible values or a list of
+discrete choices (which will be sampled uniformly) can be specified.</p>
+<p>In principle, any function can be passed that provides a <code class="docutils literal notranslate"><span class="pre">rvs</span></code> (random
+variate sample) method to sample a value. A call to the <code class="docutils literal notranslate"><span class="pre">rvs</span></code> function should
+provide independent random samples from possible parameter values on
+consecutive calls.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">scipy.stats</span></code> module contains many useful
+distributions for sampling parameters, such as <code class="docutils literal notranslate"><span class="pre">expon</span></code>, <code class="docutils literal notranslate"><span class="pre">gamma</span></code>,
+<code class="docutils literal notranslate"><span class="pre">uniform</span></code>, <code class="docutils literal notranslate"><span class="pre">loguniform</span></code> or <code class="docutils literal notranslate"><span class="pre">randint</span></code>.</p>
+<p>For continuous parameters, such as <code class="docutils literal notranslate"><span class="pre">l1_coef</span></code> above, it is important to specify
+a continuous distribution to take full advantage of the randomization. This way,
+increasing <code class="docutils literal notranslate"><span class="pre">n_iter</span></code> will always lead to a finer search.</p>
+<p>A continuous log-uniform random variable is the continuous version of
+a log-spaced parameter. For example to specify the equivalent of <code class="docutils literal notranslate"><span class="pre">l2_coef</span></code> from above,
+<code class="docutils literal notranslate"><span class="pre">loguniform(0.01,</span>&#160; <span class="pre">1)</span></code> can be used instead of <code class="docutils literal notranslate"><span class="pre">[0.01,</span> <span class="pre">0.1,</span> <span class="pre">1]</span></code>.</p>
+<p>Mirroring the example above in grid search, we can specify a continuous random
+variable that is log-uniformly distributed between <code class="docutils literal notranslate"><span class="pre">0.01</span></code> and <code class="docutils literal notranslate"><span class="pre">1</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scipy.stats</span> <span class="k">as</span> <span class="nn">stats</span>
+<span class="p">{</span><span class="s1">&#39;l1_coef&#39;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">loguniform</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span>  <span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">SEMI_VARIANCE</span><span class="p">]}</span>
+</pre></div>
+</div>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scipy.stats</span> <span class="k">as</span> <span class="nn">stats</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">RandomizedSearchCV</span><span class="p">,</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">param_dist</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;l2_coef&#39;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">loguniform</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span>  <span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;risk_measure&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">]}</span>
+
+<span class="n">rd_search</span> <span class="o">=</span> <span class="n">RandomizedSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">MeanRisk</span><span class="p">(</span><span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(),</span>
+    <span class="n">n_iter</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">param_distributions</span><span class="o">=</span><span class="n">param_dist</span><span class="p">,</span>
+    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span>  <span class="c1"># using all cores</span>
+<span class="p">)</span>
+<span class="n">rd_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">rd_search</span><span class="o">.</span><span class="n">cv_results_</span><span class="p">)</span>
+
+<span class="n">best_model</span> <span class="o">=</span> <span class="n">rd_search</span><span class="o">.</span><span class="n">best_estimator_</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">best_model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="tips-for-parameter-search">
+<span id="grid-search-tips"></span><h2>Tips for Parameter Search<a class="headerlink" href="#tips-for-parameter-search" title="Link to this heading">#</a></h2>
+<section id="specifying-an-objective-metric">
+<span id="gridsearch-scoring"></span><h3>Specifying an Objective Metric<a class="headerlink" href="#specifying-an-objective-metric" title="Link to this heading">#</a></h3>
+<p>By default, all optimization estimators have the same score function which is the
+<strong>Sharpe Ratio</strong>. This score function can be customized with the
+<a class="reference internal" href="../generated/skfolio.metrics.make_scorer.html#skfolio.metrics.make_scorer" title="skfolio.metrics.make_scorer"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_scorer</span></code></a> by using another <a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">measure</span></a> or
+by writing your own score function.</p>
+<p><strong>Example:</strong></p>
+<p>In the below example, the Sortino Ratio is used instead of the default Sharpe Ratio:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.metrics</span> <span class="kn">import</span> <span class="n">make_scorer</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">scoring</span> <span class="o">=</span> <span class="n">make_scorer</span><span class="p">(</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SORTINO_RATIO</span><span class="p">)</span>
+
+<span class="n">grid_search</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">MeanRisk</span><span class="p">(</span><span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(),</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;l2_coef&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0001</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span>  <span class="mf">0.01</span><span class="p">,</span> <span class="mi">1</span><span class="p">]},</span>
+    <span class="n">scoring</span><span class="o">=</span><span class="n">scoring</span>
+<span class="p">)</span>
+
+<span class="n">grid_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">grid_search</span><span class="o">.</span><span class="n">cv_results_</span><span class="p">)</span>
+
+<span class="n">best_model</span> <span class="o">=</span> <span class="n">grid_search</span><span class="o">.</span><span class="n">best_estimator_</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">best_model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
+
+<span class="n">pred</span> <span class="o">=</span> <span class="n">best_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">sortino_ratio</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Example:</strong></p>
+<p>In this example, we use a custom score function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">custom_score</span><span class="p">(</span><span class="n">pred</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pred</span><span class="o">.</span><span class="n">mean</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">pred</span><span class="o">.</span><span class="n">variance</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">pred</span><span class="o">.</span><span class="n">semi_variance</span>
+
+<span class="n">scoring</span> <span class="o">=</span> <span class="n">make_scorer</span><span class="p">(</span><span class="n">custom_score</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="composite-estimators-and-parameter-spaces">
+<span id="composite-grid-search"></span><h3>Composite Estimators and Parameter Spaces<a class="headerlink" href="#composite-estimators-and-parameter-spaces" title="Link to this heading">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code> and <code class="docutils literal notranslate"><span class="pre">RandomizedSearchCV</span></code> allow searching over
+parameters of composite or nested estimators using a dedicated
+<code class="docutils literal notranslate"><span class="pre">&lt;estimator&gt;__&lt;parameter&gt;</span></code> syntax.</p>
+<p><strong>Example:</strong></p>
+<p>In the below example, we search the optimal parameter <code class="docutils literal notranslate"><span class="pre">alpha</span></code> of the nested estimators
+<a class="reference internal" href="../generated/skfolio.moments.EWMu.html#skfolio.moments.EWMu" title="skfolio.moments.EWMu"><code class="xref py py-class docutils literal notranslate"><span class="pre">EWMu</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.moments</span> <span class="kn">import</span> <span class="n">EWMu</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span><span class="p">,</span> <span class="n">ObjectiveFunction</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+<span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">EmpiricalPrior</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">MeanRisk</span><span class="p">(</span>
+    <span class="n">objective_function</span><span class="o">=</span><span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">MAXIMIZE_RATIO</span><span class="p">,</span>
+    <span class="n">prior_estimator</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(</span><span class="n">mu_estimator</span><span class="o">=</span><span class="n">EWMu</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)),</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;prior_estimator__mu_estimator__alpha&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]}</span>
+
+<span class="n">grid_search</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(),</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="n">param_grid</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">grid_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">grid_search</span><span class="o">.</span><span class="n">best_estimator_</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Example:</strong></p>
+<p>The same logic applies for <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>. Here we search the optimal risk measure of
+<a class="reference internal" href="../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a> which is part of a <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">train_test_split</span>
+<span class="kn">from</span> <span class="nn">sklearn.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+
+<span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.pre_selection</span> <span class="kn">import</span> <span class="n">SelectKExtremes</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;pre_selection&quot;</span><span class="p">,</span> <span class="n">SelectKExtremes</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">highest</span><span class="o">=</span><span class="kc">True</span><span class="p">)),</span>
+        <span class="p">(</span><span class="s2">&quot;optimization&quot;</span><span class="p">,</span> <span class="n">MeanRisk</span><span class="p">()),</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">param_grid</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;optimization__risk_measure&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">SEMI_VARIANCE</span><span class="p">,</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="n">grid_search</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(),</span>
+    <span class="n">param_grid</span><span class="o">=</span><span class="n">param_grid</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">grid_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">grid_search</span><span class="o">.</span><span class="n">best_estimator_</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="parallelism">
+<h3>Parallelism<a class="headerlink" href="#parallelism" title="Link to this heading">#</a></h3>
+<p>The parameter search tools evaluate each parameter combination on each data
+fold independently. Computations can be run in parallel by using the keyword
+<code class="docutils literal notranslate"><span class="pre">n_jobs=-1</span></code>. See function signature for more details.</p>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="model_selection.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Model Selection</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="datasets.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Datasets</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

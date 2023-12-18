@@ -1,0 +1,1295 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>skfolio.population.Population &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/skfolio.population.Population';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="skfolio.optimization.EqualWeighted" href="skfolio.optimization.EqualWeighted.html" />
+    <link rel="prev" title="skfolio.portfolio.MultiPeriodPortfolio" href="skfolio.portfolio.MultiPeriodPortfolio.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.BaseMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.BaseMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.PerfMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.PerfMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ExtraRiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ExtraRiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RatioMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RatioMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_cumulative_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_cumulative_returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_drawdowns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_drawdowns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.standard_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.standard_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.third_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.third_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cvar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cvar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean_absolute_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean_absolute_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.value_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.value_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.worst_realization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.worst_realization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.first_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.first_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.entropic_risk_measure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.entropic_risk_measure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.evar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.evar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.drawdown_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.drawdown_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cdar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cdar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.max_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.max_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.average_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.average_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.edar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.edar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ulcer_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ulcer_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.gini_mean_difference.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.gini_mean_difference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.owa_gmd_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.owa_gmd_weights</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.BasePortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.BasePortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.Portfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.MultiPeriodPortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.MultiPeriodPortfolio</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code>.Population</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.EqualWeighted.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.EqualWeighted</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.InverseVolatility.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.InverseVolatility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.Random.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.Random</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.ObjectiveFunction.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ObjectiveFunction</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.ConvexOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ConvexOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MeanRisk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MeanRisk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.RiskBudgeting.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.RiskBudgeting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MaximumDiversification.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MaximumDiversification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.DistributionallyRobustCVaR.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.DistributionallyRobustCVaR</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseHierarchicalOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseHierarchicalOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalRiskParity.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalRiskParity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalEqualRiskContribution.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalEqualRiskContribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.NestedClustersOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.NestedClustersOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseComposition.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseComposition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.StackingOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.StackingOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.PriorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.PriorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BasePrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BasePrior</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.EmpiricalPrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.EmpiricalPrior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BlackLitterman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BlackLitterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.FactorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.FactorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BaseLoadingMatrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BaseLoadingMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.LoadingMatrixRegression.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.LoadingMatrixRegression</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseMu</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EquilibriumMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EquilibriumMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMuMethods.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMuMethods</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseCovariance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GerberCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GerberCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoiseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoiseCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoteCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoteCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.LedoitWolf.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.LedoitWolf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.PearsonDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.PearsonDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.KendallDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.KendallDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.SpearmanDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.SpearmanDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.CovarianceDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.CovarianceDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.DistanceCorrelation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.DistanceCorrelation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.MutualInformation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.MutualInformation</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.HierarchicalClustering.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.HierarchicalClustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.LinkageMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.LinkageMethod</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.UncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.UncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalCovarianceUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.CombinatorialPurgedCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.CombinatorialPurgedCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.WalkForward.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.WalkForward</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.cross_val_predict.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.cross_val_predict</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.metrics.make_scorer.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>.make_scorer</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_factors_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_factors_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_ftse100_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_ftse100_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_nasdaq_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_nasdaq_dataset</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.preprocessing.prices_to_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>.prices_to_returns</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.NBinsMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.NBinsMethod</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_freedman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_freedman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_knuth.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_knuth</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.is_cholesky_dec.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.is_cholesky_dec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_square.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_square</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_symmetric.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_symmetric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_distance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_nearest.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_nearest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_to_corr.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_to_corr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.corr_to_cov.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.corr_to_cov</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.commutation_matrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.commutation_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.compute_optimal_n_clusters.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.compute_optimal_n_clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights_dirichlet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights_dirichlet</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="skfolio-population-population">
+<h1><a class="reference internal" href="../api.html#module-skfolio.population" title="skfolio.population"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code></a>.Population<a class="headerlink" href="#skfolio-population-population" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="skfolio.population.Population">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.population.</span></span><span class="sig-name descname"><span class="pre">Population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">iterable</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population" title="Link to this definition">#</a></dt>
+<dd><p>Population Class.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Population</span></code> is a list of <a class="reference internal" href="skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> or
+<a class="reference internal" href="skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a> or both.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>iterable</strong><span class="classifier">list[Portfolio | MultiPeriodPortfolio]</span></dt><dd><p>The list of portfolios. Each item can be of type
+<a class="reference internal" href="skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> and/or
+<a class="reference internal" href="skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a>.
+Empty list are accepted.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.append" title="skfolio.population.Population.append"><code class="xref py py-obj docutils literal notranslate"><span class="pre">append</span></code></a>(item)</p></td>
+<td><p>Append portfolio to the end of the population list.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.clear" title="skfolio.population.Population.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>(/)</p></td>
+<td><p>Remove all items from list.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.composition" title="skfolio.population.Population.composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">composition</span></code></a>([names, tags, display_sub_ptf_name])</p></td>
+<td><p>Composition of the portfolios in the population.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.copy" title="skfolio.population.Population.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(/)</p></td>
+<td><p>Return a shallow copy of the list.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.count" title="skfolio.population.Population.count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code></a>(value, /)</p></td>
+<td><p>Return number of occurrences of value.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.extend" title="skfolio.population.Population.extend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extend</span></code></a>(other)</p></td>
+<td><p>Extend population list by appending elements from the iterable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.filter" title="skfolio.population.Population.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>([names, tags])</p></td>
+<td><p>Filter the Population of portfolios by names and tags.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.index" title="skfolio.population.Population.index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code></a>(value[, start, stop])</p></td>
+<td><p>Return first index of value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.insert" title="skfolio.population.Population.insert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert</span></code></a>(index, item)</p></td>
+<td><p>Insert portfolio before index.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.max_measure" title="skfolio.population.Population.max_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_measure</span></code></a>(measure[, names, tags])</p></td>
+<td><p>Returns the portfolio with the maximum measure.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.measures" title="skfolio.population.Population.measures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures</span></code></a>(measure[, names, tags])</p></td>
+<td><p>Vector of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_mean" title="skfolio.population.Population.measures_mean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_mean</span></code></a>(measure[, names, tags])</p></td>
+<td><p>Mean of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_std" title="skfolio.population.Population.measures_std"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_std</span></code></a>(measure[, names, tags])</p></td>
+<td><p>Standard-deviation of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.min_measure" title="skfolio.population.Population.min_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min_measure</span></code></a>(measure[, names, tags])</p></td>
+<td><p>Returns the portfolio with the minimum measure.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.non_denominated_sort" title="skfolio.population.Population.non_denominated_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">non_denominated_sort</span></code></a>([first_front_only])</p></td>
+<td><p>Fast non-dominated sorting.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_composition" title="skfolio.population.Population.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>([names, tags, ...])</p></td>
+<td><p>Plot the compositions of the portfolios in the population.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_cumulative_returns" title="skfolio.population.Population.plot_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cumulative_returns</span></code></a>([log_scale, idx, ...])</p></td>
+<td><p>Plot the population's portfolios cumulative returns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_distribution" title="skfolio.population.Population.plot_distribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_distribution</span></code></a>(measure_list[, tag_list, ...])</p></td>
+<td><p>Plot the population's distribution for each measure provided in the measure list.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_measures" title="skfolio.population.Population.plot_measures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_measures</span></code></a>(x, y[, z, to_surface, ...])</p></td>
+<td><p>Plot the 2D (or 3D) scatter points (or surface) of a given set of measures for each portfolio in the population.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.pop" title="skfolio.population.Population.pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pop</span></code></a>([index])</p></td>
+<td><p>Remove and return item at index (default last).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.quantile" title="skfolio.population.Population.quantile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quantile</span></code></a>(measure, q[, names, tags])</p></td>
+<td><p>Returns the portfolio corresponding to the <code class="docutils literal notranslate"><span class="pre">q</span></code> quantile for a given portfolio measure.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.remove" title="skfolio.population.Population.remove"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove</span></code></a>(value, /)</p></td>
+<td><p>Remove first occurrence of value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.reverse" title="skfolio.population.Population.reverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reverse</span></code></a>(/)</p></td>
+<td><p>Reverse <em>IN PLACE</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.set_portfolio_params" title="skfolio.population.Population.set_portfolio_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_portfolio_params</span></code></a>(**params)</p></td>
+<td><p>Set the parameters of all the portfolios.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.sort" title="skfolio.population.Population.sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort</span></code></a>(*[, key, reverse])</p></td>
+<td><p>Sort the list in ascending order and return None.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.sort_measure" title="skfolio.population.Population.sort_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort_measure</span></code></a>(measure[, reverse, names, tags])</p></td>
+<td><p>Sort the population by a given portfolio measure and filter the portfolios by names and tags.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.summary" title="skfolio.population.Population.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a>([formatted, names, tags])</p></td>
+<td><p>Summary of the portfolios in the population</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.append">
+<span class="sig-name descname"><span class="pre">append</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.append"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.append" title="Link to this definition">#</a></dt>
+<dd><p>Append portfolio to the end of the population list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.clear" title="Link to this definition">#</a></dt>
+<dd><p>Remove all items from list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.composition">
+<span class="sig-name descname"><span class="pre">composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.composition" title="Link to this definition">#</a></dt>
+<dd><p>Composition of the portfolios in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+<dt><strong>display_sub_ptf_name</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
+portfolio is displayed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>summary</strong><span class="classifier">DataFrame</span></dt><dd><p>Composition of the portfolios in the population.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.copy" title="Link to this definition">#</a></dt>
+<dd><p>Return a shallow copy of the list.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.count">
+<span class="sig-name descname"><span class="pre">count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.count" title="Link to this definition">#</a></dt>
+<dd><p>Return number of occurrences of value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.extend">
+<span class="sig-name descname"><span class="pre">extend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.extend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.extend" title="Link to this definition">#</a></dt>
+<dd><p>Extend population list by appending elements from the iterable.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.filter">
+<span class="sig-name descname"><span class="pre">filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.filter" title="Link to this definition">#</a></dt>
+<dd><p>Filter the Population of portfolios by names and tags.
+If both names and tags are provided, the intersection is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>population</strong><span class="classifier">Population</span></dt><dd><p>A new population of portfolios filtered by names and tags.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.index">
+<span class="sig-name descname"><span class="pre">index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">sys.maxsize</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.index" title="Link to this definition">#</a></dt>
+<dd><p>Return first index of value.</p>
+<p>Raises ValueError if the value is not present.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.insert">
+<span class="sig-name descname"><span class="pre">insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">item</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.insert"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.insert" title="Link to this definition">#</a></dt>
+<dd><p>Insert portfolio before index.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.max_measure">
+<span class="sig-name descname"><span class="pre">max_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.max_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.max_measure" title="Link to this definition">#</a></dt>
+<dd><p>Returns the portfolio with the maximum measure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure: Measure</strong></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>values</strong><span class="classifier">Portfolio | MultiPeriodPortfolio</span></dt><dd><p>The portfolio with maximum measure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.measures">
+<span class="sig-name descname"><span class="pre">measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures" title="Link to this definition">#</a></dt>
+<dd><p>Vector of portfolios measures for each portfolio from the
+population filtered by names and tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>values</strong><span class="classifier">ndarray</span></dt><dd><p>The vector of portfolios measures.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.measures_mean">
+<span class="sig-name descname"><span class="pre">measures_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_mean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_mean" title="Link to this definition">#</a></dt>
+<dd><p>Mean of portfolios measures for each portfolio from the
+population filtered by names and tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>value</strong><span class="classifier">float</span></dt><dd><p>The mean of portfolios measures.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.measures_std">
+<span class="sig-name descname"><span class="pre">measures_std</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_std"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_std" title="Link to this definition">#</a></dt>
+<dd><p>Standard-deviation of portfolios measures for each portfolio from the
+population filtered by names and tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>value</strong><span class="classifier">float</span></dt><dd><p>The standard-deviation of portfolios measures.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.min_measure">
+<span class="sig-name descname"><span class="pre">min_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.min_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.min_measure" title="Link to this definition">#</a></dt>
+<dd><p>Returns the portfolio with the minimum measure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>values</strong><span class="classifier">Portfolio | MultiPeriodPortfolio</span></dt><dd><p>The portfolio with minimum measure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.non_denominated_sort">
+<span class="sig-name descname"><span class="pre">non_denominated_sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">first_front_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.non_denominated_sort"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.non_denominated_sort" title="Link to this definition">#</a></dt>
+<dd><p>Fast non-dominated sorting.
+Sort the portfolios into different non-domination levels.
+Complexity O(MN^2) where M is the number of objectives and N the number of
+portfolios.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>first_front_only</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, only the first front is sorted and returned.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fronts</strong><span class="classifier">list[list[int]]</span></dt><dd><p>A list of Pareto fronts (lists), the first list includes
+non-dominated portfolios.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_composition">
+<span class="sig-name descname"><span class="pre">plot_composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_composition" title="Link to this definition">#</a></dt>
+<dd><p>Plot the compositions of the portfolios in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+<dt><strong>display_sub_ptf_name</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
+portfolio is displayed.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plotly Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_cumulative_returns">
+<span class="sig-name descname"><span class="pre">plot_cumulative_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_cumulative_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_cumulative_returns" title="Link to this definition">#</a></dt>
+<dd><p>Plot the population’s portfolios cumulative returns.
+Non-compounded cumulative returns start at 0.
+Compounded cumulative returns are rescaled to start at 1000.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>log_scale</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the cumulative returns are displayed with a
+logarithm scale on the y-axis and rebased at 1000. The cumulative returns
+must be compounded otherwise an exception is raise.</p>
+</dd>
+<dt><strong>idx</strong><span class="classifier">slice | array, optional</span></dt><dd><p>Indexes or slice of the observations to plot.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to take all observations.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_distribution">
+<span class="sig-name descname"><span class="pre">plot_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_distribution" title="Link to this definition">#</a></dt>
+<dd><p>Plot the population’s distribution for each measure provided in the
+measure list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure_list</strong><span class="classifier">list[Measure]</span></dt><dd><p>The list of portfolio measures. A different distribution is plotted per
+measure.</p>
+</dd>
+<dt><strong>tag_list</strong><span class="classifier">list[str], optional</span></dt><dd><p>If this is provided, an additional distribution is plotted per measure
+for each tag provided.</p>
+</dd>
+<dt><strong>n_bins</strong><span class="classifier">int, optional</span></dt><dd><p>Sets the number of bins.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plotly Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_measures">
+<span class="sig-name descname"><span class="pre">plot_measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_surface</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hover_measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_fronts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Portfolios'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_measures" title="Link to this definition">#</a></dt>
+<dd><p>Plot the 2D (or 3D) scatter points (or surface) of a given set of
+measures for each portfolio in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>x</strong><span class="classifier">Measure</span></dt><dd><p>The x-axis measure.</p>
+</dd>
+<dt><strong>y</strong><span class="classifier">Measure</span></dt><dd><p>The y-axis measure.</p>
+</dd>
+<dt><strong>z</strong><span class="classifier">Measure, optional</span></dt><dd><p>The z-axis measure.</p>
+</dd>
+<dt><strong>to_surface</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, a surface is estimated.</p>
+</dd>
+<dt><strong>hover_measures</strong><span class="classifier">list[Measure], optional</span></dt><dd><p>The list of measure to show on point hover.</p>
+</dd>
+<dt><strong>show_fronts</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the pareto fronts are highlighted.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+<dt><strong>color_scale</strong><span class="classifier">Measure | str, optional</span></dt><dd><p>If this is provided, a color scale is displayed.</p>
+</dd>
+<dt><strong>title</strong><span class="classifier">str, default=”Portfolios”</span></dt><dd><p>The graph title. The default value is “Portfolios”.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plotly Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.pop">
+<span class="sig-name descname"><span class="pre">pop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.pop" title="Link to this definition">#</a></dt>
+<dd><p>Remove and return item at index (default last).</p>
+<p>Raises IndexError if list is empty or index is out of range.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.quantile">
+<span class="sig-name descname"><span class="pre">quantile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.quantile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.quantile" title="Link to this definition">#</a></dt>
+<dd><p>Returns the portfolio corresponding to the <code class="docutils literal notranslate"><span class="pre">q</span></code> quantile for a given portfolio
+measure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>q</strong><span class="classifier">float</span></dt><dd><p>The quantile value.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>values</strong><span class="classifier">Portfolio | MultiPeriodPortfolio</span></dt><dd><p>Portfolio corresponding to the <code class="docutils literal notranslate"><span class="pre">q</span></code> quantile for the measure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.remove">
+<span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.remove" title="Link to this definition">#</a></dt>
+<dd><p>Remove first occurrence of value.</p>
+<p>Raises ValueError if the value is not present.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.reverse">
+<span class="sig-name descname"><span class="pre">reverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.reverse" title="Link to this definition">#</a></dt>
+<dd><p>Reverse <em>IN PLACE</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.set_portfolio_params">
+<span class="sig-name descname"><span class="pre">set_portfolio_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.set_portfolio_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.set_portfolio_params" title="Link to this definition">#</a></dt>
+<dd><p>Set the parameters of all the portfolios.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>**params</strong><span class="classifier">any</span></dt><dd><p>Portfolio parameters.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>self</strong><span class="classifier">Population</span></dt><dd><p>The Population instance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.sort">
+<span class="sig-name descname"><span class="pre">sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.sort" title="Link to this definition">#</a></dt>
+<dd><p>Sort the list in ascending order and return None.</p>
+<p>The sort is in-place (i.e. the list itself is modified) and stable (i.e. the
+order of two equal elements is maintained).</p>
+<p>If a key function is given, apply it once to each list item and sort them,
+ascending or descending, according to their function values.</p>
+<p>The reverse flag can be set to sort in descending order.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.sort_measure">
+<span class="sig-name descname"><span class="pre">sort_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.sort_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.sort_measure" title="Link to this definition">#</a></dt>
+<dd><p>Sort the population by a given portfolio measure and filter the portfolios
+by names and tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
+</dd>
+<dt><strong>reverse</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the order is reversed.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>values</strong><span class="classifier">Populations</span></dt><dd><p>The sorted population.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">formatted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.summary" title="Link to this definition">#</a></dt>
+<dd><p>Summary of the portfolios in the population</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>formatted</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, the measures are formatted into rounded string with
+units.
+The default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
+</dd>
+<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>summary</strong><span class="classifier">pandas DataFrame</span></dt><dd><p>The population’s portfolios summary</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="clearer"></div></section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="skfolio.portfolio.MultiPeriodPortfolio.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.MultiPeriodPortfolio</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="skfolio.optimization.EqualWeighted.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.EqualWeighted</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

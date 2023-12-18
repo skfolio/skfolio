@@ -1,0 +1,875 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.cluster._hierarchical &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/cluster/_hierarchical';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.clus...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.cluster._hierarchical</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Hierarchical Clustering estimators.&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">auto</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
+<span class="kn">import</span> <span class="nn">plotly.figure_factory</span> <span class="k">as</span> <span class="nn">ff</span>
+<span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
+<span class="kn">import</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">as</span> <span class="nn">sch</span>
+<span class="kn">import</span> <span class="nn">scipy.spatial.distance</span> <span class="k">as</span> <span class="nn">scd</span>
+<span class="kn">import</span> <span class="nn">sklearn.base</span> <span class="k">as</span> <span class="nn">skb</span>
+<span class="kn">import</span> <span class="nn">sklearn.utils.validation</span> <span class="k">as</span> <span class="nn">skv</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.utils.stats</span> <span class="kn">import</span> <span class="n">assert_is_distance</span><span class="p">,</span> <span class="n">compute_optimal_n_clusters</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">AutoEnum</span><span class="p">,</span> <span class="n">default_asset_names</span>
+
+
+<div class="viewcode-block" id="LinkageMethod">
+<a class="viewcode-back" href="../../../generated/skfolio.cluster.LinkageMethod.html#skfolio.cluster.LinkageMethod">[docs]</a>
+<span class="k">class</span> <span class="nc">LinkageMethod</span><span class="p">(</span><span class="n">AutoEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Methods for calculating the distance between clusters in the linkage matrix.</span>
+<span class="sd">    See the `Linkage Methods` section of `scipy.cluster.hierarchy.linkage`</span>
+<span class="sd">    for full descriptions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    SINGLE : str</span>
+<span class="sd">        Assigns</span>
+
+<span class="sd">        .. math:: d(u,v) = \min(dist(u[i],v[j]))</span>
+
+<span class="sd">        for all points :math:`i` in cluster :math:`u` and</span>
+<span class="sd">        :math:`j` in cluster :math:`v`. This is also known as the</span>
+<span class="sd">        Nearest Point Algorithm.</span>
+
+<span class="sd">    COMPLETE : str</span>
+<span class="sd">        Assigns</span>
+
+<span class="sd">        .. math:: d(u, v) = \max(dist(u[i],v[j]))</span>
+
+<span class="sd">        for all points :math:`i` in cluster u and :math:`j` in</span>
+<span class="sd">        cluster :math:`v`. This is also known by the Farthest Point</span>
+<span class="sd">        Algorithm or Voor Hees Algorithm.</span>
+
+<span class="sd">    AVERAGE : str</span>
+<span class="sd">        Assigns</span>
+
+<span class="sd">        .. math:: d(u,v) = \sum_{ij} \frac{d(u[i], v[j])}{(|u|*|v|)}</span>
+
+<span class="sd">        for all points :math:`i` and :math:`j` where :math:`|u|`</span>
+<span class="sd">        and :math:`|v|` are the cardinalities of clusters :math:`u`</span>
+<span class="sd">        and :math:`v`, respectively. This is also called the UPGMA</span>
+<span class="sd">        algorithm.</span>
+
+<span class="sd">    WEIGHTED : str</span>
+<span class="sd">        Assigns</span>
+
+<span class="sd">        .. math:: d(u,v) = (dist(s,v) + dist(t,v))/2</span>
+
+<span class="sd">        where cluster u was formed with cluster s and t and v</span>
+<span class="sd">        is a remaining cluster in the forest (also called WPGMA).</span>
+
+<span class="sd">    CENTROID : str</span>
+<span class="sd">        Assigns</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">           dist(s,t) = ||c_s-c_t||_2</span>
+
+<span class="sd">        where :math:`c_s` and :math:`c_t` are the centroids of</span>
+<span class="sd">        clusters :math:`s` and :math:`t`, respectively.</span>
+<span class="sd">        This is also known as the UPGMC</span>
+<span class="sd">        algorithm.</span>
+
+<span class="sd">    MEDIAN : str</span>
+<span class="sd">    assigns :math:`d(s,t)` like the ``centroid`` method.</span>
+<span class="sd">    This is also known as the WPGMC algorithm.</span>
+
+<span class="sd">    WARD : str</span>
+<span class="sd">        Uses the Ward variance minimization algorithm.</span>
+<span class="sd">        The new entry :math:`d(u,v)` is computed as follows,</span>
+
+<span class="sd">        .. math::</span>
+
+<span class="sd">           d(u,v) = \sqrt{\frac{|v|+|s|}</span>
+<span class="sd">                               {T}d(v,s)^2</span>
+<span class="sd">                        + \frac{|v|+|t|}</span>
+<span class="sd">                               {T}d(v,t)^2</span>
+<span class="sd">                        - \frac{|v|}</span>
+<span class="sd">                               {T}d(s,t)^2}</span>
+
+<span class="sd">        where :math:`u` is the newly joined cluster consisting of</span>
+<span class="sd">        clusters :math:`s` and :math:`t`, :math:`v` is an unused</span>
+<span class="sd">        cluster in the forest, :math:`T=|v|+|s|+|t|`, and</span>
+<span class="sd">        :math:`|*|` is the cardinality of its argument. This is also</span>
+<span class="sd">        known as the incremental algorithm.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">SINGLE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">COMPLETE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">AVERAGE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">WEIGHTED</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CENTROID</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">MEDIAN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">WARD</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="HierarchicalClustering">
+<a class="viewcode-back" href="../../../generated/skfolio.cluster.HierarchicalClustering.html#skfolio.cluster.HierarchicalClustering">[docs]</a>
+<span class="k">class</span> <span class="nc">HierarchicalClustering</span><span class="p">(</span><span class="n">skb</span><span class="o">.</span><span class="n">ClusterMixin</span><span class="p">,</span> <span class="n">skb</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Hierarchical Clustering.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    max_clusters : int, optional</span>
+<span class="sd">        For coherent clustering, the algorithm finds a minimum threshold ``r`` so that</span>
+<span class="sd">        the cophenetic distance between any two original observations in the same flat</span>
+<span class="sd">        cluster is no more than ``r`` and no more than `max_clusters` flat clusters are</span>
+<span class="sd">        formed. The default (`None`) is to estimate the maximal number of clusters</span>
+<span class="sd">        based on the Two-Order Difference to Gap Statistic [1]_.</span>
+
+<span class="sd">    linkage_method : LinkageMethod, default=LinkageMethod.WARD</span>
+<span class="sd">        Methods for calculating the distance between clusters in the linkage matrix.</span>
+<span class="sd">        See the `Linkage Methods` section of `scipy.cluster.hierarchy.linkage` for</span>
+<span class="sd">        the full descriptions.</span>
+<span class="sd">        The default is the Ward variance minimization algorithm `LinkageMethod.WARD`.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_clusters_ : int</span>
+<span class="sd">        Number of formed clusters.</span>
+
+<span class="sd">    labels_ : ndarray of shape (n_assets,)</span>
+<span class="sd">        Labels of each asset.</span>
+
+<span class="sd">    linkage_matrix_ : ndarray of shape (n_assets - 1, 4)</span>
+<span class="sd">        Linkage matrix computed from the distance matrix of the `distance_estimator`.</span>
+
+<span class="sd">    condensed_distance_ : ndarray of shape (\\binom{n_assets}{2}, )</span>
+<span class="sd">        The 1-D condensed distance matrix.</span>
+
+<span class="sd">    n_features_in_ : int</span>
+<span class="sd">        Number of assets seen during `fit`.</span>
+
+<span class="sd">    feature_names_in_ : ndarray of shape (`n_features_in_`,)</span>
+<span class="sd">        Names of assets seen during `fit`. Defined only when `X`</span>
+<span class="sd">        has assets names that are all strings.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;Application of two-order difference to gap statistic&quot;.</span>
+<span class="sd">        Yue, Wang &amp; Wei (2009)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n_clusters_</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">labels_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">linkage_matrix_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">condensed_distance_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">max_clusters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">linkage_method</span><span class="p">:</span> <span class="n">LinkageMethod</span> <span class="o">=</span> <span class="n">LinkageMethod</span><span class="o">.</span><span class="n">WARD</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_clusters</span> <span class="o">=</span> <span class="n">max_clusters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linkage_method</span> <span class="o">=</span> <span class="n">linkage_method</span>
+
+<div class="viewcode-block" id="HierarchicalClustering.fit">
+<a class="viewcode-back" href="../../../generated/skfolio.cluster.HierarchicalClustering.html#skfolio.cluster.HierarchicalClustering.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;HierarchicalClustering&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the Hierarchical Equal Risk Contribution estimator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X : array-like of shape (n_assets, n_assets)</span>
+<span class="sd">            Distance matrix of the assets.</span>
+
+<span class="sd">        y : Ignored</span>
+<span class="sd">            Not used, present for API consistency by convention.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self : HierarchicalClustering</span>
+<span class="sd">            Fitted estimator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">assert_is_distance</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condensed_distance_</span> <span class="o">=</span> <span class="n">scd</span><span class="o">.</span><span class="n">squareform</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">checks</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linkage_matrix_</span> <span class="o">=</span> <span class="n">sch</span><span class="o">.</span><span class="n">linkage</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">condensed_distance_</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">linkage_method</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+            <span class="c1"># Not needed for clustering, only for</span>
+            <span class="c1"># visualization and can be slow. So we perform the optimal ordering only</span>
+            <span class="c1"># in `plot_dendrogram`.</span>
+            <span class="n">optimal_ordering</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">max_clusters</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_clusters</span>
+        <span class="k">if</span> <span class="n">max_clusters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">max_clusters</span> <span class="o">=</span> <span class="n">compute_optimal_n_clusters</span><span class="p">(</span>
+                <span class="n">distance</span><span class="o">=</span><span class="n">X</span><span class="p">,</span>
+                <span class="n">linkage_matrix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">linkage_matrix_</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="c1"># Get the clusters from the linkage matrix</span>
+        <span class="n">labels_</span> <span class="o">=</span> <span class="n">sch</span><span class="o">.</span><span class="n">fcluster</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">linkage_matrix_</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">max_clusters</span><span class="p">,</span> <span class="n">criterion</span><span class="o">=</span><span class="s2">&quot;maxclust&quot;</span>
+        <span class="p">)</span>
+        <span class="n">labels_</span> <span class="o">-=</span> <span class="mi">1</span>  <span class="c1"># Start at 0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_clusters_</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">labels_</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_clusters_</span> <span class="o">==</span> <span class="nb">max</span><span class="p">(</span><span class="n">labels_</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">max_clusters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">labels_</span> <span class="o">=</span> <span class="n">labels_</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="HierarchicalClustering.plot_dendrogram">
+<a class="viewcode-back" href="../../../generated/skfolio.cluster.HierarchicalClustering.html#skfolio.cluster.HierarchicalClustering.plot_dendrogram">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_dendrogram</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">heatmap</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the dendrogram.</span>
+
+<span class="sd">        The blue lines represent distinct clusters composed of a single asset.</span>
+<span class="sd">        The remaining colors represent clusters of more than one asset.</span>
+
+<span class="sd">        When `heatmap` is set to True, the heatmap of the reordered distance matrix is</span>
+<span class="sd">        displayed below the dendrogram and clusters are outlined with yellow squares.</span>
+
+<span class="sd">        The number of clusters used in the plot is the same as the `n_clusters_`</span>
+<span class="sd">        attribute if it exists, otherwise a default number is used corresponding to the</span>
+<span class="sd">        number of cluster with a distance above 70% of the maximum cluster distance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        heatmap : bool, default=True</span>
+<span class="sd">            If this is set to True, the distance heatmap is returned with the clustered</span>
+<span class="sd">            outlined in yellow.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fig : Figure</span>
+<span class="sd">            The dendrogram figure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">skv</span><span class="o">.</span><span class="n">check_is_fitted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;linkage_matrix_&quot;</span><span class="p">)</span>
+        <span class="n">linkage_matrix</span> <span class="o">=</span> <span class="n">sch</span><span class="o">.</span><span class="n">optimal_leaf_ordering</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">linkage_matrix_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">condensed_distance_</span>
+        <span class="p">)</span>
+
+        <span class="n">n_assets</span> <span class="o">=</span> <span class="n">linkage_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">cophenetic_distance_threshold</span> <span class="o">=</span> <span class="n">linkage_matrix</span><span class="p">[</span><span class="o">-</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_clusters_</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">2</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;feature_names_in_&quot;</span><span class="p">):</span>
+            <span class="n">asset_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_names_in_</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">asset_names</span> <span class="o">=</span> <span class="n">default_asset_names</span><span class="p">(</span><span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">heatmap</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+                <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">linkagefun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">linkage_matrix</span><span class="p">,</span>
+                <span class="n">color_threshold</span><span class="o">=</span><span class="n">cophenetic_distance_threshold</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="n">asset_names</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Dendrogram&quot;</span><span class="p">,</span>
+                <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+                <span class="n">height</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+                <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">hovermode</span><span class="o">=</span><span class="s2">&quot;closest&quot;</span><span class="p">,</span>
+                <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Assets&quot;</span><span class="p">},</span>
+                <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Distance&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">fig</span>
+
+        <span class="c1"># Initialize figure by creating upper dendrogram</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span>
+            <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">linkagefun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">linkage_matrix</span><span class="p">,</span>
+            <span class="n">color_threshold</span><span class="o">=</span><span class="n">cophenetic_distance_threshold</span><span class="p">,</span>
+            <span class="n">labels</span><span class="o">=</span><span class="n">asset_names</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fig</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">])):</span>
+            <span class="n">fig</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s2">&quot;yaxis&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;y2&quot;</span>
+
+        <span class="c1"># Create Side Dendrogram</span>
+        <span class="n">side_dendrogram</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+            <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
+            <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">linkagefun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">linkage_matrix</span><span class="p">,</span>
+            <span class="n">color_threshold</span><span class="o">=</span><span class="n">cophenetic_distance_threshold</span><span class="p">,</span>
+            <span class="n">labels</span><span class="o">=</span><span class="n">asset_names</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">side_dendrogram</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">])):</span>
+            <span class="n">side_dendrogram</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s2">&quot;xaxis&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;x2&quot;</span>
+
+        <span class="c1"># Add Side Dendrogram Data to Figure</span>
+        <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">side_dendrogram</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Create Heatmap</span>
+        <span class="n">ordered_asset_names</span> <span class="o">=</span> <span class="n">side_dendrogram</span><span class="p">[</span><span class="s2">&quot;layout&quot;</span><span class="p">][</span><span class="s2">&quot;yaxis&quot;</span><span class="p">][</span><span class="s2">&quot;ticktext&quot;</span><span class="p">]</span>
+        <span class="n">ordered_asset_names_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">asset_names</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ordered_asset_names</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">asset_names</span><span class="p">[</span><span class="n">ordered_asset_names_idx</span><span class="p">],</span> <span class="n">ordered_asset_names</span><span class="p">)</span>
+
+        <span class="n">distance</span> <span class="o">=</span> <span class="n">scd</span><span class="o">.</span><span class="n">squareform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">condensed_distance_</span><span class="p">,</span> <span class="n">checks</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">heat_data</span> <span class="o">=</span> <span class="n">distance</span><span class="p">[</span><span class="n">ordered_asset_names_idx</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">ordered_asset_names_idx</span><span class="p">]</span>
+
+        <span class="n">heatmap</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">go</span><span class="o">.</span><span class="n">Heatmap</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">ordered_asset_names</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">ordered_asset_names</span><span class="p">,</span>
+                <span class="n">z</span><span class="o">=</span><span class="n">heat_data</span><span class="p">,</span>
+                <span class="n">colorscale</span><span class="o">=</span><span class="s2">&quot;Blues&quot;</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="n">heatmap</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fig</span><span class="p">[</span><span class="s2">&quot;layout&quot;</span><span class="p">][</span><span class="s2">&quot;xaxis&quot;</span><span class="p">][</span><span class="s2">&quot;tickvals&quot;</span><span class="p">]</span>
+        <span class="n">heatmap</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;y&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">side_dendrogram</span><span class="p">[</span><span class="s2">&quot;layout&quot;</span><span class="p">][</span><span class="s2">&quot;yaxis&quot;</span><span class="p">][</span><span class="s2">&quot;tickvals&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Add Heatmap Data to Figure</span>
+        <span class="k">for</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">heatmap</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Outline clusters</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">heatmap</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">heatmap</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;x&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">clusters_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">labels_</span><span class="p">[</span><span class="n">ordered_asset_names_idx</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">clusters_ids</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">c_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">clusters_ids</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">c_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">delta</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="p">(</span><span class="n">c_ids</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">add_shape</span><span class="p">(</span>
+                <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;rect&quot;</span><span class="p">,</span>
+                <span class="n">x0</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                <span class="n">y0</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                <span class="n">x1</span><span class="o">=</span><span class="n">b</span><span class="p">,</span>
+                <span class="n">y1</span><span class="o">=</span><span class="n">b</span><span class="p">,</span>
+                <span class="n">line</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gold&quot;</span><span class="p">,</span>
+                    <span class="n">width</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">),</span>
+            <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Dendrogram&quot;</span><span class="p">,</span>
+            <span class="n">width</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+            <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span>
+            <span class="n">showlegend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">hovermode</span><span class="o">=</span><span class="s2">&quot;closest&quot;</span><span class="p">,</span>
+            <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Assets&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+                <span class="s2">&quot;mirror&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showgrid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;zeroline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;ticks&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">xaxis2</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">],</span>
+                <span class="s2">&quot;mirror&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showgrid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;zeroline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showticklabels&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;ticks&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Assets&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">],</span>
+                <span class="s2">&quot;mirror&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showgrid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;zeroline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showticklabels&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;ticks&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;tickvals&quot;</span><span class="p">:</span> <span class="n">fig</span><span class="p">[</span><span class="s2">&quot;layout&quot;</span><span class="p">][</span><span class="s2">&quot;xaxis&quot;</span><span class="p">][</span><span class="s2">&quot;tickvals&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;ticktext&quot;</span><span class="p">:</span> <span class="n">fig</span><span class="p">[</span><span class="s2">&quot;layout&quot;</span><span class="p">][</span><span class="s2">&quot;xaxis&quot;</span><span class="p">][</span><span class="s2">&quot;ticktext&quot;</span><span class="p">],</span>
+            <span class="p">},</span>
+            <span class="n">yaxis2</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;domain&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.825</span><span class="p">,</span> <span class="mf">0.975</span><span class="p">],</span>
+                <span class="s2">&quot;mirror&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showgrid&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;zeroline&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;showticklabels&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;ticks&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

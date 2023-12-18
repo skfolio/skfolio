@@ -1,0 +1,1094 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.portfolio._multi_period_portfolio &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/portfolio/_multi_period_portfolio';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.port...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.portfolio._multi_period_portfolio</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Multi Period Portfolio module.</span>
+<span class="sd">`MultiPeriodPortfolio` is returned by the `predict` method of Optimization estimators.</span>
+<span class="sd">`MultiPeriodPortfolio` is a list of `Portfolio`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span> <span class="nn">numbers</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterator</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">import</span> <span class="nn">skfolio.typing</span> <span class="k">as</span> <span class="nn">skt</span>
+<span class="kn">from</span> <span class="nn">skfolio.portfolio._base</span> <span class="kn">import</span> <span class="n">BasePortfolio</span>
+<span class="kn">from</span> <span class="nn">skfolio.portfolio._portfolio</span> <span class="kn">import</span> <span class="n">Portfolio</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">deduplicate_names</span>
+
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">plotting</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="s2">&quot;plotly&quot;</span>
+
+
+<div class="viewcode-block" id="MultiPeriodPortfolio">
+<a class="viewcode-back" href="../../../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio">[docs]</a>
+<span class="k">class</span> <span class="nc">MultiPeriodPortfolio</span><span class="p">(</span><span class="n">BasePortfolio</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Multi-Period Portfolio class.</span>
+
+<span class="sd">    A Multi-Period Portfolio is composed of a list of :class:`Portfolio`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    portfolios : list[Portfolio], optional</span>
+<span class="sd">       A list of :class:`Portfolio`. The default (`None`) is to initialize with an</span>
+<span class="sd">       empty list.</span>
+
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name of the multi-period portfolio.</span>
+<span class="sd">        The default (`None`) is to use the object id.</span>
+
+<span class="sd">    tag : str, optional</span>
+<span class="sd">        Tag given to the multi-period portfolio.</span>
+<span class="sd">        Tags are used to manipulate groups of portfolios from a `Population`.</span>
+
+<span class="sd">    fitness_measures : list[measures], optional</span>
+<span class="sd">        List of fitness measures.</span>
+<span class="sd">        Fitness measures are used to compute the portfolio fitness which is used to</span>
+<span class="sd">        compute domination.</span>
+<span class="sd">        The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]</span>
+
+<span class="sd">    annualized_factor : float, default=255.0</span>
+<span class="sd">        Factor used to annualize the below measures using the square-root rule:</span>
+
+<span class="sd">            * Annualized Mean = Mean * factor</span>
+<span class="sd">            * Annualized Variance = Variance * factor</span>
+<span class="sd">            * Annualized Semi-Variance = Semi-Variance * factor</span>
+<span class="sd">            * Annualized Standard-Deviation = Standard-Deviation * sqrt(factor)</span>
+<span class="sd">            * Annualized Semi-Deviation = Semi-Deviation * sqrt(factor)</span>
+<span class="sd">            * Annualized Sharpe Ratio = Sharpe Ratio * sqrt(factor)</span>
+<span class="sd">            * Annualized Sortino Ratio = Sortino Ratio * sqrt(factor)</span>
+
+
+<span class="sd">    risk_free_rate : float, default=0.0</span>
+<span class="sd">        Risk-free rate. The default value is `0.0`.</span>
+
+<span class="sd">    compounded : bool, default=False</span>
+<span class="sd">        If this is set to True, cumulative returns are compounded.</span>
+<span class="sd">        The default is `False`.</span>
+
+<span class="sd">    min_acceptable_return : float, optional</span>
+<span class="sd">        The minimum acceptable return used to distinguish &quot;downside&quot; and &quot;upside&quot;</span>
+<span class="sd">        returns for the computation of lower partial moments:</span>
+
+<span class="sd">            * First Lower Partial Moment</span>
+<span class="sd">            * Semi-Variance</span>
+<span class="sd">            * Semi-Deviation</span>
+
+<span class="sd">        The default (`None`) is to use the mean.</span>
+
+<span class="sd">    value_at_risk_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio VaR (Value At Risk) which represents</span>
+<span class="sd">        the return on the worst (1-beta)% observations.</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    entropic_risk_measure_theta : float, default=1.0</span>
+<span class="sd">        The risk aversion level of the portfolio Entropic Risk Measure.</span>
+<span class="sd">        The default value is `1.0`.</span>
+
+<span class="sd">    entropic_risk_measure_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio Entropic Risk Measure.</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    cvar_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio CVaR (Conditional Value at Risk) which</span>
+<span class="sd">        represents the expected VaR on the worst (1-beta)% observations.</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    evar_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio EVaR (Entropic Value at Risk).</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    drawdown_at_risk_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio Drawdown at Risk (DaR) which represents</span>
+<span class="sd">        the drawdown on the worst (1-beta)% observations.</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    cdar_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio CDaR (Conditional Drawdown at Risk) which</span>
+<span class="sd">        represents the expected drawdown on the worst (1-beta)% observations.</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    edar_beta : float, default=0.95</span>
+<span class="sd">        The confidence level of the portfolio EDaR (Entropic Drawdown at Risk).</span>
+<span class="sd">        The default value is `0.95`.</span>
+
+<span class="sd">    check_observations_order : bool, default=False</span>
+<span class="sd">        If this is set to True, and if the list of portfolios is not chronologically</span>
+<span class="sd">        sorted, an error is raised. The chronological order is determined by comparing</span>
+<span class="sd">        the first and last observations of each portfolio.</span>
+<span class="sd">        The default is `False`.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n_observations : float</span>
+<span class="sd">        Number of observations.</span>
+
+<span class="sd">    mean : float</span>
+<span class="sd">        Mean of the portfolio returns.</span>
+
+<span class="sd">    annualized_mean : float</span>
+<span class="sd">        Mean annualized by :math:`mean \times annualization\_factor`</span>
+
+<span class="sd">    mean_absolute_deviation : float</span>
+<span class="sd">        Mean Absolute Deviation. The deviation is the difference between the</span>
+<span class="sd">        return and a minimum acceptable return (`min_acceptable_return`).</span>
+
+<span class="sd">    first_lower_partial_moment : float</span>
+<span class="sd">        First Lower Partial Moment. The First Lower Partial Moment is the mean of the</span>
+<span class="sd">        returns below a minimum acceptable return (`min_acceptable_return`).</span>
+
+<span class="sd">    variance : float</span>
+<span class="sd">        Variance (Second Moment)</span>
+
+<span class="sd">    annualized_variance : float</span>
+<span class="sd">        Variance annualized by :math:`variance \times annualization\_factor`</span>
+
+<span class="sd">    semi_variance : float</span>
+<span class="sd">        Semi-variance (Second Lower Partial Moment).</span>
+<span class="sd">        The semi-variance is the variance of the returns below a minimum acceptable</span>
+<span class="sd">        return (`min_acceptable_return`).</span>
+
+<span class="sd">    annualized_semi_variance : float</span>
+<span class="sd">        Semi-variance annualized by</span>
+<span class="sd">        :math:`semi\_variance \times annualization\_factor`</span>
+
+<span class="sd">    standard_deviation : float</span>
+<span class="sd">        Standard Deviation (Square Root of the Second Moment).</span>
+
+<span class="sd">    annualized_standard_deviation : float</span>
+<span class="sd">        Standard Deviation annualized by</span>
+<span class="sd">        :math:`standard\_deviation \times \sqrt{annualization\_factor}`</span>
+
+<span class="sd">    semi_deviation : float</span>
+<span class="sd">        Semi-deviation (Square Root of the Second Lower Partial Moment).</span>
+<span class="sd">        The Semi Standard Deviation is the Standard Deviation of the returns below a</span>
+<span class="sd">        minimum acceptable return (`min_acceptable_return`).</span>
+
+<span class="sd">    annualized_semi_deviation : float</span>
+<span class="sd">        Semi-deviation annualized by</span>
+<span class="sd">        :math:`semi\_deviation \times \sqrt{annualization\_factor}`</span>
+
+<span class="sd">    skew : float</span>
+<span class="sd">        Skew. The Skew is a measure of the lopsidedness of the distribution.</span>
+<span class="sd">        A symmetric distribution have a Skew of zero.</span>
+<span class="sd">        Higher Skew corresponds to longer right tail.</span>
+
+<span class="sd">    kurtosis : float</span>
+<span class="sd">        Kurtosis. It is a measure of the heaviness of the tail of the distribution.</span>
+<span class="sd">        Higher Kurtosis corresponds to greater extremity of deviations (fat tails).</span>
+
+<span class="sd">    fourth_central_moment : float</span>
+<span class="sd">       Fourth Central Moment.</span>
+
+<span class="sd">    fourth_lower_partial_moment : float</span>
+<span class="sd">        Fourth Lower Partial Moment. It is a measure of the heaviness of the downside</span>
+<span class="sd">        tail of the returns below a minimum acceptable return (`min_acceptable_return`).</span>
+<span class="sd">        Higher Fourth Lower Partial Moment corresponds to greater extremity of downside</span>
+<span class="sd">        deviations (downside fat tail).</span>
+
+<span class="sd">    worst_realization : float</span>
+<span class="sd">        Worst Realization which is the worst return.</span>
+
+<span class="sd">    value_at_risk : float</span>
+<span class="sd">        Historical VaR (Value at Risk).</span>
+<span class="sd">        The VaR is the maximum loss at a given confidence level (`value_at_risk_beta`).</span>
+
+<span class="sd">    cvar : float</span>
+<span class="sd">        Historical CVaR (Conditional Value at Risk). The CVaR (or Tail VaR) represents</span>
+<span class="sd">        the mean shortfall at a specified confidence level (`cvar_beta`).</span>
+
+<span class="sd">    entropic_risk_measure : float</span>
+<span class="sd">        Historical Entropic Risk Measure. It is a risk measure which depends on the</span>
+<span class="sd">        risk aversion defined by the investor (`entropic_risk_measure_theta`) through</span>
+<span class="sd">        the exponential utility function at a given confidence level</span>
+<span class="sd">        (`entropic_risk_measure_beta`).</span>
+
+<span class="sd">    evar : float</span>
+<span class="sd">         Historical EVaR (Entropic Value at Risk). It is a coherent risk measure which</span>
+<span class="sd">         is an upper bound for the VaR and the CVaR, obtained from the Chernoff</span>
+<span class="sd">         inequality at a given confidence level (`evar_beta`). The EVaR can be</span>
+<span class="sd">         represented by using the concept of relative entropy.</span>
+
+<span class="sd">    drawdown_at_risk : float</span>
+<span class="sd">        Historical Drawdown at Risk. It is the maximum drawdown at a given</span>
+<span class="sd">        confidence level (`drawdown_at_risk_beta`).</span>
+
+<span class="sd">    cdar : float</span>
+<span class="sd">        Historical CDaR (Conditional Drawdown at Risk) at a given confidence level</span>
+<span class="sd">        (`cdar_beta`).</span>
+
+<span class="sd">    max_drawdown : float</span>
+<span class="sd">        Maximum Drawdown.</span>
+
+<span class="sd">    average_drawdown : float</span>
+<span class="sd">        Average Drawdown.</span>
+
+<span class="sd">    edar : float</span>
+<span class="sd">        EDaR (Entropic Drawdown at Risk). It is a coherent risk measure which is an</span>
+<span class="sd">        upper bound for the Drawdown at Risk and the CDaR, obtained from the Chernoff</span>
+<span class="sd">        inequality at a given confidence level (`edar_beta`). The EDaR can be</span>
+<span class="sd">        represented by using the concept of relative entropy.</span>
+
+<span class="sd">    ulcer_index : float</span>
+<span class="sd">        Ulcer Index</span>
+
+<span class="sd">    gini_mean_difference : float</span>
+<span class="sd">        Gini Mean Difference (GMD). It is the expected absolute difference between two</span>
+<span class="sd">        realizations. The GMD is a superior measure of variability  for non-normal</span>
+<span class="sd">        distribution than the variance. It can be used to form necessary conditions</span>
+<span class="sd">        for second-degree stochastic dominance, while the variance cannot.</span>
+
+<span class="sd">    mean_absolute_deviation_ratio : float</span>
+<span class="sd">        Mean Absolute Deviation ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the MaD.</span>
+
+<span class="sd">    first_lower_partial_moment_ratio : float</span>
+<span class="sd">        First Lower Partial Moment ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the First Lower</span>
+<span class="sd">        Partial Moment.</span>
+
+<span class="sd">    sharpe_ratio : float</span>
+<span class="sd">        Sharpe ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the standard-deviation.</span>
+
+<span class="sd">    annualized_sharpe_ratio : float</span>
+<span class="sd">        Sharpe ratio annualized by</span>
+<span class="sd">        :math:`sharpe\_ratio \times \sqrt{annualization\_factor}`.</span>
+
+<span class="sd">    sortino_ratio : float</span>
+<span class="sd">        Sortino ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the semi</span>
+<span class="sd">        standard-deviation.</span>
+
+<span class="sd">    annualized_sortino_ratio : float</span>
+<span class="sd">        Sortino ratio annualized by</span>
+<span class="sd">        :math:`sortino\_ratio \times \sqrt{annualization\_factor}`.</span>
+
+<span class="sd">    value_at_risk_ratio : float</span>
+<span class="sd">        VaR ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Value at Risk</span>
+<span class="sd">        (VaR).</span>
+
+<span class="sd">    cvar_ratio : float</span>
+<span class="sd">        CVaR ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Conditional Value</span>
+<span class="sd">        at Risk (CVaR).</span>
+
+<span class="sd">    entropic_risk_measure_ratio : float</span>
+<span class="sd">        Entropic risk measure ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Entropic risk</span>
+<span class="sd">        measure.</span>
+
+<span class="sd">    evar_ratio : float</span>
+<span class="sd">        EVaR ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the EVaR (Entropic</span>
+<span class="sd">        Value at Risk).</span>
+
+<span class="sd">    worst_realization_ratio : float</span>
+<span class="sd">        Worst Realization ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Worst Realization</span>
+<span class="sd">        (worst return).</span>
+
+<span class="sd">    drawdown_at_risk_ratio : float</span>
+<span class="sd">        Drawdown at Risk ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the drawdown at</span>
+<span class="sd">        risk.</span>
+
+<span class="sd">    cdar_ratio : float</span>
+<span class="sd">        CDaR ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the CDaR (conditional</span>
+<span class="sd">        drawdown at risk).</span>
+
+<span class="sd">    calmar_ratio : float</span>
+<span class="sd">        Calmar ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Maximum Drawdown.</span>
+
+<span class="sd">    average_drawdown_ratio : float</span>
+<span class="sd">        Average Drawdown ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Average Drawdown.</span>
+
+<span class="sd">    edar_ratio : float</span>
+<span class="sd">        EDaR ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the EDaR (Entropic</span>
+<span class="sd">        Drawdown at Risk).</span>
+
+<span class="sd">    ulcer_index_ratio : float</span>
+<span class="sd">        Ulcer Index ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Ulcer Index.</span>
+
+<span class="sd">    gini_mean_difference_ratio : float</span>
+<span class="sd">        Gini Mean Difference ratio.</span>
+<span class="sd">        It is the excess mean (mean - risk_free_rate) divided by the Gini Mean</span>
+<span class="sd">        Difference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="c1"># read-only</span>
+        <span class="s2">&quot;_portfolios&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;check_observations_order&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">portfolios</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">risk_free_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">annualized_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">255.0</span><span class="p">,</span>
+        <span class="n">fitness_measures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">compounded</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">min_acceptable_return</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">value_at_risk_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">entropic_risk_measure_theta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">entropic_risk_measure_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">cvar_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">evar_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">drawdown_at_risk_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">cdar_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">edar_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">check_observations_order</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">returns</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+            <span class="n">observations</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">tag</span><span class="o">=</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">risk_free_rate</span><span class="o">=</span><span class="n">risk_free_rate</span><span class="p">,</span>
+            <span class="n">annualized_factor</span><span class="o">=</span><span class="n">annualized_factor</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="n">fitness_measures</span><span class="p">,</span>
+            <span class="n">compounded</span><span class="o">=</span><span class="n">compounded</span><span class="p">,</span>
+            <span class="n">min_acceptable_return</span><span class="o">=</span><span class="n">min_acceptable_return</span><span class="p">,</span>
+            <span class="n">value_at_risk_beta</span><span class="o">=</span><span class="n">value_at_risk_beta</span><span class="p">,</span>
+            <span class="n">cvar_beta</span><span class="o">=</span><span class="n">cvar_beta</span><span class="p">,</span>
+            <span class="n">entropic_risk_measure_theta</span><span class="o">=</span><span class="n">entropic_risk_measure_theta</span><span class="p">,</span>
+            <span class="n">entropic_risk_measure_beta</span><span class="o">=</span><span class="n">entropic_risk_measure_beta</span><span class="p">,</span>
+            <span class="n">evar_beta</span><span class="o">=</span><span class="n">evar_beta</span><span class="p">,</span>
+            <span class="n">drawdown_at_risk_beta</span><span class="o">=</span><span class="n">drawdown_at_risk_beta</span><span class="p">,</span>
+            <span class="n">cdar_beta</span><span class="o">=</span><span class="n">cdar_beta</span><span class="p">,</span>
+            <span class="n">edar_beta</span><span class="o">=</span><span class="n">edar_beta</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_observations_order</span> <span class="o">=</span> <span class="n">check_observations_order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_portfolios</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">slice</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Portfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Portfolio</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot set a value with type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">new_portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">new_portfolios</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_portfolios</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="n">new_portfolios</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">new_portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">del</span> <span class="n">new_portfolios</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_portfolios</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="n">new_portfolios</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Portfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Portfolio</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span>
+
+    <span class="k">def</span> <span class="fm">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__abs__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="nb">abs</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__round__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="fm">__round__</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__floor__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__trunc__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">trunc</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot add a MultiPeriodPortfolio with an object of type&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Cannot add two MultiPeriodPortfolio of different sizes&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">p1</span> <span class="o">+</span> <span class="n">p2</span> <span class="k">for</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot subtract a MultiPeriodPortfolio with an object of type&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot subtract two MultiPeriodPortfolio of different sizes&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">p1</span> <span class="o">-</span> <span class="n">p2</span> <span class="k">for</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)],</span>
+            <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+            <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">*</span> <span class="n">other</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">*</span> <span class="n">a</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span>
+        <span class="p">)</span>
+
+    <span class="fm">__rmul__</span> <span class="o">=</span> <span class="fm">__mul__</span>
+
+    <span class="k">def</span> <span class="fm">__floordiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">//</span> <span class="n">other</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">//</span> <span class="n">a</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">numbers</span><span class="o">.</span><span class="n">Number</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">numbers</span><span class="o">.</span><span class="n">Number</span><span class="p">]</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">other</span><span class="p">):</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">/</span> <span class="n">other</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="o">/</span> <span class="n">a</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span> <span class="n">fitness_measures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fitness_measures</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Private method</span>
+    <span class="k">def</span> <span class="nf">_set_portfolios</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">portfolios</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the returns, observations and portfolios list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        portfolios : list[Portfolio], optional</span>
+<span class="sd">            The list of Portfolios. The default (`None`) is to use an empty list.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">portfolios</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">portfolios</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolios</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">portfolios</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">BasePortfolio</span> <span class="o">|</span> <span class="n">Portfolio</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                        <span class="s2">&quot;`portfolios` items must be of type `Portfolio`, got&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="n">returns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">returns</span><span class="p">)</span>
+                <span class="n">observations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+            <span class="n">observations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_observations_order</span><span class="p">:</span>
+                <span class="n">iteration</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">portfolios</span><span class="p">)</span>
+                <span class="n">prev_p</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iteration</span><span class="p">)</span>
+                <span class="k">while</span> <span class="p">(</span><span class="n">p</span> <span class="o">:=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iteration</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">prev_p</span><span class="o">.</span><span class="n">observations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="s2">&quot;Portfolios observations should not overlap:&quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2"> overlapping </span><span class="si">{</span><span class="n">prev_p</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
+                    <span class="n">prev_p</span> <span class="o">=</span> <span class="n">p</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span> <span class="o">=</span> <span class="n">portfolios</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Custom attribute setter and getter</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">portfolios</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List of portfolios composing the mutli-period portfolio.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span>
+
+    <span class="nd">@portfolios</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">portfolios</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the list of Portfolios and clear the attributes cache linked to the</span>
+<span class="sd">        list of portfolios.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_portfolios</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="c1"># Classic property</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">assets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List of assets names in each Portfolio.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">assets</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">composition</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;DataFrame of the Portfolio composition.&quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">composition</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">deduplicate_names</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+<div class="viewcode-block" id="MultiPeriodPortfolio.summary">
+<a class="viewcode-back" href="../../../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio.summary">[docs]</a>
+    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">formatted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Portfolio summary of all its measures.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        formatted : bool, default=True</span>
+<span class="sd">            If this is set to True, the measures are formatted into rounded string with</span>
+<span class="sd">            units.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        summary : series</span>
+<span class="sd">            Portfolio summary of all its measures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">formatted</span><span class="o">=</span><span class="n">formatted</span><span class="p">)</span>
+        <span class="n">portfolios_number</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">avg_assets_per_portfolio</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">formatted</span><span class="p">:</span>
+            <span class="n">portfolios_number</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">portfolios_number</span><span class="p">))</span>
+            <span class="n">avg_assets_per_portfolio</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">avg_assets_per_portfolio</span><span class="si">:</span><span class="s2">0.1f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Portfolios number&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">portfolios_number</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;Avg nb of assets per portfolio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_assets_per_portfolio</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+
+    <span class="c1"># Public methods</span>
+<div class="viewcode-block" id="MultiPeriodPortfolio.append">
+<a class="viewcode-back" href="../../../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio.append">[docs]</a>
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">portfolio</span><span class="p">:</span> <span class="n">Portfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append a Portfolio to the Portfolio list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        portfolio : Portfolio</span>
+<span class="sd">            The Portfolio to append.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_observations_order</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">start_date</span> <span class="o">=</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">observations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">prev_last_date</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">start_date</span> <span class="o">&lt;</span> <span class="n">prev_last_date</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Portfolios observations should not overlap: </span><span class="si">{</span><span class="n">prev_last_date</span><span class="si">}</span><span class="s2"> -&gt;&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">start_date</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_portfolios</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">portfolio</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># We don&quot;t concatenate an empty array as we cannot know the dtype before.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">observations</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">=</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">returns</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">observations</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">returns</span><span class="p">,</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">returns</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_loaded</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,1411 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.population._population &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/population/_population';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.popu...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.population._population</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; Population module.</span>
+<span class="sd">A population is a collection of portfolios.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span> <span class="nn">inspect</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">plotly.express</span> <span class="k">as</span> <span class="nn">px</span>
+<span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
+<span class="kn">import</span> <span class="nn">scipy.interpolate</span> <span class="k">as</span> <span class="nn">sci</span>
+
+<span class="kn">import</span> <span class="nn">skfolio.typing</span> <span class="k">as</span> <span class="nn">skt</span>
+<span class="kn">from</span> <span class="nn">skfolio.portfolio</span> <span class="kn">import</span> <span class="n">BasePortfolio</span><span class="p">,</span> <span class="n">MultiPeriodPortfolio</span><span class="p">,</span> <span class="n">Portfolio</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.sorting</span> <span class="kn">import</span> <span class="n">non_denominated_sort</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">deduplicate_names</span>
+
+<span class="n">pd</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">plotting</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="s2">&quot;plotly&quot;</span>
+
+
+<div class="viewcode-block" id="Population">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population">[docs]</a>
+<span class="k">class</span> <span class="nc">Population</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Population Class.</span>
+
+<span class="sd">    A `Population` is a list of :class:`~skfolio.portfolio.Portfolio` or</span>
+<span class="sd">    :class:`~skfolio.portfolio.MultiPeriodPortfolio` or both.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    iterable : list[Portfolio | MultiPeriodPortfolio]</span>
+<span class="sd">        The list of portfolios. Each item can be of type</span>
+<span class="sd">        :class:`~skfolio.portfolio.Portfolio` and/or</span>
+<span class="sd">        :class:`~skfolio.portfolio.MultiPeriodPortfolio`.</span>
+<span class="sd">        Empty list are accepted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;Population(&quot;</span> <span class="o">+</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;)&gt;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">slice</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Portfolio | MultiPeriodPortfolio|Population&quot;</span><span class="p">:</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item</span>
+
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Population</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Cannot add a Population with an object of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__add__</span><span class="p">(</span><span class="n">other</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Population.insert">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.insert">[docs]</a>
+    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert portfolio before index.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Population.append">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.append">[docs]</a>
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append portfolio to the end of the population list.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Population.extend">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.extend">[docs]</a>
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extend population list by appending elements from the iterable.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">other</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Population.set_portfolio_params">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.set_portfolio_params">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_portfolio_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="nb">any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the parameters of all the portfolios.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        **params : any</span>
+<span class="sd">            Portfolio parameters.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self : Population</span>
+<span class="sd">            The Population instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="n">init_signature</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">BasePortfolio</span><span class="o">.</span><span class="fm">__init__</span><span class="p">)</span>
+        <span class="c1"># Consider the constructor parameters excluding &#39;self&#39;</span>
+        <span class="n">valid_params</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">init_signature</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="s2">&quot;self&quot;</span> <span class="ow">and</span> <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_KEYWORD</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_params</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Invalid parameter </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> . &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Valid parameters are: </span><span class="si">{</span><span class="n">valid_params</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+                <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">portfolio</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_validate_item</span><span class="p">(</span>
+        <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that items are of type Portfolio or MultiPeriodPortfolio.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">item</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="s2">&quot;Population only accept items of type Portfolio and MultiPeriodPortfolio&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Population.non_denominated_sort">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.non_denominated_sort">[docs]</a>
+    <span class="k">def</span> <span class="nf">non_denominated_sort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">first_front_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fast non-dominated sorting.</span>
+<span class="sd">        Sort the portfolios into different non-domination levels.</span>
+<span class="sd">        Complexity O(MN^2) where M is the number of objectives and N the number of</span>
+<span class="sd">        portfolios.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        first_front_only : bool, default=False</span>
+<span class="sd">            If this is set to True, only the first front is sorted and returned.</span>
+<span class="sd">            The default is `False`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fronts : list[list[int]]</span>
+<span class="sd">            A list of Pareto fronts (lists), the first list includes</span>
+<span class="sd">            non-dominated portfolios.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span>
+            <span class="n">portfolio</span><span class="o">.</span><span class="n">fitness_measures</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fitness_measures</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
+        <span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot compute non denominated sorting with Portfolios &quot;</span>
+                <span class="s2">&quot;containing mixed `fitness_measures`&quot;</span>
+            <span class="p">)</span>
+        <span class="n">fitnesses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">portfolio</span><span class="o">.</span><span class="n">fitness</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">])</span>
+        <span class="n">fronts</span> <span class="o">=</span> <span class="n">non_denominated_sort</span><span class="p">(</span>
+            <span class="n">fitnesses</span><span class="o">=</span><span class="n">fitnesses</span><span class="p">,</span> <span class="n">first_front_only</span><span class="o">=</span><span class="n">first_front_only</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fronts</span></div>
+
+
+<div class="viewcode-block" id="Population.filter">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.filter">[docs]</a>
+    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span>  <span class="c1"># noqa: A003</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Filter the Population of portfolios by names and tags.</span>
+<span class="sd">        If both names and tags are provided, the intersection is returned.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags :  str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        population : Population</span>
+<span class="sd">            A new population of portfolios filtered by names and tags.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">names</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tags</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="n">tags</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">portfolio</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">portfolio</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">([</span>
+            <span class="n">portfolio</span>
+            <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
+            <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="ow">and</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span>
+        <span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="Population.measures">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.measures">[docs]</a>
+    <span class="k">def</span> <span class="nf">measures</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Vector of portfolios measures for each portfolio from the</span>
+<span class="sd">        population filtered by names and tags.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        names :  str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : ndarray</span>
+<span class="sd">            The vector of portfolios measures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ptf</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">measure</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">ptf</span> <span class="ow">in</span> <span class="n">population</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="Population.measures_mean">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.measures_mean">[docs]</a>
+    <span class="k">def</span> <span class="nf">measures_mean</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mean of portfolios measures for each portfolio from the</span>
+<span class="sd">        population filtered by names and tags.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        names :  str | list[str], optional</span>
+<span class="sd">           If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags :  str | list[str], optional</span>
+<span class="sd">           If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        value : float</span>
+<span class="sd">            The mean of portfolios measures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Population.measures_std">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.measures_std">[docs]</a>
+    <span class="k">def</span> <span class="nf">measures_std</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Standard-deviation of portfolios measures for each portfolio from the</span>
+<span class="sd">        population filtered by names and tags.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        value : float</span>
+<span class="sd">            The standard-deviation of portfolios measures.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Population.sort_measure">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.sort_measure">[docs]</a>
+    <span class="k">def</span> <span class="nf">sort_measure</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sort the population by a given portfolio measure and filter the portfolios</span>
+<span class="sd">        by names and tags.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        reverse : bool, default=False</span>
+<span class="sd">            If this is set to True, the order is reversed.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : Populations</span>
+<span class="sd">            The sorted population.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">population</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="nb">sorted</span><span class="p">(</span>
+                <span class="n">population</span><span class="p">,</span>
+                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">measure</span><span class="o">.</span><span class="n">value</span><span class="p">),</span>
+                <span class="n">reverse</span><span class="o">=</span><span class="n">reverse</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Population.quantile">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.quantile">[docs]</a>
+    <span class="k">def</span> <span class="nf">quantile</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">q</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio corresponding to the `q` quantile for a given portfolio</span>
+<span class="sd">        measure.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        q : float</span>
+<span class="sd">            The quantile value.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">           Portfolio corresponding to the `q` quantile for the measure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">q</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The quantile`q` must be between 0 and 1&quot;</span><span class="p">)</span>
+        <span class="n">sorted_portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sort_measure</span><span class="p">(</span>
+            <span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span>
+        <span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sorted_portfolios</span><span class="p">)</span> <span class="o">*</span> <span class="n">q</span><span class="p">))</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sorted_portfolios</span><span class="p">[</span><span class="n">k</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Population.min_measure">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.min_measure">[docs]</a>
+    <span class="k">def</span> <span class="nf">min_measure</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio with the minimum measure.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure : Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">            The portfolio with minimum measure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Population.max_measure">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.max_measure">[docs]</a>
+    <span class="k">def</span> <span class="nf">max_measure</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio with the maximum measure.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure: Measure</span>
+<span class="sd">            The portfolio measure.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">            The portfolio with maximum measure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Population.summary">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.summary">[docs]</a>
+    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">formatted</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Summary of the portfolios in the population</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        formatted : bool, default=True</span>
+<span class="sd">            If this is set to True, the measures are formatted into rounded string with</span>
+<span class="sd">            units.</span>
+<span class="sd">            The default is `True`.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        summary : pandas DataFrame</span>
+<span class="sd">            The population&#39;s portfolios summary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">formatted</span><span class="o">=</span><span class="n">formatted</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">portfolios</span><span class="p">],</span>
+            <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">portfolios</span><span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="Population.composition">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.composition">[docs]</a>
+    <span class="k">def</span> <span class="nf">composition</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">display_sub_ptf_name</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Composition of the portfolios in the population.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        display_sub_ptf_name : bool, default=True</span>
+<span class="sd">            If this is set to True, each sub-portfolio name composing a multi-period</span>
+<span class="sd">            portfolio is displayed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        summary : DataFrame</span>
+<span class="sd">            Composition of the portfolios in the population.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">comp_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">portfolios</span><span class="p">:</span>
+            <span class="n">comp</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">composition</span>
+            <span class="k">if</span> <span class="n">display_sub_ptf_name</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">MultiPeriodPortfolio</span><span class="p">):</span>
+                    <span class="n">comp</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">comp</span><span class="o">.</span><span class="n">columns</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">comp</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">comp</span><span class="o">.</span><span class="n">columns</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">comp_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">comp_list</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">deduplicate_names</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="Population.plot_distribution">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.plot_distribution">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_distribution</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">measure_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">],</span>
+        <span class="n">tag_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">n_bins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the population&#39;s distribution for each measure provided in the</span>
+<span class="sd">        measure list.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        measure_list : list[Measure]</span>
+<span class="sd">            The list of portfolio measures. A different distribution is plotted per</span>
+<span class="sd">            measure.</span>
+
+<span class="sd">        tag_list : list[str], optional</span>
+<span class="sd">            If this is provided, an additional distribution is plotted per measure</span>
+<span class="sd">            for each tag provided.</span>
+
+<span class="sd">        n_bins : int, optional</span>
+<span class="sd">            Sets the number of bins.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        plot : Figure</span>
+<span class="sd">            Returns the plotly Figure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">measure</span> <span class="ow">in</span> <span class="n">measure_list</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tag_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tag_list</span><span class="p">:</span>
+                    <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tag</span><span class="p">))</span>
+                    <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">measure</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measures</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">))</span>
+                <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">measure</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">labels</span><span class="p">)</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span>
+            <span class="n">var_name</span><span class="o">=</span><span class="s2">&quot;Population&quot;</span>
+        <span class="p">)</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span>
+            <span class="n">df</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;Population&quot;</span><span class="p">,</span>
+            <span class="n">barmode</span><span class="o">=</span><span class="s2">&quot;overlay&quot;</span><span class="p">,</span>
+            <span class="n">marginal</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">,</span>
+            <span class="n">nbins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span><span class="n">title_text</span><span class="o">=</span><span class="s2">&quot;Measures Distribution&quot;</span><span class="p">,</span> <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;measures&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="Population.plot_cumulative_returns">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.plot_cumulative_returns">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_cumulative_returns</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">log_scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">idx</span><span class="p">:</span> <span class="nb">slice</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the population&#39;s portfolios cumulative returns.</span>
+<span class="sd">        Non-compounded cumulative returns start at 0.</span>
+<span class="sd">        Compounded cumulative returns are rescaled to start at 1000.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        log_scale : bool, default=False</span>
+<span class="sd">            If this is set to True, the cumulative returns are displayed with a</span>
+<span class="sd">            logarithm scale on the y-axis and rebased at 1000. The cumulative returns</span>
+<span class="sd">            must be compounded otherwise an exception is raise.</span>
+
+<span class="sd">        idx : slice | array, optional</span>
+<span class="sd">            Indexes or slice of the observations to plot.</span>
+<span class="sd">            The default (`None`) is to take all observations.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        plot : Figure</span>
+<span class="sd">            Returns the plot Figure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="n">portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">portfolios</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No portfolio found&quot;</span><span class="p">)</span>
+
+        <span class="n">cumulative_returns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">compounded</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">ptf</span> <span class="ow">in</span> <span class="n">portfolios</span><span class="p">:</span>
+            <span class="n">cumulative_returns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ptf</span><span class="o">.</span><span class="n">cumulative_returns_df</span><span class="p">)</span>
+            <span class="n">names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ptf</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">ptf</span><span class="o">.</span><span class="n">tag</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">ptf</span><span class="o">.</span><span class="n">tag</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">ptf</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">compounded</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ptf</span><span class="o">.</span><span class="n">compounded</span><span class="p">)</span>
+        <span class="n">compounded</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">compounded</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">compounded</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Some portfolios cumulative returns are compounded while some &quot;</span>
+                <span class="s2">&quot;are non-compounded. You can change the compounded with&quot;</span>
+                <span class="s2">&quot;`population.set_portfolio_params(compounded=False)`&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Cumulative Returns&quot;</span>
+        <span class="n">compounded</span> <span class="o">=</span> <span class="n">compounded</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">compounded</span><span class="p">:</span>
+            <span class="n">yaxis_title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> (rebased at 1000)&quot;</span>
+            <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> (compounded &amp; log scaled)&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> (compounded)&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Plotting with logarithm scaling must be done on cumulative &quot;</span>
+                    <span class="s2">&quot;returns that are compounded as opposed to non-compounded.&quot;</span>
+                    <span class="s2">&quot;You can change to compounded with &quot;</span>
+                    <span class="s2">&quot;`set_portfolio_params(compounded=True)`&quot;</span>
+                <span class="p">)</span>
+            <span class="n">yaxis_title</span> <span class="o">=</span> <span class="n">title</span>
+            <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">title</span><span class="si">}</span><span class="s2"> (non-compounded)&quot;</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">cumulative_returns</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">deduplicate_names</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+            <span class="n">xaxis_title</span><span class="o">=</span><span class="s2">&quot;Observations&quot;</span><span class="p">,</span>
+            <span class="n">yaxis_title</span><span class="o">=</span><span class="n">yaxis_title</span><span class="p">,</span>
+            <span class="n">legend_title_text</span><span class="o">=</span><span class="s2">&quot;Portfolios&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">compounded</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="n">tickformat</span><span class="o">=</span><span class="s2">&quot;.0f&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="n">tickformat</span><span class="o">=</span><span class="s2">&quot;.2%&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_yaxes</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="Population.plot_composition">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.plot_composition">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_composition</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">display_sub_ptf_name</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the compositions of the portfolios in the population.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        display_sub_ptf_name : bool, default=True</span>
+<span class="sd">            If this is set to True, each sub-portfolio name composing a multi-period</span>
+<span class="sd">            portfolio is displayed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        plot : Figure</span>
+<span class="sd">            Returns the plotly Figure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">composition</span><span class="p">(</span>
+            <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span> <span class="n">display_sub_ptf_name</span><span class="o">=</span><span class="n">display_sub_ptf_name</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+            <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Portfolios Composition&quot;</span><span class="p">,</span>
+            <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Portfolios&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;Weight&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.0%&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">yanchor</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">xanchor</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">1.15</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+
+
+<div class="viewcode-block" id="Population.plot_measures">
+<a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.plot_measures">[docs]</a>
+    <span class="k">def</span> <span class="nf">plot_measures</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
+        <span class="n">z</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">to_surface</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">hover_measures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">show_fronts</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">color_scale</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Portfolios&quot;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot the 2D (or 3D) scatter points (or surface) of a given set of</span>
+<span class="sd">        measures for each portfolio in the population.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : Measure</span>
+<span class="sd">            The x-axis measure.</span>
+
+<span class="sd">        y : Measure</span>
+<span class="sd">            The y-axis measure.</span>
+
+<span class="sd">        z : Measure, optional</span>
+<span class="sd">            The z-axis measure.</span>
+
+<span class="sd">        to_surface : bool, default=False</span>
+<span class="sd">            If this is set to True, a surface is estimated.</span>
+
+<span class="sd">        hover_measures : list[Measure], optional</span>
+<span class="sd">            The list of measure to show on point hover.</span>
+
+<span class="sd">        show_fronts : bool, default=False</span>
+<span class="sd">            If this is set to True, the pareto fronts are highlighted.</span>
+<span class="sd">            The default is `False`.</span>
+
+<span class="sd">        color_scale : Measure | str, optional</span>
+<span class="sd">            If this is provided, a color scale is displayed.</span>
+
+<span class="sd">        title : str, default=&quot;Portfolios&quot;</span>
+<span class="sd">            The graph title. The default value is &quot;Portfolios&quot;.</span>
+
+<span class="sd">        names : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio names.</span>
+
+<span class="sd">        tags : str | list[str], optional</span>
+<span class="sd">            If provided, the population is filtered by portfolio tags.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        plot : Figure</span>
+<span class="sd">            Returns the plotly Figure object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">portfolios</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">num_fmt</span> <span class="o">=</span> <span class="s2">&quot;:.3f&quot;</span>
+        <span class="n">hover_data</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">num_fmt</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">num_fmt</span><span class="p">,</span> <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">z</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">hover_data</span><span class="p">[</span><span class="n">z</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_fmt</span>
+
+        <span class="k">if</span> <span class="n">hover_measures</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">measure</span> <span class="ow">in</span> <span class="n">hover_measures</span><span class="p">:</span>
+                <span class="n">hover_data</span><span class="p">[</span><span class="n">measure</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_fmt</span>
+
+        <span class="n">columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">hover_data</span><span class="p">)</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">color_scale</span><span class="p">,</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">):</span>
+            <span class="n">hover_data</span><span class="p">[</span><span class="n">color_scale</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_fmt</span>
+
+        <span class="k">if</span> <span class="n">color_scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">color_scale</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">color_scale</span><span class="p">)</span>
+
+        <span class="n">col_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">)</span> <span class="k">else</span> <span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">]</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">[</span><span class="n">portfolio</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span> <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">col_values</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="n">portfolios</span>
+        <span class="p">]</span>
+        <span class="c1"># Improved formatting</span>
+        <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">]</span>
+        <span class="n">hover_data</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">):</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hover_data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;tag&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;tag&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">show_fronts</span><span class="p">:</span>
+            <span class="n">fronts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">non_denominated_sort</span><span class="p">(</span><span class="n">first_front_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot plot front with tags selected&quot;</span><span class="p">)</span>
+            <span class="n">df</span><span class="p">[</span><span class="s2">&quot;front&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">front</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">fronts</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">front</span><span class="p">:</span>
+                    <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">idx</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">color_scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">color_scale</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="s2">&quot;tag&quot;</span>
+
+        <span class="k">if</span> <span class="n">z</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">to_surface</span><span class="p">:</span>
+                <span class="c1"># estimate the surface</span>
+                <span class="n">x_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">)])</span>
+                <span class="n">y_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">)])</span>
+                <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">)])</span>
+
+                <span class="n">xi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">x_arr</span><span class="p">),</span> <span class="n">stop</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">x_arr</span><span class="p">),</span> <span class="n">num</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+                <span class="n">yi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">y_arr</span><span class="p">),</span> <span class="n">stop</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="n">y_arr</span><span class="p">),</span> <span class="n">num</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+
+                <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">)</span>
+                <span class="n">Z</span> <span class="o">=</span> <span class="n">sci</span><span class="o">.</span><span class="n">griddata</span><span class="p">(</span>
+                    <span class="n">points</span><span class="o">=</span><span class="p">(</span><span class="n">x_arr</span><span class="p">,</span> <span class="n">y_arr</span><span class="p">),</span> <span class="n">values</span><span class="o">=</span><span class="n">z_arr</span><span class="p">,</span> <span class="n">xi</span><span class="o">=</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">),</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span>
+                <span class="p">)</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">go</span><span class="o">.</span><span class="n">Figure</span><span class="p">(</span>
+                    <span class="n">go</span><span class="o">.</span><span class="n">Surface</span><span class="p">(</span>
+                        <span class="n">x</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span>
+                        <span class="n">y</span><span class="o">=</span><span class="n">yi</span><span class="p">,</span>
+                        <span class="n">z</span><span class="o">=</span><span class="n">Z</span><span class="p">,</span>
+                        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+                            <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                            <span class="o">+</span> <span class="s2">&quot;: %{&quot;</span>
+                            <span class="o">+</span> <span class="n">v</span>
+                            <span class="o">+</span> <span class="s2">&quot;:&quot;</span>
+                            <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;,.3%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+                            <span class="o">+</span> <span class="s2">&quot;}&quot;</span>
+                            <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">)]</span>
+                        <span class="p">])</span>
+                        <span class="o">+</span> <span class="s2">&quot;&lt;extra&gt;&lt;/extra&gt;&quot;</span><span class="p">,</span>
+                        <span class="n">colorbar</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                            <span class="n">title</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+                            <span class="n">titleside</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span>
+                            <span class="n">tickformat</span><span class="o">=</span><span class="s2">&quot;,.2%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">z</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">),</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+
+                <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                    <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                    <span class="n">scene</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                        <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">y</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                        <span class="n">zaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">z</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                    <span class="p">),</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># plot the points</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">scatter_3d</span><span class="p">(</span>
+                    <span class="n">df</span><span class="p">,</span>
+                    <span class="n">x</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                    <span class="n">y</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">),</span>
+                    <span class="n">z</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+                    <span class="n">hover_name</span><span class="o">=</span><span class="s2">&quot;name&quot;</span><span class="p">,</span>
+                    <span class="n">hover_data</span><span class="o">=</span><span class="n">hover_data</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                    <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;tag&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">update_traces</span><span class="p">(</span><span class="n">marker_size</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                    <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                    <span class="n">scene</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                        <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                        <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">y</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                        <span class="n">zaxis</span><span class="o">=</span><span class="p">{</span>
+                            <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>
+                            <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">z</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="p">},</span>
+                    <span class="p">),</span>
+                    <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">yanchor</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">xanchor</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">1.15</span><span class="p">),</span>
+                <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">px</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+                <span class="n">df</span><span class="p">,</span>
+                <span class="n">x</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                <span class="n">y</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">),</span>
+                <span class="n">hover_name</span><span class="o">=</span><span class="s2">&quot;name&quot;</span><span class="p">,</span>
+                <span class="n">hover_data</span><span class="o">=</span><span class="n">hover_data</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+                <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;tag&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_traces</span><span class="p">(</span><span class="n">marker_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+                <span class="n">xaxis</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span>
+                    <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">yaxis</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">y</span><span class="p">),</span>
+                    <span class="s2">&quot;tickformat&quot;</span><span class="p">:</span> <span class="s2">&quot;,.1%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">y</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">yanchor</span><span class="o">=</span><span class="s2">&quot;top&quot;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.96</span><span class="p">,</span> <span class="n">xanchor</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mf">1.25</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

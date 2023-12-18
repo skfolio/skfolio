@@ -1,0 +1,84 @@
+.jupyterlite_sphinx_raw_iframe {
+    border-width: 1px;
+    border-style: solid;
+    border-color: #d8d8d8;
+    box-shadow: 0 0.2rem 0.5rem #d8d8d8;
+}
+
+.jupyterlite_sphinx_iframe_container {
+    border-width: 1px;
+    border-style: solid;
+    border-color: #d8d8d8;
+    position: relative;
+    cursor: pointer;
+    box-shadow: 0 0.2rem 0.5rem #d8d8d8;
+}
+
+.jupyterlite_sphinx_iframe {
+    z-index: 1;
+    position: relative;
+    border-style: none;
+}
+
+.jupyterlite_sphinx_try_it_button {
+    z-index: 0;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translateY(-50%) translateX(-50%);
+    height: 100px;
+    width: 100px;
+    line-height: 100px;
+    text-align: center;
+    white-space: nowrap;
+    background-color: #f7dc1e;
+    border-radius: 50%;
+    font-family: vibur;
+    font-size: larger;
+    box-shadow: 0 0.2rem 0.5rem #d8d8d8;
+}
+
+.jupyterlite_sphinx_iframe_container:hover .jupyterlite_sphinx_try_it_button_unclicked {
+    -webkit-animation:grow 0.2s ease-in-out;
+    animation:grow 0.2s ease-in-out;
+    transform: translateY(-50%) translateX(-50%) scale(1.2);
+}
+
+.jupyterlite_sphinx_try_it_button_clicked {
+    -webkit-animation:grow 1s infinite alternate;
+    animation:grow 1s infinite alternate;
+    transform: translateY(-50%) translateX(-50%) scale(1.2);
+}
+
+@keyframes grow {
+    from {
+        transform: translateY(-50%) translateX(-50%) scale(1);
+    }
+    to {
+        transform: translateY(-50%) translateX(-50%) scale(1.2);
+    }
+}
+
+@-webkit-keyframes grow {
+    from {
+        transform: translateY(-50%) translateX(-50%) scale(1);
+    }
+    to {
+        transform: translateY(-50%) translateX(-50%) scale(1.2);
+    }
+}
+
+.try_examples_iframe_container {
+    position: relative;
+    cursor: pointer;
+}
+
+
+.try_examples_outer_container {
+    position: relative;
+}
+
+
+.hidden {
+    display: none;
+}

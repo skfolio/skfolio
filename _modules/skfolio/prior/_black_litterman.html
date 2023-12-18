@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.prior._black_litterman &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/prior/_black_litterman';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.prio...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.prior._black_litterman</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Black &amp; Litterman Prior Model estimator.&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.moments</span> <span class="kn">import</span> <span class="n">EquilibriumMu</span>
+<span class="kn">from</span> <span class="nn">skfolio.prior._base</span> <span class="kn">import</span> <span class="n">BasePrior</span><span class="p">,</span> <span class="n">PriorModel</span>
+<span class="kn">from</span> <span class="nn">skfolio.prior._empirical</span> <span class="kn">import</span> <span class="n">EmpiricalPrior</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.equations</span> <span class="kn">import</span> <span class="n">equations_to_matrix</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">check_estimator</span><span class="p">,</span> <span class="n">input_to_array</span>
+
+
+<div class="viewcode-block" id="BlackLitterman">
+<a class="viewcode-back" href="../../../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman">[docs]</a>
+<span class="k">class</span> <span class="nc">BlackLitterman</span><span class="p">(</span><span class="n">BasePrior</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Black &amp; Litterman Prior Model estimator.</span>
+
+<span class="sd">    The Black &amp; Litterman model [1]_ takes a Bayesian approach by using a prior estimate</span>
+<span class="sd">    of the assets expected returns and covariance matrix which are updated using the</span>
+<span class="sd">    analyst views to get a posterior estimate.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    views : array-like of floats of shape (n_views,)</span>
+<span class="sd">        The analyst views about the assets expected returns.</span>
+<span class="sd">        The views must match the following patterns:</span>
+
+<span class="sd">            * Absolute view: &quot;asset_i = a&quot;</span>
+<span class="sd">            * Relative view: &quot;asset_i - asset_j = b&quot;</span>
+
+<span class="sd">        With &quot;asset_i&quot; and &quot;asset_j&quot; the assets names and &quot;a&quot; and &quot;b&quot; the analyst views</span>
+<span class="sd">        about the assets expected returns expressed in the same frequency as the</span>
+<span class="sd">        returns `X`.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            * &quot;SPX = 0.00015&quot; --&gt; the SPX will have a daily expected return of 0.015%</span>
+<span class="sd">            * &quot;SX5E - TLT = 0.00039&quot; --&gt; the SX5E will outperform the TLT by a daily expected return of 0.039%</span>
+<span class="sd">            * &quot;SX5E - SPX = -0.0002&quot; --&gt; the SX5E will underperform the SPX by a daily expected return of 0.02%</span>
+<span class="sd">            * &quot;Equity = 0.00010&quot; --&gt; the sum of Equity assets will have a daily expected return of 0.01%</span>
+<span class="sd">            * &quot;Europe - US = 0.0004&quot; --&gt; the sum of European assets will outperform the sum of US assets by a daily expected return of 0.04%</span>
+
+<span class="sd">    groups : dict[str, list[str]] or array-like of strings of shape (n_groups, n_assets), optional</span>
+<span class="sd">        The assets groups to be referenced in `views`.</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset groups) and the input `X` of the `fit` methods must be a</span>
+<span class="sd">        DataFrame with the assets names in columns.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            * groups = {&quot;SX5E&quot;: [&quot;Equity&quot;, &quot;Europe&quot;], &quot;SPX&quot;: [&quot;Equity&quot;, &quot;US&quot;], &quot;TLT&quot;: [&quot;Bond&quot;, &quot;US&quot;]}</span>
+<span class="sd">            * groups = [[&quot;Equity&quot;, &quot;Equity&quot;, &quot;Bond&quot;], [&quot;Europe&quot;, &quot;US&quot;, &quot;US&quot;]]</span>
+
+<span class="sd">    prior_estimator : BasePrior, optional</span>
+<span class="sd">        The assets&#39; :ref:`prior model estimator &lt;prior&gt;`. It is used to estimate</span>
+<span class="sd">        the :class:`~skfolio.prior.PriorModel` containing the estimation of the assets</span>
+<span class="sd">        expected returns, covariance matrix, returns and Cholesky decomposition.</span>
+<span class="sd">        The default (`None`) is to use `EmpiricalPrior(mu_estimator=EquilibriumMu())`.</span>
+
+<span class="sd">    tau : float, default=0.05</span>
+<span class="sd">        Tau controls the degree of uncertainty given to the analyst views. A low value</span>
+<span class="sd">        means high uncertainty and will put less weight on the analyst views compared to</span>
+<span class="sd">        the prior returns. The default value is `0.05`.</span>
+<span class="sd">        Other common values used in the literature are `1.0` or the inverse of the</span>
+<span class="sd">        number of observations.</span>
+
+<span class="sd">    view_confidences : array-like of floats of shape (n_views,), optional</span>
+<span class="sd">        Instead of using a diagonal uncertainty matrix (Omega) proportional to the prior</span>
+<span class="sd">        covariance matrix, you can provide the vector of view confidences (between 0</span>
+<span class="sd">        and 1) as describe by the Idzorek&#39;s method [2]_.</span>
+
+<span class="sd">    risk_free_rate : float, default=0.0</span>
+<span class="sd">        The risk-free rate.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prior_model_ : PriorModel</span>
+<span class="sd">        The :class:`~skfolio.prior.PriorModel`.</span>
+
+<span class="sd">    groups_ : ndarray of shape(n_groups, n_assets)</span>
+<span class="sd">        Assets names and groups converted to an 2D array.</span>
+
+<span class="sd">    views_ : ndarray of shape (n_views,)</span>
+<span class="sd">        The analyst views converted to a ndarray of floats.</span>
+
+<span class="sd">    picking_matrix_ : ndarray of shape (n_views, n_assets)</span>
+<span class="sd">        Picking matrix computed from the views and assets names/groups.</span>
+
+<span class="sd">    prior_estimator_ : BasePrior</span>
+<span class="sd">        Fitted `prior_estimator`.</span>
+
+<span class="sd">    n_features_in_ : int</span>
+<span class="sd">       Number of assets seen during `fit`.</span>
+
+<span class="sd">    feature_names_in_ : ndarray of shape (`n_features_in_`,)</span>
+<span class="sd">       Names of features seen during `fit`. Defined only when `X`</span>
+<span class="sd">       has feature names that are all strings.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1]  &quot;Combining investor views with market equilibrium&quot;,</span>
+<span class="sd">        The Journal of Fixed Income,</span>
+<span class="sd">        Fischer Black and Robert Litterman, 1991.</span>
+
+<span class="sd">    .. [2]  &quot;A step-by-step guide to the Black-Litterman model : Incorporating</span>
+<span class="sd">        user-specified confidence&quot;,</span>
+<span class="sd">        Forecasting Expected Returns in the Financial Markets,</span>
+<span class="sd">        Idzorek T, 2007.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">groups_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">views_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">picking_matrix_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">prior_estimator_</span><span class="p">:</span> <span class="n">BasePrior</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">views</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
+        <span class="n">groups</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prior_estimator</span><span class="p">:</span> <span class="n">BasePrior</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">view_confidences</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">risk_free_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">views</span> <span class="o">=</span> <span class="n">views</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span> <span class="o">=</span> <span class="n">prior_estimator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">=</span> <span class="n">tau</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">view_confidences</span> <span class="o">=</span> <span class="n">view_confidences</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">risk_free_rate</span> <span class="o">=</span> <span class="n">risk_free_rate</span>
+
+<div class="viewcode-block" id="BlackLitterman.fit">
+<a class="viewcode-back" href="../../../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BlackLitterman&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the Black &amp; Litterman estimator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X : array-like of shape (n_observations, n_assets)</span>
+<span class="sd">            Price returns of the assets.</span>
+
+<span class="sd">        y : Ignored</span>
+<span class="sd">            Not used, present for API consistency by convention.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self : BlackLitterman</span>
+<span class="sd">            Fitted estimator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(</span><span class="n">mu_estimator</span><span class="o">=</span><span class="n">EquilibriumMu</span><span class="p">()),</span>
+            <span class="n">check_type</span><span class="o">=</span><span class="n">BasePrior</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># fitting prior estimator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+        <span class="n">prior_mu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span><span class="o">.</span><span class="n">mu</span>
+        <span class="n">prior_covariance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span><span class="o">.</span><span class="n">covariance</span>
+        <span class="n">prior_returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span><span class="o">.</span><span class="n">returns</span>
+
+        <span class="c1"># we validate after all models have been fitted to keep features names</span>
+        <span class="c1"># information.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+        <span class="n">n_assets</span> <span class="o">=</span> <span class="n">prior_returns</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">views</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">views</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">views</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;`views` must be a 1D array, got a </span><span class="si">{</span><span class="n">views</span><span class="o">.</span><span class="n">ndim</span><span class="si">}</span><span class="s2">D array.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">groups</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;feature_names_in_&quot;</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;You must provide either `groups`&quot;</span>
+                    <span class="s2">&quot; or `X` as a DataFrame with asset names in columns&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groups_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names_in_</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">groups_</span> <span class="o">=</span> <span class="n">input_to_array</span><span class="p">(</span>
+                <span class="n">items</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groups</span><span class="p">,</span>
+                <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span>
+                <span class="n">fill_value</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="n">dim</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">assets_names</span><span class="o">=</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">feature_names_in_</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;feature_names_in_&quot;</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="kc">None</span>
+                <span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;groups&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">views_</span> <span class="o">=</span> <span class="n">equations_to_matrix</span><span class="p">(</span>
+            <span class="n">groups</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">groups_</span><span class="p">,</span>
+            <span class="n">equations</span><span class="o">=</span><span class="n">views</span><span class="p">,</span>
+            <span class="n">sum_to_one</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">raise_if_group_missing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">names</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;groups&quot;</span><span class="p">,</span> <span class="s2">&quot;views&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">view_confidences</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">omega</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tau</span>
+                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span>
+                    <span class="o">@</span> <span class="n">prior_covariance</span>
+                    <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span><span class="o">.</span><span class="n">T</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Idzorek&#39;s method using Jay Walters closed form solution</span>
+            <span class="n">view_confidences</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">view_confidences</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">view_confidences</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">view_confidences</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;all values of view_confidences must be between 0 and 1&quot;</span>
+                <span class="p">)</span>
+            <span class="n">view_confidences</span><span class="p">[</span><span class="n">view_confidences</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-16</span>
+            <span class="n">alphas</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">view_confidences</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">omega</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tau</span>
+                    <span class="o">*</span> <span class="n">alphas</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span>
+                    <span class="o">@</span> <span class="n">prior_covariance</span>
+                    <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span><span class="o">.</span><span class="n">T</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># solving linear system instead of matrix inversion</span>
+        <span class="n">_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">*</span> <span class="n">prior_covariance</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">_a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span> <span class="o">@</span> <span class="n">_v</span> <span class="o">+</span> <span class="n">omega</span>
+        <span class="n">_b</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">views_</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">picking_matrix_</span> <span class="o">@</span> <span class="n">prior_mu</span>
+        <span class="n">posterior_mu</span> <span class="o">=</span> <span class="n">prior_mu</span> <span class="o">+</span> <span class="n">_v</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">_a</span><span class="p">,</span> <span class="n">_b</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">risk_free_rate</span>
+        <span class="n">posterior_covariance</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">prior_covariance</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">tau</span> <span class="o">*</span> <span class="n">prior_covariance</span>
+            <span class="o">-</span> <span class="n">_v</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">_a</span><span class="p">,</span> <span class="n">_v</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_model_</span> <span class="o">=</span> <span class="n">PriorModel</span><span class="p">(</span>
+            <span class="n">mu</span><span class="o">=</span><span class="n">posterior_mu</span><span class="p">,</span> <span class="n">covariance</span><span class="o">=</span><span class="n">posterior_covariance</span><span class="p">,</span> <span class="n">returns</span><span class="o">=</span><span class="n">prior_returns</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

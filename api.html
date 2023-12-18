@@ -1,0 +1,1350 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="_static/favicon.ico" type="image/x-icon">
+    <link href="_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>API Reference &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="_static/documentation_options.js?v=f131489c"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api';</script>
+    <link rel="icon" href="_static/logo.svg"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="skfolio.measures.BaseMeasure" href="generated/skfolio.measures.BaseMeasure.html" />
+    <link rel="prev" title="Investment Horizon" href="auto_examples/8_data_preparation/plot_1_investment_horizon.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.BaseMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.BaseMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.PerfMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.PerfMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.RiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.ExtraRiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ExtraRiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.RatioMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RatioMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.mean.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.get_cumulative_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_cumulative_returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.get_drawdowns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_drawdowns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.semi_variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.standard_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.standard_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.semi_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.third_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.third_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.fourth_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.fourth_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.cvar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cvar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.mean_absolute_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean_absolute_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.value_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.value_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.worst_realization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.worst_realization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.first_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.first_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.entropic_risk_measure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.entropic_risk_measure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.evar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.evar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.drawdown_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.drawdown_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.cdar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cdar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.max_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.max_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.average_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.average_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.edar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.edar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.ulcer_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ulcer_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.gini_mean_difference.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.gini_mean_difference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.owa_gmd_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.owa_gmd_weights</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.portfolio.BasePortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.BasePortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.portfolio.Portfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.portfolio.MultiPeriodPortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.MultiPeriodPortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.population.Population.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code>.Population</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.EqualWeighted.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.EqualWeighted</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.InverseVolatility.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.InverseVolatility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.Random.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.Random</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.ObjectiveFunction.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ObjectiveFunction</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.ConvexOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ConvexOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.MeanRisk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MeanRisk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.RiskBudgeting.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.RiskBudgeting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.MaximumDiversification.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MaximumDiversification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.DistributionallyRobustCVaR.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.DistributionallyRobustCVaR</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.BaseHierarchicalOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseHierarchicalOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.HierarchicalRiskParity.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalRiskParity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.HierarchicalEqualRiskContribution.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalEqualRiskContribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.NestedClustersOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.NestedClustersOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.BaseComposition.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseComposition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.optimization.StackingOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.StackingOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.PriorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.PriorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.BasePrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BasePrior</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.EmpiricalPrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.EmpiricalPrior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.BlackLitterman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BlackLitterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.FactorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.FactorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.BaseLoadingMatrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BaseLoadingMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.prior.LoadingMatrixRegression.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.LoadingMatrixRegression</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.BaseMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseMu</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.EmpiricalMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.EWMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.ShrunkMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.EquilibriumMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EquilibriumMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.ShrunkMuMethods.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMuMethods</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.BaseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseCovariance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.EmpiricalCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.EWCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.GerberCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GerberCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.DenoiseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoiseCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.DenoteCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoteCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.LedoitWolf.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.LedoitWolf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.PearsonDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.PearsonDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.KendallDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.KendallDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.SpearmanDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.SpearmanDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.CovarianceDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.CovarianceDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.DistanceCorrelation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.DistanceCorrelation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.MutualInformation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.MutualInformation</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.cluster.HierarchicalClustering.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.HierarchicalClustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.cluster.LinkageMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.LinkageMethod</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.UncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.UncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.BaseMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.BaseCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalCovarianceUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.BootstrapMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.model_selection.CombinatorialPurgedCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.CombinatorialPurgedCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.model_selection.WalkForward.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.WalkForward</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.model_selection.cross_val_predict.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.cross_val_predict</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.metrics.make_scorer.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>.make_scorer</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.datasets.load_sp500_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.datasets.load_sp500_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.datasets.load_factors_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_factors_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.datasets.load_ftse100_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_ftse100_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.datasets.load_nasdaq_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_nasdaq_dataset</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.preprocessing.prices_to_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>.prices_to_returns</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.NBinsMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.NBinsMethod</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_freedman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_knuth</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.is_cholesky_dec.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.is_cholesky_dec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_square.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_square</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_symmetric.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_symmetric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_distance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.cov_nearest.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_nearest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.cov_to_corr.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_to_corr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.corr_to_cov.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.corr_to_cov</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.commutation_matrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.commutation_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.compute_optimal_n_clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.rand_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.utils.stats.rand_weights_dirichlet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights_dirichlet</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">API Reference</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="api-reference">
+<span id="api"></span><h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h1>
+<p>This is the class and function reference of <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>. Please refer to
+the <a class="reference internal" href="user_guide/index.html#user-guide"><span class="std std-ref">full user guide</span></a> for further details, as the class and
+function raw specifications may not be enough to give full guidelines on their
+uses.</p>
+<section id="module-skfolio.measures">
+<span id="skfolio-measures-measures"></span><span id="measures-ref"></span><h2><a class="reference internal" href="#module-skfolio.measures" title="skfolio.measures"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code></a>: Measures<a class="headerlink" href="#module-skfolio.measures" title="Link to this heading">#</a></h2>
+<p>Module that includes all Measures functions used across <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>.</p>
+<section id="base-classe">
+<h3>Base Classe<a class="headerlink" href="#base-classe" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.BaseMeasure.html#skfolio.measures.BaseMeasure" title="skfolio.measures.BaseMeasure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.BaseMeasure</span></code></a></p></td>
+<td><p>Base Enum of measures</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="classes">
+<h3>Classes<a class="headerlink" href="#classes" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.PerfMeasure.html#skfolio.measures.PerfMeasure" title="skfolio.measures.PerfMeasure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.PerfMeasure</span></code></a></p></td>
+<td><p>Enumeration of performance measures</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.RiskMeasure.html#skfolio.measures.RiskMeasure" title="skfolio.measures.RiskMeasure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.RiskMeasure</span></code></a></p></td>
+<td><p>Enumeration of risk measures</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.ExtraRiskMeasure.html#skfolio.measures.ExtraRiskMeasure" title="skfolio.measures.ExtraRiskMeasure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.ExtraRiskMeasure</span></code></a></p></td>
+<td><p>Enumeration of other risk measures not used in convex optimization</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.RatioMeasure.html#skfolio.measures.RatioMeasure" title="skfolio.measures.RatioMeasure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.RatioMeasure</span></code></a></p></td>
+<td><p>Enumeration of ratio measures</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h3>Functions<a class="headerlink" href="#functions" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.mean.html#skfolio.measures.mean" title="skfolio.measures.mean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.mean</span></code></a>(returns)</p></td>
+<td><p>Compute the mean.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.get_cumulative_returns.html#skfolio.measures.get_cumulative_returns" title="skfolio.measures.get_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.get_cumulative_returns</span></code></a>(returns[, ...])</p></td>
+<td><p>Compute the cumulative returns from the returns.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.get_drawdowns.html#skfolio.measures.get_drawdowns" title="skfolio.measures.get_drawdowns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.get_drawdowns</span></code></a>(returns[, compounded])</p></td>
+<td><p>Compute the drawdowns' series from the returns.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.variance.html#skfolio.measures.variance" title="skfolio.measures.variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.variance</span></code></a>(returns)</p></td>
+<td><p>Compute the variance (second moment).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.semi_variance.html#skfolio.measures.semi_variance" title="skfolio.measures.semi_variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.semi_variance</span></code></a>(returns[, ...])</p></td>
+<td><p>Compute the semi-variance (second lower partial moment).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.standard_deviation.html#skfolio.measures.standard_deviation" title="skfolio.measures.standard_deviation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.standard_deviation</span></code></a>(returns)</p></td>
+<td><p>Compute the standard-deviation (square root of the second moment).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.semi_deviation.html#skfolio.measures.semi_deviation" title="skfolio.measures.semi_deviation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.semi_deviation</span></code></a>(returns[, ...])</p></td>
+<td><p>Compute the semi standard-deviation (semi-deviation) (square root of the second lower partial moment).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.third_central_moment.html#skfolio.measures.third_central_moment" title="skfolio.measures.third_central_moment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.third_central_moment</span></code></a>(returns)</p></td>
+<td><p>Compute the third central moment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.fourth_central_moment.html#skfolio.measures.fourth_central_moment" title="skfolio.measures.fourth_central_moment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.fourth_central_moment</span></code></a>(returns)</p></td>
+<td><p>Compute the Fourth central moment.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.fourth_lower_partial_moment.html#skfolio.measures.fourth_lower_partial_moment" title="skfolio.measures.fourth_lower_partial_moment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.fourth_lower_partial_moment</span></code></a>(returns)</p></td>
+<td><p>Compute the fourth lower partial moment.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.cvar.html#skfolio.measures.cvar" title="skfolio.measures.cvar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.cvar</span></code></a>(returns[, beta])</p></td>
+<td><p>Compute the historical CVaR (conditional value at risk).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.mean_absolute_deviation.html#skfolio.measures.mean_absolute_deviation" title="skfolio.measures.mean_absolute_deviation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.mean_absolute_deviation</span></code></a>(returns[, ...])</p></td>
+<td><p>Compute the mean absolute deviation (MAD).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.value_at_risk.html#skfolio.measures.value_at_risk" title="skfolio.measures.value_at_risk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.value_at_risk</span></code></a>(returns[, beta])</p></td>
+<td><p>Compute the historical value at risk (VaR).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.worst_realization.html#skfolio.measures.worst_realization" title="skfolio.measures.worst_realization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.worst_realization</span></code></a>(returns)</p></td>
+<td><p>Compute the worst realization (worst return).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.first_lower_partial_moment.html#skfolio.measures.first_lower_partial_moment" title="skfolio.measures.first_lower_partial_moment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.first_lower_partial_moment</span></code></a>(returns)</p></td>
+<td><p>Compute the first lower partial moment.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.entropic_risk_measure.html#skfolio.measures.entropic_risk_measure" title="skfolio.measures.entropic_risk_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.entropic_risk_measure</span></code></a>(returns[, ...])</p></td>
+<td><p>Compute the entropic risk measure.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.evar.html#skfolio.measures.evar" title="skfolio.measures.evar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.evar</span></code></a>(returns[, beta])</p></td>
+<td><p>Compute the EVaR (entropic value at risk) and its associated risk aversion.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.drawdown_at_risk.html#skfolio.measures.drawdown_at_risk" title="skfolio.measures.drawdown_at_risk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.drawdown_at_risk</span></code></a>(drawdowns[, beta])</p></td>
+<td><p>Compute the Drawdown at risk.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.cdar.html#skfolio.measures.cdar" title="skfolio.measures.cdar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.cdar</span></code></a>(drawdowns[, beta])</p></td>
+<td><p>Compute the historical CDaR (conditional drawdown at risk).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.max_drawdown.html#skfolio.measures.max_drawdown" title="skfolio.measures.max_drawdown"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.max_drawdown</span></code></a>(drawdowns)</p></td>
+<td><p>Compute the maximum drawdown.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.average_drawdown.html#skfolio.measures.average_drawdown" title="skfolio.measures.average_drawdown"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.average_drawdown</span></code></a>(drawdowns)</p></td>
+<td><p>Compute the average drawdown.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.edar.html#skfolio.measures.edar" title="skfolio.measures.edar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.edar</span></code></a>(drawdowns[, beta])</p></td>
+<td><p>Compute the EDaR (entropic drawdown at risk).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.ulcer_index.html#skfolio.measures.ulcer_index" title="skfolio.measures.ulcer_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.ulcer_index</span></code></a>(drawdowns)</p></td>
+<td><p>Compute the Ulcer index.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.gini_mean_difference.html#skfolio.measures.gini_mean_difference" title="skfolio.measures.gini_mean_difference"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.gini_mean_difference</span></code></a>(returns)</p></td>
+<td><p>Compute the Gini mean difference (GMD).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.owa_gmd_weights.html#skfolio.measures.owa_gmd_weights" title="skfolio.measures.owa_gmd_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.owa_gmd_weights</span></code></a>(n_observations)</p></td>
+<td><p>Compute the OWA weights used for the Gini mean difference (GMD) computation.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.portfolio">
+<span id="skfolio-portfolio-portfolio"></span><span id="portfolio-ref"></span><h2><a class="reference internal" href="#module-skfolio.portfolio" title="skfolio.portfolio"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code></a>: Portfolio<a class="headerlink" href="#module-skfolio.portfolio" title="Link to this heading">#</a></h2>
+<p>Portfolio module.
+<code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> and <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> objects are returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of
+Optimization estimators.
+They need to be homogenous to the convex optimization problems meaning that <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>
+is the dot product of the assets weights with the assets returns and
+<code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> is a list of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.</p>
+<section id="id1">
+<h3>Base Classe<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">portfolio.BasePortfolio</span></code></a></p></td>
+<td><p>Base Portfolio class for all portfolios in skfolio.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h3>Classes<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">portfolio.Portfolio</span></code></a></p></td>
+<td><p>Portfolio class.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">portfolio.MultiPeriodPortfolio</span></code></a></p></td>
+<td><p>Multi-Period Portfolio class.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.population">
+<span id="skfolio-population-population"></span><span id="population-ref"></span><h2><a class="reference internal" href="#module-skfolio.population" title="skfolio.population"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code></a>: Population<a class="headerlink" href="#module-skfolio.population" title="Link to this heading">#</a></h2>
+<section id="id3">
+<h3>Classes<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.population.Population.html#skfolio.population.Population" title="skfolio.population.Population"><code class="xref py py-obj docutils literal notranslate"><span class="pre">population.Population</span></code></a></p></td>
+<td><p>Population Class.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.optimization.naive">
+<span id="skfolio-optimization-naive-naive-optimization-estimators"></span><span id="optimization-naive-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.naive" title="skfolio.optimization.naive"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.naive</span></code></a>: Naive Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.naive" title="Link to this heading">#</a></h2>
+<section id="id4">
+<h3>Classes<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.EqualWeighted.html#skfolio.optimization.EqualWeighted" title="skfolio.optimization.EqualWeighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.EqualWeighted</span></code></a></p></td>
+<td><p>Equally Weighted estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.InverseVolatility.html#skfolio.optimization.InverseVolatility" title="skfolio.optimization.InverseVolatility"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.InverseVolatility</span></code></a></p></td>
+<td><p>Inverse Volatility estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.Random.html#skfolio.optimization.Random" title="skfolio.optimization.Random"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.Random</span></code></a></p></td>
+<td><p>Random weight estimator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.optimization.convex">
+<span id="skfolio-optimization-convex-convex-optimization-estimators"></span><span id="optimization-convex-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.convex" title="skfolio.optimization.convex"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.convex</span></code></a>: Convex Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.convex" title="Link to this heading">#</a></h2>
+<section id="enum">
+<h3>Enum<a class="headerlink" href="#enum" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.ObjectiveFunction.html#skfolio.optimization.ObjectiveFunction" title="skfolio.optimization.ObjectiveFunction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.ObjectiveFunction</span></code></a></p></td>
+<td><p>Enumeration of objective functions.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>Classes<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.ConvexOptimization.html#skfolio.optimization.ConvexOptimization" title="skfolio.optimization.ConvexOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.ConvexOptimization</span></code></a></p></td>
+<td><p>Base class for all convex optimization estimators in skfolio.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.MeanRisk</span></code></a></p></td>
+<td><p>Mean-Risk Optimization estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.RiskBudgeting.html#skfolio.optimization.RiskBudgeting" title="skfolio.optimization.RiskBudgeting"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.RiskBudgeting</span></code></a></p></td>
+<td><p>Risk Budgeting Optimization estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.MaximumDiversification.html#skfolio.optimization.MaximumDiversification" title="skfolio.optimization.MaximumDiversification"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.MaximumDiversification</span></code></a></p></td>
+<td><p>Maximum Diversification Optimization estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.DistributionallyRobustCVaR.html#skfolio.optimization.DistributionallyRobustCVaR" title="skfolio.optimization.DistributionallyRobustCVaR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.DistributionallyRobustCVaR</span></code></a></p></td>
+<td><p>Distributionally Robust CVaR.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.optimization.cluster">
+<span id="skfolio-optimization-cluster-clustering-optimization-estimators"></span><span id="optimization-cluster-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.cluster" title="skfolio.optimization.cluster"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.cluster</span></code></a>: Clustering Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.cluster" title="Link to this heading">#</a></h2>
+<section id="id6">
+<h3>Classes<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.BaseHierarchicalOptimization.html#skfolio.optimization.BaseHierarchicalOptimization" title="skfolio.optimization.BaseHierarchicalOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.BaseHierarchicalOptimization</span></code></a></p></td>
+<td><p>Base Hierarchical Clustering Optimization estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.HierarchicalRiskParity.html#skfolio.optimization.HierarchicalRiskParity" title="skfolio.optimization.HierarchicalRiskParity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.HierarchicalRiskParity</span></code></a></p></td>
+<td><p>Hierarchical Risk Parity estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.HierarchicalEqualRiskContribution.html#skfolio.optimization.HierarchicalEqualRiskContribution" title="skfolio.optimization.HierarchicalEqualRiskContribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.HierarchicalEqualRiskContribution</span></code></a></p></td>
+<td><p>Hierarchical Equal Risk Contribution estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.NestedClustersOptimization.html#skfolio.optimization.NestedClustersOptimization" title="skfolio.optimization.NestedClustersOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.NestedClustersOptimization</span></code></a></p></td>
+<td><p>Nested Clusters Optimization estimator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio.optimization.ensemble">
+<span id="skfolio-optimization-ensemble-ensemble-optimization-estimators"></span><span id="optimization-ensemble-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.ensemble" title="skfolio.optimization.ensemble"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.ensemble</span></code></a>: Ensemble Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.ensemble" title="Link to this heading">#</a></h2>
+<section id="id7">
+<h3>Classes<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.BaseComposition.html#skfolio.optimization.BaseComposition" title="skfolio.optimization.BaseComposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.BaseComposition</span></code></a></p></td>
+<td><p>Handles parameter management for ensemble estimators.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.optimization.StackingOptimization.html#skfolio.optimization.StackingOptimization" title="skfolio.optimization.StackingOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.StackingOptimization</span></code></a></p></td>
+<td><p>Stack of optimizations with a final optimization.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-skfolio">
+<span id="skfolio-prior-prior-estimators"></span><span id="prior-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>: Prior Estimators<a class="headerlink" href="#module-skfolio" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="model-dataclass">
+<h3>Model Dataclass<a class="headerlink" href="#model-dataclass" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.PriorModel</span></code></a></p></td>
+<td><p>Prior model dataclass.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="base-class">
+<h3>Base Class<a class="headerlink" href="#base-class" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.BasePrior.html#skfolio.prior.BasePrior" title="skfolio.prior.BasePrior"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.BasePrior</span></code></a></p></td>
+<td><p>Base class for all prior estimators in skfolio.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id8">
+<h3>Classes<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.EmpiricalPrior.html#skfolio.prior.EmpiricalPrior" title="skfolio.prior.EmpiricalPrior"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.EmpiricalPrior</span></code></a></p></td>
+<td><p>Empirical Prior estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.BlackLitterman</span></code></a></p></td>
+<td><p>Black &amp; Litterman Prior Model estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.FactorModel.html#skfolio.prior.FactorModel" title="skfolio.prior.FactorModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.FactorModel</span></code></a></p></td>
+<td><p>Factor Model estimator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="loading-matrix-classes-for-factor-models">
+<h3>Loading Matrix Classes for Factor Models<a class="headerlink" href="#loading-matrix-classes-for-factor-models" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.BaseLoadingMatrix.html#skfolio.prior.BaseLoadingMatrix" title="skfolio.prior.BaseLoadingMatrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.BaseLoadingMatrix</span></code></a></p></td>
+<td><p>Base class for all Loading Matrix estimators.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.prior.LoadingMatrixRegression.html#skfolio.prior.LoadingMatrixRegression" title="skfolio.prior.LoadingMatrixRegression"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.LoadingMatrixRegression</span></code></a></p></td>
+<td><p>Loading Matrix Regression estimator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-0">
+<span id="skfolio-moments-mu-mu-estimators"></span><span id="mu-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments.mu</span></code>: Mu Estimators<a class="headerlink" href="#module-0" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id9">
+<h3>Base Class<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.BaseMu.html#skfolio.moments.BaseMu" title="skfolio.moments.BaseMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.BaseMu</span></code></a></p></td>
+<td><p>Base class for all expected returns estimators in skfolio.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id10">
+<h3>Classes<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.EmpiricalMu.html#skfolio.moments.EmpiricalMu" title="skfolio.moments.EmpiricalMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EmpiricalMu</span></code></a></p></td>
+<td><p>Empirical Expected Returns (Mu) estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.EWMu.html#skfolio.moments.EWMu" title="skfolio.moments.EWMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EWMu</span></code></a></p></td>
+<td><p>Exponentially Weighted Expected Returns (Mu) estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.ShrunkMu.html#skfolio.moments.ShrunkMu" title="skfolio.moments.ShrunkMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.ShrunkMu</span></code></a></p></td>
+<td><p>Shrinkage Expected Returns (Mu) estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.EquilibriumMu.html#skfolio.moments.EquilibriumMu" title="skfolio.moments.EquilibriumMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EquilibriumMu</span></code></a></p></td>
+<td><p>Equilibrium Expected Returns (Mu) estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.ShrunkMuMethods.html#skfolio.moments.ShrunkMuMethods" title="skfolio.moments.ShrunkMuMethods"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.ShrunkMuMethods</span></code></a></p></td>
+<td><p>Shrinkage methods for the ShrunkMu estimator</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-1">
+<span id="skfolio-moments-covariance-covariance-estimators"></span><span id="covariance-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments.covariance</span></code>: Covariance Estimators<a class="headerlink" href="#module-1" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id11">
+<h3>Base Class<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.BaseCovariance.html#skfolio.moments.BaseCovariance" title="skfolio.moments.BaseCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.BaseCovariance</span></code></a></p></td>
+<td><p>Base class for all covariance estimators in <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id12">
+<h3>Classes<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.EmpiricalCovariance.html#skfolio.moments.EmpiricalCovariance" title="skfolio.moments.EmpiricalCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EmpiricalCovariance</span></code></a></p></td>
+<td><p>Empirical covariance estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.EWCovariance.html#skfolio.moments.EWCovariance" title="skfolio.moments.EWCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EWCovariance</span></code></a></p></td>
+<td><p>Exponentially Weighted Covariance estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.GerberCovariance.html#skfolio.moments.GerberCovariance" title="skfolio.moments.GerberCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.GerberCovariance</span></code></a></p></td>
+<td><p>Gerber covariance estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.DenoiseCovariance.html#skfolio.moments.DenoiseCovariance" title="skfolio.moments.DenoiseCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.DenoiseCovariance</span></code></a></p></td>
+<td><p>Covariance Denoising estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.DenoteCovariance.html#skfolio.moments.DenoteCovariance" title="skfolio.moments.DenoteCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.DenoteCovariance</span></code></a></p></td>
+<td><p>Covariance Denoting estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.LedoitWolf.html#skfolio.moments.LedoitWolf" title="skfolio.moments.LedoitWolf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.LedoitWolf</span></code></a></p></td>
+<td><p>LedoitWolf Estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.OAS.html#skfolio.moments.OAS" title="skfolio.moments.OAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.OAS</span></code></a></p></td>
+<td><p>Oracle Approximating Shrinkage Estimator as proposed in <a class="reference internal" href="generated/skfolio.moments.OAS.html#re9a22b087643-1" id="id13"><span>[Re9a22b087643-1]</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.ShrunkCovariance.html#skfolio.moments.ShrunkCovariance" title="skfolio.moments.ShrunkCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.ShrunkCovariance</span></code></a></p></td>
+<td><p>Covariance estimator with shrinkage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.GraphicalLassoCV.html#skfolio.moments.GraphicalLassoCV" title="skfolio.moments.GraphicalLassoCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.GraphicalLassoCV</span></code></a></p></td>
+<td><p>Sparse inverse covariance with cross-validated choice of the l1 penalty.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-2">
+<span id="skfolio-distance-distance-estimators"></span><span id="distance-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>: Distance Estimators<a class="headerlink" href="#module-2" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id14">
+<h3>Base Class<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.BaseDistance.html#skfolio.distance.BaseDistance" title="skfolio.distance.BaseDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.BaseDistance</span></code></a></p></td>
+<td><p>Base class for all distance estimators in skfolio.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id15">
+<h3>Classes<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.PearsonDistance.html#skfolio.distance.PearsonDistance" title="skfolio.distance.PearsonDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.PearsonDistance</span></code></a></p></td>
+<td><p>Pearson Distance estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.distance.KendallDistance.html#skfolio.distance.KendallDistance" title="skfolio.distance.KendallDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.KendallDistance</span></code></a></p></td>
+<td><p>Kendall Distance estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.SpearmanDistance.html#skfolio.distance.SpearmanDistance" title="skfolio.distance.SpearmanDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.SpearmanDistance</span></code></a></p></td>
+<td><p>Spearman Distance estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.distance.CovarianceDistance.html#skfolio.distance.CovarianceDistance" title="skfolio.distance.CovarianceDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.CovarianceDistance</span></code></a></p></td>
+<td><p>Covariance Distance estimator.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.DistanceCorrelation.html#skfolio.distance.DistanceCorrelation" title="skfolio.distance.DistanceCorrelation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.DistanceCorrelation</span></code></a></p></td>
+<td><p>Distance Correlation estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.distance.MutualInformation.html#skfolio.distance.MutualInformation" title="skfolio.distance.MutualInformation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.MutualInformation</span></code></a></p></td>
+<td><p>Mutual Information estimator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-3">
+<span id="skfolio-cluster-cluster-estimators"></span><span id="cluster-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>: Cluster Estimators<a class="headerlink" href="#module-3" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id16">
+<h3>Classes<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.cluster.HierarchicalClustering.html#skfolio.cluster.HierarchicalClustering" title="skfolio.cluster.HierarchicalClustering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster.HierarchicalClustering</span></code></a></p></td>
+<td><p>Hierarchical Clustering.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.cluster.LinkageMethod.html#skfolio.cluster.LinkageMethod" title="skfolio.cluster.LinkageMethod"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster.LinkageMethod</span></code></a></p></td>
+<td><p>Methods for calculating the distance between clusters in the linkage matrix.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-4">
+<span id="skfolio-uncertainty-set-uncertainty-set-estimators"></span><span id="uncertainty-set-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>: Uncertainty set Estimators<a class="headerlink" href="#module-4" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id17">
+<h3>Model Dataclass<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.UncertaintySet.html#skfolio.uncertainty_set.UncertaintySet" title="skfolio.uncertainty_set.UncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.UncertaintySet</span></code></a></p></td>
+<td><p>Ellipsoidal uncertainty set dataclass.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="base-classes">
+<h3>Base Classes<a class="headerlink" href="#base-classes" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.BaseMuUncertaintySet.html#skfolio.uncertainty_set.BaseMuUncertaintySet" title="skfolio.uncertainty_set.BaseMuUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.BaseMuUncertaintySet</span></code></a></p></td>
+<td><p>Base class for all Mu Uncertainty Set estimators in <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.BaseCovarianceUncertaintySet.html#skfolio.uncertainty_set.BaseCovarianceUncertaintySet" title="skfolio.uncertainty_set.BaseCovarianceUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.BaseCovarianceUncertaintySet</span></code></a></p></td>
+<td><p>Base class for all Covariance Uncertainty Set estimators in <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id18">
+<h3>Classes<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html#skfolio.uncertainty_set.EmpiricalMuUncertaintySet" title="skfolio.uncertainty_set.EmpiricalMuUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.EmpiricalMuUncertaintySet</span></code></a></p></td>
+<td><p>Empirical Mu Uncertainty Set.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html#skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet" title="skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.EmpiricalCovarianceUncertaintySet</span></code></a></p></td>
+<td><p>Empirical Covariance Uncertainty set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.BootstrapMuUncertaintySet.html#skfolio.uncertainty_set.BootstrapMuUncertaintySet" title="skfolio.uncertainty_set.BootstrapMuUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.BootstrapMuUncertaintySet</span></code></a></p></td>
+<td><p>Bootstrap Mu Uncertainty set.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html#skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet" title="skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.BootstrapCovarianceUncertaintySet</span></code></a></p></td>
+<td><p>Bootstrap Covariance Uncertainty set.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-5">
+<span id="skfolio-pre-selection-pre-selection-transformers"></span><span id="pre-selection-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>: Pre-selection Transformers<a class="headerlink" href="#module-5" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id19">
+<h3>Classes<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.DropCorrelated.html#skfolio.pre_selection.DropCorrelated" title="skfolio.pre_selection.DropCorrelated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.DropCorrelated</span></code></a></p></td>
+<td><p>Transformer for dropping highly correlated assets.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.SelectKExtremes.html#skfolio.pre_selection.SelectKExtremes" title="skfolio.pre_selection.SelectKExtremes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.SelectKExtremes</span></code></a></p></td>
+<td><p>Transformer for selecting the <code class="docutils literal notranslate"><span class="pre">k</span></code> best or worst assets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonDominated.html#skfolio.pre_selection.SelectNonDominated" title="skfolio.pre_selection.SelectNonDominated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.SelectNonDominated</span></code></a></p></td>
+<td><p>Transformer for selecting non dominated assets.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-6">
+<span id="skfolio-model-selection-model-selection"></span><span id="model-selection-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>: Model Selection<a class="headerlink" href="#module-6" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id20">
+<h3>Base Classes<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.BaseCombinatorialCV.html#skfolio.model_selection.BaseCombinatorialCV" title="skfolio.model_selection.BaseCombinatorialCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.BaseCombinatorialCV</span></code></a></p></td>
+<td><p>Base class for all combinatorial cross-validators.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id21">
+<h3>Classes<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.CombinatorialPurgedCV.html#skfolio.model_selection.CombinatorialPurgedCV" title="skfolio.model_selection.CombinatorialPurgedCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.CombinatorialPurgedCV</span></code></a></p></td>
+<td><p>Combinatorial Purged Cross-Validation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.model_selection.WalkForward.html#skfolio.model_selection.WalkForward" title="skfolio.model_selection.WalkForward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.WalkForward</span></code></a></p></td>
+<td><p>Walk Forward cross-validator.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id22">
+<h3>Functions<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.cross_val_predict</span></code></a>(estimator, X)</p></td>
+<td><p>Generate cross-validated <code class="docutils literal notranslate"><span class="pre">Portfolios</span></code> estimates.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="module-7">
+<span id="skfolio-metrics-metrics"></span><span id="metrics-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>: Metrics<a class="headerlink" href="#module-7" title="Link to this heading">#</a></h2>
+<p>skfolio package</p>
+<section id="id23">
+<h3>Functions<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.metrics.make_scorer.html#skfolio.metrics.make_scorer" title="skfolio.metrics.make_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics.make_scorer</span></code></a>(score_func[, ...])</p></td>
+<td><p>Make a scorer from a <a class="reference internal" href="#measures-ref"><span class="std std-ref">measure</span></a> or from a custom score function.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="skfolio-datasets-datasets">
+<span id="datasets-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>: Datasets<a class="headerlink" href="#skfolio-datasets-datasets" title="Link to this heading">#</a></h2>
+<section id="id24">
+<h3>Functions<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_sp500_dataset.html#skfolio.datasets.load_sp500_dataset" title="skfolio.datasets.load_sp500_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_sp500_dataset</span></code></a>()</p></td>
+<td><p>Load the prices of 20 assets from the S&amp;P 500 Index composition.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_sp500_index.html#skfolio.datasets.load_sp500_index" title="skfolio.datasets.load_sp500_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_sp500_index</span></code></a>()</p></td>
+<td><p>Load the prices of the S&amp;P 500 Index.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_factors_dataset.html#skfolio.datasets.load_factors_dataset" title="skfolio.datasets.load_factors_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_factors_dataset</span></code></a>()</p></td>
+<td><p>Load the prices of 5 factor ETFs.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_ftse100_dataset.html#skfolio.datasets.load_ftse100_dataset" title="skfolio.datasets.load_ftse100_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_ftse100_dataset</span></code></a>([data_home, ...])</p></td>
+<td><p>Load the prices of 64 assets from the FTSE 100 Index composition.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_nasdaq_dataset.html#skfolio.datasets.load_nasdaq_dataset" title="skfolio.datasets.load_nasdaq_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_nasdaq_dataset</span></code></a>([data_home, ...])</p></td>
+<td><p>Load the prices of 1455 assets from the NASDAQ Composite Index.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="skfolio-preprocessing-preprocessing">
+<span id="preprocessing-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>: Preprocessing<a class="headerlink" href="#skfolio-preprocessing-preprocessing" title="Link to this heading">#</a></h2>
+<section id="id25">
+<h3>Functions<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.preprocessing.prices_to_returns.html#skfolio.preprocessing.prices_to_returns" title="skfolio.preprocessing.prices_to_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preprocessing.prices_to_returns</span></code></a>(X[, y, ...])</p></td>
+<td><p>Transforms a DataFrame of prices to linear or logarithmic returns.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="skfolio-utils-stats-stats">
+<span id="stats-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>: Stats<a class="headerlink" href="#skfolio-utils-stats-stats" title="Link to this heading">#</a></h2>
+<section id="id26">
+<h3>Functions<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.NBinsMethod.html#skfolio.utils.stats.NBinsMethod" title="skfolio.utils.stats.NBinsMethod"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.NBinsMethod</span></code></a>(value)</p></td>
+<td><p>Enumeration of the Number of Bins Methods</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html#skfolio.utils.stats.n_bins_freedman" title="skfolio.utils.stats.n_bins_freedman"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.n_bins_freedman</span></code></a>(x)</p></td>
+<td><p>Compute the optimal histogram bin size using the Freedman-Diaconis rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html#r8d5b646da1d1-1" id="id27"><span>[R8d5b646da1d1-1]</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html#skfolio.utils.stats.n_bins_knuth" title="skfolio.utils.stats.n_bins_knuth"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.n_bins_knuth</span></code></a>(x)</p></td>
+<td><p>Compute the optimal histogram bin size using Knuth's rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html#r8c3fe88ee915-1" id="id28"><span>[R8c3fe88ee915-1]</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.is_cholesky_dec.html#skfolio.utils.stats.is_cholesky_dec" title="skfolio.utils.stats.is_cholesky_dec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.is_cholesky_dec</span></code></a>(x)</p></td>
+<td><p>Returns True if Cholesky decomposition can be computed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_square.html#skfolio.utils.stats.assert_is_square" title="skfolio.utils.stats.assert_is_square"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.assert_is_square</span></code></a>(x)</p></td>
+<td><p>Raises an error if the matrix is not square.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_symmetric.html#skfolio.utils.stats.assert_is_symmetric" title="skfolio.utils.stats.assert_is_symmetric"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.assert_is_symmetric</span></code></a>(x)</p></td>
+<td><p>Raises an error if the matrix is not symmetric.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.assert_is_distance.html#skfolio.utils.stats.assert_is_distance" title="skfolio.utils.stats.assert_is_distance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.assert_is_distance</span></code></a>(x)</p></td>
+<td><p>Raises an error if the matrix is not a distance matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.cov_nearest.html#skfolio.utils.stats.cov_nearest" title="skfolio.utils.stats.cov_nearest"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.cov_nearest</span></code></a>(cov[, higham, ...])</p></td>
+<td><p>Compute the nearest covariance matrix that is positive definite and with a cholesky decomposition than can be computed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.cov_to_corr.html#skfolio.utils.stats.cov_to_corr" title="skfolio.utils.stats.cov_to_corr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.cov_to_corr</span></code></a>(cov)</p></td>
+<td><p>Convert a covariance matrix to a correlation matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.corr_to_cov.html#skfolio.utils.stats.corr_to_cov" title="skfolio.utils.stats.corr_to_cov"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.corr_to_cov</span></code></a>(corr, std)</p></td>
+<td><p>Convert a correlation matrix to a covariance matrix given its standard-deviation vector.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.commutation_matrix.html#skfolio.utils.stats.commutation_matrix" title="skfolio.utils.stats.commutation_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.commutation_matrix</span></code></a>(x)</p></td>
+<td><p>Compute the commutation matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html#skfolio.utils.stats.compute_optimal_n_clusters" title="skfolio.utils.stats.compute_optimal_n_clusters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.compute_optimal_n_clusters</span></code></a>(distance, ...)</p></td>
+<td><p>Compute the optimal number of clusters based on Two-Order Difference to Gap Statistic <a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html#re0e718a4c413-1" id="id29"><span>[Re0e718a4c413-1]</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.rand_weights.html#skfolio.utils.stats.rand_weights" title="skfolio.utils.stats.rand_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.rand_weights</span></code></a>(n[, zeros])</p></td>
+<td><p>Produces n random weights that sum to one from an uniform distribution (non-uniform distribution over a simplex)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.rand_weights_dirichlet.html#skfolio.utils.stats.rand_weights_dirichlet" title="skfolio.utils.stats.rand_weights_dirichlet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.rand_weights_dirichlet</span></code></a>(n)</p></td>
+<td><p>Produces n random weights that sum to one from a dirichlet distribution (uniform distribution over a simplex)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="auto_examples/8_data_preparation/plot_1_investment_horizon.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Investment Horizon</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="generated/skfolio.measures.BaseMeasure.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.BaseMeasure</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

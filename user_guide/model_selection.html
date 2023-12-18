@@ -1,0 +1,615 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>Model Selection &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/model_selection';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Hyper-Parameters Tuning" href="hyper_parameters_tuning.html" />
+    <link rel="prev" title="Pre-Selection Transformers" href="pre_selection.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimization.html">Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="portfolio.html">Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="population.html">Population</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prior.html">Prior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="expected_returns.html">Expected Returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="covariance.html">Covariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distance.html">Distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uncertainty_set.html">Uncertainty Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre_selection.html">Pre-Selection</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Model Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hyper_parameters_tuning.html">Hyper-Parameters Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_preparation.html">Data Preparation</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Model Selection</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="model-selection">
+<span id="id1"></span><h1>Model Selection<a class="headerlink" href="#model-selection" title="Link to this heading">#</a></h1>
+<p>The Model Selection module extend the <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> by adding additional
+methods tailored for portfolio selection.</p>
+<section id="cross-validation-prediction">
+<span id="cross-validation"></span><h2>Cross-Validation Prediction<a class="headerlink" href="#cross-validation-prediction" title="Link to this heading">#</a></h2>
+<p>Every <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> estimator is compatible with <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.cross_val_predict</span></code>.
+We also implement our own <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">cross_val_predict</span></code></a> for enhanced integration
+with <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> and <code class="docutils literal notranslate"><span class="pre">Population</span></code> objects as well as compatibility with
+<code class="docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code>.</p>
+<div class="admonition danger" id="data-leakage">
+<p class="admonition-title">Danger</p>
+<p>When using <code class="docutils literal notranslate"><span class="pre">scikit-learn</span></code> selection tools like <code class="docutils literal notranslate"><span class="pre">KFold</span></code> or <code class="docutils literal notranslate"><span class="pre">train_test_split</span></code>, ensure
+that the parameter <code class="docutils literal notranslate"><span class="pre">shuffle</span></code> is set to <code class="docutils literal notranslate"><span class="pre">False</span></code> to avoid data leakage. Financial
+features often incorporate series that exhibit serial correlation (like ARMA
+processes) and shuffling the data will lead to leakage from the test set to the
+training set.</p>
+</div>
+<p>In <code class="docutils literal notranslate"><span class="pre">cross_val_predict</span></code>, the data is split according to the <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter.
+The optimization estimator is fitted on the training set and portfolios are predicted on
+the corresponding testing set.</p>
+<p>For non-combinatorial cross-validation like <code class="docutils literal notranslate"><span class="pre">Kfold</span></code>, the output is the predicted
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> where each
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code> corresponds to the prediction on each train/test
+pair (K portfolios for <code class="docutils literal notranslate"><span class="pre">Kfold</span></code>).</p>
+<p>For combinatorial cross-validation like <code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgeCV</span></code>, the output is the
+predicted <code class="xref py py-class docutils literal notranslate"><span class="pre">Population</span></code> of multiple
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code>. This is because each test outputs are a
+collection of multiple paths instead of one single path.</p>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">KFold</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.model_selection</span> <span class="kn">import</span> <span class="n">CombinatorialPurgedCV</span><span class="p">,</span> <span class="n">cross_val_predict</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+
+<span class="c1"># One single path -&gt; pred is a MultiPeriodPortfolio</span>
+<span class="n">pred</span> <span class="o">=</span> <span class="n">cross_val_predict</span><span class="p">(</span><span class="n">MeanRisk</span><span class="p">(),</span> <span class="n">X</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pred</span><span class="p">)</span>  <span class="c1"># predicted returns vector</span>
+
+<span class="c1"># Multiple paths -&gt; pred is a Population of MultiPeriodPortfolio</span>
+<span class="n">pred</span> <span class="o">=</span> <span class="n">cross_val_predict</span><span class="p">(</span><span class="n">MeanRisk</span><span class="p">(),</span> <span class="n">X</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">CombinatorialPurgedCV</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pred</span><span class="p">))</span>  <span class="c1"># predicted returns matrix</span>
+</pre></div>
+</div>
+</section>
+<section id="combinatorial-purged-cross-validation">
+<h2>Combinatorial Purged Cross-Validation<a class="headerlink" href="#combinatorial-purged-cross-validation" title="Link to this heading">#</a></h2>
+<p>Compared to <code class="docutils literal notranslate"><span class="pre">KFold</span></code> which split the data into k folds and generate one single testing
+path, the <a class="reference internal" href="../generated/skfolio.model_selection.CombinatorialPurgedCV.html#skfolio.model_selection.CombinatorialPurgedCV" title="skfolio.model_selection.CombinatorialPurgedCV"><code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code></a> uses the combination of multiple
+training/testing sets to generate multiple testing paths.</p>
+<p>To avoid data leakage, purging and embargoing can be performed.</p>
+<p>Purging consist of removing from the training set all observations
+whose labels overlapped in time with those labels included in the testing set.
+Embargoing consist of removing from the training set observations that immediately
+follow an observation in the testing set since financial features often incorporate
+series that exhibit serial correlation (like ARMA processes).</p>
+<p>When used with <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">cross_val_predict</span></code></a>, the object returned is a
+<a class="reference internal" href="../generated/skfolio.population.Population.html#skfolio.population.Population" title="skfolio.population.Population"><code class="xref py py-class docutils literal notranslate"><span class="pre">Population</span></code></a> of
+<a class="reference internal" href="../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a> representing each prediction path.</p>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
+<span class="kn">from</span> <span class="nn">skfolio.model_selection</span> <span class="kn">import</span> <span class="n">CombinatorialPurgedCV</span><span class="p">,</span> <span class="n">cross_val_predict</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <span class="n">MeanRisk</span>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+
+<span class="n">pred</span> <span class="o">=</span> <span class="n">cross_val_predict</span><span class="p">(</span><span class="n">MeanRisk</span><span class="p">(),</span> <span class="n">X</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">CombinatorialPurgedCV</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">pred</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">pred</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mf">0.95</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">annualized_sharpe_ratio</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="pre_selection.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Pre-Selection Transformers</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="hyper_parameters_tuning.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Hyper-Parameters Tuning</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,866 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../../_static/favicon.ico" type="image/x-icon">
+    <link href="../../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>Weight Constraints &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'auto_examples/1_mean_risk/plot_5_weight_constraints';</script>
+    <link rel="icon" href="../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Transaction Costs" href="plot_6_transaction_costs.html" />
+    <link rel="prev" title="Mean-Variance-CDaR Surface" href="plot_4_mean_variance_cdar.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Mean-Risk</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="plot_1_maximum_sharpe_ratio.html">Maximum Sharpe Ratio</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_2_minimum_CVaR.html">Minimum CVaR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_3_efficient_frontier.html">Efficient Frontier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_4_mean_variance_cdar.html">Mean-Variance-CDaR Surface</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Weight Constraints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_6_transaction_costs.html">Transaction Costs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_7_management_fees.html">Management Fees</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_8_regularization.html">L1 and L2 Regularization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_9_uncertainty_set.html">Uncertainty Set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_10_tracking_error.html">Tracking Error</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_11_empirical_prior.html">Empirical Prior</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_12_black_and_litterman.html">Black &amp; Litterman</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_13_factor_model.html">Factor Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_14_black_litterman_factor_model.html">Black &amp; Litterman Factor Model</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../2_risk_budgeting/index.html">Risk Budgeting</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../2_risk_budgeting/plot_1_risk_parity_variance.html">Risk Parity - Variance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../2_risk_budgeting/plot_2_risk_busgeting_CVaR.html">Risk Budgeting - CVaR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.html">Risk Parity - Covariance shrinkage</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../3_maxiumum_diversification/index.html">Maximum Diversification</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../3_maxiumum_diversification/plot_1_maximum_divesification.html">Maximum Diversification</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../4_distributioally_robust_cvar/index.html">Distributionally Robust CVaR</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../4_distributioally_robust_cvar/plot_1_distributionally_robust_cvar.html">Distributionally Robust CVaR</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../5_clustering/index.html">Hierarchical Clustering and NCO</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../5_clustering/plot_1_hrp_cvar.html">Hierarchical Risk Parity - CVaR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../5_clustering/plot_2_herc_cdar.html">Hierarchical Equal Risk Contribution - CDaR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../5_clustering/plot_3_hrp_vs_herc.html">HRP vs HERC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../5_clustering/plot_4_nco.html">Nested Clusters Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../5_clustering/plot_5_nco_grid_search.html">NCO - Combinatorial Purged CV</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../6_ensemble/index.html">Ensemble Optimizations</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../6_ensemble/plot_1_stacking.html">Stacking Optimization</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../7_pre_selection/index.html">Pre-selection</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../7_pre_selection/plot_1_drop_correlated.html">Drop Highly Correlated Assets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../7_pre_selection/plot_2_select_best_performers.html">Select Best Performers</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../8_data_preparation/index.html">Data Preparation</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../8_data_preparation/plot_1_investment_horizon.html">Investment Horizon</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">Examples</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">Mean-Risk</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Weight Constraints</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-1-mean-risk-plot-5-weight-constraints-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code or to run this example in your browser via JupyterLite</p>
+</div>
+<section class="sphx-glr-example-title" id="weight-constraints">
+<span id="sphx-glr-auto-examples-1-mean-risk-plot-5-weight-constraints-py"></span><h1>Weight Constraints<a class="headerlink" href="#weight-constraints" title="Link to this heading">#</a></h1>
+<p>This tutorial shows how to incorporate weight constraints into the
+<a class="reference internal" href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a> optimization.</p>
+<dl class="simple">
+<dt>We will show how to use the below parameters:</dt><dd><ul class="simple">
+<li><p>min_weights</p></li>
+<li><p>max_weights</p></li>
+<li><p>budget</p></li>
+<li><p>min_budget</p></li>
+<li><p>max_budget</p></li>
+<li><p>max_short</p></li>
+<li><p>max_long</p></li>
+<li><p>linear_constraints</p></li>
+<li><p>groups</p></li>
+<li><p>left_inequality</p></li>
+<li><p>right_inequality</p></li>
+</ul>
+</dd>
+</dl>
+<section id="data">
+<h2>Data<a class="headerlink" href="#data" title="Link to this heading">#</a></h2>
+<p>We load the S&amp;P 500 <a class="reference internal" href="../../user_guide/datasets.html#datasets"><span class="std std-ref">dataset</span></a> composed of the daily prices of 20
+assets from the S&amp;P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
+We select only 3 assets to make the example more readable which are Apple (AAPL),
+General Electric (GE) and JPMorgan (JPM):</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">plotly.io</span> <span class="kn">import</span> <span class="n">show</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <a href="../../generated/skfolio.datasets.load_sp500_dataset.html#skfolio.datasets.load_sp500_dataset" title="skfolio.datasets.load_sp500_dataset" class="sphx-glr-backref-module-skfolio-datasets sphx-glr-backref-type-py-function"><span class="n">load_sp500_dataset</span></a>
+<span class="kn">from</span> <span class="nn">skfolio.optimization</span> <span class="kn">import</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a>
+<span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <a href="../../generated/skfolio.preprocessing.prices_to_returns.html#skfolio.preprocessing.prices_to_returns" title="skfolio.preprocessing.prices_to_returns" class="sphx-glr-backref-module-skfolio-preprocessing sphx-glr-backref-type-py-function"><span class="n">prices_to_returns</span></a>
+
+<span class="n">prices</span> <span class="o">=</span> <a href="../../generated/skfolio.datasets.load_sp500_dataset.html#skfolio.datasets.load_sp500_dataset" title="skfolio.datasets.load_sp500_dataset" class="sphx-glr-backref-module-skfolio-datasets sphx-glr-backref-type-py-function"><span class="n">load_sp500_dataset</span></a><span class="p">()</span>
+<span class="n">prices</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[[</span><span class="s2">&quot;AAPL&quot;</span><span class="p">,</span> <span class="s2">&quot;GE&quot;</span><span class="p">,</span> <span class="s2">&quot;JPM&quot;</span><span class="p">]]</span>
+
+<span class="n">X</span> <span class="o">=</span> <a href="../../generated/skfolio.preprocessing.prices_to_returns.html#skfolio.preprocessing.prices_to_returns" title="skfolio.preprocessing.prices_to_returns" class="sphx-glr-backref-module-skfolio-preprocessing sphx-glr-backref-type-py-function"><span class="n">prices_to_returns</span></a><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="model">
+<h2>Model<a class="headerlink" href="#model" title="Link to this heading">#</a></h2>
+<p>In this tutorial, we will use a Minimum Variance model.
+By default,  <a class="reference internal" href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a> is long only (<code class="docutils literal notranslate"><span class="pre">min_weights=0</span></code>)
+and fully invested (<code class="docutils literal notranslate"><span class="pre">budget=1</span></code>). In other terms, all weights are positive and sum to
+one.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>1.0
+
+array([0.22768876, 0.56566507, 0.20664617])
+</pre></div>
+</div>
+</section>
+<section id="budget">
+<h2>Budget<a class="headerlink" href="#budget" title="Link to this heading">#</a></h2>
+<p>The budget is the sum of long positions and short positions (sum of all weights).
+It can be <code class="docutils literal notranslate"><span class="pre">None</span></code> or a float. <code class="docutils literal notranslate"><span class="pre">None</span></code> means that there is no budget constraints.
+The default is 1.0 (fully invested).</p>
+<p>Examples:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>budget = 1    –&gt; fully invested portfolio.</p></li>
+<li><p>budget = 0    –&gt; market neutral portfolio.</p></li>
+<li><p>budget = None –&gt; no constraints on the sum of weights.</p></li>
+</ul>
+</div></blockquote>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>0.5
+
+array([0.11391513, 0.28246101, 0.10362386])
+</pre></div>
+</div>
+<p>You can also put a constraint on the minimum and maximum budget using <code class="docutils literal notranslate"><span class="pre">min_budget</span></code>
+and <code class="docutils literal notranslate"><span class="pre">max_budget</span></code> which are the lower and upper bounds of the sum of long and short
+positions (sum of all weights). The default is <code class="docutils literal notranslate"><span class="pre">None</span></code>. If provided, you must set
+<code class="docutils literal notranslate"><span class="pre">budget=None</span></code>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_budget</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_budget</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>0.30000034617916516
+
+array([0.06832987, 0.16956647, 0.06210401])
+</pre></div>
+</div>
+</section>
+<section id="lower-and-upper-bounds-on-weights">
+<h2>Lower and upper bounds on weights<a class="headerlink" href="#lower-and-upper-bounds-on-weights" title="Link to this heading">#</a></h2>
+<p>The weights lower and upper bounds are controlled by the parameters <code class="docutils literal notranslate"><span class="pre">min_weights</span></code> and
+<code class="docutils literal notranslate"><span class="pre">max_weights</span></code> respectively.
+You can provide <code class="docutils literal notranslate"><span class="pre">None</span></code>, a float, an array-like or a dictionary.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">-np.Inf</span></code> (no lower bounds).
+If a float is provided, it is applied to each asset.
+If a dictionary is provided, its (key/value) pair must be the (asset name/asset
+weight bound) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a DataFrame with the
+assets names in columns.
+The default is <code class="docutils literal notranslate"><span class="pre">min_weights=0.0</span></code> (no short selling) and <code class="docutils literal notranslate"><span class="pre">max_weights=1.0</span></code> (each asset
+is below 100%). When using a dictionary, you don’t have to provide constraints for
+all assets. The ones not provided will be assigned the default value (0.0 and 1.0
+respectively).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When adding a <a class="reference internal" href="../../user_guide/pre_selection.html#pre-selection"><span class="std std-ref">pre-selection transformer</span></a> into a <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>,
+you cannot use a <strong>list</strong> for the weight constraints because we don’t know which
+assets will be selected by the pre-selection process. This is where the
+<strong>dictionary</strong> becomes useful.</p>
+</div>
+<dl class="simple">
+<dt>Example:</dt><dd><ul class="simple">
+<li><p>min_weights = 0                     –&gt; long only portfolio (no short selling).</p></li>
+<li><p>min_weights = None                  –&gt; no lower bound (same as -np.Inf).</p></li>
+<li><p>min_weights = -2                    –&gt; each weight must be above -200%.</p></li>
+<li><p>min_weights = [0, -2, 0.5]          –&gt; “AAPL”, “GE” and “JPM” must be above 0%, -200% and 50% respectively.</p></li>
+<li><p>min_weights = {“AAPL”: 0, “GE”: -2} -&gt; “AAPL”, “GE” and “JPM”  must be above 0%, -200% and 0% (default) respectively.</p></li>
+<li><p>max_weights = 0                     –&gt; no long position (short only portfolio).</p></li>
+<li><p>max_weights = None                  –&gt; no upper bound (same as +np.Inf).</p></li>
+<li><p>max_weights = 2                     –&gt; each weight must be below 200%.</p></li>
+<li><p>max_weights = [1, 2, -0.5]          -&gt; “AAPL”, “GE” and “JPM”  must be below 100%, 200% and -50% respectively.</p></li>
+<li><p>max_weights = {“AAPL”: 1, “GE”: 2}  -&gt; “AAPL”, “GE” and “JPM”  must be below 100%, 200% and 100% (default) respectively.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Allowing short positions with a budget of -100%:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>-1.0000000000000002
+
+array([-0.22770271, -0.56559255, -0.20670474])
+</pre></div>
+</div>
+<p>“AAPL”, “GE” and “JPM” above 0%, 50% and 10% respectively:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>1.0000000000000002
+
+array([0.22788246, 0.56548525, 0.20663228])
+</pre></div>
+</div>
+<p>Let’s plot the composition:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">portfolio</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">plot_composition</span><span class="p">()</span>
+<span class="n">show</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>
+</pre></div>
+</div>
+<html>
+<head><meta charset="utf-8" /></head>
+<body>
+    <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>                <div id="5fbf2f66-941f-4c4e-8dfb-d69a41d29adc" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("5fbf2f66-941f-4c4e-8dfb-d69a41d29adc")) {                    Plotly.newPlot(                        "5fbf2f66-941f-4c4e-8dfb-d69a41d29adc",                        [{"alignmentgroup":"True","hovertemplate":"asset=GE\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"GE","marker":{"color":"#636efa","pattern":{"shape":""}},"name":"GE","offsetgroup":"GE","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.5654852544835487],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=AAPL\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"AAPL","marker":{"color":"#EF553B","pattern":{"shape":""}},"name":"AAPL","offsetgroup":"AAPL","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.22788246110263108],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=JPM\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"JPM","marker":{"color":"#00cc96","pattern":{"shape":""}},"name":"JPM","offsetgroup":"JPM","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.20663228441382034],"yaxis":"y","type":"bar"}],                        {"barmode":"relative","legend":{"title":{"text":"Assets"},"tracegroupgap":0},"margin":{"t":60},"template":{"data":{"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"#E5ECF6","showlakes":true,"showland":true,"subunitcolor":"white"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2}}},"title":{"text":"Portfolio Composition"},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Portfolio"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Weight"}}},                        {"responsive": true}                    )                };                            </script>        </div>
+</body>
+</html>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Same as above but using partial dictionary:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;GE&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;JPM&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">})</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>1.0000000000000002
+
+array([0.22788246, 0.56548525, 0.20663228])
+</pre></div>
+</div>
+<p>Leverage 3 with each weight below 150%:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_weights</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>3.000000000000002
+
+array([0.74197781, 1.49999867, 0.75802352])
+</pre></div>
+</div>
+</section>
+<section id="short-and-long-position-constraints">
+<h2>Short and long position constraints<a class="headerlink" href="#short-and-long-position-constraints" title="Link to this heading">#</a></h2>
+<p>Constraints on the upper bound for short and long positions can be set using
+<code class="docutils literal notranslate"><span class="pre">max_short</span></code> and <code class="docutils literal notranslate"><span class="pre">max_long</span></code>. The short position is defined as the sum of negative
+weights (in absolute term) and the long position as the sum of positive weights.</p>
+<p>Fully invested long-short portfolio with a total short position less than 50%:</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_short</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>1.0
+
+array([0.22770146, 0.56558315, 0.20671539])
+</pre></div>
+</div>
+</section>
+<section id="group-and-linear-constraints">
+<h2>Group and linear constraints<a class="headerlink" href="#group-and-linear-constraints" title="Link to this heading">#</a></h2>
+<p>We can assign groups to each asset using the <code class="docutils literal notranslate"><span class="pre">groups</span></code> parameter and set
+constraints on these groups using the <code class="docutils literal notranslate"><span class="pre">linear_constraint</span></code> parameter.
+The parameter <code class="docutils literal notranslate"><span class="pre">groups</span></code> can be a 2D array-like or a dictionary. If a dictionary is
+provided, its (key/value)  pair must be the (asset name/asset groups).
+You can reference these groups and/or the asset names in <code class="docutils literal notranslate"><span class="pre">linear_constraint</span></code> which
+is a list if strings following the below patterns:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>“2.5 * ref1 + 0.10 * ref2 + 0.0013 &lt;= 2.5 * ref3”</p></li>
+<li><p>“ref1 &gt;= 2.9 * ref2”</p></li>
+<li><p>“ref1 &lt;= ref2”</p></li>
+<li><p>“ref1 &gt;= ref1”</p></li>
+</ul>
+</div></blockquote>
+<p>Examples:
+In this example we consider two groups: industry sector and capitalization.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">groups</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;AAPL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Technology&quot;</span><span class="p">,</span> <span class="s2">&quot;Mega Cap&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;GE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Industrial&quot;</span><span class="p">,</span> <span class="s2">&quot;Big Cap&quot;</span><span class="p">],</span>
+    <span class="s2">&quot;JPM&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Financial&quot;</span><span class="p">,</span> <span class="s2">&quot;Big Cap&quot;</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="c1"># You can also provide a 2D array-like:</span>
+<span class="c1"># groups = [[&quot;Technology&quot;, &quot;Industrial&quot;, &quot;Financial&quot;], [&quot;Mega Cap&quot;, &quot;Big Cap&quot;, &quot;Big Cap&quot;]]</span>
+<span class="n">linear_constraints</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Technology + 1.5 * Industrial &lt;= 2 * Financial&quot;</span><span class="p">,</span>  <span class="c1"># First group</span>
+    <span class="s2">&quot;Mega Cap &gt;= 0.75 * Big Cap&quot;</span><span class="p">,</span>  <span class="c1"># Second group</span>
+    <span class="s2">&quot;Technology &gt;= Big Cap&quot;</span><span class="p">,</span>  <span class="c1"># Mix of first and second groups</span>
+    <span class="s2">&quot;Mega Cap &gt;= 2 * JPM&quot;</span><span class="p">,</span>  <span class="c1"># Mix of groups and assets</span>
+<span class="p">]</span>
+<span class="c1"># Note that only the first constraint would be sufficient in that case.</span>
+
+<span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span> <span class="n">linear_constraints</span><span class="o">=</span><span class="n">linear_constraints</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>array([6.66666667e-01, 1.17341817e-11, 3.33333333e-01])
+</pre></div>
+</div>
+</section>
+<section id="left-and-right-inequalities">
+<h2>Left and right inequalities<a class="headerlink" href="#left-and-right-inequalities" title="Link to this heading">#</a></h2>
+<p>Finally, you can also provide the matrix <span class="math notranslate nohighlight">\(A\)</span> and the vector <span class="math notranslate nohighlight">\(b\)</span> of the
+linear constraint <span class="math notranslate nohighlight">\(A \cdot w \leq b\)</span>.</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">left_inequality</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]]</span>
+<span class="p">)</span>
+<span class="n">right_inequality</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+
+<span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">left_inequality</span><span class="o">=</span><span class="n">left_inequality</span><span class="p">,</span> <span class="n">right_inequality</span><span class="o">=</span><span class="n">right_inequality</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">weights_</span>
+</pre></div>
+</div>
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>array([6.66666667e-01, 1.17341817e-11, 3.33333333e-01])
+</pre></div>
+</div>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.363 seconds)</p>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-1-mean-risk-plot-5-weight-constraints-py">
+<div class="lite-badge docutils container">
+<a class="reference external image-reference" href="../../lite/lab/?path=auto_examples/1_mean_risk/plot_5_weight_constraints.ipynb"><img alt="Launch JupyterLite" src="../../_images/jupyterlite_badge_logo.svg" width="150px" /></a>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/50d678cbc5106985f37260e8bfe967dc/plot_5_weight_constraints.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">plot_5_weight_constraints.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/04447d31a9f037cb0db517be92f8c306/plot_5_weight_constraints.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">plot_5_weight_constraints.py</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="plot_4_mean_variance_cdar.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Mean-Variance-CDaR Surface</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="plot_6_transaction_costs.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Transaction Costs</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

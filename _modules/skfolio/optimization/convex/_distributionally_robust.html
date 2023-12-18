@@ -1,0 +1,885 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.optimization.convex._distributionally_robust &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/optimization/convex/_distributionally_robust';</script>
+    <link rel="icon" href="../../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.opti...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.optimization.convex._distributionally_robust</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Distributionally Robust CVaR Optimization estimator.&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span> <span class="nn">cvxpy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
+
+<span class="kn">import</span> <span class="nn">skfolio.typing</span> <span class="k">as</span> <span class="nn">skt</span>
+<span class="kn">from</span> <span class="nn">skfolio.measures</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
+<span class="kn">from</span> <span class="nn">skfolio.optimization.convex._base</span> <span class="kn">import</span> <span class="n">ConvexOptimization</span>
+<span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">BasePrior</span><span class="p">,</span> <span class="n">EmpiricalPrior</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">check_estimator</span>
+
+
+<div class="viewcode-block" id="DistributionallyRobustCVaR">
+<a class="viewcode-back" href="../../../../generated/skfolio.optimization.DistributionallyRobustCVaR.html#skfolio.optimization.DistributionallyRobustCVaR">[docs]</a>
+<span class="k">class</span> <span class="nc">DistributionallyRobustCVaR</span><span class="p">(</span><span class="n">ConvexOptimization</span><span class="p">):</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Distributionally Robust CVaR.</span>
+
+<span class="sd">    The Distributionally Robust CVaR model constructs a Wasserstein ball in the space of</span>
+<span class="sd">    multivariate and non-discrete probability distributions centered at the uniform</span>
+<span class="sd">    distribution on the training samples, and find the allocation that minimize the CVaR</span>
+<span class="sd">    of the worst-case distribution within this Wasserstein ball.</span>
+<span class="sd">    Esfahani and Kuhn [1]_ proved that for piecewise linear objective functions,</span>
+<span class="sd">    which is the case of CVaR [2]_, the distributionally robust optimization problem</span>
+<span class="sd">    over a Wasserstein ball can be reformulated as finite convex programs.</span>
+
+<span class="sd">    Only piecewise linear function are supported which means that transaction costs and</span>
+<span class="sd">    regularization are not permitted.</span>
+
+<span class="sd">    A solver like `Mosek` that can handles a high number of constraints is preferred.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cvar_beta : float, default=0.95</span>
+<span class="sd">        CVaR (Conditional Value at Risk) confidence level.</span>
+
+<span class="sd">    risk_aversion : float, default=1.0</span>
+<span class="sd">        Risk aversion factor of the utility function: return - risk_aversion * cvar.</span>
+
+<span class="sd">    wasserstein_ball_radius: float, default=0.02</span>
+<span class="sd">        Radius of the Wasserstein ball.</span>
+
+<span class="sd">    prior_estimator : BasePrior, optional</span>
+<span class="sd">        :ref:`Prior estimator &lt;prior&gt;`.</span>
+<span class="sd">        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`</span>
+<span class="sd">        containing the estimation of assets expected returns, covariance matrix,</span>
+<span class="sd">        returns and Cholesky decomposition of the covariance.</span>
+<span class="sd">        The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.</span>
+
+<span class="sd">    min_weights : float | dict[str, float] | array-like of shape (n_assets, ) | None, default=0.0</span>
+<span class="sd">        Minimum assets weights (weights lower bounds).</span>
+<span class="sd">        If a float is provided, it is applied to each asset.</span>
+<span class="sd">        `None` is equivalent to `-np.Inf` (no lower bound).</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset minium weight) and the input `X` of the `fit` methods must</span>
+<span class="sd">        be a DataFrame with the assets names in columns.</span>
+<span class="sd">        When using a dictionary, assets values that are not provided are assigned</span>
+<span class="sd">        a minimum weight of `0.0`.</span>
+<span class="sd">        The default value is `0.0` (no short selling).</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">           * `min_weights = 0` --&gt; long only portfolio (no short selling).</span>
+<span class="sd">           * `min_weights = None` --&gt; no lower bound (same as `-np.Inf`).</span>
+<span class="sd">           * `min_weights = -2` --&gt; each weight must be above -200%.</span>
+<span class="sd">           * `min_weights = {&quot;SX5E&quot;: 0, &quot;SPX&quot;: -2}`</span>
+<span class="sd">           * `min_weights = [0, -2]`</span>
+
+<span class="sd">    max_weights : float | dict[str, float] | array-like of shape (n_assets, ) | None, default=1.0</span>
+<span class="sd">        Maximum assets weights (weights upper bounds).</span>
+<span class="sd">        If a float is provided, it is applied to each asset.</span>
+<span class="sd">        `None` is equivalent to `+np.Inf` (no upper bound).</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset maximum weight) and the input `X` of the `fit` methods must</span>
+<span class="sd">        be a DataFrame with the assets names in columns.</span>
+<span class="sd">        When using a dictionary, assets values that are not provided are assigned</span>
+<span class="sd">        a minimum weight of `1.0`.</span>
+<span class="sd">        The default value is `1.0` (each asset is below 100%).</span>
+
+<span class="sd">        Example:</span>
+
+<span class="sd">           * `max_weights = 0` --&gt; no long position (short only portfolio).</span>
+<span class="sd">           * `max_weights = None` --&gt; no upper bound.</span>
+<span class="sd">           * `max_weights = 2` --&gt; each weight must be below 200%.</span>
+<span class="sd">           * `max_weights = {&quot;SX5E&quot;: 1, &quot;SPX&quot;: 2}`</span>
+<span class="sd">           * `max_weights = [1, 2]`</span>
+
+<span class="sd">    budget : float | None, default=1.0</span>
+<span class="sd">        Investment budget. It is the sum of long positions and short positions (sum of</span>
+<span class="sd">        all weights). `None` means no budget constraints.</span>
+<span class="sd">        The default value is `1.0` (fully invested portfolio).</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">             * `budget = 1` --&gt; fully invested portfolio.</span>
+<span class="sd">             * `budget = 0` --&gt; market neutral portfolio.</span>
+<span class="sd">             * `budget = None` --&gt; no constraints on the sum of weights.</span>
+
+<span class="sd">    min_budget : float, optional</span>
+<span class="sd">        Minimum budget. It is the lower bound of the sum of long and short positions</span>
+<span class="sd">        (sum of all weights). If provided, you must set `budget=None`.</span>
+<span class="sd">        The default (`None`) means no minimum budget constraint.</span>
+
+<span class="sd">    max_short : float, optional</span>
+<span class="sd">        Maximum short position. The short position is defined as the sum of negative</span>
+<span class="sd">        weights (in absolute term).</span>
+<span class="sd">        The default (`None`) means no maximum short position.</span>
+
+<span class="sd">    max_long : float, optional</span>
+<span class="sd">        Maximum long position. The long position is defined as the sum of positive</span>
+<span class="sd">        weights.</span>
+<span class="sd">        The default (`None`) means no maximum long position.</span>
+
+<span class="sd">    max_budget :  float, optional</span>
+<span class="sd">        Maximum budget. It is the upper bound of the sum of long and short positions</span>
+<span class="sd">        (sum of all weights). If provided, you must set `budget=None`.</span>
+<span class="sd">        The default (`None`) means no maximum budget constraint.</span>
+
+<span class="sd">    linear_constraints : array-like of shape (n_constraints,), optional</span>
+<span class="sd">        Linear constraints.</span>
+<span class="sd">        The linear constraints must match any of following patterns:</span>
+
+<span class="sd">           * &quot;2.5 * ref1 + 0.10 * ref2 + 0.0013 &lt;= 2.5 * ref3&quot;</span>
+<span class="sd">           * &quot;ref1 &gt;= 2.9 * ref2&quot;</span>
+<span class="sd">           * &quot;ref1 &lt;= ref2&quot;</span>
+<span class="sd">           * &quot;ref1 &gt;= ref1&quot;</span>
+
+<span class="sd">        With &quot;ref1&quot;, &quot;ref2&quot; ... the assets names or the groups names provided</span>
+<span class="sd">        in the parameter `groups`. Assets names can be referenced without the need of</span>
+<span class="sd">        `groups` if the input `X` of the `fit` methods is a DataFrame with these</span>
+<span class="sd">        assets names in columns.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            * &quot;SPX &gt;= 0.10&quot; --&gt; SPX weight must be greater than 10% (note that you can also use `min_weights`)</span>
+<span class="sd">            * &quot;SX5E + TLT &gt;= 0.2&quot; --&gt; the sum of SX5E and TLT weights must be greater than 20%</span>
+<span class="sd">            * &quot;US &gt;= 0.7&quot; --&gt; the sum of all US weights must be greater than 70%</span>
+<span class="sd">            * &quot;Equity &lt;= 3 * Bond&quot; --&gt; the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.</span>
+<span class="sd">            * &quot;2*SPX + 3*Europe &lt;= Bond + 0.05&quot; --&gt; mixing assets and group constraints</span>
+
+<span class="sd">    groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional</span>
+<span class="sd">        The assets groups referenced in `linear_constraints`.</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset groups) and the input `X` of the `fit` methods must be a</span>
+<span class="sd">        DataFrame with the assets names in columns.</span>
+
+<span class="sd">        Examples:</span>
+
+<span class="sd">            * groups = {&quot;SX5E&quot;: [&quot;Equity&quot;, &quot;Europe&quot;], &quot;SPX&quot;: [&quot;Equity&quot;, &quot;US&quot;], &quot;TLT&quot;: [&quot;Bond&quot;, &quot;US&quot;]}</span>
+<span class="sd">            * groups = [[&quot;Equity&quot;, &quot;Equity&quot;, &quot;Bond&quot;], [&quot;Europe&quot;, &quot;US&quot;, &quot;US&quot;]]</span>
+
+<span class="sd">    left_inequality : array-like of shape (n_constraints, n_assets), optional</span>
+<span class="sd">        Left inequality matrix :math:`A` of the linear</span>
+<span class="sd">        constraint :math:`A \cdot w \leq b`.</span>
+
+<span class="sd">    right_inequality : array-like of shape (n_constraints, ), optional</span>
+<span class="sd">        Right inequality vector :math:`b` of the linear</span>
+<span class="sd">        constraint :math:`A \cdot w \leq b`.</span>
+
+<span class="sd">    risk_free_rate : float, default=0.0</span>
+<span class="sd">        Risk-free interest rate.</span>
+<span class="sd">        The default value is `0.0`.</span>
+
+<span class="sd">    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional</span>
+<span class="sd">        Add a custom constraint or a list of constraints to the existing constraints.</span>
+<span class="sd">        It is a function that must take as argument the weights `w` and returns a</span>
+<span class="sd">        CVPXY expression or a list of CVPXY expressions.</span>
+
+<span class="sd">    overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional</span>
+<span class="sd">        Overwrite the expected return :math:`\mu \cdot w` with a custom expression.</span>
+<span class="sd">        It is a function that must take as argument the weights `w` and returns a</span>
+<span class="sd">        CVPXY expression.</span>
+
+<span class="sd">    solver : str, default=&quot;CLARABEL&quot;</span>
+<span class="sd">        The solver to use. The default is &quot;CLARABEL&quot; which is written in Rust and has</span>
+<span class="sd">        better numerical stability and performance than ECOS and SCS. Cvxpy will replace</span>
+<span class="sd">        its default solver &quot;ECOS&quot; by &quot;CLARABEL&quot; in future releases.</span>
+<span class="sd">        For more details about available solvers, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver</span>
+
+<span class="sd">    solver_params : dict, optional</span>
+<span class="sd">        Solver parameters. For example, `solver_params=dict(verbose=True)`.</span>
+<span class="sd">        The default (`None`) is use `{&quot;tol_gap_abs&quot;: 1e-9, &quot;tol_gap_rel&quot;: 1e-9}`</span>
+<span class="sd">        for the solver &quot;CLARABEL&quot; and the CVXPY default otherwise.</span>
+<span class="sd">        For more details about solver arguments, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options</span>
+
+<span class="sd">    scale_objective : float, optional</span>
+<span class="sd">        Scale each objective element by this value.</span>
+<span class="sd">        It can be used to increase the optimization accuracies in specific cases.</span>
+<span class="sd">        The default (`None`) is set depending on the problem.</span>
+
+<span class="sd">    scale_constraints : float, optional</span>
+<span class="sd">        Scale each constraint element by this value.</span>
+<span class="sd">        It can be used to increase the optimization accuracies in specific cases.</span>
+<span class="sd">        The default (`None`) is set depending on the problem.</span>
+
+<span class="sd">    save_problem : bool, default=False</span>
+<span class="sd">        If this is set to True, the CVXPY Problem is saved in `problem_`.</span>
+<span class="sd">        The default is `False`.</span>
+
+<span class="sd">    raise_on_failure : bool, default=True</span>
+<span class="sd">        If this is set to True, an error is raised when the optimization fail otherwise</span>
+<span class="sd">        it passes with a warning.</span>
+
+<span class="sd">    portfolio_params :  dict, optional</span>
+<span class="sd">        Portfolio parameters passed to the portfolio evaluated by the `predict` and</span>
+<span class="sd">        `score` methods. If not provided, the `name`, `transaction_costs`,</span>
+<span class="sd">        `management_fees` and `previous_weights` are copied from the optimization</span>
+<span class="sd">        model and systematically passed to the portfolio.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    weights_ : ndarray of shape (n_assets,) or (n_optimizations, n_assets)</span>
+<span class="sd">        Weights of the assets.</span>
+
+<span class="sd">    problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations</span>
+<span class="sd">        Expression values retrieved from the CVXPY problem.</span>
+
+<span class="sd">    prior_estimator_ : BasePrior</span>
+<span class="sd">        Fitted `prior_estimator`.</span>
+
+<span class="sd">    problem_: cvxpy.Problem</span>
+<span class="sd">        CVXPY problem used for the optimization. Only when `save_problem` is set to</span>
+<span class="sd">        `True`.</span>
+
+<span class="sd">    n_features_in_ : int</span>
+<span class="sd">        Number of assets seen during `fit`.</span>
+
+<span class="sd">    feature_names_in_ : ndarray of shape (`n_features_in_`,)</span>
+<span class="sd">        Names of assets seen during `fit`. Defined only when `X`</span>
+<span class="sd">        has assets names that are all strings.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;Data-driven distributionally robust optimization using the Wasserstein</span>
+<span class="sd">        metric: performance guarantees and tractable reformulations&quot;.</span>
+<span class="sd">        Esfahani and Kuhn (2018).</span>
+
+<span class="sd">    .. [2] &quot;Optimization of conditional value-at-risk&quot;.</span>
+<span class="sd">        Rockafellar and Uryasev (2000).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">risk_aversion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">cvar_beta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">wasserstein_ball_radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+        <span class="n">prior_estimator</span><span class="p">:</span> <span class="n">BasePrior</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">min_weights</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">max_weights</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">budget</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">min_budget</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_budget</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_short</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_long</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">groups</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Groups</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">linear_constraints</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">LinearConstraints</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">left_inequality</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Inequality</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">right_inequality</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Inequality</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">risk_free_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;CLARABEL&quot;</span><span class="p">,</span>
+        <span class="n">solver_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_objective</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scale_constraints</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">save_problem</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">raise_on_failure</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">add_objective</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">ExpressionFunction</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">add_constraints</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">ExpressionFunction</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">overwrite_expected_return</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">ExpressionFunction</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">portfolio_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">risk_measure</span><span class="o">=</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">,</span>
+            <span class="n">prior_estimator</span><span class="o">=</span><span class="n">prior_estimator</span><span class="p">,</span>
+            <span class="n">min_weights</span><span class="o">=</span><span class="n">min_weights</span><span class="p">,</span>
+            <span class="n">max_weights</span><span class="o">=</span><span class="n">max_weights</span><span class="p">,</span>
+            <span class="n">budget</span><span class="o">=</span><span class="n">budget</span><span class="p">,</span>
+            <span class="n">min_budget</span><span class="o">=</span><span class="n">min_budget</span><span class="p">,</span>
+            <span class="n">max_budget</span><span class="o">=</span><span class="n">max_budget</span><span class="p">,</span>
+            <span class="n">max_short</span><span class="o">=</span><span class="n">max_short</span><span class="p">,</span>
+            <span class="n">max_long</span><span class="o">=</span><span class="n">max_long</span><span class="p">,</span>
+            <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">,</span>
+            <span class="n">linear_constraints</span><span class="o">=</span><span class="n">linear_constraints</span><span class="p">,</span>
+            <span class="n">left_inequality</span><span class="o">=</span><span class="n">left_inequality</span><span class="p">,</span>
+            <span class="n">right_inequality</span><span class="o">=</span><span class="n">right_inequality</span><span class="p">,</span>
+            <span class="n">risk_free_rate</span><span class="o">=</span><span class="n">risk_free_rate</span><span class="p">,</span>
+            <span class="n">cvar_beta</span><span class="o">=</span><span class="n">cvar_beta</span><span class="p">,</span>
+            <span class="n">solver</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span>
+            <span class="n">solver_params</span><span class="o">=</span><span class="n">solver_params</span><span class="p">,</span>
+            <span class="n">scale_objective</span><span class="o">=</span><span class="n">scale_objective</span><span class="p">,</span>
+            <span class="n">scale_constraints</span><span class="o">=</span><span class="n">scale_constraints</span><span class="p">,</span>
+            <span class="n">save_problem</span><span class="o">=</span><span class="n">save_problem</span><span class="p">,</span>
+            <span class="n">raise_on_failure</span><span class="o">=</span><span class="n">raise_on_failure</span><span class="p">,</span>
+            <span class="n">add_objective</span><span class="o">=</span><span class="n">add_objective</span><span class="p">,</span>
+            <span class="n">add_constraints</span><span class="o">=</span><span class="n">add_constraints</span><span class="p">,</span>
+            <span class="n">overwrite_expected_return</span><span class="o">=</span><span class="n">overwrite_expected_return</span><span class="p">,</span>
+            <span class="n">portfolio_params</span><span class="o">=</span><span class="n">portfolio_params</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">risk_aversion</span> <span class="o">=</span> <span class="n">risk_aversion</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wasserstein_ball_radius</span> <span class="o">=</span> <span class="n">wasserstein_ball_radius</span>
+
+<div class="viewcode-block" id="DistributionallyRobustCVaR.fit">
+<a class="viewcode-back" href="../../../../generated/skfolio.optimization.DistributionallyRobustCVaR.html#skfolio.optimization.DistributionallyRobustCVaR.fit">[docs]</a>
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;DistributionallyRobustCVaR&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the Distributionally Robust CVaR Optimization estimator.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        X : array-like of shape (n_observations, n_assets)</span>
+<span class="sd">           Price returns of the assets.</span>
+
+<span class="sd">        y : array-like of shape (n_observations, n_factors), optional</span>
+<span class="sd">            Price returns of factors.</span>
+<span class="sd">            The default is `None`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        self : DistributionallyRobustCVaR</span>
+<span class="sd">           Fitted estimator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_feature_names</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">reset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># Used to avoid adding multiple times similar constrains linked to identical</span>
+        <span class="c1"># risk models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span><span class="p">,</span>
+            <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(),</span>
+            <span class="n">check_type</span><span class="o">=</span><span class="n">BasePrior</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">prior_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span>
+        <span class="n">n_observations</span><span class="p">,</span> <span class="n">n_assets</span> <span class="o">=</span> <span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># set solvers params</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">==</span> <span class="s2">&quot;CLARABEL&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_solver_params</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;tol_gap_abs&quot;</span><span class="p">:</span> <span class="mf">1e-9</span><span class="p">,</span> <span class="s2">&quot;tol_gap_rel&quot;</span><span class="p">:</span> <span class="mf">1e-9</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_solver_params</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># set scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_scale_objective</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_scale_constraints</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">a1</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">b1</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">risk_aversion</span><span class="p">)</span>
+        <span class="n">a2</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">risk_aversion</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvar_beta</span><span class="p">)</span>
+        <span class="n">b2</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">risk_aversion</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cvar_beta</span><span class="p">)))</span>
+        <span class="n">ones</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_assets</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">n_assets</span><span class="p">)</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">((</span><span class="n">n_observations</span><span class="p">,</span> <span class="n">n_assets</span><span class="p">))</span>
+        <span class="n">v</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">((</span><span class="n">n_observations</span><span class="p">,</span> <span class="n">n_assets</span><span class="p">))</span>
+        <span class="n">lb</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">()</span>
+        <span class="n">tau</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">()</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">n_observations</span><span class="p">)</span>
+
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># constraints</span>
+        <span class="n">constraints</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_weight_constraints</span><span class="p">(</span>
+            <span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span>
+        <span class="p">)</span>
+        <span class="n">constraints</span> <span class="o">+=</span> <span class="p">[</span>
+            <span class="n">u</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span> <span class="o">&gt;=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">v</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span> <span class="o">&gt;=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">b1</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">+</span> <span class="n">a1</span> <span class="o">*</span> <span class="p">(</span><span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span> <span class="o">@</span> <span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">+</span> <span class="n">cp</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span><span class="p">))</span> <span class="o">@</span> <span class="n">ones</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">&lt;=</span> <span class="n">s</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span><span class="p">,</span>
+            <span class="n">b2</span> <span class="o">*</span> <span class="n">tau</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">+</span> <span class="n">a2</span> <span class="o">*</span> <span class="p">(</span><span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span> <span class="o">@</span> <span class="n">w</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">+</span> <span class="n">cp</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span><span class="p">))</span> <span class="o">@</span> <span class="n">ones</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="o">&lt;=</span> <span class="n">s</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_observations</span><span class="p">):</span>
+            <span class="c1"># noinspection PyTypeChecker</span>
+            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="o">-</span><span class="n">u</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">a1</span> <span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+                <span class="o">&lt;=</span> <span class="n">lb</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="p">)</span>
+            <span class="c1"># noinspection PyTypeChecker</span>
+            <span class="n">constraints</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">cp</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="o">-</span><span class="n">v</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">a2</span> <span class="o">*</span> <span class="n">w</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+                <span class="o">&lt;=</span> <span class="n">lb</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
+            <span class="p">)</span>
+
+        <span class="c1"># custom objectives and constraints</span>
+        <span class="n">custom_objective</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_custom_objective</span><span class="p">(</span><span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+        <span class="n">constraints</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_custom_constraints</span><span class="p">(</span><span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">)</span>
+
+        <span class="n">objective</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Minimize</span><span class="p">(</span>
+            <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">wasserstein_ball_radius</span><span class="p">)</span> <span class="o">*</span> <span class="n">lb</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_objective</span>
+            <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">n_observations</span><span class="p">)</span> <span class="o">*</span> <span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_objective</span>
+            <span class="o">+</span> <span class="n">custom_objective</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_objective</span>
+        <span class="p">)</span>
+
+        <span class="c1"># problem</span>
+        <span class="n">problem</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Problem</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">constraints</span><span class="p">)</span>
+
+        <span class="c1"># results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_solve_problem</span><span class="p">(</span><span class="n">problem</span><span class="o">=</span><span class="n">problem</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="n">factor</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+</div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

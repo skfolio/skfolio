@@ -1,0 +1,845 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.measures._enums &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/measures/_enums';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.meas...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.measures._enums</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Module that includes all Measures enums used across `skfolio`.&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">auto</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">AutoEnum</span>
+
+
+<div class="viewcode-block" id="BaseMeasure">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.BaseMeasure.html#skfolio.measures.BaseMeasure">[docs]</a>
+<span class="k">class</span> <span class="nc">BaseMeasure</span><span class="p">(</span><span class="n">AutoEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base Enum of measures&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enum representation for improved reading&quot;&quot;&quot;</span>
+        <span class="n">words</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span>
+                <span class="n">word</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">3</span>
+                <span class="k">else</span> <span class="n">word</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span> <span class="ow">and</span> <span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">2</span><span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;ar&quot;</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">upper</span><span class="p">())</span>
+            <span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+            <span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">words</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Semi &quot;</span><span class="p">,</span> <span class="s2">&quot;Semi-&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">string</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__repr__</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">is_perf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">is_risk</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">is_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_annualized</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;ANNUALIZED&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">annualized_measure</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_annualized</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is already an annualized measure&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;ANNUALIZED_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> doesn&#39;t have a annualized version&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">non_annualized_measure</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_annualized</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is already a non-annualized measure&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">11</span><span class="p">:])</span></div>
+
+
+
+<div class="viewcode-block" id="PerfMeasure">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.PerfMeasure.html#skfolio.measures.PerfMeasure">[docs]</a>
+<span class="k">class</span> <span class="nc">PerfMeasure</span><span class="p">(</span><span class="n">BaseMeasure</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumeration of performance measures</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    MEAN : str</span>
+<span class="sd">        Mean</span>
+
+<span class="sd">    ANNUALIZED_MEAN : str</span>
+<span class="sd">       Annualized Mean</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">MEAN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="c1"># Annualized measures</span>
+    <span class="n">ANNUALIZED_MEAN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_perf</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_risk</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="RiskMeasure">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.RiskMeasure.html#skfolio.measures.RiskMeasure">[docs]</a>
+<span class="k">class</span> <span class="nc">RiskMeasure</span><span class="p">(</span><span class="n">BaseMeasure</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumeration of risk measures</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    VARIANCE : str</span>
+<span class="sd">        Variance.</span>
+
+<span class="sd">    ANNUALIZED_VARIANCE : str</span>
+<span class="sd">        Annualized Variance.</span>
+
+<span class="sd">    SEMI_VARIANCE : str</span>
+<span class="sd">        Semi-variance (Second Lower Partial Moment or Downside Variance).</span>
+
+<span class="sd">    ANNUALIZED_SEMI_VARIANCE : str</span>
+<span class="sd">        Annualized Semi-variance.</span>
+
+<span class="sd">    STANDARD_DEVIATION : str</span>
+<span class="sd">        Standard-deviation</span>
+
+<span class="sd">    ANNUALIZED_STANDARD_DEVIATION : str</span>
+<span class="sd">        Annualized Standard-deviation.</span>
+
+<span class="sd">    SEMI_DEVIATION : str</span>
+<span class="sd">        Semi-deviation.</span>
+
+<span class="sd">    ANNUALIZED_SEMI_DEVIATION : str</span>
+<span class="sd">        Annualized Semi-deviation.</span>
+
+<span class="sd">    MEAN_ABSOLUTE_DEVIATION : str</span>
+<span class="sd">        Mean Absolute Deviation.</span>
+
+<span class="sd">    CVAR : str</span>
+<span class="sd">        Conditional Value at Risk or Expected Shortfall.</span>
+
+<span class="sd">    EVAR : str</span>
+<span class="sd">        Entropic Value at Risk.</span>
+
+<span class="sd">    WORST_REALIZATION : str</span>
+<span class="sd">        Worst Realization (Worst Return).</span>
+
+<span class="sd">    CDAR : str</span>
+<span class="sd">        Conditional Drawdown at Risk.</span>
+
+<span class="sd">    MAX_DRAWDOWN : str</span>
+<span class="sd">        Maximum Drawdown.</span>
+
+<span class="sd">    AVERAGE_DRAWDOWN : str</span>
+<span class="sd">        Average Drawdown.</span>
+
+<span class="sd">    EDAR : str</span>
+<span class="sd">        Entropic Drawdown at Risk.</span>
+
+<span class="sd">    FIRST_LOWER_PARTIAL_MOMENT : str</span>
+<span class="sd">        First Lower Partial Moment.</span>
+
+<span class="sd">    ULCER_INDEX : str</span>
+<span class="sd">        Ulcer Index.</span>
+
+<span class="sd">    GINI_MEAN_DIFFERENCE : str</span>
+<span class="sd">        Gini Mean Difference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">VARIANCE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_VARIANCE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">SEMI_VARIANCE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_SEMI_VARIANCE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">STANDARD_DEVIATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_STANDARD_DEVIATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">SEMI_DEVIATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_SEMI_DEVIATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">MEAN_ABSOLUTE_DEVIATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CVAR</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">EVAR</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">WORST_REALIZATION</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CDAR</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">MAX_DRAWDOWN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">AVERAGE_DRAWDOWN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">EDAR</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">FIRST_LOWER_PARTIAL_MOMENT</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ULCER_INDEX</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">GINI_MEAN_DIFFERENCE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_perf</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_risk</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="ExtraRiskMeasure">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.ExtraRiskMeasure.html#skfolio.measures.ExtraRiskMeasure">[docs]</a>
+<span class="k">class</span> <span class="nc">ExtraRiskMeasure</span><span class="p">(</span><span class="n">BaseMeasure</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumeration of other risk measures not used in convex optimization</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    VALUE_AT_RISK : str</span>
+<span class="sd">        Value at Risk (VaR).</span>
+
+<span class="sd">    DRAWDOWN_AT_RISK : str</span>
+<span class="sd">        Drawdown at Risk.</span>
+
+<span class="sd">    ENTROPIC_RISK_MEASURE : str</span>
+<span class="sd">        Entropic Risk Measure.</span>
+
+<span class="sd">    FOURTH_CENTRAL_MOMENT : str</span>
+<span class="sd">        Fourth Central Moment.</span>
+
+<span class="sd">    FOURTH_LOWER_PARTIAL_MOMENT : str</span>
+<span class="sd">         Fourth Lower Central Moment.</span>
+
+<span class="sd">    SKEW : str</span>
+<span class="sd">        Skew.</span>
+
+<span class="sd">    KURTOSIS : str</span>
+<span class="sd">        Kurtosis.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">VALUE_AT_RISK</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">DRAWDOWN_AT_RISK</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ENTROPIC_RISK_MEASURE</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">FOURTH_CENTRAL_MOMENT</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">FOURTH_LOWER_PARTIAL_MOMENT</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">SKEW</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">KURTOSIS</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_perf</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_risk</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="RatioMeasure">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.RatioMeasure.html#skfolio.measures.RatioMeasure">[docs]</a>
+<span class="k">class</span> <span class="nc">RatioMeasure</span><span class="p">(</span><span class="n">BaseMeasure</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumeration of ratio measures</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    SHARPE_RATIO : str</span>
+<span class="sd">        Ratio of the excess Mean divided by the Standard-deviation.</span>
+
+<span class="sd">    ANNUALIZED_SHARPE_RATIO : str</span>
+<span class="sd">        Annualized Sharpe ratio.</span>
+
+<span class="sd">    SORTINO_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Semi standard-deviation.</span>
+
+<span class="sd">    ANNUALIZED_SORTINO_RATIO : str</span>
+<span class="sd">        Annualized Sortino ratio.</span>
+
+<span class="sd">    MEAN_ABSOLUTE_DEVIATION_RATIO : str</span>
+<span class="sd">        Ratio of the excess Mean divided by the Mean Absolute Deviation.</span>
+
+<span class="sd">    FIRST_LOWER_PARTIAL_MOMENT_RATIO : str</span>
+<span class="sd">        Ratio of the excess Mean divided by the First Lower Partial Moment.</span>
+
+<span class="sd">    VALUE_AT_RISK_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Value at Risk.</span>
+
+<span class="sd">    CVAR_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Conditional Value at Risk.</span>
+
+<span class="sd">    ENTROPIC_RISK_MEASURE_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Entropic Risk Measure.</span>
+
+<span class="sd">    EVAR_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Entropic Value at Risk.</span>
+
+<span class="sd">    WORST_REALIZATION_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Worst Realization.</span>
+
+<span class="sd">    DRAWDOWN_AT_RISK_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Drawdown at Risk.</span>
+
+<span class="sd">    CDAR_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Conditional Drawdown at Risk.</span>
+
+<span class="sd">    CALMAR_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Maximum Drawdown.</span>
+
+<span class="sd">    AVERAGE_DRAWDOWN_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Average Drawdown.</span>
+
+<span class="sd">    EDAR_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Entropic Drawdown at Risk.</span>
+
+<span class="sd">    ULCER_INDEX_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Ulcer Index.</span>
+
+<span class="sd">    GINI_MEAN_DIFFERENCE_RATIO : str</span>
+<span class="sd">         Ratio of the excess Mean divided by the Gini Mean Difference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">SHARPE_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_SHARPE_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">SORTINO_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ANNUALIZED_SORTINO_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">MEAN_ABSOLUTE_DEVIATION_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">FIRST_LOWER_PARTIAL_MOMENT_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">VALUE_AT_RISK_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CVAR_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ENTROPIC_RISK_MEASURE_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">EVAR_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">WORST_REALIZATION_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">DRAWDOWN_AT_RISK_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CDAR_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">CALMAR_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">AVERAGE_DRAWDOWN_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">EDAR_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">ULCER_INDEX_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">GINI_MEAN_DIFFERENCE_RATIO</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_perf</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_risk</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">linked_risk_measure</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RiskMeasure</span> <span class="o">|</span> <span class="n">ExtraRiskMeasure</span><span class="p">:</span>
+        <span class="k">match</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="k">case</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">STANDARD_DEVIATION</span>
+            <span class="k">case</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">ANNUALIZED_SHARPE_RATIO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">ANNUALIZED_STANDARD_DEVIATION</span>
+            <span class="k">case</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SORTINO_RATIO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">SEMI_DEVIATION</span>
+            <span class="k">case</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">ANNUALIZED_SORTINO_RATIO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">ANNUALIZED_SEMI_DEVIATION</span>
+            <span class="k">case</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">CALMAR_RATIO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RiskMeasure</span><span class="o">.</span><span class="n">MAX_DRAWDOWN</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="n">risk_measure</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">RiskMeasure</span><span class="p">(</span><span class="n">risk_measure</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">ExtraRiskMeasure</span><span class="p">(</span><span class="n">risk_measure</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

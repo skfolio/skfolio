@@ -1,0 +1,879 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.datasets._base &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/datasets/_base';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.data...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.datasets._base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Datasets module.&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+<span class="kn">import</span> <span class="nn">gzip</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">urllib.request</span> <span class="k">as</span> <span class="nn">ur</span>
+<span class="kn">from</span> <span class="nn">importlib</span> <span class="kn">import</span> <span class="n">resources</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span> <span class="nn">joblib</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="n">DATA_MODULE</span> <span class="o">=</span> <span class="s2">&quot;skfolio.datasets.data&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">get_data_home</span><span class="p">(</span><span class="n">data_home</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the path of the skfolio data directory.</span>
+
+<span class="sd">    This folder is used by some large dataset loaders to avoid downloading the</span>
+<span class="sd">    data several times.</span>
+
+<span class="sd">    By default, the data directory is set to a folder named &#39;skfolio_data&#39; in the</span>
+<span class="sd">    user home folder.</span>
+
+<span class="sd">    Alternatively, it can be set by the &#39;SKFOLIO_DATA&#39; environment</span>
+<span class="sd">    variable or programmatically by giving an explicit folder path. The &#39;~&#39;</span>
+<span class="sd">    symbol is expanded to the user home folder.</span>
+
+<span class="sd">    If the folder does not already exist, it is automatically created.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_home : str, optional</span>
+<span class="sd">        The path to skfolio data directory. If `None`, the default path</span>
+<span class="sd">        is `~/skfolio_data`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    data_home: str or path-like, optional</span>
+<span class="sd">        The path to skfolio data directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">data_home</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">data_home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;SKFOLIO_DATA&quot;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">,</span> <span class="s2">&quot;skfolio_data&quot;</span><span class="p">))</span>
+    <span class="n">data_home</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">data_home</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">data_home</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data_home</span>
+
+
+<span class="k">def</span> <span class="nf">clear_data_home</span><span class="p">(</span><span class="n">data_home</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete all the content of the data home cache.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_home : str or path-like, optional</span>
+<span class="sd">        The path to scikit-learn data directory. If `None`, the default path</span>
+<span class="sd">        is `~/skfolio_data`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_home</span> <span class="o">=</span> <span class="n">get_data_home</span><span class="p">(</span><span class="n">data_home</span><span class="p">)</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">data_home</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">load_gzip_compressed_csv_data</span><span class="p">(</span>
+    <span class="n">data_filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">data_module</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DATA_MODULE</span><span class="p">,</span>
+    <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+    <span class="n">datetime_index</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Loads gzip-compressed csv files with `importlib.resources`.</span>
+
+<span class="sd">    1) Open resource file with `importlib.resources.open_binary`</span>
+<span class="sd">    2) Decompress csv file with `gzip.open`</span>
+<span class="sd">    3) Load decompressed data with `pd.read_csv`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_filename : str</span>
+<span class="sd">        Name of gzip-compressed csv file  (`&#39;*.csv.gz&#39;`) to be loaded from</span>
+<span class="sd">        `data_module/data_file_name`. For example `&#39;SPX500.csv.gz&#39;`.</span>
+
+<span class="sd">    data_module : str or module, default=&#39;skfolio.datasets.data&#39;</span>
+<span class="sd">        Module where data lives. The default is `&#39;skfolio.datasets.data&#39;`.</span>
+
+<span class="sd">    encoding : str, default=&quot;utf-8&quot;</span>
+<span class="sd">        Name of the encoding that the gzip-decompressed file will be</span>
+<span class="sd">        decoded with. The default is &#39;utf-8&#39;.</span>
+
+<span class="sd">    datetime_index: bool, default=True</span>
+<span class="sd">        If this is set to True, the DataFrame index is converted to datetime with</span>
+<span class="sd">        format=&quot;%Y-%m-%d&quot;.</span>
+<span class="sd">        The default is `True`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        DataFrame with each row representing one observation and each column</span>
+<span class="sd">        representing the asset price of a given observation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">resources</span><span class="o">.</span><span class="n">files</span><span class="p">(</span><span class="n">data_module</span><span class="p">)</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">data_filename</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">compressed_file</span><span class="p">:</span>
+        <span class="n">compressed_file</span> <span class="o">=</span> <span class="n">gzip</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">compressed_file</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;rt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">compressed_file</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">datetime_index</span><span class="p">:</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+
+<span class="k">def</span> <span class="nf">download_dataset</span><span class="p">(</span>
+    <span class="n">data_filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">data_home</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">download_if_missing</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Download and save locally a dataset from the remote GitHub dataset folder.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_filename : str</span>
+<span class="sd">        Name of gzip-compressed csv file  (`&#39;*.csv.gz&#39;`) to be loaded from a remote</span>
+<span class="sd">        GitHub dataset folder.</span>
+
+<span class="sd">    data_home : str or path-like, optional</span>
+<span class="sd">        Specify another download and cache folder for the datasets. By default,</span>
+<span class="sd">        all skfolio data is stored in `~/skfolio_data` sub-folders.</span>
+
+<span class="sd">    download_if_missing : bool, default=True</span>
+<span class="sd">        If False, raise an OSError if the data is not locally available</span>
+<span class="sd">        instead of trying to download the data from the source site.</span>
+<span class="sd">        The default is `True`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        DataFrame with each row representing one observation and each column</span>
+<span class="sd">        representing the asset price of a given observation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;https://github.com/skfolio/skfolio/raw/main/datasets/&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data_filename</span><span class="si">}</span><span class="s2">.csv.gz&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">data_home</span> <span class="o">=</span> <span class="n">get_data_home</span><span class="p">(</span><span class="n">data_home</span><span class="o">=</span><span class="n">data_home</span><span class="p">)</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_home</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">data_filename</span><span class="si">}</span><span class="s2">.pkz&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">joblib</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">download_if_missing</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Data not found and `download_if_missing` is False&quot;</span><span class="p">)</span>
+
+    <span class="n">archive_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_home</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+    <span class="n">ur</span><span class="o">.</span><span class="n">urlretrieve</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">archive_path</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_gzip_compressed_csv_data</span><span class="p">(</span><span class="n">archive_path</span><span class="p">)</span>
+    <span class="n">joblib</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">compress</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">archive_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
+
+
+<div class="viewcode-block" id="load_sp500_dataset">
+<a class="viewcode-back" href="../../../generated/skfolio.datasets.load_sp500_dataset.html#skfolio.datasets.load_sp500_dataset">[docs]</a>
+<span class="k">def</span> <span class="nf">load_sp500_dataset</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the prices of 20 assets from the S&amp;P 500 Index composition.</span>
+
+<span class="sd">    This dataset is composed of the daily prices of 20 assets from the S&amp;P 500</span>
+<span class="sd">    composition starting from 1990-01-02 up to 2022-12-28.</span>
+
+<span class="sd">    The data comes from the Yahoo public API.</span>
+<span class="sd">    The price is the adjusted close which is the closing price after adjustments for</span>
+<span class="sd">    all applicable splits and dividend distributions.</span>
+<span class="sd">    The adjustment uses appropriate split and dividend multipliers, adhering to</span>
+<span class="sd">    the Center for Research in Security Prices (CRSP) standards.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     8313</span>
+<span class="sd">    Assets           20</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Prices DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_sp500_dataset</span>
+<span class="sd">    &gt;&gt;&gt; prices = load_sp500_dataset()</span>
+<span class="sd">    &gt;&gt;&gt; prices.head()</span>
+<span class="sd">                    AAPL     AMD       BAC  ...       UNH       WMT      XOM</span>
+<span class="sd">    1990-01-02  0.332589  4.1250  11.65625  ...  0.382813  5.890625  12.5000</span>
+<span class="sd">    1990-01-03  0.334821  4.0000  11.75000  ...  0.375000  5.890625  12.3750</span>
+<span class="sd">    1990-01-04  0.335938  3.9375  11.50000  ...  0.371094  5.859375  12.2500</span>
+<span class="sd">    1990-01-05  0.337054  3.8125  11.25000  ...  0.355469  5.796875  12.1875</span>
+<span class="sd">    1990-01-08  0.339286  3.8125  11.31250  ...  0.347656  5.875000  12.3750</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;sp500_dataset.csv.gz&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_gzip_compressed_csv_data</span><span class="p">(</span><span class="n">data_filename</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="load_sp500_index">
+<a class="viewcode-back" href="../../../generated/skfolio.datasets.load_sp500_index.html#skfolio.datasets.load_sp500_index">[docs]</a>
+<span class="k">def</span> <span class="nf">load_sp500_index</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the prices of the S&amp;P 500 Index.</span>
+
+<span class="sd">    This dataset is composed of the daily prices of the S&amp;P 500 Index starting from</span>
+<span class="sd">    1990-01-02 up to 2022-12-28.</span>
+
+<span class="sd">    The data comes from the Yahoo public API.</span>
+<span class="sd">    The price is the adjusted close which is the closing price after adjustments for</span>
+<span class="sd">    all applicable splits and dividend distributions.</span>
+<span class="sd">    The adjustment uses appropriate split and dividend multipliers, adhering to</span>
+<span class="sd">    the Center for Research in Security Prices (CRSP) standards.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     8313</span>
+<span class="sd">    Assets           1</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Prices DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_sp500_index</span>
+<span class="sd">    &gt;&gt;&gt; prices = load_sp500_index()</span>
+<span class="sd">    &gt;&gt;&gt; prices.head()</span>
+<span class="sd">                 SP500</span>
+<span class="sd">    Date</span>
+<span class="sd">    1990-01-02  359.69</span>
+<span class="sd">    1990-01-03  358.76</span>
+<span class="sd">    1990-01-04  355.67</span>
+<span class="sd">    1990-01-05  352.20</span>
+<span class="sd">    1990-01-08  353.79</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;sp500_index.csv.gz&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_gzip_compressed_csv_data</span><span class="p">(</span><span class="n">data_filename</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="load_factors_dataset">
+<a class="viewcode-back" href="../../../generated/skfolio.datasets.load_factors_dataset.html#skfolio.datasets.load_factors_dataset">[docs]</a>
+<span class="k">def</span> <span class="nf">load_factors_dataset</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the prices of 5 factor ETFs.</span>
+
+<span class="sd">    This dataset is composed of the daily prices of 5 ETF representing common factors</span>
+<span class="sd">    starting from 2014-01-02 up to 2022-12-28.</span>
+
+<span class="sd">    The factors are:</span>
+
+<span class="sd">        * &quot;MTUM&quot;: Momentum</span>
+<span class="sd">        * &quot;QUAL&quot;: Quanlity</span>
+<span class="sd">        * &quot;SIZE&quot;: Size</span>
+<span class="sd">        * &quot;VLUE&quot;: Value</span>
+<span class="sd">        * &quot;USMV&quot;: low volatility</span>
+
+<span class="sd">    The data comes from the Yahoo public API.</span>
+<span class="sd">    The price is the adjusted close which is the closing price after adjustments for</span>
+<span class="sd">    all applicable splits and dividend distributions.</span>
+<span class="sd">    The adjustment uses appropriate split and dividend multipliers, adhering to</span>
+<span class="sd">    the Center for Research in Security Prices (CRSP) standards.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     2264</span>
+<span class="sd">    Assets           5</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Prices DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_factors_dataset</span>
+<span class="sd">    &gt;&gt;&gt; prices = load_factors_dataset()</span>
+<span class="sd">    &gt;&gt;&gt; prices.head()</span>
+<span class="sd">                  MTUM    QUAL    SIZE    USMV    VLUE</span>
+<span class="sd">    Date</span>
+<span class="sd">    2014-01-02  52.704  48.351  48.986  29.338  47.054</span>
+<span class="sd">    2014-01-03  52.792  48.256  48.722  29.330  46.999</span>
+<span class="sd">    2014-01-06  52.677  48.067  48.722  29.263  46.991</span>
+<span class="sd">    2014-01-07  53.112  48.455  48.731  29.430  47.253</span>
+<span class="sd">    2014-01-08  53.502  48.437  48.731  29.422  47.253</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;factors_dataset.csv.gz&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_gzip_compressed_csv_data</span><span class="p">(</span><span class="n">data_filename</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="load_ftse100_dataset">
+<a class="viewcode-back" href="../../../generated/skfolio.datasets.load_ftse100_dataset.html#skfolio.datasets.load_ftse100_dataset">[docs]</a>
+<span class="k">def</span> <span class="nf">load_ftse100_dataset</span><span class="p">(</span><span class="n">data_home</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the prices of 64 assets from the FTSE 100 Index composition.</span>
+
+<span class="sd">    This dataset is composed of the daily prices of 64 assets from the FTSE 100 Index</span>
+<span class="sd">    starting from 2000-01-04 up to 2023-05-31.</span>
+
+<span class="sd">    The data comes from the Yahoo public API.</span>
+<span class="sd">    The price is the adjusted close which is the closing price after adjustments for</span>
+<span class="sd">    all applicable splits and dividend distributions.</span>
+<span class="sd">    The adjustment uses appropriate split and dividend multipliers, adhering to</span>
+<span class="sd">    the Center for Research in Security Prices (CRSP) standards.</span>
+<span class="sd">    The data contains NaN.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     5960</span>
+<span class="sd">    Assets           64</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_home : str, optional</span>
+<span class="sd">        Specify another download and cache folder for the datasets.</span>
+<span class="sd">        By default, all skfolio data is stored in `~/skfolio_data` subfolders.</span>
+
+<span class="sd">    download_if_missing : bool, default=True</span>
+<span class="sd">        If False, raise an OSError if the data is not locally available</span>
+<span class="sd">        instead of trying to download the data from the source site.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Prices DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_ftse100_dataset</span>
+<span class="sd">    &gt;&gt;&gt; prices = load_ftse100_dataset()</span>
+<span class="sd">    &gt;&gt;&gt; prices.head()</span>
+<span class="sd">                  AAL.L    ABF.L   AHT.L  ANTO.L  ...   VOD.L   WEIR.L    WPP.L    WTB.L</span>
+<span class="sd">    Date                                          ...</span>
+<span class="sd">    2000-01-04  535.354  205.926  97.590  40.313  ...  72.562  115.240  512.249  382.907</span>
+<span class="sd">    2000-01-05  540.039  209.185  96.729  40.313  ...  69.042  118.483  462.080  381.972</span>
+<span class="sd">    2000-01-06  553.289  229.048  95.581  40.452  ...  66.950  124.220  458.119  386.337</span>
+<span class="sd">    2000-01-07  572.829  222.220  95.581  40.452  ...  70.716  121.725  475.283  405.046</span>
+<span class="sd">    2000-01-10  578.852  224.548  92.711  40.685  ...  74.285  121.476  498.254  392.885</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;ftse100_dataset&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">download_dataset</span><span class="p">(</span>
+        <span class="n">data_filename</span><span class="p">,</span> <span class="n">data_home</span><span class="o">=</span><span class="n">data_home</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="n">download_if_missing</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="load_nasdaq_dataset">
+<a class="viewcode-back" href="../../../generated/skfolio.datasets.load_nasdaq_dataset.html#skfolio.datasets.load_nasdaq_dataset">[docs]</a>
+<span class="k">def</span> <span class="nf">load_nasdaq_dataset</span><span class="p">(</span><span class="n">data_home</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the prices of 1455 assets from the NASDAQ Composite Index.</span>
+
+<span class="sd">    This dataset is composed of the daily prices of 1455 assets from the NASDAQ</span>
+<span class="sd">    Composite starting from 2018-01-02 up to 2023-05-31.</span>
+
+<span class="sd">    The data comes from the Yahoo public API.</span>
+<span class="sd">    The price is the adjusted close which is the closing price after adjustments for</span>
+<span class="sd">    all applicable splits and dividend distributions.</span>
+<span class="sd">    The adjustment uses appropriate split and dividend multipliers, adhering to</span>
+<span class="sd">    the Center for Research in Security Prices (CRSP) standards.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     1362</span>
+<span class="sd">    Assets           1455</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_home : str, optional</span>
+<span class="sd">        Specify another download and cache folder for the datasets.</span>
+<span class="sd">        By default, all skfolio data is stored in `~/skfolio_data` subfolders.</span>
+
+<span class="sd">    download_if_missing : bool, default=True</span>
+<span class="sd">        If False, raise an OSError if the data is not locally available</span>
+<span class="sd">        instead of trying to download the data from the source site.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Prices DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_nasdaq_dataset</span>
+<span class="sd">    &gt;&gt;&gt; prices = load_nasdaq_dataset()</span>
+<span class="sd">    &gt;&gt;&gt; prices.head()</span>
+<span class="sd">                   AAL   AAOI    AAON    AAPL  ...  ZVRA   ZYME    ZYNE   ZYXI</span>
+<span class="sd">    Date                                       ...</span>
+<span class="sd">    2018-01-02  51.648  37.91  35.621  41.310  ...  66.4  7.933  12.995  2.922</span>
+<span class="sd">    2018-01-03  51.014  37.89  36.247  41.303  ...  72.8  7.965  13.460  2.913</span>
+<span class="sd">    2018-01-04  51.336  38.38  36.103  41.495  ...  78.4  8.430  12.700  2.869</span>
+<span class="sd">    2018-01-05  51.316  38.89  36.681  41.967  ...  77.6  8.400  12.495  2.780</span>
+<span class="sd">    2018-01-08  50.809  38.37  36.103  41.811  ...  82.4  8.310  12.550  2.825</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;nasdaq_dataset&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">download_dataset</span><span class="p">(</span>
+        <span class="n">data_filename</span><span class="p">,</span> <span class="n">data_home</span><span class="o">=</span><span class="n">data_home</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="n">download_if_missing</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

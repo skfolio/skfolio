@@ -1,0 +1,1210 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>skfolio.optimization.ConvexOptimization &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/skfolio.optimization.ConvexOptimization';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="skfolio.optimization.MeanRisk" href="skfolio.optimization.MeanRisk.html" />
+    <link rel="prev" title="skfolio.optimization.ObjectiveFunction" href="skfolio.optimization.ObjectiveFunction.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.BaseMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.BaseMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.PerfMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.PerfMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ExtraRiskMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ExtraRiskMeasure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.RatioMeasure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.RatioMeasure</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_cumulative_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_cumulative_returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.get_drawdowns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.get_drawdowns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_variance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.standard_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.standard_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.semi_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.semi_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.third_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.third_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_central_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_central_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.fourth_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.fourth_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cvar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cvar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.mean_absolute_deviation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.mean_absolute_deviation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.value_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.value_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.worst_realization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.worst_realization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.first_lower_partial_moment.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.first_lower_partial_moment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.entropic_risk_measure.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.entropic_risk_measure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.evar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.evar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.drawdown_at_risk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.drawdown_at_risk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.cdar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.cdar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.max_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.max_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.average_drawdown.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.average_drawdown</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.edar.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.edar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.ulcer_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ulcer_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.gini_mean_difference.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.gini_mean_difference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.measures.owa_gmd_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.owa_gmd_weights</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.BasePortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.BasePortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.Portfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.portfolio.MultiPeriodPortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.MultiPeriodPortfolio</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.population.Population.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code>.Population</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.EqualWeighted.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.EqualWeighted</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.InverseVolatility.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.InverseVolatility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.Random.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.Random</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.ObjectiveFunction.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ObjectiveFunction</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ConvexOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MeanRisk.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MeanRisk</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.RiskBudgeting.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.RiskBudgeting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.MaximumDiversification.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MaximumDiversification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.DistributionallyRobustCVaR.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.DistributionallyRobustCVaR</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseHierarchicalOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseHierarchicalOptimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalRiskParity.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalRiskParity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.HierarchicalEqualRiskContribution.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.HierarchicalEqualRiskContribution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.NestedClustersOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.NestedClustersOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.BaseComposition.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.BaseComposition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.optimization.StackingOptimization.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.StackingOptimization</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.PriorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.PriorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BasePrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BasePrior</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.EmpiricalPrior.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.EmpiricalPrior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BlackLitterman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BlackLitterman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.FactorModel.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.FactorModel</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.BaseLoadingMatrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.BaseLoadingMatrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.prior.LoadingMatrixRegression.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.prior</span></code>.LoadingMatrixRegression</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseMu</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EquilibriumMu.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EquilibriumMu</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkMuMethods.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkMuMethods</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.BaseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.BaseCovariance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EmpiricalCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EmpiricalCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.EWCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EWCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GerberCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GerberCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoiseCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoiseCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.DenoteCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.DenoteCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.LedoitWolf.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.LedoitWolf</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.PearsonDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.PearsonDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.KendallDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.KendallDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.SpearmanDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.SpearmanDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.CovarianceDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.CovarianceDistance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.DistanceCorrelation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.DistanceCorrelation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.distance.MutualInformation.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.MutualInformation</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.HierarchicalClustering.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.HierarchicalClustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.cluster.LinkageMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>.LinkageMethod</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.UncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.UncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BaseCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BaseCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.EmpiricalCovarianceUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapMuUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapMuUncertaintySet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>.BootstrapCovarianceUncertaintySet</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.CombinatorialPurgedCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.CombinatorialPurgedCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.WalkForward.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.WalkForward</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.cross_val_predict.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.cross_val_predict</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.metrics.make_scorer.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>.make_scorer</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_sp500_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_sp500_index</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_factors_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_factors_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_ftse100_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_ftse100_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.datasets.load_nasdaq_dataset.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>.load_nasdaq_dataset</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.preprocessing.prices_to_returns.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>.prices_to_returns</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.NBinsMethod.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.NBinsMethod</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_freedman.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_freedman</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.n_bins_knuth.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.n_bins_knuth</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.is_cholesky_dec.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.is_cholesky_dec</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_square.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_square</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_symmetric.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_symmetric</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.assert_is_distance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.assert_is_distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_nearest.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_nearest</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.cov_to_corr.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.cov_to_corr</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.corr_to_cov.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.corr_to_cov</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.commutation_matrix.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.commutation_matrix</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.compute_optimal_n_clusters.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.compute_optimal_n_clusters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.utils.stats.rand_weights_dirichlet.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>.rand_weights_dirichlet</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../api.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="skfolio-optimization-convexoptimization">
+<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ConvexOptimization<a class="headerlink" href="#skfolio-optimization-convexoptimization" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.optimization.</span></span><span class="sig-name descname"><span class="pre">ConvexOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">risk_measure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">RiskMeasure.VARIANCE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">budget</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_budget</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_budget</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_short</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_long</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transaction_costs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">management_fees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">previous_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">linear_constraints</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">left_inequality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right_inequality</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l1_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_coef</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_uncertainty_set_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariance_uncertainty_set_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">risk_free_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_acceptable_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cvar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cdar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edar_beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CLARABEL'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">solver_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_objective</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_constraints</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_problem</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_on_failure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_objective</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_constraints</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite_expected_return</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/optimization/convex/_base.html#ConvexOptimization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.optimization.ConvexOptimization" title="Link to this definition">#</a></dt>
+<dd><p>Base class for all convex optimization estimators in skfolio.</p>
+<p>All risk measures that have a convex formulation are defined in class methods with
+naming convention: <code class="docutils literal notranslate"><span class="pre">_{risk_measure}_risk</span></code>. That naming convention is used for
+dynamic lookup.</p>
+<p>CVX expressions that are shared among multiple risk measures are cached in a
+dictionary named <code class="docutils literal notranslate"><span class="pre">_cvx_cache</span></code>.
+This is to avoid cvx expression duplication and improve performance and convergence.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>risk_measure</strong><span class="classifier">RiskMeasure, default=RiskMeasure.VARIANCE</span></dt><dd><p><code class="xref py py-class docutils literal notranslate"><span class="pre">RiskMeasure</span></code> of the optimization.
+Can be any of:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>VARIANCE</p></li>
+<li><p>SEMI_VARIANCE</p></li>
+<li><p>STANDARD_DEVIATION</p></li>
+<li><p>SEMI_DEVIATION</p></li>
+<li><p>MEAN_ABSOLUTE_DEVIATION</p></li>
+<li><p>FIRST_LOWER_PARTIAL_MOMENT</p></li>
+<li><p>CVAR</p></li>
+<li><p>EVAR</p></li>
+<li><p>WORST_REALIZATION</p></li>
+<li><p>CDAR</p></li>
+<li><p>MAX_DRAWDOWN</p></li>
+<li><p>AVERAGE_DRAWDOWN</p></li>
+<li><p>EDAR</p></li>
+<li><p>ULCER_INDEX</p></li>
+<li><p>GINI_MEAN_DIFFERENCE_RATIO</p></li>
+</ul>
+</div></blockquote>
+<p>The default is <code class="docutils literal notranslate"><span class="pre">RiskMeasure.VARIANCE</span></code>.</p>
+</dd>
+<dt><strong>prior_estimator</strong><span class="classifier">BasePrior, optional</span></dt><dd><p><a class="reference internal" href="../user_guide/prior.html#prior"><span class="std std-ref">Prior estimator</span></a>.
+The prior estimator is used to estimate the <a class="reference internal" href="skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a>
+containing the estimation of assets expected returns, covariance matrix,
+returns and Cholesky decomposition of the covariance.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use <a class="reference internal" href="skfolio.prior.EmpiricalPrior.html#skfolio.prior.EmpiricalPrior" title="skfolio.prior.EmpiricalPrior"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmpiricalPrior</span></code></a>.</p>
+</dd>
+<dt><strong>min_weights</strong><span class="classifier">float | dict[str, float] | array-like of shape (n_assets, ) | None, default=0.0</span></dt><dd><p>Minimum assets weights (weights lower bounds).
+If a float is provided, it is applied to each asset.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">-np.Inf</span></code> (no lower bound).
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset minium weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+be a DataFrame with the assets names in columns.
+When using a dictionary, assets values that are not provided are assigned
+a minimum weight of <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code> (no short selling).</p>
+<p>Example:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">min_weights</span> <span class="pre">=</span> <span class="pre">0</span></code> –&gt; long only portfolio (no short selling).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_weights</span> <span class="pre">=</span> <span class="pre">None</span></code> –&gt; no lower bound (same as <code class="docutils literal notranslate"><span class="pre">-np.Inf</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_weights</span> <span class="pre">=</span> <span class="pre">-2</span></code> –&gt; each weight must be above -200%.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_weights</span> <span class="pre">=</span> <span class="pre">{&quot;SX5E&quot;:</span> <span class="pre">0,</span> <span class="pre">&quot;SPX&quot;:</span> <span class="pre">-2}</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_weights</span> <span class="pre">=</span> <span class="pre">[0,</span> <span class="pre">-2]</span></code></p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>max_weights</strong><span class="classifier">float | dict[str, float] | array-like of shape (n_assets, ) | None, default=1.0</span></dt><dd><p>Maximum assets weights (weights upper bounds).
+If a float is provided, it is applied to each asset.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">+np.Inf</span></code> (no upper bound).
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset maximum weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+be a DataFrame with the assets names in columns.
+When using a dictionary, assets values that are not provided are assigned
+a minimum weight of <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.
+The default value is <code class="docutils literal notranslate"><span class="pre">1.0</span></code> (each asset is below 100%).</p>
+<p>Example:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">max_weights</span> <span class="pre">=</span> <span class="pre">0</span></code> –&gt; no long position (short only portfolio).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_weights</span> <span class="pre">=</span> <span class="pre">None</span></code> –&gt; no upper bound.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_weights</span> <span class="pre">=</span> <span class="pre">2</span></code> –&gt; each weight must be below 200%.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_weights</span> <span class="pre">=</span> <span class="pre">{&quot;SX5E&quot;:</span> <span class="pre">1,</span> <span class="pre">&quot;SPX&quot;:</span> <span class="pre">2}</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_weights</span> <span class="pre">=</span> <span class="pre">[1,</span> <span class="pre">2]</span></code></p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>budget</strong><span class="classifier">float | None, default=1.0</span></dt><dd><p>Investment budget. It is the sum of long positions and short positions (sum of
+all weights). <code class="docutils literal notranslate"><span class="pre">None</span></code> means no budget constraints.
+The default value is <code class="docutils literal notranslate"><span class="pre">1.0</span></code> (fully invested portfolio).</p>
+<p>Examples:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">budget</span> <span class="pre">=</span> <span class="pre">1</span></code> –&gt; fully invested portfolio.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">budget</span> <span class="pre">=</span> <span class="pre">0</span></code> –&gt; market neutral portfolio.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">budget</span> <span class="pre">=</span> <span class="pre">None</span></code> –&gt; no constraints on the sum of weights.</p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>min_budget</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum budget. It is the lower bound of the sum of long and short positions
+(sum of all weights). If provided, you must set <code class="docutils literal notranslate"><span class="pre">budget=None</span></code>.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no minimum budget constraint.</p>
+</dd>
+<dt><strong>max_budget</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum budget. It is the upper bound of the sum of long and short positions
+(sum of all weights). If provided, you must set <code class="docutils literal notranslate"><span class="pre">budget=None</span></code>.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no maximum budget constraint.</p>
+</dd>
+<dt><strong>max_short</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum short position. The short position is defined as the sum of negative
+weights (in absolute term).
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no maximum short position.</p>
+</dd>
+<dt><strong>max_long</strong><span class="classifier">float, optional</span></dt><dd><p>Maximum long position. The long position is defined as the sum of positive
+weights.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no maximum long position.</p>
+</dd>
+<dt><strong>transaction_costs</strong><span class="classifier">float | dict[str, float] | array-like of shape (n_assets, ), default=0.0</span></dt><dd><p>Transaction costs of the assets. It is used to add linear transaction costs to
+the optimization problem:</p>
+<div class="math notranslate nohighlight">
+\[total\_cost = \sum_{i=1}^{N} c_{i} \times |w_{i} - w\_prev_{i}|\]</div>
+<p>with <span class="math notranslate nohighlight">\(c_{i}\)</span> the transaction cost of asset i, <span class="math notranslate nohighlight">\(w_{i}\)</span> its weight
+and <span class="math notranslate nohighlight">\(w\_prev_{i}\)</span> its previous weight (defined in <code class="docutils literal notranslate"><span class="pre">previous_weights</span></code>).
+The float <span class="math notranslate nohighlight">\(total\_cost\)</span> is used in the portfolio expected return:</p>
+<div class="math notranslate nohighlight">
+\[expected\_return = \mu^{T} \cdot w - total\_cost\]</div>
+<p>with <span class="math notranslate nohighlight">\(\mu\)</span> the vector af assets’ expected returns and <span class="math notranslate nohighlight">\(w\)</span> the
+vector of assets weights.</p>
+<p>If a float is provided, it is applied to each asset.
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset cost) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+DataFrame with the assets names in columns.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Based on the above formula, the periodicity of the transaction costs
+needs to be homogenous to the periodicity of <span class="math notranslate nohighlight">\(\mu\)</span>. For example, if
+the input <code class="docutils literal notranslate"><span class="pre">X</span></code> is composed of <strong>daily</strong> returns, the <code class="docutils literal notranslate"><span class="pre">transaction_costs</span></code> need
+to be expressed in <strong>daily</strong> costs.
+(See <a class="reference internal" href="../auto_examples/1_mean_risk/plot_6_transaction_costs.html#sphx-glr-auto-examples-1-mean-risk-plot-6-transaction-costs-py"><span class="std std-ref">Transaction Costs</span></a>)</p>
+</div>
+</dd>
+<dt><strong>management_fees</strong><span class="classifier">float | dict[str, float] | array-like of shape (n_assets, ), default=0.0</span></dt><dd><p>Management fees of the assets. It is used to add linear management fees to the
+optimization problem:</p>
+<div class="math notranslate nohighlight">
+\[total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}\]</div>
+<p>with <span class="math notranslate nohighlight">\(f_{i}\)</span> the management fee of asset i and <span class="math notranslate nohighlight">\(w_{i}\)</span> its weight.
+The float <span class="math notranslate nohighlight">\(total\_fee\)</span> is used in the portfolio expected return:</p>
+<div class="math notranslate nohighlight">
+\[expected\_return = \mu^{T} \cdot w - total\_fee\]</div>
+<p>with <span class="math notranslate nohighlight">\(\mu\)</span> the vector af assets expected returns and <span class="math notranslate nohighlight">\(w\)</span> the vector
+of assets weights.</p>
+<p>If a float is provided, it is applied to each asset.
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset fee) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+DataFrame with the assets names in columns.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Based on the above formula, the periodicity of the management fees needs to
+be homogenous to the periodicity of <span class="math notranslate nohighlight">\(\mu\)</span>. For example, if the input
+<code class="docutils literal notranslate"><span class="pre">X</span></code> is composed of <strong>daily</strong> returns, the <code class="docutils literal notranslate"><span class="pre">management_fees</span></code> need to be
+expressed in <strong>daily</strong> fees.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Another approach is to directly impact the management fees to the input <code class="docutils literal notranslate"><span class="pre">X</span></code>
+in order to express the returns net of fees. However, when estimating the
+<span class="math notranslate nohighlight">\(\mu\)</span> parameter using for example Shrinkage estimators, this approach
+would mix a deterministic value with an uncertain one leading to unwanted
+bias in the management fees.</p>
+</div>
+</dd>
+<dt><strong>previous_weights</strong><span class="classifier">float | dict[str, float] | array-like of shape (n_assets, ), optional</span></dt><dd><p>Previous weights of the assets. Previous weights are used to compute the
+portfolio cost and the portfolio turnover.
+If a float is provided, it is applied to each asset.
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset previous weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+be a DataFrame with the assets names in columns.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no previous weights.</p>
+</dd>
+<dt><strong>l1_coef</strong><span class="classifier">float, default=0.0</span></dt><dd><p>L1 regularization coefficient.
+It is used to penalize the objective function by the L1 norm:</p>
+<div class="math notranslate nohighlight">
+\[l1\_coef \times \Vert w \Vert_{1} = l1\_coef \times \sum_{i=1}^{N} |w_{i}|\]</div>
+<p>Increasing this coefficient will reduce the number of non-zero weights
+(cardinality). It tends to increase robustness (out-of-sample stability) but
+reduces diversification.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+</dd>
+<dt><strong>l2_coef</strong><span class="classifier">float, default=0.0</span></dt><dd><p>L2 regularization coefficient.
+It is used to penalize the objective function by the L2 norm:</p>
+<div class="math notranslate nohighlight">
+\[l2\_coef \times \Vert w \Vert_{2}^{2} = l2\_coef \times \sum_{i=1}^{N} w_{i}^2\]</div>
+<p>It tends to increase robustness (out-of-sample stability).
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+</dd>
+<dt><strong>mu_uncertainty_set_estimator</strong><span class="classifier">BaseMuUncertaintySet, optional</span></dt><dd><p><a class="reference internal" href="../user_guide/uncertainty_set.html#uncertainty-set-estimator"><span class="std std-ref">Mu Uncertainty set estimator</span></a>.
+If provided, the assets expected returns are modelled with an ellipsoidal
+uncertainty set. It is called worst-case optimization and is a class of robust
+optimization. It reduces the instability that arises from the estimation errors
+of the expected returns.
+The worst case portfolio expect return is:</p>
+<div class="math notranslate nohighlight">
+\[w^T\hat{\mu} - \kappa_{\mu}\lVert S_{\mu}^\frac{1}{2}w\rVert_{2}\]</div>
+<p>with <span class="math notranslate nohighlight">\(\kappa\)</span> the size of the ellipsoid (confidence region) and
+<span class="math notranslate nohighlight">\(S\)</span> its shape.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means that no uncertainty set is used.</p>
+</dd>
+<dt><strong>covariance_uncertainty_set_estimator</strong><span class="classifier">BaseCovarianceUncertaintySet, optional</span></dt><dd><p><a class="reference internal" href="../user_guide/uncertainty_set.html#uncertainty-set-estimator"><span class="std std-ref">Covariance Uncertainty set estimator</span></a>.
+If provided, the assets covariance matrix is modelled with an ellipsoidal
+uncertainty set. It is called worst-case optimization and is a class of robust
+optimization. It reduces the instability that arises from the estimation errors
+of the covariance matrix.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means that no uncertainty set is used.</p>
+</dd>
+<dt><strong>linear_constraints</strong><span class="classifier">array-like of shape (n_constraints,), optional</span></dt><dd><p>Linear constraints.
+The linear constraints must match any of following patterns:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>“2.5 * ref1 + 0.10 * ref2 + 0.0013 &lt;= 2.5 * ref3”</p></li>
+<li><p>“ref1 &gt;= 2.9 * ref2”</p></li>
+<li><p>“ref1 &lt;= ref2”</p></li>
+<li><p>“ref1 &gt;= ref1”</p></li>
+</ul>
+</div></blockquote>
+<p>With “ref1”, “ref2” … the assets names or the groups names provided
+in the parameter <code class="docutils literal notranslate"><span class="pre">groups</span></code>. Assets names can be referenced without the need of
+<code class="docutils literal notranslate"><span class="pre">groups</span></code> if the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods is a DataFrame with these
+assets names in columns.</p>
+<p>Examples:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>“SPX &gt;= 0.10” –&gt; SPX weight must be greater than 10% (note that you can also use <code class="docutils literal notranslate"><span class="pre">min_weights</span></code>)</p></li>
+<li><p>“SX5E + TLT &gt;= 0.2” –&gt; the sum of SX5E and TLT weights must be greater than 20%</p></li>
+<li><p>“US &gt;= 0.7” –&gt; the sum of all US weights must be greater than 70%</p></li>
+<li><p>“Equity &lt;= 3 * Bond” –&gt; the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.</p></li>
+<li><p>“2*SPX + 3*Europe &lt;= Bond + 0.05” –&gt; mixing assets and group constraints</p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>groups</strong><span class="classifier">dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional</span></dt><dd><p>The assets groups referenced in <code class="docutils literal notranslate"><span class="pre">linear_constraints</span></code>.
+If a dictionary is provided, its (key/value) pair must be the
+(asset name/asset groups) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+DataFrame with the assets names in columns.</p>
+<p>Examples:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>groups = {“SX5E”: [“Equity”, “Europe”], “SPX”: [“Equity”, “US”], “TLT”: [“Bond”, “US”]}</p></li>
+<li><p>groups = [[“Equity”, “Equity”, “Bond”], [“Europe”, “US”, “US”]]</p></li>
+</ul>
+</div></blockquote>
+</dd>
+<dt><strong>left_inequality</strong><span class="classifier">array-like of shape (n_constraints, n_assets), optional</span></dt><dd><p>Left inequality matrix <span class="math notranslate nohighlight">\(A\)</span> of the linear
+constraint <span class="math notranslate nohighlight">\(A \cdot w \leq b\)</span>.</p>
+</dd>
+<dt><strong>right_inequality</strong><span class="classifier">array-like of shape (n_constraints, ), optional</span></dt><dd><p>Right inequality vector <span class="math notranslate nohighlight">\(b\)</span> of the linear
+constraint <span class="math notranslate nohighlight">\(A \cdot w \leq b\)</span>.</p>
+</dd>
+<dt><strong>risk_free_rate</strong><span class="classifier">float, default=0.0</span></dt><dd><p>Risk-free interest rate.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
+</dd>
+<dt><strong>min_acceptable_return</strong><span class="classifier">float, optional</span></dt><dd><p>The minimum acceptable return used to distinguish “downside” and “upside”
+returns for the computation of lower partial moments:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>First Lower Partial Moment</p></li>
+<li><p>Semi-Variance</p></li>
+<li><p>Semi-Deviation</p></li>
+</ul>
+</div></blockquote>
+<p>The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to use the mean.</p>
+</dd>
+<dt><strong>cvar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>CVaR (Conditional Value at Risk) confidence level.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>evar_beta</strong><span class="classifier">float, default=0</span></dt><dd><p>EVaR (Entropic Value at Risk) confidence level.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>cdar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>CDaR (Conditional Drawdown at Risk) confidence level.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>edar_beta</strong><span class="classifier">float, default=0.95</span></dt><dd><p>EDaR (Entropic Drawdown at Risk) confidence level.
+The default value is <code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+</dd>
+<dt><strong>add_objective</strong><span class="classifier">Callable[[cp.Variable], cp.Expression], optional</span></dt><dd><p>Add a custom objective to the existing objective expression.
+It is a function that must take as argument the weights <code class="docutils literal notranslate"><span class="pre">w</span></code> and returns a
+CVXPY expression.</p>
+</dd>
+<dt><strong>add_constraints</strong><span class="classifier">Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional</span></dt><dd><p>Add a custom constraint or a list of constraints to the existing constraints.
+It is a function that must take as argument the weights <code class="docutils literal notranslate"><span class="pre">w</span></code> and returns a
+CVPXY expression or a list of CVPXY expressions.</p>
+</dd>
+<dt><strong>overwrite_expected_return</strong><span class="classifier">Callable[[cp.Variable], cp.Expression], optional</span></dt><dd><p>Overwrite the expected return <span class="math notranslate nohighlight">\(\mu \cdot w\)</span> with a custom expression.
+It is a function that must take as argument the weights <code class="docutils literal notranslate"><span class="pre">w</span></code> and returns a
+CVPXY expression.</p>
+</dd>
+<dt><strong>solver</strong><span class="classifier">str, default=”CLARABEL”</span></dt><dd><p>The solver to use. The default is “CLARABEL” which is written in Rust and has
+better numerical stability and performance than ECOS and SCS. Cvxpy will replace
+its default solver “ECOS” by “CLARABEL” in future releases.
+For more details about available solvers, check the CVXPY documentation:
+<a class="reference external" href="https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver">https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver</a></p>
+</dd>
+<dt><strong>solver_params</strong><span class="classifier">dict, optional</span></dt><dd><p>Solver parameters. For example, <code class="docutils literal notranslate"><span class="pre">solver_params=dict(verbose=True)</span></code>.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is use <code class="docutils literal notranslate"><span class="pre">{&quot;tol_gap_abs&quot;:</span> <span class="pre">1e-9,</span> <span class="pre">&quot;tol_gap_rel&quot;:</span> <span class="pre">1e-9}</span></code>
+for the solver “CLARABEL” and the CVXPY default otherwise.
+For more details about solver arguments, check the CVXPY documentation:
+<a class="reference external" href="https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options">https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options</a></p>
+</dd>
+<dt><strong>scale_objective</strong><span class="classifier">float, optional</span></dt><dd><p>Scale each objective element by this value.
+It can be used to increase the optimization accuracies in specific cases.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is set depending on the problem.</p>
+</dd>
+<dt><strong>scale_constraints</strong><span class="classifier">float, optional</span></dt><dd><p>Scale each constraint element by this value.
+It can be used to increase the optimization accuracies in specific cases.
+The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is set depending on the problem.</p>
+</dd>
+<dt><strong>save_problem</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the CVXPY Problem is saved in <code class="docutils literal notranslate"><span class="pre">problem_</span></code>.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+</dd>
+<dt><strong>raise_on_failure</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, an error is raised when the optimization fail otherwise
+it passes with a warning.</p>
+</dd>
+<dt><strong>portfolio_params</strong><span class="classifier">dict, optional</span></dt><dd><p>Portfolio parameters passed to the portfolio evaluated by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> and
+<code class="docutils literal notranslate"><span class="pre">score</span></code> methods. If not provided, the <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">transaction_costs</span></code>,
+<code class="docutils literal notranslate"><span class="pre">management_fees</span></code> and <code class="docutils literal notranslate"><span class="pre">previous_weights</span></code> are copied from the optimization
+model and systematically passed to the portfolio.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Attributes<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>weights_</strong><span class="classifier">ndarray of shape (n_assets,) or (n_optimizations, n_assets)</span></dt><dd><p>Weights of the assets.</p>
+</dd>
+<dt><strong>problem_values_</strong><span class="classifier">dict[str, float] | list[dict[str, float]] of size n_optimizations</span></dt><dd><p>Expression values retrieved from the CVXPY problem.</p>
+</dd>
+<dt><strong>prior_estimator_</strong><span class="classifier">BasePrior</span></dt><dd><p>Fitted <code class="docutils literal notranslate"><span class="pre">prior_estimator</span></code>.</p>
+</dd>
+<dt><strong>mu_uncertainty_set_estimator_</strong><span class="classifier">BaseMuUncertaintySet</span></dt><dd><p>Fitted <code class="docutils literal notranslate"><span class="pre">mu_uncertainty_set_estimator</span></code> if provided.</p>
+</dd>
+<dt><strong>covariance_uncertainty_set_estimator_</strong><span class="classifier">BaseCovarianceUncertaintySet</span></dt><dd><p>Fitted <code class="docutils literal notranslate"><span class="pre">covariance_uncertainty_set_estimator</span></code> if provided.</p>
+</dd>
+<dt><strong>problem_: cvxpy.Problem</strong></dt><dd><p>CVXPY problem used for the optimization. Only when <code class="docutils literal notranslate"><span class="pre">save_problem</span></code> is set to
+<code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.fit_predict" title="skfolio.optimization.ConvexOptimization.fit_predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_predict</span></code></a>(X)</p></td>
+<td><p>Perform <code class="docutils literal notranslate"><span class="pre">fit</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> and returns the predicted <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the fitted <code class="docutils literal notranslate"><span class="pre">weights</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.get_metadata_routing" title="skfolio.optimization.ConvexOptimization.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
+<td><p>Get metadata routing of this object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.get_params" title="skfolio.optimization.ConvexOptimization.get_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_params</span></code></a>([deep])</p></td>
+<td><p>Get parameters for this estimator.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.predict" title="skfolio.optimization.ConvexOptimization.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X)</p></td>
+<td><p>Predict the <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the fitted weights.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.score" title="skfolio.optimization.ConvexOptimization.score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score</span></code></a>(X[, y])</p></td>
+<td><p>Prediction score.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.optimization.ConvexOptimization.set_params" title="skfolio.optimization.ConvexOptimization.set_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_params</span></code></a>(**params)</p></td>
+<td><p>Set the parameters of this estimator.</p></td>
+</tr>
+</tbody>
+</table>
+<table class="table">
+<tbody>
+<tr class="row-odd"><td><p><strong>fit</strong></p></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.fit_predict">
+<span class="sig-name descname"><span class="pre">fit_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.fit_predict" title="Link to this definition">#</a></dt>
+<dd><p>Perform <code class="docutils literal notranslate"><span class="pre">fit</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> and returns the predicted <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or
+<code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the fitted <code class="docutils literal notranslate"><span class="pre">weights</span></code>.
+For factor models, use <code class="docutils literal notranslate"><span class="pre">fit(X,</span> <span class="pre">y)</span></code> then <code class="docutils literal notranslate"><span class="pre">predict(X)</span></code> separately.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X</strong><span class="classifier">array-like of shape (n_observations, n_assets)</span></dt><dd><p>Price returns of the assets.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>prediction</strong><span class="classifier">Portfolio | Population</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> estimated on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the
+fitted <code class="docutils literal notranslate"><span class="pre">weights</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.get_metadata_routing">
+<span class="sig-name descname"><span class="pre">get_metadata_routing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.get_metadata_routing" title="Link to this definition">#</a></dt>
+<dd><p>Get metadata routing of this object.</p>
+<p>Please check <span class="xref std std-ref">User Guide</span> on how the routing
+mechanism works.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>routing</strong><span class="classifier">MetadataRequest</span></dt><dd><p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">MetadataRequest</span></code> encapsulating
+routing information.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">deep</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.get_params" title="Link to this definition">#</a></dt>
+<dd><p>Get parameters for this estimator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>deep</strong><span class="classifier">bool, default=True</span></dt><dd><p>If True, will return the parameters for this estimator and
+contained subobjects that are estimators.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>params</strong><span class="classifier">dict</span></dt><dd><p>Parameter names mapped to their values.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.predict" title="Link to this definition">#</a></dt>
+<dd><p>Predict the <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the
+fitted weights.</p>
+<p>Optimization estimators can return a 1D or a 2D array of <code class="docutils literal notranslate"><span class="pre">weights</span></code>.
+For a 1D array, the prediction returns a <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.
+For a 2D array, the prediction returns a <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">name</span></code> is not provided in the portfolio arguments, we use the first
+500 characters of the estimator name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X</strong><span class="classifier">array-like of shape (n_observations, n_assets)</span></dt><dd><p>Price returns of the assets.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>prediction</strong><span class="classifier">Portfolio | Population</span></dt><dd><p><code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> or <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> estimated on <code class="docutils literal notranslate"><span class="pre">X</span></code> based on the
+fitted <code class="docutils literal notranslate"><span class="pre">weights</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.score">
+<span class="sig-name descname"><span class="pre">score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.score" title="Link to this definition">#</a></dt>
+<dd><p>Prediction score.
+If the prediction is a single <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>, the score is the Sharpe Ratio.
+If the prediction is a <code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>, the score is the mean of all
+the portfolios Sharpe Ratios in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X</strong><span class="classifier">array-like of shape (n_observations, n_assets)</span></dt><dd><p>Price returns of the assets.</p>
+</dd>
+<dt><strong>y</strong><span class="classifier">Ignored</span></dt><dd><p>Not used, present here for API consistency by convention.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>score</strong><span class="classifier">float</span></dt><dd><p>The Sharpe Ratio of the portfolio if the prediction is a single <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>
+or the mean of all the portfolios Sharpe Ratios if the prediction is a
+<code class="docutils literal notranslate"><span class="pre">Population</span></code> of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.optimization.ConvexOptimization.set_params">
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.optimization.ConvexOptimization.set_params" title="Link to this definition">#</a></dt>
+<dd><p>Set the parameters of this estimator.</p>
+<p>The method works on simple estimators as well as on nested objects
+(such as <code class="xref py py-class docutils literal notranslate"><span class="pre">Pipeline</span></code>). The latter have
+parameters of the form <code class="docutils literal notranslate"><span class="pre">&lt;component&gt;__&lt;parameter&gt;</span></code> so that it’s
+possible to update each component of a nested object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>**params</strong><span class="classifier">dict</span></dt><dd><p>Estimator parameters.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>self</strong><span class="classifier">estimator instance</span></dt><dd><p>Estimator instance.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="clearer"></div></section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="skfolio.optimization.ObjectiveFunction.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.ObjectiveFunction</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="skfolio.optimization.MeanRisk.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization</span></code>.MeanRisk</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

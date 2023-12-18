@@ -1,0 +1,983 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>skfolio.utils.stats &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../../../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../../../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../../../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../../../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/utils/stats';</script>
+    <link rel="icon" href="../../../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../../../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../user_guide/index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">skfolio.utils.stats</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for skfolio.utils.stats</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tools module&quot;&quot;&quot;</span>
+
+<span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
+<span class="c1"># License: BSD 3 clause</span>
+
+
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">auto</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">as</span> <span class="nn">sch</span>
+<span class="kn">import</span> <span class="nn">scipy.optimize</span> <span class="k">as</span> <span class="nn">sco</span>
+<span class="kn">import</span> <span class="nn">scipy.spatial.distance</span> <span class="k">as</span> <span class="nn">scd</span>
+<span class="kn">import</span> <span class="nn">scipy.special</span> <span class="k">as</span> <span class="nn">scs</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">csr_matrix</span>
+
+<span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">AutoEnum</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;NBinsMethod&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_bins_freedman&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_bins_knuth&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;is_cholesky_dec&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;assert_is_square&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;assert_is_symmetric&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;assert_is_distance&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;cov_nearest&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;cov_to_corr&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;corr_to_cov&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;commutation_matrix&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;compute_optimal_n_clusters&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rand_weights&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;rand_weights_dirichlet&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="NBinsMethod">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.NBinsMethod.html#skfolio.utils.stats.NBinsMethod">[docs]</a>
+<span class="k">class</span> <span class="nc">NBinsMethod</span><span class="p">(</span><span class="n">AutoEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enumeration of the Number of Bins Methods</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    FREEDMAN : str</span>
+<span class="sd">        Freedman method</span>
+
+<span class="sd">    KNUTH : str</span>
+<span class="sd">        Knuth method</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">FREEDMAN</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span>
+    <span class="n">KNUTH</span> <span class="o">=</span> <span class="n">auto</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="n_bins_freedman">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.n_bins_freedman.html#skfolio.utils.stats.n_bins_freedman">[docs]</a>
+<span class="k">def</span> <span class="nf">n_bins_freedman</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the optimal histogram bin size using the Freedman-Diaconis rule [1]_.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n_observations,)</span>
+<span class="sd">        The input array.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    n_bins : int</span>
+<span class="sd">        The optimal bin size.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;On the histogram as a density estimator: L2 theory&quot;.</span>
+<span class="sd">        Freedman &amp; Diaconis (1981).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`x` must be a 1d-array&quot;</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">p_25</span><span class="p">,</span> <span class="n">p_75</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">75</span><span class="p">])</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_75</span> <span class="o">-</span> <span class="n">p_25</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">n</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">5</span>
+    <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">/</span> <span class="n">d</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">n_bins</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="n_bins_knuth">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.n_bins_knuth.html#skfolio.utils.stats.n_bins_knuth">[docs]</a>
+<span class="k">def</span> <span class="nf">n_bins_knuth</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the optimal histogram bin size using Knuth&#39;s rule [1]_.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n_observations,)</span>
+<span class="sd">        The input array.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    n_bins : int</span>
+<span class="sd">        The optimal bin size.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;Optimal Data-Based Binning for Histograms&quot;.</span>
+<span class="sd">        Knuth.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">y</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">bin_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="nb">int</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">hist</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">)</span>
+        <span class="k">return</span> <span class="o">-</span><span class="p">(</span>
+            <span class="n">n</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">scs</span><span class="o">.</span><span class="n">gammaln</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">y</span> <span class="o">*</span> <span class="n">scs</span><span class="o">.</span><span class="n">gammaln</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="o">-</span> <span class="n">scs</span><span class="o">.</span><span class="n">gammaln</span><span class="p">(</span><span class="n">n</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">scs</span><span class="o">.</span><span class="n">gammaln</span><span class="p">(</span><span class="n">hist</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">))</span>
+        <span class="p">)</span>
+
+    <span class="n">n_bins_init</span> <span class="o">=</span> <span class="n">n_bins_freedman</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">sco</span><span class="o">.</span><span class="n">fmin</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">n_bins_init</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">n_bins</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="rand_weights_dirichlet">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.rand_weights_dirichlet.html#skfolio.utils.stats.rand_weights_dirichlet">[docs]</a>
+<span class="k">def</span> <span class="nf">rand_weights_dirichlet</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Produces n random weights that sum to one from a dirichlet distribution</span>
+<span class="sd">    (uniform distribution over a simplex)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of weights.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    weights : ndarray of shape (n, )</span>
+<span class="sd">        The vector of weights.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">dirichlet</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="rand_weights">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.rand_weights.html#skfolio.utils.stats.rand_weights">[docs]</a>
+<span class="k">def</span> <span class="nf">rand_weights</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">zeros</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Produces n random weights that sum to one from an uniform distribution</span>
+<span class="sd">    (non-uniform distribution over a simplex)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : int</span>
+<span class="sd">        Number of weights.</span>
+
+<span class="sd">    zeros : int, default=0</span>
+<span class="sd">        The number of weights to randomly set to zeros.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    weights : ndarray of shape (n, )</span>
+<span class="sd">        The vector of weights.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">zeros</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">zeros_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">k</span><span class="p">[</span><span class="n">zeros_idx</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">k</span> <span class="o">/</span> <span class="nb">sum</span><span class="p">(</span><span class="n">k</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="is_cholesky_dec">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.is_cholesky_dec.html#skfolio.utils.stats.is_cholesky_dec">[docs]</a>
+<span class="k">def</span> <span class="nf">is_cholesky_dec</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns True if Cholesky decomposition can be computed.</span>
+<span class="sd">    The matrix must be Hermitian (symmetric if real-valued) and positive-definite.</span>
+<span class="sd">    No checking is performed to verify whether the matrix is Hermitian or not.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n, m)</span>
+<span class="sd">       The matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    value : bool</span>
+<span class="sd">        True if Cholesky decomposition can be applied to the matrix, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Around 100 times faster than checking for positive eigenvalues with np.linalg.eigh</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<span class="k">def</span> <span class="nf">is_positive_definite</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns True if the matrix is positive definite.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n, m)</span>
+<span class="sd">       The matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    value : bool</span>
+<span class="sd">        True if if the matrix is positive definite, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigvals</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="assert_is_square">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.assert_is_square.html#skfolio.utils.stats.assert_is_square">[docs]</a>
+<span class="k">def</span> <span class="nf">assert_is_square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raises an error if the matrix is not square.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n, n)</span>
+<span class="sd">       The matrix.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError: if the matrix is not square.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The matrix must be square&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="assert_is_symmetric">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.assert_is_symmetric.html#skfolio.utils.stats.assert_is_symmetric">[docs]</a>
+<span class="k">def</span> <span class="nf">assert_is_symmetric</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raises an error if the matrix is not symmetric.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n, m)</span>
+<span class="sd">       The matrix.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError: if the matrix is not symmetric.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">assert_is_square</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The matrix must be symmetric&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="assert_is_distance">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.assert_is_distance.html#skfolio.utils.stats.assert_is_distance">[docs]</a>
+<span class="k">def</span> <span class="nf">assert_is_distance</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raises an error if the matrix is not a distance matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n, n)</span>
+<span class="sd">       The matrix.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError: if the matrix is a distance matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">assert_is_symmetric</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The distance matrix must have diagonal elements close to zeros&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="cov_to_corr">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.cov_to_corr.html#skfolio.utils.stats.cov_to_corr">[docs]</a>
+<span class="k">def</span> <span class="nf">cov_to_corr</span><span class="p">(</span><span class="n">cov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a covariance matrix to a correlation matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cov : ndarray of shape (n, n)</span>
+<span class="sd">        Covariance matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    corr, std : tuple[ndarray of shape (n, n), ndarray of shape (n, )]</span>
+<span class="sd">        Correlation matrix and standard-deviation vector</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;`cov` must be a 2D array, got a </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">ndim</span><span class="si">}</span><span class="s2">D array&quot;</span><span class="p">)</span>
+    <span class="n">std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">cov</span><span class="p">))</span>
+    <span class="n">corr</span> <span class="o">=</span> <span class="n">cov</span> <span class="o">/</span> <span class="n">std</span> <span class="o">/</span> <span class="n">std</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">corr</span><span class="p">,</span> <span class="n">std</span></div>
+
+
+
+<div class="viewcode-block" id="corr_to_cov">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.corr_to_cov.html#skfolio.utils.stats.corr_to_cov">[docs]</a>
+<span class="k">def</span> <span class="nf">corr_to_cov</span><span class="p">(</span><span class="n">corr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">std</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a correlation matrix to a covariance matrix given its</span>
+<span class="sd">    standard-deviation vector.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    corr : ndarray of shape (n, n)</span>
+<span class="sd">        Correlation matrix.</span>
+
+<span class="sd">    std : ndarray of shape (n, )</span>
+<span class="sd">        Standard-deviation vector.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cov : ndarray of shape (n, n)</span>
+<span class="sd">        Covariance matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">std</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;`std` must be a 1D array, got a </span><span class="si">{</span><span class="n">std</span><span class="o">.</span><span class="n">ndim</span><span class="si">}</span><span class="s2">D array&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">corr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;`corr` must be a 2D array, got a </span><span class="si">{</span><span class="n">corr</span><span class="o">.</span><span class="n">ndim</span><span class="si">}</span><span class="s2">D array&quot;</span><span class="p">)</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">corr</span> <span class="o">*</span> <span class="n">std</span> <span class="o">*</span> <span class="n">std</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">cov</span></div>
+
+
+
+<span class="n">_CLIPPING_VALUE</span> <span class="o">=</span> <span class="mf">1e-13</span>
+
+
+<div class="viewcode-block" id="cov_nearest">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.cov_nearest.html#skfolio.utils.stats.cov_nearest">[docs]</a>
+<span class="k">def</span> <span class="nf">cov_nearest</span><span class="p">(</span><span class="n">cov</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">higham</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">higham_max_iteration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the nearest covariance matrix that is positive definite and with a</span>
+<span class="sd">    cholesky decomposition than can be computed. The variance is left unchanged.</span>
+
+<span class="sd">    First, it converts the covariance matrix to a correlation matrix.</span>
+<span class="sd">    Then, it finds the nearest correlation matrix and converts it back to a covariance</span>
+<span class="sd">    matrix using the initial standard deviation.</span>
+
+<span class="sd">    Cholesky decomposition can fail for symmetric positive definite (SPD) matrix due</span>
+<span class="sd">    to floating point error and inversely, Cholesky decomposition can success for</span>
+<span class="sd">    non-SPD matrix. Therefore, we need to test for both. We always start by testing</span>
+<span class="sd">    for Cholesky decomposition which is significantly faster than checking for positive</span>
+<span class="sd">    eigenvalues.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cov : ndarray of shape (n, n)</span>
+<span class="sd">        Covariance matrix.</span>
+
+<span class="sd">    higham : bool, default=False</span>
+<span class="sd">        If this is set to True, the Higham &amp; Nick (2002) algorithm [1]_ is used,</span>
+<span class="sd">        otherwise the eigenvalues are clipped to threshold above zeros (1e-13).</span>
+<span class="sd">        The default (`False`) is to use the clipping method as the Higham &amp; Nick</span>
+<span class="sd">        algorithm can be slow for large datasets.</span>
+
+<span class="sd">    higham_max_iteration : int, default=100</span>
+<span class="sd">        Maximum number of iteration of the Higham &amp; Nick (2002) algorithm.</span>
+<span class="sd">        The default value is `100`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cov : ndarray</span>
+<span class="sd">        The nearest covariance matrix.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;Computing the nearest correlation matrix - a problem from finance&quot;</span>
+<span class="sd">        IMA Journal of Numerical Analysis</span>
+<span class="sd">        Higham &amp; Nick (2002)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">assert_is_square</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+    <span class="n">assert_is_symmetric</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+
+    <span class="c1"># Around 100 times faster than checking eigenvalues with np.linalg.eigh</span>
+    <span class="k">if</span> <span class="n">is_cholesky_dec</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_positive_definite</span><span class="p">(</span><span class="n">cov</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cov</span>
+
+    <span class="n">corr</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">cov_to_corr</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">higham</span><span class="p">:</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span> <span class="o">*</span> <span class="mi">5</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">corr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">higham_max_iteration</span><span class="p">):</span>
+            <span class="n">x_adj</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">diff</span>
+            <span class="n">eig_vals</span><span class="p">,</span> <span class="n">eig_vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">x_adj</span><span class="p">)</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">eig_vecs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">eig_vals</span><span class="p">,</span> <span class="n">eps</span><span class="p">)</span> <span class="o">@</span> <span class="n">eig_vecs</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">x_adj</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">fill_diagonal</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">cov</span> <span class="o">=</span> <span class="n">corr_to_cov</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">is_cholesky_dec</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_positive_definite</span><span class="p">(</span><span class="n">cov</span><span class="p">):</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Unable to find the nearest positive definite matrix&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">eig_vals</span><span class="p">,</span> <span class="n">eig_vecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span>
+        <span class="c1"># Clipping the eigenvalues with a value smaller than 1e-13 can cause scipy to</span>
+        <span class="c1"># consider the matrix non-psd is some corner cases (see test/test_stats.py)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">eig_vecs</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">eig_vals</span><span class="p">,</span> <span class="n">_CLIPPING_VALUE</span><span class="p">)</span> <span class="o">@</span> <span class="n">eig_vecs</span><span class="o">.</span><span class="n">T</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cov_to_corr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">cov</span> <span class="o">=</span> <span class="n">corr_to_cov</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cov</span></div>
+
+
+
+<div class="viewcode-block" id="commutation_matrix">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.commutation_matrix.html#skfolio.utils.stats.commutation_matrix">[docs]</a>
+<span class="k">def</span> <span class="nf">commutation_matrix</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute the commutation matrix.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : ndarray of shape (n,  m)</span>
+<span class="sd">        The matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    K : ndarray of shape (m * n, m * n)</span>
+<span class="sd">        The commutation matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">m</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+    <span class="n">col</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">m</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">m</span> <span class="o">*</span> <span class="n">n</span><span class="p">,</span> <span class="n">m</span> <span class="o">*</span> <span class="n">n</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">k</span></div>
+
+
+
+<div class="viewcode-block" id="compute_optimal_n_clusters">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.compute_optimal_n_clusters.html#skfolio.utils.stats.compute_optimal_n_clusters">[docs]</a>
+<span class="k">def</span> <span class="nf">compute_optimal_n_clusters</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">linkage_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Compute the optimal number of clusters based on Two-Order Difference to Gap</span>
+<span class="sd">    Statistic [1]_.</span>
+
+<span class="sd">    The Two-Order Difference to Gap Statistic has been developed to improve the</span>
+<span class="sd">    performance and stability of the Tibshiranis Gap statistic.</span>
+<span class="sd">    It applies the two-order difference of the within-cluster dispersion to replace the</span>
+<span class="sd">    reference null distribution in the Gap statistic.</span>
+
+<span class="sd">    The number of cluster :math:`k` is determined by:</span>
+
+<span class="sd">    .. math::  \begin{cases}</span>
+<span class="sd">                \begin{aligned}</span>
+<span class="sd">                &amp;\max_{k} &amp; &amp; W_{k+2} + W_{k} - 2 W_{k+1} \\</span>
+<span class="sd">                &amp;\text{s.t.} &amp; &amp; 1 \ge c \ge max\bigl(8, \sqrt{n}\bigr) \\</span>
+<span class="sd">                \end{aligned}</span>
+<span class="sd">                \end{cases}</span>
+
+<span class="sd">    with :math:`n` the sample size and :math:`W_{k}` the within-cluster dispersions</span>
+<span class="sd">    defined as:</span>
+
+<span class="sd">    .. math:: W_{k} = \sum_{i=1}^{k} \frac{D_{i}}{2|C_{i}|}</span>
+
+<span class="sd">    where :math:`|C_{i}|` is the cardinality of cluster :math:`i` and :math:`D_{i}` its</span>
+<span class="sd">    density defined as:</span>
+
+<span class="sd">    .. math:: D_{i} = \sum_{u \in C_{i}} \sum_{v \in C_{i}} d(u,v)</span>
+
+<span class="sd">    with :math:`d(u,v)` the distance between u and v.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    distance : ndarray of shape (n, n)</span>
+<span class="sd">        Distance matrix.</span>
+
+<span class="sd">    linkage_matrix : ndarray of shape (n - 1, 4)</span>
+<span class="sd">        Linkage matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    value : int</span>
+<span class="sd">        Optimal number of clusters.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    .. [1] &quot;Application of two-order difference to gap statistic&quot;.</span>
+<span class="sd">        Yue, Wang &amp; Wei (2009)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cut_tree</span> <span class="o">=</span> <span class="n">sch</span><span class="o">.</span><span class="n">cut_tree</span><span class="p">(</span><span class="n">linkage_matrix</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">cut_tree</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">max_clusters</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)))</span>
+    <span class="n">dispersion</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_clusters</span><span class="p">):</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="n">cut_tree</span><span class="p">[:,</span> <span class="n">n</span> <span class="o">-</span> <span class="n">k</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">cluster_density</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">level</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">cluster_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">level</span> <span class="o">==</span> <span class="n">i</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+            <span class="n">cluster_dists</span> <span class="o">=</span> <span class="n">scd</span><span class="o">.</span><span class="n">squareform</span><span class="p">(</span>
+                <span class="n">distance</span><span class="p">[</span><span class="n">cluster_idx</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">cluster_idx</span><span class="p">],</span> <span class="n">checks</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">cluster_dists</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">cluster_density</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">cluster_dists</span><span class="o">.</span><span class="n">mean</span><span class="p">()))</span>
+        <span class="n">dispersion</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cluster_density</span><span class="p">))</span>
+    <span class="n">dispersion</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dispersion</span><span class="p">)</span>
+    <span class="n">gaps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">dispersion</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">dispersion</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">dispersion</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">gaps</span> <span class="o">=</span> <span class="n">gaps</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="c1"># k=0 represents one cluster</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">gaps</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">k</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

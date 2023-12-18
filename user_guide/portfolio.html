@@ -1,0 +1,701 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="../_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
+    <link href="../_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
+    <link rel="shortcut icon" sizes="any" href="../_static/favicon.ico" type="image/x-icon">
+    <link href="../_static/android-chrome-192x192.png" sizes="192x136" rel="icon" type="image/png">
+    <link rel="mask-icon" color="#459db9" href="../_static/safari-pinned-tab.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="../_static/apple-touch-icon.png" sizes="100x71" type="image/png">
+    <meta name="msapplication-TileColor" content="#459db9">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="msapplication-TileImage" content="mstile-150x150.png">
+    <title>Portfolio &#8212; skfolio 0.0.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Vibur" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyterlite_sphinx.css?v=f996933d" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script src="../_static/documentation_options.js?v=f131489c"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/jupyterlite_sphinx.js?v=f09d7af2"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script src="../_static/design-tabs.js?v=36754332"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/portfolio';</script>
+    <link rel="icon" href="../_static/logo.svg"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Population" href="population.html" />
+    <link rel="prev" title="Optimization" href="optimization.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+
+  <div class="bd-header-announcement container-fluid bd-header-announcement">
+    <div class="bd-header-announcement__content"><div class="sidebar-message">
+    If you'd like to contribute,
+    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
+    Your contributions are welcome!</div></div>
+  </div>
+
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-dark" alt="skfolio"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-light" alt="skfolio"/>`);</script>
+  
+  
+    <p class="title logo__title">skfolio</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="index.html">
+                         User guide
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../auto_examples/index.html">
+                         Examples
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api.html">
+                         API Reference
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/skfolio/skfolio" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="optimization.html">Optimization</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Portfolio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="population.html">Population</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prior.html">Prior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="expected_returns.html">Expected Returns</a></li>
+<li class="toctree-l1"><a class="reference internal" href="covariance.html">Covariance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="distance.html">Distance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cluster.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uncertainty_set.html">Uncertainty Set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pre_selection.html">Pre-Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model_selection.html">Model Selection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hyper_parameters_tuning.html">Hyper-Parameters Tuning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_preparation.html">Data Preparation</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Portfolio</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="portfolio">
+<span id="id1"></span><h1>Portfolio<a class="headerlink" href="#portfolio" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> classes regroup a large set of attributes and methods intended for portfolio
+analysis. They are returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of
+<a class="reference internal" href="optimization.html#optimization"><span class="std std-ref">optimization estimators</span></a>. They are also data-containers (calling
+<code class="code highlight python docutils literal highlight-python"><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">portfolio</span><span class="p">)</span></code> returns the portfolio returns) making them compatible
+with <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> tools. They use <code class="docutils literal notranslate"><span class="pre">slots</span></code> for improved performance.</p>
+<section id="base-portfolio">
+<h2>Base Portfolio<a class="headerlink" href="#base-portfolio" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a> directly takes as input a portfolio returns array and implement
+a large set of attributes and methods.</p>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">BasePortfolio</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">BasePortfolio</span><span class="p">(</span>
+    <span class="n">returns</span><span class="o">=</span><span class="p">[</span><span class="mf">0.002</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.0015</span><span class="p">],</span>
+    <span class="n">observations</span><span class="o">=</span><span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<section id="attributes-and-methods">
+<h3>Attributes and Methods<a class="headerlink" href="#attributes-and-methods" title="Link to this heading">#</a></h3>
+<p>More than 40 attributes and  methods are available including all the
+<a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">measure</span></a> (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
+etc…). The attributes are computed only when requested then cached in <code class="docutils literal notranslate"><span class="pre">slots</span></code> for
+enhanced performances.</p>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
+
+<span class="c1"># attributes</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">mean</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">variance</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">sharpe_ratio</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">sortino_ratio</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">cdar</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">max_drawdown</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">cumulative_returns</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">drawdowns</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">returns_df</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">cumulative_returns_df</span>
+
+<span class="c1"># methods</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">dominates</span><span class="p">(</span><span class="n">other_portfolio</span><span class="p">)</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">rolling_measure</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">)</span>
+
+<span class="c1"># plots</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">plot_cumulative_returns</span><span class="p">()</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">plot_rolling_measure</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It’s also an array-container:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">portfolio</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">array</span><span class="p">([</span> <span class="mf">0.002</span> <span class="p">,</span> <span class="o">-</span><span class="mf">0.001</span> <span class="p">,</span>  <span class="mf">0.0015</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Finally, portfolios can be compared together using domination:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">portfolio</span> <span class="o">==</span> <span class="n">other_portfolio</span>
+<span class="n">portfolio</span> <span class="o">&gt;=</span> <span class="n">other_portfolio</span>
+<span class="n">portfolio</span> <span class="o">&gt;</span> <span class="n">other_portfolio</span>
+</pre></div>
+</div>
+<p>The measures used in the domination are controlled using <code class="docutils literal notranslate"><span class="pre">fitness_measures</span></code>. The default
+is to use the list <code class="docutils literal notranslate"><span class="pre">[PerfMeasure.MEAN,</span> <span class="pre">RiskMeasure.VARIANCE]</span></code>.</p>
+</section>
+</section>
+<section id="id2">
+<h2>Portfolio<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> inherits from <a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a>. The portfolio returns are the
+dot product of the assets weights with the assets returns minus costs:</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} |\]</div>
+</div></blockquote>
+<p>with <span class="math notranslate nohighlight">\(r_p\)</span> the vector of portfolio returns , <span class="math notranslate nohighlight">\(R\)</span> the matrix of assets
+returns, <span class="math notranslate nohighlight">\(w\)</span> the vector of assets weights, <span class="math notranslate nohighlight">\(c\)</span> the vector of assets costs
+and <span class="math notranslate nohighlight">\(w_{prev}\)</span> the assets previous weights.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> formulation is <strong>homogenous</strong> to the convex optimization problems for coherent analysis.
+It’s important to note that this portfolio formulation is <strong>not perfectly replicable</strong> due to weight drift when
+asset prices move. The only case where it would be perfectly replicable is with periodic rebalancing with zero or
+constant transaction cost. In practice, portfolios are rebalanced frequently enough so this weight drift becomes
+negligible in regards to model analysis and selection. Before trading, a full replicability analysis should be
+performed which is another topic left to the investor.</p>
+</div>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">Portfolio</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">0.003</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.001</span><span class="p">],</span>
+    <span class="p">[</span><span class="o">-</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.002</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.0015</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">Portfolio</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">returns</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">array</span><span class="p">([</span><span class="mf">0.0014</span><span class="p">,</span> <span class="mf">0.0002</span><span class="p">,</span> <span class="mf">0.0025</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any data-container including numpy array and pandas DataFrame:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">[[</span><span class="mf">0.003</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.001</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.002</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0015</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">]],</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Asset A&quot;</span><span class="p">,</span> <span class="s2">&quot;Asset B&quot;</span><span class="p">],</span>
+    <span class="n">index</span><span class="o">=</span><span class="p">[</span><span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dt</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="mi">2022</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)],</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span>
+            <span class="n">Asset</span> <span class="n">A</span>  <span class="n">Asset</span> <span class="n">B</span>
+<span class="mi">2022</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">01</span>   <span class="mf">0.0030</span>   <span class="o">-</span><span class="mf">0.001</span>
+<span class="mi">2022</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">02</span>  <span class="o">-</span><span class="mf">0.0010</span>    <span class="mf">0.002</span>
+<span class="mi">2022</span><span class="o">-</span><span class="mi">01</span><span class="o">-</span><span class="mi">03</span>   <span class="mf">0.0015</span>    <span class="mf">0.004</span>
+
+<span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">Portfolio</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;my_portfolio&quot;</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">returns</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">array</span><span class="p">([</span><span class="mf">0.0014</span><span class="p">,</span> <span class="mf">0.0002</span><span class="p">,</span> <span class="mf">0.0025</span><span class="p">])</span>
+</pre></div>
+</div>
+<section id="id3">
+<h3>Attributes and Methods<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> inherits all the attributes and methods from <a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a>.
+In addition, it also implements weights related methods:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
+
+<span class="n">portfolio</span><span class="o">.</span><span class="n">contribution</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">ANNUALIZED_SHARPE_RATIO</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">3.04203502</span><span class="p">,</span>  <span class="mf">3.04203503</span><span class="p">])</span>
+
+<span class="n">portfolio</span><span class="o">.</span><span class="n">composition</span>
+<span class="o">&gt;&gt;&gt;</span>
+              <span class="n">my_portfolio</span>
+<span class="n">asset</span>
+<span class="n">Asset</span> <span class="n">A</span>           <span class="mf">0.6</span>
+<span class="n">Asset</span> <span class="n">B</span>           <span class="mf">0.4</span>
+
+<span class="n">portfolio</span><span class="o">.</span><span class="n">get_weight</span><span class="p">(</span><span class="s2">&quot;Asset A&quot;</span><span class="p">)</span>
+<span class="o">&gt;&gt;&gt;</span> <span class="mf">0.6</span>
+
+<span class="c1"># Plots</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">plot_contribution</span><span class="p">()</span>
+<span class="n">portfolio</span><span class="o">.</span><span class="n">plot_composition</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="multi-period-portfolio">
+<h2>Multi Period Portfolio<a class="headerlink" href="#multi-period-portfolio" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a> inherits from <a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a> and is composed of a
+list of <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a>. The multi-period portfolio returns are the sum of all its
+underlying <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> returns.
+A <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> is returned by <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">skfolio.model_selection.cross_val_predict</span></code></a>.</p>
+<p>For example, calling <code class="docutils literal notranslate"><span class="pre">cross_val_predict</span></code> with <a class="reference internal" href="../generated/skfolio.model_selection.WalkForward.html#skfolio.model_selection.WalkForward" title="skfolio.model_selection.WalkForward"><code class="xref py py-class docutils literal notranslate"><span class="pre">skfolio.model_selection.WalkForward</span></code></a>
+will return a <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> composed of multiple test <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> each corresponding
+to a train/test fold.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">MultiPeriodPortfolio</span>
+
+<span class="n">portfolio</span> <span class="o">=</span> <span class="n">MultiPeriodPortfolio</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">ptf1</span><span class="p">,</span> <span class="n">ptf2</span><span class="p">,</span> <span class="n">ptf3</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="optimization.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Optimization</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="population.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Population</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, skfolio developers (BSD License).
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
