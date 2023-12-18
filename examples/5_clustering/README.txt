@@ -1,6 +1,6 @@
-.. _distributionally_robust_examples:
+.. _cluster_examples:
 
-Hierarchical Clustering
------------------------
+Hierarchical Clustering and NCO
+-------------------------------
 
 Examples concerning hierarchical clustering based optimizations.

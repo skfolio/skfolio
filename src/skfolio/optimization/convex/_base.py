@@ -934,9 +934,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 for p, v in parameters_values
             ]
 
-        solver_params = self.solver_params
-        if solver_params is None:
-            solver_params = {"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
+
         all_weights = []
         all_problem_values = []
         optimal = True
@@ -948,7 +946,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 # We suppress cvxpy warning as it is redundant with our warning
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    problem.solve(solver=self.solver, **solver_params)
+                    problem.solve(solver=self.solver, **self._solver_params)
 
                 if w.value is None:
                     raise cp.SolverError("No solution found")

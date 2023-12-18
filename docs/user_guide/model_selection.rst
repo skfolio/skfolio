@@ -25,7 +25,7 @@ with `Portfolio` and `Population` objects as well as compatibility with
     that the parameter `shuffle` is set to `False` to avoid data leakage. Financial
     features often incorporate series that exhibit serial correlation (like ARMA
     processes) and shuffling the data will lead to leakage from the test set to the
-training set.
+    training set.
 
 In `cross_val_predict`, the data is split according to the `cv` parameter.
 The optimization estimator is fitted on the training set and portfolios are predicted on

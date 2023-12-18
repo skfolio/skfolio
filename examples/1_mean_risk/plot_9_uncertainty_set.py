@@ -112,7 +112,7 @@ population_train.plot_measures(
 model_no_uncertainty = MeanRisk(
     risk_measure=RiskMeasure.CVAR,
     objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-    max_cvar=0.03,
+    max_cvar=0.04,
     min_weights=-1,
 )
 

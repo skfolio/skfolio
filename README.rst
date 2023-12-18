@@ -8,7 +8,7 @@
 .. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/branch/main/graph/badge.svg
 .. _Codecov: https://codecov.io/gh/skfolio/skfolio
 
-.. |PythonVersion| image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue
+.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
 .. _PythonVersion: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
