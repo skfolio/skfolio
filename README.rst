@@ -501,14 +501,16 @@ were a source of inspiration:
 Contributors
 ~~~~~~~~~~~~
 
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
+.. raw:: html
 
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
+    <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+    <!-- prettier-ignore-start -->
+    <!-- markdownlint-disable -->
 
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+    <!-- markdownlint-restore -->
+    <!-- prettier-ignore-end -->
+
+    <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 
 Citation
