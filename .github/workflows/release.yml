@@ -33,8 +33,8 @@ jobs:
         # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
         # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
-        # with:
-        #  repository-url: https://test.pypi.org/legacy/
+        with:
+          repository-url: https://test.pypi.org/legacy/
 
       - name: Publish package distributions to GitHub Releases
         uses: python-semantic-release/upload-to-gh-release@main

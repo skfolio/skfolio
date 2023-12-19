@@ -1,0 +1,15 @@
+{
+  "projectName": "skfolio",
+  "projectOwner": "skfolio",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.rst"
+  ],
+  "imageSize": 80,
+  "commit": true,
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "commitType": "docs",
+}

@@ -56,19 +56,16 @@ Important links
 Installation
 ~~~~~~~~~~~~
 
-The easiest way to install skfolio is using ``pip``::
+To install skfolio::
 
     pip install -U skfolio
 
-or ``conda``::
-
-    conda install -c conda-forge skfolio
 
 
 Dependencies
 ~~~~~~~~~~~~
 
-sklearn requires:
+skfolio requires:
 
 - python (>= |PythonMinVersion|)
 - numpy (>= |NumpyMinVersion|)
@@ -194,8 +191,8 @@ Quickstart
 ~~~~~~~~~~
 The code snippets below are designed to introduce ``skfolio``'s functionality so you can start using it quickly.
 
-Preparing the data
-------------------
+Imports
+-------
 .. code-block:: python
 
     from sklearn import set_config
@@ -233,7 +230,15 @@ Preparing the data
     from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
+Load Dataset
+------------
+.. code-block:: python
+
     prices = load_sp500_dataset()
+
+Train/Test split
+----------------
+.. code-block:: python
 
     X = prices_to_returns(prices)
     X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
@@ -245,14 +250,14 @@ Minimum Variance
 
     model = MeanRisk()
 
-Fit on training set
+Fit on Training Set
 -------------------
 .. code-block:: python
 
     model.fit(X_train)
     print(model.weights_)
 
-Predict on test set
+Predict on Test Set
 -------------------
 .. code-block:: python
 
@@ -329,7 +334,7 @@ Risk Parity & Gerber Covariance
         prior_estimator=EmpiricalPrior(covariance_estimator=GerberCovariance())
     )
 
-Nested Cluster Optimization with cross-validation and parallelization
+Nested Cluster Optimization with Cross-Validation and Parallelization
 ---------------------------------------------------------------------
 .. code-block:: python
 
@@ -356,7 +361,7 @@ Randomized Search of the L2 Norm
     print(best_model.weights_)
 
 
-Grid Search on embedded parameters
+Grid Search on Embedded Parameters
 ----------------------------------
 .. code-block:: python
 
@@ -478,6 +483,32 @@ Combinatorial Purged Cross-Validation
     population.plot_cumulative_returns()
     print(population.summary())
 
+
+Recognition
+~~~~~~~~~~~
+
+We would like to thanks all contributors behind the packages skfolio directly depends on
+like Scikit-Learn and cvxpy but also the contributors of the following packages that
+were a source of inspiration:
+
+    * PyPortfolioOpt
+    * Riskfolio-Lib
+    * scikit-portfolio
+    * microprediction
+    * statsmodels
+    * rsome
+
+Contributors
+~~~~~~~~~~~~
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 
 Citation
