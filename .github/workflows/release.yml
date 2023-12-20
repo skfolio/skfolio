@@ -22,11 +22,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Generate a token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.SEMANTIC_RELEASE_APP_ID }}
+          private-key: ${{ secrets.SEMANTIC_RELEASE_APP_PRIVATE_KEY }}
+
       - name: Python Semantic Release
         id: release
         uses: python-semantic-release/python-semantic-release@v8.5.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        # with:
+        #  github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -41,5 +50,7 @@ jobs:
         # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
         # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        # with:
+          # github_token: ${{ secrets.GITHUB_TOKEN }}
