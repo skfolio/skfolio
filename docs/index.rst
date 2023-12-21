@@ -1,3 +1,8 @@
+:og:description: skfolio is a Python library for portfolio optimization built on top of scikit-learn
+
+.. meta::
+    :keywords: skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading
+
 .. toctree::
    :hidden:
 
@@ -14,12 +19,13 @@ It provides a unified interface and `sklearn` compatible tools to build, tune an
 cross-validate portfolio models.
 
 .. image:: _static/expo.jpg
+    :target: https://skfolio.github.io/skfolio/auto_examples/
 
 
 Installation
 ************
 
-``skfolio`` is available on PyPI and conda-forge, and can be installed with:
+``skfolio`` is available on PyPI and can be installed with:
 
 .. code:: console
 
@@ -32,10 +38,10 @@ Since the development of modern portfolio theory by Markowitz (1952), mean-varia
 has received considerable attention. Unfortunately it faces a number of shortcomings including high sensitivity to the
 input parameters (expected returns and covariance), weight concentration, high turnover and poor out-of-sample
 performance.
-It is well known that naive allocation (1/N, inverse-vol, ...) tend to outperform MVO out-of-sample (DeMiguel, 2007).
+It is well known that naive allocation (1/N, inverse-vol, ...) tends to outperform MVO out-of-sample (DeMiguel, 2007).
 
-Numerous approaches have been developed to alleviate these shortcomings (shrinkage, bayesian approaches,
-additional constraints, regularization, uncertainty set, higher moments, coherent risk measures,
+Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
+additional constraints, regularization, uncertainty set, higher moments, bayesian approaches, coherent risk measures,
 left-tail risk optimization, distributionally robust optimization, factor model, risk-parity, hierarchical clustering,
 ensemble methods...)
 
@@ -143,8 +149,8 @@ The code snippets below are designed to introduce ``skfolio``'s functionality so
 For more detailed information see the :ref:`general_examples`,  :ref:`user_guide` and :ref:`api` .
 
 
-Preparing the data
-~~~~~~~~~~~~~~~~~~
+Imports
+~~~~~~~
 .. code-block:: python
 
     from sklearn import set_config
@@ -182,11 +188,19 @@ Preparing the data
     from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
+
+Load Dataset
+~~~~~~~~~~~~
+.. code-block:: python
+
     prices = load_sp500_dataset()
+
+Train/Test split
+~~~~~~~~~~~~~~~~
+.. code-block:: python
 
     X = prices_to_returns(prices)
     X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
-
 
 Minimum Variance
 ~~~~~~~~~~~~~~~~
@@ -199,6 +213,7 @@ Fit on training set
 .. code-block:: python
 
     model.fit(X_train)
+
     print(model.weights_)
 
 Predict on test set
@@ -206,10 +221,9 @@ Predict on test set
 .. code-block:: python
 
     portfolio = model.predict(X_test)
+
     print(portfolio.annualized_sharpe_ratio)
     print(portfolio.summary())
-
-
 
 Maximum Sortino Ratio
 ~~~~~~~~~~~~~~~~~~~~~
@@ -219,7 +233,6 @@ Maximum Sortino Ratio
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         risk_measure=RiskMeasure.SEMI_VARIANCE,
     )
-
 
 Denoised Covariance & Shrunk Expected Returns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -241,7 +254,6 @@ Uncertainty Set on Expected Returns
         mu_uncertainty_set_estimator=BootstrapMuUncertaintySet(),
     )
 
-
 Weight Constraints & Transaction Costs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: python
@@ -262,7 +274,6 @@ Weight Constraints & Transaction Costs
         ],
     )
     model.fit(X_train)
-
 
 Risk Parity on CVaR
 ~~~~~~~~~~~~~~~~~~~
@@ -301,9 +312,10 @@ Randomized Search of the L2 Norm
         },
     )
     randomized_search.fit(X_train)
-    best_model = randomized_search.best_estimator_
-    print(best_model.weights_)
 
+    best_model = randomized_search.best_estimator_
+
+    print(best_model.weights_)
 
 Grid Search on embedded parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -331,9 +343,10 @@ Grid Search on embedded parameters
         },
     )
     gs.fit(X)
-    best_model = gs.best_estimator_
-    print(best_model.weights_)
 
+    best_model = gs.best_estimator_
+
+    print(best_model.weights_)
 
 Black & Litterman Model
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -358,10 +371,11 @@ Factor Model
     model.fit(X_train, y_train)
 
     print(model.weights_)
+
     portfolio = model.predict(X_test)
+
     print(portfolio.calmar_ratio)
     print(portfolio.summary())
-
 
 Factor Model & Covariance Detoning
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -397,10 +411,8 @@ Pre-Selection Pipeline
         ]
     )
     model.fit(X_train)
+
     portfolio = model.predict(X_test)
-
-
-
 
 K-fold Cross-Validation
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -409,23 +421,54 @@ K-fold Cross-Validation
     model = MeanRisk()
     mmp = cross_val_predict(model, X_test, cv=KFold(n_splits=5))
     # mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
+
     mmp.plot_cumulative_returns()
     print(mmp.summary()
-
 
 Combinatorial Purged Cross-Validation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: python
 
     model = MeanRisk()
+
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
+
     print(cv.get_summary(X_train))
+
     population = cross_val_predict(model, X_train, cv=cv)
+
     population.plot_distribution(
         measure_list=[RatioMeasure.SHARPE_RATIO, RatioMeasure.SORTINO_RATIO]
     )
     population.plot_cumulative_returns()
     print(population.summary())
 
+Recognition
+~~~~~~~~~~~
+
+We would like to thanks all contributors behind our direct dependencies like
+scikit-learn and cvxpy but also the contributors of the following packages that
+were a source of inspiration:
+
+    * PyPortfolioOpt
+    * Riskfolio-Lib
+    * scikit-portfolio
+    * microprediction
+    * statsmodels
+    * rsome
+
+
+Citation
+~~~~~~~~
+
+If you use skfolio in a scientific publication, we would appreciate citations:
+
+Bibtex entry::
+
+    @misc{riskfolio,
+          author = {Hugo Delatte},
+          title = {skfolio},
+          year  = {2023},
+          url   = {https://github.com/skfolio/skfolio}
 
 

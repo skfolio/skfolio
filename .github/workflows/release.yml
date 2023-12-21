@@ -35,16 +35,14 @@ jobs:
         uses: python-semantic-release/python-semantic-release@v8.5.1
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
-        # with:
-        #  github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
         # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
-        with:
-          repository-url: https://test.pypi.org/legacy/
+        # with:
+        #  repository-url: https://test.pypi.org/legacy/
 
       - name: Publish package distributions to GitHub Releases
         uses: python-semantic-release/upload-to-gh-release@main
@@ -53,5 +51,3 @@ jobs:
         if: steps.release.outputs.released == 'true'
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
-        # with:
-          # github_token: ${{ secrets.GITHUB_TOKEN }}

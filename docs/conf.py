@@ -50,6 +50,8 @@ extensions = [
     "sphinx_gallery.gen_gallery",
     "sphinx-prompt",
     "sphinx.ext.mathjax",
+    "sphinxext.opengraph",
+    "sphinx_sitemap"
 ]
 
 # Produce `plot::` directives for examples that contain `import matplotlib` or
@@ -96,9 +98,18 @@ default_role = "literal"
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = False
 
+# -- sphinxext-opengraph ----------------------------------------------------
+
+ogp_site_url = "https://skfolio.github.io/skfolio"
+ogp_image = "https://skfolio.github.io/skfolio/_images/expo.jpg"
+ogp_enable_meta_description = True
+
 # -- autosummary -------------------------------------------------------------
 
 autosummary_generate = True
+
+# -- sphinx_sitemap -------------------------------------------------------------
+html_baseurl = 'https://skfolio.github.io/skfolio/'
 
 # -- Internationalization ----------------------------------------------------
 

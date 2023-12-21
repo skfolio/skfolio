@@ -135,10 +135,7 @@ def download_dataset(
         DataFrame with each row representing one observation and each column
         representing the asset price of a given observation.
     """
-    url = (
-        "https://github.com/skfolio/skfolio/raw/main/datasets/"
-        f"{data_filename}.csv.gz"
-    )
+    url = f"https://github.com/skfolio/skfolio/raw/main/datasets/{data_filename}.csv.gz"
 
     data_home = get_data_home(data_home=data_home)
     filepath = os.path.join(data_home, f"{data_filename}.pkz")

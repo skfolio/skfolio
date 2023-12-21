@@ -44,14 +44,15 @@ It provides a unified interface and `sklearn` compatible tools to build, tune an
 cross-validate portfolio models. It is distributed under the 3-Clause BSD license.
 
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
-    :target: https://skfolio.github.io/skfolio/auto_examples/index.html
+    :target: https://skfolio.github.io/skfolio/auto_examples/
 
 Important links
 ~~~~~~~~~~~~~~~
 
 - Documentation: https://skfolio.github.io/skfolio/
-- Tutorials: https://skfolio.github.io/skfolio/auto_examples/index.html
-- GitHub Repo: https://github.com/skfolio/skfolio
+- Examples: https://skfolio.github.io/skfolio/auto_examples/
+- User Guide: https://skfolio.github.io/skfolio/user_guide/
+- GitHub Repo: https://github.com/skfolio/skfolio/
 
 Installation
 ~~~~~~~~~~~~
@@ -255,6 +256,7 @@ Fit on Training Set
 .. code-block:: python
 
     model.fit(X_train)
+
     print(model.weights_)
 
 Predict on Test Set
@@ -262,6 +264,7 @@ Predict on Test Set
 .. code-block:: python
 
     portfolio = model.predict(X_test)
+
     print(portfolio.annualized_sharpe_ratio)
     print(portfolio.summary())
 
@@ -357,7 +360,9 @@ Randomized Search of the L2 Norm
         },
     )
     randomized_search.fit(X_train)
+
     best_model = randomized_search.best_estimator_
+
     print(best_model.weights_)
 
 
@@ -387,7 +392,9 @@ Grid Search on Embedded Parameters
         },
     )
     gs.fit(X)
+
     best_model = gs.best_estimator_
+
     print(best_model.weights_)
 
 
@@ -414,7 +421,9 @@ Factor Model
     model.fit(X_train, y_train)
 
     print(model.weights_)
+
     portfolio = model.predict(X_test)
+
     print(portfolio.calmar_ratio)
     print(portfolio.summary())
 
@@ -453,6 +462,7 @@ Pre-Selection Pipeline
         ]
     )
     model.fit(X_train)
+
     portfolio = model.predict(X_test)
 
 
@@ -465,6 +475,7 @@ K-fold Cross-Validation
     model = MeanRisk()
     mmp = cross_val_predict(model, X_test, cv=KFold(n_splits=5))
     # mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
+
     mmp.plot_cumulative_returns()
     print(mmp.summary()
 
@@ -474,9 +485,13 @@ Combinatorial Purged Cross-Validation
 .. code-block:: python
 
     model = MeanRisk()
+
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
+
     print(cv.get_summary(X_train))
+
     population = cross_val_predict(model, X_train, cv=cv)
+
     population.plot_distribution(
         measure_list=[RatioMeasure.SHARPE_RATIO, RatioMeasure.SORTINO_RATIO]
     )
@@ -487,8 +502,8 @@ Combinatorial Purged Cross-Validation
 Recognition
 ~~~~~~~~~~~
 
-We would like to thanks all contributors behind the packages skfolio directly depends on
-like Scikit-Learn and cvxpy but also the contributors of the following packages that
+We would like to thanks all contributors behind our direct dependencies like
+scikit-learn and cvxpy but also the contributors of the following packages that
 were a source of inspiration:
 
     * PyPortfolioOpt
@@ -502,7 +517,7 @@ were a source of inspiration:
 Citation
 ~~~~~~~~
 
-If you use scikit-learn in a scientific publication, we would appreciate citations:
+If you use skfolio in a scientific publication, we would appreciate citations:
 
 Bibtex entry::
 

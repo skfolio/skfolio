@@ -3,7 +3,6 @@ import datetime as dt
 import numpy as np
 import pytest
 import sklearn.model_selection as skm
-
 from skfolio import RiskMeasure
 from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.model_selection import CombinatorialPurgedCV
@@ -15,9 +14,8 @@ from skfolio.prior import FactorModel
 @pytest.fixture(scope="module")
 def X_y():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2014, 1, 1) :]
+    prices = prices.loc[dt.date(2020, 1, 1) :]
     factor_prices = load_factors_dataset()
-    factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
     X, y = prices_to_returns(X=prices, y=factor_prices)
     return X, y
 
@@ -46,26 +44,26 @@ def test_stacking(X):
     np.testing.assert_almost_equal(
         model.weights_,
         np.array([
-            5.38939636e-07,
-            3.16420812e-08,
-            3.71662947e-08,
-            6.56782862e-07,
-            5.92517812e-08,
-            1.63046256e-07,
-            1.16700513e-02,
-            1.83449084e-01,
-            5.83914715e-08,
-            2.13148251e-01,
-            3.08632985e-03,
-            1.06269323e-01,
-            6.66415810e-08,
-            3.13343320e-07,
-            8.36960758e-02,
-            1.50643004e-01,
-            6.10966130e-03,
-            1.09941897e-07,
-            1.93748955e-01,
-            4.81772287e-02,
+            4.14712340e-07,
+            6.30177808e-07,
+            1.93291519e-07,
+            4.99502695e-07,
+            2.83295643e-07,
+            4.30655193e-07,
+            6.47726679e-07,
+            2.72459010e-01,
+            3.21357278e-07,
+            1.47898551e-01,
+            6.22014698e-07,
+            1.78790660e-01,
+            4.15677703e-07,
+            6.08486611e-07,
+            5.34806929e-02,
+            4.07012545e-02,
+            6.55843498e-07,
+            2.70811727e-07,
+            2.68970614e-01,
+            3.76932238e-02,
         ]),
     )
 
@@ -80,33 +78,32 @@ def test_stacking_factor(X, y):
     ]
 
     model = StackingOptimization(
-        estimators=estimators,
-        final_estimator=MeanRisk(),
+        estimators=estimators, final_estimator=MeanRisk(), n_jobs=-1
     )
     model.fit(X, y)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array([
-            6.24026750e-07,
-            3.65906868e-08,
-            4.30063673e-08,
-            7.60534823e-07,
-            6.85072122e-08,
-            1.88782117e-07,
-            1.25529582e-02,
-            1.94422897e-01,
-            6.75780780e-08,
-            2.21089337e-01,
-            1.59445913e-03,
-            1.01442307e-01,
-            7.71116094e-08,
-            3.61028614e-07,
-            7.47964592e-02,
-            1.44303370e-01,
-            4.00353798e-03,
-            1.26943884e-07,
-            1.92686697e-01,
-            5.31056244e-02,
+            3.75619933e-07,
+            5.70711164e-07,
+            1.75092940e-07,
+            4.52393785e-07,
+            2.56615594e-07,
+            3.90043142e-07,
+            5.86634418e-07,
+            2.46726487e-01,
+            2.91072041e-07,
+            1.33930284e-01,
+            5.12046309e-07,
+            1.61904465e-01,
+            3.76494088e-07,
+            5.51161003e-07,
+            4.84295934e-02,
+            3.68571303e-02,
+            5.42851438e-07,
+            2.45331929e-07,
+            3.38013445e-01,
+            3.41332699e-02,
         ]),
     )
 

@@ -46,10 +46,10 @@ Ready to contribute? Here's how to set yourself up for local development.
    $ git clone git@github.com:your_name_here/skfolio.git
    ```
 
-3. Install the project in development mode:
+3. Install the project in development mode with the tests and linting dependencies:
 
    ```shell
-   $ pip install --editable .[dev]
+   $ pip install --editable .[tests]
    ```
 
 4. Create a branch for local development:

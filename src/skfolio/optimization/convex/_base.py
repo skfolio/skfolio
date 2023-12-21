@@ -934,7 +934,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                 for p, v in parameters_values
             ]
 
-
         all_weights = []
         all_problem_values = []
         optimal = True

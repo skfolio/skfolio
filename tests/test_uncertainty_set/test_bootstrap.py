@@ -2,7 +2,6 @@ import datetime as dt
 
 import numpy as np
 import pytest
-
 from skfolio.datasets import load_sp500_dataset
 from skfolio.preprocessing import prices_to_returns
 from skfolio.uncertainty_set import (
