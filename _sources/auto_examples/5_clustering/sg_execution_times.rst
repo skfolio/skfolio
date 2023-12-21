@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**06:46.593** total execution time for 5 files **from auto_examples/5_clustering**:
+**06:47.990** total execution time for 5 files **from auto_examples/5_clustering**:
 
 .. container::
 
@@ -33,17 +33,17 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_5_nco_grid_search.py` (``plot_5_nco_grid_search.py``)
-     - 03:43.996
+     - 03:42.805
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_3_hrp_vs_herc.py` (``plot_3_hrp_vs_herc.py``)
-     - 02:56.323
+     - 02:59.090
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_4_nco.py` (``plot_4_nco.py``)
-     - 00:02.994
+     - 00:02.849
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_1_hrp_cvar.py` (``plot_1_hrp_cvar.py``)
-     - 00:02.108
+     - 00:02.097
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_2_herc_cdar.py` (``plot_2_herc_cdar.py``)
-     - 00:01.171
+     - 00:01.149
      - 0.0

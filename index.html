@@ -7,6 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta content="skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading" name="keywords" />
     <link href="_static/favicon-32x32.png" sizes="32x23" rel="icon" type="image/png">
     <link href="_static/favicon-16x16.png" sizes="16x12" rel="icon" type="image/png">
     <link rel="shortcut icon" sizes="any" href="_static/favicon.ico" type="image/x-icon">
@@ -15,11 +16,18 @@
     <link rel="apple-touch-icon" href="_static/apple-touch-icon.png" sizes="100x71" type="image/png">
     <meta name="msapplication-TileColor" content="#459db9">
     <meta name="theme-color" content="#ffffff">
-    <meta name="msapplication-TileImage" content="mstile-150x150.png">
-    <title>skfolio &#8212; skfolio 0.0.2 documentation</title>
-  
+    <meta name="msapplication-TileImage" content="mstile-150x150.png"><meta property="og:title" content="skfolio" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://skfolio.github.io/index.html" />
+<meta property="og:site_name" content="skfolio" />
+<meta property="og:description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn" />
+<meta property="og:image" content="https://skfolio.github.io/skfolio/_images/expo.jpg" />
+<meta property="og:image:alt" content="skfolio" />
+<meta name="description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn. It provides a unified interface and sklearn compatible tools to build, tune and cross-validate portfolio models...." />
 
-    
+    <title>skfolio &#8212; skfolio 0.0.5 documentation</title>
+  
+  
   
   <script data-cfasync="false">
     document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
@@ -55,7 +63,7 @@
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
   <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script src="_static/documentation_options.js?v=f131489c"></script>
+    <script src="_static/documentation_options.js?v=6424ca4d"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -69,6 +77,7 @@
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
+    <link rel="canonical" href="https://skfolio.github.io/skfolio/index.html" />
     <link rel="icon" href="_static/logo.svg"/>
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="User Guide" href="user_guide/index.html" />
@@ -388,10 +397,10 @@ document.write(`
 <p><code class="docutils literal notranslate"><span class="pre">skfolio</span></code> is a Python library for portfolio optimization built on top of scikit-learn.
 It provides a unified interface and <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> compatible tools to build, tune and
 cross-validate portfolio models.</p>
-<img alt="_images/expo.jpg" src="_images/expo.jpg" />
+<a class="reference external image-reference" href="https://skfolio.github.io/skfolio/auto_examples/"><img alt="_images/expo.jpg" src="_images/expo.jpg" /></a>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">skfolio</span></code> is available on PyPI and conda-forge, and can be installed with:</p>
+<p><code class="docutils literal notranslate"><span class="pre">skfolio</span></code> is available on PyPI and can be installed with:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip<span class="w"> </span>install<span class="w"> </span>skfolio
 </pre></div>
 </div>
@@ -402,9 +411,9 @@ cross-validate portfolio models.</p>
 has received considerable attention. Unfortunately it faces a number of shortcomings including high sensitivity to the
 input parameters (expected returns and covariance), weight concentration, high turnover and poor out-of-sample
 performance.
-It is well known that naive allocation (1/N, inverse-vol, …) tend to outperform MVO out-of-sample (DeMiguel, 2007).</p>
-<p>Numerous approaches have been developed to alleviate these shortcomings (shrinkage, bayesian approaches,
-additional constraints, regularization, uncertainty set, higher moments, coherent risk measures,
+It is well known that naive allocation (1/N, inverse-vol, …) tends to outperform MVO out-of-sample (DeMiguel, 2007).</p>
+<p>Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
+additional constraints, regularization, uncertainty set, higher moments, bayesian approaches, coherent risk measures,
 left-tail risk optimization, distributionally robust optimization, factor model, risk-parity, hierarchical clustering,
 ensemble methods…)</p>
 <p>With this large number of methods, added to the fact that they can be composed together there is the need for an
@@ -587,8 +596,8 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 <h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">#</a></h2>
 <p>The code snippets below are designed to introduce <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>’s functionality so you can start using it quickly.
 For more detailed information see the <a class="reference internal" href="auto_examples/index.html#general-examples"><span class="std std-ref">Examples</span></a>,  <a class="reference internal" href="user_guide/index.html#user-guide"><span class="std std-ref">User Guide</span></a> and <a class="reference internal" href="api.html#api"><span class="std std-ref">API Reference</span></a> .</p>
-<section id="preparing-the-data">
-<h3>Preparing the data<a class="headerlink" href="#preparing-the-data" title="Link to this heading">#</a></h3>
+<section id="imports">
+<h3>Imports<a class="headerlink" href="#imports" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">set_config</span>
 <span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">GridSearchCV</span><span class="p">,</span>
@@ -623,10 +632,18 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
 <span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">BlackLitterman</span><span class="p">,</span> <span class="n">EmpiricalPrior</span><span class="p">,</span> <span class="n">FactorModel</span>
 <span class="kn">from</span> <span class="nn">skfolio.uncertainty_set</span> <span class="kn">import</span> <span class="n">BootstrapMuUncertaintySet</span>
-
-<span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
-
-<span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="load-dataset">
+<h3>Load Dataset<a class="headerlink" href="#load-dataset" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">prices</span> <span class="o">=</span> <span class="n">load_sp500_dataset</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="train-test-split">
+<h3>Train/Test split<a class="headerlink" href="#train-test-split" title="Link to this heading">#</a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">X</span> <span class="o">=</span> <span class="n">prices_to_returns</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
 <span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.33</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -640,6 +657,7 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <section id="fit-on-training-set">
 <h3>Fit on training set<a class="headerlink" href="#fit-on-training-set" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -647,6 +665,7 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <section id="predict-on-test-set">
 <h3>Predict on test set<a class="headerlink" href="#predict-on-test-set" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">portfolio</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">annualized_sharpe_ratio</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
 </pre></div>
@@ -737,7 +756,9 @@ For more detailed information see the <a class="reference internal" href="auto_e
     <span class="p">},</span>
 <span class="p">)</span>
 <span class="n">randomized_search</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+
 <span class="n">best_model</span> <span class="o">=</span> <span class="n">randomized_search</span><span class="o">.</span><span class="n">best_estimator_</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">best_model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -766,7 +787,9 @@ For more detailed information see the <a class="reference internal" href="auto_e
     <span class="p">},</span>
 <span class="p">)</span>
 <span class="n">gs</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
 <span class="n">best_model</span> <span class="o">=</span> <span class="n">gs</span><span class="o">.</span><span class="n">best_estimator_</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">best_model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -792,7 +815,9 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">)</span>
+
 <span class="n">portfolio</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">calmar_ratio</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
 </pre></div>
@@ -830,6 +855,7 @@ For more detailed information see the <a class="reference internal" href="auto_e
     <span class="p">]</span>
 <span class="p">)</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+
 <span class="n">portfolio</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -839,6 +865,7 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">MeanRisk</span><span class="p">()</span>
 <span class="n">mmp</span> <span class="o">=</span> <span class="n">cross_val_predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
 <span class="c1"># mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)</span>
+
 <span class="n">mmp</span><span class="o">.</span><span class="n">plot_cumulative_returns</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">mmp</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
 </pre></div>
@@ -847,14 +874,46 @@ For more detailed information see the <a class="reference internal" href="auto_e
 <section id="combinatorial-purged-cross-validation">
 <h3>Combinatorial Purged Cross-Validation<a class="headerlink" href="#combinatorial-purged-cross-validation" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">MeanRisk</span><span class="p">()</span>
+
 <span class="n">cv</span> <span class="o">=</span> <span class="n">CombinatorialPurgedCV</span><span class="p">(</span><span class="n">n_folds</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_test_folds</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
 <span class="nb">print</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">get_summary</span><span class="p">(</span><span class="n">X_train</span><span class="p">))</span>
+
 <span class="n">population</span> <span class="o">=</span> <span class="n">cross_val_predict</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="n">cv</span><span class="p">)</span>
+
 <span class="n">population</span><span class="o">.</span><span class="n">plot_distribution</span><span class="p">(</span>
     <span class="n">measure_list</span><span class="o">=</span><span class="p">[</span><span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">,</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SORTINO_RATIO</span><span class="p">]</span>
 <span class="p">)</span>
 <span class="n">population</span><span class="o">.</span><span class="n">plot_cumulative_returns</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">population</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="recognition">
+<h3>Recognition<a class="headerlink" href="#recognition" title="Link to this heading">#</a></h3>
+<p>We would like to thanks all contributors behind our direct dependencies like
+scikit-learn and cvxpy but also the contributors of the following packages that
+were a source of inspiration:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>PyPortfolioOpt</p></li>
+<li><p>Riskfolio-Lib</p></li>
+<li><p>scikit-portfolio</p></li>
+<li><p>microprediction</p></li>
+<li><p>statsmodels</p></li>
+<li><p>rsome</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="citation">
+<h3>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h3>
+<p>If you use skfolio in a scientific publication, we would appreciate citations:</p>
+<p>Bibtex entry:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@misc</span><span class="p">{</span><span class="n">riskfolio</span><span class="p">,</span>
+      <span class="n">author</span> <span class="o">=</span> <span class="p">{</span><span class="n">Hugo</span> <span class="n">Delatte</span><span class="p">},</span>
+      <span class="n">title</span> <span class="o">=</span> <span class="p">{</span><span class="n">skfolio</span><span class="p">},</span>
+      <span class="n">year</span>  <span class="o">=</span> <span class="p">{</span><span class="mi">2023</span><span class="p">},</span>
+      <span class="n">url</span>   <span class="o">=</span> <span class="p">{</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">skfolio</span><span class="o">/</span><span class="n">skfolio</span><span class="p">}</span>
 </pre></div>
 </div>
 </section>

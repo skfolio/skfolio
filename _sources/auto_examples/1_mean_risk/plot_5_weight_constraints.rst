@@ -464,7 +464,7 @@ linear constraint :math:`A \cdot w \leq b`.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.363 seconds)
+   **Total running time of the script:** (0 minutes 0.368 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py:

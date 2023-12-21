@@ -2,7 +2,7 @@
 Installation
 ************
 
-``skfolio`` is available on PyPI and conda-forge, and can be installed with:
+``skfolio`` is available on PyPI and can be installed with:
 
 .. code:: console
 
