@@ -137,7 +137,7 @@ version_match = "v" + release
 
 html_theme_options = {
     "pygment_light_style": "friendly",  # "friendly",
-    "pygment_dark_style": "monokai",
+    "pygment_dark_style": "dracula",  # "monokai", # dracula highlight print
     "header_links_before_dropdown": 4,
     "icon_links": [
         {
@@ -175,24 +175,8 @@ html_theme_options = {
 }
 
 html_sidebars = {
-    "community/index": [
-        "sidebar-nav-bs",
-        "custom-template",
-    ],  # This ensures we test for custom sidebars
-    # "auto_examples/*": []
-    # "examples/no-sidebar": [],  # Test what page looks like with no sidebar items
+    "auto_examples/*/*": [],  # no primary sidebar
     # "examples/persistent-search-field": ["search-field"],
-    # Blog sidebars
-    # "examples/blog/*": [
-    #     "ablog/postcard.html",
-    #     "ablog/recentposts.html",
-    #     "ablog/tagcloud.html",
-    #     "ablog/categories.html",
-    #     "ablog/authors.html",
-    #     "ablog/languages.html",
-    #     "ablog/locations.html",
-    #     "ablog/archives.html",
-    # ],
 }
 
 # If true, links to the reST sources are added to the pages.

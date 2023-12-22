@@ -69,7 +69,7 @@ docs = [
     "Sphinx",
     "sphinx-gallery",
     "sphinx-design",
-    "pydata-sphinx-theme",
+    "pydata-sphinx-theme==0.13.3",
     "matplotlib",
     "kaleido",
     "sphinx-copybutton",
