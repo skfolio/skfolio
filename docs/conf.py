@@ -110,6 +110,7 @@ autosummary_generate = True
 
 # -- sphinx_sitemap -------------------------------------------------------------
 html_baseurl = 'https://skfolio.github.io/skfolio/'
+sitemap_url_scheme = "{link}"
 
 # -- Internationalization ----------------------------------------------------
 
