@@ -17,7 +17,7 @@
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
 .. _Black: https://github.com/psf/black
 
-.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/sktime/sktime/wheels.yml?logo=github
+.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml?logo=github
 .. _CI/CD: https://github.com/skfolio/skfolio/raw/main/LICENSE
 
 
@@ -34,9 +34,10 @@
 ===============
 |icon|  skfolio
 ===============
-.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/logo.ico
+.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/favicon.png
     :width: 100
-    :target: https://skfolio.github.io/skfolio/
+    :alt: skfolio documentation
+    :target: https://skfolio.org/
 
 
 **skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
@@ -44,14 +45,15 @@ It provides a unified interface and `sklearn` compatible tools to build, tune an
 cross-validate portfolio models. It is distributed under the 3-Clause BSD license.
 
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
-    :target: https://skfolio.github.io/skfolio/auto_examples/
+    :target: https://skfolio.org/auto_examples/
+    :alt: examples
 
 Important links
 ~~~~~~~~~~~~~~~
 
-- Documentation: https://skfolio.github.io/skfolio/
-- Examples: https://skfolio.github.io/skfolio/auto_examples/
-- User Guide: https://skfolio.github.io/skfolio/user_guide/
+- Documentation: https://skfolio.org/
+- Examples: https://skfolio.org/auto_examples/
+- User Guide: https://skfolio.org/user_guide/
 - GitHub Repo: https://github.com/skfolio/skfolio/
 
 Installation

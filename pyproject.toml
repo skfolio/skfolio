@@ -79,7 +79,8 @@ docs = [
     "sphinx-favicon",
     "sphinx-prompt",
     "sphinxext.opengraph",
-    "sphinx-sitemap"
+    "sphinx-sitemap",
+    "sphinx-favicon"
 ]
 
 [project.urls]

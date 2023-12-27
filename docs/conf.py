@@ -51,7 +51,8 @@ extensions = [
     "sphinx-prompt",
     "sphinx.ext.mathjax",
     "sphinxext.opengraph",
-    "sphinx_sitemap"
+    "sphinx_sitemap",
+    "sphinx.ext.githubpages"
 ]
 
 # Produce `plot::` directives for examples that contain `import matplotlib` or
@@ -100,8 +101,9 @@ add_function_parentheses = False
 
 # -- sphinxext-opengraph ----------------------------------------------------
 
-ogp_site_url = "https://skfolio.github.io/skfolio"
-ogp_image = "https://skfolio.github.io/skfolio/_images/expo.jpg"
+ogp_site_url = "https://skfolio.org/"
+ogp_site_name = "skfolio"
+ogp_image = "https://skfolio.org/_images/expo.jpg"
 ogp_enable_meta_description = True
 
 # -- autosummary -------------------------------------------------------------
@@ -109,7 +111,7 @@ ogp_enable_meta_description = True
 autosummary_generate = True
 
 # -- sphinx_sitemap -------------------------------------------------------------
-html_baseurl = 'https://skfolio.github.io/skfolio/'
+html_baseurl = 'https://skfolio.org/'
 sitemap_url_scheme = "{link}"
 
 # -- Internationalization ----------------------------------------------------
@@ -127,8 +129,6 @@ myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
-html_logo = "_static/logo.svg"
-html_favicon = "_static/logo.svg"
 html_sourcelink_suffix = ""
 
 # Define the version we use for matching in the version switcher.
@@ -149,7 +149,9 @@ html_theme_options = {
     ],
     "logo": {
         "text": "skfolio",
-        "alt_text": "skfolio",
+        "alt_text": "skfolio documentation - Home",
+        "image_light": "_static/favicon.svg",
+        "image_dark": "_static/favicon.svg",
     },
     # "use_edit_page_button": True,
     "show_toc_level": 1,
@@ -160,19 +162,27 @@ html_theme_options = {
     If you'd like to contribute,
     <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
     Your contributions are welcome!</div>""",
-    # "show_nav_level": 2,
-    # "navbar_start": ["navbar-logo"],
-    # "navbar_end": ["theme-switcher", "navbar-icon-links"],
-    # "navbar_persistent": ["search-button"],
-    # "primary_sidebar_end": ["custom-template.html", "sidebar-ethical-ads.html"],
-    # "article_footer_items": ["test.html", "test.html"],
-    # "content_footer_items": ["test.html", "test.html"],
-    # "footer_start": ["test.html", "test.html"],
     "secondary_sidebar_items": [],  # No secondary sidebar due to bug with plotly
-    # "switcher": {
-    #     "json_url": json_url,
-    #     "version_match": version_match,
-    # },
+    "favicons": [
+        {
+            "rel": "shortcut icon",
+            "type": "image/svg+xml",
+            "sizes": "any",
+            "href": "favicon.svg",
+        },
+        {
+            "rel": "icon",
+            "type": "image/svg+xml",
+            "sizes": "any",
+            "href": "favicon.svg",
+        },
+        {
+            "rel": "icon",
+            "type": "image/png",
+            "sizes": "144x144",
+            "href": "favicon.png",
+        },
+    ]
 }
 
 html_sidebars = {
@@ -184,15 +194,11 @@ html_sidebars = {
 html_show_sourcelink = False
 
 html_context = {
-    "github_user": "HugoDelatte",
-    "github_repo": "portfolio-optimization",
+    "github_user": "skfolio",
+    "github_repo": "skfolio",
     "github_version": "main",
-    "doc_path": "doc",
+    "doc_path": "docs",
     "default_mode": "dark",
-}
-
-rediraffe_redirects = {
-    "contributing.rst": "community/index.rst",
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -202,26 +208,6 @@ html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 # html_js_files = ["custom-icon.js"]
 # todo_include_todos = True
-
-# -- favicon options ---------------------------------------------------------
-
-# see https://sphinx-favicon.readthedocs.io for more information about the
-# sphinx-favicon extension
-favicons = [
-    # generic icons compatible with most browsers
-    "favicon-32x32.png",
-    "favicon-16x16.png",
-    {"rel": "shortcut icon", "sizes": "any", "href": "favicon.ico"},
-    # chrome specific
-    "android-chrome-192x192.png",
-    # apple icons
-    {"rel": "mask-icon", "color": "#459db9", "href": "safari-pinned-tab.svg"},
-    {"rel": "apple-touch-icon", "href": "apple-touch-icon.png"},
-    # msapplications
-    {"name": "msapplication-TileColor", "content": "#459db9"},
-    {"name": "theme-color", "content": "#ffffff"},
-    {"name": "msapplication-TileImage", "content": "mstile-150x150.png"},
-]
 
 # -- gallery  ----------------------------------------------------------------
 
