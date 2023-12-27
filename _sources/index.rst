@@ -19,7 +19,8 @@ It provides a unified interface and `sklearn` compatible tools to build, tune an
 cross-validate portfolio models.
 
 .. image:: _static/expo.jpg
-    :target: https://skfolio.github.io/skfolio/auto_examples/
+    :target: https://skfolio.org/auto_examples/
+    :alt: examples
 
 
 Installation

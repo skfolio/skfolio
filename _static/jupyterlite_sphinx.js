@@ -42,7 +42,8 @@ window.jupyterliteConcatSearchParams = (iframeSrc, params) => {
 
 
 window.tryExamplesShowIframe = (
-    examplesContainerId, iframeContainerId, iframeParentContainerId, iframeSrc
+    examplesContainerId, iframeContainerId, iframeParentContainerId, iframeSrc,
+    iframeMinHeight
 ) => {
     const examplesContainer = document.getElementById(examplesContainerId);
     const iframeParentContainer = document.getElementById(iframeParentContainerId);
@@ -55,7 +56,9 @@ window.tryExamplesShowIframe = (
 	      iframe = document.createElement('iframe');
 	      iframe.src = iframeSrc;
 	      iframe.style.width = '100%';
-	      iframe.style.height = `${examples.offsetHeight}px`;
+              minHeight = parseInt(iframeMinHeight);
+	      height = Math.max(minHeight, examples.offsetHeight);
+	      iframe.style.height = `${height}px`;
 	      iframe.classList.add('jupyterlite_sphinx_raw_iframe');
 	      examplesContainer.classList.add("hidden");
 	      iframeContainer.appendChild(iframe);
