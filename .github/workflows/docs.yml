@@ -1,12 +1,17 @@
 name: Deploy Documentation
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Semantic Release"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
     concurrency: release
