@@ -4,7 +4,6 @@ import timeit
 import numpy as np
 import pandas as pd
 import pytest
-
 import skfolio.measures as mt
 from skfolio import (
     ExtraRiskMeasure,
@@ -58,17 +57,87 @@ def periods():
     return periods
 
 
+@pytest.fixture(scope="module")
+def weights():
+    weights = [
+        np.array([
+            0.13045922,
+            0.0,
+            0.07275738,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.10378508,
+            0.0,
+            0.0,
+            0.06514792,
+            0.1572522,
+            0.0,
+            0.04561998,
+            0.0,
+            0.13172688,
+            0.0,
+            0.12010884,
+            0.06686275,
+            0.10627975,
+        ]),
+        np.array([
+            0.16601113,
+            0.22600576,
+            0.10415873,
+            0.15929996,
+            0.0,
+            0.0,
+            0.03297379,
+            0.17318809,
+            0.0,
+            0.01196659,
+            0.06460301,
+            0.0,
+            0.03044458,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.03134836,
+            0.0,
+        ]),
+        np.array([
+            0.03336826,
+            0.08888789,
+            0.0,
+            0.11553431,
+            0.0,
+            0.09538946,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.02055812,
+            0.13314598,
+            0.17740991,
+            0.04196778,
+            0.0,
+            0.0,
+            0.17062177,
+            0.0,
+            0.12311653,
+            0.0,
+        ]),
+    ]
+    return weights
+
+
 @pytest.fixture(scope="function")
-def portfolio_and_returns(prices, periods):
-    n = 10
+def portfolio_and_returns(prices, periods, weights):
     returns = np.array([])
     portfolios = []
-    for i, period in enumerate(periods):
+    for i, (period, weight) in enumerate(zip(periods, weights, strict=True)):
         X = prices_to_returns(X=prices[period[0] : period[1]])
-        n_assets = X.shape[1]
-        weights = rand_weights(n=n_assets, zeros=n_assets - n)
-        returns = np.concatenate([returns, _portfolio_returns(X.to_numpy(), weights)])
-        portfolios.append(Portfolio(X=X, weights=weights, name=f"portfolio_{i}"))
+        returns = np.concatenate([returns, _portfolio_returns(X.to_numpy(), weight)])
+        portfolios.append(Portfolio(X=X, weights=weight, name=f"portfolio_{i}"))
     portfolio = MultiPeriodPortfolio(
         portfolios=portfolios,
         name="mpp",

@@ -111,7 +111,7 @@ ogp_enable_meta_description = True
 autosummary_generate = True
 
 # -- sphinx_sitemap -------------------------------------------------------------
-html_baseurl = 'https://skfolio.org/'
+html_baseurl = "https://skfolio.org/"
 sitemap_url_scheme = "{link}"
 
 # -- Internationalization ----------------------------------------------------
@@ -182,7 +182,7 @@ html_theme_options = {
             "sizes": "144x144",
             "href": "favicon.png",
         },
-    ]
+    ],
 }
 
 html_sidebars = {
