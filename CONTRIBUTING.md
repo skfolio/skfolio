@@ -57,8 +57,13 @@ Ready to contribute? Here's how to set yourself up for local development.
    ```shell
    $ git checkout -b name-of-your-bugfix-or-feature
    ```
-
    Now you can make your changes locally.
+
+   To name your branch, you can use the convention: 
+   `category/reference/description-in-kebab-case`
+   with category: `feat`, `fix`, `refactor`, `chore` and reference: 
+   `issue-<issue number>` or `no-ref`. For example: `feature/issue-34/factor-model`
+
 
 5. Add unit tests for your implementation and check that your changes pass all tests:
 
