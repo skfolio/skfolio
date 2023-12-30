@@ -98,9 +98,8 @@ and overfitting. This framework is build on scikit-learn's API.
 
 Available models
 ~~~~~~~~~~~~~~~~
-The current release contains:
 
-* Optimization estimators:
+* Portfolio Optimization:
     * Naive:
         * Equal-Weighted
         * Inverse-Volatility
@@ -117,24 +116,24 @@ The current release contains:
     * Ensemble methods:
         * Stacking Optimization
 
-* Moment estimators:
-    * Expected Returns:
-        * Empirical
-        * Exponentially Weighted
-        * Equilibrium
-        * Shrinkage (James-Stein, Bayes-Stein, ...)
-    * Covariance:
-        * Empirical
-        * Gerber
-        * Denoising
-        * Denoting
-        * Exponentially Weighted
-        * Ledoit-Wolf
-        * Oracle Approximating Shrinkage
-        * Shrunk Covariance
-        * Graphical lasso CV
+* Expected Returns Estimator:
+    * Empirical
+    * Exponentially Weighted
+    * Equilibrium
+    * Shrinkage (James-Stein, Bayes-Stein, ...)
 
-* Distance estimator:
+* Covariance Estimator:
+    * Empirical
+    * Gerber
+    * Denoising
+    * Denoting
+    * Exponentially Weighted
+    * Ledoit-Wolf
+    * Oracle Approximating Shrinkage
+    * Shrunk Covariance
+    * Graphical lasso CV
+
+* Distance Estimator:
     * Pearson Distance
     * Kendall Distance
     * Spearman Distance
@@ -142,12 +141,12 @@ The current release contains:
     * Distance Correlation
     * Variation of Information
 
-* Prior estimators:
+* Prior Estimator:
     * Empirical
     * Black & Litterman
     * Factor Model
 
-* Uncertainty Set estimators:
+* Uncertainty Set Estimator:
     * On Expected Returns:
         * Empirical
         * Circular Bootstrap
@@ -155,7 +154,7 @@ The current release contains:
         * Empirical
         * Circular bootstrap
 
-* Pre-Selection transformers:
+* Pre-Selection Transformer:
     * Non-Dominated Selection
     * Select K Extremes (Best or Worst)
     * Drop Highly Correlated Assets
@@ -190,9 +189,20 @@ The current release contains:
     * Skew
     * Kurtosis
 
+* Features:
+    * Transaction Costs
+    * Management Fees
+    * L1 and L2 Regularization
+    * Weights Constraints
+    * Groups Constraints
+    * Budget Constraints
+    * Tracking Error Constraints
+    * Turnover Constraints
+
 Quickstart
 ~~~~~~~~~~
-The code snippets below are designed to introduce ``skfolio``'s functionality so you can start using it quickly.
+The code snippets below are designed to introduce `skfolio`'s functionality so you can
+start using it quickly. It follows the same API as scikit-learn.
 
 Imports
 -------
