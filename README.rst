@@ -190,6 +190,10 @@ Available models
     * Kurtosis
 
 * Features:
+    * Minimize Risk
+    * Maximize Returns
+    * Maximize Utility
+    * Maximize Ratio
     * Transaction Costs
     * Management Fees
     * L1 and L2 Regularization
