@@ -16,8 +16,9 @@ skfolio
 
 **skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
 It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
-and cross-validate portfolio models. It is distributed under the open source 3-Clause
-BSD license.
+and cross-validate portfolio models.
+
+It is distributed under the open source 3-Clause BSD license.
 
 .. image:: _static/expo.jpg
     :target: https://skfolio.org/auto_examples/
@@ -484,11 +485,11 @@ source of inspiration:
 Citation
 ~~~~~~~~
 
-If you use skfolio in a scientific publication, we would appreciate citations:
+If you use `skfolio` in a scientific publication, we would appreciate citations:
 
 Bibtex entry::
 
-    @misc{riskfolio,
+    @misc{skfolio,
           author = {Hugo Delatte},
           title = {skfolio},
           year  = {2023},
