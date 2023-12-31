@@ -8,7 +8,7 @@ User Guide
 
     This package is still under active development. We plan to release the first stable
     version (1.0.0) mid 2024. Until then, we advise you to pin versions if you're
-    worried about breaking changes.
+    concerned about breaking changes.
 
 `skfolio` is a portfolio optimization framework build on top of scikit-learn to perform
 model selection, validation and parameter tuning while reducing the risk of data leakage

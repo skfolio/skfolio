@@ -14,9 +14,10 @@
 skfolio
 =======
 
-`skfolio` is a Python library for portfolio optimization built on top of scikit-learn.
-It provides a unified interface and `sklearn` compatible tools to build, tune and
-cross-validate portfolio models.
+**skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
+It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
+and cross-validate portfolio models. It is distributed under the open source 3-Clause
+BSD license.
 
 .. image:: _static/expo.jpg
     :target: https://skfolio.org/auto_examples/
@@ -26,7 +27,7 @@ cross-validate portfolio models.
 Installation
 ************
 
-``skfolio`` is available on PyPI and can be installed with:
+`skfolio` is available on PyPI and can be installed with:
 
 .. code:: console
 
@@ -35,20 +36,26 @@ Installation
 
 Key Concepts
 ************
-Since the development of modern portfolio theory by Markowitz (1952), mean-variance optimization (MVO)
-has received considerable attention. Unfortunately it faces a number of shortcomings including high sensitivity to the
-input parameters (expected returns and covariance), weight concentration, high turnover and poor out-of-sample
-performance.
-It is well known that naive allocation (1/N, inverse-vol, ...) tends to outperform MVO out-of-sample (DeMiguel, 2007).
+Since the development of modern portfolio theory by Markowitz (1952), mean-variance
+optimization (MVO) has received considerable attention.
+
+Unfortunately, it faces a number of shortcomings, including high sensitivity to the
+input parameters (expected returns and covariance), weight concentration, high turnover,
+and poor out-of-sample performance.
+
+It is well known that naive allocation (1/N, inverse-vol, ...) tends to outperform MVO
+out-of-sample (DeMiguel, 2007).
 
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
-additional constraints, regularization, uncertainty set, higher moments, bayesian approaches, coherent risk measures,
-left-tail risk optimization, distributionally robust optimization, factor model, risk-parity, hierarchical clustering,
-ensemble methods...)
+additional constraints, regularization, uncertainty set, higher moments, Bayesian
+approaches, coherent risk measures, left-tail risk optimization, distributionally robust
+optimization, factor model, risk-parity, hierarchical clustering, ensemble methods, ...).
 
-With this large number of methods, added to the fact that they can be composed together there is the need for an
-unified framework to perform model selection, validation and parameter tuning while reducing the risk of data leakage
-and overfitting. This framework is build on scikit-learn's API.
+With this large number of methods, added to the fact that they can be composed together,
+there is a need for a unified framework to perform model selection, validation,
+and parameter tuning while reducing the risk of data leakage and overfitting.
+
+This framework is built on scikit-learn's API.
 
 Available models
 ****************
@@ -57,7 +64,7 @@ Available models
     * Naive:
         * Equal-Weighted
         * Inverse-Volatility
-        * Random (dirichlet)
+        * Random (Dirichlet)
     * Convex:
         * Mean-Risk
         * Risk Budgeting
@@ -67,7 +74,7 @@ Available models
         * Hierarchical Risk Parity
         * Hierarchical Equal Risk Contribution
         * Nested Clusters Optimization
-    * Ensemble methods:
+    * Ensemble Methods:
         * Stacking Optimization
 
 * Expected Returns Estimator:
@@ -85,7 +92,7 @@ Available models
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
     * Shrunk Covariance
-    * Graphical lasso CV
+    * Graphical Lasso CV
 
 * Distance Estimator:
     * Pearson Distance
@@ -116,7 +123,7 @@ Available models
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, ...)
     * Walk Forward
-    * Combinatorial Purged Cross-validation
+    * Combinatorial Purged Cross-Validation
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV, ...)
@@ -151,17 +158,19 @@ Available models
     * Transaction Costs
     * Management Fees
     * L1 and L2 Regularization
-    * Weights Constraints
-    * Groups Constraints
+    * Weight Constraints
+    * Group Constraints
     * Budget Constraints
     * Tracking Error Constraints
     * Turnover Constraints
 
 Quickstart
 **********
-The code snippets below are designed to introduce `skfolio`'s functionality so you can
-start using it quickly. It follows the same API as scikit-learn.
-For more detailed information see the :ref:`general_examples`,  :ref:`user_guide` and :ref:`api` .
+The code snippets below are designed to introduce the functionality of `skfolio` so you
+can start using it quickly. It follows the same API as scikit-learn.
+
+For more detailed information see the :ref:`general_examples`,  :ref:`user_guide`
+and :ref:`api` .
 
 Imports
 ~~~~~~~
@@ -460,9 +469,9 @@ Combinatorial Purged Cross-Validation
 Recognition
 ~~~~~~~~~~~
 
-We would like to thanks all contributors behind our direct dependencies like
-scikit-learn and cvxpy but also the contributors of the following packages that
-were a source of inspiration:
+We would like to thank all contributors behind our direct dependencies, such as
+scikit-learn and cvxpy, but also the contributors of the following packages that were a
+source of inspiration:
 
     * PyPortfolioOpt
     * Riskfolio-Lib
