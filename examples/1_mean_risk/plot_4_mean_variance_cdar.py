@@ -31,7 +31,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# First we create a Maximum Sharpe Ratio model that we fit on the training set:
+# First, we create a Maximum Sharpe Ratio model that we fit on the training set:
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
@@ -40,10 +40,10 @@ portfolio = model.fit_predict(X_train)
 print(portfolio.cdar)
 
 # %%
-# Let's assume that we are not satisfied with the CDaR (Conditional Drawdown ar Risk)
-# of 17% corresponding to the maximum Sharpe portfolio. We want to analyse alternative
+# Let's assume that we are not satisfied with the CDaR (Conditional Drawdown at Risk)
+# of 17% corresponding to the maximum Sharpe portfolio. We want to analyze alternative
 # portfolios that maximize the Sharpe under CDaR constraints.
-# To have an idea of the feasible CDaR constraints, we analyse the Minimum CDaR
+# To have an idea of the feasible CDaR constraints, we analyze the Minimum CDaR
 # portfolio:
 model = MeanRisk(risk_measure=RiskMeasure.CDAR)
 portfolio = model.fit_predict(X_train)
@@ -51,7 +51,7 @@ print(portfolio.cdar)
 
 # %%
 # The minimum CDaR is 9.72%.
-# Now we find the pareto optimal portfolios that maximize the Sharpe under CDaR
+# Now we find the pareto optimal portfolios that maximizes the Sharpe under CDaR
 # constraint ranging from 9.72% to 17%:
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
@@ -64,8 +64,8 @@ print(model.weights_.shape)
 # %%
 # Analysis
 # ==========
-# We predict the model on both the training set and the test set to analyse the
-# deformation of the efficient frontier.
+# We predict this model on both the training set and the test set to analyze the
+# deformation of the efficient frontier:
 population_train = model.predict(X_train)
 population_test = model.predict(X_test)
 
@@ -82,9 +82,9 @@ population.plot_measures(
 )
 
 # %%
-# Pareto optimal surface
+# Pareto Optimal Surface
 # ======================
-# Instead of analysing the Sharpe-CDaR efficient frontier we can analyse the
+# Instead of analyzing the Sharpe-CDaR efficient frontier, we can analyze the
 # mean-Variance-CDaR pareto optimal surface:
 variance_upper = population_train.max_measure(PerfMeasure.MEAN).variance
 x = np.linspace(start=0.00012, stop=variance_upper, num=10)
@@ -111,20 +111,19 @@ fig.update_layout(scene_camera=dict(eye=dict(x=-2, y=-0.5, z=1)))
 show(fig)
 
 # %%
-# Composition of the portfolios:
+# |
+#
+# Let's plot the composition of the portfolios:
 population_train.plot_composition()
 
 # %%
-# Average and standard-deviation of the Sharpe Ratio and CDaR Ratio of the portfolios
-# on the test set:
+# Let's compare the average and standard-deviation of the Sharpe Ratio and CDaR Ratio of
+# the portfolios on the training set versus the test set:
+# | Train:
 print(population_train.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
 print(population_train.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
+
 # %%
-print(population_test.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
-print(population_test.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
-# %%
-print(population_train.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
-print(population_train.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
-# %%
+# Test:
 print(population_test.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
 print(population_test.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))

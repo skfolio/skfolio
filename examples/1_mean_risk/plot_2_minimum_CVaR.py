@@ -35,10 +35,10 @@ print(X_train.head())
 # %%
 # Model
 # =====
-# We create a Minimum CVaR model then fit it on the training set.
-# Note that `portfolio_params` are parameters passed to the
-# :class:`~skfolio.portfolio.Portfolio` returned by the `predict` method. Here we use
-# it to give a name to our maximum sharpe ration portfolio:
+# We create a Minimum CVaR model and then fit it on the training set.
+# `portfolio_params` are parameters passed to the :class:`~skfolio.portfolio.Portfolio`
+# returned by the `predict` method. It can be
+# omitted, here we use it to give a name to our minimum CVaR portfolio:
 model = MeanRisk(
     risk_measure=RiskMeasure.CVAR,
     objective_function=ObjectiveFunction.MINIMIZE_RISK,
@@ -48,8 +48,8 @@ model.fit(X_train)
 model.weights_
 
 # %%
-# To compare the model, we use an equal-weighted benchmark using
-# the :class:`~skfolio.optimization.EqualWeighted` estimator.
+# To compare this model, we use an equal-weighted benchmark using
+# :class:`~skfolio.optimization.EqualWeighted`:
 benchmark = EqualWeighted(portfolio_params=dict(name="Equal Weighted"))
 # Even if `X` has no impact (as it is equal weighted), we still need to call `fit` for
 # API consistency.
@@ -59,20 +59,19 @@ benchmark.weights_
 # %%
 # Prediction
 # ==========
-# We predict the model and the benchmark on the test set. The `predict` method returns a
-# :class:`~skfolio.portfolio.Portfolio` object:
+# We predict the model and the benchmark on the test set:
 pred_model = model.predict(X_test)
 pred_bench = benchmark.predict(X_test)
 
 # %%
-# :class:`~skfolio.portfolio.Portfolio` is an array-container making it compatible with
-# `scikit-learn` tools: calling `np.asarray(pred_model)` gives the portfolio returns
-# (same as `pred_model.returns`):
+# The `predict` method returns a :class:`~skfolio.portfolio.Portfolio` object.
+#
+# :class:`~skfolio.portfolio.Portfolio` is an array-container making it compatible
+# with `scikit-learn` tools: calling `np.asarray(pred_model)` gives the portfolio
+# returns (same as `pred_model.returns`):
 np.asarray(pred_model)
 
 # %%
-# |
-#
 # The :class:`~skfolio.portfolio.Portfolio` class contains a vast number of properties
 # and methods used for analysis.
 #
@@ -111,18 +110,18 @@ show(fig)
 # %%
 # |
 #
-# Finally let's display the full summary of both strategies evaluated on the test
+# Finally, let's display the full summary of both strategies evaluated on the test
 # set:
 population.summary()
 
 # %%
 # Conclusion
 # ==========
-# From the analysis on the test set, we see that the Minimum CVaR portfolio outperform
-# the equal-weighted benchmark for all deviation and shortfall risk measures except for
-# the drawdown measures and under-perform for the mean and ratio measures.
+# From the analysis on the test set, we see that the Minimum CVaR portfolio outperforms
+# the equal-weighted benchmark for all deviation and shortfall risk measures, except for
+# the drawdown measures, and underperforms for the mean and ratio measures.
 #
 # .. seealso::
-#       This was a toy example, for more advance concepts check the
+#       This was a toy example, for more advanced concepts check the
 #       :ref:`user guide <user_guide>` or the :ref:`other examples <general_examples>`.
 #

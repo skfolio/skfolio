@@ -217,7 +217,7 @@ print(
 )
 
 # %%
-# Now let's analyse how the sub-models would have performed independently and compare
+# Now let's analyze how the sub-models would have performed independently and compare
 # their distribution with the Stacking model:
 population = Population([])
 for model_name, model in model_stacking.estimators:

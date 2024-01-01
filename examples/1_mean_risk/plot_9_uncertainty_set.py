@@ -53,7 +53,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Efficient Frontier
 # ==================
-# First we create a Mean-CVaR model to estimate the efficient frontier without
+# First, we create a Mean-CVaR model to estimate the efficient frontier without
 # uncertainty set. We constrain the CVaR at 95% to be below 2% (representing the
 # average loss of the worst 5% daily returns over the period):
 model = MeanRisk(
@@ -199,7 +199,7 @@ show(fig)
 # %%
 # |
 #
-# Now we analyse all three models on the test set.
+# Now we analyze all three models on the test set.
 # By using `cross_val_predict` with `WalkForward`, we are able to compute efficiently
 # the `MultiPeriodPortfolio` composed of 60 days rolling portfolios fitted on the
 # preceding 255 days:

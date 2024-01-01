@@ -44,7 +44,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     Provides train/test indices to split time series data samples based on
     Combinatorial Purged Cross-Validation [1]_.
 
-    Compared to `KFold` which split the data into `k` folds with `1` fold for the test
+    Compared to `KFold`, which splits the data into `k` folds with `1` fold for the test
     set and `k - 1` folds for the training set, `CombinatorialPurgedCV` uses `k - p`
     folds for the training set with `p > 1` being the number of test folds.
 
@@ -57,7 +57,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     overlapped in time with those labels included in the testing set.
 
     Embargoing consist of removing from the training set all observations that
-    immediately follow an observation in the testing set since financial features
+    immediately follow an observation in the testing set, since financial features
     often incorporate series that exhibit serial correlation (like ARMA processes).
 
     Parameters

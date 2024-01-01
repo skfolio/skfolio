@@ -12,7 +12,7 @@ assets.
 It follows the same API as scikit-learn's `estimator`: the `fit` method takes `X` as the
 assets returns and stores the covariance in its `covariance_` attribute.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 
 Available estimators are:

@@ -40,7 +40,7 @@ risk_budget["JPM"] = 0.2
 # %%
 # Model
 # =====
-# We create the risk budgeting model then fit it on the training set:
+# We create the risk budgeting model and then fit it on the training set:
 model = RiskBudgeting(
     risk_measure=RiskMeasure.CVAR,
     risk_budget=risk_budget,
@@ -59,7 +59,7 @@ bench.weights_
 # %%
 # Risk Contribution Analysis
 # ==========================
-# Let's analyse the risk contribution of both models on the training set.
+# Let's analyze the risk contribution of both models on the training set.
 # As expected, the risk budgeting model has 50% more CVaR contribution to Apple and 80%
 # less to General Electric and JPMorgan compared to the other assets:
 ptf_model_train = model.predict(X_train)

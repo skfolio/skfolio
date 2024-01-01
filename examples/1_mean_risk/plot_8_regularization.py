@@ -29,7 +29,7 @@ and the parameter `l2_coef` is used to penalize the objective function by the L2
 In this example we will use a dataset with a large number of assets and long-short
 allocation to exacerbate overfitting.
 
-First we will analyse the impact of regularization on the entire Mean-Variance efficient
+First we will analyze the impact of regularization on the entire Mean-Variance efficient
 frontier and its stability from the training set to the test set. Then we will show how
 to tune the regularization coefficients using cross-validation with `GridSearchCV`.
 """
@@ -61,7 +61,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Efficient Frontier
 # ==================
-# First we create a Mean-Variance model to estimate the efficient frontier without
+# First, we create a Mean-Variance model to estimate the efficient frontier without
 # regularization. We constrain the volatility to be below 30% p.a.
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
@@ -301,7 +301,7 @@ show(fig)
 # six time higher than the mean test Sharpe ratio. That would be a clear sign of
 # overfitting.
 #
-# Now we analyse all three models on the test set. By using `cross_val_predict` with
+# Now we analyze all three models on the test set. By using `cross_val_predict` with
 # `WalkForward`, we are able to compute efficiently the `MultiPeriodPortfolio`
 # composed of 60 days rolling portfolios fitted on the preceding 255 days:
 

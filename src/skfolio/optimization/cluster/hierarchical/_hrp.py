@@ -26,12 +26,13 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     Lopez de Prado [2]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
-    Hierarchical Tree Clustering algorithm then uses seriation to rearrange the assets
-    in the dendrogram minimizing the distance between leafs.
+    Hierarchical Tree Clustering algorithm then employs seriation to rearrange the
+    assets in the dendrogram, minimizing the distance between leafs.
+
     The final step is the recursive bisection where each cluster is split between two
     sub-clusters by starting with the topmost cluster and traversing in a top-down
-    manner. For each sub-cluster we compute the total cluster risk of an inverse-risk
-    allocation. A weighting factor is then computed from these two sub-cluster risks
+    manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
+    allocation. A weighting factor is then computed from these two sub-cluster risks,
     which is used to update the cluster weight.
 
     .. note ::
@@ -39,7 +40,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
         multiple risk measures and linkage methods.
         The default linkage method is set to the Ward
-        variance minimization algorithm which is more stable and have better properties
+        variance minimization algorithm, which is more stable and has better properties
         than the single-linkage method [4]_.
 
     Parameters

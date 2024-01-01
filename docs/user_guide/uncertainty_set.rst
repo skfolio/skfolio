@@ -26,7 +26,7 @@ It follows the same API as scikit-learn's `estimator`: the `fit` method takes `X
 the assets returns and stores the :class:`UncertaintySet` in its `uncertainty_set_`
 attribute.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 
 Available estimators for the expected returns are:

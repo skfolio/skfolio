@@ -29,7 +29,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# We create the risk parity model then fit it on the training set:
+# We create the risk parity model and then fit it on the training set:
 model = RiskBudgeting(
     risk_measure=RiskMeasure.VARIANCE,
     portfolio_params=dict(name="Risk Parity - Variance"),
@@ -38,7 +38,7 @@ model.fit(X_train)
 model.weights_
 
 # %%
-# To compare the model, we use an inverse volatility benchmark using
+# To compare this model, we use an inverse volatility benchmark using
 # the :class:`~skfolio.optimization.InverseVolatility` estimator.
 bench = InverseVolatility(portfolio_params=dict(name="Inverse Vol"))
 bench.fit(X_train)
@@ -47,7 +47,7 @@ bench.weights_
 # %%
 # Risk Contribution Analysis
 # ==========================
-# Let's analyse the risk contribution of both models on the training set.
+# Let's analyze the risk contribution of both models on the training set.
 # As expected, the risk parity model has the same variance contribution for each asset:
 ptf_model_train = model.predict(X_train)
 ptf_model_train.plot_contribution(measure=RiskMeasure.ANNUALIZED_VARIANCE)

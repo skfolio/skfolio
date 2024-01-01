@@ -22,8 +22,8 @@ inner-weights and outer-weights.
     The original paper uses KMeans as the clustering algorithm, minimum Variance for
     the inner-estimator and equal-weight for the outer-estimator. Here we generalize
     it to all `sklearn` and `skfolio` clustering algorithm (Hierarchical Tree
-    Clustering, KMeans, ...), all optimization estimators (Mean-Variance, HRP, ...)
-    and risk measures (variance, CVaR,...).
+    Clustering, KMeans, etc.), all optimization estimators (Mean-Variance, HRP, etc.)
+    and risk measures (variance, CVaR, etc.).
     To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
     fit the outer optimization.
 """
@@ -81,7 +81,7 @@ model1.weights_
 # %%
 # Dendrogram
 # ==========
-# To analyse the clusters structure, we can plot the dendrogram.
+# To analyze the clusters structure, we can plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
 model1.clustering_estimator_.plot_dendrogram(heatmap=False)

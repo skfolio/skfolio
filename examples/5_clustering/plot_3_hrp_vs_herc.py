@@ -18,7 +18,7 @@ Then, we will evaluate the models on the test set and compare it with the equal-
 benchmark.
 
 Finally, we will use the :class:`~skfolio.model_selection.CombinatorialPurgedCV` to
-analyse the stability and distribution of both models.
+analyze the stability and distribution of both models.
 """
 
 # %%

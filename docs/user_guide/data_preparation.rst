@@ -7,7 +7,7 @@ Data Preparation
 ****************
 
 Most `fit` methods of `skfolio` estimators take the assets returns as input `X`.
-This means that the choice of methodology to convert prices to returns is left to the user.
+Therefore, the choice of methodology to convert prices to returns is left to the user.
 
 There are two different notions of return:
 
@@ -51,7 +51,7 @@ It is not uncommon to witness the following steps [1]_:
 
 #. Take the daily prices :math:`S_{t}, S_{t+1}, ...,` for all the n securities
 #. Transform the daily prices to daily logarithmic returns
-#. Estimate the expected retruns vector :math:`\mu` and covariance matrix :math:`\Sigma` from the daily logarithmic returns
+#. Estimate the expected returns vector :math:`\mu` and covariance matrix :math:`\Sigma` from the daily logarithmic returns
 #. Determine the investment horizon, for example k = 255 days
 #. Project the expected returns and covariance to the horizon using the square-root rule: :math:`\mu_{k} ≡ k \times \mu` and :math:`\Sigma_{k} ≡ k \times \Sigma`
 #. Compute the mean-variance efficient frontier :math:`\max_{w} \Biggl\{ w^T \mu - \lambda \times w^T \Sigma w \Biggr\}`
@@ -70,7 +70,7 @@ The correct approach
 ====================
 The correct general approach is the following:
 
-#. Find the market invariants (logarithmic return for stocks, change in yield to maturity for bonds, etc...)
+#. Find the market invariants (logarithmic return for stocks, change in yield to maturity for bonds, etc.)
 #. Estimate the joint distribution of the market invariant over the time period of estimation
 #. Project the distribution of invariants to the time period of investment
 #. Map the distribution of invariants into the distribution of security prices at the investment horizon through a pricing function
@@ -113,7 +113,7 @@ below simplified one will give very close results:
 
 #. Take the prices :math:`S_{t}, S_{t+1}, ...,` (for example daily) for all the n securities
 #. Transform the daily prices to daily linear returns
-#. Estimate the expected retruns vector :math:`\mu` and covariance matrix :math:`\Sigma` from the daily linear returns
+#. Estimate the expected returns vector :math:`\mu` and covariance matrix :math:`\Sigma` from the daily linear returns
 #. Compute the mean-variance efficient frontier :math:`\max_{w} \Biggl\{w^T \mu - \lambda \times w^T \Sigma w\Biggr\}`
 
 This simplified procedure is the default one used in all `skfolio` examples as most

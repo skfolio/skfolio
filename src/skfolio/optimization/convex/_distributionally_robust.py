@@ -19,16 +19,16 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     The Distributionally Robust CVaR model constructs a Wasserstein ball in the space of
     multivariate and non-discrete probability distributions centered at the uniform
-    distribution on the training samples, and find the allocation that minimize the CVaR
-    of the worst-case distribution within this Wasserstein ball.
+    distribution on the training samples and finds the allocation that minimizes the
+    CVaR of the worst-case distribution within this Wasserstein ball.
     Esfahani and Kuhn [1]_ proved that for piecewise linear objective functions,
     which is the case of CVaR [2]_, the distributionally robust optimization problem
     over a Wasserstein ball can be reformulated as finite convex programs.
 
-    Only piecewise linear function are supported which means that transaction costs and
-    regularization are not permitted.
+    Only piecewise linear functions are supported, which means that transaction costs
+    and regularization are not permitted.
 
-    A solver like `Mosek` that can handles a high number of constraints is preferred.
+    A solver like `Mosek` that can handle a high number of constraints is preferred.
 
     Parameters
     ----------

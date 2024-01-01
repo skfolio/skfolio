@@ -58,7 +58,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffl
 # %%
 # Model
 # =====
-# We create the CVaR Hierarchical Risk Parity model then fit it on the training set:
+# We create the CVaR Hierarchical Risk Parity model and then fit it on the training set:
 model1 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, portfolio_params=dict(name="HRP-CVaR-Ward-Pearson")
 )
@@ -68,14 +68,14 @@ model1.weights_
 # %%
 # Risk Contribution
 # =================
-# Let's analyse the risk contribution of the model on the training set:
+# Let's analyze the risk contribution of the model on the training set:
 ptf1 = model1.predict(X_train)
 ptf1.plot_contribution(measure=RiskMeasure.CVAR)
 
 # %%
 # Dendrogram
 # ==========
-# To analyse the clusters structure, we can plot the dendrogram.
+# To analyze the clusters structure, we can plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
 model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)

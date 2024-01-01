@@ -25,7 +25,7 @@ We will show how to use the below parameters:
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the S&P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
-# We select only 3 assets to make the example more readable which are Apple (AAPL),
+# We select only 3 assets to make the example more readable, which are Apple (AAPL),
 # General Electric (GE) and JPMorgan (JPM):
 
 import numpy as np
@@ -56,14 +56,14 @@ model.weights_
 # Budget
 # ======
 # The budget is the sum of long positions and short positions (sum of all weights).
-# It can be `None` or a float. `None` means that there is no budget constraints.
-# The default is 1.0 (fully invested).
+# It can be `None` or a float. `None` means that there are no budget constraints.
+# The default is `1.0` (fully invested).
 #
 # Examples:
 #
-#   * budget = 1    –> fully invested portfolio.
-#   * budget = 0    –> market neutral portfolio.
-#   * budget = None –> no constraints on the sum of weights.
+#   * budget = 1    –> fully invested portfolio
+#   * budget = 0    –> market neutral portfolio
+#   * budget = None –> no constraints on the sum of weights
 
 model = MeanRisk(budget=0.5)
 model.fit(X)
@@ -71,8 +71,8 @@ print(sum(model.weights_))
 model.weights_
 
 # %%
-# You can also put a constraint on the minimum and maximum budget using `min_budget`
-# and `max_budget` which are the lower and upper bounds of the sum of long and short
+# You can also set a constraint on the minimum and maximum budget using `min_budget`
+# and `max_budget`, which are the lower and upper bounds of the sum of long and short
 # positions (sum of all weights). The default is `None`. If provided, you must set
 # `budget=None`.
 model = MeanRisk(budget=None, min_budget=0.3, max_budget=0.5)

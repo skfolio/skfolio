@@ -35,10 +35,10 @@ print(X_train.head())
 # %%
 # Model
 # =====
-# We create a Maximum Sharpe Ratio model then fit it on the training set.
-# Note that `portfolio_params` are parameters passed to the
-# :class:`~skfolio.portfolio.Portfolio` returned by the `predict` method. Here we use
-# it to give a name to our maximum sharpe ration portfolio:
+# We create a Maximum Sharpe Ratio model and then fit it on the training set.
+# `portfolio_params` are parameters passed to the :class:`~skfolio.portfolio.Portfolio`
+# returned by the `predict` method. It can be
+# omitted, here we use it to give a name to our maximum Sharpe Ration portfolio:
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
@@ -48,7 +48,7 @@ model.fit(X_train)
 model.weights_
 
 # %%
-# To compare the model, we use an inverse volatility benchmark using
+# To compare this model, we use an inverse volatility benchmark using
 # the :class:`~skfolio.optimization.InverseVolatility` estimator:
 benchmark = InverseVolatility(portfolio_params=dict(name="Inverse Vol"))
 benchmark.fit(X_train)
@@ -57,20 +57,19 @@ benchmark.weights_
 # %%
 # Prediction
 # ==========
-# We predict the model and the benchmark on the test set. The `predict` method returns a
-# :class:`~skfolio.portfolio.Portfolio` object:
+# We predict the model and the benchmark on the test set:
 pred_model = model.predict(X_test)
 pred_bench = benchmark.predict(X_test)
 
 # %%
-# :class:`~skfolio.portfolio.Portfolio` is an array-container making it compatible with
-# `scikit-learn` tools: calling `np.asarray(pred_model)` gives the portfolio returns
-# (same as `pred_model.returns`):
+# The `predict` method returns a :class:`~skfolio.portfolio.Portfolio` object.
+#
+# :class:`~skfolio.portfolio.Portfolio` is an array-container making it compatible
+# with `scikit-learn` tools: calling `np.asarray(pred_model)` gives the portfolio
+# returns (same as `pred_model.returns`):
 np.asarray(pred_model)
 
 # %%
-# |
-#
 # The :class:`~skfolio.portfolio.Portfolio` class contains a vast number of properties
 # and methods used for analysis.
 #
@@ -109,7 +108,7 @@ show(fig)
 # %%
 # |
 #
-# Finally let's display the full summary of both strategies evaluated on the test
+# Finally, let's display the full summary of both strategies evaluated on the test
 # set:
 population.summary()
 
@@ -118,10 +117,10 @@ population.summary()
 # ==========
 # From the analysis on the test set, we see that the Maximum Sharpe Ratio portfolio
 # outperform the inverse-volatility benchmark for the mean and the ratio
-# measures including the Sharpe Ratio and under-perform for the deviation and
+# measures including the Sharpe Ratio, and underperforms for the deviation and
 # shortfall measures.
 #
 # .. seealso::
-#       This was a toy example, for more advance concepts check the :ref:`user guide
+#       This was a toy example, for more advanced concepts check the :ref:`user guide
 #       <user_guide>` or the :ref:`other examples <general_examples>`.
 #

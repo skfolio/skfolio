@@ -52,7 +52,7 @@ X_train, X_test = train_test_split(X, test_size=0.5, shuffle=False)
 # %%
 # Model
 # =====
-# We create a CVaR Hierarchical Equal Risk Contribution model then fit it on the
+# We create a CVaR Hierarchical Equal Risk Contribution model and then fit it on the
 # training set:
 model1 = HierarchicalEqualRiskContribution(
     risk_measure=RiskMeasure.CDAR, portfolio_params=dict(name="HERC-CDaR-Ward-Pearson")
@@ -63,14 +63,14 @@ model1.weights_
 # %%
 # Risk Contribution
 # =================
-# Let's analyse the risk contribution of the model on the training set:
+# Let's analyze the risk contribution of the model on the training set:
 ptf1 = model1.predict(X_train)
 ptf1.plot_contribution(measure=RiskMeasure.CDAR)
 
 # %%
 # Dendrogram
 # ==========
-# To analyse the clusters structure, we can plot the dendrogram.
+# To analyze the clusters structure, we can plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
 fig = model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
@@ -113,7 +113,7 @@ model2.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
 # We can see that the clustering has been greatly affected by the change of the linkage
-# method. Let's analyse the risk contribution of this model on the training set:
+# method. Let's analyze the risk contribution of this model on the training set:
 ptf2 = model2.predict(X_train)
 ptf2.plot_contribution(measure=RiskMeasure.CDAR)
 

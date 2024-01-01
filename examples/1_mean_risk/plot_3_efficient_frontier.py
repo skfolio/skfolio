@@ -30,7 +30,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# We create the model then fit it on the training set.
+# We create the Mean-Variance model and then fit it on the training set.
 # The parameter `efficient_frontier_size=30` is used to find 30 portfolios on the entire
 # efficient frontier:
 model = MeanRisk(
@@ -44,7 +44,7 @@ print(model.weights_.shape)
 # %%
 # Prediction
 # ==========
-# We predict the model on both the training set and the test set.
+# We predict this model on both the training set and the test set.
 # The `predict` method returns the :class:`~skfolio.population.Population` of
 # 30 :class:`~skfolio.portfolio.Portfolio`:
 population_train = model.predict(X_train)
@@ -57,6 +57,7 @@ population_test = model.predict(X_test)
 # concatenate the training and the test populations:
 population_train.set_portfolio_params(tag="Train")
 population_test.set_portfolio_params(tag="Test")
+
 population = population_train + population_test
 
 fig = population.plot_measures(
@@ -70,15 +71,15 @@ show(fig)
 # %%
 # |
 #
-# Composition of the 30 portfolios:
+# Let's plot the composition of the 30 portfolios:
 population_train.plot_composition()
 
 # %%
-# Sharpe Ratio of the 30 portfolios on the test set:
+# Let's print the Sharpe Ratio of the 30 portfolios on the test set:
 population_test.measures(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO)
 
 # %%
-# Finally we can show a full summary of the 30 portfolios evaluated on the test set:
+# Finally, we can show a full summary of the 30 portfolios evaluated on the test set:
 population.summary()
 
 # %%

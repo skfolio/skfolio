@@ -90,17 +90,19 @@ Unfortunately, it faces a number of shortcomings, including high sensitivity to 
 input parameters (expected returns and covariance), weight concentration, high turnover,
 and poor out-of-sample performance.
 
-It is well known that naive allocation (1/N, inverse-vol, ...) tends to outperform MVO
-out-of-sample (DeMiguel, 2007).
+It is well known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
+MVO out-of-sample (DeMiguel, 2007).
 
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
 additional constraints, regularization, uncertainty set, higher moments, Bayesian
 approaches, coherent risk measures, left-tail risk optimization, distributionally robust
-optimization, factor model, risk-parity, hierarchical clustering, ensemble methods, ...).
+optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
+pre-selection, etc.).
 
 With this large number of methods, added to the fact that they can be composed together,
-there is a need for a unified framework to perform model selection, validation,
-and parameter tuning while reducing the risk of data leakage and overfitting.
+there is a need for a unified framework with a machine learning approach to perform
+model selection, validation, and parameter tuning while reducing the risk of data
+leakage and overfitting.
 
 This framework is built on scikit-learn's API.
 
@@ -128,7 +130,7 @@ Available models
     * Empirical
     * Exponentially Weighted
     * Equilibrium
-    * Shrinkage (James-Stein, Bayes-Stein, ...)
+    * Shrinkage
 
 * Covariance Estimator:
     * Empirical
@@ -168,12 +170,12 @@ Available models
     * Drop Highly Correlated Assets
 
 * Cross-Validation and Model Selection:
-    * Compatible with all `sklearn` methods (KFold, ...)
+    * Compatible with all `sklearn` methods (KFold, etc.)
     * Walk Forward
     * Combinatorial Purged Cross-Validation
 
 * Hyper-Parameter Tuning:
-    * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV, ...)
+    * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
 
 * Risk Measures:
     * Variance

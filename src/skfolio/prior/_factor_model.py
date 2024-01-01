@@ -120,10 +120,10 @@ class FactorModel(BasePrior):
 
     The purpose of Factor Models is to impose a structure on financial variables and
     their covariance matrix by explaining them through a small number of common factors.
-    This can help to overcome estimation error by reducing the number of parameters,
+    This can help overcome estimation error by reducing the number of parameters,
     i.e. the dimensionality of the estimation problem, making portfolio optimization
     more robust against noise in the data. Factor Models also provide a decomposition of
-    financial risk to systematic and security specific components.
+    financial risk into systematic and security-specific components.
 
     Parameters
     ----------

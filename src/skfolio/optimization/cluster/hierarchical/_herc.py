@@ -27,10 +27,11 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
     developed by Thomas Raffinot [2]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
-    Hierarchical Tree Clustering algorithm then computes, for each cluster, the total
-    cluster risk of an inverse-risk allocation.
-    The final step is the top-down recursive division of the dendrogram where the assets
-    weights are updated using a naive risk parity within clusters.
+    Hierarchical Tree Clustering algorithm. It then computes, for each cluster, the
+    total cluster risk of an inverse-risk allocation.
+
+    The final step is the top-down recursive division of the dendrogram, where the
+    assets weights are updated using a naive risk parity within clusters.
 
     It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
     during the top-down recursive division instead of bisecting it.
@@ -38,7 +39,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
     .. note ::
 
         The default linkage method is set to the Ward
-        variance minimization algorithm which is more stable and have better properties
+        variance minimization algorithm, which is more stable and has better properties
         than the single-linkage method [4]_.
 
     Parameters

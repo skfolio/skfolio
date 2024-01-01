@@ -14,20 +14,20 @@ The `PriorModel` is a dataclass containing:
 
     * `mu`: Expected returns estimation
     * `covariance`: Covariance matrix estimation
-    * `returns`: Assets' returns estimation
+    * `returns`: assets returns estimation
     * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
 
 The `FactorModel` estimator estimates the :class:`PriorModel` using a factor model and a
 :ref:`prior estimator <prior>` of the factor's returns. The purpose of factor models is
 to impose a structure on financial variables and their covariance matrix by explaining
-them through a small number of common factors. This can help to overcome estimation
+them through a small number of common factors. This can help overcome estimation
 error by reducing the number of parameters, i.e., the dimensionality of the estimation
 problem, making portfolio optimization more robust against noise in the data. Factor
 models also provide a decomposition of financial risk to systematic and security
 specific components.
 
 To be compatible with `scikit-learn`, the `fit` method takes `X` as the assets returns
-and `y` as the factors returns. Note that `y` is in lower case even for a 2D array
+and `y` as the factors returns. Note that `y` is in lowercase even for a 2D array
 (more than one factor). This is for consistency with the scikit-learn API.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `FactorModel`

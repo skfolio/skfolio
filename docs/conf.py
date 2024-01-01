@@ -126,6 +126,28 @@ myst_enable_extensions = ["colon_fence", "linkify", "substitution"]
 myst_heading_anchors = 2
 myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
 
+# -- sphinx-favicons ------------------------------------------------------------
+favicons = [
+    {
+        "rel": "shortcut icon",
+        "type": "image/svg+xml",
+        "sizes": "any",
+        "href": "favicon.svg",
+    },
+    {
+        "rel": "icon",
+        "type": "image/svg+xml",
+        "sizes": "any",
+        "href": "favicon.svg",
+    },
+    {
+        "rel": "icon",
+        "type": "image/png",
+        "sizes": "144x144",
+        "href": "favicon.png",
+    },
+]
+
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
@@ -163,26 +185,7 @@ html_theme_options = {
     <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
     Your contributions are welcome!</div>""",
     "secondary_sidebar_items": [],  # No secondary sidebar due to bug with plotly
-    "favicons": [
-        {
-            "rel": "shortcut icon",
-            "type": "image/svg+xml",
-            "sizes": "any",
-            "href": "favicon.svg",
-        },
-        {
-            "rel": "icon",
-            "type": "image/svg+xml",
-            "sizes": "any",
-            "href": "favicon.svg",
-        },
-        {
-            "rel": "icon",
-            "type": "image/png",
-            "sizes": "144x144",
-            "href": "favicon.png",
-        },
-    ],
+
 }
 
 html_sidebars = {

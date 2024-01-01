@@ -17,7 +17,7 @@ class BlackLitterman(BasePrior):
     """Black & Litterman Prior Model estimator.
 
     The Black & Litterman model [1]_ takes a Bayesian approach by using a prior estimate
-    of the assets expected returns and covariance matrix which are updated using the
+    of the assets expected returns and covariance matrix, which are updated using the
     analyst views to get a posterior estimate.
 
     Parameters
