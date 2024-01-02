@@ -100,7 +100,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         If a float is provided, it is applied to each asset.
         `None` is equivalent to `-np.Inf` (no lower bound).
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset minium weight) and the input `X` of the `fit` methods must
+        (asset name/asset minium weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         When using a dictionary, assets values that are not provided are assigned
         a minimum weight of `0.0`.
@@ -119,7 +119,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         If a float is provided, it is applied to each asset.
         `None` is equivalent to `+np.Inf` (no upper bound).
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset maximum weight) and the input `X` of the `fit` methods must
+        (asset name/asset maximum weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         When using a dictionary, assets values that are not provided are assigned
         a minimum weight of `1.0`.
@@ -172,7 +172,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         with :math:`c_{i}` the transaction cost of asset i, :math:`w_{i}` its weight
         and :math:`w\_prev_{i}` its previous weight (defined in `previous_weights`).
-        The float :math:`total\_cost` is used in the portfolio expected return:
+        The float :math:`total\_cost` is impacting the portfolio expected return in the optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
@@ -181,7 +181,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset cost) and the input `X` of the `fit` methods must be a
+        (asset name/asset cost) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
 
@@ -190,7 +190,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             Based on the above formula, the periodicity of the transaction costs
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed in **daily** costs.
+            to be expressed as **daily** costs.
             (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
@@ -200,7 +200,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
         with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-        The float :math:`total\_fee` is used in the portfolio expected return:
+        The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
@@ -209,7 +209,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset fee) and the input `X` of the `fit` methods must be a
+        (asset name/asset fee) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
 
@@ -233,7 +233,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         portfolio cost and the portfolio turnover.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset previous weight) and the input `X` of the `fit` methods must
+        (asset name/asset previous weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         The default (`None`) means no previous weights.
 
@@ -290,7 +290,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         With "ref1", "ref2" ... the assets names or the groups names provided
         in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` methods is a DataFrame with these
+        `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
         Examples:
@@ -304,7 +304,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset groups) and the input `X` of the `fit` methods must be a
+        (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
         Examples:

@@ -4,8 +4,8 @@ Maximum Diversification
 =======================
 
 This tutorial uses the :class:`~skfolio.optimization.MaximumDiversification`
-optimization to find the portfolio that maximizes the diversification ratio which is the
-ratio of the weighted volatilities over the total volatility.
+optimization to find the portfolio that maximizes the diversification ratio, which is
+the ratio of the weighted volatilities over the total volatility.
 """
 
 # %%
@@ -80,4 +80,5 @@ population.plot_cumulative_returns()
 # %%
 # |
 #
-# Finally we can show a full summary of both strategies evaluated on the test set:
+# Finally, we print a full summary of both strategies evaluated on the test set:
+population.summary()

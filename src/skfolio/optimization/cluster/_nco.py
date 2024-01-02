@@ -42,10 +42,10 @@ class NestedClustersOptimization(BaseOptimization):
         The original paper uses KMeans as the clustering algorithm, minimum Variance for
         the inner-estimator and equal-weighted for the outer-estimator. Here we
         generalize it to all `sklearn` and `skfolio` clustering algorithms
-        (HierarchicalClustering, KMeans, etc.), all optimization estimators
+        (HierarchicalClustering, KMeans, etc.), all portfolio optimizations
         (Mean-Variance, HRP, etc.) and risk measures (Variance, CVaR, etc.).
         To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
-        fit the outer optimization.
+        fit the outer estimator.
 
     Parameters
     ----------

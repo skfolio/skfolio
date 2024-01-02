@@ -96,6 +96,7 @@ population.plot_cumulative_returns()
 # %%
 # Because our factor views were accurate, the Black & Litterman Factor Model
 # outperformed the simple Factor Model on the test set.
-# Let's plot the portfolios' composition:
+#
+# Let's plot the portfolios compositions:
 fig = population.plot_composition()
 show(fig)

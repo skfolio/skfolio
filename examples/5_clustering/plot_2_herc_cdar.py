@@ -9,19 +9,19 @@ This tutorial introduces the
 The Hierarchical Equal Risk Contribution (HERC) is a portfolio optimization method
 developed by Thomas Raffinot.
 
-It differs from the Hierarchical Risk Parity by using the dendrogram shape during the
-top-down recursive division instead of bisecting it.
-
 This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then uses seriation to rearrange the assets in
-the dendrogram minimizing the distance between leafs. Then for each cluster,
-the total cluster risk of an inverse-risk allocation is computed. The final step is the
-top-down recursive division of the dendrogram where the assets weights are updated using
-a  naive risk parity of the clusters total risks.
+Hierarchical Tree Clustering algorithm. It then computes, for each cluster, the
+total cluster risk of an inverse-risk allocation.
+
+The final step is the top-down recursive division of the dendrogram, where the
+assets weights are updated using a naive risk parity within clusters.
+
+It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
+during the top-down recursive division instead of bisecting it.
 
 .. note ::
-    The default linkage method is set to the Ward variance minimization algorithm which
-    is more stable and have better properties than the single-linkage method.
+    The default linkage method is set to the Ward variance minimization algorithm,
+    which is more stable and has better properties than the single-linkage method
 
 In this example, we will use the CDaR risk measure.
 """
@@ -70,7 +70,7 @@ ptf1.plot_contribution(measure=RiskMeasure.CDAR)
 # %%
 # Dendrogram
 # ==========
-# To analyze the clusters structure, we can plot the dendrogram.
+# To analyze the clusters structure, we plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
 fig = model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
@@ -91,16 +91,18 @@ show(fig)
 model1.hierarchical_clustering_estimator_.plot_dendrogram()
 
 # %%
-# Linkage methods
+# Linkage Methods
 # ===============
 # The clustering can be greatly affected by the choice of the linkage method.
 # In the :class:`~skfolio.optimization.HierarchicalEqualRiskContribution` estimator, the
 # default linkage method is set to the Ward variance minimization algorithm which is
-# more stable and have better properties than the single-linkage method which suffers
-# from the chaining effect. And because HERC rely on the dendrogram structure as opposed
+# more stable and has better properties than the single-linkage method, which suffers
+# from the chaining effect.
+#
+# And because HERC rely on the dendrogram structure as opposed
 # to HRP, the choice of the linkage method will have a greater impact on the allocation.
 #
-# To show its effect, let's create a second model with the single-linkage method:
+# To show this effect, let's create a second model with the single-linkage method:
 model2 = HierarchicalEqualRiskContribution(
     risk_measure=RiskMeasure.CDAR,
     hierarchical_clustering_estimator=HierarchicalClustering(
@@ -123,7 +125,7 @@ ptf2.plot_contribution(measure=RiskMeasure.CDAR)
 # below on the test set.
 
 # %%
-# Distance estimator
+# Distance Estimator
 # ==================
 # The distance metric used has also an important effect on the clustering.
 # The default is to use the distance of the pearson correlation matrix.
@@ -139,7 +141,7 @@ model3.fit(X_train)
 model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
-# To compare the HERC models, we use an equal weighted benchmark using
+# To compare the models, we use an equal weighted benchmark using
 # the :class:`~skfolio.optimization.EqualWeighted` estimator:
 bench = EqualWeighted()
 bench.fit(X_train)
@@ -159,5 +161,5 @@ population_test.plot_cumulative_returns()
 # Composition
 # ===========
 # From the below composition, we notice that the model with single-linkage method is
-# too concentrated:
+# highly concentrated:
 population_test.plot_composition()

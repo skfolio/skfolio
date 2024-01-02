@@ -26,7 +26,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     Lopez de Prado [2]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
-    Hierarchical Tree Clustering algorithm then employs seriation to rearrange the
+    Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
     assets in the dendrogram, minimizing the distance between leafs.
 
     The final step is the recursive bisection where each cluster is split between two
@@ -115,7 +115,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         allowed. If a float is provided, it is applied to each asset. `None` is
         equivalent to `+np.Inf` (no upper bound). If a dictionary is provided, its
         (key/value) pair must be the (asset name/asset maximum weight) and the input `X`
-        of the `fit` methods must be a DataFrame with the assets names in columns. When
+        of the `fit` method must be a DataFrame with the assets names in columns. When
         using a dictionary, assets values that are not provided are assigned a minimum
         weight of `1.0`. The default is 1.0 (each asset is below 100%).
 
@@ -134,7 +134,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         with :math:`c_{i}` the transaction cost of asset i, :math:`w_{i}` its weight
         and :math:`w\_prev_{i}` its previous weight (defined in `previous_weights`).
-        The float :math:`total\_cost` is used in the portfolio expected return:
+        The float :math:`total\_cost` is impacting the portfolio expected return in the optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
@@ -143,7 +143,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset cost) and the input `X` of the `fit` methods must be a
+        (asset name/asset cost) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
 
@@ -152,7 +152,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             Based on the above formula, the periodicity of the transaction costs
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed in **daily** costs.
+            to be expressed as **daily** costs.
             (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
@@ -162,7 +162,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
         with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-        The float :math:`total\_fee` is used in the portfolio expected return:
+        The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
@@ -171,7 +171,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset fee) and the input `X` of the `fit` methods must be a
+        (asset name/asset fee) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
 
@@ -194,7 +194,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         Previous weights of the assets. Previous weights are used to compute the
         portfolio total cost. If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset previous weight) and the input `X` of the `fit` methods must
+        (asset name/asset previous weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         The default (`None`) means no previous weights.
 

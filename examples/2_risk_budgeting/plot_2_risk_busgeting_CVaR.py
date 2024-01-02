@@ -99,5 +99,5 @@ show(fig)
 # %%
 # |
 #
-# Finally we can show a full summary of both strategies evaluated on the test set:
+# Finally, we print a full summary of both strategies evaluated on the test set:
 population.summary()

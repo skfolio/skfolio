@@ -61,10 +61,13 @@ ptf_bench_train.plot_contribution(measure=RiskMeasure.ANNUALIZED_VARIANCE)
 # %%
 # Prediction
 # ==========
-# We predict the model and the benchmark on the test set. The `predict` method returns a
-# :class:`~skfolio.portfolio.Portfolio`:
+# We predict the model and the benchmark on the test set:
 ptf_model_test = model.predict(X_test)
 ptf_bench_test = bench.predict(X_test)
+
+# %%
+# The `predict` method returns a :class:`~skfolio.portfolio.Portfolio` object.
+
 
 # %%
 # Analysis
@@ -85,5 +88,5 @@ show(fig)
 # %%
 # |
 #
-# Finally we can show a full summary of both strategies evaluated on the test set:
+# Finally, we print a full summary of both strategies evaluated on the test set:
 population.summary()

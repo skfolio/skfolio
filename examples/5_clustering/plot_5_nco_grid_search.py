@@ -6,7 +6,7 @@ NCO - Combinatorial Purged CV
 The previous tutorial introduced the
 :class:`~skfolio.optimization.NestedClustersOptimization` optimization.
 
-In this tutorial we will perform hyperparameter search using `GridSearch` and
+In this tutorial, we will perform hyperparameter search using `GridSearch` and
 distribution analysis with `CombinatorialPurgedCV`.
 """
 
@@ -14,7 +14,7 @@ distribution analysis with `CombinatorialPurgedCV`.
 # Data
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
-# assets from the S&P 500 Index composition starting from 2020-01-02 up to 2022-12-28:
+# assets from the S&P 500 Index composition starting from 2015-01-02 up to 2022-12-28:
 from plotly.io import show
 from sklearn.model_selection import GridSearchCV, train_test_split
 
@@ -36,9 +36,10 @@ from skfolio.optimization import (
 from skfolio.preprocessing import prices_to_returns
 
 prices = load_sp500_dataset()
+prices = prices["2015":]
 
 X = prices_to_returns(prices)
-X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
+X_train, X_test = train_test_split(X, test_size=0.5, shuffle=False)
 
 # %%
 # Model
@@ -115,7 +116,7 @@ show(fig)
 # %%
 # Analysis
 # ========
-# The NCO outperform the Benchmark on the test set in terms of Sharpe Ratio
+# The NCO outperforms the Benchmark on the test set for the below measures:
 # maximization:
 for ptf in population:
     print("=" * 25)
@@ -129,13 +130,13 @@ for ptf in population:
 # Combinatorial Purged Cross-Validation
 # =====================================
 # Only using one testing path (the historical path) may not be enough for comparing both
-# models. For a more robust analysis, we can use the
+# models. For a more robust analysis, we can use
 # :class:`~skfolio.model_selection.CombinatorialPurgedCV` to create multiple testing
-# paths from different training folds combinations:
-cv = CombinatorialPurgedCV(n_folds=25, n_test_folds=23)
+# paths from different training folds combinations.
+cv = CombinatorialPurgedCV(n_folds=9, n_test_folds=7)
 
 # %%
-# We choose `n_folds` and `n_test_folds` to get more than 100 test paths and an average
+# We choose `n_folds` and `n_test_folds` to get more than 30 test paths and an average
 # training size around 255 days:
 cv.summary(X_test)
 
@@ -157,10 +158,11 @@ pred_nco = cross_val_predict(
 # ============
 # We plot the out-of-sample distribution of Sharpe Ratio for the NCO model:
 pred_nco.plot_distribution(
-    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO], n_bins=40
-)
+    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO]
+).show()
 
 # %%
+# Let's print the average and standard-deviation of out-of-sample Sharpe Ratios:
 print(
     "Average of Sharpe Ratio :"
     f" {pred_nco.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
@@ -171,12 +173,18 @@ print(
 )
 
 # %%
+# Let's compare it with the benchmark:
+pred_bench = benchmark.fit_predict(X_test)
+print(pred_bench.annualized_sharpe_ratio)
+
+# %%
 # Conclusion
 # ==========
 # This NCO model outperforms the Benchmark in terms of Sharpe Ratio on the historical
 # test set. However, the distribution analysis on the recombined (non-historical) test
 # sets shows that it slightly underperforms the Benchmark in average.
+#
 # This was a toy example to present the API. Further analysis using different
 # estimators, datasets and CV parameters should be performed to determine if the
-# outperformance on the historical test set is du to chance or if this NCO model is able
-# to exploit time-dependencies information lost in the `CombinatorialPurgedCV`.
+# outperformance on the historical test set is due to chance or if this NCO model is
+# able to exploit time-dependencies information lost in `CombinatorialPurgedCV`.

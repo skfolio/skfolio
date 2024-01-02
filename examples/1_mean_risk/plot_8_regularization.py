@@ -8,19 +8,19 @@ This tutorial shows how to incorporate regularization into the
 
 Regularization tends to increase robustness and out-of-sample stability.
 
-The parameter `l1_coef` is used to penalize the objective function by the L1 norm:
+The `l1_coef` parameter is used to penalize the objective function by the L1 norm:
 
 .. math:: l1\_coef \times \Vert w \Vert_{1} = l1\_coef \times \sum_{i=1}^{N} |w_{i}|
 
-and the parameter `l2_coef` is used to penalize the objective function by the L2 norm:
+and the `l2_coef` parameter is used to penalize the objective function by the L2 norm:
 
 .. math:: l2\_coef \times \Vert w \Vert_{2}^{2} = l2\_coef \times \sum_{i=1}^{N} w_{i}^2
 
 .. warning ::
 
     Increasing the L1 coefficient may reduce the number of non-zero weights
-    (cardinality) which can reduce diversification. However, reduced diversification
-    does not necessarily mean reduced robustness.
+    (cardinality), which can reduce diversification. However, a reduction in
+    diversification does not necessarily equate to a reduction in robustness.
 
 .. note ::
 
@@ -29,8 +29,8 @@ and the parameter `l2_coef` is used to penalize the objective function by the L2
 In this example we will use a dataset with a large number of assets and long-short
 allocation to exacerbate overfitting.
 
-First we will analyze the impact of regularization on the entire Mean-Variance efficient
-frontier and its stability from the training set to the test set. Then we will show how
+First, we will analyze the impact of regularization on the entire Mean-Variance efficient
+frontier and its stability from the training set to the test set. Then, we will show how
 to tune the regularization coefficients using cross-validation with `GridSearchCV`.
 """
 
@@ -95,7 +95,7 @@ model_l2.fit(X_train)
 model_l2.weights_.shape
 
 # %%
-# Let's plot both efficient frontiers on the training set:
+# Let's plot the efficient frontiers on the training set:
 population_train = (
     model.predict(X_train) + model_l1.predict(X_train) + model_l2.predict(X_train)
 )
@@ -158,7 +158,7 @@ population_test.plot_measures(
 #
 # We use `GridSearchCV` to select the optimal L1 and L2 regularization coefficients on
 # the training set using cross-validation that achieve the highest
-# mean test score. We use the default score which is the Sharpe ratio.
+# mean test score. We use the default score, which is the Sharpe ratio.
 # Finally, we evaluate the model on the test set and compare it with the equal-weighted
 # benchmark and a reference model without regularization:
 
@@ -185,8 +185,8 @@ best_model = grid_search.best_estimator_
 print(best_model)
 
 # %%
-# The optimal parameters among the above 3x3 grid are 0.1 for the L1 coefficient
-# and 0.01 for the L2 coefficient.
+# The optimal parameters among the above 3x3 grid are 0.01 for the L1 coefficient
+# and the L2 coefficient.
 # These parameters are the ones that achieved the highest mean out-of-sample Sharpe
 # Ratio. Note that the score can be changed to another measure or function using the
 # `scoring` parameter.
@@ -196,7 +196,7 @@ print(best_model)
 # the randomization.
 #
 # A continuous log-uniform random variable is the continuous version of a log-spaced
-# parameter. For example to specify the equivalent of the L1 parameter from above,
+# parameter. For example, to specify the equivalent of the L1 parameter from above,
 # `loguniform(1e-3, 1e-1)` can be used instead of `[0.001, 0.01, 0.1]`.
 #
 # Mirroring the example above in grid search, we can specify a continuous random
@@ -295,13 +295,13 @@ show(fig)
 # %%
 # |
 #
-# The highest mean out-of-sample Sharpe ratio is 1.55 and is achieved for a L2 coef of
+# The highest mean out-of-sample Sharpe Ratio is 1.55 and is achieved for a L2 coef of
 # 0.031.
-# Also note that without regularization, the mean train Sharpe ratio is around
-# six time higher than the mean test Sharpe ratio. That would be a clear sign of
+# Also note that without regularization, the mean train Sharpe Ratio is around
+# six time higher than the mean test Sharpe Ratio. That would be a clear indiction of
 # overfitting.
 #
-# Now we analyze all three models on the test set. By using `cross_val_predict` with
+# Now, we analyze all three models on the test set. By using `cross_val_predict` with
 # `WalkForward`, we are able to compute efficiently the `MultiPeriodPortfolio`
 # composed of 60 days rolling portfolios fitted on the preceding 255 days:
 
@@ -320,8 +320,8 @@ population.plot_cumulative_returns()
 
 # %%
 # From the plot and the below summary, we can see that the un-regularized model is
-# overfitted and perform poorly on the test set. Its annualized volatility is 53% which
-# is significantly above the model upper-bound of 30% and its Sharpe ratio is 0.29 which
+# overfitted and perform poorly on the test set. Its annualized volatility is 53%, which
+# is significantly above the model upper-bound of 30% and its Sharpe Ratio is 0.29 which
 # is the lowest of all models.
 
 population.summary()

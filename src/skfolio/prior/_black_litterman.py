@@ -44,7 +44,7 @@ class BlackLitterman(BasePrior):
     groups : dict[str, list[str]] or array-like of strings of shape (n_groups, n_assets), optional
         The assets groups to be referenced in `views`.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset groups) and the input `X` of the `fit` methods must be a
+        (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
         Examples:

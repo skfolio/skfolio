@@ -22,17 +22,17 @@ inner-weights and outer-weights.
     The original paper uses KMeans as the clustering algorithm, minimum Variance for
     the inner-estimator and equal-weight for the outer-estimator. Here we generalize
     it to all `sklearn` and `skfolio` clustering algorithm (Hierarchical Tree
-    Clustering, KMeans, etc.), all optimization estimators (Mean-Variance, HRP, etc.)
+    Clustering, KMeans, etc.), all portfolio optimizations (Mean-Variance, HRP, etc.)
     and risk measures (variance, CVaR, etc.).
     To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
-    fit the outer optimization.
+    fit the outer estimator.
 """
 
 # %%
 # Data
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
-# assets from the S&P 500 Index composition starting from 2020-01-02 up to 2022-12-28:
+# assets from the S&P 500 Index composition starting from 1990-01-02 up to 2022-12-28:
 from plotly.io import show
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
@@ -58,10 +58,10 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# We create a NCO model that maximizes the Sharpe ratio intra-cluster and uses a CVaR
-# risk parity optimization inter-cluster. By default, the inter-cluster optimization
+# We create a NCO model that maximizes the Sharpe Ratio intra-cluster and uses a CVaR
+# Risk Parity inter-cluster. By default, the inter-cluster optimization
 # uses `KFolds` out-of-sample estimates of the inner-estimator to avoid data leakage.
-# By default, it uses the :class:`~skfolio.cluster.HierarchicalClustering` estimator
+# and the :class:`~skfolio.cluster.HierarchicalClustering` estimator
 # to form the clusters:
 inner_estimator = MeanRisk(
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
@@ -98,15 +98,15 @@ model1.clustering_estimator_.plot_dendrogram(heatmap=False)
 model1.clustering_estimator_.plot_dendrogram()
 
 # %%
-# Linkage methods
+# Linkage M
 # ===============
 # The hierarchical clustering can be greatly affected by the choice of the linkage
 # method. In the :class:`~skfolio.cluster.HierarchicalClustering` estimator, the default
-# linkage method is set to the Ward variance minimization algorithm which is more stable
-# and have better properties than the single-linkage method which suffers from the
+# linkage method is set to the Ward variance minimization algorithm, which is more
+# stable and has better properties than the single-linkage method which suffers from the
 # chaining effect.
 #
-# To show its effect, let's create a second model with the
+# To show this effect, let's create a second model with the
 # single-linkage method:
 model2 = NestedClustersOptimization(
     inner_estimator=inner_estimator,
@@ -121,7 +121,7 @@ model2.fit(X_train)
 model2.clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
-# Distance estimator
+# Distance Estimator
 # ==================
 # The distance metric used has also an important effect on the clustering.
 # The default is to use the distance of the pearson correlation matrix.
@@ -140,7 +140,7 @@ model3.fit(X_train)
 model3.clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
-# Clustering estimator
+# Clustering Estimator
 # ====================
 # The above models used the default :class:`~skfolio.cluster.HierarchicalClustering`
 # estimator. This can be replaced by any `sklearn` or `skfolio` clustering estimators.
@@ -176,5 +176,6 @@ population_test.plot_cumulative_returns()
 # %%
 # Composition
 # ===========
+# Let's plot each portfolio composition:
 fig = population_test.plot_composition()
 show(fig)

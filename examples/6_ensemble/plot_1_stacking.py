@@ -15,7 +15,7 @@ estimator weights.
 Stacking allows to use the strength of each individual estimator by using their
 output as input of a final estimator.
 
-To avoid data leakage, out-of-sample estimates are used to fit the outer optimization.
+To avoid data leakage, out-of-sample estimates are used to fit the outer estimator.
 
 .. note ::
     The `estimators_` are fitted on the full `X` while `final_estimator_` is trained

@@ -16,7 +16,7 @@ from skfolio.portfolio import Portfolio
 
 
 class BaseOptimization(skb.BaseEstimator, ABC):
-    """Base class for all optimization estimators in skfolio.
+    """Base class for all portfolio optimizations in skfolio.
 
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and

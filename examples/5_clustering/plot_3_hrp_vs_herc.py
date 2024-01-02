@@ -3,19 +3,19 @@
 HRP vs HERC
 ===========
 
-In this tutorial we will compare the
-:class:`~skfolio.optimization.HierarchicalRiskParity` (HRP) vs the
+In this tutorial, we will compare the
+:class:`~skfolio.optimization.HierarchicalRiskParity` (HRP) optimization with the
 :class:`~skfolio.optimization.HierarchicalEqualRiskContribution` (HERC) optimization.
 
-For that comparison we consider a 3 months rolling (60 business days) allocation fitted
+For that comparison, we consider a 3 months rolling (60 business days) allocation fitted
 on the preceding year of data (255 business days) that minimizes the CVaR.
 
-We will use `GridSearchCV` to select the optimal parameters of each model on the
-training set using cross-validation that achieve the highest average out-of-sample
+We will employ `GridSearchCV` to select the optimal parameters of each model on the
+training set using cross-validation that achieves the highest average out-of-sample
 Mean-CVaR ratio.
 
-Then, we will evaluate the models on the test set and compare it with the equal-weighted
-benchmark.
+Then, we will evaluate the models on the test set and compare them with the
+equal-weighted benchmark.
 
 Finally, we will use the :class:`~skfolio.model_selection.CombinatorialPurgedCV` to
 analyze the stability and distribution of both models.
@@ -68,7 +68,7 @@ model_herc = HierarchicalEqualRiskContribution(
 # %%
 # Parameter Tuning
 # ================
-# For HRP and HERC, we find the model parameters that maximizes the average
+# For both HRP and HERC models, we find the parameters that maximizes the average
 # out-of-sample Mean-CVaR ratio using `GridSearchCV` with `WalkForward` cross-validation
 # on the training set. The `WalkForward` are chosen to simulate a three months
 # (60 business days) rolling portfolio fitted on the previous year (255 business days):
@@ -183,7 +183,7 @@ population = pred_hrp + pred_herc
 # %%
 # Distribution
 # ============
-# We plot the out-of-sample distribution of Mean-CVaR ratio for each model:
+# We plot the out-of-sample distribution of Mean-CVaR Ratio for each model:
 population.plot_distribution(
     measure_list=[RatioMeasure.CVAR_RATIO], tag_list=["HRP", "HERC"], n_bins=50
 )
@@ -204,7 +204,7 @@ for pred in [pred_hrp, pred_herc]:
     print("\n")
 
 # %%
-# We can see that, in terms of Mean-CVaR ratio distribution, the HERC model has a higher
+# We can see that, in terms of Mean-CVaR Ratio distribution, the HERC model has a higher
 # mean than the HRP model but also a higher standard deviation. In other words, HERC is
 # less stable than HRP but performs slightly better in average.
 

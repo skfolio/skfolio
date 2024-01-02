@@ -81,7 +81,7 @@ print(sum(model.weights_))
 model.weights_
 
 # %%
-# Lower and upper bounds on weights
+# Lower and Upper Bounds on Weights
 # =================================
 # The weights lower and upper bounds are controlled by the parameters `min_weights` and
 # `max_weights` respectively.
@@ -89,19 +89,20 @@ model.weights_
 # `None` is equivalent to `-np.Inf` (no lower bounds).
 # If a float is provided, it is applied to each asset.
 # If a dictionary is provided, its (key/value) pair must be the (asset name/asset
-# weight bound) and the input `X` of the `fit` methods must be a DataFrame with the
+# weight bound) and the input `X` of the `fit` method must be a DataFrame with the
 # assets names in columns.
-# The default is `min_weights=0.0` (no short selling) and `max_weights=1.0` (each asset
-# is below 100%). When using a dictionary, you don't have to provide constraints for
-# all assets. The ones not provided will be assigned the default value (0.0 and 1.0
-# respectively).
+# The default values are `min_weights=0.0` (no short selling) and `max_weights=1.0`
+# (each asset is below 100%). When using a dictionary, you don't have to provide
+# constraints for all assets. If not provided, the default values (0.0 for min_weights
+# and 1.0 for max_weights) will be assigned to the assets not specified in the
+# dictionary.
 #
 # .. note ::
 #
-#   When adding a :ref:`pre-selection transformer <pre_selection>` into a `Pipeline`,
-#   you cannot use a **list** for the weight constraints because we don't know which
-#   assets will be selected by the pre-selection process. This is where the
-#   **dictionary** becomes useful.
+#   When incorporating a pre-selection transformer into a Pipeline, using a list for
+#   weight constraints is not feasible, as we don't know in advance which assets will
+#   be selected by the pre-selection process. This is where the dictionary proves
+#   useful.
 #
 # Example:
 #   * min_weights = 0                     –> long only portfolio (no short selling).
@@ -113,17 +114,18 @@ model.weights_
 #   * max_weights = None                  –> no upper bound (same as +np.Inf).
 #   * max_weights = 2                     –> each weight must be below 200%.
 #   * max_weights = [1, 2, -0.5]          -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and -50% respectively.
-#   * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default) respectively.
+#   * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default).
 
 # %%
-# Allowing short positions with a budget of -100%:
+# Let's create a model that allows short positions with a budget of -100%:
 model = MeanRisk(budget=-1, min_weights=-1)
 model.fit(X)
 print(sum(model.weights_))
 model.weights_
 
 # %%
-# "AAPL", "GE" and "JPM" above 0%, 50% and 10% respectively:
+# Let's add weight constraints on "AAPL", "GE" and "JPM" to be above 0%, 50% and 10%
+# respectively:
 model = MeanRisk(min_weights=[0, 0.5, 0.1])
 model.fit(X)
 print(sum(model.weights_))
@@ -138,41 +140,42 @@ show(fig)
 # %%
 # |
 #
-# Same as above but using partial dictionary:
+# Let's create the same model as above but using partial dictionary:
 model = MeanRisk(min_weights={"GE": 0.5, "JPM": 0.1})
 model.fit(X)
 print(sum(model.weights_))
 model.weights_
 
 # %%
-# Leverage 3 with each weight below 150%:
+# Let's create a model with a leverage of 3 and every weights below 150%:
 model = MeanRisk(budget=3, max_weights=1.5)
 model.fit(X)
 print(sum(model.weights_))
 model.weights_
 
 # %%
-# Short and long position constraints
+# Short and Long Position Constraints
 # ===================================
 # Constraints on the upper bound for short and long positions can be set using
 # `max_short` and `max_long`. The short position is defined as the sum of negative
 # weights (in absolute term) and the long position as the sum of positive weights.
 
 # %%
-# Fully invested long-short portfolio with a total short position less than 50%:
+# Let's create a fully invested long-short portfolio model with a total short position
+# less than 50%:
 model = MeanRisk(min_weights=-1, max_short=0.5)
 model.fit(X)
 print(sum(model.weights_))
 model.weights_
 
 # %%
-# Group and linear constraints
+# Group and Linear Constraints
 # ============================
 # We can assign groups to each asset using the `groups` parameter and set
 # constraints on these groups using the `linear_constraint` parameter.
-# The parameter `groups` can be a 2D array-like or a dictionary. If a dictionary is
+# The `groups` parameter can be a 2D array-like or a dictionary. If a dictionary is
 # provided, its (key/value)  pair must be the (asset name/asset groups).
-# You can reference these groups and/or the asset names in `linear_constraint` which
+# You can reference these groups and/or the asset names in `linear_constraint`, which
 # is a list if strings following the below patterns:
 #
 #   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
@@ -180,8 +183,8 @@ model.weights_
 #   * "ref1 <= ref2"
 #   * "ref1 >= ref1"
 #
-# Examples:
-# In this example we consider two groups: industry sector and capitalization.
+# Let's create a model with groups constraints on "industry sector" and
+# "capitalization":
 groups = {
     "AAPL": ["Technology", "Mega Cap"],
     "GE": ["Industrial", "Big Cap"],
@@ -202,10 +205,10 @@ model.fit(X)
 model.weights_
 
 # %%
-# Left and right inequalities
+# Left and Right Inequalities
 # ===========================
-# Finally, you can also provide the matrix :math:`A` and the vector :math:`b` of the
-# linear constraint :math:`A \cdot w \leq b`.
+# Finally, you can also directly provide the matrix :math:`A` and the vector
+# :math:`b` of the linear constraint :math:`A \cdot w \leq b`:
 left_inequality = np.array(
     [[1.0, 1.5, -2.0], [-1.0, 0.75, 0.75], [-1.0, 1.0, 1.0], [-1.0, -0.0, 2.0]]
 )

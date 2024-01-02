@@ -17,11 +17,11 @@ optimization problem over Wasserstein ball can be reformulated as finite convex
 programs.
 
 It's advised to use a solver that handles a high number of constraints like `Mosek`.
-For accessibility, this example uses the default open source solver `ECOS` so to
+For accessibility, this example uses the default open source solver `CLARABEL`, so to
 increase convergence speed, we only use 3 years of data.
 
-The radius of the Wasserstein ball is controlled with the parameter
-`wasserstein_ball_radius`. Increasing the radius will increase the uncertainty about the
+The radius of the Wasserstein ball is controlled with the `wasserstein_ball_radius`
+parameter. Increasing the radius will increase the uncertainty about the
 distribution, bringing the weights closer to the equal weighted portfolio.
 """
 
@@ -103,6 +103,8 @@ population.plot_composition()
 
 # %%
 # We can see that by increasing the radius of the Wasserstein ball, the weights get
-# closer to the equal weighted portfolio:
+# closer to the equal weighted portfolio.
+#
+# Let's plot the portfolios cumulative returns:
 fig = population.plot_cumulative_returns()
 show(fig)

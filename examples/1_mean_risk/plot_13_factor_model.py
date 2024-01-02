@@ -78,7 +78,7 @@ model_factor_1.weights_
 # We can change the :class:`~skfolio.prior.BaseLoadingMatrix` that estimates the loading
 # matrix (betas) of the factors.
 #
-# The default is the :class:`LoadingMatrixRegression` which fit the factors using a
+# The default is the :class:`LoadingMatrixRegression`, which fit the factors using a
 # `LassoCV` on each asset separately.
 #
 # For example, let's change the `LassoCV` into a `RidgeCV` without intercept and use

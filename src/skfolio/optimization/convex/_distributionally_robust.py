@@ -53,7 +53,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         If a float is provided, it is applied to each asset.
         `None` is equivalent to `-np.Inf` (no lower bound).
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset minium weight) and the input `X` of the `fit` methods must
+        (asset name/asset minium weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         When using a dictionary, assets values that are not provided are assigned
         a minimum weight of `0.0`.
@@ -72,7 +72,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         If a float is provided, it is applied to each asset.
         `None` is equivalent to `+np.Inf` (no upper bound).
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset maximum weight) and the input `X` of the `fit` methods must
+        (asset name/asset maximum weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         When using a dictionary, assets values that are not provided are assigned
         a minimum weight of `1.0`.
@@ -128,7 +128,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
         With "ref1", "ref2" ... the assets names or the groups names provided
         in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` methods is a DataFrame with these
+        `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
         Examples:
@@ -142,7 +142,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset groups) and the input `X` of the `fit` methods must be a
+        (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
         Examples:
