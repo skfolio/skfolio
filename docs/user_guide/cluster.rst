@@ -7,7 +7,7 @@
 Clustering Estimators
 *********************
 
-The `skfolio.cluster` module complement `sklearn.cluster` with additional clustering
+The `skfolio.cluster` module complements `sklearn.cluster` with additional clustering
 estimators including the :class:`HierarchicalClustering` that forms hierarchical
 clusters from a distance matrix. It is used in the following portfolio optimizations:
 

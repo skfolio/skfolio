@@ -103,9 +103,9 @@ population_train.plot_measures(
 #
 # The model parameters to tune are:
 #
-#   * CVaR target (upper constraint): `max_cvar`
-#   * CVaR confidence level: `cvar_beta`
-#   * Mu uncertainty set confidence level: `confidence_level` of the :class:`~skfolio.uncertainty_set.EmpiricalMuUncertaintySet`
+#   * `max_cvar`: CVaR target (upper constraint)
+#   * `cvar_beta`: CVaR confidence level
+#   * `confidence_level`: Mu uncertainty set confidence level of the :class:`~skfolio.uncertainty_set.EmpiricalMuUncertaintySet`
 #
 # For embedded parameters in the `GridSearchCV`, you need to use a double underscore:
 # `mu_uncertainty_set_estimator__confidence_level`

@@ -26,11 +26,13 @@ class StackingOptimization(BaseOptimization, BaseComposition):
     """Stack of optimizations with a final optimization.
 
     Stacking Optimization is an ensemble method that consists in stacking the output of
-    individual optimization estimators with a final optimization estimator.
+    individual portfolio optimizations with a final portfolio optimization.
 
-    The weights are the dot-product of individual estimators weights with the final
-    estimator weights. Stacking allows to use the strength of each individual estimator
-    by using their output as input of a final estimator.
+    The weights are the dot-product of individual optimizations weights with the final
+    optimization weights.
+
+    Stacking allows to use the strength of each individual portfolio optimization by
+    using their output as input of a final portfolio optimization.
 
     To avoid data leakage, out-of-sample estimates are used to fit the outer
     optimization.

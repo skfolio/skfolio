@@ -133,14 +133,14 @@ separately.
 Combining Multiple Prior Estimators
 ***********************************
 Prior estimators can be combined. For example, it is possible to create a Black &
-Litterman Factor Model by simply using a :class:`BlackLitterman` estimator for the prior
+Litterman Factor Model by using a :class:`BlackLitterman` estimator for the prior
 estimator of the :class:`FactorModel`:
 
 **Example:**
 
-Factor model for the estimation of the assets expected returns and covariance matrix
-with a Black & Litterman model for the estimation of the factors expected reruns and
-covariance matrix, incorporating the analyst views on the factors.
+Factor model for the estimation of the **assets** expected returns and covariance matrix
+with a Black & Litterman model for the estimation of the **factors** expected reruns and
+covariance matrix, incorporating the analyst views on the **factors**.
 
 .. code-block:: python
 

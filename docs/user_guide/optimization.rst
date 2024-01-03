@@ -165,9 +165,9 @@ Maximum Sharpe Ratio portfolio:
 Prior Estimator
 ===============
 
-Every optimization estimator has a parameter named `prior_estimator`.
+Every portfolio optimization has a parameter named `prior_estimator`.
 The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the estimation of assets' expected returns, covariance matrix, returns and Cholesky
+the estimation of assets     expected returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
 
@@ -216,8 +216,8 @@ This example is **purposely complex** to demonstrate how multiple estimators can
 combined.
 
 The model below is a Maximum Sharpe Ratio optimization using a Factor Model for the
-estimation of the assets' expected reruns and covariance matrix. A Black & Litterman
-model is used for the estimation of the factors' expected reruns and covariance matrix,
+estimation of the **assets** expected reruns and covariance matrix. A Black & Litterman
+model is used for the estimation of the **factors** expected reruns and covariance matrix,
 incorporating the analyst' views on the factors. Finally, the Black & Litterman prior
 expected returns are estimated using an equal-weighted market equilibrium with a risk
 aversion of 2 and a denoised prior covariance matrix:
@@ -264,7 +264,7 @@ aversion of 2 and a denoised prior covariance matrix:
 
 Custom Estimator
 ================
-It is very common to use a custom implementation for the prior estimator. For
+It is very common to use a custom implementation for the moments estimators. For
 example, you may want to use an in-house estimation for the covariance or a predictive
 model for the expected returns.
 
@@ -719,11 +719,13 @@ Stacking Optimization
 *********************
 
 :class:`StackingOptimization` is an ensemble method that consists in stacking the output
-of individual optimization estimators with a final optimization estimator.
+of individual portfolio optimizations with a final portfolio optimization.
 
-The weights are the dot-product of individual estimators' weights with the final
-estimator's weights. Stacking allows to use the strength of each individual estimator
-by using their output as input of a final estimator.
+The weights are the dot-product of individual optimizations weights with the final
+optimization weights.
+
+Stacking allows to use the strength of each individual portfolio optimization by
+using their output as input of a final portfolio optimization.
 
 To avoid data leakage, out-of-sample estimates are used to fit the outer
 optimization.

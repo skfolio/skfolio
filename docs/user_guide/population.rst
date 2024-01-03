@@ -74,7 +74,7 @@ Let's explore some of the methods:
     population.plot_composition()
 
 
-A `Population` is returned by the `predict` method of some Optimization that
+A `Population` is returned by the `predict` method of some portfolio optimization that
 supports multi-outputs.
 
 For example, fitting :class:`~skfolio.optimization.MeanRisk` with parameter

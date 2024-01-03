@@ -11,9 +11,13 @@ Portfolio
 
 `Portfolio` classes implement a large set of attributes and methods intended for
 portfolio analysis. They are returned by the `predict` method of
-:ref:`optimization estimators <optimization>`. They are also data-containers (calling
+:ref:`portfolio optimizations <optimization>`.
+
+They are also data-containers (calling
 :python:`np.asarray(portfolio)` returns the portfolio returns) making them compatible
-with `sklearn.model_selection` tools. They use `slots` for improved performance.
+with `sklearn.model_selection` tools.
+
+They use `slots` for improved performance.
 
 Base Portfolio
 **************
@@ -94,11 +98,12 @@ Portfolio
 :class:`Portfolio` inherits from :class:`BasePortfolio`. The portfolio returns are the
 dot product of the assets weights with the assets returns minus costs:
 
-    .. math::   r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} |
+    .. math::   r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} | - f^{T} \cdot w
 
 with :math:`r_p` the vector of portfolio returns , :math:`R` the matrix of assets
-returns, :math:`w` the vector of assets weights, :math:`c` the vector of assets costs
-and :math:`w_{prev}` the assets previous weights.
+returns, :math:`w` the vector of assets weights, :math:`c` the vector of assets
+transaction costs, :math:`f` the vector of assets management fees and :math:`w_{prev}`
+the assets previous weights.
 
 .. warning::
 
@@ -106,7 +111,7 @@ and :math:`w_{prev}` the assets previous weights.
     problems for coherent analysis. It's important to note that this portfolio
     formulation is **not perfectly replicable** due to weight drift when asset prices
     move. The only case where it would be perfectly replicable is with periodic
-    rebalancing with zero or constant transaction cost. In practice, portfolios are
+    rebalancing with zero costs. In practice, portfolios are
     rebalanced frequently enough, so this weight drift becomes negligible in regards to
     model analysis and selection. Before trading, a full replicability analysis should
     be performed, which is another topic left to the investor.

@@ -119,7 +119,8 @@ population_train.plot_composition()
 # %%
 # Let's compare the average and standard-deviation of the Sharpe Ratio and CDaR Ratio of
 # the portfolios on the training set versus the test set:
-# | Train:
+#
+# Train:
 print(population_train.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
 print(population_train.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO))
 

@@ -154,8 +154,8 @@ for ptf in population:
 cv = CombinatorialPurgedCV(n_folds=16, n_test_folds=14)
 
 # %%
-# We choose `n_folds` and `n_test_folds` to get more than 100 test paths and an average
-# training size around 255 days:
+# We choose `n_folds` and `n_test_folds` to obtain more than 100 test paths and an average
+# training size of approximately 255 days:
 cv.summary(X_test)
 
 # %%

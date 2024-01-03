@@ -8,7 +8,8 @@ This tutorial introduces the  :ref:`pre-selection transformers <pre_selection>`
 the optimization.
 
 Highly correlated assets tend to increase the instability of mean-variance optimization.
-In this example we will compare a mean-variance optimization with and without
+
+In this example, we will compare a mean-variance optimization with and without
 pre-selection.
 """
 
@@ -88,8 +89,8 @@ population.plot_cumulative_returns()
 cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=6)
 
 # %%
-# We choose `n_folds` and `n_test_folds` to get more than 100 test paths and an average
-# training size around 800 days:
+# We choose `n_folds` and `n_test_folds` to obtain more than 100 test paths and an average
+# training size of approximately 800 days:
 cv.summary(X_test)
 
 # %%
@@ -125,6 +126,9 @@ fig = population.plot_distribution(
 show(fig)
 
 # %%
+# |
+#
+# Model 1:
 print(
     "Average of Sharpe Ratio:"
     f" {pred_1.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
@@ -132,4 +136,15 @@ print(
 print(
     "Std of Sharpe Ratio:"
     f" {pred_1.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
+)
+
+# %%
+# Model 2:
+print(
+    "Average of Sharpe Ratio:"
+    f" {pred_2.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
+)
+print(
+    "Std of Sharpe Ratio:"
+    f" {pred_2.measures_std(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
 )

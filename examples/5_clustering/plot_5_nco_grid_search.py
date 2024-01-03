@@ -4,7 +4,7 @@ NCO - Combinatorial Purged CV
 =============================
 
 The previous tutorial introduced the
-:class:`~skfolio.optimization.NestedClustersOptimization` optimization.
+:class:`~skfolio.optimization.NestedClustersOptimization`.
 
 In this tutorial, we will perform hyperparameter search using `GridSearch` and
 distribution analysis with `CombinatorialPurgedCV`.
@@ -136,8 +136,8 @@ for ptf in population:
 cv = CombinatorialPurgedCV(n_folds=9, n_test_folds=7)
 
 # %%
-# We choose `n_folds` and `n_test_folds` to get more than 30 test paths and an average
-# training size around 255 days:
+# We choose `n_folds` and `n_test_folds` to obtain more than 30 test paths and an average
+# training size of approximately 255 days:
 cv.summary(X_test)
 
 # %%
@@ -159,7 +159,7 @@ pred_nco = cross_val_predict(
 # We plot the out-of-sample distribution of Sharpe Ratio for the NCO model:
 pred_nco.plot_distribution(
     measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO]
-).show()
+)
 
 # %%
 # Let's print the average and standard-deviation of out-of-sample Sharpe Ratios:
