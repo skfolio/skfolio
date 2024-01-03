@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Model Selection" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Model Selection" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/model_selection.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="The Model Selection module extend the sklearn.model_selection by adding additional methods tailored for portfolio selection. Cross-Validation Prediction: Every skfolio estimator is compatible with ..." />
+<meta property="og:description" content="The Model Selection module extends sklearn.model_selection by adding additional methods tailored for portfolio selection. Cross-Validation Prediction: Every skfolio estimator is compatible with skl..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="The Model Selection module extend the sklearn.model_selection by adding additional methods tailored for portfolio selection. Cross-Validation Prediction: Every skfolio estimator is compatible with ..." />
+<meta name="description" content="The Model Selection module extends sklearn.model_selection by adding additional methods tailored for portfolio selection. Cross-Validation Prediction: Every skfolio estimator is compatible with skl..." />
 
-    <title>Model Selection &#8212; skfolio 0.0.6 documentation</title>
+    <title>Model Selection &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -418,13 +417,13 @@ document.write(`
                   
   <section id="model-selection">
 <span id="id1"></span><h1>Model Selection<a class="headerlink" href="#model-selection" title="Link to this heading">#</a></h1>
-<p>The Model Selection module extend the <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> by adding additional
+<p>The Model Selection module extends <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> by adding additional
 methods tailored for portfolio selection.</p>
 <section id="cross-validation-prediction">
 <span id="cross-validation"></span><h2>Cross-Validation Prediction<a class="headerlink" href="#cross-validation-prediction" title="Link to this heading">#</a></h2>
 <p>Every <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> estimator is compatible with <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.cross_val_predict</span></code>.
 We also implement our own <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">cross_val_predict</span></code></a> for enhanced integration
-with <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> and <code class="docutils literal notranslate"><span class="pre">Population</span></code> objects as well as compatibility with
+with <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> and <code class="docutils literal notranslate"><span class="pre">Population</span></code> objects, as well as compatibility with
 <code class="docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code>.</p>
 <div class="admonition danger" id="data-leakage">
 <p class="admonition-title">Danger</p>
@@ -435,15 +434,15 @@ processes) and shuffling the data will lead to leakage from the test set to the
 training set.</p>
 </div>
 <p>In <code class="docutils literal notranslate"><span class="pre">cross_val_predict</span></code>, the data is split according to the <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter.
-The optimization estimator is fitted on the training set and portfolios are predicted on
-the corresponding testing set.</p>
+The portfolio optimization estimator is fitted on the training set and portfolios are
+predicted on the corresponding test set.</p>
 <p>For non-combinatorial cross-validation like <code class="docutils literal notranslate"><span class="pre">Kfold</span></code>, the output is the predicted
 <code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> where each
 <code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code> corresponds to the prediction on each train/test
 pair (K portfolios for <code class="docutils literal notranslate"><span class="pre">Kfold</span></code>).</p>
 <p>For combinatorial cross-validation like <code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgeCV</span></code>, the output is the
 predicted <code class="xref py py-class docutils literal notranslate"><span class="pre">Population</span></code> of multiple
-<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code>. This is because each test outputs are a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code>. This is because each test output is a
 collection of multiple paths instead of one single path.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -471,14 +470,14 @@ collection of multiple paths instead of one single path.</p>
 </section>
 <section id="combinatorial-purged-cross-validation">
 <h2>Combinatorial Purged Cross-Validation<a class="headerlink" href="#combinatorial-purged-cross-validation" title="Link to this heading">#</a></h2>
-<p>Compared to <code class="docutils literal notranslate"><span class="pre">KFold</span></code> which split the data into k folds and generate one single testing
+<p>Compared to <code class="docutils literal notranslate"><span class="pre">KFold</span></code>, which splits the data into k folds and generates one single testing
 path, the <a class="reference internal" href="../generated/skfolio.model_selection.CombinatorialPurgedCV.html#skfolio.model_selection.CombinatorialPurgedCV" title="skfolio.model_selection.CombinatorialPurgedCV"><code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code></a> uses the combination of multiple
-training/testing sets to generate multiple testing paths.</p>
+train/test sets to generate multiple testing paths.</p>
 <p>To avoid data leakage, purging and embargoing can be performed.</p>
 <p>Purging consist of removing from the training set all observations
 whose labels overlapped in time with those labels included in the testing set.
 Embargoing consist of removing from the training set observations that immediately
-follow an observation in the testing set since financial features often incorporate
+follow an observation in the testing set, since financial features often incorporate
 series that exhibit serial correlation (like ARMA processes).</p>
 <p>When used with <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">cross_val_predict</span></code></a>, the object returned is a
 <a class="reference internal" href="../generated/skfolio.population.Population.html#skfolio.population.Population" title="skfolio.population.Population"><code class="xref py py-class docutils literal notranslate"><span class="pre">Population</span></code></a> of

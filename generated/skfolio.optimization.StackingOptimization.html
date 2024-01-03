@@ -7,14 +7,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="skfolio.optimization.StackingOptimization" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="skfolio.optimization.StackingOptimization" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/generated/skfolio.optimization.StackingOptimization.html" />
 <meta property="og:site_name" content="skfolio" />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.optimization.StackingOptimization &#8212; skfolio 0.0.6 documentation</title>
+    <title>skfolio.optimization.StackingOptimization &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -45,16 +47,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -586,10 +585,11 @@ document.write(`
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.optimization.</span></span><span class="sig-name descname"><span class="pre">StackingOptimization</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimators</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantile_measure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">RatioMeasure.SHARPE_RATIO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/optimization/ensemble/_stacking.html#StackingOptimization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.optimization.StackingOptimization" title="Link to this definition">#</a></dt>
 <dd><p>Stack of optimizations with a final optimization.</p>
 <p>Stacking Optimization is an ensemble method that consists in stacking the output of
-individual optimization estimators with a final optimization estimator.</p>
-<p>The weights are the dot-product of individual estimators weights with the final
-estimator weights. Stacking allows to use the strength of each individual estimator
-by using their output as input of a final estimator.</p>
+individual portfolio optimizations with a final portfolio optimization.</p>
+<p>The weights are the dot-product of individual optimizations weights with the final
+optimization weights.</p>
+<p>Stacking allows to use the strength of each individual portfolio optimization by
+using their output as input of a final portfolio optimization.</p>
 <p>To avoid data leakage, out-of-sample estimates are used to fit the outer
 optimization.</p>
 <p>Note that <code class="docutils literal notranslate"><span class="pre">estimators_</span></code> are fitted on the full <code class="docutils literal notranslate"><span class="pre">X</span></code> while <code class="docutils literal notranslate"><span class="pre">final_estimator_</span></code>

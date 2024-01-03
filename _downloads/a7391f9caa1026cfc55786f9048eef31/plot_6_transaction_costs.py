@@ -6,26 +6,27 @@ Transaction Costs
 This tutorial shows how to incorporate transaction costs (TC) into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-TC are fixed costs charged when buying or selling an asset.
+TC are fixed costs incurred when buying or selling an asset.
 
-By using the parameter `transaction_costs`, you can add linear TC to the optimization
+By using the `transaction_costs` parameter, you can add linear TC to the optimization
 problem:
 
 .. math:: total\_cost = \sum_{i=1}^{N} c_{i} \times |w_{i} - w\_prev_{i}|
 
 with :math:`c_{i}` the TC of asset i, :math:`w_{i}` its weight and :math:`w\_prev_{i}`
 its previous weight (defined in `previous_weights`).
-The float :math:`total\_cost` is used in the portfolio expected return:
+The float :math:`total\_cost` is impacting the portfolio expected return in the
+optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
 with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of
 assets weights.
 
-The parameter `transaction_costs` can be a float, a dictionary or an array-like of
+the `transaction_costs` parameter can be a float, a dictionary or an array-like of
 shape `(n_assets, )`. If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the (asset name/asset TC) and
-the input `X` of the `fit` methods must be a DataFrame with the assets names in columns.
+the input `X` of the `fit` method must be a DataFrame with the assets names in columns.
 The default is 0.0 (no transaction costs).
 
 .. warning::
@@ -33,17 +34,17 @@ The default is 0.0 (no transaction costs).
     According to the above formula, the periodicity of the transaction costs
     needs to be homogenous to the periodicity of :math:`\mu`. For example, if
     the input `X` is composed of **daily** returns, the `transaction_costs` need
-    to be expressed in **daily** costs.
+    to be expressed as **daily** costs.
 
-This means that you need to transform your fix TC into a daily cost. For that you need
-the notion of expected investment duration. This is because the optimization problem has
-no notion of investment duration.
+This means that you need to convert this fixed transaction costs into daily costs. To
+achieve this, you need the notion of expected investment duration. This is crucial since
+the optimization problem has no notion of investment duration.
 
 For example, let's assume that asset A has an expected daily return of 0.01%
 with a TC of 1% and asset B has an expected daily return of 0.005% with no TC.
-Let's assume that both have same volatility and a correlation of 1.
+Let's assume both assets have the same volatility and a correlation of 1.0.
 If the investment duration is only one month, we should allocate all the weights to
-asset B whereas if the investment duration is one year, we should allocate all the
+asset B. However, if the investment duration is one year, we should allocate all the
 weights to asset A.
 
 Example:
@@ -63,7 +64,7 @@ expected investment duration.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the S&P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
-# We select only 3 assets to make the example more readable which are Apple (AAPL),
+# We select only 3 assets to make the example more readable, which are Apple (AAPL),
 # General Electric (GE) and JPMorgan (JPM):
 
 import numpy as np
@@ -90,7 +91,7 @@ model.fit(X)
 model.weights_
 
 # %%
-# Transaction cost
+# Transaction Cost
 # ================
 # Let's assume we have the below TC:
 #   * Apple: 1%
@@ -102,7 +103,7 @@ transaction_costs = {"AAPL": 0.01 / 21, "GE": 0.005 / 21, "JPM": 0.002 / 21}
 # Same as transaction_costs = np.array([0.01, 0.005, 0.002]) / 21
 
 # %%
-# First we assume that there is no previous position:
+# First, we assume that there is no previous position:
 model_tc = MeanRisk(
     objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
     transaction_costs=transaction_costs,
@@ -115,7 +116,7 @@ model_tc.weights_
 model_tc.weights_ - model.weights_
 
 # %%
-# Now we assume that the previous position was equal-weighted:
+# Now, let's assume that the previous position was equal-weighted:
 model_tc2 = MeanRisk(
     objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
     transaction_costs=transaction_costs,
@@ -152,9 +153,9 @@ pred1 = cross_val_predict(model, X, cv=cv, n_jobs=-1)
 pred1.name = "pred1"
 
 # %%
-# Then we train the model without TC and test with TC. The model trained without TC is
-# the same as above so we can retrieve the results and simply update the prediction with
-# the TC:
+# Then, we train the model without TC and test it with TC. The model trained without TC
+# is the same as above so we can retrieve the results and simply update the prediction
+# with the TC:
 pred2 = MultiPeriodPortfolio(name="pred2")
 previous_weights = None
 for portfolio in pred1:
@@ -168,10 +169,11 @@ for portfolio in pred1:
     pred2.append(new_portfolio)
 
 # %%
-# Finally we train and test the model with TC. Note that we cannot use the
+# Finally, we train and test the model with TC. Note that we cannot use the
 # `cross_val_predict` function anymore because it uses parallelization and cannot handle
 # the `previous_weights` dependency between folds:
 pred3 = MultiPeriodPortfolio(name="pred3")
+
 model.set_params(transaction_costs=transaction_costs)
 previous_weights = None
 for train, test in cv.split(X):
@@ -191,5 +193,7 @@ fig = population.plot_cumulative_returns()
 show(fig)
 
 # %%
+# |
+#
 # If we exclude the unrealistic prediction without TC, we notice that the model
-# **fitted with TC** outperform the model **fitted without TC**.
+# **fitted with TC** outperforms the model **fitted without TC**.

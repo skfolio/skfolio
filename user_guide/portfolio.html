@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Portfolio" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Portfolio" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/portfolio.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="Portfolio classes regroup a large set of attributes and methods intended for portfolio analysis. They are returned by the predict method of optimization estimators. They are also data-containers (c..." />
+<meta property="og:description" content="Portfolio classes implement a large set of attributes and methods intended for portfolio analysis. They are returned by the predict method of portfolio optimizations. They are also data-containers ..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="Portfolio classes regroup a large set of attributes and methods intended for portfolio analysis. They are returned by the predict method of optimization estimators. They are also data-containers (c..." />
+<meta name="description" content="Portfolio classes implement a large set of attributes and methods intended for portfolio analysis. They are returned by the predict method of portfolio optimizations. They are also data-containers ..." />
 
-    <title>Portfolio &#8212; skfolio 0.0.6 documentation</title>
+    <title>Portfolio &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -419,14 +418,16 @@ document.write(`
                   
   <section id="portfolio">
 <span id="id1"></span><h1>Portfolio<a class="headerlink" href="#portfolio" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> classes regroup a large set of attributes and methods intended for portfolio
-analysis. They are returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of
-<a class="reference internal" href="optimization.html#optimization"><span class="std std-ref">optimization estimators</span></a>. They are also data-containers (calling
+<p><code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> classes implement a large set of attributes and methods intended for
+portfolio analysis. They are returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of
+<a class="reference internal" href="optimization.html#optimization"><span class="std std-ref">portfolio optimizations</span></a>.</p>
+<p>They are also data-containers (calling
 <code class="code highlight python docutils literal highlight-python"><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">portfolio</span><span class="p">)</span></code> returns the portfolio returns) making them compatible
-with <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> tools. They use <code class="docutils literal notranslate"><span class="pre">slots</span></code> for improved performance.</p>
+with <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection</span></code> tools.</p>
+<p>They use <code class="docutils literal notranslate"><span class="pre">slots</span></code> for improved performance.</p>
 <section id="base-portfolio">
 <h2>Base Portfolio<a class="headerlink" href="#base-portfolio" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a> directly takes as input a portfolio returns array and implement
+<p><a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a> directly takes a portfolio returns array as input and implements
 a large set of attributes and methods.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
@@ -440,10 +441,10 @@ a large set of attributes and methods.</p>
 </div>
 <section id="attributes-and-methods">
 <h3>Attributes and Methods<a class="headerlink" href="#attributes-and-methods" title="Link to this heading">#</a></h3>
-<p>More than 40 attributes and  methods are available including all the
-<a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">measure</span></a> (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
-etc…). The attributes are computed only when requested then cached in <code class="docutils literal notranslate"><span class="pre">slots</span></code> for
-enhanced performances.</p>
+<p>More than 40 attributes and  methods are available, including all the
+<a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">measures</span></a> (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
+etc.). The attributes are computed only when requested then cached in <code class="docutils literal notranslate"><span class="pre">slots</span></code> for
+enhanced performance.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
 
@@ -490,19 +491,22 @@ is to use the list <code class="docutils literal notranslate"><span class="pre">
 dot product of the assets weights with the assets returns minus costs:</p>
 <blockquote>
 <div><div class="math notranslate nohighlight">
-\[r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} |\]</div>
+\[r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} | - f^{T} \cdot w\]</div>
 </div></blockquote>
 <p>with <span class="math notranslate nohighlight">\(r_p\)</span> the vector of portfolio returns , <span class="math notranslate nohighlight">\(R\)</span> the matrix of assets
-returns, <span class="math notranslate nohighlight">\(w\)</span> the vector of assets weights, <span class="math notranslate nohighlight">\(c\)</span> the vector of assets costs
-and <span class="math notranslate nohighlight">\(w_{prev}\)</span> the assets previous weights.</p>
+returns, <span class="math notranslate nohighlight">\(w\)</span> the vector of assets weights, <span class="math notranslate nohighlight">\(c\)</span> the vector of assets
+transaction costs, <span class="math notranslate nohighlight">\(f\)</span> the vector of assets management fees and <span class="math notranslate nohighlight">\(w_{prev}\)</span>
+the assets previous weights.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>The <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> formulation is <strong>homogenous</strong> to the convex optimization problems for coherent analysis.
-It’s important to note that this portfolio formulation is <strong>not perfectly replicable</strong> due to weight drift when
-asset prices move. The only case where it would be perfectly replicable is with periodic rebalancing with zero or
-constant transaction cost. In practice, portfolios are rebalanced frequently enough so this weight drift becomes
-negligible in regards to model analysis and selection. Before trading, a full replicability analysis should be
-performed which is another topic left to the investor.</p>
+<p>The <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> formulation is <strong>homogenous</strong> to the convex optimization
+problems for coherent analysis. It’s important to note that this portfolio
+formulation is <strong>not perfectly replicable</strong> due to weight drift when asset prices
+move. The only case where it would be perfectly replicable is with periodic
+rebalancing with zero costs. In practice, portfolios are
+rebalanced frequently enough, so this weight drift becomes negligible in regards to
+model analysis and selection. Before trading, a full replicability analysis should
+be performed, which is another topic left to the investor.</p>
 </div>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">Portfolio</span>
@@ -577,10 +581,10 @@ In addition, it also implements weights related methods:</p>
 <p><a class="reference internal" href="../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a> inherits from <a class="reference internal" href="../generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">BasePortfolio</span></code></a> and is composed of a
 list of <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a>. The multi-period portfolio returns are the sum of all its
 underlying <a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a> returns.
-A <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> is returned by <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">skfolio.model_selection.cross_val_predict</span></code></a>.</p>
-<p>For example, calling <code class="docutils literal notranslate"><span class="pre">cross_val_predict</span></code> with <a class="reference internal" href="../generated/skfolio.model_selection.WalkForward.html#skfolio.model_selection.WalkForward" title="skfolio.model_selection.WalkForward"><code class="xref py py-class docutils literal notranslate"><span class="pre">skfolio.model_selection.WalkForward</span></code></a>
-will return a <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> composed of multiple test <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> each corresponding
-to a train/test fold.</p>
+A <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> is returned by <a class="reference internal" href="../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-func docutils literal notranslate"><span class="pre">cross_val_predict</span></code></a>.</p>
+<p>For example, calling <code class="docutils literal notranslate"><span class="pre">cross_val_predict</span></code> with <a class="reference internal" href="../generated/skfolio.model_selection.WalkForward.html#skfolio.model_selection.WalkForward" title="skfolio.model_selection.WalkForward"><code class="xref py py-class docutils literal notranslate"><span class="pre">WalkForward</span></code></a>
+will return a <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> composed of multiple test <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>, each
+corresponding to a train/test fold.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">MultiPeriodPortfolio</span>
 
 <span class="n">portfolio</span> <span class="o">=</span> <span class="n">MultiPeriodPortfolio</span><span class="p">(</span><span class="n">portfolios</span><span class="o">=</span><span class="p">[</span><span class="n">ptf1</span><span class="p">,</span> <span class="n">ptf2</span><span class="p">,</span> <span class="n">ptf3</span><span class="p">])</span>

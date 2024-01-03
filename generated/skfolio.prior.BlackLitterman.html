@@ -7,14 +7,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="skfolio.prior.BlackLitterman" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="skfolio.prior.BlackLitterman" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/generated/skfolio.prior.BlackLitterman.html" />
 <meta property="og:site_name" content="skfolio" />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.prior.BlackLitterman &#8212; skfolio 0.0.6 documentation</title>
+    <title>skfolio.prior.BlackLitterman &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -45,16 +47,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -586,7 +585,7 @@ document.write(`
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.prior.</span></span><span class="sig-name descname"><span class="pre">BlackLitterman</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">views</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">view_confidences</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">risk_free_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/prior/_black_litterman.html#BlackLitterman"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.prior.BlackLitterman" title="Link to this definition">#</a></dt>
 <dd><p>Black &amp; Litterman Prior Model estimator.</p>
 <p>The Black &amp; Litterman model <a class="reference internal" href="#rec957aca1165-1" id="id1">[1]</a> takes a Bayesian approach by using a prior estimate
-of the assets expected returns and covariance matrix which are updated using the
+of the assets expected returns and covariance matrix, which are updated using the
 analyst views to get a posterior estimate.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -615,7 +614,7 @@ returns <code class="docutils literal notranslate"><span class="pre">X</span></c
 </dd>
 <dt><strong>groups</strong><span class="classifier">dict[str, list[str]] or array-like of strings of shape (n_groups, n_assets), optional</span></dt><dd><p>The assets groups to be referenced in <code class="docutils literal notranslate"><span class="pre">views</span></code>.
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset groups) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+(asset name/asset groups) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must be a
 DataFrame with the assets names in columns.</p>
 <p>Examples:</p>
 <blockquote>

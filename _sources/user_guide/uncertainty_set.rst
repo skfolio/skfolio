@@ -6,7 +6,7 @@
 Uncertainty Set Estimator
 *************************
 
-The :ref:`Uncertainty Set estimator <uncertainty_set_ref>` build an ellipsoidal
+The :ref:`Uncertainty Set estimator <uncertainty_set_ref>` builds an ellipsoidal
 :class:`UncertaintySet` of the distribution moments.
 
 An ellipsoidal uncertainty set is defined by its size :math:`\kappa` and
@@ -26,14 +26,14 @@ It follows the same API as scikit-learn's `estimator`: the `fit` method takes `X
 the assets returns and stores the :class:`UncertaintySet` in its `uncertainty_set_`
 attribute.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 
-Available estimators for the expected returns are:
+Available estimators for the expected returns:
     * :class:`EmpiricalMuUncertaintySet`
     * :class:`BootstrapMuUncertaintySet`
 
-Available estimators for the covariance are:
+Available estimators for the covariance:
     * :class:`EmpiricalCovarianceUncertaintySet`
     * :class:`BootstrapCovarianceUncertaintySet`
 

@@ -9,15 +9,19 @@
 Portfolio
 =========
 
-`Portfolio` classes regroup a large set of attributes and methods intended for portfolio
-analysis. They are returned by the `predict` method of
-:ref:`optimization estimators <optimization>`. They are also data-containers (calling
+`Portfolio` classes implement a large set of attributes and methods intended for
+portfolio analysis. They are returned by the `predict` method of
+:ref:`portfolio optimizations <optimization>`.
+
+They are also data-containers (calling
 :python:`np.asarray(portfolio)` returns the portfolio returns) making them compatible
-with `sklearn.model_selection` tools. They use `slots` for improved performance.
+with `sklearn.model_selection` tools.
+
+They use `slots` for improved performance.
 
 Base Portfolio
 **************
-:class:`BasePortfolio` directly takes as input a portfolio returns array and implement
+:class:`BasePortfolio` directly takes a portfolio returns array as input and implements
 a large set of attributes and methods.
 
 **Example:**
@@ -35,10 +39,10 @@ a large set of attributes and methods.
 
 Attributes and Methods
 ----------------------
-More than 40 attributes and  methods are available including all the
-:ref:`measure <measures_ref>` (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
-etc...). The attributes are computed only when requested then cached in `slots` for
-enhanced performances.
+More than 40 attributes and  methods are available, including all the
+:ref:`measures <measures_ref>` (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
+etc.). The attributes are computed only when requested then cached in `slots` for
+enhanced performance.
 
 **Example:**
 
@@ -94,20 +98,23 @@ Portfolio
 :class:`Portfolio` inherits from :class:`BasePortfolio`. The portfolio returns are the
 dot product of the assets weights with the assets returns minus costs:
 
-    .. math::   r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} |
+    .. math::   r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} | - f^{T} \cdot w
 
 with :math:`r_p` the vector of portfolio returns , :math:`R` the matrix of assets
-returns, :math:`w` the vector of assets weights, :math:`c` the vector of assets costs
-and :math:`w_{prev}` the assets previous weights.
+returns, :math:`w` the vector of assets weights, :math:`c` the vector of assets
+transaction costs, :math:`f` the vector of assets management fees and :math:`w_{prev}`
+the assets previous weights.
 
 .. warning::
 
-    The :class:`Portfolio` formulation is **homogenous** to the convex optimization problems for coherent analysis.
-    It's important to note that this portfolio formulation is **not perfectly replicable** due to weight drift when
-    asset prices move. The only case where it would be perfectly replicable is with periodic rebalancing with zero or
-    constant transaction cost. In practice, portfolios are rebalanced frequently enough so this weight drift becomes
-    negligible in regards to model analysis and selection. Before trading, a full replicability analysis should be
-    performed which is another topic left to the investor.
+    The :class:`Portfolio` formulation is **homogenous** to the convex optimization
+    problems for coherent analysis. It's important to note that this portfolio
+    formulation is **not perfectly replicable** due to weight drift when asset prices
+    move. The only case where it would be perfectly replicable is with periodic
+    rebalancing with zero costs. In practice, portfolios are
+    rebalanced frequently enough, so this weight drift becomes negligible in regards to
+    model analysis and selection. Before trading, a full replicability analysis should
+    be performed, which is another topic left to the investor.
 
 **Example:**
 
@@ -190,11 +197,11 @@ Multi Period Portfolio
 :class:`MultiPeriodPortfolio` inherits from :class:`BasePortfolio` and is composed of a
 list of :class:`Portfolio`. The multi-period portfolio returns are the sum of all its
 underlying :class:`Portfolio` returns.
-A `MultiPeriodPortfolio` is returned by :func:`skfolio.model_selection.cross_val_predict`.
+A `MultiPeriodPortfolio` is returned by :func:`~skfolio.model_selection.cross_val_predict`.
 
-For example, calling `cross_val_predict` with :class:`skfolio.model_selection.WalkForward`
-will return a `MultiPeriodPortfolio` composed of multiple test `Portfolio` each corresponding
-to a train/test fold.
+For example, calling `cross_val_predict` with :class:`~skfolio.model_selection.WalkForward`
+will return a `MultiPeriodPortfolio` composed of multiple test `Portfolio`, each
+corresponding to a train/test fold.
 
 .. code-block:: python
 

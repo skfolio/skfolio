@@ -219,6 +219,16 @@ export async function main() {
       console.error(e);
     }
   }
+  if (!federatedExtensionNames.has('@jupyterlab/celltags-extension')) {
+    try {
+      let ext = require('@jupyterlab/celltags-extension');
+      for (let plugin of activePlugins(ext)) {
+        pluginsToRegister.push(plugin);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
   if (!federatedExtensionNames.has('@jupyterlab/codemirror-extension')) {
     try {
       let ext = require('@jupyterlab/codemirror-extension');

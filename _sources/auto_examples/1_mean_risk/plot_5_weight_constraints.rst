@@ -44,7 +44,7 @@ Data
 ====
 We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 assets from the S&P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
-We select only 3 assets to make the example more readable which are Apple (AAPL),
+We select only 3 assets to make the example more readable, which are Apple (AAPL),
 General Electric (GE) and JPMorgan (JPM):
 
 .. GENERATED FROM PYTHON SOURCE LINES 30-43
@@ -108,14 +108,14 @@ one.
 Budget
 ======
 The budget is the sum of long positions and short positions (sum of all weights).
-It can be `None` or a float. `None` means that there is no budget constraints.
-The default is 1.0 (fully invested).
+It can be `None` or a float. `None` means that there are no budget constraints.
+The default is `1.0` (fully invested).
 
 Examples:
 
-  * budget = 1    –> fully invested portfolio.
-  * budget = 0    –> market neutral portfolio.
-  * budget = None –> no constraints on the sum of weights.
+  * budget = 1    –> fully invested portfolio
+  * budget = 0    –> market neutral portfolio
+  * budget = None –> no constraints on the sum of weights
 
 .. GENERATED FROM PYTHON SOURCE LINES 67-73
 
@@ -143,8 +143,8 @@ Examples:
 
 .. GENERATED FROM PYTHON SOURCE LINES 74-78
 
-You can also put a constraint on the minimum and maximum budget using `min_budget`
-and `max_budget` which are the lower and upper bounds of the sum of long and short
+You can also set a constraint on the minimum and maximum budget using `min_budget`
+and `max_budget`, which are the lower and upper bounds of the sum of long and short
 positions (sum of all weights). The default is `None`. If provided, you must set
 `budget=None`.
 
@@ -171,9 +171,9 @@ positions (sum of all weights). The default is `None`. If provided, you must set
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 84-117
+.. GENERATED FROM PYTHON SOURCE LINES 84-118
 
-Lower and upper bounds on weights
+Lower and Upper Bounds on Weights
 =================================
 The weights lower and upper bounds are controlled by the parameters `min_weights` and
 `max_weights` respectively.
@@ -181,19 +181,20 @@ You can provide `None`, a float, an array-like or a dictionary.
 `None` is equivalent to `-np.Inf` (no lower bounds).
 If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the (asset name/asset
-weight bound) and the input `X` of the `fit` methods must be a DataFrame with the
+weight bound) and the input `X` of the `fit` method must be a DataFrame with the
 assets names in columns.
-The default is `min_weights=0.0` (no short selling) and `max_weights=1.0` (each asset
-is below 100%). When using a dictionary, you don't have to provide constraints for
-all assets. The ones not provided will be assigned the default value (0.0 and 1.0
-respectively).
+The default values are `min_weights=0.0` (no short selling) and `max_weights=1.0`
+(each asset is below 100%). When using a dictionary, you don't have to provide
+constraints for all assets. If not provided, the default values (0.0 for min_weights
+and 1.0 for max_weights) will be assigned to the assets not specified in the
+dictionary.
 
 .. note ::
 
-  When adding a :ref:`pre-selection transformer <pre_selection>` into a `Pipeline`,
-  you cannot use a **list** for the weight constraints because we don't know which
-  assets will be selected by the pre-selection process. This is where the
-  **dictionary** becomes useful.
+  When incorporating a pre-selection transformer into a Pipeline, using a list for
+  weight constraints is not feasible, as we don't know in advance which assets will
+  be selected by the pre-selection process. This is where the dictionary proves
+  useful.
 
 Example:
   * min_weights = 0                     –> long only portfolio (no short selling).
@@ -205,13 +206,13 @@ Example:
   * max_weights = None                  –> no upper bound (same as +np.Inf).
   * max_weights = 2                     –> each weight must be below 200%.
   * max_weights = [1, 2, -0.5]          -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and -50% respectively.
-  * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default) respectively.
+  * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default).
 
-.. GENERATED FROM PYTHON SOURCE LINES 119-120
+.. GENERATED FROM PYTHON SOURCE LINES 120-121
 
-Allowing short positions with a budget of -100%:
+Let's create a model that allows short positions with a budget of -100%:
 
-.. GENERATED FROM PYTHON SOURCE LINES 120-125
+.. GENERATED FROM PYTHON SOURCE LINES 121-126
 
 .. code-block:: Python
 
@@ -234,11 +235,12 @@ Allowing short positions with a budget of -100%:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 126-127
+.. GENERATED FROM PYTHON SOURCE LINES 127-129
 
-"AAPL", "GE" and "JPM" above 0%, 50% and 10% respectively:
+Let's add weight constraints on "AAPL", "GE" and "JPM" to be above 0%, 50% and 10%
+respectively:
 
-.. GENERATED FROM PYTHON SOURCE LINES 127-132
+.. GENERATED FROM PYTHON SOURCE LINES 129-134
 
 .. code-block:: Python
 
@@ -261,11 +263,11 @@ Allowing short positions with a budget of -100%:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 133-134
+.. GENERATED FROM PYTHON SOURCE LINES 135-136
 
 Let's plot the composition:
 
-.. GENERATED FROM PYTHON SOURCE LINES 134-138
+.. GENERATED FROM PYTHON SOURCE LINES 136-140
 
 .. code-block:: Python
 
@@ -283,13 +285,13 @@ Let's plot the composition:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 139-142
+.. GENERATED FROM PYTHON SOURCE LINES 141-144
 
 |
 
-Same as above but using partial dictionary:
+Let's create the same model as above but using partial dictionary:
 
-.. GENERATED FROM PYTHON SOURCE LINES 142-147
+.. GENERATED FROM PYTHON SOURCE LINES 144-149
 
 .. code-block:: Python
 
@@ -312,11 +314,11 @@ Same as above but using partial dictionary:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 148-149
+.. GENERATED FROM PYTHON SOURCE LINES 150-151
 
-Leverage 3 with each weight below 150%:
+Let's create a model with a leverage of 3 and every weights below 150%:
 
-.. GENERATED FROM PYTHON SOURCE LINES 149-154
+.. GENERATED FROM PYTHON SOURCE LINES 151-156
 
 .. code-block:: Python
 
@@ -339,19 +341,20 @@ Leverage 3 with each weight below 150%:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 155-160
+.. GENERATED FROM PYTHON SOURCE LINES 157-162
 
-Short and long position constraints
+Short and Long Position Constraints
 ===================================
 Constraints on the upper bound for short and long positions can be set using
 `max_short` and `max_long`. The short position is defined as the sum of negative
 weights (in absolute term) and the long position as the sum of positive weights.
 
-.. GENERATED FROM PYTHON SOURCE LINES 162-163
+.. GENERATED FROM PYTHON SOURCE LINES 164-166
 
-Fully invested long-short portfolio with a total short position less than 50%:
+Let's create a fully invested long-short portfolio model with a total short position
+less than 50%:
 
-.. GENERATED FROM PYTHON SOURCE LINES 163-168
+.. GENERATED FROM PYTHON SOURCE LINES 166-171
 
 .. code-block:: Python
 
@@ -374,15 +377,15 @@ Fully invested long-short portfolio with a total short position less than 50%:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 169-185
+.. GENERATED FROM PYTHON SOURCE LINES 172-188
 
-Group and linear constraints
+Group and Linear Constraints
 ============================
 We can assign groups to each asset using the `groups` parameter and set
 constraints on these groups using the `linear_constraint` parameter.
-The parameter `groups` can be a 2D array-like or a dictionary. If a dictionary is
+The `groups` parameter can be a 2D array-like or a dictionary. If a dictionary is
 provided, its (key/value)  pair must be the (asset name/asset groups).
-You can reference these groups and/or the asset names in `linear_constraint` which
+You can reference these groups and/or the asset names in `linear_constraint`, which
 is a list if strings following the below patterns:
 
   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
@@ -390,10 +393,10 @@ is a list if strings following the below patterns:
   * "ref1 <= ref2"
   * "ref1 >= ref1"
 
-Examples:
-In this example we consider two groups: industry sector and capitalization.
+Let's create a model with groups constraints on "industry sector" and
+"capitalization":
 
-.. GENERATED FROM PYTHON SOURCE LINES 185-204
+.. GENERATED FROM PYTHON SOURCE LINES 188-207
 
 .. code-block:: Python
 
@@ -429,14 +432,14 @@ In this example we consider two groups: industry sector and capitalization.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 205-209
+.. GENERATED FROM PYTHON SOURCE LINES 208-212
 
-Left and right inequalities
+Left and Right Inequalities
 ===========================
-Finally, you can also provide the matrix :math:`A` and the vector :math:`b` of the
-linear constraint :math:`A \cdot w \leq b`.
+Finally, you can also directly provide the matrix :math:`A` and the vector
+:math:`b` of the linear constraint :math:`A \cdot w \leq b`:
 
-.. GENERATED FROM PYTHON SOURCE LINES 209-217
+.. GENERATED FROM PYTHON SOURCE LINES 212-220
 
 .. code-block:: Python
 

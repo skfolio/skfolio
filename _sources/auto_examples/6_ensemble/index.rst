@@ -19,7 +19,7 @@ Examples concerning ensemble optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the StackingOptimization optimization.">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the StackingOptimization.">
 
 .. only:: html
 

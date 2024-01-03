@@ -25,30 +25,30 @@ Management Fees
 This tutorial shows how to incorporate management fees (MF) into the 
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-By using the parameter `management_fees`, you can add linear MF to the optimization 
+By using The `management_fees` parameter, you can add linear MF to the optimization 
 problem:
 
 .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
 with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-The float :math:`total\_fee` is used in the portfolio expected return:
+The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
 with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of 
 assets weights.
 
-The parameter `management_fees` can be a float, a dictionary or an array-like of 
+The `management_fees` parameter can be a float, a dictionary or an array-like of
 shape `(n_assets, )`. If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the (asset name/asset MF) and
-the input `X` of the `fit` methods must be a DataFrame with the assets' names in 
+the input `X` of the `fit` method must be a DataFrame with the assets names in
 columns. The default is 0.0 (no management fees).
 
 .. note::
 
     Another approach is to direcly impact the MF to the input `X` in order to express 
-    the returns net of fee. However, when estimating the :math:`\mu` parameter using
-    for example Shrinkage estimators, this approach would mix a deterministic amount
+    the returns net of fee. However, when estimating the :math:`\mu` parameter using,
+    for example, Shrinkage estimators, this approach would mix a deterministic amount
     with an uncertain one leading to unwanted bias in the management fees.
 
 .. GENERATED FROM PYTHON SOURCE LINES 37-43
@@ -57,7 +57,7 @@ Data
 ====
 We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 assets from the S&P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
-We select only 3 assets to make the example more readable which are Apple (AAPL),
+We select only 3 assets to make the example more readable, which are Apple (AAPL),
 General Electric (GE) and JPMorgan (JPM).
 
 .. GENERATED FROM PYTHON SOURCE LINES 43-58
@@ -244,7 +244,7 @@ and **not** during `fit`:
 
 .. GENERATED FROM PYTHON SOURCE LINES 119-120
 
-Then we train and test the model with MF:
+Then, we train and test the model with MF:
 
 .. GENERATED FROM PYTHON SOURCE LINES 120-124
 
@@ -284,7 +284,9 @@ periods:
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 132-134
+.. GENERATED FROM PYTHON SOURCE LINES 132-136
+
+|
 
 We notice that the model **fitted with MF** outperform the model **fitted without
 MF**.
@@ -292,7 +294,7 @@ MF**.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.125 seconds)
+   **Total running time of the script:** (0 minutes 4.295 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py:

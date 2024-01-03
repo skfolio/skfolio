@@ -7,7 +7,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Weight Constraints" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../../_static/favicon.png"><meta property="og:title" content="Weight Constraints" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/auto_examples/1_mean_risk/plot_5_weight_constraints.html" />
 <meta property="og:site_name" content="skfolio" />
@@ -16,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="This tutorial shows how to incorporate weight constraints into the MeanRisk optimization. We will show how to use the below parameters:,- min_weights, max_weights, budget, min_budget, max_budget, m..." />
 
-    <title>Weight Constraints &#8212; skfolio 0.0.6 documentation</title>
+    <title>Weight Constraints &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../../_static/documentation_options.js?v=1238456f"></script>
     <script src="../../_static/doctools.js?v=888ff710"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -424,7 +423,7 @@ to download the full example code or to run this example in your browser via Jup
 <h2>Data<a class="headerlink" href="#data" title="Link to this heading">#</a></h2>
 <p>We load the S&amp;P 500 <a class="reference internal" href="../../user_guide/datasets.html#datasets"><span class="std std-ref">dataset</span></a> composed of the daily prices of 20
 assets from the S&amp;P 500 Index composition starting from 1990-01-02 up to 2022-12-28.
-We select only 3 assets to make the example more readable which are Apple (AAPL),
+We select only 3 assets to make the example more readable, which are Apple (AAPL),
 General Electric (GE) and JPMorgan (JPM):</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">plotly.io</span> <span class="kn">import</span> <span class="n">show</span>
@@ -461,14 +460,14 @@ array([0.22768876, 0.56566507, 0.20664617])
 <section id="budget">
 <h2>Budget<a class="headerlink" href="#budget" title="Link to this heading">#</a></h2>
 <p>The budget is the sum of long positions and short positions (sum of all weights).
-It can be <code class="docutils literal notranslate"><span class="pre">None</span></code> or a float. <code class="docutils literal notranslate"><span class="pre">None</span></code> means that there is no budget constraints.
-The default is 1.0 (fully invested).</p>
+It can be <code class="docutils literal notranslate"><span class="pre">None</span></code> or a float. <code class="docutils literal notranslate"><span class="pre">None</span></code> means that there are no budget constraints.
+The default is <code class="docutils literal notranslate"><span class="pre">1.0</span></code> (fully invested).</p>
 <p>Examples:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>budget = 1    –&gt; fully invested portfolio.</p></li>
-<li><p>budget = 0    –&gt; market neutral portfolio.</p></li>
-<li><p>budget = None –&gt; no constraints on the sum of weights.</p></li>
+<li><p>budget = 1    –&gt; fully invested portfolio</p></li>
+<li><p>budget = 0    –&gt; market neutral portfolio</p></li>
+<li><p>budget = None –&gt; no constraints on the sum of weights</p></li>
 </ul>
 </div></blockquote>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
@@ -482,8 +481,8 @@ The default is 1.0 (fully invested).</p>
 array([0.11391513, 0.28246101, 0.10362386])
 </pre></div>
 </div>
-<p>You can also put a constraint on the minimum and maximum budget using <code class="docutils literal notranslate"><span class="pre">min_budget</span></code>
-and <code class="docutils literal notranslate"><span class="pre">max_budget</span></code> which are the lower and upper bounds of the sum of long and short
+<p>You can also set a constraint on the minimum and maximum budget using <code class="docutils literal notranslate"><span class="pre">min_budget</span></code>
+and <code class="docutils literal notranslate"><span class="pre">max_budget</span></code>, which are the lower and upper bounds of the sum of long and short
 positions (sum of all weights). The default is <code class="docutils literal notranslate"><span class="pre">None</span></code>. If provided, you must set
 <code class="docutils literal notranslate"><span class="pre">budget=None</span></code>.</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_budget</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">max_budget</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
@@ -499,25 +498,26 @@ array([0.06832987, 0.16956647, 0.06210401])
 </div>
 </section>
 <section id="lower-and-upper-bounds-on-weights">
-<h2>Lower and upper bounds on weights<a class="headerlink" href="#lower-and-upper-bounds-on-weights" title="Link to this heading">#</a></h2>
+<h2>Lower and Upper Bounds on Weights<a class="headerlink" href="#lower-and-upper-bounds-on-weights" title="Link to this heading">#</a></h2>
 <p>The weights lower and upper bounds are controlled by the parameters <code class="docutils literal notranslate"><span class="pre">min_weights</span></code> and
 <code class="docutils literal notranslate"><span class="pre">max_weights</span></code> respectively.
 You can provide <code class="docutils literal notranslate"><span class="pre">None</span></code>, a float, an array-like or a dictionary.
 <code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">-np.Inf</span></code> (no lower bounds).
 If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the (asset name/asset
-weight bound) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a DataFrame with the
+weight bound) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must be a DataFrame with the
 assets names in columns.
-The default is <code class="docutils literal notranslate"><span class="pre">min_weights=0.0</span></code> (no short selling) and <code class="docutils literal notranslate"><span class="pre">max_weights=1.0</span></code> (each asset
-is below 100%). When using a dictionary, you don’t have to provide constraints for
-all assets. The ones not provided will be assigned the default value (0.0 and 1.0
-respectively).</p>
+The default values are <code class="docutils literal notranslate"><span class="pre">min_weights=0.0</span></code> (no short selling) and <code class="docutils literal notranslate"><span class="pre">max_weights=1.0</span></code>
+(each asset is below 100%). When using a dictionary, you don’t have to provide
+constraints for all assets. If not provided, the default values (0.0 for min_weights
+and 1.0 for max_weights) will be assigned to the assets not specified in the
+dictionary.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>When adding a <a class="reference internal" href="../../user_guide/pre_selection.html#pre-selection"><span class="std std-ref">pre-selection transformer</span></a> into a <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>,
-you cannot use a <strong>list</strong> for the weight constraints because we don’t know which
-assets will be selected by the pre-selection process. This is where the
-<strong>dictionary</strong> becomes useful.</p>
+<p>When incorporating a pre-selection transformer into a Pipeline, using a list for
+weight constraints is not feasible, as we don’t know in advance which assets will
+be selected by the pre-selection process. This is where the dictionary proves
+useful.</p>
 </div>
 <dl class="simple">
 <dt>Example:</dt><dd><ul class="simple">
@@ -530,11 +530,11 @@ assets will be selected by the pre-selection process. This is where the
 <li><p>max_weights = None                  –&gt; no upper bound (same as +np.Inf).</p></li>
 <li><p>max_weights = 2                     –&gt; each weight must be below 200%.</p></li>
 <li><p>max_weights = [1, 2, -0.5]          -&gt; “AAPL”, “GE” and “JPM”  must be below 100%, 200% and -50% respectively.</p></li>
-<li><p>max_weights = {“AAPL”: 1, “GE”: 2}  -&gt; “AAPL”, “GE” and “JPM”  must be below 100%, 200% and 100% (default) respectively.</p></li>
+<li><p>max_weights = {“AAPL”: 1, “GE”: 2}  -&gt; “AAPL”, “GE” and “JPM”  must be below 100%, 200% and 100% (default).</p></li>
 </ul>
 </dd>
 </dl>
-<p>Allowing short positions with a budget of -100%:</p>
+<p>Let’s create a model that allows short positions with a budget of -100%:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
@@ -546,7 +546,8 @@ assets will be selected by the pre-selection process. This is where the
 array([-0.22770271, -0.56559255, -0.20670474])
 </pre></div>
 </div>
-<p>“AAPL”, “GE” and “JPM” above 0%, 50% and 10% respectively:</p>
+<p>Let’s add weight constraints on “AAPL”, “GE” and “JPM” to be above 0%, 50% and 10%
+respectively:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
@@ -568,13 +569,13 @@ array([0.22788246, 0.56548525, 0.20663228])
 <head><meta charset="utf-8" /></head>
 <body>
     <div>                        <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-        <script charset="utf-8" src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>                <div id="892e54b0-9ada-47b4-842e-08310929e0dd" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("892e54b0-9ada-47b4-842e-08310929e0dd")) {                    Plotly.newPlot(                        "892e54b0-9ada-47b4-842e-08310929e0dd",                        [{"alignmentgroup":"True","hovertemplate":"asset=GE\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"GE","marker":{"color":"#636efa","pattern":{"shape":""}},"name":"GE","offsetgroup":"GE","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.5654852544835487],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=AAPL\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"AAPL","marker":{"color":"#EF553B","pattern":{"shape":""}},"name":"AAPL","offsetgroup":"AAPL","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.22788246110263108],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=JPM\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"JPM","marker":{"color":"#00cc96","pattern":{"shape":""}},"name":"JPM","offsetgroup":"JPM","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.20663228441382034],"yaxis":"y","type":"bar"}],                        {"barmode":"relative","legend":{"title":{"text":"Assets"},"tracegroupgap":0},"margin":{"t":60},"template":{"data":{"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"#E5ECF6","showlakes":true,"showland":true,"subunitcolor":"white"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2}}},"title":{"text":"Portfolio Composition"},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Portfolio"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Weight"}}},                        {"responsive": true}                    )                };                            </script>        </div>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>                <div id="20f71649-1b9f-478d-8dce-b2644e4ea324" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("20f71649-1b9f-478d-8dce-b2644e4ea324")) {                    Plotly.newPlot(                        "20f71649-1b9f-478d-8dce-b2644e4ea324",                        [{"alignmentgroup":"True","hovertemplate":"asset=GE\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"GE","marker":{"color":"#636efa","pattern":{"shape":""}},"name":"GE","offsetgroup":"GE","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.5654852544835487],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=AAPL\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"AAPL","marker":{"color":"#EF553B","pattern":{"shape":""}},"name":"AAPL","offsetgroup":"AAPL","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.22788246110263108],"yaxis":"y","type":"bar"},{"alignmentgroup":"True","hovertemplate":"asset=JPM\u003cbr\u003eindex=%{x}\u003cbr\u003evalue=%{y}\u003cextra\u003e\u003c\u002fextra\u003e","legendgroup":"JPM","marker":{"color":"#00cc96","pattern":{"shape":""}},"name":"JPM","offsetgroup":"JPM","orientation":"v","showlegend":true,"textposition":"auto","x":["MeanRisk"],"xaxis":"x","y":[0.20663228441382034],"yaxis":"y","type":"bar"}],                        {"barmode":"relative","legend":{"title":{"text":"Assets"},"tracegroupgap":0},"margin":{"t":60},"template":{"data":{"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"#E5ECF6","showlakes":true,"showland":true,"subunitcolor":"white"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","gridwidth":2,"linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"bgcolor":"#E5ECF6","caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","zerolinewidth":2}}},"title":{"text":"Portfolio Composition"},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Portfolio"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Weight"}}},                        {"responsive": true}                    )                };                            </script>        </div>
 </body>
 </html>
 <div class="line-block">
 <div class="line"><br /></div>
 </div>
-<p>Same as above but using partial dictionary:</p>
+<p>Let’s create the same model as above but using partial dictionary:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;GE&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;JPM&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">})</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
@@ -586,7 +587,7 @@ array([0.22788246, 0.56548525, 0.20663228])
 array([0.22788246, 0.56548525, 0.20663228])
 </pre></div>
 </div>
-<p>Leverage 3 with each weight below 150%:</p>
+<p>Let’s create a model with a leverage of 3 and every weights below 150%:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">budget</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">max_weights</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
@@ -600,11 +601,12 @@ array([0.74197781, 1.49999867, 0.75802352])
 </div>
 </section>
 <section id="short-and-long-position-constraints">
-<h2>Short and long position constraints<a class="headerlink" href="#short-and-long-position-constraints" title="Link to this heading">#</a></h2>
+<h2>Short and Long Position Constraints<a class="headerlink" href="#short-and-long-position-constraints" title="Link to this heading">#</a></h2>
 <p>Constraints on the upper bound for short and long positions can be set using
 <code class="docutils literal notranslate"><span class="pre">max_short</span></code> and <code class="docutils literal notranslate"><span class="pre">max_long</span></code>. The short position is defined as the sum of negative
 weights (in absolute term) and the long position as the sum of positive weights.</p>
-<p>Fully invested long-short portfolio with a total short position less than 50%:</p>
+<p>Let’s create a fully invested long-short portfolio model with a total short position
+less than 50%:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <a href="../../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk" class="sphx-glr-backref-module-skfolio-optimization sphx-glr-backref-type-py-class sphx-glr-backref-instance"><span class="n">MeanRisk</span></a><span class="p">(</span><span class="n">min_weights</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_short</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">weights_</span><span class="p">))</span>
@@ -618,12 +620,12 @@ array([0.22770146, 0.56558315, 0.20671539])
 </div>
 </section>
 <section id="group-and-linear-constraints">
-<h2>Group and linear constraints<a class="headerlink" href="#group-and-linear-constraints" title="Link to this heading">#</a></h2>
+<h2>Group and Linear Constraints<a class="headerlink" href="#group-and-linear-constraints" title="Link to this heading">#</a></h2>
 <p>We can assign groups to each asset using the <code class="docutils literal notranslate"><span class="pre">groups</span></code> parameter and set
 constraints on these groups using the <code class="docutils literal notranslate"><span class="pre">linear_constraint</span></code> parameter.
-The parameter <code class="docutils literal notranslate"><span class="pre">groups</span></code> can be a 2D array-like or a dictionary. If a dictionary is
+The <code class="docutils literal notranslate"><span class="pre">groups</span></code> parameter can be a 2D array-like or a dictionary. If a dictionary is
 provided, its (key/value)  pair must be the (asset name/asset groups).
-You can reference these groups and/or the asset names in <code class="docutils literal notranslate"><span class="pre">linear_constraint</span></code> which
+You can reference these groups and/or the asset names in <code class="docutils literal notranslate"><span class="pre">linear_constraint</span></code>, which
 is a list if strings following the below patterns:</p>
 <blockquote>
 <div><ul class="simple">
@@ -633,8 +635,8 @@ is a list if strings following the below patterns:</p>
 <li><p>“ref1 &gt;= ref1”</p></li>
 </ul>
 </div></blockquote>
-<p>Examples:
-In this example we consider two groups: industry sector and capitalization.</p>
+<p>Let’s create a model with groups constraints on “industry sector” and
+“capitalization”:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">groups</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s2">&quot;AAPL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Technology&quot;</span><span class="p">,</span> <span class="s2">&quot;Mega Cap&quot;</span><span class="p">],</span>
     <span class="s2">&quot;GE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;Industrial&quot;</span><span class="p">,</span> <span class="s2">&quot;Big Cap&quot;</span><span class="p">],</span>
@@ -660,9 +662,9 @@ In this example we consider two groups: industry sector and capitalization.</p>
 </div>
 </section>
 <section id="left-and-right-inequalities">
-<h2>Left and right inequalities<a class="headerlink" href="#left-and-right-inequalities" title="Link to this heading">#</a></h2>
-<p>Finally, you can also provide the matrix <span class="math notranslate nohighlight">\(A\)</span> and the vector <span class="math notranslate nohighlight">\(b\)</span> of the
-linear constraint <span class="math notranslate nohighlight">\(A \cdot w \leq b\)</span>.</p>
+<h2>Left and Right Inequalities<a class="headerlink" href="#left-and-right-inequalities" title="Link to this heading">#</a></h2>
+<p>Finally, you can also directly provide the matrix <span class="math notranslate nohighlight">\(A\)</span> and the vector
+<span class="math notranslate nohighlight">\(b\)</span> of the linear constraint <span class="math notranslate nohighlight">\(A \cdot w \leq b\)</span>:</p>
 <div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="n">left_inequality</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
     <span class="p">[[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]]</span>
 <span class="p">)</span>

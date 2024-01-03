@@ -25,8 +25,8 @@ Tracking Error
 This tutorial shows how to incorporate a tracking error constraint into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-The tracking error is defined as the RMSE (root-mean-square error) of the portfolio's
-returns compared to a target's returns.
+The tracking error is defined as the RMSE (root-mean-square error) of the portfolio
+returns compared to a target returns.
 
 In this example we will create a long-short portfolio of 20 stocks that tracks the
 SPX Index with a tracking error constraint of 0.30% while minimizing the CVaR
@@ -73,11 +73,11 @@ assets from the S&P 500 Index composition and the prices of the S&P 500 Index it
 
 Model
 =====
-We create two long-short models: a Minimum-CVaR without tracking error and a
-Minimum-CVaR with a 0.30% tracking error constraint versus the SPX Index.
+We create two long-short models: a Minimum CVaR without tracking error and a
+Minimum CVaR with a 0.30% tracking error constraint versus the SPX Index.
 A 0.30% tracking error constraint is a constraint on the RMSE of the difference
 between the daily portfolio returns and the SPX Index returns.
-We first create the Minimum-CVaR model without tracking error:
+We first create the Minimum CVaR model without tracking error:
 
 .. GENERATED FROM PYTHON SOURCE LINES 49-58
 
@@ -110,7 +110,7 @@ We first create the Minimum-CVaR model without tracking error:
 
 .. GENERATED FROM PYTHON SOURCE LINES 59-61
 
-Then we create the Minimum-CVaR model with a 0.30% tracking error constraint
+Then we create the Minimum CVaR model with a 0.30% tracking error constraint
 versus the SPX Index:
 
 .. GENERATED FROM PYTHON SOURCE LINES 61-69
@@ -253,7 +253,7 @@ the model without tracking error.
 
 Prediction
 ==========
-Finally we predict both models on the test set:
+Finally, we predict both models on the test set:
 
 .. GENERATED FROM PYTHON SOURCE LINES 111-125
 
@@ -309,7 +309,7 @@ compared to the model without tracking error.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.216 seconds)
+   **Total running time of the script:** (0 minutes 1.178 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py:

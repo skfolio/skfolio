@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Population" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Population" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/population.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="A Population is a list of portfolios ( Portfolio or MultiPeriodPortfolio or both). Population inherits from the build-in list class and extend it by adding new functionalities to improve portfolio ..." />
+<meta property="og:description" content="A Population is a list of portfolios ( Portfolio or MultiPeriodPortfolio or both). Population inherits from the build-in list class and extends it by adding new functionalities to improve portfolio..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="A Population is a list of portfolios ( Portfolio or MultiPeriodPortfolio or both). Population inherits from the build-in list class and extend it by adding new functionalities to improve portfolio ..." />
+<meta name="description" content="A Population is a list of portfolios ( Portfolio or MultiPeriodPortfolio or both). Population inherits from the build-in list class and extends it by adding new functionalities to improve portfolio..." />
 
-    <title>Population &#8212; skfolio 0.0.6 documentation</title>
+    <title>Population &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -420,7 +419,7 @@ document.write(`
 <span id="id1"></span><h1>Population<a class="headerlink" href="#population" title="Link to this heading">#</a></h1>
 <p>A <a class="reference internal" href="../generated/skfolio.population.Population.html#skfolio.population.Population" title="skfolio.population.Population"><code class="xref py py-class docutils literal notranslate"><span class="pre">Population</span></code></a> is a list of portfolios (<a class="reference internal" href="../generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">Portfolio</span></code></a>
 or <a class="reference internal" href="../generated/skfolio.portfolio.MultiPeriodPortfolio.html#skfolio.portfolio.MultiPeriodPortfolio" title="skfolio.portfolio.MultiPeriodPortfolio"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code></a> or both).
-<code class="docutils literal notranslate"><span class="pre">Population</span></code> inherits from the build-in <code class="docutils literal notranslate"><span class="pre">list</span></code> class and extend it by adding new
+<code class="docutils literal notranslate"><span class="pre">Population</span></code> inherits from the build-in <code class="docutils literal notranslate"><span class="pre">list</span></code> class and extends it by adding new
 functionalities to improve portfolio manipulation and analysis.</p>
 <p><strong>Example:</strong></p>
 <p>In this example, we create a Population of 100 random Portfolios:</p>
@@ -474,12 +473,12 @@ functionalities to improve portfolio manipulation and analysis.</p>
 <span class="n">population</span><span class="o">.</span><span class="n">plot_composition</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>A <code class="docutils literal notranslate"><span class="pre">Population</span></code> is returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of some Optimization estimators that
+<p>A <code class="docutils literal notranslate"><span class="pre">Population</span></code> is returned by the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method of some portfolio optimization that
 supports multi-outputs.</p>
 <p>For example, fitting <a class="reference internal" href="../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a> with parameter
 <code class="docutils literal notranslate"><span class="pre">efficient_frontier_size=30</span></code> will find the weights of 30 portfolios belonging to the
 efficient frontier. Calling the method <code class="docutils literal notranslate"><span class="pre">predict(X_test)</span></code> on that model will return a
-<code class="docutils literal notranslate"><span class="pre">Population</span></code> containing these 30 <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code> predicted on the test set:</p>
+<code class="docutils literal notranslate"><span class="pre">Population</span></code> containing these 30 <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>, predicted on the test set:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="p">(</span>

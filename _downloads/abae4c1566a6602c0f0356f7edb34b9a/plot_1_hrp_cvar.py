@@ -10,20 +10,21 @@ Hierarchical Risk Parity (HRP) is a portfolio optimization method developed by M
 Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then uses seriation to rearrange the assets
-in the dendrogram minimizing the distance between leafs.
+Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
+assets in the dendrogram, minimizing the distance between leafs.
+
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
-manner. For each sub-cluster, the total cluster risk of an inverse-risk
-allocation is computed. A weighting factor is then computed from these two sub-cluster
-risks which is used to update the cluster weight.
+manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
+allocation. A weighting factor is then computed from these two sub-cluster risks,
+which is used to update the cluster weight.
 
 .. note ::
     The original paper uses the variance as the risk measure and the single-linkage
     method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
     multiple risk measures and linkage methods.
     The default linkage method is set to the Ward
-    variance minimization algorithm which is more stable and have better properties
+    variance minimization algorithm, which is more stable and has better properties
     than the single-linkage method.
 
 In this example, we will use the CVaR risk measure.
@@ -58,7 +59,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffl
 # %%
 # Model
 # =====
-# We create the CVaR Hierarchical Risk Parity model then fit it on the training set:
+# We create the CVaR Hierarchical Risk Parity model and then fit it on the training set:
 model1 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, portfolio_params=dict(name="HRP-CVaR-Ward-Pearson")
 )
@@ -68,14 +69,14 @@ model1.weights_
 # %%
 # Risk Contribution
 # =================
-# Let's analyse the risk contribution of the model on the training set:
+# Let's analyze the risk contribution of the model on the training set:
 ptf1 = model1.predict(X_train)
 ptf1.plot_contribution(measure=RiskMeasure.CVAR)
 
 # %%
 # Dendrogram
 # ==========
-# To analyse the clusters structure, we can plot the dendrogram.
+# To analyze the clusters structure, we plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
 model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
@@ -93,18 +94,20 @@ fig = model1.hierarchical_clustering_estimator_.plot_dendrogram()
 show(fig)
 
 # %%
-# Linkage methods
+# Linkage Methods
 # ===============
 # The clustering can be greatly affected by the choice of the linkage method.
 # The original HRP is based on the single-linkage (equivalent to the minimum spanning
 # tree), which suffers from the chaining effect.
 # In the :class:`~skfolio.optimization.HierarchicalRiskParity` estimator, the default
-# linkage method is set to the Ward variance minimization algorithm which is more stable
-# and have better properties than the single-linkage method. However, because the HRP
-# optimization doesn't use the full cluster structure but only their orders, the
-# allocation remain relatively stable to the choice of linkage method.
-# To show its effect, let's create a second model with the single-linkage method:
+# linkage method is set to the Ward variance minimization algorithm, which is more 
+# stable and has better properties than the single-linkage method.
+#
+# However, since the HRP optimization doesn’t utilize the full cluster structure but
+# only their orders, the allocation remains relatively stable regardless of the chosen
+# linkage method.
 
+# To show this effect, let's create a second model with the single-linkage method:
 model2 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
     hierarchical_clustering_estimator=HierarchicalClustering(
@@ -122,11 +125,12 @@ model2.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 # reason explained earlier.
 
 # %%
-# Distance estimator
+# Distance Estimator
 # ==================
 # The choice of distance metric has also an important effect on the clustering.
 # The default is to use the distance from the pearson correlation matrix.
 # This can be changed using the :ref:`distance estimators <distance>`.
+#
 # For example, let's create a third model with a distance computed from the absolute
 # value of the Kendal correlation matrix:
 model3 = HierarchicalRiskParity(
@@ -139,14 +143,15 @@ model3.fit(X_train)
 model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
-# Prior estimator
+# Prior Estimator
 # ===============
-# Finally, HRP like the other optimization estimators uses a
+# Finally, HRP like the other portfolio optimization, uses a
 # :ref:`prior estimator <prior>` that fits a :class:`~skfolio.prior.PriorModel`
 # containing the distribution estimate of asset returns. It represents the investor's
 # prior beliefs about the model used to estimate such distribution.
 # The default is the :class:`~skfolio.prior.EmpiricalPrior` estimator.
-# Here we will use the :class:`~skfolio.prior.FactorModel` estimator:
+#
+# Let's create new model with the :class:`~skfolio.prior.FactorModel` estimator:
 model4 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
     prior_estimator=FactorModel(),
@@ -158,7 +163,7 @@ model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
 
 # %%
-# To compare the HRP models, we use an equal weighted benchmark using
+# To compare the models, we use an equal weighted benchmark using
 # the :class:`~skfolio.optimization.EqualWeighted` estimator:
 bench = EqualWeighted()
 bench.fit(X_train)
@@ -184,7 +189,7 @@ population_test.plot_composition()
 # %%
 # Summary
 # =======
-# Same conclusion from the summary statistics:
+# Finally, let's print the summary statistics:
 summary = population_test.summary()
 summary.loc["Annualized Sharpe Ratio"]
 

@@ -6,7 +6,7 @@
 Model Selection
 ***************
 
-The Model Selection module extend the ``sklearn.model_selection`` by adding additional
+The Model Selection module extends `sklearn.model_selection` by adding additional
 methods tailored for portfolio selection.
 
 .. _cross_validation:
@@ -15,7 +15,7 @@ Cross-Validation Prediction
 ***************************
 Every `skfolio` estimator is compatible with `sklearn.model_selection.cross_val_predict`.
 We also implement our own :func:`cross_val_predict` for enhanced integration
-with `Portfolio` and `Population` objects as well as compatibility with
+with `Portfolio` and `Population` objects, as well as compatibility with
 `CombinatorialPurgedCV`.
 
 .. _data_leakage:
@@ -28,8 +28,8 @@ with `Portfolio` and `Population` objects as well as compatibility with
     training set.
 
 In `cross_val_predict`, the data is split according to the `cv` parameter.
-The optimization estimator is fitted on the training set and portfolios are predicted on
-the corresponding testing set.
+The portfolio optimization estimator is fitted on the training set and portfolios are
+predicted on the corresponding test set.
 
 For non-combinatorial cross-validation like ``Kfold``, the output is the predicted
 :class:`~skfolio.MultiPeriodPortfolio` where each
@@ -38,7 +38,7 @@ pair (K portfolios for ``Kfold``).
 
 For combinatorial cross-validation like :class:`CombinatorialPurgeCV`, the output is the
 predicted :class:`~skfolio.Population` of multiple
-:class:`~skfolio.MultiPeriodPortfolio`. This is because each test outputs are a
+:class:`~skfolio.MultiPeriodPortfolio`. This is because each test output is a
 collection of multiple paths instead of one single path.
 
 **Example:**
@@ -70,16 +70,16 @@ collection of multiple paths instead of one single path.
 
 Combinatorial Purged Cross-Validation
 *************************************
-Compared to ``KFold`` which split the data into k folds and generate one single testing
+Compared to `KFold`, which splits the data into k folds and generates one single testing
 path, the :class:`CombinatorialPurgedCV` uses the combination of multiple
-training/testing sets to generate multiple testing paths.
+train/test sets to generate multiple testing paths.
 
 To avoid data leakage, purging and embargoing can be performed.
 
 Purging consist of removing from the training set all observations
 whose labels overlapped in time with those labels included in the testing set.
 Embargoing consist of removing from the training set observations that immediately
-follow an observation in the testing set since financial features often incorporate
+follow an observation in the testing set, since financial features often incorporate
 series that exhibit serial correlation (like ARMA processes).
 
 When used with :func:`cross_val_predict`, the object returned is a

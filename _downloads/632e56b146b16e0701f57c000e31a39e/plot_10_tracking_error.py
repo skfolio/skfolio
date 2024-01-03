@@ -6,8 +6,8 @@ Tracking Error
 This tutorial shows how to incorporate a tracking error constraint into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-The tracking error is defined as the RMSE (root-mean-square error) of the portfolio's
-returns compared to a target's returns.
+The tracking error is defined as the RMSE (root-mean-square error) of the portfolio
+returns compared to a target returns.
 
 In this example we will create a long-short portfolio of 20 stocks that tracks the
 SPX Index with a tracking error constraint of 0.30% while minimizing the CVaR
@@ -41,11 +41,11 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffl
 # %%
 # Model
 # =====
-# We create two long-short models: a Minimum-CVaR without tracking error and a
-# Minimum-CVaR with a 0.30% tracking error constraint versus the SPX Index.
+# We create two long-short models: a Minimum CVaR without tracking error and a
+# Minimum CVaR with a 0.30% tracking error constraint versus the SPX Index.
 # A 0.30% tracking error constraint is a constraint on the RMSE of the difference
 # between the daily portfolio returns and the SPX Index returns.
-# We first create the Minimum-CVaR model without tracking error:
+# We first create the Minimum CVaR model without tracking error:
 model_no_tracking = MeanRisk(
     objective_function=ObjectiveFunction.MINIMIZE_RISK,
     risk_measure=RiskMeasure.CVAR,
@@ -56,7 +56,7 @@ model_no_tracking.fit(X_train, y_train)
 model_no_tracking.weights_
 
 # %%
-# Then we create the Minimum-CVaR model with a 0.30% tracking error constraint
+# Then we create the Minimum CVaR model with a 0.30% tracking error constraint
 # versus the SPX Index:
 model_tracking = clone(model_no_tracking)
 model_tracking.set_params(
@@ -107,7 +107,7 @@ for portfolio in [ptf_no_tracking_train, ptf_tracking_train]:
 # %%
 # Prediction
 # ==========
-# Finally we predict both models on the test set:
+# Finally, we predict both models on the test set:
 ptf_no_tracking_test = model_no_tracking.predict(X_test)
 ptf_tracking_test = model_tracking.predict(X_test)
 spx_test = model_spx.predict(y_test)

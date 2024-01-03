@@ -3,17 +3,16 @@
 Stacking Optimization
 =====================
 
-This tutorial introduces the :class:`~skfolio.optimization.StackingOptimization`
-optimization.
+This tutorial introduces the :class:`~skfolio.optimization.StackingOptimization`.
 
 Stacking Optimization is an ensemble method that consists in stacking the output of
-individual optimization estimators with a final optimization estimator.
+individual portfolio optimizations with a final portfolio optimization.
 
-The weights are the dot-product of individual estimators weights with the final
-estimator weights.
+The weights are the dot-product of individual optimizations weights with the final
+optimization weights.
 
-Stacking allows to use the strength of each individual estimator by using their
-output as input of a final estimator.
+Stacking allows to use the strength of each individual portfolio optimization by using
+their output as input of a final portfolio optimization.
 
 To avoid data leakage, out-of-sample estimates are used to fit the outer optimization.
 
@@ -26,7 +25,7 @@ To avoid data leakage, out-of-sample estimates are used to fit the outer optimiz
 # Data
 # ====
 # We load the FTSE 100 dataset. This dataset is composed of the daily prices of 64
-# assets from the FTSE 100 Index composition starting from 2010-01-04 up to 2023-05-31:
+# assets from the FTSE 100 Index composition starting from 2000-01-04 up to 2023-05-31:
 from plotly.io import show
 from sklearn.model_selection import GridSearchCV, train_test_split
 
@@ -94,7 +93,7 @@ benchmark = EqualWeighted()
 # %%
 # Parameter Tuning
 # ================
-# To show you how parameter tuning works in a staking model, we find the model
+# To demonstrate how parameter tuning works in a staking model, we find the model
 # parameters that maximizes the out-of-sample Calmar Ratio using `GridSearchCV` with
 # `WalkForward` cross-validation on the training set.
 # The `WalkForward` are chosen to simulate a three months (60 business days) rolling
@@ -125,7 +124,8 @@ print(model_stacking)
 # %%
 # Prediction
 # ==========
-# We evaluate the two models using the same `WalkForward` object on the test set:
+# We evaluate the Stacking model and the Benchmark using the same `WalkForward` object
+# on the test set:
 pred_bench = cross_val_predict(
     benchmark,
     X_test,
@@ -157,7 +157,7 @@ population.plot_composition(display_sub_ptf_name=False)
 # %%
 # Analysis
 # ========
-# The Stacking model outperforms the Benchmark for the below ratios:
+# The Stacking model outperforms the Benchmark on the test set for the below ratios:
 for ptf in population:
     print("=" * 25)
     print(" " * 8 + ptf.name)
@@ -181,8 +181,8 @@ population.summary()
 cv = CombinatorialPurgedCV(n_folds=20, n_test_folds=18)
 
 # %%
-# We choose `n_folds` and `n_test_folds` to get more than 100 test paths and an average
-# training size around 252 days:
+# We choose `n_folds` and `n_test_folds` to obtain more than 100 test paths and an
+# average training size of approximately 252 days:
 cv.summary(X_test)
 
 # %%
@@ -196,12 +196,12 @@ pred_stacking = cross_val_predict(
 
 # %%
 # The predicted object is a `Population` of `MultiPeriodPortfolio`. Each
-# `MultiPeriodPortfolio` represents one testing path of a rolling portfolio.
+# `MultiPeriodPortfolio` represents one test path of a rolling portfolio.
 
 # %%
 # Distribution
 # ============
-# We plot the out-of-sample distribution of Sharpe Ratio for the Stacking model:
+# Let's plot the out-of-sample distribution of Sharpe Ratio for the Stacking model:
 pred_stacking.plot_distribution(
     measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO], n_bins=40
 )
@@ -217,7 +217,7 @@ print(
 )
 
 # %%
-# Now let's analyse how the sub-models would have performed independently and compare
+# Now, let's analyze how the sub-models would have performed independently and compare
 # their distribution with the Stacking model:
 population = Population([])
 for model_name, model in model_stacking.estimators:
@@ -243,4 +243,4 @@ show(fig)
 # ==========
 # The Stacking model outperforms the Benchmark on the historical test set. The
 # distribution analysis on the recombined (non-historical) test sets shows that the
-# Stacking model continue to outperform the Benchmark in average.
+# Stacking model continues to outperform the Benchmark in average.

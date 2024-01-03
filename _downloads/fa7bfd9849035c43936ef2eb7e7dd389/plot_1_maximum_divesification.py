@@ -4,8 +4,8 @@ Maximum Diversification
 =======================
 
 This tutorial uses the :class:`~skfolio.optimization.MaximumDiversification`
-optimization to find the portfolio that maximizes the diversification ratio which is the
-ratio of the weighted volatilities over the total volatility.
+optimization to find the portfolio that maximizes the diversification ratio, which is
+the ratio of the weighted volatilities over the total volatility.
 """
 
 # %%
@@ -29,13 +29,13 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Model
 # =====
-# We create the maximum diversification model then fit it on the training set:
+# We create the maximum diversification model and then fit it on the training set:
 model = MaximumDiversification()
 model.fit(X_train)
 model.weights_
 
 # %%
-# To compare the model, we use an equal weighted benchmark using
+# To compare this model, we use an equal weighted benchmark using
 # the :class:`~skfolio.optimization.EqualWeighted` estimator:
 bench = EqualWeighted()
 bench.fit(X_train)
@@ -44,7 +44,7 @@ bench.weights_
 # %%
 # Diversification Analysis
 # ========================
-# Let's analyse the diversification ratio of both models on the training set.
+# Let's analyze the diversification ratio of both models on the training set.
 # As expected, the maximum diversification model has the highest diversification ratio:
 ptf_model_train = model.predict(X_train)
 ptf_bench_train = bench.predict(X_train)
@@ -80,4 +80,5 @@ population.plot_cumulative_returns()
 # %%
 # |
 #
-# Finally we can show a full summary of both strategies evaluated on the test set:
+# Finally, we print a full summary of both strategies evaluated on the test set:
+population.summary()

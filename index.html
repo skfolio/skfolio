@@ -8,16 +8,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta content="skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading" name="keywords" />
-<meta property="og:title" content="skfolio" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="_static/favicon.png"><meta property="og:title" content="skfolio" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/index.html" />
 <meta property="og:site_name" content="skfolio" />
 <meta property="og:description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn" />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn. It provides a unified interface and sklearn compatible tools to build, tune and cross-validate portfolio models...." />
+<meta name="description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn. It offers a unified interface and tools compatible with scikit-learn to build, fine-tune, and cross-validate por..." />
 
-    <title>skfolio &#8212; skfolio 0.0.6 documentation</title>
+    <title>skfolio &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -48,16 +50,13 @@
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="_static/documentation_options.js?v=1238456f"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -366,9 +365,10 @@ document.write(`
 </div>
 <section id="skfolio">
 <h1>skfolio<a class="headerlink" href="#skfolio" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">skfolio</span></code> is a Python library for portfolio optimization built on top of scikit-learn.
-It provides a unified interface and <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> compatible tools to build, tune and
-cross-validate portfolio models.</p>
+<p><strong>skfolio</strong> is a Python library for portfolio optimization built on top of scikit-learn.
+It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
+and cross-validate portfolio models.</p>
+<p>It is distributed under the open source 3-Clause BSD license.</p>
 <a class="reference external image-reference" href="https://skfolio.org/auto_examples/"><img alt="examples" src="_images/expo.jpg" /></a>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">#</a></h2>
@@ -379,30 +379,34 @@ cross-validate portfolio models.</p>
 </section>
 <section id="key-concepts">
 <h2>Key Concepts<a class="headerlink" href="#key-concepts" title="Link to this heading">#</a></h2>
-<p>Since the development of modern portfolio theory by Markowitz (1952), mean-variance optimization (MVO)
-has received considerable attention. Unfortunately it faces a number of shortcomings including high sensitivity to the
-input parameters (expected returns and covariance), weight concentration, high turnover and poor out-of-sample
-performance.
-It is well known that naive allocation (1/N, inverse-vol, …) tends to outperform MVO out-of-sample (DeMiguel, 2007).</p>
+<p>Since the development of modern portfolio theory by Markowitz (1952), mean-variance
+optimization (MVO) has received considerable attention.</p>
+<p>Unfortunately, it faces a number of shortcomings, including high sensitivity to the
+input parameters (expected returns and covariance), weight concentration, high turnover,
+and poor out-of-sample performance.</p>
+<p>It is well known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
+MVO out-of-sample (DeMiguel, 2007).</p>
 <p>Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
-additional constraints, regularization, uncertainty set, higher moments, bayesian approaches, coherent risk measures,
-left-tail risk optimization, distributionally robust optimization, factor model, risk-parity, hierarchical clustering,
-ensemble methods…)</p>
-<p>With this large number of methods, added to the fact that they can be composed together there is the need for an
-unified framework to perform model selection, validation and parameter tuning while reducing the risk of data leakage
-and overfitting. This framework is build on scikit-learn’s API.</p>
+additional constraints, regularization, uncertainty set, higher moments, Bayesian
+approaches, coherent risk measures, left-tail risk optimization, distributionally robust
+optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
+pre-selection, etc.).</p>
+<p>With this large number of methods, added to the fact that they can be composed together,
+there is a need for a unified framework with a machine learning approach to perform
+model selection, validation, and parameter tuning while reducing the risk of data
+leakage and overfitting.</p>
+<p>This framework is built on scikit-learn’s API.</p>
 </section>
 <section id="available-models">
 <h2>Available models<a class="headerlink" href="#available-models" title="Link to this heading">#</a></h2>
-<p>The current release contains:</p>
 <ul class="simple">
 <li><dl class="simple">
-<dt>Optimization estimators:</dt><dd><ul>
+<dt>Portfolio Optimization:</dt><dd><ul>
 <li><dl class="simple">
 <dt>Naive:</dt><dd><ul>
 <li><p>Equal-Weighted</p></li>
 <li><p>Inverse-Volatility</p></li>
-<li><p>Random (dirichlet)</p></li>
+<li><p>Random (Dirichlet)</p></li>
 </ul>
 </dd>
 </dl>
@@ -427,7 +431,7 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Ensemble methods:</dt><dd><ul>
+<dt>Ensemble Methods:</dt><dd><ul>
 <li><p>Stacking Optimization</p></li>
 </ul>
 </dd>
@@ -438,19 +442,17 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Moment estimators:</dt><dd><ul>
-<li><dl class="simple">
-<dt>Expected Returns:</dt><dd><ul>
+<dt>Expected Returns Estimator:</dt><dd><ul>
 <li><p>Empirical</p></li>
 <li><p>Exponentially Weighted</p></li>
 <li><p>Equilibrium</p></li>
-<li><p>Shrinkage (James-Stein, Bayes-Stein, …)</p></li>
+<li><p>Shrinkage</p></li>
 </ul>
 </dd>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Covariance:</dt><dd><ul>
+<dt>Covariance Estimator:</dt><dd><ul>
 <li><p>Empirical</p></li>
 <li><p>Gerber</p></li>
 <li><p>Denoising</p></li>
@@ -459,17 +461,13 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 <li><p>Ledoit-Wolf</p></li>
 <li><p>Oracle Approximating Shrinkage</p></li>
 <li><p>Shrunk Covariance</p></li>
-<li><p>Graphical lasso CV</p></li>
-</ul>
-</dd>
-</dl>
-</li>
+<li><p>Graphical Lasso CV</p></li>
 </ul>
 </dd>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Distance estimator:</dt><dd><ul>
+<dt>Distance Estimator:</dt><dd><ul>
 <li><p>Pearson Distance</p></li>
 <li><p>Kendall Distance</p></li>
 <li><p>Spearman Distance</p></li>
@@ -481,7 +479,7 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Prior estimators:</dt><dd><ul>
+<dt>Prior Estimator:</dt><dd><ul>
 <li><p>Empirical</p></li>
 <li><p>Black &amp; Litterman</p></li>
 <li><p>Factor Model</p></li>
@@ -490,7 +488,7 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Uncertainty Set estimators:</dt><dd><ul>
+<dt>Uncertainty Set Estimator:</dt><dd><ul>
 <li><dl class="simple">
 <dt>On Expected Returns:</dt><dd><ul>
 <li><p>Empirical</p></li>
@@ -512,7 +510,7 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dl>
 </li>
 <li><dl class="simple">
-<dt>Pre-Selection transformers:</dt><dd><ul>
+<dt>Pre-Selection Transformer:</dt><dd><ul>
 <li><p>Non-Dominated Selection</p></li>
 <li><p>Select K Extremes (Best or Worst)</p></li>
 <li><p>Drop Highly Correlated Assets</p></li>
@@ -522,16 +520,16 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </li>
 <li><dl class="simple">
 <dt>Cross-Validation and Model Selection:</dt><dd><ul>
-<li><p>Compatible with all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> methods (KFold, …)</p></li>
+<li><p>Compatible with all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> methods (KFold, etc.)</p></li>
 <li><p>Walk Forward</p></li>
-<li><p>Combinatorial Purged Cross-validation</p></li>
+<li><p>Combinatorial Purged Cross-Validation</p></li>
 </ul>
 </dd>
 </dl>
 </li>
 <li><dl class="simple">
 <dt>Hyper-Parameter Tuning:</dt><dd><ul>
-<li><p>Compatible with all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> methods (GridSearchCV, RandomizedSearchCV, …)</p></li>
+<li><p>Compatible with all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> methods (GridSearchCV, RandomizedSearchCV)</p></li>
 </ul>
 </dd>
 </dl>
@@ -562,12 +560,32 @@ and overfitting. This framework is build on scikit-learn’s API.</p>
 </dd>
 </dl>
 </li>
+<li><dl class="simple">
+<dt>Optimization Features:</dt><dd><ul>
+<li><p>Minimize Risk</p></li>
+<li><p>Maximize Returns</p></li>
+<li><p>Maximize Utility</p></li>
+<li><p>Maximize Ratio</p></li>
+<li><p>Transaction Costs</p></li>
+<li><p>Management Fees</p></li>
+<li><p>L1 and L2 Regularization</p></li>
+<li><p>Weight Constraints</p></li>
+<li><p>Group Constraints</p></li>
+<li><p>Budget Constraints</p></li>
+<li><p>Tracking Error Constraints</p></li>
+<li><p>Turnover Constraints</p></li>
+</ul>
+</dd>
+</dl>
+</li>
 </ul>
 </section>
 <section id="quickstart">
 <h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">#</a></h2>
-<p>The code snippets below are designed to introduce <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>’s functionality so you can start using it quickly.
-For more detailed information see the <a class="reference internal" href="auto_examples/index.html#general-examples"><span class="std std-ref">Examples</span></a>,  <a class="reference internal" href="user_guide/index.html#user-guide"><span class="std std-ref">User Guide</span></a> and <a class="reference internal" href="api.html#api"><span class="std std-ref">API Reference</span></a> .</p>
+<p>The code snippets below are designed to introduce the functionality of <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> so you
+can start using it quickly. It follows the same API as scikit-learn.</p>
+<p>For more detailed information see the <a class="reference internal" href="auto_examples/index.html#general-examples"><span class="std std-ref">Examples</span></a>,  <a class="reference internal" href="user_guide/index.html#user-guide"><span class="std std-ref">User Guide</span></a>
+and <a class="reference internal" href="api.html#api"><span class="std std-ref">API Reference</span></a> .</p>
 <section id="imports">
 <h3>Imports<a class="headerlink" href="#imports" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">set_config</span>
@@ -863,9 +881,9 @@ For more detailed information see the <a class="reference internal" href="auto_e
 </section>
 <section id="recognition">
 <h3>Recognition<a class="headerlink" href="#recognition" title="Link to this heading">#</a></h3>
-<p>We would like to thanks all contributors behind our direct dependencies like
-scikit-learn and cvxpy but also the contributors of the following packages that
-were a source of inspiration:</p>
+<p>We would like to thank all contributors behind our direct dependencies, such as
+scikit-learn and cvxpy, but also the contributors of the following packages that were a
+source of inspiration:</p>
 <blockquote>
 <div><ul class="simple">
 <li><p>PyPortfolioOpt</p></li>
@@ -879,9 +897,9 @@ were a source of inspiration:</p>
 </section>
 <section id="citation">
 <h3>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h3>
-<p>If you use skfolio in a scientific publication, we would appreciate citations:</p>
+<p>If you use <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> in a scientific publication, we would appreciate citations:</p>
 <p>Bibtex entry:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@misc</span><span class="p">{</span><span class="n">riskfolio</span><span class="p">,</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@misc</span><span class="p">{</span><span class="n">skfolio</span><span class="p">,</span>
       <span class="n">author</span> <span class="o">=</span> <span class="p">{</span><span class="n">Hugo</span> <span class="n">Delatte</span><span class="p">},</span>
       <span class="n">title</span> <span class="o">=</span> <span class="p">{</span><span class="n">skfolio</span><span class="p">},</span>
       <span class="n">year</span>  <span class="o">=</span> <span class="p">{</span><span class="mi">2023</span><span class="p">},</span>

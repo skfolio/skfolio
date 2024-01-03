@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.optimization.convex._maximum_diversification &#8212; skfolio 0.0.6 documentation</title>
+    <title>skfolio.optimization.convex._maximum_diversification &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -38,16 +38,13 @@
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../../../../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../../../../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../../../../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../../../../_static/documentation_options.js?v=1238456f"></script>
     <script src="../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -422,7 +419,7 @@ document.write(`
 <span class="sd">        If a float is provided, it is applied to each asset.</span>
 <span class="sd">        `None` is equivalent to `-np.Inf` (no lower bound).</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset minium weight) and the input `X` of the `fit` methods must</span>
+<span class="sd">        (asset name/asset minium weight) and the input `X` of the `fit` method must</span>
 <span class="sd">        be a DataFrame with the assets names in columns.</span>
 <span class="sd">        When using a dictionary, assets values that are not provided are assigned</span>
 <span class="sd">        a minimum weight of `0.0`.</span>
@@ -441,7 +438,7 @@ document.write(`
 <span class="sd">        If a float is provided, it is applied to each asset.</span>
 <span class="sd">        `None` is equivalent to `+np.Inf` (no upper bound).</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset maximum weight) and the input `X` of the `fit` methods must</span>
+<span class="sd">        (asset name/asset maximum weight) and the input `X` of the `fit` method must</span>
 <span class="sd">        be a DataFrame with the assets names in columns.</span>
 <span class="sd">        When using a dictionary, assets values that are not provided are assigned</span>
 <span class="sd">        a minimum weight of `1.0`.</span>
@@ -494,7 +491,7 @@ document.write(`
 
 <span class="sd">        with :math:`c_{i}` the transaction cost of asset i, :math:`w_{i}` its weight</span>
 <span class="sd">        and :math:`w\_prev_{i}` its previous weight (defined in `previous_weights`).</span>
-<span class="sd">        The float :math:`total\_cost` is used in the portfolio expected return:</span>
+<span class="sd">        The float :math:`total\_cost` is impacting the portfolio expected return in the optimization:</span>
 
 <span class="sd">        .. math:: expected\_return = \mu^{T} \cdot w - total\_cost</span>
 
@@ -503,7 +500,7 @@ document.write(`
 
 <span class="sd">        If a float is provided, it is applied to each asset.</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset cost) and the input `X` of the `fit` methods must be a</span>
+<span class="sd">        (asset name/asset cost) and the input `X` of the `fit` method must be a</span>
 <span class="sd">        DataFrame with the assets names in columns.</span>
 <span class="sd">        The default value is `0.0`.</span>
 
@@ -512,7 +509,7 @@ document.write(`
 <span class="sd">            Based on the above formula, the periodicity of the transaction costs</span>
 <span class="sd">            needs to be homogenous to the periodicity of :math:`\mu`. For example, if</span>
 <span class="sd">            the input `X` is composed of **daily** returns, the `transaction_costs` need</span>
-<span class="sd">            to be expressed in **daily** costs.</span>
+<span class="sd">            to be expressed as **daily** costs.</span>
 <span class="sd">            (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)</span>
 
 <span class="sd">    management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0</span>
@@ -522,7 +519,7 @@ document.write(`
 <span class="sd">        .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}</span>
 
 <span class="sd">        with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.</span>
-<span class="sd">        The float :math:`total\_fee` is used in the portfolio expected return:</span>
+<span class="sd">        The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:</span>
 
 <span class="sd">        .. math:: expected\_return = \mu^{T} \cdot w - total\_fee</span>
 
@@ -531,7 +528,7 @@ document.write(`
 
 <span class="sd">        If a float is provided, it is applied to each asset.</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset fee) and the input `X` of the `fit` methods must be a</span>
+<span class="sd">        (asset name/asset fee) and the input `X` of the `fit` method must be a</span>
 <span class="sd">        DataFrame with the assets names in columns.</span>
 <span class="sd">        The default value is `0.0`.</span>
 
@@ -555,7 +552,7 @@ document.write(`
 <span class="sd">        portfolio cost and the portfolio turnover.</span>
 <span class="sd">        If a float is provided, it is applied to each asset.</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset previous weight) and the input `X` of the `fit` methods must</span>
+<span class="sd">        (asset name/asset previous weight) and the input `X` of the `fit` method must</span>
 <span class="sd">        be a DataFrame with the assets names in columns.</span>
 <span class="sd">        The default (`None`) means no previous weights.</span>
 
@@ -590,7 +587,7 @@ document.write(`
 
 <span class="sd">        With &quot;ref1&quot;, &quot;ref2&quot; ... the assets names or the groups names provided</span>
 <span class="sd">        in the parameter `groups`. Assets names can be referenced without the need of</span>
-<span class="sd">        `groups` if the input `X` of the `fit` methods is a DataFrame with these</span>
+<span class="sd">        `groups` if the input `X` of the `fit` method is a DataFrame with these</span>
 <span class="sd">        assets names in columns.</span>
 
 <span class="sd">        Examples:</span>
@@ -604,7 +601,7 @@ document.write(`
 <span class="sd">    groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional</span>
 <span class="sd">        The assets groups referenced in `linear_constraints`.</span>
 <span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
-<span class="sd">        (asset name/asset groups) and the input `X` of the `fit` methods must be a</span>
+<span class="sd">        (asset name/asset groups) and the input `X` of the `fit` method must be a</span>
 <span class="sd">        DataFrame with the assets names in columns.</span>
 
 <span class="sd">        Examples:</span>

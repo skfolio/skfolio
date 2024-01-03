@@ -14,7 +14,7 @@ The `PriorModel` is a dataclass containing:
 
     * `mu`: Expected returns estimation
     * `covariance`: Covariance matrix estimation
-    * `returns`: Assets returns estimation
+    * `returns`: assets returns estimation
     * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
 
 The `EmpiricalPrior` estimator simply estimates the `PriorModel` from a `mu_estimator`

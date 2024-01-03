@@ -7,7 +7,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Hyper-Parameters Tuning" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Hyper-Parameters Tuning" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/hyper_parameters_tuning.html" />
 <meta property="og:site_name" content="skfolio" />
@@ -16,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="Hyper-parameters tuning ìn skfolio follows the same API as scikit-learn. Hyper-parameters are parameters that are not directly learnt within estimators. They are passed as arguments to the construc..." />
 
-    <title>Hyper-Parameters Tuning &#8212; skfolio 0.0.6 documentation</title>
+    <title>Hyper-Parameters Tuning &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -438,14 +437,14 @@ for a given estimator, use:</p>
 <li><p>a <a class="reference internal" href="#gridsearch-scoring"><span class="std std-ref">score function</span></a></p></li>
 </ul>
 <p>Two generic approaches to parameter search are provided in
-scikit-learn: for given values, <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.GridSearchCV</span></code> exhaustively considers
-all parameter combinations, while <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.RandomizedSearchCV</span></code> can sample a
+scikit-learn: for given values, <code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code> exhaustively considers
+all parameter combinations, while <code class="docutils literal notranslate"><span class="pre">RandomizedSearchCV</span></code> can sample a
 given number of candidates from a parameter space with a specified
 distribution.</p>
 <p>After describing these tools we detail <a class="reference internal" href="#grid-search-tips"><span class="std std-ref">best practices</span></a> applicable to these approaches.</p>
 <section id="exhaustive-grid-search">
 <h2>Exhaustive Grid Search<a class="headerlink" href="#exhaustive-grid-search" title="Link to this heading">#</a></h2>
-<p>The grid search provided by <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.GridSearchCV</span></code> exhaustively generates
+<p>The grid search provided by <code class="docutils literal notranslate"><span class="pre">GridSearchCV</span></code> exhaustively generates
 candidates from a grid of parameter values specified with the <code class="docutils literal notranslate"><span class="pre">param_grid</span></code>
 parameter. For instance, the following <code class="docutils literal notranslate"><span class="pre">param_grid</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">param_grid</span> <span class="o">=</span> <span class="p">[</span>
@@ -497,7 +496,7 @@ evaluated and the best combination is retained.</p>
 <p>While using a grid of parameter settings is currently the most widely used
 method for parameter optimization, other search methods have more
 favorable properties.
-<code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.RandomizedSearchCV</span></code> implements a randomized search over parameters,
+<code class="docutils literal notranslate"><span class="pre">RandomizedSearchCV</span></code> implements a randomized search over parameters,
 where each setting is sampled from a distribution over possible parameter values.
 This has two main benefits over an exhaustive search:</p>
 <ul class="simple">
@@ -563,8 +562,8 @@ variable that is log-uniformly distributed between <code class="docutils literal
 <span id="grid-search-tips"></span><h2>Tips for Parameter Search<a class="headerlink" href="#tips-for-parameter-search" title="Link to this heading">#</a></h2>
 <section id="specifying-an-objective-metric">
 <span id="gridsearch-scoring"></span><h3>Specifying an Objective Metric<a class="headerlink" href="#specifying-an-objective-metric" title="Link to this heading">#</a></h3>
-<p>By default, all optimization estimators have the same score function which is the
-<strong>Sharpe Ratio</strong>. This score function can be customized with the
+<p>By default, all portfolio optimization estimators have the same score function which is
+the <strong>Sharpe Ratio</strong>. This score function can be customized with
 <a class="reference internal" href="../generated/skfolio.metrics.make_scorer.html#skfolio.metrics.make_scorer" title="skfolio.metrics.make_scorer"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_scorer</span></code></a> by using another <a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">measure</span></a> or
 by writing your own score function.</p>
 <p><strong>Example:</strong></p>
@@ -615,7 +614,7 @@ by writing your own score function.</p>
 parameters of composite or nested estimators using a dedicated
 <code class="docutils literal notranslate"><span class="pre">&lt;estimator&gt;__&lt;parameter&gt;</span></code> syntax.</p>
 <p><strong>Example:</strong></p>
-<p>In the below example, we search the optimal parameter <code class="docutils literal notranslate"><span class="pre">alpha</span></code> of the nested estimators
+<p>In the below example, we search the optimal parameter <code class="docutils literal notranslate"><span class="pre">alpha</span></code> of the nested estimator
 <a class="reference internal" href="../generated/skfolio.moments.EWMu.html#skfolio.moments.EWMu" title="skfolio.moments.EWMu"><code class="xref py py-class docutils literal notranslate"><span class="pre">EWMu</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">GridSearchCV</span><span class="p">,</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">train_test_split</span>
 

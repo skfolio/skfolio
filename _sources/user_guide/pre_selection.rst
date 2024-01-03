@@ -12,10 +12,10 @@ initial assets universe.
 It follows the same API as scikit-learn's `estimator`: the `fit_transform` method takes
 `X` as the assets returns and returns a new `X` with only the pre-selected assets.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 
-Available transforms are:
+Available transformers are:
     * :class:`DropCorrelated`
     * :class:`SelectKExtremes`
     * :class:`SelectNonDominated`

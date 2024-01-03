@@ -7,14 +7,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="skfolio.optimization.ConvexOptimization" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="skfolio.optimization.ConvexOptimization" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/generated/skfolio.optimization.ConvexOptimization.html" />
 <meta property="og:site_name" content="skfolio" />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.optimization.ConvexOptimization &#8212; skfolio 0.0.6 documentation</title>
+    <title>skfolio.optimization.ConvexOptimization &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -45,16 +47,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -628,7 +627,7 @@ The default (<code class="docutils literal notranslate"><span class="pre">None</
 If a float is provided, it is applied to each asset.
 <code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">-np.Inf</span></code> (no lower bound).
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset minium weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+(asset name/asset minium weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must
 be a DataFrame with the assets names in columns.
 When using a dictionary, assets values that are not provided are assigned
 a minimum weight of <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.
@@ -648,7 +647,7 @@ The default value is <code class="docutils literal notranslate"><span class="pre
 If a float is provided, it is applied to each asset.
 <code class="docutils literal notranslate"><span class="pre">None</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">+np.Inf</span></code> (no upper bound).
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset maximum weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+(asset name/asset maximum weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must
 be a DataFrame with the assets names in columns.
 When using a dictionary, assets values that are not provided are assigned
 a minimum weight of <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.
@@ -698,14 +697,14 @@ the optimization problem:</p>
 \[total\_cost = \sum_{i=1}^{N} c_{i} \times |w_{i} - w\_prev_{i}|\]</div>
 <p>with <span class="math notranslate nohighlight">\(c_{i}\)</span> the transaction cost of asset i, <span class="math notranslate nohighlight">\(w_{i}\)</span> its weight
 and <span class="math notranslate nohighlight">\(w\_prev_{i}\)</span> its previous weight (defined in <code class="docutils literal notranslate"><span class="pre">previous_weights</span></code>).
-The float <span class="math notranslate nohighlight">\(total\_cost\)</span> is used in the portfolio expected return:</p>
+The float <span class="math notranslate nohighlight">\(total\_cost\)</span> is impacting the portfolio expected return in the optimization:</p>
 <div class="math notranslate nohighlight">
 \[expected\_return = \mu^{T} \cdot w - total\_cost\]</div>
 <p>with <span class="math notranslate nohighlight">\(\mu\)</span> the vector af assets’ expected returns and <span class="math notranslate nohighlight">\(w\)</span> the
 vector of assets weights.</p>
 <p>If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset cost) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+(asset name/asset cost) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must be a
 DataFrame with the assets names in columns.
 The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
 <div class="admonition warning">
@@ -713,7 +712,7 @@ The default value is <code class="docutils literal notranslate"><span class="pre
 <p>Based on the above formula, the periodicity of the transaction costs
 needs to be homogenous to the periodicity of <span class="math notranslate nohighlight">\(\mu\)</span>. For example, if
 the input <code class="docutils literal notranslate"><span class="pre">X</span></code> is composed of <strong>daily</strong> returns, the <code class="docutils literal notranslate"><span class="pre">transaction_costs</span></code> need
-to be expressed in <strong>daily</strong> costs.
+to be expressed as <strong>daily</strong> costs.
 (See <a class="reference internal" href="../auto_examples/1_mean_risk/plot_6_transaction_costs.html#sphx-glr-auto-examples-1-mean-risk-plot-6-transaction-costs-py"><span class="std std-ref">Transaction Costs</span></a>)</p>
 </div>
 </dd>
@@ -722,14 +721,14 @@ optimization problem:</p>
 <div class="math notranslate nohighlight">
 \[total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}\]</div>
 <p>with <span class="math notranslate nohighlight">\(f_{i}\)</span> the management fee of asset i and <span class="math notranslate nohighlight">\(w_{i}\)</span> its weight.
-The float <span class="math notranslate nohighlight">\(total\_fee\)</span> is used in the portfolio expected return:</p>
+The float <span class="math notranslate nohighlight">\(total\_fee\)</span> is impacting the portfolio expected return in the optimization:</p>
 <div class="math notranslate nohighlight">
 \[expected\_return = \mu^{T} \cdot w - total\_fee\]</div>
 <p>with <span class="math notranslate nohighlight">\(\mu\)</span> the vector af assets expected returns and <span class="math notranslate nohighlight">\(w\)</span> the vector
 of assets weights.</p>
 <p>If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset fee) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+(asset name/asset fee) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must be a
 DataFrame with the assets names in columns.
 The default value is <code class="docutils literal notranslate"><span class="pre">0.0</span></code>.</p>
 <div class="admonition warning">
@@ -752,7 +751,7 @@ bias in the management fees.</p>
 portfolio cost and the portfolio turnover.
 If a float is provided, it is applied to each asset.
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset previous weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must
+(asset name/asset previous weight) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must
 be a DataFrame with the assets names in columns.
 The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means no previous weights.</p>
 </dd>
@@ -803,7 +802,7 @@ The linear constraints must match any of following patterns:</p>
 </div></blockquote>
 <p>With “ref1”, “ref2” … the assets names or the groups names provided
 in the parameter <code class="docutils literal notranslate"><span class="pre">groups</span></code>. Assets names can be referenced without the need of
-<code class="docutils literal notranslate"><span class="pre">groups</span></code> if the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods is a DataFrame with these
+<code class="docutils literal notranslate"><span class="pre">groups</span></code> if the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method is a DataFrame with these
 assets names in columns.</p>
 <p>Examples:</p>
 <blockquote>
@@ -818,7 +817,7 @@ assets names in columns.</p>
 </dd>
 <dt><strong>groups</strong><span class="classifier">dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional</span></dt><dd><p>The assets groups referenced in <code class="docutils literal notranslate"><span class="pre">linear_constraints</span></code>.
 If a dictionary is provided, its (key/value) pair must be the
-(asset name/asset groups) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> methods must be a
+(asset name/asset groups) and the input <code class="docutils literal notranslate"><span class="pre">X</span></code> of the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method must be a
 DataFrame with the assets names in columns.</p>
 <p>Examples:</p>
 <blockquote>

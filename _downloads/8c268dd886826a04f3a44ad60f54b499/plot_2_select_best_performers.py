@@ -7,8 +7,8 @@ This tutorial introduces the :ref:`pre-selection transformers <pre_selection>`
 :class:`~skfolio.pre_selection.SelectKExtremes` to select the `k` best or the `k` worst
 assets according to a given measure before the optimization.
 
-In this example we will use a `Pipeline` to assemble the pre-selection step with a
-minimum variance optimization. Then we will use cross-validation to find the optimal
+In this example, we will use a `Pipeline` to assemble the pre-selection step with a
+minimum variance optimization. Then, we will use cross-validation to find the optimal
 number of pre-selected assets to maximize the mean out-of-sample Sharpe Ratio.
 """
 
@@ -69,7 +69,7 @@ model = Pipeline([("pre_selection", SelectKExtremes()), ("optimization", benchma
 # %%
 # Parameter Tuning
 # ================
-# To show how parameter tuning works in a Pipeline model, we find the number of
+# To demonstrate how parameter tuning works in a Pipeline model, we find the number of
 # pre-selected assets `k` that maximizes the out-of-sample Sharpe Ratio using
 # `GridSearchCV` with `WalkForward` cross-validation on the training set. The
 # `WalkForward` is chosen to simulate a three months (60 business days) rolling

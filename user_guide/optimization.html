@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Optimization" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Optimization" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/optimization.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="The optimization module regroups a set of methods intended for portfolio optimization. They follow the same API as scikit-learn’s estimator: the fit method takes X as the assets’ returns and stores..." />
+<meta property="og:description" content="The optimization module implements a set of methods intended for portfolio optimization. They follow the same API as scikit-learn’s estimator: the fit method takes X as the assets returns and store..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="The optimization module regroups a set of methods intended for portfolio optimization. They follow the same API as scikit-learn’s estimator: the fit method takes X as the assets’ returns and stores..." />
+<meta name="description" content="The optimization module implements a set of methods intended for portfolio optimization. They follow the same API as scikit-learn’s estimator: the fit method takes X as the assets returns and store..." />
 
-    <title>Optimization &#8212; skfolio 0.0.6 documentation</title>
+    <title>Optimization &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -419,13 +418,13 @@ document.write(`
                   
   <section id="optimization">
 <span id="id1"></span><h1>Optimization<a class="headerlink" href="#optimization" title="Link to this heading">#</a></h1>
-<p>The optimization module regroups a set of methods intended for portfolio optimization.
+<p>The optimization module implements a set of methods intended for portfolio optimization.
 They follow the same API as scikit-learn’s <code class="docutils literal notranslate"><span class="pre">estimator</span></code>: the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method takes <code class="docutils literal notranslate"><span class="pre">X</span></code> as
-the assets’ returns and stores the portfolio’s weights in its <code class="docutils literal notranslate"><span class="pre">weights_</span></code> attribute.</p>
-<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc…)</p>
+the assets returns and stores the portfolio weights in its <code class="docutils literal notranslate"><span class="pre">weights_</span></code> attribute.</p>
+<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc.)</p>
 <section id="naive-allocation">
 <h2>Naive Allocation<a class="headerlink" href="#naive-allocation" title="Link to this heading">#</a></h2>
-<p>The naive module regroups a set of naive allocations commonly used as benchmark for
+<p>The naive module implements a set of naive allocations commonly used as benchmarks for
 comparing different models:</p>
 <blockquote>
 <div><ul class="simple">
@@ -531,26 +530,28 @@ comparing different models:</p>
 <li><p>Gini Mean Difference</p></li>
 </ul>
 </div></blockquote>
-<p>And supports the following parameters:</p>
+<p>It supports the following parameters:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Weight constraints</p></li>
-<li><p>Budget constraints</p></li>
-<li><p>Group constrains</p></li>
-<li><p>Costs</p></li>
-<li><p>L1 and L2 regularization</p></li>
-<li><p>Turnover constraint and regularization</p></li>
-<li><p>Uncertainty set on expected returns</p></li>
-<li><p>Uncertainty set on covariance</p></li>
-<li><p>Expected return constraints</p></li>
-<li><p>Risk measure constraints</p></li>
-<li><p>Tracking error constraint</p></li>
-<li><p>Custom objective and constraints</p></li>
-<li><p>Prior estimator</p></li>
+<li><p>Weight Constraints</p></li>
+<li><p>Budget Constraints</p></li>
+<li><p>Group Constrains</p></li>
+<li><p>Transaction Costs</p></li>
+<li><p>Management Fees</p></li>
+<li><p>L1 and L2 Regularization</p></li>
+<li><p>Turnover Constraint</p></li>
+<li><p>Tracking Error Constraint</p></li>
+<li><p>Uncertainty Set on Expected Returns</p></li>
+<li><p>Uncertainty Set on Covariance</p></li>
+<li><p>Expected Return Constraints</p></li>
+<li><p>Risk Measure Constraints</p></li>
+<li><p>Custom Objective</p></li>
+<li><p>Custom Constraints</p></li>
+<li><p>Prior Estimator</p></li>
 </ul>
 </div></blockquote>
 <p><strong>Example:</strong></p>
-<p>Maximum Sharpe Ratio:</p>
+<p>Maximum Sharpe Ratio portfolio:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
@@ -576,9 +577,9 @@ comparing different models:</p>
 </div>
 <section id="prior-estimator">
 <h3>Prior Estimator<a class="headerlink" href="#prior-estimator" title="Link to this heading">#</a></h3>
-<p>Every optimization estimator has a parameter named <code class="docutils literal notranslate"><span class="pre">prior_estimator</span></code>.
+<p>Every portfolio optimization has a parameter named <code class="docutils literal notranslate"><span class="pre">prior_estimator</span></code>.
 The <a class="reference internal" href="prior.html#prior"><span class="std std-ref">prior estimator</span></a> fits a <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> containing
-the estimation of assets expected returns, covariance matrix, returns and Cholesky
+the estimation of assets     expected returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.</p>
 <p>The available prior estimators are:</p>
@@ -615,15 +616,16 @@ model used to estimate such distribution.</p>
 </section>
 <section id="combining-prior-estimators">
 <h3>Combining Prior Estimators<a class="headerlink" href="#combining-prior-estimators" title="Link to this heading">#</a></h3>
-<p>Prior estimators can be combined together making it possible to design complex models:</p>
+<p>Prior estimators can be combined together, making it possible to design complex models:</p>
 <p><strong>Example:</strong></p>
-<p>This example is <strong>purposely complex</strong> to show how multiple estimators can be combined.
-The below model is a Maximum Sharpe Ratio optimization using a Factor Model for the
-estimation of the assets’ expected reruns and covariance matrix. A Black &amp; Litterman
-model is used for the estimation of the factors’ expected reruns and covariance matrix
-incorporating the analyst’ views on the factors. Finally the Black &amp; Litterman prior
-expected returns is an equal-weighted market equilibrium with a risk aversion of 2 and a
-denoised prior covariance matrix.</p>
+<p>This example is <strong>purposely complex</strong> to demonstrate how multiple estimators can be
+combined.</p>
+<p>The model below is a Maximum Sharpe Ratio optimization using a Factor Model for the
+estimation of the <strong>assets</strong> expected reruns and covariance matrix. A Black &amp; Litterman
+model is used for the estimation of the <strong>factors</strong> expected reruns and covariance matrix,
+incorporating the analyst’ views on the factors. Finally, the Black &amp; Litterman prior
+expected returns are estimated using an equal-weighted market equilibrium with a risk
+aversion of 2 and a denoised prior covariance matrix:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_factors_dataset</span><span class="p">,</span> <span class="n">load_sp500_dataset</span>
@@ -664,11 +666,11 @@ denoised prior covariance matrix.</p>
 </section>
 <section id="custom-estimator">
 <h3>Custom Estimator<a class="headerlink" href="#custom-estimator" title="Link to this heading">#</a></h3>
-<p>It is very common to use a custom implementation for the prior estimator. For
+<p>It is very common to use a custom implementation for the moments estimators. For
 example, you may want to use an in-house estimation for the covariance or a predictive
 model for the expected returns.</p>
 <p>Below is a simple example of how you would implement a custom covariance estimator.
-For more complex cases and estimators, check the <a class="reference internal" href="../api.html#api"><span class="std std-ref">API Reference</span></a></p>
+For more complex cases and estimators, check the <a class="reference internal" href="../api.html#api"><span class="std std-ref">API Reference</span></a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
@@ -703,13 +705,13 @@ For more complex cases and estimators, check the <a class="reference internal" h
 </section>
 <section id="worst-case-optimization">
 <h3>Worst-Case Optimization<a class="headerlink" href="#worst-case-optimization" title="Link to this heading">#</a></h3>
-<p>With the <code class="docutils literal notranslate"><span class="pre">mu_uncertainty_set_estimator</span></code> parameter, the assets’ expected returns are
-modelled with an ellipsoidal uncertainty set. It is called worst-case optimization and
-is a class of robust optimization. It reduces the instability that arises from the
-estimation errors of the expected returns.</p>
+<p>With the <code class="docutils literal notranslate"><span class="pre">mu_uncertainty_set_estimator</span></code> parameter, the expected returns of the assets
+are modeled with an ellipsoidal uncertainty set. This approach is known as worst-case
+optimization and falls under the class of robust optimization. It mitigates the
+instability that arises from estimation errors of the expected returns.</p>
 <p><strong>Example:</strong></p>
-<p>Worst-case maximum mean/CDaR ratio (Conditional Drawdown at Risk) with an ellipsoidal
-uncertainty set for the assets’ expected returns.</p>
+<p>Worst-case maximum Mean/CDaR ratio (Conditional Drawdown at Risk) with an ellipsoidal
+uncertainty set for the expected returns of the assets:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
@@ -740,7 +742,7 @@ uncertainty set for the assets’ expected returns.</p>
 <section id="going-further">
 <h3>Going Further<a class="headerlink" href="#going-further" title="Link to this heading">#</a></h3>
 <p>You can explore the remaining parameters (constraints, L1 and L2 regularization, costs,
-turnover, tracking error…) with the
+turnover, tracking error, etc.) with the
 <a class="reference internal" href="../auto_examples/1_mean_risk/index.html#mean-risk-examples"><span class="std std-ref">Mean-Risk examples</span></a> and the <a class="reference internal" href="../generated/skfolio.optimization.MeanRisk.html#skfolio.optimization.MeanRisk" title="skfolio.optimization.MeanRisk"><code class="xref py py-class docutils literal notranslate"><span class="pre">MeanRisk</span></code></a> API.</p>
 </section>
 </section>
@@ -782,20 +784,22 @@ barrier.</p>
 <li><p>First Lower Partial Moment</p></li>
 </ul>
 </div></blockquote>
-<p>And supports the following parameters:</p>
+<p>It supports the following parameters:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Weight constraints</p></li>
-<li><p>Budget constraints</p></li>
-<li><p>Group constrains</p></li>
-<li><p>Costs</p></li>
-<li><p>Expected return constraints</p></li>
-<li><p>Custom objective and constraints</p></li>
-<li><p>Prior estimator</p></li>
+<li><p>Weight Constraints</p></li>
+<li><p>Budget Constraints</p></li>
+<li><p>Group Constrains</p></li>
+<li><p>Transaction Costs</p></li>
+<li><p>Management Fees</p></li>
+<li><p>Expected Return Constraints</p></li>
+<li><p>Custom Objective</p></li>
+<li><p>Custom constraints</p></li>
+<li><p>Prior Estimator</p></li>
 </ul>
 </div></blockquote>
-<p>Limitations are imposed on some constraint like long only weights to ensure the problem
-stay convex.</p>
+<p>Limitations are imposed on certain constraints, such as long-only weights, to ensure the
+problem remains convex.</p>
 <p><strong>Example:</strong></p>
 <p>CVaR (Conditional Value at Risk) Risk Parity portfolio:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
@@ -826,7 +830,7 @@ stay convex.</p>
 </section>
 <section id="maximum-diversification">
 <h2>Maximum Diversification<a class="headerlink" href="#maximum-diversification" title="Link to this heading">#</a></h2>
-<p>The <a class="reference internal" href="../generated/skfolio.optimization.MaximumDiversification.html#skfolio.optimization.MaximumDiversification" title="skfolio.optimization.MaximumDiversification"><code class="xref py py-class docutils literal notranslate"><span class="pre">MaximumDiversification</span></code></a> maximizes the diversification ratio which is the
+<p>The <a class="reference internal" href="../generated/skfolio.optimization.MaximumDiversification.html#skfolio.optimization.MaximumDiversification" title="skfolio.optimization.MaximumDiversification"><code class="xref py py-class docutils literal notranslate"><span class="pre">MaximumDiversification</span></code></a> maximizes the diversification ratio, which is the
 ratio of the weighted volatilities over the total volatility.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
@@ -853,12 +857,12 @@ ratio of the weighted volatilities over the total volatility.</p>
 <h2>Distributionally Robust CVaR<a class="headerlink" href="#distributionally-robust-cvar" title="Link to this heading">#</a></h2>
 <p>The <a class="reference internal" href="../generated/skfolio.optimization.DistributionallyRobustCVaR.html#skfolio.optimization.DistributionallyRobustCVaR" title="skfolio.optimization.DistributionallyRobustCVaR"><code class="xref py py-class docutils literal notranslate"><span class="pre">DistributionallyRobustCVaR</span></code></a> constructs a Wasserstein ball in the space of
 multivariate and non-discrete probability distributions centered at the uniform
-distribution on the training samples, and find the allocation that minimize the CVaR
+distribution on the training samples and finds the allocation that minimizes the CVaR
 of the worst-case distribution within this Wasserstein ball.
 Esfahani and Kuhn proved that for piecewise linear objective functions,
 which is the case of CVaR, the distributionally robust optimization problem
 over a Wasserstein ball can be reformulated as finite convex programs.</p>
-<p>A solver like <code class="docutils literal notranslate"><span class="pre">Mosek</span></code> that can handles a high number of constraints is preferred.</p>
+<p>A solver like <code class="docutils literal notranslate"><span class="pre">Mosek</span></code> that can handle a high number of constraints is preferred.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
@@ -886,12 +890,12 @@ over a Wasserstein ball can be reformulated as finite convex programs.</p>
 <p>The <a class="reference internal" href="../generated/skfolio.optimization.HierarchicalRiskParity.html#skfolio.optimization.HierarchicalRiskParity" title="skfolio.optimization.HierarchicalRiskParity"><code class="xref py py-class docutils literal notranslate"><span class="pre">HierarchicalRiskParity</span></code></a> (HRP) is a portfolio optimization method developed
 by Marcos Lopez de Prado.</p>
 <p>This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then uses seriation to rearrange the assets
-in the dendrogram minimizing the distance between leafs.</p>
+Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
+in the dendrogram, minimizing the distance between leafs.</p>
 <p>The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
-manner. For each sub-cluster we compute the total cluster risk of an inverse-risk
-allocation. A weighting factor is then computed from these two sub-cluster risks
+manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
+allocation. A weighting factor is then computed from these two sub-cluster risks,
 which is used to update the cluster weight.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -899,7 +903,7 @@ which is used to update the cluster weight.</p>
 method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
 multiple risk measures and linkage methods.
 The default linkage method is set to the Ward
-variance minimization algorithm which is more stable and have better properties
+variance minimization algorithm, which is more stable and has better properties
 than the single-linkage method.</p>
 </div>
 <p>It supports all <a class="reference internal" href="prior.html#prior"><span class="std std-ref">prior estimators</span></a> and <a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">risk measures</span></a>
@@ -951,16 +955,16 @@ mutual information as the distance estimator:</p>
 <p>The <a class="reference internal" href="../generated/skfolio.optimization.HierarchicalEqualRiskContribution.html#skfolio.optimization.HierarchicalEqualRiskContribution" title="skfolio.optimization.HierarchicalEqualRiskContribution"><code class="xref py py-class docutils literal notranslate"><span class="pre">HierarchicalEqualRiskContribution</span></code></a> (HERC) is a portfolio optimization method
 developed by Thomas Raffinot.</p>
 <p>This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then computes, for each cluster, the total
-cluster risk of an inverse-risk allocation.
-The final step is the top-down recursive division of the dendrogram where the assets
+Hierarchical Tree Clustering algorithm. It then computes, for each cluster, the total
+cluster risk of an inverse-risk allocation.</p>
+<p>The final step is the top-down recursive division of the dendrogram, where the assets
 weights are updated using a naive risk parity within clusters.</p>
 <p>It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
 during the top-down recursive division instead of bisecting it.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The default linkage method is set to the Ward
-variance minimization algorithm which is more stable and have better properties
+variance minimization algorithm, which is more stable and has better properties
 than the single-linkage method.</p>
 </div>
 <p>It supports all <a class="reference internal" href="prior.html#prior"><span class="std std-ref">prior estimators</span></a> and <a class="reference internal" href="../api.html#measures-ref"><span class="std std-ref">risk measures</span></a>
@@ -981,7 +985,7 @@ matrix:</p>
 </div></blockquote>
 <p><strong>Example:</strong></p>
 <p>Hierarchical Equal Risk Contribution with CVaR (Conditional Value at Risk) as the risk
-measure and mutual information as the distance estimator.</p>
+measure and mutual information as the distance estimator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
 
 <span class="kn">from</span> <span class="nn">skfolio</span> <span class="kn">import</span> <span class="n">RiskMeasure</span>
@@ -1022,18 +1026,18 @@ inner-weights and outer-weights.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The original paper uses KMeans as the clustering algorithm, minimum Variance for
-the inner-estimator and equal-weight for the outer-estimator. Here we generalize
-it to all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> and <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> clustering algorithm (Hierarchical Tree
-Clustering, KMeans, …), all optimization estimators (Mean-Variance, HRP, …)
-and risk measures (variance, CVaR,…).
+the inner-estimator and equal-weighted for the outer-estimator. Here we generalize
+it to all <code class="docutils literal notranslate"><span class="pre">sklearn</span></code> and <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> clustering algorithms (Hierarchical Tree
+Clustering, KMeans, etc.), all portfolio optimizations (Mean-Variance, HRP, etc.)
+and risk measures (variance, CVaR, etc.).
 To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
-fit the outer optimization.</p>
+fit the outer estimator.</p>
 </div>
 <p>It supports all <a class="reference internal" href="distance.html#distance"><span class="std std-ref">distance estimator</span></a>
 and <a class="reference internal" href="cluster.html#cluster"><span class="std std-ref">clustering estimator</span></a> (both <code class="docutils literal notranslate"><span class="pre">skfolio</span></code> and <code class="docutils literal notranslate"><span class="pre">sklearn</span></code>)</p>
 <p><strong>Example:</strong></p>
 <p>Nested Clusters Optimization with KMeans as the clustering algorithm, Kendall Distance
-as the distance estimator, Minimum Semi-Variance as the inner estimator and CVaR Risk
+as the distance estimator, Minimum Semi-Variance as the inner estimator, and CVaR Risk
 Parity as the outer (meta) estimator trained on the out-of-sample estimates from the
 KFolds cross-validation and run with parallelization:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sklearn.cluster</span> <span class="kn">import</span> <span class="n">KMeans</span>
@@ -1066,8 +1070,8 @@ KFolds cross-validation and run with parallelization:</p>
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">contribution</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">RiskMeasure</span><span class="o">.</span><span class="n">CVAR</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter can also be a combinatorial cross-validation like
-<code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code> in which case each cluster
+<p>The <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter can also be a combinatorial cross-validation, such as
+<code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code>, in which case each cluster’s
 out-of-sample outputs are a collection of multiple paths instead of one single path.
 The selected out-of-sample path among this collection of paths is chosen according to
 the <code class="docutils literal notranslate"><span class="pre">quantile</span></code> and <code class="docutils literal notranslate"><span class="pre">quantile_measure</span></code> parameters.</p>
@@ -1075,10 +1079,11 @@ the <code class="docutils literal notranslate"><span class="pre">quantile</span>
 <section id="stacking-optimization">
 <h2>Stacking Optimization<a class="headerlink" href="#stacking-optimization" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="../generated/skfolio.optimization.StackingOptimization.html#skfolio.optimization.StackingOptimization" title="skfolio.optimization.StackingOptimization"><code class="xref py py-class docutils literal notranslate"><span class="pre">StackingOptimization</span></code></a> is an ensemble method that consists in stacking the output
-of individual optimization estimators with a final optimization estimator.</p>
-<p>The weights are the dot-product of individual estimators weights with the final
-estimator weights. Stacking allows to use the strength of each individual estimator
-by using their output as input of a final estimator.</p>
+of individual portfolio optimizations with a final portfolio optimization.</p>
+<p>The weights are the dot-product of individual optimizations weights with the final
+optimization weights.</p>
+<p>Stacking allows to use the strength of each individual portfolio optimization by
+using their output as input of a final portfolio optimization.</p>
 <p>To avoid data leakage, out-of-sample estimates are used to fit the outer
 optimization.</p>
 <p><strong>Example:</strong></p>
@@ -1114,11 +1119,11 @@ stacked together using Minimum Variance as the final (meta) estimator.</p>
 <span class="nb">print</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">annualized_sharpe_ratio</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter can also be a combinatorial cross-validation like
-<code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code> in which case each out-of-sample outputs are a collection
-of multiple paths instead of one single path. The selected out-of-sample path among
-this collection of paths is chosen according to the <code class="docutils literal notranslate"><span class="pre">quantile</span></code> and <code class="docutils literal notranslate"><span class="pre">quantile_measure</span></code>
-parameters.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter can also be a combinatorial cross-validation, such as
+<code class="xref py py-class docutils literal notranslate"><span class="pre">CombinatorialPurgedCV</span></code>, in which case each out-of-sample outputs are a
+collection of multiple paths instead of one single path. The selected out-of-sample path
+among this collection of paths is chosen according to the <code class="docutils literal notranslate"><span class="pre">quantile</span></code> and
+<code class="docutils literal notranslate"><span class="pre">quantile_measure</span></code> parameters.</p>
 </section>
 </section>
 

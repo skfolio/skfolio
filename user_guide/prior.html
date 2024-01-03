@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Prior Estimator" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Prior Estimator" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/prior.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="A prior estimator fits a PriorModel containing the distribution estimate of asset returns. It represents the investor’s prior beliefs about the model used to estimate such distribution. A prior est..." />
+<meta property="og:description" content="A prior estimator fits a PriorModel containing the distribution estimate of asset returns. It represents the investor’s prior beliefs about the model used to estimate that distribution. A prior est..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="A prior estimator fits a PriorModel containing the distribution estimate of asset returns. It represents the investor’s prior beliefs about the model used to estimate such distribution. A prior est..." />
+<meta name="description" content="A prior estimator fits a PriorModel containing the distribution estimate of asset returns. It represents the investor’s prior beliefs about the model used to estimate that distribution. A prior est..." />
 
-    <title>Prior Estimator &#8212; skfolio 0.0.6 documentation</title>
+    <title>Prior Estimator &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -418,25 +417,28 @@ document.write(`
                   
   <section id="prior-estimator">
 <span id="prior"></span><h1>Prior Estimator<a class="headerlink" href="#prior-estimator" title="Link to this heading">#</a></h1>
-<p>A prior estimator fits a <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> containing the distribution estimate of asset returns.
-It represents the investor’s prior beliefs about the model used to estimate such distribution.</p>
-<p>A prior estimator follow the same API as scikit-learn’s <code class="docutils literal notranslate"><span class="pre">estimator</span></code>: the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method
+<p>A prior estimator fits a <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> containing the distribution estimate of
+asset returns. It represents the investor’s prior beliefs about the model used to
+estimate that distribution.</p>
+<p>A prior estimator follows the same API as scikit-learn’s <code class="docutils literal notranslate"><span class="pre">estimator</span></code>: the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method
 takes <code class="docutils literal notranslate"><span class="pre">X</span></code> as the assets returns and stores the <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> in its
 <code class="docutils literal notranslate"><span class="pre">prior_model_</span></code> attribute.</p>
-<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc…)</p>
+<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc.)</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>The prior of one model can be the posterior of another one. For example, <a class="reference internal" href="../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackLitterman</span></code></a> takes as input a
-prior estimator used to compute the prior expected returns and prior covariance matrix which are updated using the
-analyst’s views to get the posterior expected returns and posterior covariance matrix. These posterior estimates
-will be saved in a new <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> that can be used in another estimator.</p>
+<p>The prior of one model can be the posterior of another one. For example,
+<a class="reference internal" href="../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackLitterman</span></code></a> takes as input a prior estimator used to compute the prior
+expected returns and prior covariance matrix, which are updated using the analyst’s
+views to get the posterior expected returns and posterior covariance matrix. These
+posterior estimates will be saved in a new <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> that can be used in
+another estimator.</p>
 </div>
 <p>The <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> is a dataclass containing:</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">mu</span></code>: Expected returns estimation</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">covariance</span></code>: Covariance matrix estimation</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">returns</span></code>: Assets returns estimation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">returns</span></code>: assets returns estimation</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">cholesky</span></code> : Lower-triangular Cholesky factor of the covariance estimation (optional)</p></li>
 </ul>
 </div></blockquote>
@@ -467,8 +469,8 @@ Denoising for the estimation of the covariance matrix:</p>
 <h2>Black &amp; Litterman<a class="headerlink" href="#black-litterman" title="Link to this heading">#</a></h2>
 <p>The <a class="reference internal" href="../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackLitterman</span></code></a> estimator estimates the <a class="reference internal" href="../generated/skfolio.prior.PriorModel.html#skfolio.prior.PriorModel" title="skfolio.prior.PriorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PriorModel</span></code></a> using the
 Black &amp; Litterman model. It takes a Bayesian approach by using a prior estimate
-of the assets expected returns and covariance matrix which are updated using the
-analyst views to get the posterior estimate.</p>
+of the assets expected returns and covariance matrix, which are updated using the
+analyst views to get the posterior estimates.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
 <span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_sp500_dataset</span>
@@ -495,12 +497,12 @@ analyst views to get the posterior estimate.</p>
 model and a <a class="reference internal" href="#prior"><span class="std std-ref">prior estimator</span></a> of the factor’s returns.</p>
 <p>The purpose of factor models is to impose a structure on financial variables and
 their covariance matrix by explaining them through a small number of common factors.
-This can help to overcome estimation error by reducing the number of parameters,
+This can help overcome estimation error by reducing the number of parameters,
 i.e., the dimensionality of the estimation problem, making portfolio optimization
 more robust against noise in the data. Factor models also provide a decomposition of
-financial risk to systematic and security specific components.</p>
+financial risk into systematic and security-specific components.</p>
 <p>To be fully compatible with <code class="docutils literal notranslate"><span class="pre">scikit-learn</span></code>, the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method takes <code class="docutils literal notranslate"><span class="pre">X</span></code> as the assets
-returns and <code class="docutils literal notranslate"><span class="pre">y</span></code> as the factors returns. Note that <code class="docutils literal notranslate"><span class="pre">y</span></code> is in lower case even for a 2D
+returns and <code class="docutils literal notranslate"><span class="pre">y</span></code> as the factors returns. Note that <code class="docutils literal notranslate"><span class="pre">y</span></code> is in lowercase even for a 2D
 array (more than one factor). This is for consistency with the scikit-learn API.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_factors_dataset</span><span class="p">,</span> <span class="n">load_sp500_dataset</span>
@@ -516,19 +518,20 @@ array (more than one factor). This is for consistency with the scikit-learn API.
 <span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">prior_model_</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The loading matrix (betas) of the factors is estimated using a <code class="docutils literal notranslate"><span class="pre">loading_matrix_estimator</span></code>. By Default we use
-the <a class="reference internal" href="../generated/skfolio.prior.LoadingMatrixRegression.html#skfolio.prior.LoadingMatrixRegression" title="skfolio.prior.LoadingMatrixRegression"><code class="xref py py-class docutils literal notranslate"><span class="pre">LoadingMatrixRegression</span></code></a> which fits the factors using a <code class="xref py py-class docutils literal notranslate"><span class="pre">sklean.linear_model.LassoCV</span></code> on each asset
+<p>The loading matrix (betas) of the factors is estimated using a
+<code class="docutils literal notranslate"><span class="pre">loading_matrix_estimator</span></code>. By default, we use the <a class="reference internal" href="../generated/skfolio.prior.LoadingMatrixRegression.html#skfolio.prior.LoadingMatrixRegression" title="skfolio.prior.LoadingMatrixRegression"><code class="xref py py-class docutils literal notranslate"><span class="pre">LoadingMatrixRegression</span></code></a>
+which fits the factors using a <code class="xref py py-class docutils literal notranslate"><span class="pre">sklean.linear_model.LassoCV</span></code> on each asset
 separately.</p>
 </section>
 <section id="combining-multiple-prior-estimators">
 <h2>Combining Multiple Prior Estimators<a class="headerlink" href="#combining-multiple-prior-estimators" title="Link to this heading">#</a></h2>
 <p>Prior estimators can be combined. For example, it is possible to create a Black &amp;
-Litterman Factor Model by simply using a <a class="reference internal" href="../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackLitterman</span></code></a> estimator for the prior
+Litterman Factor Model by using a <a class="reference internal" href="../generated/skfolio.prior.BlackLitterman.html#skfolio.prior.BlackLitterman" title="skfolio.prior.BlackLitterman"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlackLitterman</span></code></a> estimator for the prior
 estimator of the <a class="reference internal" href="../generated/skfolio.prior.FactorModel.html#skfolio.prior.FactorModel" title="skfolio.prior.FactorModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">FactorModel</span></code></a>:</p>
 <p><strong>Example:</strong></p>
-<p>Factor model for the estimation of the assets expected retruns and covariance matrix
-with a Black &amp; Litterman model for the estimation of the factors expected reruns and
-covariance matrix incorporating the analyst views on the factors.</p>
+<p>Factor model for the estimation of the <strong>assets</strong> expected returns and covariance matrix
+with a Black &amp; Litterman model for the estimation of the <strong>factors</strong> expected reruns and
+covariance matrix, incorporating the analyst views on the <strong>factors</strong>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">skfolio.datasets</span> <span class="kn">import</span> <span class="n">load_factors_dataset</span><span class="p">,</span> <span class="n">load_sp500_dataset</span>
 <span class="kn">from</span> <span class="nn">skfolio.preprocessing</span> <span class="kn">import</span> <span class="n">prices_to_returns</span>
 <span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">BlackLitterman</span><span class="p">,</span> <span class="n">FactorModel</span>

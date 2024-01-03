@@ -7,16 +7,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Uncertainty Set Estimator" />
+    <link rel="shortcut icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../_static/favicon.svg">
+    <link rel="icon" type="image/png" sizes="144x144" href="../_static/favicon.png"><meta property="og:title" content="Uncertainty Set Estimator" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://skfolio.org/user_guide/uncertainty_set.html" />
 <meta property="og:site_name" content="skfolio" />
-<meta property="og:description" content="The Uncertainty Set estimator build an ellipsoidal UncertaintySet of the distribution moments. An ellipsoidal uncertainty set is defined by its size\kappa and shape S. Ellipsoidal uncertainty set c..." />
+<meta property="og:description" content="The Uncertainty Set estimator builds an ellipsoidal UncertaintySet of the distribution moments. An ellipsoidal uncertainty set is defined by its size\kappa and shape S. Ellipsoidal uncertainty set ..." />
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
-<meta name="description" content="The Uncertainty Set estimator build an ellipsoidal UncertaintySet of the distribution moments. An ellipsoidal uncertainty set is defined by its size\kappa and shape S. Ellipsoidal uncertainty set c..." />
+<meta name="description" content="The Uncertainty Set estimator builds an ellipsoidal UncertaintySet of the distribution moments. An ellipsoidal uncertainty set is defined by its size\kappa and shape S. Ellipsoidal uncertainty set ..." />
 
-    <title>Uncertainty Set Estimator &#8212; skfolio 0.0.6 documentation</title>
+    <title>Uncertainty Set Estimator &#8212; skfolio 0.0.8 documentation</title>
   
   
   
@@ -47,16 +49,13 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
-    <link rel="shortcut icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="any" type="image/svg" href="../_static/favicon.svg?v=74787a2a" />
-    <link rel="icon" sizes="144x144" type="image/png" href="../_static/favicon.png?v=82bee5bb" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=9cd9e4be"></script>
+    <script src="../_static/documentation_options.js?v=1238456f"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -419,7 +418,7 @@ document.write(`
                   
   <section id="uncertainty-set-estimator">
 <span id="id1"></span><h1>Uncertainty Set Estimator<a class="headerlink" href="#uncertainty-set-estimator" title="Link to this heading">#</a></h1>
-<p>The <a class="reference internal" href="../api.html#uncertainty-set-ref"><span class="std std-ref">Uncertainty Set estimator</span></a> build an ellipsoidal
+<p>The <a class="reference internal" href="../api.html#uncertainty-set-ref"><span class="std std-ref">Uncertainty Set estimator</span></a> builds an ellipsoidal
 <a class="reference internal" href="../generated/skfolio.uncertainty_set.UncertaintySet.html#skfolio.uncertainty_set.UncertaintySet" title="skfolio.uncertainty_set.UncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">UncertaintySet</span></code></a> of the distribution moments.</p>
 <p>An ellipsoidal uncertainty set is defined by its size <span class="math notranslate nohighlight">\(\kappa\)</span> and
 shape <span class="math notranslate nohighlight">\(S\)</span>. Ellipsoidal uncertainty set can be used with both expected returns
@@ -437,14 +436,14 @@ and covariance:</p>
 <p>It follows the same API as scikit-learn’s <code class="docutils literal notranslate"><span class="pre">estimator</span></code>: the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method takes <code class="docutils literal notranslate"><span class="pre">X</span></code> as
 the assets returns and stores the <a class="reference internal" href="../generated/skfolio.uncertainty_set.UncertaintySet.html#skfolio.uncertainty_set.UncertaintySet" title="skfolio.uncertainty_set.UncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">UncertaintySet</span></code></a> in its <code class="docutils literal notranslate"><span class="pre">uncertainty_set_</span></code>
 attribute.</p>
-<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc…)</p>
+<p><code class="docutils literal notranslate"><span class="pre">X</span></code> can be any array-like structure (numpy array, pandas DataFrame, etc.)</p>
 <dl class="simple">
-<dt>Available estimators for the expected returns are:</dt><dd><ul class="simple">
+<dt>Available estimators for the expected returns:</dt><dd><ul class="simple">
 <li><p><a class="reference internal" href="../generated/skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html#skfolio.uncertainty_set.EmpiricalMuUncertaintySet" title="skfolio.uncertainty_set.EmpiricalMuUncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmpiricalMuUncertaintySet</span></code></a></p></li>
 <li><p><a class="reference internal" href="../generated/skfolio.uncertainty_set.BootstrapMuUncertaintySet.html#skfolio.uncertainty_set.BootstrapMuUncertaintySet" title="skfolio.uncertainty_set.BootstrapMuUncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">BootstrapMuUncertaintySet</span></code></a></p></li>
 </ul>
 </dd>
-<dt>Available estimators for the covariance are:</dt><dd><ul class="simple">
+<dt>Available estimators for the covariance:</dt><dd><ul class="simple">
 <li><p><a class="reference internal" href="../generated/skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html#skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet" title="skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmpiricalCovarianceUncertaintySet</span></code></a></p></li>
 <li><p><a class="reference internal" href="../generated/skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet.html#skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet" title="skfolio.uncertainty_set.BootstrapCovarianceUncertaintySet"><code class="xref py py-class docutils literal notranslate"><span class="pre">BootstrapCovarianceUncertaintySet</span></code></a></p></li>
 </ul>

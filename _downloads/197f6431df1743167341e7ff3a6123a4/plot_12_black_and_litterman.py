@@ -14,12 +14,12 @@ The `PriorModel` is a dataclass containing:
 
     * `mu`: Expected returns estimation
     * `covariance`: Covariance matrix estimation
-    * `returns`: Assets' returns estimation
+    * `returns`: assets returns estimation
     * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
 
 The `BlackLitterman` estimator estimates the `PriorModel` using the Black & Litterman
 model. It takes as input a prior estimator used to compute the prior expected returns
-and prior covariance matrix which are updated using the analyst's views to get the
+and prior covariance matrix, which are updated using the analyst's views to get the
 posterior expected returns and posterior covariance matrix.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the

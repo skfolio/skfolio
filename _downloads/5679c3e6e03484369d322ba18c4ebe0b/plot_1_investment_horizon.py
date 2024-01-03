@@ -60,7 +60,7 @@ for tag, investment_horizon in [
 
 
 # %%
-# let's plot the efficient frontier:
+# Let's plot the efficient frontier:
 fig = population.plot_measures(
     x=RiskMeasure.ANNUALIZED_VARIANCE,
     y=PerfMeasure.ANNUALIZED_MEAN,
@@ -70,7 +70,7 @@ show(fig)
 # %%
 # |
 #
-# let's plot the portfolios compositions:
+# Let's plot the portfolios compositions:
 population.plot_composition()
 
 # %%

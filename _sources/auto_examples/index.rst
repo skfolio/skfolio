@@ -5,8 +5,8 @@
 Examples
 ========
 
-We advise to start with :ref:`sphx_glr_auto_examples_1_mean_risk_plot_1_maximum_sharpe_ratio.py`
-or :ref:`sphx_glr_auto_examples_1_mean_risk_plot_2_minimum_CVaR.py` before moving to more advance examples.
+We recommend starting with :ref:`sphx_glr_auto_examples_1_mean_risk_plot_1_maximum_sharpe_ratio.py`
+or :ref:`sphx_glr_auto_examples_1_mean_risk_plot_2_minimum_CVaR.py` before moving to more advanced examples.
 
 
 
@@ -465,7 +465,7 @@ Examples concerning hierarchical clustering based optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial we will compare the HierarchicalRiskParity (HRP) vs the HierarchicalEqualRiskC...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial, we will compare the HierarchicalRiskParity (HRP) optimization with the Hierar...">
 
 .. only:: html
 
@@ -499,7 +499,7 @@ Examples concerning hierarchical clustering based optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="The previous tutorial introduced the NestedClustersOptimization optimization.">
+    <div class="sphx-glr-thumbcontainer" tooltip="The previous tutorial introduced the NestedClustersOptimization.">
 
 .. only:: html
 
@@ -534,7 +534,7 @@ Examples concerning ensemble optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the StackingOptimization optimization.">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the StackingOptimization.">
 
 .. only:: html
 

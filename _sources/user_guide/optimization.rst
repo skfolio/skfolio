@@ -6,16 +6,16 @@
 Optimization
 ============
 
-The optimization module regroups a set of methods intended for portfolio optimization.
+The optimization module implements a set of methods intended for portfolio optimization.
 They follow the same API as scikit-learn's `estimator`: the `fit` method takes `X` as
-the assets' returns and stores the portfolio's weights in its `weights_` attribute.
+the assets returns and stores the portfolio weights in its `weights_` attribute.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 Naive Allocation
 ****************
 
-The naive module regroups a set of naive allocations commonly used as benchmark for
+The naive module implements a set of naive allocations commonly used as benchmarks for
 comparing different models:
 
     * :class:`EqualWeighted`
@@ -116,25 +116,27 @@ With :math:`risk_{i}` a risk measure among:
     * Ulcer Index
     * Gini Mean Difference
 
-And supports the following parameters:
+It supports the following parameters:
 
-    * Weight constraints
-    * Budget constraints
-    * Group constrains
-    * Costs
-    * L1 and L2 regularization
-    * Turnover constraint and regularization
-    * Uncertainty set on expected returns
-    * Uncertainty set on covariance
-    * Expected return constraints
-    * Risk measure constraints
-    * Tracking error constraint
-    * Custom objective and constraints
-    * Prior estimator
+    * Weight Constraints
+    * Budget Constraints
+    * Group Constrains
+    * Transaction Costs
+    * Management Fees
+    * L1 and L2 Regularization
+    * Turnover Constraint
+    * Tracking Error Constraint
+    * Uncertainty Set on Expected Returns
+    * Uncertainty Set on Covariance
+    * Expected Return Constraints
+    * Risk Measure Constraints
+    * Custom Objective
+    * Custom Constraints
+    * Prior Estimator
 
 **Example:**
 
-Maximum Sharpe Ratio:
+Maximum Sharpe Ratio portfolio:
 
 .. code-block:: python
 
@@ -163,9 +165,9 @@ Maximum Sharpe Ratio:
 Prior Estimator
 ===============
 
-Every optimization estimator has a parameter named `prior_estimator`.
+Every portfolio optimization has a parameter named `prior_estimator`.
 The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the estimation of assets expected returns, covariance matrix, returns and Cholesky
+the estimation of assets     expected returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
 
@@ -206,17 +208,19 @@ Minimum Variance portfolio using a Factor Model:
 Combining Prior Estimators
 ==========================
 
-Prior estimators can be combined together making it possible to design complex models:
+Prior estimators can be combined together, making it possible to design complex models:
 
 **Example:**
 
-This example is **purposely complex** to show how multiple estimators can be combined.
-The below model is a Maximum Sharpe Ratio optimization using a Factor Model for the
-estimation of the assets' expected reruns and covariance matrix. A Black & Litterman
-model is used for the estimation of the factors' expected reruns and covariance matrix
-incorporating the analyst' views on the factors. Finally the Black & Litterman prior
-expected returns is an equal-weighted market equilibrium with a risk aversion of 2 and a
-denoised prior covariance matrix.
+This example is **purposely complex** to demonstrate how multiple estimators can be
+combined.
+
+The model below is a Maximum Sharpe Ratio optimization using a Factor Model for the
+estimation of the **assets** expected reruns and covariance matrix. A Black & Litterman
+model is used for the estimation of the **factors** expected reruns and covariance matrix,
+incorporating the analyst' views on the factors. Finally, the Black & Litterman prior
+expected returns are estimated using an equal-weighted market equilibrium with a risk
+aversion of 2 and a denoised prior covariance matrix:
 
 .. code-block:: python
 
@@ -260,12 +264,12 @@ denoised prior covariance matrix.
 
 Custom Estimator
 ================
-It is very common to use a custom implementation for the prior estimator. For
+It is very common to use a custom implementation for the moments estimators. For
 example, you may want to use an in-house estimation for the covariance or a predictive
 model for the expected returns.
 
 Below is a simple example of how you would implement a custom covariance estimator.
-For more complex cases and estimators, check the :ref:`API Reference <api>`
+For more complex cases and estimators, check the :ref:`API Reference <api>`.
 
 .. code-block:: python
 
@@ -303,15 +307,15 @@ For more complex cases and estimators, check the :ref:`API Reference <api>`
 
 Worst-Case Optimization
 =======================
-With the `mu_uncertainty_set_estimator` parameter, the assets' expected returns are
-modelled with an ellipsoidal uncertainty set. It is called worst-case optimization and
-is a class of robust optimization. It reduces the instability that arises from the
-estimation errors of the expected returns.
+With the `mu_uncertainty_set_estimator` parameter, the expected returns of the assets
+are modeled with an ellipsoidal uncertainty set. This approach is known as worst-case
+optimization and falls under the class of robust optimization. It mitigates the
+instability that arises from estimation errors of the expected returns.
 
 **Example:**
 
-Worst-case maximum mean/CDaR ratio (Conditional Drawdown at Risk) with an ellipsoidal
-uncertainty set for the assets' expected returns.
+Worst-case maximum Mean/CDaR ratio (Conditional Drawdown at Risk) with an ellipsoidal
+uncertainty set for the expected returns of the assets:
 
 .. code-block:: python
 
@@ -344,7 +348,7 @@ uncertainty set for the assets' expected returns.
 Going Further
 =============
 You can explore the remaining parameters (constraints, L1 and L2 regularization, costs,
-turnover, tracking error...) with the
+turnover, tracking error, etc.) with the
 :ref:`Mean-Risk examples <mean_risk_examples>` and the :class:`MeanRisk` API.
 
 Risk Budgeting
@@ -384,19 +388,20 @@ And :math:`risk_{i}` a risk measure among:
     * Gini Mean Difference
     * First Lower Partial Moment
 
-And supports the following parameters:
+It supports the following parameters:
 
-    * Weight constraints
-    * Budget constraints
-    * Group constrains
-    * Costs
-    * Expected return constraints
-    * Custom objective and constraints
-    * Prior estimator
+    * Weight Constraints
+    * Budget Constraints
+    * Group Constrains
+    * Transaction Costs
+    * Management Fees
+    * Expected Return Constraints
+    * Custom Objective
+    * Custom constraints
+    * Prior Estimator
 
-
-Limitations are imposed on some constraint like long only weights to ensure the problem
-stay convex.
+Limitations are imposed on certain constraints, such as long-only weights, to ensure the
+problem remains convex.
 
 **Example:**
 
@@ -432,7 +437,7 @@ CVaR (Conditional Value at Risk) Risk Parity portfolio:
 Maximum Diversification
 ***********************
 
-The :class:`MaximumDiversification` maximizes the diversification ratio which is the
+The :class:`MaximumDiversification` maximizes the diversification ratio, which is the
 ratio of the weighted volatilities over the total volatility.
 
 **Example:**
@@ -464,13 +469,13 @@ Distributionally Robust CVaR
 
 The :class:`DistributionallyRobustCVaR` constructs a Wasserstein ball in the space of
 multivariate and non-discrete probability distributions centered at the uniform
-distribution on the training samples, and find the allocation that minimize the CVaR
+distribution on the training samples and finds the allocation that minimizes the CVaR
 of the worst-case distribution within this Wasserstein ball.
 Esfahani and Kuhn proved that for piecewise linear objective functions,
 which is the case of CVaR, the distributionally robust optimization problem
 over a Wasserstein ball can be reformulated as finite convex programs.
 
-A solver like `Mosek` that can handles a high number of constraints is preferred.
+A solver like `Mosek` that can handle a high number of constraints is preferred.
 
 **Example:**
 
@@ -503,21 +508,22 @@ The :class:`HierarchicalRiskParity` (HRP) is a portfolio optimization method dev
 by Marcos Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then uses seriation to rearrange the assets
-in the dendrogram minimizing the distance between leafs.
+Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
+in the dendrogram, minimizing the distance between leafs.
 
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
-manner. For each sub-cluster we compute the total cluster risk of an inverse-risk
-allocation. A weighting factor is then computed from these two sub-cluster risks
+manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
+allocation. A weighting factor is then computed from these two sub-cluster risks,
 which is used to update the cluster weight.
 
 .. note ::
+
     The original paper uses the variance as the risk measure and the single-linkage
     method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
     multiple risk measures and linkage methods.
     The default linkage method is set to the Ward
-    variance minimization algorithm which is more stable and have better properties
+    variance minimization algorithm, which is more stable and has better properties
     than the single-linkage method.
 
 
@@ -574,9 +580,10 @@ The :class:`HierarchicalEqualRiskContribution` (HERC) is a portfolio optimizatio
 developed by Thomas Raffinot.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
-Hierarchical Tree Clustering algorithm then computes, for each cluster, the total
+Hierarchical Tree Clustering algorithm. It then computes, for each cluster, the total
 cluster risk of an inverse-risk allocation.
-The final step is the top-down recursive division of the dendrogram where the assets
+
+The final step is the top-down recursive division of the dendrogram, where the assets
 weights are updated using a naive risk parity within clusters.
 
 It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
@@ -585,7 +592,7 @@ during the top-down recursive division instead of bisecting it.
 .. note ::
 
     The default linkage method is set to the Ward
-    variance minimization algorithm which is more stable and have better properties
+    variance minimization algorithm, which is more stable and has better properties
     than the single-linkage method.
 
 
@@ -607,7 +614,7 @@ matrix:
 **Example:**
 
 Hierarchical Equal Risk Contribution with CVaR (Conditional Value at Risk) as the risk
-measure and mutual information as the distance estimator.
+measure and mutual information as the distance estimator:
 
 .. code-block:: python
 
@@ -653,12 +660,12 @@ inner-weights and outer-weights.
 .. note ::
 
     The original paper uses KMeans as the clustering algorithm, minimum Variance for
-    the inner-estimator and equal-weight for the outer-estimator. Here we generalize
-    it to all `sklearn` and `skfolio` clustering algorithm (Hierarchical Tree
-    Clustering, KMeans, ...), all optimization estimators (Mean-Variance, HRP, ...)
-    and risk measures (variance, CVaR,...).
+    the inner-estimator and equal-weighted for the outer-estimator. Here we generalize
+    it to all `sklearn` and `skfolio` clustering algorithms (Hierarchical Tree
+    Clustering, KMeans, etc.), all portfolio optimizations (Mean-Variance, HRP, etc.)
+    and risk measures (variance, CVaR, etc.).
     To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
-    fit the outer optimization.
+    fit the outer estimator.
 
 It supports all :ref:`distance estimator <distance>`
 and :ref:`clustering estimator <cluster>` (both `skfolio` and `sklearn`)
@@ -666,7 +673,7 @@ and :ref:`clustering estimator <cluster>` (both `skfolio` and `sklearn`)
 **Example:**
 
 Nested Clusters Optimization with KMeans as the clustering algorithm, Kendall Distance
-as the distance estimator, Minimum Semi-Variance as the inner estimator and CVaR Risk
+as the distance estimator, Minimum Semi-Variance as the inner estimator, and CVaR Risk
 Parity as the outer (meta) estimator trained on the out-of-sample estimates from the
 KFolds cross-validation and run with parallelization:
 
@@ -702,8 +709,8 @@ KFolds cross-validation and run with parallelization:
     print(portfolio.contribution(measure=RiskMeasure.CVAR))
 
 
-The `cv` parameter can also be a combinatorial cross-validation like
-:class:`CombinatorialPurgedCV` in which case each cluster
+The `cv` parameter can also be a combinatorial cross-validation, such as
+:class:`CombinatorialPurgedCV`, in which case each cluster's
 out-of-sample outputs are a collection of multiple paths instead of one single path.
 The selected out-of-sample path among this collection of paths is chosen according to
 the `quantile` and `quantile_measure` parameters.
@@ -712,11 +719,13 @@ Stacking Optimization
 *********************
 
 :class:`StackingOptimization` is an ensemble method that consists in stacking the output
-of individual optimization estimators with a final optimization estimator.
+of individual portfolio optimizations with a final portfolio optimization.
 
-The weights are the dot-product of individual estimators weights with the final
-estimator weights. Stacking allows to use the strength of each individual estimator
-by using their output as input of a final estimator.
+The weights are the dot-product of individual optimizations weights with the final
+optimization weights.
+
+Stacking allows to use the strength of each individual portfolio optimization by
+using their output as input of a final portfolio optimization.
 
 To avoid data leakage, out-of-sample estimates are used to fit the outer
 optimization.
@@ -758,8 +767,8 @@ stacked together using Minimum Variance as the final (meta) estimator.
     print(portfolio.annualized_sharpe_ratio)
 
 
-The `cv` parameter can also be a combinatorial cross-validation like
-:class:`CombinatorialPurgedCV` in which case each out-of-sample outputs are a collection
-of multiple paths instead of one single path. The selected out-of-sample path among
-this collection of paths is chosen according to the `quantile` and `quantile_measure`
-parameters.
+The `cv` parameter can also be a combinatorial cross-validation, such as
+:class:`CombinatorialPurgedCV`, in which case each out-of-sample outputs are a
+collection of multiple paths instead of one single path. The selected out-of-sample path
+among this collection of paths is chosen according to the `quantile` and
+`quantile_measure` parameters.

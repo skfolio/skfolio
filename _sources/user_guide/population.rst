@@ -11,7 +11,7 @@ Population
 
 A :class:`Population` is a list of portfolios (:class:`~skfolio.portfolio.Portfolio`
 or :class:`~skfolio.portfolio.MultiPeriodPortfolio` or both).
-`Population` inherits from the build-in `list` class and extend it by adding new
+`Population` inherits from the build-in `list` class and extends it by adding new
 functionalities to improve portfolio manipulation and analysis.
 
 
@@ -74,13 +74,13 @@ Let's explore some of the methods:
     population.plot_composition()
 
 
-A `Population` is returned by the `predict` method of some Optimization estimators that
+A `Population` is returned by the `predict` method of some portfolio optimization that
 supports multi-outputs.
 
 For example, fitting :class:`~skfolio.optimization.MeanRisk` with parameter
 `efficient_frontier_size=30` will find the weights of 30 portfolios belonging to the
 efficient frontier. Calling the method `predict(X_test)` on that model will return a
-`Population` containing these 30 `Portfolio` predicted on the test set:
+`Population` containing these 30 `Portfolio`, predicted on the test set:
 
 .. code-block:: python
 

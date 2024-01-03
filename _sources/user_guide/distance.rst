@@ -13,7 +13,7 @@ It follows the same API as scikit-learn's `estimator`: the `fit` method takes `X
 assets returns and stores the codependence and distance matrix in its `codependence_`
 and `distance_` attributes.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 
 Available estimators are:

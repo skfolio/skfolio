@@ -31,8 +31,8 @@ A search consists of:
 
 
 Two generic approaches to parameter search are provided in
-scikit-learn: for given values, `sklearn.model_selection.GridSearchCV` exhaustively considers
-all parameter combinations, while `sklearn.model_selection.RandomizedSearchCV` can sample a
+scikit-learn: for given values, `GridSearchCV` exhaustively considers
+all parameter combinations, while `RandomizedSearchCV` can sample a
 given number of candidates from a parameter space with a specified
 distribution.
 
@@ -42,7 +42,7 @@ After describing these tools we detail :ref:`best practices
 Exhaustive Grid Search
 **********************
 
-The grid search provided by `sklearn.model_selection.GridSearchCV` exhaustively generates
+The grid search provided by `GridSearchCV` exhaustively generates
 candidates from a grid of parameter values specified with the `param_grid`
 parameter. For instance, the following `param_grid`::
 
@@ -104,7 +104,7 @@ Randomized Parameter Optimization
 While using a grid of parameter settings is currently the most widely used
 method for parameter optimization, other search methods have more
 favorable properties.
-`sklearn.model_selection.RandomizedSearchCV` implements a randomized search over parameters,
+`RandomizedSearchCV` implements a randomized search over parameters,
 where each setting is sampled from a distribution over possible parameter values.
 This has two main benefits over an exhaustive search:
 
@@ -182,8 +182,8 @@ Tips for Parameter Search
 Specifying an Objective Metric
 ------------------------------
 
-By default, all optimization estimators have the same score function which is the
-**Sharpe Ratio**. This score function can be customized with the
+By default, all portfolio optimization estimators have the same score function which is
+the **Sharpe Ratio**. This score function can be customized with
 :func:`~skfolio.metrics.make_scorer` by using another :ref:`measure <measures_ref>` or
 by writing your own score function.
 
@@ -246,7 +246,7 @@ parameters of composite or nested estimators using a dedicated
 
 **Example:**
 
-In the below example, we search the optimal parameter `alpha` of the nested estimators
+In the below example, we search the optimal parameter `alpha` of the nested estimator
 :class:`~skfolio.moments.EWMu`:
 
 .. code-block:: python

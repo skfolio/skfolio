@@ -194,7 +194,7 @@ Let's plot each portfolio cumulative returns:
 
 |
 
-Finally we can show a full summary of both strategies evaluated on the test set:
+Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. GENERATED FROM PYTHON SOURCE LINES 80-81
 
@@ -477,7 +477,7 @@ Finally we can show a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.213 seconds)
+   **Total running time of the script:** (0 minutes 1.219 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:

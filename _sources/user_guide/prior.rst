@@ -6,30 +6,31 @@
 Prior Estimator
 ***************
 
-A prior estimator fits a :class:`PriorModel` containing the distribution estimate of asset returns.
-It represents the investor's prior beliefs about the model used to estimate such distribution.
+A prior estimator fits a :class:`PriorModel` containing the distribution estimate of
+asset returns. It represents the investor's prior beliefs about the model used to
+estimate that distribution.
 
-A prior estimator follow the same API as scikit-learn's `estimator`: the `fit` method
+A prior estimator follows the same API as scikit-learn's `estimator`: the `fit` method
 takes `X` as the assets returns and stores the :class:`PriorModel` in its
 `prior_model_` attribute.
 
-`X` can be any array-like structure (numpy array, pandas DataFrame, etc...)
+`X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
 .. warning::
 
-    The prior of one model can be the posterior of another one. For example, :class:`BlackLitterman` takes as input a
-    prior estimator used to compute the prior expected returns and prior covariance matrix which are updated using the
-    analyst's views to get the posterior expected returns and posterior covariance matrix. These posterior estimates
-    will be saved in a new :class:`PriorModel` that can be used in another estimator.
-
-
+    The prior of one model can be the posterior of another one. For example,
+    :class:`BlackLitterman` takes as input a prior estimator used to compute the prior
+    expected returns and prior covariance matrix, which are updated using the analyst's
+    views to get the posterior expected returns and posterior covariance matrix. These
+    posterior estimates will be saved in a new :class:`PriorModel` that can be used in
+    another estimator.
 
 
 The :class:`PriorModel` is a dataclass containing:
 
     * `mu`: Expected returns estimation
     * `covariance`: Covariance matrix estimation
-    * `returns`: Assets returns estimation
+    * `returns`: assets returns estimation
     * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
 
 Empirical Prior
@@ -65,8 +66,8 @@ Black & Litterman
 
 The :class:`BlackLitterman` estimator estimates the :class:`PriorModel` using the
 Black & Litterman model. It takes a Bayesian approach by using a prior estimate
-of the assets expected returns and covariance matrix which are updated using the
-analyst views to get the posterior estimate.
+of the assets expected returns and covariance matrix, which are updated using the
+analyst views to get the posterior estimates.
 
 **Example:**
 
@@ -98,13 +99,13 @@ model and a :ref:`prior estimator <prior>` of the factor's returns.
 
 The purpose of factor models is to impose a structure on financial variables and
 their covariance matrix by explaining them through a small number of common factors.
-This can help to overcome estimation error by reducing the number of parameters,
+This can help overcome estimation error by reducing the number of parameters,
 i.e., the dimensionality of the estimation problem, making portfolio optimization
 more robust against noise in the data. Factor models also provide a decomposition of
-financial risk to systematic and security specific components.
+financial risk into systematic and security-specific components.
 
 To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
-returns and `y` as the factors returns. Note that `y` is in lower case even for a 2D
+returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
 array (more than one factor). This is for consistency with the scikit-learn API.
 
 **Example:**
@@ -124,21 +125,22 @@ array (more than one factor). This is for consistency with the scikit-learn API.
     print(model.prior_model_)
 
 
-The loading matrix (betas) of the factors is estimated using a ``loading_matrix_estimator``. By Default we use
-the :class:`LoadingMatrixRegression` which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
+The loading matrix (betas) of the factors is estimated using a
+`loading_matrix_estimator`. By default, we use the :class:`LoadingMatrixRegression`
+which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
 separately.
 
 Combining Multiple Prior Estimators
 ***********************************
 Prior estimators can be combined. For example, it is possible to create a Black &
-Litterman Factor Model by simply using a :class:`BlackLitterman` estimator for the prior
+Litterman Factor Model by using a :class:`BlackLitterman` estimator for the prior
 estimator of the :class:`FactorModel`:
 
 **Example:**
 
-Factor model for the estimation of the assets expected retruns and covariance matrix
-with a Black & Litterman model for the estimation of the factors expected reruns and
-covariance matrix incorporating the analyst views on the factors.
+Factor model for the estimation of the **assets** expected returns and covariance matrix
+with a Black & Litterman model for the estimation of the **factors** expected reruns and
+covariance matrix, incorporating the analyst views on the **factors**.
 
 .. code-block:: python
 
