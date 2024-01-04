@@ -43,7 +43,6 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "numpydoc",
     "sphinx_togglebutton",
-    "jupyterlite_sphinx",
     "sphinx_favicon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.imgconverter",
@@ -52,7 +51,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinxext.opengraph",
     "sphinx_sitemap",
-    "sphinx.ext.githubpages"
+    "sphinx.ext.githubpages",
 ]
 
 # Produce `plot::` directives for examples that contain `import matplotlib` or
@@ -185,7 +184,6 @@ html_theme_options = {
     <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
     Your contributions are welcome!</div>""",
     "secondary_sidebar_items": [],  # No secondary sidebar due to bug with plotly
-
 }
 
 html_sidebars = {
@@ -249,7 +247,14 @@ sphinx_gallery_conf = {
     "inspect_global_variables": False,
     "remove_config_comments": True,
     "plot_gallery": "True",
-    #
+    "binder": {
+        "org": "skfolio",
+        "repo": "skfolio",
+        "branch": "gh-pages",
+        "binderhub_url": "https://mybinder.org",
+        "dependencies": "./binder/requirements.txt",
+        "use_jupyter_lab": True,
+    },
     # 'compress_images': ('images', 'thumbnails'),
     # 'promote_jupyter_magic': False,
     # 'junit': os.path.join('sphinx-gallery', 'junit-results.xml'),

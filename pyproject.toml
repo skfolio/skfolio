@@ -75,7 +75,6 @@ docs = [
     "sphinx-copybutton",
     "numpydoc",
     "sphinx-togglebutton",
-    "jupyterlite-sphinx",
     "sphinx-favicon",
     "sphinx-prompt",
     "sphinxext.opengraph",
