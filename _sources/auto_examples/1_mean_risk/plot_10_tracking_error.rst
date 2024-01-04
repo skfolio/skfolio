@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py>`
-        to download the full example code or to run this example in your browser via JupyterLite
+        to download the full example code or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -309,7 +309,7 @@ compared to the model without tracking error.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.178 seconds)
+   **Total running time of the script:** (0 minutes 1.201 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py:
@@ -318,11 +318,11 @@ compared to the model without tracking error.
 
   .. container:: sphx-glr-footer sphx-glr-footer-example
 
-    .. container:: lite-badge
+    .. container:: binder-badge
 
-      .. image:: images/jupyterlite_badge_logo.svg
-        :target: ../../lite/lab/?path=auto_examples/1_mean_risk/plot_10_tracking_error.ipynb
-        :alt: Launch JupyterLite
+      .. image:: images/binder_badge_logo.svg
+        :target: https://mybinder.org/v2/gh/skfolio/skfolio/gh-pages?urlpath=lab/tree/notebooks/auto_examples/1_mean_risk/plot_10_tracking_error.ipynb
+        :alt: Launch binder
         :width: 150 px
 
     .. container:: sphx-glr-download sphx-glr-download-jupyter

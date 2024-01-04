@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py>`
-        to download the full example code or to run this example in your browser via JupyterLite
+        to download the full example code or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -477,7 +477,7 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.219 seconds)
+   **Total running time of the script:** (0 minutes 1.171 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:
@@ -486,11 +486,11 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
   .. container:: sphx-glr-footer sphx-glr-footer-example
 
-    .. container:: lite-badge
+    .. container:: binder-badge
 
-      .. image:: images/jupyterlite_badge_logo.svg
-        :target: ../../lite/lab/?path=auto_examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.ipynb
-        :alt: Launch JupyterLite
+      .. image:: images/binder_badge_logo.svg
+        :target: https://mybinder.org/v2/gh/skfolio/skfolio/gh-pages?urlpath=lab/tree/notebooks/auto_examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.ipynb
+        :alt: Launch binder
         :width: 150 px
 
     .. container:: sphx-glr-download sphx-glr-download-jupyter
