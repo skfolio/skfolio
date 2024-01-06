@@ -87,7 +87,7 @@ Ready to contribute? Here's how to set yourself up for local development.
 
    Note: the commit message should follow [the conventional commits](https://www.conventionalcommits.org).
  
-8. Submit a pull request through the GitHub website or using the GitHub CLI (if you have it installed):
+8. Submit a pull request through the GitHub website or using the GitHub CLI:
 
    ```shell
    $ gh pr create --fill
