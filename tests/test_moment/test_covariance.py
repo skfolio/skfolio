@@ -6,7 +6,7 @@ import pytest
 from skfolio.datasets import load_sp500_dataset
 from skfolio.moments import (
     DenoiseCovariance,
-    DenoteCovariance,
+    DetoneCovariance,
     EWCovariance,
     EmpiricalCovariance,
     GerberCovariance,
@@ -932,7 +932,7 @@ def test_denoise_covariance(X):
 
 
 def test_denoite_covariance(X):
-    model = DenoteCovariance(covariance_estimator=DenoiseCovariance())
+    model = DetoneCovariance(covariance_estimator=DenoiseCovariance())
     model.fit(X)
     assert model.covariance_.shape == (20, 20)
     np.testing.assert_almost_equal(
