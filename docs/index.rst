@@ -90,7 +90,7 @@ Available models
     * Empirical
     * Gerber
     * Denoising
-    * Denoting
+    * Detoning
     * Exponentially Weighted
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
