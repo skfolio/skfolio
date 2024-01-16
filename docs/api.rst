@@ -233,6 +233,7 @@ Classes
 
     optimization.BaseComposition
     optimization.StackingOptimization
+    optimization.SubsetResampling
 
 .. _prior_ref:
 
