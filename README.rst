@@ -136,7 +136,7 @@ Available models
     * Empirical
     * Gerber
     * Denoising
-    * Denoting
+    * Detoning
     * Exponentially Weighted
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
@@ -241,7 +241,7 @@ Imports
     )
     from skfolio.moments import (
         DenoiseCovariance,
-        DenoteCovariance,
+        DetoneCovariance,
         EWMu,
         GerberCovariance,
         ShrunkMu,
@@ -460,7 +460,7 @@ Factor Model & Covariance Detoning
 
     model = MeanRisk(
         prior_estimator=FactorModel(
-            factor_prior_estimator=EmpiricalPrior(covariance_estimator=DenoteCovariance())
+            factor_prior_estimator=EmpiricalPrior(covariance_estimator=DetoneCovariance())
         )
     )
 

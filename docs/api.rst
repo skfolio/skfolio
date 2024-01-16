@@ -358,7 +358,7 @@ Classes
     moments.EWCovariance
     moments.GerberCovariance
     moments.DenoiseCovariance
-    moments.DenoteCovariance
+    moments.DetoneCovariance
     moments.LedoitWolf
     moments.OAS
     moments.ShrunkCovariance
