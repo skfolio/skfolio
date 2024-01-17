@@ -152,7 +152,7 @@ class Population(list):
         )
         return fronts
 
-    def filter(  # noqa: A003
+    def filter(
         self, names: skt.Names | None = None, tags: skt.Tags | None = None
     ) -> "Population":
         """Filter the Population of portfolios by names and tags.
