@@ -386,8 +386,8 @@ class DenoiseCovariance(BaseCovariance):
         return self
 
 
-class DenoteCovariance(BaseCovariance):
-    """Covariance Denoting estimator.
+class DetoneCovariance(BaseCovariance):
+    """Covariance Detoning estimator.
 
     Financial covariance matrices usually incorporate a market component corresponding
     to the first eigenvectors [1]_.
@@ -399,7 +399,7 @@ class DenoteCovariance(BaseCovariance):
     ----------
     covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` to estimate the covariance
-        matrix prior denoting.
+        matrix prior detoning.
         The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
 
     n_markets : int, default=1
@@ -466,8 +466,8 @@ class DenoteCovariance(BaseCovariance):
         self.covariance_estimator = covariance_estimator
         self.n_markets = n_markets
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "DenoteCovariance":
-        """Fit the Covariance Denoting estimator.
+    def fit(self, X: npt.ArrayLike, y=None) -> "DetoneCovariance":
+        """Fit the Covariance Detoning estimator.
 
         Parameters
         ----------
@@ -479,7 +479,7 @@ class DenoteCovariance(BaseCovariance):
 
         Returns
         -------
-        self : DenoteCovariance
+        self : DetoneCovariance
            Fitted estimator.
         """
         # fitting estimators

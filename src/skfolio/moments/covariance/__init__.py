@@ -6,7 +6,7 @@ from skfolio.moments.covariance._base import (
 from skfolio.moments.covariance._covariance import (
     OAS,
     DenoiseCovariance,
-    DenoteCovariance,
+    DetoneCovariance,
     EWCovariance,
     EmpiricalCovariance,
     GerberCovariance,
@@ -21,7 +21,7 @@ __all__ = [
     "EWCovariance",
     "GerberCovariance",
     "DenoiseCovariance",
-    "DenoteCovariance",
+    "DetoneCovariance",
     "LedoitWolf",
     "OAS",
     "ShrunkCovariance",
