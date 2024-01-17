@@ -19,7 +19,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="skfolio is a Python library for portfolio optimization built on top of scikit-learn. It offers a unified interface and tools compatible with scikit-learn to build, fine-tune, and cross-validate por..." />
 
-    <title>skfolio &#8212; skfolio 0.0.9 documentation</title>
+    <title>skfolio &#8212; skfolio 0.0.10 documentation</title>
   
   
   
@@ -54,7 +54,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="_static/documentation_options.js?v=e5fd5bda"></script>
+    <script src="_static/documentation_options.js?v=3192eeb0"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -453,7 +453,7 @@ leakage and overfitting.</p>
 <li><p>Empirical</p></li>
 <li><p>Gerber</p></li>
 <li><p>Denoising</p></li>
-<li><p>Denoting</p></li>
+<li><p>Detoning</p></li>
 <li><p>Exponentially Weighted</p></li>
 <li><p>Ledoit-Wolf</p></li>
 <li><p>Oracle Approximating Shrinkage</p></li>
@@ -604,7 +604,7 @@ and <a class="reference internal" href="api.html#api"><span class="std std-ref">
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">skfolio.moments</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">DenoiseCovariance</span><span class="p">,</span>
-    <span class="n">DenoteCovariance</span><span class="p">,</span>
+    <span class="n">DetoneCovariance</span><span class="p">,</span>
     <span class="n">EWMu</span><span class="p">,</span>
     <span class="n">GerberCovariance</span><span class="p">,</span>
     <span class="n">ShrunkMu</span><span class="p">,</span>
@@ -814,7 +814,7 @@ and <a class="reference internal" href="api.html#api"><span class="std std-ref">
 <h3>Factor Model &amp; Covariance Detoning<a class="headerlink" href="#factor-model-covariance-detoning" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">MeanRisk</span><span class="p">(</span>
     <span class="n">prior_estimator</span><span class="o">=</span><span class="n">FactorModel</span><span class="p">(</span>
-        <span class="n">factor_prior_estimator</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(</span><span class="n">covariance_estimator</span><span class="o">=</span><span class="n">DenoteCovariance</span><span class="p">())</span>
+        <span class="n">factor_prior_estimator</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(</span><span class="n">covariance_estimator</span><span class="o">=</span><span class="n">DetoneCovariance</span><span class="p">())</span>
     <span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
@@ -879,7 +879,7 @@ and <a class="reference internal" href="api.html#api"><span class="std std-ref">
 <section id="recognition">
 <h3>Recognition<a class="headerlink" href="#recognition" title="Link to this heading">#</a></h3>
 <p>We would like to thank all contributors behind our direct dependencies, such as
-scikit-learn and cvxpy, but also the contributors of the following packages that were a
+scikit-learn and cvxpy, but also the contributors of the following resources that were a
 source of inspiration:</p>
 <blockquote>
 <div><ul class="simple">
@@ -889,6 +889,7 @@ source of inspiration:</p>
 <li><p>microprediction</p></li>
 <li><p>statsmodels</p></li>
 <li><p>rsome</p></li>
+<li><p>gautier.marti.ai</p></li>
 </ul>
 </div></blockquote>
 </section>

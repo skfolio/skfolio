@@ -90,7 +90,7 @@ Available models
     * Empirical
     * Gerber
     * Denoising
-    * Denoting
+    * Detoning
     * Exponentially Weighted
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
@@ -198,7 +198,7 @@ Imports
     )
     from skfolio.moments import (
         DenoiseCovariance,
-        DenoteCovariance,
+        DetoneCovariance,
         EWMu,
         GerberCovariance,
         ShrunkMu,
@@ -409,7 +409,7 @@ Factor Model & Covariance Detoning
 
     model = MeanRisk(
         prior_estimator=FactorModel(
-            factor_prior_estimator=EmpiricalPrior(covariance_estimator=DenoteCovariance())
+            factor_prior_estimator=EmpiricalPrior(covariance_estimator=DetoneCovariance())
         )
     )
 
@@ -473,7 +473,7 @@ Recognition
 ~~~~~~~~~~~
 
 We would like to thank all contributors behind our direct dependencies, such as
-scikit-learn and cvxpy, but also the contributors of the following packages that were a
+scikit-learn and cvxpy, but also the contributors of the following resources that were a
 source of inspiration:
 
     * PyPortfolioOpt
@@ -482,6 +482,7 @@ source of inspiration:
     * microprediction
     * statsmodels
     * rsome
+    * gautier.marti.ai
 
 
 Citation

@@ -20,7 +20,7 @@ Available estimators are:
     * :class:`EWCovariance`
     * :class:`GerberCovariance`
     * :class:`DenoiseCovariance`
-    * :class:`DenoteCovariance`
+    * :class:`DetoneCovariance`
     * :class:`LedoitWolf`
     * :class:`OAS`
     * :class:`ShrunkCovariance`
