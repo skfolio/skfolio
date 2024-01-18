@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_
+|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_ |Ruff|_ |Website|_
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 .. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -19,6 +19,12 @@
 
 .. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml?logo=github
 .. _CI/CD: https://github.com/skfolio/skfolio/raw/main/LICENSE
+
+.. |Ruff| image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+.. _Ruff: https://github.com/astral-sh/ruff
+
+.. |Website| image:: https://img.shields.io/website-up-down-green-red/http/skfolio.org
+.. _Website: https://skfolio.org
 
 
 .. |PythonMinVersion| replace:: 3.10
