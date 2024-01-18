@@ -605,3 +605,23 @@ def gini_mean_difference(returns: np.ndarray) -> float:
     """
     w = owa_gmd_weights(len(returns))
     return float(w @ np.sort(returns, axis=0))
+
+
+def effective_number_assets(weights: np.ndarray) -> float:
+    """
+    Computes the effective number of assets, aka the inverse of Herfindahl index.
+
+    Parameters
+    ----------
+    weights: ndarray of shape (n_assets,)
+
+    Returns
+    -------
+    value: float
+        Effective number of assets.
+
+    References
+    ----------
+    https://en.wikipedia.org/wiki/Herfindahl%E2%80%93Hirschman_index#Effective_assets_in_a_portfolio
+    """
+    return 1.0/(np.power(weights, 2).sum())
