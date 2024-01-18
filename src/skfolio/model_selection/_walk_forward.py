@@ -39,7 +39,7 @@ class WalkForward(skm.BaseCrossValidator):
 
     reduce_test : bool, default=False
         If this is set to True, the last train/test split will be returned even if the
-        test set is partial (if it constains less observations than `test_size`),
+        test set is partial (if it contains less observations than `test_size`),
         otherwise it will be ignored.
         The default is `False`
 

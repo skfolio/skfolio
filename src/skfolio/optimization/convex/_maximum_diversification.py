@@ -21,7 +21,7 @@ class MaximumDiversification(MeanRisk):
 
     It is a special case of the :class:`~skfolio.optimization.MeanRisk` estimator where
     the expected return from the objective function is replaced by the weighted
-    volatilies.
+    volatilities.
 
     Parameters
     ----------
