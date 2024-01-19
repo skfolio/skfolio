@@ -931,7 +931,7 @@ class MeanRisk(ConvexOptimization):
             case ObjectiveFunction.MAXIMIZE_RATIO:
                 if expected_return.is_affine():
                     # Charnes-Cooper's variable transformation for Fractional
-                    # Programing problem :Max(f1/f2) with f2 linear
+                    # Programming problem :Max(f1/f2) with f2 linear
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
@@ -941,7 +941,7 @@ class MeanRisk(ConvexOptimization):
                     ]
                 else:
                     # Schaible's generalization of Charnes-Cooper's variable
-                    # transformation for Fractional Programing problem :Max(f1/f2)
+                    # transformation for Fractional Programming problem :Max(f1/f2)
                     # with f1 concave instead of linear: Schaible,"Parameter-free
                     # Convex Equivalent and Dual Programs of Fractional Programming
                     # Problems".

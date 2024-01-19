@@ -43,7 +43,7 @@ class ObjectiveFunction(AutoEnum):
     MAXIMIZE_UTILITY : str
         Maximize the utility  :math:`w^T\mu - \lambda \times risk(w)`.
 
-    MAXIMIZE_UTILITY : str
+    MAXIMIZE_RATIO : str
         Maximize the ratio  :math:`\frac{w^T\mu - R_{f}}{risk(w)}`.
     """
 

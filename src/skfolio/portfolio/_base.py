@@ -705,7 +705,7 @@ class BasePortfolio:
         return self.__copy__()
 
     def clear(self) -> None:
-        """CLear all measures, fitness, cumulative returns and drawdowns in slots"""
+        """Clear all measures, fitness, cumulative returns and drawdowns in slots"""
         attrs = ["_fitness", "_cumulative_returns", "_drawdowns"]
         for attr in attrs + list(_MEASURES_VALUES):
             delattr(self, attr)
