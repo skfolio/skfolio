@@ -18,7 +18,9 @@ from skfolio.portfolio import Portfolio
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 # Implementation derived from:
+# scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 
 class BaseOptimization(skb.BaseEstimator, ABC):

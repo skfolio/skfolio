@@ -5,6 +5,7 @@
 # License: BSD 3 clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# PyPortfolioOpt, Copyright (c) 2018 Robert Andrew Martin, Licensed under MIT Licence.
 
 import numpy as np
 import numpy.typing as npt
