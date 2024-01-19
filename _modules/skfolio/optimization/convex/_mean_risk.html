@@ -377,8 +377,11 @@ document.write(`
   <h1>Source code for skfolio.optimization.convex._mean_risk</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Mean Risk Optimization estimator.&quot;&quot;&quot;</span>
 
+<span class="c1"># Copyright (c) 2023</span>
 <span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
 <span class="c1"># License: BSD 3 clause</span>
+<span class="c1"># The optimization features are derived</span>
+<span class="c1"># from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.</span>
 
 <span class="kn">import</span> <span class="nn">cvxpy</span> <span class="k">as</span> <span class="nn">cp</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -1312,7 +1315,7 @@ document.write(`
             <span class="k">case</span> <span class="n">ObjectiveFunction</span><span class="o">.</span><span class="n">MAXIMIZE_RATIO</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">expected_return</span><span class="o">.</span><span class="n">is_affine</span><span class="p">():</span>
                     <span class="c1"># Charnes-Cooper&#39;s variable transformation for Fractional</span>
-                    <span class="c1"># Programing problem :Max(f1/f2) with f2 linear</span>
+                    <span class="c1"># Programming problem :Max(f1/f2) with f2 linear</span>
                     <span class="n">constraints</span> <span class="o">+=</span> <span class="p">[</span>
                         <span class="n">expected_return</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scale_constraints</span>
                         <span class="o">-</span> <span class="n">cp</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">risk_free_rate</span><span class="p">)</span>
@@ -1322,7 +1325,7 @@ document.write(`
                     <span class="p">]</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="c1"># Schaible&#39;s generalization of Charnes-Cooper&#39;s variable</span>
-                    <span class="c1"># transformation for Fractional Programing problem :Max(f1/f2)</span>
+                    <span class="c1"># transformation for Fractional Programming problem :Max(f1/f2)</span>
                     <span class="c1"># with f1 concave instead of linear: Schaible,&quot;Parameter-free</span>
                     <span class="c1"># Convex Equivalent and Dual Programs of Fractional Programming</span>
                     <span class="c1"># Problems&quot;.</span>

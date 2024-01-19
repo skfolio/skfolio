@@ -377,8 +377,13 @@ document.write(`
   <h1>Source code for skfolio.uncertainty_set._empirical</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Empirical Uncertainty Set estimators.&quot;&quot;&quot;</span>
 
+<span class="c1"># Copyright (c) 2023</span>
 <span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
 <span class="c1"># License: BSD 3 clause</span>
+<span class="c1"># Implementation derived from:</span>
+<span class="c1"># Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.</span>
+<span class="c1"># scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier</span>
+<span class="c1"># Grisel Licensed under BSD 3 clause.</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>

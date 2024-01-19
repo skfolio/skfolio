@@ -377,8 +377,13 @@ document.write(`
   <h1>Source code for skfolio.model_selection._walk_forward</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Walk Forward cross-validator&quot;&quot;&quot;</span>
 
+<span class="c1"># Copyright (c) 2023</span>
 <span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
 <span class="c1"># License: BSD 3 clause</span>
+<span class="c1"># Implementation derived from:</span>
+<span class="c1"># scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.</span>
+<span class="c1"># scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier</span>
+<span class="c1"># Grisel Licensed under BSD 3 clause.</span>
 
 <span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterator</span>
 
@@ -418,7 +423,7 @@ document.write(`
 
 <span class="sd">    reduce_test : bool, default=False</span>
 <span class="sd">        If this is set to True, the last train/test split will be returned even if the</span>
-<span class="sd">        test set is partial (if it constains less observations than `test_size`),</span>
+<span class="sd">        test set is partial (if it contains less observations than `test_size`),</span>
 <span class="sd">        otherwise it will be ignored.</span>
 <span class="sd">        The default is `False`</span>
 
