@@ -3,6 +3,7 @@
 `MultiPeriodPortfolio` is a list of `Portfolio`.
 """
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 

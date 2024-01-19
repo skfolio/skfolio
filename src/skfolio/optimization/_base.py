@@ -14,6 +14,12 @@ from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
 
+# Copyright (c) 2023
+# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# License: BSD 3 clause
+# Implementation derived from:
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+
 
 class BaseOptimization(skb.BaseEstimator, ABC):
     """Base class for all portfolio optimizations in skfolio.

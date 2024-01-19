@@ -1,7 +1,10 @@
 """Base Convex Optimization estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# The optimization features are derived
+# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 import warnings
 from abc import ABC, abstractmethod

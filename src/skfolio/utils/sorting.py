@@ -1,5 +1,6 @@
 """Fast non-dominated sorting module"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
