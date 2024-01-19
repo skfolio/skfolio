@@ -4,6 +4,7 @@ It needs to be homogenous to the convex optimization problems meaning that `Port
 is the dot product of the assets weights with the assets returns.
 """
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 

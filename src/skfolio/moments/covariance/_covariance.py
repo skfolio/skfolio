@@ -1,5 +1,12 @@
 """Covariance Estimators."""
 
+# Copyright (c) 2023
+# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# License: BSD 3 clause
+# Implementation derived from:
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd

@@ -1,7 +1,10 @@
 """Module that includes all Measures functions used across `skfolio`."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Gini mean difference and OWA GMD weights features are derived
+# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 
 import numpy as np
