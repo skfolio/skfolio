@@ -5,7 +5,7 @@
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 .. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
 
-.. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/branch/main/graph/badge.svg
+.. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
 .. _Codecov: https://codecov.io/gh/skfolio/skfolio
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
