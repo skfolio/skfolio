@@ -165,8 +165,8 @@ def test_risk_budgeting_transaction_costs_and_management_fees(X2, risk_measure):
     model = RiskBudgeting(
         risk_measure=risk_measure,
         min_return=ptf.mean * 1.05,
-        transaction_costs=0.01 / 255,
-        management_fees=0.01 / 255,
+        transaction_costs=0.01 / 252,
+        management_fees=0.01 / 252,
     )
     ptf2 = model.fit_predict(X2)
     np.testing.assert_almost_equal(ptf2.mean, ptf.mean * 1.05)

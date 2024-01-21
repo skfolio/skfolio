@@ -8,7 +8,7 @@ In this tutorial, we will compare the
 :class:`~skfolio.optimization.HierarchicalEqualRiskContribution` (HERC) optimization.
 
 For that comparison, we consider a 3 months rolling (60 business days) allocation fitted
-on the preceding year of data (255 business days) that minimizes the CVaR.
+on the preceding year of data (252 business days) that minimizes the CVaR.
 
 We will employ `GridSearchCV` to select the optimal parameters of each model on the
 training set using cross-validation that achieves the highest average out-of-sample
@@ -71,8 +71,8 @@ model_herc = HierarchicalEqualRiskContribution(
 # For both HRP and HERC models, we find the parameters that maximizes the average
 # out-of-sample Mean-CVaR ratio using `GridSearchCV` with `WalkForward` cross-validation
 # on the training set. The `WalkForward` are chosen to simulate a three months
-# (60 business days) rolling portfolio fitted on the previous year (255 business days):
-cv = WalkForward(train_size=255, test_size=60)
+# (60 business days) rolling portfolio fitted on the previous year (252 business days):
+cv = WalkForward(train_size=252, test_size=60)
 
 grid_search_hrp = GridSearchCV(
     estimator=model_hrp,
@@ -155,7 +155,7 @@ cv = CombinatorialPurgedCV(n_folds=16, n_test_folds=14)
 
 # %%
 # We choose `n_folds` and `n_test_folds` to obtain more than 100 test paths and an average
-# training size of approximately 255 days:
+# training size of approximately 252 days:
 cv.summary(X_test)
 
 # %%

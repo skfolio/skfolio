@@ -171,7 +171,7 @@ def test_portfolio_annualized(portfolio_and_returns, annualized_factor):
         portfolio.annualized_factor = annualized_factor
 
     if annualized_factor is None:
-        annualized_factor = 255.0
+        annualized_factor = 252.0
     assert portfolio.annualized_factor == annualized_factor
 
     np.testing.assert_almost_equal(

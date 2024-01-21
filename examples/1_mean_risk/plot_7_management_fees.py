@@ -75,9 +75,9 @@ model.weights_
 #   * JPMorgan: 1% p.a.
 #
 # The MF are expressed in per annum, so we need to convert them in daily MF.
-# We suppose 255 trading days in a year:
-management_fees = {"AAPL": 0.03 / 255, "GE": 0.06 / 255, "JPM": 0.01 / 255}
-# Same as management_fees = np.array([0.03, 0.06, 0.01]) / 255
+# We suppose 252 trading days in a year:
+management_fees = {"AAPL": 0.03 / 252, "GE": 0.06 / 252, "JPM": 0.01 / 252}
+# Same as management_fees = np.array([0.03, 0.06, 0.01]) / 252
 
 model_mf = MeanRisk(
     objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
@@ -101,7 +101,7 @@ cv = WalkForward(train_size=fitting_period, test_size=holding_period)
 
 # %%
 # As explained above, we transform the yearly MF into a daily MF:
-management_fees = np.array([0.03, 0.06, 0.01]) / 255
+management_fees = np.array([0.03, 0.06, 0.01]) / 252
 
 # %%
 # First, we train the model without MF and test it with MF.

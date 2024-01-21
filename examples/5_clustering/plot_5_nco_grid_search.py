@@ -57,8 +57,8 @@ model_nco = NestedClustersOptimization(
 # We find the model parameters that maximizes the out-of-sample Sharpe ratio using
 # `GridSearchCV` with `WalkForward` cross-validation on the training set.
 # The `WalkForward` are chosen to simulate a three months (60 business days) rolling
-# portfolio fitted on the previous year (255 business days):
-cv = WalkForward(train_size=255, test_size=60)
+# portfolio fitted on the previous year (252 business days):
+cv = WalkForward(train_size=252, test_size=60)
 
 grid_search_hrp = GridSearchCV(
     estimator=model_nco,
@@ -137,7 +137,7 @@ cv = CombinatorialPurgedCV(n_folds=9, n_test_folds=7)
 
 # %%
 # We choose `n_folds` and `n_test_folds` to obtain more than 30 test paths and an average
-# training size of approximately 255 days:
+# training size of approximately 252 days:
 cv.summary(X_test)
 
 # %%
@@ -157,9 +157,7 @@ pred_nco = cross_val_predict(
 # Distribution
 # ============
 # We plot the out-of-sample distribution of Sharpe Ratio for the NCO model:
-pred_nco.plot_distribution(
-    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO]
-)
+pred_nco.plot_distribution(measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO])
 
 # %%
 # Let's print the average and standard-deviation of out-of-sample Sharpe Ratios:

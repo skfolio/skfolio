@@ -73,8 +73,8 @@ model = Pipeline([("pre_selection", SelectKExtremes()), ("optimization", benchma
 # pre-selected assets `k` that maximizes the out-of-sample Sharpe Ratio using
 # `GridSearchCV` with `WalkForward` cross-validation on the training set. The
 # `WalkForward` is chosen to simulate a three months (60 business days) rolling
-# portfolio fitted on the previous year (255 business days):
-cv = WalkForward(train_size=255, test_size=60)
+# portfolio fitted on the previous year (252 business days):
+cv = WalkForward(train_size=252, test_size=60)
 
 scorer = make_scorer(RatioMeasure.ANNUALIZED_SHARPE_RATIO)
 # %%

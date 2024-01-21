@@ -133,7 +133,7 @@ class Portfolio(BasePortfolio):
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=255.0
+    annualized_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -440,7 +440,7 @@ class Portfolio(BasePortfolio):
         risk_free_rate: float = 0,
         name: str | None = None,
         tag: str | None = None,
-        annualized_factor: float = 255,
+        annualized_factor: float = 252,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
         min_acceptable_return: float | None = None,

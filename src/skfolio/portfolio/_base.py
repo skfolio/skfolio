@@ -98,7 +98,7 @@ class BasePortfolio:
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=255.0
+    annualized_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -485,7 +485,7 @@ class BasePortfolio:
         observations: np.ndarray | list,
         name: str | None = None,
         tag: str | None = None,
-        annualized_factor: float = 255.0,
+        annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         risk_free_rate: float = 0.0,
         compounded: bool = False,

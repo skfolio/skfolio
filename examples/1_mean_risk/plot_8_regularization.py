@@ -66,7 +66,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     min_weights=-1,
-    max_variance=0.3**2 / 255,
+    max_variance=0.3**2 / 252,
     efficient_frontier_size=30,
     portfolio_params=dict(name="Mean-Variance", tag="No Regularization"),
 )
@@ -78,7 +78,7 @@ model.weights_.shape
 model_l1 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     min_weights=-1,
-    max_variance=0.3**2 / 255,
+    max_variance=0.3**2 / 252,
     efficient_frontier_size=30,
     l1_coef=0.001,
     portfolio_params=dict(name="Mean-Variance", tag="L1 Regularization"),
@@ -153,7 +153,7 @@ population_test.plot_measures(
 # Hyper-parameter Tuning
 # ======================
 # In this section, we consider a 3 months rolling (60 business days) long-short
-# allocation fitted on the preceding year of data (255 business days) that maximizes the
+# allocation fitted on the preceding year of data (252 business days) that maximizes the
 # return under a volatility constraint of 30% p.a.
 #
 # We use `GridSearchCV` to select the optimal L1 and L2 regularization coefficients on
@@ -165,11 +165,11 @@ population_test.plot_measures(
 ref_model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-    max_variance=0.3**2 / 255,
+    max_variance=0.3**2 / 252,
     min_weights=-1,
 )
 
-cv = WalkForward(train_size=255, test_size=60)
+cv = WalkForward(train_size=252, test_size=60)
 
 grid_search = GridSearchCV(
     estimator=ref_model,
@@ -296,14 +296,14 @@ show(fig)
 # |
 #
 # The highest mean out-of-sample Sharpe Ratio is 1.55 and is achieved for a L2 coef of
-# 0.031.
+# 0.023.
 # Also note that without regularization, the mean train Sharpe Ratio is around
 # six time higher than the mean test Sharpe Ratio. That would be a clear indiction of
 # overfitting.
 #
 # Now, we analyze all three models on the test set. By using `cross_val_predict` with
 # `WalkForward`, we are able to compute efficiently the `MultiPeriodPortfolio`
-# composed of 60 days rolling portfolios fitted on the preceding 255 days:
+# composed of 60 days rolling portfolios fitted on the preceding 252 days:
 
 benchmark = EqualWeighted()
 pred_bench = cross_val_predict(benchmark, X_test, cv=cv)
@@ -320,8 +320,8 @@ population.plot_cumulative_returns()
 
 # %%
 # From the plot and the below summary, we can see that the un-regularized model is
-# overfitted and perform poorly on the test set. Its annualized volatility is 53%, which
-# is significantly above the model upper-bound of 30% and its Sharpe Ratio is 0.29 which
+# overfitted and perform poorly on the test set. Its annualized volatility is 54%, which
+# is significantly above the model upper-bound of 30% and its Sharpe Ratio is 0.32 which
 # is the lowest of all models.
 
 population.summary()

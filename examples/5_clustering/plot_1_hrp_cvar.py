@@ -100,7 +100,7 @@ show(fig)
 # The original HRP is based on the single-linkage (equivalent to the minimum spanning
 # tree), which suffers from the chaining effect.
 # In the :class:`~skfolio.optimization.HierarchicalRiskParity` estimator, the default
-# linkage method is set to the Ward variance minimization algorithm, which is more 
+# linkage method is set to the Ward variance minimization algorithm, which is more
 # stable and has better properties than the single-linkage method.
 #
 # However, since the HRP optimization doesn’t utilize the full cluster structure but

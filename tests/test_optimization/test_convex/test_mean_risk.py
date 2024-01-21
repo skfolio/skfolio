@@ -830,7 +830,7 @@ def test_transaction_costs(X, risk_measure):
     # weights
     # noinspection PyTypeChecker
     model.set_params(
-        transaction_costs=0.1 / 255, previous_weights=np.ones(n_assets) / n_assets
+        transaction_costs=0.1 / 252, previous_weights=np.ones(n_assets) / n_assets
     )
     model.fit(X)
     w = model.weights_

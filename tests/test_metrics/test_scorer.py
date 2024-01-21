@@ -22,7 +22,7 @@ def X():
 def test_default_score(X):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-        max_variance=0.3**2 / 255,
+        max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
     cv = skm.KFold(3)
@@ -58,7 +58,7 @@ def test_default_score(X):
 def test_measure_score_ratio(X):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-        max_variance=0.3**2 / 255,
+        max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
     cv = skm.KFold(3)
@@ -100,7 +100,7 @@ def test_measure_score_ratio(X):
 def test_measure_score_risk_measure(X):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-        max_variance=0.3**2 / 255,
+        max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
     cv = skm.KFold(3)
@@ -141,7 +141,7 @@ def test_measure_score_risk_measure(X):
 def test_measure_score_custom(X):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-        max_variance=0.3**2 / 255,
+        max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
     cv = skm.KFold(3)
