@@ -608,3 +608,28 @@ def gini_mean_difference(returns: np.ndarray) -> float:
     """
     w = owa_gmd_weights(len(returns))
     return float(w @ np.sort(returns, axis=0))
+
+
+def effective_number_assets(weights: np.ndarray) -> float:
+    r"""
+    Computes the effective number of assets, defined as the inverse of the Herfindahl index [1]_:
+    .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
+    
+    It quantifies portfolio concentration, with a higher value indicating a more diversified portfolio.
+
+    Parameters
+    ----------
+    weights : ndarray of shape (n_assets,)
+        Weights of the assets.
+
+    Returns
+    -------
+    value : float
+        Effective number of assets.
+
+    References
+    ----------
+    .. [1] "Banking and Financial Institutions Law in a Nutshell".
+        Lovett, William Anthony (1988)
+    """
+    return 1.0/(np.power(weights, 2).sum())
