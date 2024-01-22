@@ -102,7 +102,7 @@ def create_dendrogram(
     return graph_objs.Figure(data=dendrogram.data, layout=dendrogram.layout)
 
 
-class _Dendrogram(object):
+class _Dendrogram:
     """Refer to FigureFactory.create_dendrogram() for docstring."""
 
     def __init__(
