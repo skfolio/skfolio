@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.portfolio._base &#8212; skfolio 0.0.10 documentation</title>
+    <title>skfolio.portfolio._base &#8212; skfolio 0.0.11 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=3192eeb0"></script>
+    <script src="../../../_static/documentation_options.js?v=c657f005"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -477,7 +477,7 @@ document.write(`
 <span class="sd">        compute domination.</span>
 <span class="sd">        The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]</span>
 
-<span class="sd">    annualized_factor : float, default=255.0</span>
+<span class="sd">    annualized_factor : float, default=252.0</span>
 <span class="sd">        Factor used to annualize the below measures using the square-root rule:</span>
 
 <span class="sd">            * Annualized Mean = Mean * factor</span>
@@ -864,7 +864,7 @@ document.write(`
         <span class="n">observations</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="nb">list</span><span class="p">,</span>
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">annualized_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">255.0</span><span class="p">,</span>
+        <span class="n">annualized_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">252.0</span><span class="p">,</span>
         <span class="n">fitness_measures</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">risk_free_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">compounded</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>

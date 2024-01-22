@@ -239,8 +239,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Mean</th>
-          <td>17.24%</td>
-          <td>16.60%</td>
+          <td>17.04%</td>
+          <td>16.40%</td>
         </tr>
         <tr>
           <th>Variance</th>
@@ -249,8 +249,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Variance</th>
-          <td>2.88%</td>
-          <td>2.66%</td>
+          <td>2.84%</td>
+          <td>2.63%</td>
         </tr>
         <tr>
           <th>Semi-Variance</th>
@@ -259,8 +259,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Semi-Variance</th>
-          <td>1.48%</td>
-          <td>1.37%</td>
+          <td>1.47%</td>
+          <td>1.36%</td>
         </tr>
         <tr>
           <th>Standard Deviation</th>
@@ -269,8 +269,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Standard Deviation</th>
-          <td>16.96%</td>
-          <td>16.32%</td>
+          <td>16.86%</td>
+          <td>16.22%</td>
         </tr>
         <tr>
           <th>Semi-Deviation</th>
@@ -279,8 +279,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Semi-Deviation</th>
-          <td>12.19%</td>
-          <td>11.73%</td>
+          <td>12.11%</td>
+          <td>11.66%</td>
         </tr>
         <tr>
           <th>Mean Absolute Deviation</th>
@@ -379,8 +379,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Sharpe Ratio</th>
-          <td>1.02</td>
-          <td>1.02</td>
+          <td>1.01</td>
+          <td>1.01</td>
         </tr>
         <tr>
           <th>Sortino Ratio</th>
@@ -389,8 +389,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Annualized Sortino Ratio</th>
-          <td>1.42</td>
-          <td>1.42</td>
+          <td>1.41</td>
+          <td>1.41</td>
         </tr>
         <tr>
           <th>Mean Absolute Deviation Ratio</th>
@@ -477,7 +477,7 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.173 seconds)
+   **Total running time of the script:** (0 minutes 1.157 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:

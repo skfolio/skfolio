@@ -44,9 +44,9 @@ model = MeanRisk(
 population.extend(model.fit_predict(X))
 
 for tag, investment_horizon in [
-    ("3M", 255 / 4),
-    ("1Y", 255),
-    ("10Y", 10 * 255),
+    ("3M", 252 / 4),
+    ("1Y", 252),
+    ("10Y", 10 * 252),
 ]:
     model = MeanRisk(
         risk_measure=RiskMeasure.VARIANCE,

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.cluster._hierarchical &#8212; skfolio 0.0.10 documentation</title>
+    <title>skfolio.cluster._hierarchical &#8212; skfolio 0.0.11 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=3192eeb0"></script>
+    <script src="../../../_static/documentation_options.js?v=c657f005"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -385,13 +385,13 @@ document.write(`
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
-<span class="kn">import</span> <span class="nn">plotly.figure_factory</span> <span class="k">as</span> <span class="nn">ff</span>
 <span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
 <span class="kn">import</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">as</span> <span class="nn">sch</span>
 <span class="kn">import</span> <span class="nn">scipy.spatial.distance</span> <span class="k">as</span> <span class="nn">scd</span>
 <span class="kn">import</span> <span class="nn">sklearn.base</span> <span class="k">as</span> <span class="nn">skb</span>
 <span class="kn">import</span> <span class="nn">sklearn.utils.validation</span> <span class="k">as</span> <span class="nn">skv</span>
 
+<span class="kn">from</span> <span class="nn">skfolio.utils.fixes</span> <span class="kn">import</span> <span class="n">create_dendrogram</span>
 <span class="kn">from</span> <span class="nn">skfolio.utils.stats</span> <span class="kn">import</span> <span class="n">assert_is_distance</span><span class="p">,</span> <span class="n">compute_optimal_n_clusters</span>
 <span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">AutoEnum</span><span class="p">,</span> <span class="n">default_asset_names</span>
 
@@ -632,7 +632,7 @@ document.write(`
             <span class="n">asset_names</span> <span class="o">=</span> <span class="n">default_asset_names</span><span class="p">(</span><span class="n">n_assets</span><span class="o">=</span><span class="n">n_assets</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">heatmap</span><span class="p">:</span>
-            <span class="n">fig</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">create_dendrogram</span><span class="p">(</span>
                 <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
                 <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
                 <span class="n">linkagefun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">linkage_matrix</span><span class="p">,</span>
@@ -651,7 +651,7 @@ document.write(`
             <span class="k">return</span> <span class="n">fig</span>
 
         <span class="c1"># Initialize figure by creating upper dendrogram</span>
-        <span class="n">fig</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">create_dendrogram</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
             <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span>
             <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
@@ -664,7 +664,7 @@ document.write(`
             <span class="n">fig</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="n">i</span><span class="p">][</span><span class="s2">&quot;yaxis&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;y2&quot;</span>
 
         <span class="c1"># Create Side Dendrogram</span>
-        <span class="n">side_dendrogram</span> <span class="o">=</span> <span class="n">ff</span><span class="o">.</span><span class="n">create_dendrogram</span><span class="p">(</span>
+        <span class="n">side_dendrogram</span> <span class="o">=</span> <span class="n">create_dendrogram</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
             <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;right&quot;</span><span class="p">,</span>
             <span class="n">distfun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>

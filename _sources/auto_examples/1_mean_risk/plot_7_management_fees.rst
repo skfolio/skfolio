@@ -126,14 +126,14 @@ will assume that it also applies for the below stocks:
   * JPMorgan: 1% p.a.
 
 The MF are expressed in per annum, so we need to convert them in daily MF.
-We suppose 255 trading days in a year:
+We suppose 252 trading days in a year:
 
 .. GENERATED FROM PYTHON SOURCE LINES 79-89
 
 .. code-block:: Python
 
-    management_fees = {"AAPL": 0.03 / 255, "GE": 0.06 / 255, "JPM": 0.01 / 255}
-    # Same as management_fees = np.array([0.03, 0.06, 0.01]) / 255
+    management_fees = {"AAPL": 0.03 / 252, "GE": 0.06 / 252, "JPM": 0.01 / 252}
+    # Same as management_fees = np.array([0.03, 0.06, 0.01]) / 252
 
     model_mf = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
@@ -151,7 +151,7 @@ We suppose 255 trading days in a year:
  .. code-block:: none
 
 
-    array([5.75290932e-01, 3.10793740e-09, 4.24709065e-01])
+    array([5.74787861e-01, 1.43028265e-08, 4.25212125e-01])
 
 
 
@@ -174,7 +174,7 @@ The higher MF of Apple induced a change of weights toward JPMorgan:
  .. code-block:: none
 
 
-    array([-4.24422995e-02, -6.79814287e-10,  4.24423002e-02])
+    array([-4.29453703e-02,  1.05150748e-08,  4.29453598e-02])
 
 
 
@@ -208,7 +208,7 @@ As explained above, we transform the yearly MF into a daily MF:
 
 .. code-block:: Python
 
-    management_fees = np.array([0.03, 0.06, 0.01]) / 255
+    management_fees = np.array([0.03, 0.06, 0.01]) / 252
 
 
 
@@ -294,7 +294,7 @@ MF**.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.243 seconds)
+   **Total running time of the script:** (0 minutes 4.118 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py:

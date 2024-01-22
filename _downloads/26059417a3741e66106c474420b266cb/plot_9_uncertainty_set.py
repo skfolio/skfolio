@@ -96,7 +96,7 @@ population_train.plot_measures(
 # Hyper-Parameter Tuning
 # ======================
 # In this section, we consider a 3 months rolling (60 business days) long-short
-# allocation fitted on the preceding year of data (255 business days) that maximizes the
+# allocation fitted on the preceding year of data (252 business days) that maximizes the
 # portfolio return under a CVaR constraint.
 # We will use `GridSearchCV` to select the below model parameters on the training set
 # using walk forward analysis with a Mean/CVaR ratio scoring.
@@ -113,14 +113,15 @@ population_train.plot_measures(
 model_no_uncertainty = MeanRisk(
     risk_measure=RiskMeasure.CVAR,
     objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
-    max_cvar=0.04,
+    max_cvar=0.02,
+    cvar_beta=0.9,
     min_weights=-1,
 )
 
 model_uncertainty = clone(model_no_uncertainty)
 model_uncertainty.set_params(mu_uncertainty_set_estimator=EmpiricalMuUncertaintySet())
 
-cv = WalkForward(train_size=255, test_size=60)
+cv = WalkForward(train_size=252, test_size=60)
 
 grid_search = GridSearchCV(
     estimator=model_uncertainty,
@@ -128,7 +129,7 @@ grid_search = GridSearchCV(
     n_jobs=-1,
     param_grid={
         "mu_uncertainty_set_estimator__confidence_level": [0.80, 0.90],
-        "max_cvar": [0.04, 0.05, 0.06],
+        "max_cvar": [0.03, 0.04, 0.05],
         "cvar_beta": [0.8, 0.9, 0.95],
     },
     scoring=make_scorer(RatioMeasure.CVAR_RATIO),
@@ -138,7 +139,7 @@ best_model = grid_search.best_estimator_
 print(best_model)
 
 # %%
-# The optimal parameters among the above 2x3x3 grid are the `max_cvar=6%`,
+# The optimal parameters among the above 2x3x3 grid are the `max_cvar=3%`,
 # `cvar_beta=90%` and :class:`~skfolio.uncertainty_set.EmpiricalMuUncertaintySet`
 # `confidence_level=80%`. These parameters are the ones that achieved the highest mean
 # out-of-sample Mean/CVaR ratio.
@@ -204,7 +205,7 @@ show(fig)
 # Now, we analyze all three models on the test set.
 # By using `cross_val_predict` with `WalkForward`, we are able to compute efficiently
 # the `MultiPeriodPortfolio` composed of 60 days rolling portfolios fitted on the
-# preceding 255 days:
+# preceding 252 days:
 pred_no_uncertainty = cross_val_predict(model_no_uncertainty, X_test, cv=cv)
 pred_no_uncertainty.name = "No Uncertainty set"
 
@@ -219,7 +220,7 @@ population.plot_cumulative_returns()
 
 # %%
 # From the plot and the below summary, we can see that the model without uncertainty set
-# is overfitted and perform poorly on the test set. Its CVaR at 95% is 18% and its
+# is overfitted and perform poorly on the test set. Its CVaR at 95% is 10% and its
 # Mean/CVaR ratio is 0.006 which is the lowest of all models.
 population.summary()
 

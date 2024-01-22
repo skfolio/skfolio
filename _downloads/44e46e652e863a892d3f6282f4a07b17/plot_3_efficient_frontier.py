@@ -89,7 +89,7 @@ population.summary()
 # 15%, 20%, 25%, 30% and 35% (annualized):
 model = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
-    min_return=np.array([0.15, 0.20, 0.25, 0.30, 0.35]) / 255,
+    min_return=np.array([0.15, 0.20, 0.25, 0.30, 0.35]) / 252,
     portfolio_params=dict(name="Variance"),
 )
 
