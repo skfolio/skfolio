@@ -51,7 +51,7 @@ Example:
     * Duration = 1 months (21 business days):
         * 1 month expected return A ≈ -0.8%
         * 1 month expected return B ≈ 0.1%
-    * Duration = 1 year (255 business days):
+    * Duration = 1 year (252 business days):
         * 1 year expected return A ≈ 1.5%
         * 1 year expected return B ≈ 1.3%
 

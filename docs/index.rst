@@ -332,7 +332,7 @@ Randomized Search of the L2 Norm
 
     randomized_search = RandomizedSearchCV(
         estimator=MeanRisk(),
-        cv=WalkForward(train_size=255, test_size=60),
+        cv=WalkForward(train_size=252, test_size=60),
         param_distributions={
             "l2_coef": loguniform(1e-3, 1e-1),
         },

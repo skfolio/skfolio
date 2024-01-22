@@ -98,7 +98,7 @@ model1.clustering_estimator_.plot_dendrogram(heatmap=False)
 model1.clustering_estimator_.plot_dendrogram()
 
 # %%
-# Linkage M
+# Linkage Methods
 # ===============
 # The hierarchical clustering can be greatly affected by the choice of the linkage
 # method. In the :class:`~skfolio.cluster.HierarchicalClustering` estimator, the default

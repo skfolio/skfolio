@@ -82,7 +82,7 @@ def prices_to_returns(
     else:
         if not isinstance(y, pd.DataFrame):
             raise TypeError("`y` must be a DataFrame")
-        df = pd.concat([X, y], join=join, axis=1)
+        df = X.join(y, how="outer")
 
     n_observations, n_assets = X.shape
 
