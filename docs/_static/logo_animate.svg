@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 25.0.1, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+     viewBox="-1 0 104 71.2" style="enable-background:new -1 0 104 71.2;"
+     xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#F28A36;}
+	.st1{fill:#3E9BB1;}
+</style>
+    <polygon id="right-polygon" class="st0"
+             points="36.2,46.3 41.5,12.4 73.7,0 100.4,21.6 95.1,55.6 63,68 ">
+    <animateTransform
+        xlink:href="#right-polygon"
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        from="0 68.31 33.99"
+        to="60 68.31 33.99"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keyTimes="0;1"
+        keySplines=".42,0,.58,1"
+        dur="6s"
+    />
+    <animate
+        attributeName="fill"
+        dur="36s"
+        repeatCount="indefinite"
+        keyTimes="0;0.1666;0.3333;0.5;0.6666;0.8333;1"
+        calcMode="spline"
+        keySplines=".42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;"
+        values="#f28a36; #f26b36;#f28a36; #ef9f37; #f28a36;#f26b36; #f28a36; "
+    />
+</polygon>
+    <polygon id="left-polygon" class="st1" points="0,60.2 2.7,42.9 19,36.7 32.6,47.6 29.9,64.9 13.6,71.1 ">
+    <animateTransform
+        xlink:href="#left-polygon"
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        from="60 16.3 53.9"
+        to="0 16.3 53.9"
+        repeatCount="indefinite"
+        calcMode="spline"
+        keyTimes="0;1"
+        keySplines=".42,0,.58,1"
+        dur="6s"
+    />
+    <animate
+        attributeName="fill"
+        dur="36s"
+        repeatCount="indefinite"
+        keyTimes="0;0.1666;0.3333;0.5;0.6666;0.8333;1"
+        calcMode="spline"
+        keySplines=".42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;.42,0,.58,1;"
+        values="#3e9bb1; #3f7faf;#3e9bb1; #3faf9f; #3e9bb1;#3f7faf; #3e9bb1;"
+    />
+</polygon>
+</svg>

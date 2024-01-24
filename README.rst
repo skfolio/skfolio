@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_ |Downloads|_ |Ruff|_ |Website|_
+|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_ |Downloads|_ |Ruff|_ |Contribution|_ |Website|_
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 .. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -26,7 +26,10 @@
 .. |Ruff| image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
 .. _Ruff: https://github.com/astral-sh/ruff
 
-.. |Website| image:: https://img.shields.io/website-up-down-green-red/http/skfolio.org
+.. |Contribution| image:: https://img.shields.io/badge/Contributions-Welcome-blue
+.. _Contribution: https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md
+
+.. |Website| image:: https://img.shields.io/website-up-down-53cc0d-red/http/skfolio.org
 .. _Website: https://skfolio.org
 
 .. |PythonMinVersion| replace:: 3.10
@@ -42,7 +45,7 @@
 ===============
 |icon|  skfolio
 ===============
-.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/favicon.png
+.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/logo_animate.svg
     :width: 100
     :alt: skfolio documentation
     :target: https://skfolio.org/
