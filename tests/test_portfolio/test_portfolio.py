@@ -174,7 +174,8 @@ def test_portfolio_annualized(X, weights, annualized_factor):
 def test_portfolio_methods(X, weights):
     portfolio = Portfolio(X=X, weights=weights)
     returns = _portfolio_returns(asset_returns=X.to_numpy(), weights=weights)
-    assert len(portfolio) == X.shape[0]
+    assert portfolio.n_observations == X.shape[0]
+    assert portfolio.n_assets == X.shape[1]
     np.testing.assert_almost_equal(returns, portfolio.returns)
     np.testing.assert_almost_equal(returns.mean(), portfolio.mean)
     np.testing.assert_almost_equal(returns.std(ddof=1), portfolio.standard_deviation)
@@ -235,7 +236,8 @@ def test_portfolio_magic_methods(X, weights):
     n_assets = X.shape[1]
     ptf_1 = Portfolio(X=X, weights=rand_weights(n=n_assets))
     ptf_2 = Portfolio(X=X, weights=rand_weights(n=n_assets))
-    assert len(ptf_1) == X.shape[0]
+    assert ptf_1.n_observations == X.shape[0]
+    assert ptf_1.n_assets == X.shape[1]
     ptf = ptf_1 + ptf_2
     assert np.array_equal(ptf.weights, ptf_1.weights + ptf_2.weights)
     ptf = ptf_1 - ptf_2

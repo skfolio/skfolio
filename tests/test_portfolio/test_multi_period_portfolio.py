@@ -203,7 +203,8 @@ def test_portfolio_annualized(portfolio_and_returns, annualized_factor):
 
 def test_portfolio_methods(portfolio_and_returns, periods):
     portfolio, returns = portfolio_and_returns
-    assert len(portfolio) == returns.shape[0]
+    assert portfolio.n_observations == returns.shape[0]
+    assert len(portfolio) == len(periods)
     np.testing.assert_almost_equal(returns, portfolio.returns)
     np.testing.assert_almost_equal(returns.mean(), portfolio.mean)
     np.testing.assert_almost_equal(returns.std(ddof=1), portfolio.standard_deviation)
@@ -386,3 +387,10 @@ def test_portfolio_delete_attr(portfolio_and_returns, periods):
         raise
     except AttributeError as e:
         assert str(e) == "`MultiPeriodPortfolio` object has no attribute 'dummy'"
+
+
+def test_portfolio_summary(portfolio_and_returns, periods):
+    portfolio, returns = portfolio_and_returns
+    df = portfolio.summary(formatted=False)
+    assert df.loc["Portfolios Number"] == 3.0
+    assert df.loc["Avg nb of Assets per Portfolio"] == 20.0

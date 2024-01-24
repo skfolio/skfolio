@@ -369,7 +369,6 @@ class BasePortfolio:
     _read_only_attrs: ClassVar[set] = {
         "returns",
         "observations",
-        "n_observations",
     }
 
     # Arguments globally used in measures computation
@@ -401,7 +400,6 @@ class BasePortfolio:
         # public read-only
         "returns",
         "observations",
-        "n_observations",
         # private
         "_loaded",
         # custom getter and setter
@@ -521,7 +519,6 @@ class BasePortfolio:
             self._fitness_measures = [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
         else:
             self._fitness_measures = fitness_measures
-        self.n_observations = len(observations)
         self._loaded = True
 
     def __reduce__(self):
@@ -530,9 +527,6 @@ class BasePortfolio:
         return self.__class__, tuple(
             [getattr(self, arg) for arg in args_names(self.__init__)]
         )
-
-    def __len__(self) -> int:
-        return len(self.observations)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
@@ -679,6 +673,11 @@ class BasePortfolio:
         return mt.get_drawdowns(returns=self.returns, compounded=self.compounded)
 
     # Classic property
+    @property
+    def n_observations(self) -> int:
+        """Number of observations"""
+        return len(self.observations)
+
     @property
     def returns_df(self) -> pd.Series:
         """Portfolio returns DataFrame."""
