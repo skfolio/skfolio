@@ -62,4 +62,5 @@ def test_validation_combinatorial(X):
     for p in pred:
         assert isinstance(p, MultiPeriodPortfolio)
         assert len(p.portfolios) == cv.n_folds
-        assert len(p) == n_observations
+        assert len(p) == cv.n_folds
+        assert p.n_observations == n_observations
