@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**11:06.502** total execution time for 28 files **from all galleries**:
+**11:16.956** total execution time for 28 files **from all galleries**:
 
 .. container::
 
@@ -33,86 +33,86 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_9_uncertainty_set.py` (``../examples/1_mean_risk/plot_9_uncertainty_set.py``)
-     - 03:02.554
+     - 03:03.426
      - 0.0
    * - :ref:`sphx_glr_auto_examples_6_ensemble_plot_1_stacking.py` (``../examples/6_ensemble/plot_1_stacking.py``)
-     - 02:21.094
+     - 02:22.965
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_3_hrp_vs_herc.py` (``../examples/5_clustering/plot_3_hrp_vs_herc.py``)
-     - 02:12.657
+     - 02:15.122
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_8_regularization.py` (``../examples/1_mean_risk/plot_8_regularization.py``)
-     - 01:14.440
+     - 01:16.772
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_5_nco_grid_search.py` (``../examples/5_clustering/plot_5_nco_grid_search.py``)
-     - 00:35.635
+     - 00:37.822
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_4_mean_variance_cdar.py` (``../examples/1_mean_risk/plot_4_mean_variance_cdar.py``)
-     - 00:22.048
+     - 00:22.173
      - 0.0
    * - :ref:`sphx_glr_auto_examples_7_pre_selection_plot_2_select_best_performers.py` (``../examples/7_pre_selection/plot_2_select_best_performers.py``)
-     - 00:18.669
+     - 00:18.617
      - 0.0
    * - :ref:`sphx_glr_auto_examples_4_distributioally_robust_cvar_plot_1_distributionally_robust_cvar.py` (``../examples/4_distributioally_robust_cvar/plot_1_distributionally_robust_cvar.py``)
-     - 00:14.738
+     - 00:15.150
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py` (``../examples/1_mean_risk/plot_6_transaction_costs.py``)
-     - 00:07.515
+     - 00:07.618
      - 0.0
    * - :ref:`sphx_glr_auto_examples_7_pre_selection_plot_1_drop_correlated.py` (``../examples/7_pre_selection/plot_1_drop_correlated.py``)
-     - 00:07.464
+     - 00:07.276
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_7_management_fees.py` (``../examples/1_mean_risk/plot_7_management_fees.py``)
-     - 00:04.118
+     - 00:04.133
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_13_factor_model.py` (``../examples/1_mean_risk/plot_13_factor_model.py``)
-     - 00:03.300
+     - 00:03.297
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_4_nco.py` (``../examples/5_clustering/plot_4_nco.py``)
-     - 00:02.872
+     - 00:02.964
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_14_black_litterman_factor_model.py` (``../examples/1_mean_risk/plot_14_black_litterman_factor_model.py``)
-     - 00:02.527
+     - 00:02.490
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_1_maximum_sharpe_ratio.py` (``../examples/1_mean_risk/plot_1_maximum_sharpe_ratio.py``)
-     - 00:02.103
+     - 00:02.143
      - 0.0
    * - :ref:`sphx_glr_auto_examples_5_clustering_plot_1_hrp_cvar.py` (``../examples/5_clustering/plot_1_hrp_cvar.py``)
-     - 00:02.078
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_busgeting_CVaR.py` (``../examples/2_risk_budgeting/plot_2_risk_busgeting_CVaR.py``)
-     - 00:01.759
+     - 00:02.077
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_2_minimum_CVaR.py` (``../examples/1_mean_risk/plot_2_minimum_CVaR.py``)
-     - 00:01.566
+     - 00:01.842
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_busgeting_CVaR.py` (``../examples/2_risk_budgeting/plot_2_risk_busgeting_CVaR.py``)
+     - 00:01.744
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_1_risk_parity_variance.py` (``../examples/2_risk_budgeting/plot_1_risk_parity_variance.py``)
-     - 00:01.404
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_11_empirical_prior.py` (``../examples/1_mean_risk/plot_11_empirical_prior.py``)
-     - 00:01.199
+     - 00:01.393
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_10_tracking_error.py` (``../examples/1_mean_risk/plot_10_tracking_error.py``)
-     - 00:01.178
+     - 00:01.185
      - 0.0
-   * - :ref:`sphx_glr_auto_examples_5_clustering_plot_2_herc_cdar.py` (``../examples/5_clustering/plot_2_herc_cdar.py``)
-     - 00:01.161
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py` (``../examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.py``)
+   * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_11_empirical_prior.py` (``../examples/1_mean_risk/plot_11_empirical_prior.py``)
      - 00:01.157
      - 0.0
+   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py` (``../examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.py``)
+     - 00:01.153
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_5_clustering_plot_2_herc_cdar.py` (``../examples/5_clustering/plot_2_herc_cdar.py``)
+     - 00:01.149
+     - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_3_efficient_frontier.py` (``../examples/1_mean_risk/plot_3_efficient_frontier.py``)
-     - 00:01.072
+     - 00:01.090
      - 0.0
    * - :ref:`sphx_glr_auto_examples_8_data_preparation_plot_1_investment_horizon.py` (``../examples/8_data_preparation/plot_1_investment_horizon.py``)
-     - 00:00.929
+     - 00:00.930
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_12_black_and_litterman.py` (``../examples/1_mean_risk/plot_12_black_and_litterman.py``)
-     - 00:00.463
+     - 00:00.465
      - 0.0
    * - :ref:`sphx_glr_auto_examples_3_maxiumum_diversification_plot_1_maximum_divesification.py` (``../examples/3_maxiumum_diversification/plot_1_maximum_divesification.py``)
-     - 00:00.452
+     - 00:00.445
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_5_weight_constraints.py` (``../examples/1_mean_risk/plot_5_weight_constraints.py``)
-     - 00:00.354
+     - 00:00.358
      - 0.0

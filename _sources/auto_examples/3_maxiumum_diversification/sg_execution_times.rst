@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.452** total execution time for 1 file **from auto_examples/3_maxiumum_diversification**:
+**00:00.445** total execution time for 1 file **from auto_examples/3_maxiumum_diversification**:
 
 .. container::
 
@@ -33,5 +33,5 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_3_maxiumum_diversification_plot_1_maximum_divesification.py` (``plot_1_maximum_divesification.py``)
-     - 00:00.452
+     - 00:00.445
      - 0.0

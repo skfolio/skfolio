@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:26.133** total execution time for 2 files **from auto_examples/7_pre_selection**:
+**00:25.892** total execution time for 2 files **from auto_examples/7_pre_selection**:
 
 .. container::
 
@@ -33,8 +33,8 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_7_pre_selection_plot_2_select_best_performers.py` (``plot_2_select_best_performers.py``)
-     - 00:18.669
+     - 00:18.617
      - 0.0
    * - :ref:`sphx_glr_auto_examples_7_pre_selection_plot_1_drop_correlated.py` (``plot_1_drop_correlated.py``)
-     - 00:07.464
+     - 00:07.276
      - 0.0
