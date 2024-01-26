@@ -49,7 +49,7 @@ Ready to contribute? Here's how to set yourself up for local development.
 3. Install the project in development mode with the tests and linting dependencies:
 
    ```shell
-   $ pip install --editable .[tests]
+   $ pip install --editable '.[tests]'
    ```
 
 4. Create a branch for local development:
