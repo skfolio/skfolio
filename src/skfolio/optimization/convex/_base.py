@@ -768,8 +768,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                     f" {right_inequality.shape[0]}"
                 )
             constraints.append(
-                self.left_inequality @ w * self._scale_constraints
-                - self.right_inequality * factor * self._scale_constraints
+                left_inequality @ w * self._scale_constraints
+                - right_inequality * factor * self._scale_constraints
                 <= 0
             )
 
