@@ -49,7 +49,7 @@ Ready to contribute? Here's how to set yourself up for local development.
 3. Install the project in development mode with the tests and linting dependencies:
 
    ```shell
-   $ pip install --editable '.[tests]'
+   $ pip install --editable ".[tests]"
    ```
 
 4. Create a branch for local development:
@@ -61,7 +61,7 @@ Ready to contribute? Here's how to set yourself up for local development.
 
    To name your branch, you can use the convention: 
    `category/reference/description-in-kebab-case`
-   with category: `feat`, `fix`, `refactor`, `chore` and reference: 
+   with category: `feature`, `fix`, `refactor`, `chore` and reference: 
    `issue-<issue number>` or `no-ref`. For example: `feature/issue-34/factor-model`
 
 
@@ -74,10 +74,18 @@ Ready to contribute? Here's how to set yourself up for local development.
 6. Then run linting checks with :
 
    ```shell
-   $ ruff
+   $ ruff check
    ```
 
-7. Commit your changes and push your branch to GitHub:
+7. If you added some documentation, you should test that it builds correctly :
+   
+   ```shell
+   $ pip install --editable ".[docs]"
+   $ cd docs
+   $ make html
+   ```
+
+8. Commit your changes and push your branch to GitHub:
 
    ```shell
    $ git add .
@@ -87,11 +95,13 @@ Ready to contribute? Here's how to set yourself up for local development.
 
    Note: the commit message should follow [the conventional commits](https://www.conventionalcommits.org).
  
-8. Submit a pull request through the GitHub website or using the GitHub CLI:
+
+9. Submit a pull request through the GitHub website or using the GitHub CLI:
 
    ```shell
    $ gh pr create --fill
    ```
+
 
 ## Pull Request Guidelines
 
