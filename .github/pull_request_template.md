@@ -46,8 +46,6 @@ Please go through the checklist below. Please feel free to remove points if they
 
 ##### For all contributions
 - [ ] The PR title starts with either [ENH], [MNT], [DOC], or [BUG]. [BUG] - bugfix, [MNT] - CI, test framework, [ENH] - adding or improving code, [DOC] - writing or improving documentation or docstrings.
-- [ ] I've added myself to the [list of contributors](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTORS.md)
-  How to: add yourself to the [all-contributors file](https://github.com/skfolio/skfolio/blob/main/.all-contributorsrc) in the `skfolio` root directory (not the `CONTRIBUTORS.md`). 
 - [ ] Optionally, I've added myself and possibly others to the [CODEOWNERS](https://github.com/skfolio/skfolio/blob/main/CODEOWNERS) file - do this if you want to become the owner or maintainer of an estimator you added.
 
 ##### For new estimators
