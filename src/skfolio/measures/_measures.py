@@ -611,11 +611,13 @@ def gini_mean_difference(returns: np.ndarray) -> float:
 
 
 def effective_number_assets(weights: np.ndarray) -> float:
-    r"""
-    Computes the effective number of assets, defined as the inverse of the Herfindahl index [1]_:
+    r"""Computes the effective number of assets, defined as the inverse of the
+    Herfindahl index [1]_:
+
     .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
 
-    It quantifies portfolio concentration, with a higher value indicating a more diversified portfolio.
+    It quantifies portfolio concentration, with a higher value indicating a more
+    diversified portfolio.
 
     Parameters
     ----------
