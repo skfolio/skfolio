@@ -1,6 +1,6 @@
 
 
-.. _sphx_glr_auto_examples_4_distributioally_robust_cvar:
+.. _sphx_glr_auto_examples_4_distributionally_robust_cvar:
 
 .. _distributionally_robust_examples:
 
@@ -23,10 +23,10 @@ Examples concerning the :class:`~skfolio.optimization.DistributionallyRobustCVaR
 
 .. only:: html
 
-  .. image:: /auto_examples/4_distributioally_robust_cvar/images/thumb/sphx_glr_plot_1_distributionally_robust_cvar_thumb.png
+  .. image:: /auto_examples/4_distributionally_robust_cvar/images/thumb/sphx_glr_plot_1_distributionally_robust_cvar_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_4_distributioally_robust_cvar_plot_1_distributionally_robust_cvar.py`
+  :ref:`sphx_glr_auto_examples_4_distributionally_robust_cvar_plot_1_distributionally_robust_cvar.py`
 
 .. raw:: html
 
@@ -42,5 +42,5 @@ Examples concerning the :class:`~skfolio.optimization.DistributionallyRobustCVaR
 .. toctree::
    :hidden:
 
-   /auto_examples/4_distributioally_robust_cvar/plot_1_distributionally_robust_cvar
+   /auto_examples/4_distributionally_robust_cvar/plot_1_distributionally_robust_cvar
 

@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="This is the class and function reference of skfolio. Please refer to the full user guide for further details, as the class and function raw specifications may not be enough to give full guidelines ..." />
 
-    <title>API Reference &#8212; skfolio 0.1.1 documentation</title>
+    <title>API Reference &#8212; skfolio 0.1.2 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="_static/documentation_options.js?v=55ac272d"></script>
+    <script src="_static/documentation_options.js?v=969202b3"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -374,6 +374,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.ulcer_index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.ulcer_index</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.gini_mean_difference.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.gini_mean_difference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.owa_gmd_weights.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.owa_gmd_weights</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.measures.effective_number_assets.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.measures</span></code>.effective_number_assets</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.portfolio.BasePortfolio.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.portfolio</span></code>.BasePortfolio</a></li>
@@ -691,6 +692,9 @@ uses.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.measures.owa_gmd_weights.html#skfolio.measures.owa_gmd_weights" title="skfolio.measures.owa_gmd_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.owa_gmd_weights</span></code></a>(n_observations)</p></td>
 <td><p>Compute the OWA weights used for the Gini mean difference (GMD) computation.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.measures.effective_number_assets.html#skfolio.measures.effective_number_assets" title="skfolio.measures.effective_number_assets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures.effective_number_assets</span></code></a>(weights)</p></td>
+<td><p>Computes the effective number of assets, defined as the inverse of the Herfindahl index <a class="reference internal" href="generated/skfolio.measures.effective_number_assets.html#r3692bcdb1be2-1" id="id1"><span>[R3692bcdb1be2-1]</span></a>:</p></td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -703,8 +707,8 @@ Optimization estimators.
 They need to be homogenous to the convex optimization problems meaning that <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>
 is the dot product of the assets weights with the assets returns and
 <code class="docutils literal notranslate"><span class="pre">MultiPeriodPortfolio</span></code> is a list of <code class="docutils literal notranslate"><span class="pre">Portfolio</span></code>.</p>
-<section id="id1">
-<h3>Base Classe<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<section id="id2">
+<h3>Base Classe<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.portfolio.BasePortfolio.html#skfolio.portfolio.BasePortfolio" title="skfolio.portfolio.BasePortfolio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">portfolio.BasePortfolio</span></code></a></p></td>
@@ -713,8 +717,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id2">
-<h3>Classes<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<section id="id3">
+<h3>Classes<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.portfolio.Portfolio.html#skfolio.portfolio.Portfolio" title="skfolio.portfolio.Portfolio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">portfolio.Portfolio</span></code></a></p></td>
@@ -729,8 +733,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="module-skfolio.population">
 <span id="skfolio-population-population"></span><span id="population-ref"></span><h2><a class="reference internal" href="#module-skfolio.population" title="skfolio.population"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.population</span></code></a>: Population<a class="headerlink" href="#module-skfolio.population" title="Link to this heading">#</a></h2>
-<section id="id3">
-<h3>Classes<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id4">
+<h3>Classes<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.population.Population.html#skfolio.population.Population" title="skfolio.population.Population"><code class="xref py py-obj docutils literal notranslate"><span class="pre">population.Population</span></code></a></p></td>
@@ -742,8 +746,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="module-skfolio.optimization.naive">
 <span id="skfolio-optimization-naive-naive-optimization-estimators"></span><span id="optimization-naive-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.naive" title="skfolio.optimization.naive"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.naive</span></code></a>: Naive Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.naive" title="Link to this heading">#</a></h2>
-<section id="id4">
-<h3>Classes<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Classes<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.EqualWeighted.html#skfolio.optimization.EqualWeighted" title="skfolio.optimization.EqualWeighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.EqualWeighted</span></code></a></p></td>
@@ -771,8 +775,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id5">
-<h3>Classes<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Classes<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.ConvexOptimization.html#skfolio.optimization.ConvexOptimization" title="skfolio.optimization.ConvexOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.ConvexOptimization</span></code></a></p></td>
@@ -796,8 +800,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="module-skfolio.optimization.cluster">
 <span id="skfolio-optimization-cluster-clustering-optimization-estimators"></span><span id="optimization-cluster-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.cluster" title="skfolio.optimization.cluster"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.cluster</span></code></a>: Clustering Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.cluster" title="Link to this heading">#</a></h2>
-<section id="id6">
-<h3>Classes<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h3>Classes<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.BaseHierarchicalOptimization.html#skfolio.optimization.BaseHierarchicalOptimization" title="skfolio.optimization.BaseHierarchicalOptimization"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.BaseHierarchicalOptimization</span></code></a></p></td>
@@ -818,8 +822,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="module-skfolio.optimization.ensemble">
 <span id="skfolio-optimization-ensemble-ensemble-optimization-estimators"></span><span id="optimization-ensemble-ref"></span><h2><a class="reference internal" href="#module-skfolio.optimization.ensemble" title="skfolio.optimization.ensemble"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.optimization.ensemble</span></code></a>: Ensemble Optimization Estimators<a class="headerlink" href="#module-skfolio.optimization.ensemble" title="Link to this heading">#</a></h2>
-<section id="id7">
-<h3>Classes<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h3>Classes<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.optimization.BaseComposition.html#skfolio.optimization.BaseComposition" title="skfolio.optimization.BaseComposition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">optimization.BaseComposition</span></code></a></p></td>
@@ -855,8 +859,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id8">
-<h3>Classes<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<section id="id9">
+<h3>Classes<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.prior.EmpiricalPrior.html#skfolio.prior.EmpiricalPrior" title="skfolio.prior.EmpiricalPrior"><code class="xref py py-obj docutils literal notranslate"><span class="pre">prior.EmpiricalPrior</span></code></a></p></td>
@@ -888,8 +892,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-0">
 <span id="skfolio-moments-mu-mu-estimators"></span><span id="mu-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments.mu</span></code>: Mu Estimators<a class="headerlink" href="#module-0" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id9">
-<h3>Base Class<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Base Class<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.BaseMu.html#skfolio.moments.BaseMu" title="skfolio.moments.BaseMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.BaseMu</span></code></a></p></td>
@@ -898,8 +902,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id10">
-<h3>Classes<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h3>Classes<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.EmpiricalMu.html#skfolio.moments.EmpiricalMu" title="skfolio.moments.EmpiricalMu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EmpiricalMu</span></code></a></p></td>
@@ -924,8 +928,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-1">
 <span id="skfolio-moments-covariance-covariance-estimators"></span><span id="covariance-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments.covariance</span></code>: Covariance Estimators<a class="headerlink" href="#module-1" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id11">
-<h3>Base Class<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<section id="id12">
+<h3>Base Class<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.BaseCovariance.html#skfolio.moments.BaseCovariance" title="skfolio.moments.BaseCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.BaseCovariance</span></code></a></p></td>
@@ -934,8 +938,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id12">
-<h3>Classes<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h3>Classes<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.EmpiricalCovariance.html#skfolio.moments.EmpiricalCovariance" title="skfolio.moments.EmpiricalCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EmpiricalCovariance</span></code></a></p></td>
@@ -957,7 +961,7 @@ is the dot product of the assets weights with the assets returns and
 <td><p>LedoitWolf Estimator.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.OAS.html#skfolio.moments.OAS" title="skfolio.moments.OAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.OAS</span></code></a></p></td>
-<td><p>Oracle Approximating Shrinkage Estimator as proposed in <a class="reference internal" href="generated/skfolio.moments.OAS.html#re9a22b087643-1" id="id13"><span>[Re9a22b087643-1]</span></a>.</p></td>
+<td><p>Oracle Approximating Shrinkage Estimator as proposed in <a class="reference internal" href="generated/skfolio.moments.OAS.html#re9a22b087643-1" id="id14"><span>[Re9a22b087643-1]</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.ShrunkCovariance.html#skfolio.moments.ShrunkCovariance" title="skfolio.moments.ShrunkCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.ShrunkCovariance</span></code></a></p></td>
 <td><p>Covariance estimator with shrinkage.</p></td>
@@ -972,8 +976,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-2">
 <span id="skfolio-distance-distance-estimators"></span><span id="distance-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>: Distance Estimators<a class="headerlink" href="#module-2" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id14">
-<h3>Base Class<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Base Class<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.BaseDistance.html#skfolio.distance.BaseDistance" title="skfolio.distance.BaseDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.BaseDistance</span></code></a></p></td>
@@ -982,8 +986,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id15">
-<h3>Classes<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id16">
+<h3>Classes<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.distance.PearsonDistance.html#skfolio.distance.PearsonDistance" title="skfolio.distance.PearsonDistance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">distance.PearsonDistance</span></code></a></p></td>
@@ -1011,8 +1015,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-3">
 <span id="skfolio-cluster-cluster-estimators"></span><span id="cluster-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.cluster</span></code>: Cluster Estimators<a class="headerlink" href="#module-3" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id16">
-<h3>Classes<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
+<section id="id17">
+<h3>Classes<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.cluster.HierarchicalClustering.html#skfolio.cluster.HierarchicalClustering" title="skfolio.cluster.HierarchicalClustering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cluster.HierarchicalClustering</span></code></a></p></td>
@@ -1028,8 +1032,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-4">
 <span id="skfolio-uncertainty-set-uncertainty-set-estimators"></span><span id="uncertainty-set-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.uncertainty_set</span></code>: Uncertainty set Estimators<a class="headerlink" href="#module-4" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id17">
-<h3>Model Dataclass<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<section id="id18">
+<h3>Model Dataclass<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.UncertaintySet.html#skfolio.uncertainty_set.UncertaintySet" title="skfolio.uncertainty_set.UncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.UncertaintySet</span></code></a></p></td>
@@ -1051,8 +1055,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id18">
-<h3>Classes<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
+<section id="id19">
+<h3>Classes<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html#skfolio.uncertainty_set.EmpiricalMuUncertaintySet" title="skfolio.uncertainty_set.EmpiricalMuUncertaintySet"><code class="xref py py-obj docutils literal notranslate"><span class="pre">uncertainty_set.EmpiricalMuUncertaintySet</span></code></a></p></td>
@@ -1074,8 +1078,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-5">
 <span id="skfolio-pre-selection-pre-selection-transformers"></span><span id="pre-selection-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>: Pre-selection Transformers<a class="headerlink" href="#module-5" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id19">
-<h3>Classes<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
+<section id="id20">
+<h3>Classes<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.DropCorrelated.html#skfolio.pre_selection.DropCorrelated" title="skfolio.pre_selection.DropCorrelated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.DropCorrelated</span></code></a></p></td>
@@ -1094,8 +1098,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-6">
 <span id="skfolio-model-selection-model-selection"></span><span id="model-selection-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>: Model Selection<a class="headerlink" href="#module-6" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id20">
-<h3>Base Classes<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id21">
+<h3>Base Classes<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.BaseCombinatorialCV.html#skfolio.model_selection.BaseCombinatorialCV" title="skfolio.model_selection.BaseCombinatorialCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.BaseCombinatorialCV</span></code></a></p></td>
@@ -1104,8 +1108,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id21">
-<h3>Classes<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
+<section id="id22">
+<h3>Classes<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.CombinatorialPurgedCV.html#skfolio.model_selection.CombinatorialPurgedCV" title="skfolio.model_selection.CombinatorialPurgedCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.CombinatorialPurgedCV</span></code></a></p></td>
@@ -1117,8 +1121,8 @@ is the dot product of the assets weights with the assets returns and
 </tbody>
 </table>
 </section>
-<section id="id22">
-<h3>Functions<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<section id="id23">
+<h3>Functions<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict" title="skfolio.model_selection.cross_val_predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model_selection.cross_val_predict</span></code></a>(estimator, X)</p></td>
@@ -1131,8 +1135,8 @@ is the dot product of the assets weights with the assets returns and
 <section id="module-7">
 <span id="skfolio-metrics-metrics"></span><span id="metrics-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.metrics</span></code>: Metrics<a class="headerlink" href="#module-7" title="Link to this heading">#</a></h2>
 <p>skfolio package</p>
-<section id="id23">
-<h3>Functions<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<section id="id24">
+<h3>Functions<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.metrics.make_scorer.html#skfolio.metrics.make_scorer" title="skfolio.metrics.make_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics.make_scorer</span></code></a>(score_func[, ...])</p></td>
@@ -1144,8 +1148,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="skfolio-datasets-datasets">
 <span id="datasets-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.datasets</span></code>: Datasets<a class="headerlink" href="#skfolio-datasets-datasets" title="Link to this heading">#</a></h2>
-<section id="id24">
-<h3>Functions<a class="headerlink" href="#id24" title="Link to this heading">#</a></h3>
+<section id="id25">
+<h3>Functions<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.datasets.load_sp500_dataset.html#skfolio.datasets.load_sp500_dataset" title="skfolio.datasets.load_sp500_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">datasets.load_sp500_dataset</span></code></a>()</p></td>
@@ -1169,8 +1173,8 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="skfolio-preprocessing-preprocessing">
 <span id="preprocessing-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>: Preprocessing<a class="headerlink" href="#skfolio-preprocessing-preprocessing" title="Link to this heading">#</a></h2>
-<section id="id25">
-<h3>Functions<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<section id="id26">
+<h3>Functions<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.preprocessing.prices_to_returns.html#skfolio.preprocessing.prices_to_returns" title="skfolio.preprocessing.prices_to_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preprocessing.prices_to_returns</span></code></a>(X[, y, ...])</p></td>
@@ -1182,18 +1186,18 @@ is the dot product of the assets weights with the assets returns and
 </section>
 <section id="skfolio-utils-stats-stats">
 <span id="stats-ref"></span><h2><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.utils.stats</span></code>: Stats<a class="headerlink" href="#skfolio-utils-stats-stats" title="Link to this heading">#</a></h2>
-<section id="id26">
-<h3>Functions<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<section id="id27">
+<h3>Functions<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.NBinsMethod.html#skfolio.utils.stats.NBinsMethod" title="skfolio.utils.stats.NBinsMethod"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.NBinsMethod</span></code></a>(value)</p></td>
 <td><p>Enumeration of the Number of Bins Methods</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html#skfolio.utils.stats.n_bins_freedman" title="skfolio.utils.stats.n_bins_freedman"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.n_bins_freedman</span></code></a>(x)</p></td>
-<td><p>Compute the optimal histogram bin size using the Freedman-Diaconis rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html#r8d5b646da1d1-1" id="id27"><span>[R8d5b646da1d1-1]</span></a>.</p></td>
+<td><p>Compute the optimal histogram bin size using the Freedman-Diaconis rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_freedman.html#r8d5b646da1d1-1" id="id28"><span>[R8d5b646da1d1-1]</span></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html#skfolio.utils.stats.n_bins_knuth" title="skfolio.utils.stats.n_bins_knuth"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.n_bins_knuth</span></code></a>(x)</p></td>
-<td><p>Compute the optimal histogram bin size using Knuth's rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html#r8c3fe88ee915-1" id="id28"><span>[R8c3fe88ee915-1]</span></a>.</p></td>
+<td><p>Compute the optimal histogram bin size using Knuth's rule <a class="reference internal" href="generated/skfolio.utils.stats.n_bins_knuth.html#r8c3fe88ee915-1" id="id29"><span>[R8c3fe88ee915-1]</span></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.is_cholesky_dec.html#skfolio.utils.stats.is_cholesky_dec" title="skfolio.utils.stats.is_cholesky_dec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.is_cholesky_dec</span></code></a>(x)</p></td>
 <td><p>Returns True if Cholesky decomposition can be computed.</p></td>
@@ -1220,7 +1224,7 @@ is the dot product of the assets weights with the assets returns and
 <td><p>Compute the commutation matrix.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html#skfolio.utils.stats.compute_optimal_n_clusters" title="skfolio.utils.stats.compute_optimal_n_clusters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.compute_optimal_n_clusters</span></code></a>(distance, ...)</p></td>
-<td><p>Compute the optimal number of clusters based on Two-Order Difference to Gap Statistic <a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html#re0e718a4c413-1" id="id29"><span>[Re0e718a4c413-1]</span></a>.</p></td>
+<td><p>Compute the optimal number of clusters based on Two-Order Difference to Gap Statistic <a class="reference internal" href="generated/skfolio.utils.stats.compute_optimal_n_clusters.html#re0e718a4c413-1" id="id30"><span>[Re0e718a4c413-1]</span></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.utils.stats.rand_weights.html#skfolio.utils.stats.rand_weights" title="skfolio.utils.stats.rand_weights"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stats.rand_weights</span></code></a>(n[, zeros])</p></td>
 <td><p>Produces n random weights that sum to one from an uniform distribution (non-uniform distribution over a simplex)</p></td>

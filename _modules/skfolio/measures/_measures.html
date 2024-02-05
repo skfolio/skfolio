@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.measures._measures &#8212; skfolio 0.1.1 documentation</title>
+    <title>skfolio.measures._measures &#8212; skfolio 0.1.2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=55ac272d"></script>
+    <script src="../../../_static/documentation_options.js?v=969202b3"></script>
     <script src="../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -1062,12 +1062,16 @@ document.write(`
 
 
 
+<div class="viewcode-block" id="effective_number_assets">
+<a class="viewcode-back" href="../../../generated/skfolio.measures.effective_number_assets.html#skfolio.measures.effective_number_assets">[docs]</a>
 <span class="k">def</span> <span class="nf">effective_number_assets</span><span class="p">(</span><span class="n">weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Computes the effective number of assets, defined as the inverse of the Herfindahl index [1]_:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;Computes the effective number of assets, defined as the inverse of the</span>
+<span class="sd">    Herfindahl index [1]_:</span>
+
 <span class="sd">    .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}</span>
 
-<span class="sd">    It quantifies portfolio concentration, with a higher value indicating a more diversified portfolio.</span>
+<span class="sd">    It quantifies portfolio concentration, with a higher value indicating a more</span>
+<span class="sd">    diversified portfolio.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -1084,7 +1088,8 @@ document.write(`
 <span class="sd">    .. [1] &quot;Banking and Financial Institutions Law in a Nutshell&quot;.</span>
 <span class="sd">        Lovett, William Anthony (1988)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span></div>
+
 </pre></div>
 
                 </article>

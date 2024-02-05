@@ -1,12 +1,12 @@
 
 :orphan:
 
-.. _sphx_glr_auto_examples_4_distributioally_robust_cvar_sg_execution_times:
+.. _sphx_glr_auto_examples_4_distributionally_robust_cvar_sg_execution_times:
 
 
 Computation times
 =================
-**00:15.279** total execution time for 1 file **from auto_examples/4_distributioally_robust_cvar**:
+**00:15.376** total execution time for 1 file **from auto_examples/4_distributionally_robust_cvar**:
 
 .. container::
 
@@ -32,6 +32,6 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_auto_examples_4_distributioally_robust_cvar_plot_1_distributionally_robust_cvar.py` (``plot_1_distributionally_robust_cvar.py``)
-     - 00:15.279
+   * - :ref:`sphx_glr_auto_examples_4_distributionally_robust_cvar_plot_1_distributionally_robust_cvar.py` (``plot_1_distributionally_robust_cvar.py``)
+     - 00:15.376
      - 0.0

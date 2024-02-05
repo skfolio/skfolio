@@ -463,7 +463,12 @@ Finally, we print a full summary of both strategies evaluated on the test set:
           <td>0.065</td>
         </tr>
         <tr>
-          <th>Assets number</th>
+          <th>Effective Number of Assets</th>
+          <td>19.921023753343427</td>
+          <td>18.995820707977355</td>
+        </tr>
+        <tr>
+          <th>Assets Number</th>
           <td>20</td>
           <td>20</td>
         </tr>
@@ -477,7 +482,7 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.190 seconds)
+   **Total running time of the script:** (0 minutes 1.236 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:

@@ -401,10 +401,10 @@ Examples concerning the :class:`~skfolio.optimization.DistributionallyRobustCVaR
 
 .. only:: html
 
-  .. image:: /auto_examples/4_distributioally_robust_cvar/images/thumb/sphx_glr_plot_1_distributionally_robust_cvar_thumb.png
+  .. image:: /auto_examples/4_distributionally_robust_cvar/images/thumb/sphx_glr_plot_1_distributionally_robust_cvar_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_4_distributioally_robust_cvar_plot_1_distributionally_robust_cvar.py`
+  :ref:`sphx_glr_auto_examples_4_distributionally_robust_cvar_plot_1_distributionally_robust_cvar.py`
 
 .. raw:: html
 
@@ -651,7 +651,7 @@ Examples about data preparation.
    /auto_examples/1_mean_risk/index.rst
    /auto_examples/2_risk_budgeting/index.rst
    /auto_examples/3_maxiumum_diversification/index.rst
-   /auto_examples/4_distributioally_robust_cvar/index.rst
+   /auto_examples/4_distributionally_robust_cvar/index.rst
    /auto_examples/5_clustering/index.rst
    /auto_examples/6_ensemble/index.rst
    /auto_examples/7_pre_selection/index.rst
