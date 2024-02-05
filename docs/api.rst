@@ -76,6 +76,7 @@ Functions
     measures.ulcer_index
     measures.gini_mean_difference
     measures.owa_gmd_weights
+    measures.effective_number_assets
 
 .. _portfolio_ref:
 

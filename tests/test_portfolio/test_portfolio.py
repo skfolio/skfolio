@@ -5,6 +5,7 @@ import tracemalloc
 from copy import copy
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pytest
 import skfolio.measures as mt
@@ -24,7 +25,7 @@ from skfolio.utils.tools import args_names
 
 
 @pytest.fixture(scope="module")
-def X():
+def X() -> pd.DataFrame:
     prices = load_sp500_dataset()
     prices = prices.loc[dt.date(2017, 1, 1) :]
     X = prices_to_returns(X=prices)
@@ -32,7 +33,7 @@ def X():
 
 
 @pytest.fixture(scope="module")
-def weights():
+def weights() -> np.ndarray:
     weights = np.array([
         0.12968013,
         0.09150399,
@@ -56,6 +57,12 @@ def weights():
         0.01029202,
     ])
     return weights
+
+
+@pytest.fixture
+def portfolio(X: pd.DataFrame, weights: np.ndarray) -> Portfolio:
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+    return portfolio
 
 
 @pytest.fixture(
@@ -88,8 +95,7 @@ def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array
     return returns
 
 
-def test_pickle(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_pickle(portfolio):
     portfolio.sharpe_ratio = 5
     pickled = pickle.dumps(portfolio)
     unpickled = pickle.loads(pickled)
@@ -298,8 +304,7 @@ def test_portfolio_risk_contribution(X, weights):
     assert contribution.shape == (X.shape[1],)
 
 
-def test_portfolio_metrics(X, weights, measure):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_metrics(portfolio, measure):
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
     assert not np.isnan(m)
@@ -307,6 +312,19 @@ def test_portfolio_metrics(X, weights, measure):
     assert portfolio.skew
     assert portfolio.kurtosis
     assert portfolio.diversification
+    assert portfolio.effective_number_assets
+
+
+def test_portfolio_effective_number_assets(portfolio):
+    np.testing.assert_almost_equal(portfolio.effective_number_assets, 6.00342169912319)
+
+
+def test_portfolio_sric(portfolio):
+    np.testing.assert_almost_equal(portfolio.sric, -0.20309958369097764)
+
+
+def test_portfolio_diversification(portfolio):
+    np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
 def test_portfolio_slots(X, weights):

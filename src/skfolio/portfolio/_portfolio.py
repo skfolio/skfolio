@@ -18,7 +18,7 @@ import pandas as pd
 import plotly.express as px
 
 import skfolio.typing as skt
-from skfolio.measures import RiskMeasure
+from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.utils.tools import (
     args_names,
@@ -691,6 +691,28 @@ class Portfolio(BasePortfolio):
             self.n_observations * self.sharpe_ratio
         )
 
+    @property
+    def effective_number_assets(self) -> float:
+        r"""Computes the effective number of assets, defined as the inverse of the
+        Herfindahl index [1]_:
+
+        .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
+
+        It quantifies portfolio concentration, with a higher value indicating a more
+        diversified portfolio.
+
+        Returns
+        -------
+        value : float
+            Effective number of assets.
+
+        References
+        ----------
+        .. [1] "Banking and Financial Institutions Law in a Nutshell".
+            Lovett, William Anthony (1988)
+        """
+        return effective_number_assets(weights=self.weights)
+
     # Public methods
     def expected_returns_from_assets(
         self, assets_expected_returns: np.ndarray
@@ -817,9 +839,12 @@ class Portfolio(BasePortfolio):
         """
         df = super().summary(formatted=formatted)
         assets_number = self.n_assets
+        effective_nb_assets = self.effective_number_assets
         if formatted:
-            assets_number = str(self.n_assets)
-        df["Assets number"] = assets_number
+            assets_number = str(assets_number)
+            effective_nb_assets = str(effective_nb_assets)
+        df["Effective Number of Assets"] = effective_nb_assets
+        df["Assets Number"] = assets_number
         return df
 
     def get_weight(self, asset: str) -> float:
