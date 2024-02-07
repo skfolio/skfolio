@@ -560,9 +560,9 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
 Bibtex entry::
 
     @misc{skfolio,
-          author = {Hugo Delatte, Carlo Nicolini},
-          title = {skfolio},
-          year  = {2023},
-          url   = {https://github.com/skfolio/skfolio}
-
+      author = {Delatte, Hugo and Nicolini, Carlo},
+      title = {skfolio},
+      year  = {2023},
+      url   = {https://github.com/skfolio/skfolio}
+    }
 
