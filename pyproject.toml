@@ -113,6 +113,11 @@ preview = true
 
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py"]
+# Same as Black.
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
 select = [
     "E", # pycodestyle
     "F", # pyflakes
@@ -126,13 +131,9 @@ select = [
     "RUF", # the ruff developer's own rules
 ]
 ignore = ["E203", "E501"]
-# Same as Black.
-line-length = 88
-target-version = "py310"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 case-sensitive = true
-
 
 [tool.pytest.ini_options]
 addopts = [
