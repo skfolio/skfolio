@@ -124,7 +124,6 @@ select = [
     "I", # isort
     "A", # prevent using keywords that clobber python builtins
     "B", # bugbear: security warnings
-    "E", # pycodestyle
     "F", # pyflakes
     "ISC", # implicit string concatenation
     "UP", # alert you when better syntax is available in your python version
