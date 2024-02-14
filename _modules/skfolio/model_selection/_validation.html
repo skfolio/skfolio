@@ -549,12 +549,14 @@ document.write(`
                 <span class="n">path_id</span> <span class="o">=</span> <span class="n">path_ids</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
                 <span class="n">portfolios</span><span class="p">[</span><span class="n">path_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
         <span class="n">name</span> <span class="o">=</span> <span class="n">portfolio_params</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;path&quot;</span><span class="p">)</span>
-        <span class="n">pred</span> <span class="o">=</span> <span class="n">Population</span><span class="p">([</span>
-            <span class="n">MultiPeriodPortfolio</span><span class="p">(</span>
-                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="o">**</span><span class="n">portfolio_params</span>
-            <span class="p">)</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">path_nb</span><span class="p">)</span>
-        <span class="p">])</span>
+        <span class="n">pred</span> <span class="o">=</span> <span class="n">Population</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">MultiPeriodPortfolio</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">portfolios</span><span class="o">=</span><span class="n">portfolios</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="o">**</span><span class="n">portfolio_params</span>
+                <span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">path_nb</span><span class="p">)</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># We need to re-order the test folds in case they were un-ordered by the</span>
         <span class="c1"># CV generator.</span>

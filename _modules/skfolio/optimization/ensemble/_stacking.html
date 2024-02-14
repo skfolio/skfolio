@@ -699,10 +699,12 @@ document.write(`
                 <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cv</span><span class="p">,</span> <span class="n">BaseCombinatorialCV</span><span class="p">):</span>
-                <span class="n">X_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
-                    <span class="n">pred</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">cv_predictions</span>
-                <span class="p">])</span><span class="o">.</span><span class="n">T</span>
+                <span class="n">X_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">pred</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">cv_predictions</span>
+                    <span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">T</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">X_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cv_predictions</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
                 <span class="k">if</span> <span class="n">y</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

@@ -781,17 +781,19 @@ document.write(`
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_read_only_attrs</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">set</span><span class="p">]</span> <span class="o">=</span> <span class="n">BasePortfolio</span><span class="o">.</span><span class="n">_read_only_attrs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-    <span class="n">_read_only_attrs</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-        <span class="s2">&quot;X&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;assets&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;weights&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;previous_weights&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;transaction_costs&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;management_fees&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;n_assets&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;total_cost&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;total_fee&quot;</span><span class="p">,</span>
-    <span class="p">})</span>
+    <span class="n">_read_only_attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;X&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;assets&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;weights&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;previous_weights&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;transaction_costs&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;management_fees&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;n_assets&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total_cost&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total_fee&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
 
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">{</span>
         <span class="c1"># read-only</span>

@@ -533,9 +533,12 @@ document.write(`
 <span class="sd">            non-dominated portfolios.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span>
-            <span class="n">portfolio</span><span class="o">.</span><span class="n">fitness_measures</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fitness_measures</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
-        <span class="p">]):</span>
+        <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">portfolio</span><span class="o">.</span><span class="n">fitness_measures</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">fitness_measures</span>
+                <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
+            <span class="p">]</span>
+        <span class="p">):</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="s2">&quot;Cannot compute non denominated sorting with Portfolios &quot;</span>
                 <span class="s2">&quot;containing mixed `fitness_measures`&quot;</span>
@@ -583,11 +586,13 @@ document.write(`
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
                 <span class="p">[</span><span class="n">portfolio</span> <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">]</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">([</span>
-            <span class="n">portfolio</span>
-            <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
-            <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="ow">and</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span>
-        <span class="p">])</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="n">portfolio</span>
+                <span class="k">for</span> <span class="n">portfolio</span> <span class="ow">in</span> <span class="bp">self</span>
+                <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="ow">and</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span>
+            <span class="p">]</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Population.measures">
@@ -1219,15 +1224,17 @@ document.write(`
                         <span class="n">x</span><span class="o">=</span><span class="n">xi</span><span class="p">,</span>
                         <span class="n">y</span><span class="o">=</span><span class="n">yi</span><span class="p">,</span>
                         <span class="n">z</span><span class="o">=</span><span class="n">Z</span><span class="p">,</span>
-                        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
-                            <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-                            <span class="o">+</span> <span class="s2">&quot;: %{&quot;</span>
-                            <span class="o">+</span> <span class="n">v</span>
-                            <span class="o">+</span> <span class="s2">&quot;:&quot;</span>
-                            <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;,.3%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
-                            <span class="o">+</span> <span class="s2">&quot;}&quot;</span>
-                            <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">)]</span>
-                        <span class="p">])</span>
+                        <span class="n">hovertemplate</span><span class="o">=</span><span class="s2">&quot;&lt;br&gt;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="p">[</span>
+                                <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                                <span class="o">+</span> <span class="s2">&quot;: %{&quot;</span>
+                                <span class="o">+</span> <span class="n">v</span>
+                                <span class="o">+</span> <span class="s2">&quot;:&quot;</span>
+                                <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;,.3%&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">is_ratio</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+                                <span class="o">+</span> <span class="s2">&quot;}&quot;</span>
+                                <span class="k">for</span> <span class="n">e</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">),</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">)]</span>
+                            <span class="p">]</span>
+                        <span class="p">)</span>
                         <span class="o">+</span> <span class="s2">&quot;&lt;extra&gt;&lt;/extra&gt;&quot;</span><span class="p">,</span>
                         <span class="n">colorbar</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
                             <span class="n">title</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">z</span><span class="p">),</span>

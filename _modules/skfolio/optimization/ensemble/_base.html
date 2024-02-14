@@ -459,9 +459,7 @@ document.write(`
         <span class="n">invalid_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">names</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">invalid_names</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;Estimator names conflict with constructor arguments: </span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                    <span class="nb">sorted</span><span class="p">(</span><span class="n">invalid_names</span><span class="p">)</span>
-                <span class="p">)</span>
+                <span class="sa">f</span><span class="s2">&quot;Estimator names conflict with constructor arguments: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">invalid_names</span><span class="p">)</span><span class="si">!r}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
         <span class="n">invalid_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span> <span class="k">if</span> <span class="s2">&quot;__&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">invalid_names</span><span class="p">:</span>

@@ -712,18 +712,20 @@ document.write(`
 
     <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
         <span class="n">n_samples</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">({</span>
-            <span class="s2">&quot;Number of Observations&quot;</span><span class="p">:</span> <span class="n">n_samples</span><span class="p">,</span>
-            <span class="s2">&quot;Total Number of Folds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span><span class="p">,</span>
-            <span class="s2">&quot;Number of Test Folds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_folds</span><span class="p">,</span>
-            <span class="s2">&quot;Purge Size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="p">,</span>
-            <span class="s2">&quot;Embargo Size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">embargo_size</span><span class="p">,</span>
-            <span class="s2">&quot;Average Training Size&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
-                <span class="n">n_samples</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_folds</span><span class="p">)</span>
-            <span class="p">),</span>
-            <span class="s2">&quot;Number of Test Paths&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_paths</span><span class="p">,</span>
-            <span class="s2">&quot;Number of Training Combinations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_splits</span><span class="p">,</span>
-        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;Number of Observations&quot;</span><span class="p">:</span> <span class="n">n_samples</span><span class="p">,</span>
+                <span class="s2">&quot;Total Number of Folds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span><span class="p">,</span>
+                <span class="s2">&quot;Number of Test Folds&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_folds</span><span class="p">,</span>
+                <span class="s2">&quot;Purge Size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="p">,</span>
+                <span class="s2">&quot;Embargo Size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">embargo_size</span><span class="p">,</span>
+                <span class="s2">&quot;Average Training Size&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span>
+                    <span class="n">n_samples</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_folds</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_folds</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;Number of Test Paths&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_test_paths</span><span class="p">,</span>
+                <span class="s2">&quot;Number of Training Combinations&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_splits</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
 
 <div class="viewcode-block" id="CombinatorialPurgedCV.plot_train_test_folds">
 <a class="viewcode-back" href="../../../generated/skfolio.model_selection.CombinatorialPurgedCV.html#skfolio.model_selection.CombinatorialPurgedCV.plot_train_test_folds">[docs]</a>
