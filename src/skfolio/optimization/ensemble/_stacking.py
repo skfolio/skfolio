@@ -312,10 +312,12 @@ class StackingOptimization(BaseOptimization, BaseComposition):
                 _ = self._validate_data(X)
 
             if isinstance(self.cv, BaseCombinatorialCV):
-                X_pred = np.array([
-                    pred.quantile(measure=self.quantile_measure, q=self.quantile)
-                    for pred in cv_predictions
-                ]).T
+                X_pred = np.array(
+                    [
+                        pred.quantile(measure=self.quantile_measure, q=self.quantile)
+                        for pred in cv_predictions
+                    ]
+                ).T
             else:
                 X_pred = np.array(cv_predictions).T
                 if y is not None:

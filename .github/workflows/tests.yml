@@ -34,6 +34,9 @@ jobs:
       - name: Lint with Ruff
         run: ruff --output-format=github
 
+      - name: Format with Ruff
+        run: ruff format --check
+
       - name: Run and write pytest
         run: pytest --cov=./ --cov-report=xml
 

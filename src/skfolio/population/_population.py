@@ -140,9 +140,12 @@ class Population(list):
             non-dominated portfolios.
         """
         n = len(self)
-        if n > 0 and np.any([
-            portfolio.fitness_measures != self[0].fitness_measures for portfolio in self
-        ]):
+        if n > 0 and np.any(
+            [
+                portfolio.fitness_measures != self[0].fitness_measures
+                for portfolio in self
+            ]
+        ):
             raise ValueError(
                 "Cannot compute non denominated sorting with Portfolios "
                 "containing mixed `fitness_measures`"
@@ -187,11 +190,13 @@ class Population(list):
             return self.__class__(
                 [portfolio for portfolio in self if portfolio.tag in tags]
             )
-        return self.__class__([
-            portfolio
-            for portfolio in self
-            if portfolio.name in names and portfolio.tag in tags
-        ])
+        return self.__class__(
+            [
+                portfolio
+                for portfolio in self
+                if portfolio.name in names and portfolio.tag in tags
+            ]
+        )
 
     def measures(
         self,
@@ -784,15 +789,17 @@ class Population(list):
                         x=xi,
                         y=yi,
                         z=Z,
-                        hovertemplate="<br>".join([
-                            str(e)
-                            + ": %{"
-                            + v
-                            + ":"
-                            + (",.3%" if not e.is_ratio else None)
-                            + "}"
-                            for e, v in [(x, "x"), (y, "y"), (z, "z")]
-                        ])
+                        hovertemplate="<br>".join(
+                            [
+                                str(e)
+                                + ": %{"
+                                + v
+                                + ":"
+                                + (",.3%" if not e.is_ratio else None)
+                                + "}"
+                                for e, v in [(x, "x"), (y, "y"), (z, "z")]
+                            ]
+                        )
                         + "<extra></extra>",
                         colorbar=dict(
                             title=str(z),
