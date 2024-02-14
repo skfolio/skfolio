@@ -290,13 +290,15 @@ class _Dendrogram:
         Sets and returns default layout object for dendrogram figure.
 
         """
-        self.layout.update({
-            "showlegend": False,
-            "autosize": False,
-            "hovermode": "closest",
-            "width": width,
-            "height": height,
-        })
+        self.layout.update(
+            {
+                "showlegend": False,
+                "autosize": False,
+                "hovermode": "closest",
+                "width": width,
+                "height": height,
+            }
+        )
 
         self.set_axis_layout(self.xaxis)
         self.set_axis_layout(self.yaxis)

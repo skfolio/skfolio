@@ -321,18 +321,20 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     def summary(self, X) -> pd.Series:
         n_samples = X.shape[0]
-        return pd.Series({
-            "Number of Observations": n_samples,
-            "Total Number of Folds": self.n_folds,
-            "Number of Test Folds": self.n_test_folds,
-            "Purge Size": self.purged_size,
-            "Embargo Size": self.embargo_size,
-            "Average Training Size": int(
-                n_samples / self.n_folds * (self.n_folds - self.n_test_folds)
-            ),
-            "Number of Test Paths": self.n_test_paths,
-            "Number of Training Combinations": self.n_splits,
-        })
+        return pd.Series(
+            {
+                "Number of Observations": n_samples,
+                "Total Number of Folds": self.n_folds,
+                "Number of Test Folds": self.n_test_folds,
+                "Purge Size": self.purged_size,
+                "Embargo Size": self.embargo_size,
+                "Average Training Size": int(
+                    n_samples / self.n_folds * (self.n_folds - self.n_test_folds)
+                ),
+                "Number of Test Paths": self.n_test_paths,
+                "Number of Training Combinations": self.n_splits,
+            }
+        )
 
     def plot_train_test_folds(self) -> skt.Figure:
         """Plot the train/test fold locations"""
