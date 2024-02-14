@@ -108,6 +108,7 @@ token = { env = "GH_TOKEN" }
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py"]
 line-length = 88
+src = ["src"]
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -122,7 +123,8 @@ select = [
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
 ]
-ignore = ["E203"]
+ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117"] # rules redundant with the formatter.
+
 [tool.ruff.lint.isort]
 case-sensitive = true
 
