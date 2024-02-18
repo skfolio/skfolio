@@ -71,10 +71,11 @@ Ready to contribute? Here's how to set yourself up for local development.
    $ pytest
    ```
 
-6. Then run linting checks with :
+6. Then run linting and formatting checks with :
 
    ```shell
    $ ruff check
+   $ ruff format --check
    ```
 
 7. If you added some documentation, you should test that it builds correctly :
