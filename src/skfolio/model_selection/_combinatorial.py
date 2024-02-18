@@ -197,19 +197,13 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     @property
     def n_splits(self) -> int:
         """Number of splits"""
-        return int(
-            math.factorial(self.n_folds)
-            / (
-                math.factorial(self.n_test_folds)
-                * math.factorial(self.n_folds - self.n_test_folds)
-            )
-        )
+        return _n_splits(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def n_test_paths(self) -> int:
         """Number of test paths that can be reconstructed from the train/test
         combinations"""
-        return self.n_splits * self.n_test_folds // self.n_folds
+        return _n_test_paths(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def test_set_index(self) -> np.ndarray:
@@ -410,3 +404,176 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         )
 
         return fig
+
+
+def _n_splits(n_folds: int, n_test_folds: int) -> int:
+    """Number of splits.
+
+    Parameters
+    ----------
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    n_splits : int
+        Number of splits
+    """
+    return int(math.comb(n_folds, n_test_folds))
+
+
+def _n_test_paths(n_folds: int, n_test_folds: int) -> int:
+    """Number of test paths that can be reconstructed from the train/test
+    combinations
+
+    Parameters
+    ----------
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    n_splits : int
+        Number of test paths
+    """
+    return (
+        _n_splits(n_folds=n_folds, n_test_folds=n_test_folds) * n_test_folds // n_folds
+    )
+
+
+def _optimal_n_test_folds(
+    n_observations: int, n_folds: int, target_train_size: int
+) -> int:
+    """Optimal number of test folds for a target training size given the total
+    number of folds
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    n_folds : int
+        Number of folds.
+
+    target_train_size : int
+        The target number of observation in the training set.
+
+    Returns
+    -------
+    n_test_folds : int
+        Optimal number of test folds.
+    """
+    return n_folds * (n_observations - target_train_size) // n_observations
+
+
+def _optimal_n_test_paths(
+    n_observations: int, n_folds: int, target_train_size: int
+) -> int:
+    """Optimal number of test paths (that can be reconstructed from the train/test
+    combinations) for a target training size given the total number of folds.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    n_folds : int
+        Number of folds.
+
+    target_train_size : int
+        The target number of observation in the training set.
+
+    Returns
+    -------
+    n_test_folds : int
+        Optimal number of test paths.
+
+    """
+    n_test_folds = _optimal_n_test_folds(
+        n_observations=n_observations,
+        n_folds=n_folds,
+        target_train_size=target_train_size,
+    )
+    return _n_test_paths(n_folds=n_folds, n_test_folds=n_test_folds)
+
+
+def optimal_folds_number(
+    n_observations: int, target_train_size: int, target_n_test_paths: int
+) -> tuple[int, int]:
+    """Optimal number of folds (total and test folds) for a target training size
+    and a target number of test paths.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    target_train_size : int
+        The target number of observation in the training set.
+
+    target_train_size : int
+        The target number of test paths (that can be reconstructed from the train/test
+        combinations).
+
+    Returns
+    -------
+    n_folds : int
+        Optimal number of total folds.
+
+    n_test_folds : int
+        Optimal number of test folds.
+    """
+    # Solved by dichotomy on the total number of folds.
+    lower = 2
+    upper = n_observations
+    while True:
+        n_folds = (lower + upper) // 2
+        n_test_paths = _optimal_n_test_paths(
+            n_observations=n_observations,
+            n_folds=n_folds,
+            target_train_size=target_train_size,
+        )
+
+        if n_test_paths == target_n_test_paths:
+            break
+
+        if upper == lower:
+            break
+
+        if upper - lower == 1:
+            _lower_n_test_paths = _optimal_n_test_paths(
+                n_observations=n_observations,
+                n_folds=lower,
+                target_train_size=target_train_size,
+            )
+            _upper_n_test_paths = _optimal_n_test_paths(
+                n_observations=n_observations,
+                n_folds=upper,
+                target_train_size=target_train_size,
+            )
+
+            if abs(_lower_n_test_paths - target_n_test_paths) < abs(
+                _upper_n_test_paths - target_n_test_paths
+            ):
+                n_folds = lower
+            else:
+                n_folds = upper
+            break
+
+        if n_test_paths < target_n_test_paths:
+            lower = n_folds
+        else:
+            upper = n_folds
+
+    n_test_folds = _optimal_n_test_folds(
+        n_observations=n_observations,
+        n_folds=n_folds,
+        target_train_size=target_train_size,
+    )
+    return n_folds, n_test_folds
