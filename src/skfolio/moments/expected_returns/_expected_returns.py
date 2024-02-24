@@ -13,6 +13,7 @@ from enum import auto
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+from scipy.stats import norm  
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -419,3 +420,125 @@ class ShrunkMu(BaseMu):
 
         self.mu_ = self.alpha_ * sample_mu + self.beta_ * self.mu_target_
         return self
+
+
+
+class MertonMu(BaseMu):
+    """Merton Estimator for the returns (first one)
+    
+    Estimates the expected returns based on the paper of Merton.
+    
+    Parameters
+    ----------
+    h : int, optional
+        size of the intervall of time where we assume the returns almost constant
+    T : int
+        Size of the window where "Yj" is constant i.e. the market is in a stationary state.
+    j: int, optional 
+        Model used (1,2 or 3).
+    b: float, optional
+        Parameter for the posterior distribution of Yj in Merton's paper. Equal to infinity by default
+    likelihood : boolean, optional
+        asking to the user if he wants to use the likelihood estimator. By default yes.
+        
+    Attributes
+    ---------- 
+     mu_ : ndarray of shape (n_assets,)
+        Estimated expected returns of the assets.
+
+    n_features_in_ : int
+        Number of assets seen during `fit`.
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of assets seen during `fit`. Defined only when `X`
+        has assets names that are all strings.
+    """
+
+class MertonMu(BaseMu):
+    def __init__(self,
+                 h: int = 30,
+                 T:int = 365,
+                 j: int = 1,
+                 b:float = np.inf,
+                 likelihood:bool=True,
+                 covariance_estimator: BaseCovariance | None = None
+                 ):
+        self.tau = len(X) 
+        self.h = h 
+        self.T = T 
+        self.j = j 
+        self.b = b 
+        self.N = int(self.T/self.h)
+        self.likelihood = likelihood
+        self.covariance_estimator = covariance_estimator
+        #self.rendements_taux_sans_risques = rendements_taux_sans_risques #en théorie on donne un array de taux sans risques ? 
+
+    def fit(self, X:npt.ArrayLike,short_term_rate: npt.ArrayLike |None = None, y=None)->"MertonMu":
+        """Fit of the Merton Estimator 
+
+         Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+           Price returns of the assets.
+
+        short_term_rate : array-like of shape (n_observations,1)
+            short term rates observed on the market 
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        self : MertonMu
+            Fitted estimator.
+        """
+        if short_term_rate is None:
+            short_term_rate = np.zeros(len(X)) #Default short-term rate set to 0
+
+        # fitting estimators
+        self.covariance_estimator_ = check_estimator(
+            self.covariance_estimator,
+            default=EmpiricalCovariance(),
+            check_type=BaseCovariance,
+        )
+
+        self.mu_ = None
+
+        riskless_rate = np.exp(self.h*short_term_rate) #return per dollar on the riskless asset between t and t + h 
+
+        X_t = np.log(X.shift(-self.h)/X).div(riskless_rate, axis=0).dropna()
+        #X_t denote the log return per dollar on the market portfolio between time t and t + h. (R(t+h)-R(t))/riskless_rate(t)
+       
+
+        self.covariance_estimator_.fit((np.log(X)).diff(-self.h).dropna()[-self.N:]) 
+        #We consider the period during which the variance is assumed to be constant.
+        covariance = self.covariance_estimator_.covariance_ 
+
+
+        
+       
+        if self.j == 1:
+            #choice of the model 
+            Y = np.mean(X_t[-self.N:],axis=0)/(np.diag(covariance)) + 0.5 #We assumed that the covariance was constant over the N periods.
+            self.mu_ = (Y*(np.diag(covariance))).values + short_term_rate[-1] #model 1 in Merton's article 
+        
+        
+
+        if self.likelihood: 
+            #For now, we have only implemented the case where we want to work with the likelihood method and where the parameter b is set to +inf.
+            omega_j =np.sqrt(self.N*np.diag(covariance)**(4-2*self.j))
+            lambda_j = Y/omega_j 
+            rho_j = omega_j*(self.b-lambda_j)
+            eta_j = - lambda_j*omega_j #quantities explicitly described in Merton's paper.
+
+            Y_barre = Y + np.exp(-0.5*eta_j**2)/(np.sqrt(2*np.pi)*omega_j*(1-norm.cdf(eta_j))) #b is set to +inf
+            self.mu_ = (Y_barre*np.diag(covariance)).values + short_term_rate[-1] #new returns 
+        
+        return self
+
+
+
+
+
+
+
