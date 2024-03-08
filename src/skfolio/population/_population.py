@@ -7,6 +7,7 @@ A population is a collection of portfolios.
 # License: BSD 3 clause
 
 import inspect
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -76,12 +77,12 @@ class Population(list):
         else:
             super().extend(self._validate_item(item) for item in other)
 
-    def set_portfolio_params(self, **params: any) -> "Population":
+    def set_portfolio_params(self, **params: Any) -> "Population":
         """Set the parameters of all the portfolios.
 
         Parameters
         ----------
-        **params : any
+        **params : Any
             Portfolio parameters.
 
         Returns

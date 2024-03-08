@@ -9,6 +9,7 @@
 # Grisel Licensed under BSD 3 clause.
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -196,7 +197,7 @@ class FactorModel(BasePrior):
         self.max_iteration = max_iteration
 
     # noinspection PyMethodOverriding, PyPep8Naming
-    def fit(self, X: npt.ArrayLike, y: any):
+    def fit(self, X: npt.ArrayLike, y: Any):
         """Fit the Factor Model estimator.
 
         Parameters

@@ -9,6 +9,7 @@
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -575,7 +576,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         value: float | dict | npt.ArrayLike | None,
         n_assets: int,
-        fill_value: any,
+        fill_value: Any,
         name: str,
     ) -> float | np.ndarray:
         """Convert input to cleaned float or ndarray.
@@ -588,7 +589,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets : int
             Number of assets. Used to verify the shape of the converted array.
 
-        fill_value : any
+        fill_value : Any
             When `items` is a dictionary, elements that are not in `asset_names` are
             filled with `fill_value` in the converted array.
 
