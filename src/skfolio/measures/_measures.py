@@ -6,7 +6,6 @@
 # Gini mean difference and OWA GMD weights features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
-
 import numpy as np
 import scipy.optimize as sco
 

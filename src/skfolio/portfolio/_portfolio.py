@@ -8,7 +8,6 @@ is the dot product of the assets weights with the assets returns.
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
-
 import numbers
 from typing import ClassVar
 
