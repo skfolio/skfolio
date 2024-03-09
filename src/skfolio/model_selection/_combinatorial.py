@@ -314,17 +314,20 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             yield train_index, test_index_list
 
     def summary(self, X) -> pd.Series:
-        n_samples = X.shape[0]
+        n_observations = X.shape[0]
+        avg_train_size = _avg_train_size(
+            n_observations=n_observations,
+            n_folds=self.n_folds,
+            n_test_folds=self.n_test_folds,
+        )
         return pd.Series(
             {
-                "Number of Observations": n_samples,
+                "Number of Observations": n_observations,
                 "Total Number of Folds": self.n_folds,
                 "Number of Test Folds": self.n_test_folds,
                 "Purge Size": self.purged_size,
                 "Embargo Size": self.embargo_size,
-                "Average Training Size": int(
-                    n_samples / self.n_folds * (self.n_folds - self.n_test_folds)
-                ),
+                "Average Training Size": int(avg_train_size),
                 "Number of Test Paths": self.n_test_paths,
                 "Number of Training Combinations": self.n_splits,
             }
@@ -440,11 +443,33 @@ def _n_test_paths(n_folds: int, n_test_folds: int) -> int:
     Returns
     -------
     n_splits : int
-        Number of test paths
+        Number of test paths.
     """
     return (
         _n_splits(n_folds=n_folds, n_test_folds=n_test_folds) * n_test_folds // n_folds
     )
+
+
+def _avg_train_size(n_observations: int, n_folds: int, n_test_folds: int) -> float:
+    """Average number of observations contained in each training set.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    avg_train_size : float
+        Average number of observations contained in each training set.
+    """
+    return n_observations / n_folds * (n_folds - n_test_folds)
 
 
 def _optimal_n_test_folds(
@@ -472,39 +497,10 @@ def _optimal_n_test_folds(
     return n_folds * (n_observations - target_train_size) // n_observations
 
 
-def _optimal_n_test_paths(
-    n_observations: int, n_folds: int, target_train_size: int
-) -> int:
-    """Optimal number of test paths (that can be reconstructed from the train/test
-    combinations) for a target training size given the total number of folds.
-
-    Parameters
-    ----------
-    n_observations : int
-        Number of observations.
-
-    n_folds : int
-        Number of folds.
-
-    target_train_size : int
-        The target number of observation in the training set.
-
-    Returns
-    -------
-    n_test_folds : int
-        Optimal number of test paths.
-
-    """
-    n_test_folds = _optimal_n_test_folds(
-        n_observations=n_observations,
-        n_folds=n_folds,
-        target_train_size=target_train_size,
-    )
-    return _n_test_paths(n_folds=n_folds, n_test_folds=n_test_folds)
-
-
 def optimal_folds_number(
-    n_observations: int, target_train_size: int, target_n_test_paths: int
+    n_observations: int,
+    target_train_size: int,
+    target_n_test_paths: int,
 ) -> tuple[int, int]:
     """Optimal number of folds (total and test folds) for a target training size
     and a target number of test paths.
@@ -517,7 +513,7 @@ def optimal_folds_number(
     target_train_size : int
         The target number of observation in the training set.
 
-    target_train_size : int
+    target_n_test_paths : int
         The target number of test paths (that can be reconstructed from the train/test
         combinations).
 
@@ -529,41 +525,50 @@ def optimal_folds_number(
     n_test_folds : int
         Optimal number of test folds.
     """
-    # Solved by dichotomy on the total number of folds.
+    # Solved by binary search on the total number of folds.
     lower = 2
     upper = n_observations
     while True:
         n_folds = (lower + upper) // 2
-        n_test_paths = _optimal_n_test_paths(
+        n_test_folds = _optimal_n_test_folds(
             n_observations=n_observations,
             n_folds=n_folds,
             target_train_size=target_train_size,
         )
 
-        if n_test_paths == target_n_test_paths:
-            break
-
         if upper == lower:
             break
 
-        if upper - lower == 1:
-            _lower_n_test_paths = _optimal_n_test_paths(
+        if upper == lower + 1:
+            lower_n_test_folds = _optimal_n_test_folds(
                 n_observations=n_observations,
                 n_folds=lower,
                 target_train_size=target_train_size,
             )
-            _upper_n_test_paths = _optimal_n_test_paths(
+            upper_n_test_folds = _optimal_n_test_folds(
                 n_observations=n_observations,
                 n_folds=upper,
                 target_train_size=target_train_size,
             )
 
-            if abs(_lower_n_test_paths - target_n_test_paths) < abs(
-                _upper_n_test_paths - target_n_test_paths
+            lower_n_test_paths = _n_test_paths(
+                n_folds=n_folds, n_test_folds=lower_n_test_folds
+            )
+            upper_n_test_paths = _n_test_paths(
+                n_folds=n_folds, n_test_folds=upper_n_test_folds
+            )
+
+            if abs(lower_n_test_paths - target_n_test_paths) < abs(
+                upper_n_test_paths - target_n_test_paths
             ):
                 n_folds = lower
             else:
                 n_folds = upper
+            break
+
+        n_test_paths = _n_test_paths(n_folds=n_folds, n_test_folds=n_test_folds)
+
+        if n_test_paths == target_n_test_paths:
             break
 
         if n_test_paths < target_n_test_paths:
@@ -571,9 +576,4 @@ def optimal_folds_number(
         else:
             upper = n_folds
 
-    n_test_folds = _optimal_n_test_folds(
-        n_observations=n_observations,
-        n_folds=n_folds,
-        target_train_size=target_train_size,
-    )
     return n_folds, n_test_folds

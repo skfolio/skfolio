@@ -6,6 +6,7 @@
 from skfolio.model_selection._combinatorial import (
     BaseCombinatorialCV,
     CombinatorialPurgedCV,
+    optimal_folds_number,
 )
 from skfolio.model_selection._validation import cross_val_predict
 from skfolio.model_selection._walk_forward import WalkForward
@@ -15,4 +16,5 @@ __all__ = [
     "WalkForward",
     "BaseCombinatorialCV",
     "CombinatorialPurgedCV",
+    "optimal_folds_number",
 ]
