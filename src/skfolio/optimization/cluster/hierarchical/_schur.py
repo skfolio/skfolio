@@ -1,10 +1,10 @@
-"""Hierarchical Risk Parity Optimization estimator."""
+"""Schur Complementary Allocation estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
-# The risk measure generalization and constraint features are derived
-# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# Implementation derived from:
+# Precise, Copyright (c) 2021, Peter Cotton.
 
 import numpy as np
 import numpy.typing as npt
@@ -14,19 +14,24 @@ import scipy.cluster.hierarchy as sch
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
-from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.utils.stats import (
+    inverse_multiply,
+    is_cholesky_dec,
+    multiply_by_inverse,
+    symmetric_step_up_matrix,
+)
 from skfolio.utils.tools import bisection, check_estimator
 
 
-class HierarchicalRiskParity(BaseHierarchicalOptimization):
-    r"""Hierarchical Risk Parity estimator.
+class SchurComplementaryAllocation(BaseHierarchicalOptimization):
+    r"""Schur Complementary Allocation estimator.
 
-    Hierarchical Risk Parity is a portfolio optimization method developed by Marcos
-    Lopez de Prado [2]_.
+    Schur Complementary Allocation is a portfolio allocation method developed by Peter
+    Cotton [1]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
     Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
@@ -34,53 +39,32 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     The final step is the recursive bisection where each cluster is split between two
     sub-clusters by starting with the topmost cluster and traversing in a top-down
-    manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
-    allocation. A weighting factor is then computed from these two sub-cluster risks,
-    which is used to update the cluster weight.
+    manner.
 
-    .. note ::
-        The original paper uses the variance as the risk measure and the single-linkage
-        method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
-        multiple risk measures and linkage methods.
-        The default linkage method is set to the Ward
-        variance minimization algorithm, which is more stable and has better properties
-        than the single-linkage method [4]_.
+    For each sub-cluster, we compute an augmented covariance matrix inspired by the
+    Schur complement where additional information is used from off-diagonal
+    matrix blocks. Based on this augmented covariance matrix, we calculate the total
+    cluster variance of an inverse-variance allocation. A weighting factor is then
+    computed from these two sub-cluster variance, which is used to update the cluster
+    weight.
+
+    The amount of off-diagonal matrix blocks information used is controlled by the
+    regularization factor `gamma`.
 
     Parameters
     ----------
-    risk_measure : RiskMeasure or ExtraRiskMeasure, default=RiskMeasure.VARIANCE
-        :class:`~skfolio.meta.RiskMeasure` or :class:`~skfolio.meta.ExtraRiskMeasure`
-        of the optimization.
-        Can be any of:
-
-            * MEAN_ABSOLUTE_DEVIATION
-            * FIRST_LOWER_PARTIAL_MOMENT
-            * VARIANCE
-            * SEMI_VARIANCE
-            * CVAR
-            * EVAR
-            * WORST_REALIZATION
-            * CDAR
-            * MAX_DRAWDOWN
-            * AVERAGE_DRAWDOWN
-            * EDAR
-            * ULCER_INDEX
-            * GINI_MEAN_DIFFERENCE_RATIO
-            * VALUE_AT_RISK
-            * DRAWDOWN_AT_RISK
-            * ENTROPIC_RISK_MEASURE
-            * FOURTH_CENTRAL_MOMENT
-            * FOURTH_LOWER_PARTIAL_MOMENT
-            * SKEW
-            * KURTOSIS
-
-        The default is `RiskMeasure.VARIANCE`.
+    gamma : float
+        Regularization factor between 0 and 1.
+        A value of 0 means that no additional information is used from off-diagonal
+        matrix blocks and is equivalent to a Hierarchical Risk Parity.
+        As the value increases to 1, the allocation tends to the Minimum Variance
+        Optimization allocation.
 
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
-        containing the estimation of assets expected returns, covariance matrix and
-        returns. The moments and returns estimations are used for the risk computation
+        containing the estimation of the covariance matrix and returns.
+        The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -130,68 +114,20 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
            * max_weights = [1, 0.25]
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
-        Transaction costs of the assets. It is used to add linear transaction costs to
-        the optimization problem:
-
-        .. math:: total\_cost = \sum_{i=1}^{N} c_{i} \times |w_{i} - w\_prev_{i}|
-
-        with :math:`c_{i}` the transaction cost of asset i, :math:`w_{i}` its weight
-        and :math:`w\_prev_{i}` its previous weight (defined in `previous_weights`).
-        The float :math:`total\_cost` is impacting the portfolio expected return in the optimization:
-
-        .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
-
-        with :math:`\mu` the vector af assets' expected returns and :math:`w` the
-        vector of assets weights.
-
+        Transaction costs of the assets.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
 
-        .. warning::
-
-            Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
-
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
-        Management fees of the assets. It is used to add linear management fees to the
-        optimization problem:
-
-        .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
-
-        with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-        The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
-
-        .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
-
-        with :math:`\mu` the vector af assets expected returns and :math:`w` the vector
-        of assets weights.
-
+        Management fees of the assets.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset fee) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
         The default value is `0.0`.
-
-        .. warning::
-
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
-            `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
-
-        .. note::
-
-            Another approach is to directly impact the management fees to the input `X`
-            in order to express the returns net of fees. However, when estimating the
-            :math:`\mu` parameter using for example Shrinkage estimators, this approach
-            would mix a deterministic value with an uncertain one leading to unwanted
-            bias in the management fees.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
@@ -227,26 +163,30 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     References
     ----------
-    .. [1] "Building diversified portfolios that outperform out of sample",
+    .. [1] "Schur Complementary Portfolios - A Unification of Machine Learning and
+        Optimization-Based Allocation".
+        Peter Cotton (2022).
+
+    .. [2] "Building diversified portfolios that outperform out of sample",
         The Journal of Portfolio Management,
         Marcos López de Prado (2016).
 
-    .. [2] "A robust estimator of the efficient frontier",
+    .. [3] "A robust estimator of the efficient frontier",
         SSRN Electronic Journal,
         Marcos López de Prado (2019).
 
-    .. [3] "Machine Learning for Asset Managers",
+    .. [4] "Machine Learning for Asset Managers",
         Elements in Quantitative Finance. Cambridge University Press,
         Marcos López de Prado (2020).
 
-    .. [4] "A review of two decades of correlations, hierarchies, networks and
+    .. [5] "A review of two decades of correlations, hierarchies, networks and
         clustering in financial markets",
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
     """
 
     def __init__(
         self,
-        risk_measure: RiskMeasure | ExtraRiskMeasure = RiskMeasure.VARIANCE,
+        gamma: float = 0.5,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
@@ -258,7 +198,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
     ):
         super().__init__(
-            risk_measure=risk_measure,
             prior_estimator=prior_estimator,
             distance_estimator=distance_estimator,
             hierarchical_clustering_estimator=hierarchical_clustering_estimator,
@@ -269,9 +208,10 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
         )
+        self.gamma = gamma
 
-    def fit(self, X: npt.ArrayLike, y: None = None) -> "HierarchicalRiskParity":
-        """Fit the Hierarchical Risk Parity Optimization estimator.
+    def fit(self, X: npt.ArrayLike, y: None = None) -> "SchurComplementaryAllocation":
+        """Fit the Schur Complementary Allocation estimator.
 
         Parameters
         ----------
@@ -283,14 +223,18 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         Returns
         -------
-        self : HierarchicalRiskParity
+        self : SchurComplementaryAllocation
             Fitted estimator.
         """
+        # Algorithm considerations:
+        # We apply TCO (Tail Call Optimisation): the recursion is replaced by an
+        # iteration and inplace covariance update to reduce the call stack and
+        # space complexity.
+        # Binary search on gamma is applied to both matrix A and D at the same time and
+        # symmetrization is applied at the end of the schur augmentation. This seems
+        # to improve the stability of the solution as gamma tends to 1.
+
         # Validate
-        if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
-            raise TypeError(
-                "`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`"
-            )
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
@@ -311,6 +255,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         self.prior_estimator_.fit(X, y)
         prior_model = self.prior_estimator_.prior_model_
         returns = prior_model.returns
+        covariance = prior_model.covariance
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
@@ -329,7 +274,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         n_assets = X.shape[1]
 
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
-        assets_risks = self._unitary_risks(prior_model=prior_model)
 
         ordered_linkage_matrix = sch.optimal_leaf_ordering(
             self.hierarchical_clustering_estimator_.linkage_matrix_,
@@ -342,19 +286,23 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         while len(items) > 0:
             new_items = []
-            for clusters_ids in bisection(items):
-                new_items += clusters_ids
-                risks = []
-                for ids in clusters_ids:
-                    inv_risk_w = np.zeros(n_assets)
-                    inv_risk_w[ids] = 1 / assets_risks[ids]
-                    inv_risk_w /= inv_risk_w.sum()
-                    risks.append(
-                        self._risk(weights=inv_risk_w, prior_model=prior_model)
-                    )
-                left_risk, right_risk = risks
-                left_cluster, right_cluster = clusters_ids
-                alpha = 1 - left_risk / (left_risk + right_risk)
+
+            for left_cluster, right_cluster in bisection(items):
+                new_items += [left_cluster, right_cluster]
+
+                a = covariance[np.ix_(left_cluster, left_cluster)]
+                b = covariance[np.ix_(left_cluster, right_cluster)]
+                d = covariance[np.ix_(right_cluster, right_cluster)]
+
+                a_aug, d_aug = _schur_augmentation(a, b, d, gamma=self.gamma)
+
+                left_variance = _naive_portfolio_variance(a_aug)
+                right_variance = _naive_portfolio_variance(d_aug)
+
+                covariance[np.ix_(left_cluster, left_cluster)] = a_aug
+                covariance[np.ix_(right_cluster, right_cluster)] = d_aug
+
+                alpha = 1 - left_variance / (left_variance + right_variance)
                 # Weights constraints
                 alpha = self._apply_weight_constraints_to_alpha(
                     alpha=alpha,
@@ -366,7 +314,163 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
                 )
                 weights[left_cluster] *= alpha
                 weights[right_cluster] *= 1 - alpha
+
             items = new_items
 
         self.weights_ = weights
         return self
+
+
+def _naive_portfolio_variance(covariance: np.ndarray) -> float:
+    """Portfolio variance of an inverse variance allocation.
+
+    Parameters
+    ----------
+    covariance : ndarray of shape (n, n)
+        Covariance matrix.
+
+    Returns
+    -------
+    variance : float
+        Portfolio variance of an inverse variance allocation.
+    """
+    weights = 1 / np.diag(covariance)
+    weights /= weights.sum()
+    variance = weights @ covariance @ weights.T
+    return variance
+
+
+def _single_schur_augmentation(
+    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float
+) -> np.ndarray:
+    """Compute an augmented covariance matrix `A` inspired by the
+    Schur complement [1]_.
+
+    Parameters
+    ----------
+    a : ndarray of shape (n1, n1)
+        Upper left block matrix `A`
+
+    b : ndarray of shape (n1, n2)
+        Upper right block matrix `B`
+
+    d : ndarray of shape (n2, n2)
+        Lower right block matrix `D`
+
+    gamma : float
+        Regularization factor between 0 and 1.
+        A value of 0 means that no additional information is used from off-diagonal
+        matrix blocks and is equivalent to a Hierarchical Risk Parity.
+        As the value increases to 1, the allocation tends to the Minimum Variance
+        Optimization allocation.
+
+    Returns
+    -------
+    a_aug : ndarray of shape (n1, n1)
+        Augmented covariance matrix `A`.
+
+    References
+    ----------
+    .. [1] "Schur Complementary Portfolios - A Unification of Machine Learning and
+        Optimization-Based Allocation".
+        Peter Cotton (2022).
+    """
+    n_a = a.shape[0]
+    n_d = d.shape[0]
+
+    a_aug = a - gamma * b @ inverse_multiply(d, b.T)
+    m = symmetric_step_up_matrix(n1=n_a, n2=n_d)
+    r = np.eye(n_a) - gamma * multiply_by_inverse(b, d) @ m.T
+    a_aug = inverse_multiply(r, a_aug)
+    # make it symmetric
+    a_aug = (a_aug + a_aug.T) / 2.0
+    return a_aug
+
+
+def _schur_augmentation(
+    a: np.ndarray,
+    b: np.ndarray,
+    d: np.ndarray,
+    gamma: float,
+    gamma_tol: float = 0.01,
+    max_n_iter: int = 10,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute the augmented covariance matrix `A` and `D` inspired by the
+    Schur complement [1]_.
+
+    The optimal gamma that preserves positive semi-definiteness of both augmented
+    matrix `A` and `D`and closest to the initial gamma input is found using binary
+    search.
+
+    Parameters
+    ----------
+    a : ndarray of shape (n1, n1)
+        Upper left block matrix `A`
+
+    b : ndarray of shape (n1, n2)
+        Upper right block matrix `B`
+
+    d : ndarray of shape (n2, n2)
+        Lower right block matrix `D`
+
+    gamma : float
+        Regularization factor between 0 and 1.
+        A value of 0 means that no additional information is used from off-diagonal
+        matrix blocks and is equivalent to a Hierarchical Risk Parity.
+        As the value increases to 1, the allocation tends to the Minimum Variance
+        Optimization allocation.
+
+    gamma_tol : float, default=0.01
+        Tolerance of the gamma value used in binary search.
+
+    max_n_iter : int, default=10
+        Maximum number of iteration of the binary search.
+
+    Returns
+    -------
+    a_aug : ndarray of shape (n1, n1)
+        Augmented covariance matrix `A`.
+
+    d_aug : ndarray of shape (n2, n2)
+        Augmented covariance matrix `D`.
+
+    References
+    ----------
+    .. [1] "Schur Complementary Portfolios - A Unification of Machine Learning and
+        Optimization-Based Allocation".
+        Peter Cotton (2022).
+    """
+    n_a = a.shape[0]
+    n_d = d.shape[0]
+
+    if gamma == 0 or n_a == 1 or n_d == 1:
+        return a, d
+
+    n_iter = 0
+    valid_a_aug = None
+    valid_d_aug = None
+    low = 0
+    high = gamma
+    prev_gamma = gamma
+    while n_iter <= max_n_iter:
+        a_aug = _single_schur_augmentation(a, b, d, gamma=gamma)
+        d_aug = _single_schur_augmentation(d, b.T, a, gamma=gamma)
+
+        if is_cholesky_dec(a_aug) and is_cholesky_dec(d_aug):
+            valid_a_aug = a_aug
+            valid_d_aug = d_aug
+            if abs(gamma - prev_gamma) <= gamma_tol:
+                break
+            else:
+                low = gamma
+        else:
+            high = gamma
+
+        prev_gamma = gamma
+        gamma = (low + high) / 2
+        n_iter += 1
+
+    if valid_a_aug is None:
+        return a, d
+
+    return valid_a_aug, valid_d_aug

@@ -1,4 +1,4 @@
-""" Population module.
+"""Population module.
 A population is a collection of portfolios.
 """
 

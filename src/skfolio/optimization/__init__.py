@@ -4,6 +4,7 @@ from skfolio.optimization.cluster import (
     HierarchicalEqualRiskContribution,
     HierarchicalRiskParity,
     NestedClustersOptimization,
+    SchurComplementaryAllocation,
 )
 from skfolio.optimization.convex import (
     ConvexOptimization,
@@ -33,4 +34,5 @@ __all__ = [
     "NestedClustersOptimization",
     "BaseComposition",
     "StackingOptimization",
+    "SchurComplementaryAllocation",
 ]

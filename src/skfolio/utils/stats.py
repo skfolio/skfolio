@@ -4,6 +4,7 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 # Implementation derived from:
+# Precise, Copyright (c) 2021, Peter Cotton.
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
 
@@ -33,6 +34,9 @@ __all__ = [
     "compute_optimal_n_clusters",
     "rand_weights",
     "rand_weights_dirichlet",
+    "inverse_multiply",
+    "multiply_by_inverse",
+    "symmetric_step_up_matrix",
 ]
 
 
@@ -427,7 +431,6 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
 
     with :math:`d(u,v)` the distance between u and v.
 
-
     Parameters
     ----------
     distance : ndarray of shape (n, n)
@@ -467,3 +470,84 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     # k=0 represents one cluster
     k = np.argmax(gaps) + 2
     return k
+
+
+def inverse_multiply(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Multiply the inverse of matrix a by matrix b.
+    We use np.linalg.solve as it tends to produce more accurate results than
+    np.linalg.inv.
+
+    Parameters
+    ----------
+    a : ndarray of shape (n, n)
+        Square matrix.
+
+    b : ndarray of shape (n, m)
+        Matrix.
+
+    Returns
+    -------
+    m : ndarray of shape (n, m)
+        The inverse of matrix a multiplied by matrix b.
+    """
+    assert_is_square(a)
+    if a.shape[1] != b.shape[0]:
+        raise ValueError("Wrong dimension")
+    return np.linalg.solve(a, b)
+
+
+def multiply_by_inverse(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Multiply matrix a by the inverse of matrix b.
+    We use np.linalg.solve as it tends to produce more accurate results than
+    np.linalg.inv.
+
+    Parameters
+    ----------
+    a : ndarray of shape (n, m)
+        Matrix.
+
+    b : ndarray of shape (n, n)
+        Square matrix.
+
+    Returns
+    -------
+    m : ndarray of shape (n, m)
+        The matrix a multiplied by the inverse of matrix b.
+    """
+    return inverse_multiply(b.T, a.T).T
+
+
+def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
+    """Compute the Symmetric step-up matrix M
+    such that `M @ np.ones(n2) = np.ones(n1)`
+
+    Parameters
+    ----------
+    n1 : int
+        First dimension.
+
+    n2 : int
+        Second dimension.
+
+    Returns
+    -------
+    m : ndarray of shape (n1, n2)
+        The Symmetric step-up matrix.
+    """
+
+    assert abs(n1 - n2) <= 1
+
+    if n1 == n2:
+        return np.eye(n1)
+
+    if n1 < n2:
+        return symmetric_step_up_matrix(n2, n1).T * n1 / n2
+
+    m = np.zeros((n1, n2))
+    j_row = np.ones((1, n2)) / n2
+    e = np.eye(n2)
+    for j in range(n1):
+        mj = np.concatenate([e[:j], j_row, e[j:]], axis=0)
+        m += mj / n1
+
+    return m

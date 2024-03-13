@@ -4,7 +4,6 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
