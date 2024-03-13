@@ -889,9 +889,9 @@ class MeanRisk(ConvexOptimization):
                             self.covariance_uncertainty_set_estimator
                         )
                         self.covariance_uncertainty_set_estimator_.fit(X, y)
-                        args[
-                            arg_name
-                        ] = self.covariance_uncertainty_set_estimator_.uncertainty_set_
+                        args[arg_name] = (
+                            self.covariance_uncertainty_set_estimator_.uncertainty_set_
+                        )
                     else:
                         args[arg_name] = getattr(self, arg_name)
 

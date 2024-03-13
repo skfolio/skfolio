@@ -6,7 +6,6 @@
 # The risk measure generalization and constraint features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
-
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
