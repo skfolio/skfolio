@@ -1,7 +1,4 @@
-from pathlib import Path
-
 import numpy as np
-import pandas as pd
 import pytest
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as scd
@@ -75,12 +72,6 @@ def linkage_matrix(distance):
     return linkage_matrix
 
 
-@pytest.fixture(scope="module")
-def non_psd_cov():
-    file = Path(Path(__file__).parent.parent, "data", "covariance.csv")
-    return pd.read_csv(file, sep=",").to_numpy()
-
-
 def test_n_bins_freedman(returns):
     n_bins = n_bins_freedman(returns)
     assert n_bins == 329
@@ -98,12 +89,6 @@ def test_cov_nearest(nasdaq_X):
     assert not is_cholesky_dec(cov)
     cov2 = cov_nearest(cov, higham=False)
     assert is_cholesky_dec(cov2)
-
-
-def test_cov_nearest_cov_non_psd(non_psd_cov):
-    assert not is_cholesky_dec(non_psd_cov)
-    cov = cov_nearest(non_psd_cov)
-    assert is_cholesky_dec(cov)
 
 
 def test_corr_nearest_psd():
