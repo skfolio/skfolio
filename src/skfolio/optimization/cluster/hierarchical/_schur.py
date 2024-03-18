@@ -23,6 +23,7 @@ from skfolio.utils.stats import (
     is_cholesky_dec,
     multiply_by_inverse,
     symmetric_step_up_matrix,
+    cov_nearest,
 )
 from skfolio.utils.tools import bisection, check_estimator
 
@@ -187,6 +188,8 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
     def __init__(
         self,
         gamma: float = 0.5,
+        propagation_coef: float = 0.5,
+        min_cluster_size: int = 2,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
@@ -209,6 +212,8 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
         self.gamma = gamma
+        self.propagation_coef = propagation_coef
+        self.min_cluster_size = min_cluster_size
 
     def fit(self, X: npt.ArrayLike, y: None = None) -> "SchurComplementaryAllocation":
         """Fit the Schur Complementary Allocation estimator.
@@ -255,7 +260,7 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
         self.prior_estimator_.fit(X, y)
         prior_model = self.prior_estimator_.prior_model_
         returns = prior_model.returns
-        covariance = prior_model.covariance
+        covariance = cov_nearest(prior_model.covariance)
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
@@ -291,18 +296,25 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
                 new_items += [left_cluster, right_cluster]
 
                 a = covariance[np.ix_(left_cluster, left_cluster)]
-                b = covariance[np.ix_(left_cluster, right_cluster)]
                 d = covariance[np.ix_(right_cluster, right_cluster)]
 
-                a_aug, d_aug = _schur_augmentation(a, b, d, gamma=self.gamma)
+                if len(left_cluster) <= self.min_cluster_size:
+                    a_aug, d_aug = a, d
+                else:
+                    b = covariance[np.ix_(left_cluster, right_cluster)]
+                    a_aug, d_aug = _schur_augmentation(a, b, d, gamma=self.gamma)
+                    covariance[np.ix_(left_cluster, left_cluster)] = (
+                        a * (1 - self.propagation_coef) + a_aug * self.propagation_coef
+                    )
+                    covariance[np.ix_(right_cluster, right_cluster)] = (
+                        d * (1 - self.propagation_coef) + d_aug * self.propagation_coef
+                    )
 
                 left_variance = _naive_portfolio_variance(a_aug)
                 right_variance = _naive_portfolio_variance(d_aug)
 
-                covariance[np.ix_(left_cluster, left_cluster)] = a_aug
-                covariance[np.ix_(right_cluster, right_cluster)] = d_aug
-
                 alpha = 1 - left_variance / (left_variance + right_variance)
+
                 # Weights constraints
                 alpha = self._apply_weight_constraints_to_alpha(
                     alpha=alpha,
@@ -341,7 +353,7 @@ def _naive_portfolio_variance(covariance: np.ndarray) -> float:
 
 
 def _single_schur_augmentation(
-    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float
+    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float, delta: float
 ) -> np.ndarray:
     """Compute an augmented covariance matrix `A` inspired by the
     Schur complement [1]_.
@@ -380,7 +392,7 @@ def _single_schur_augmentation(
 
     a_aug = a - gamma * b @ inverse_multiply(d, b.T)
     m = symmetric_step_up_matrix(n1=n_a, n2=n_d)
-    r = np.eye(n_a) - gamma * multiply_by_inverse(b, d) @ m.T
+    r = np.eye(n_a) - delta * multiply_by_inverse(b, d) @ m.T
     a_aug = inverse_multiply(r, a_aug)
     # make it symmetric
     a_aug = (a_aug + a_aug.T) / 2.0
@@ -453,8 +465,8 @@ def _schur_augmentation(
     high = gamma
     prev_gamma = gamma
     while n_iter <= max_n_iter:
-        a_aug = _single_schur_augmentation(a, b, d, gamma=gamma)
-        d_aug = _single_schur_augmentation(d, b.T, a, gamma=gamma)
+        a_aug = _single_schur_augmentation(a, b, d, gamma=gamma, delta=gamma)
+        d_aug = _single_schur_augmentation(d, b.T, a, gamma=gamma, delta=gamma)
 
         if is_cholesky_dec(a_aug) and is_cholesky_dec(d_aug):
             valid_a_aug = a_aug
@@ -465,7 +477,6 @@ def _schur_augmentation(
                 low = gamma
         else:
             high = gamma
-
         prev_gamma = gamma
         gamma = (low + high) / 2
         n_iter += 1
