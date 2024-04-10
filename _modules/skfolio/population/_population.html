@@ -384,6 +384,7 @@ document.write(`
 <span class="c1"># License: BSD 3 clause</span>
 
 <span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
@@ -466,12 +467,12 @@ document.write(`
 
 <div class="viewcode-block" id="Population.set_portfolio_params">
 <a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.set_portfolio_params">[docs]</a>
-    <span class="k">def</span> <span class="nf">set_portfolio_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="nb">any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">set_portfolio_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the parameters of all the portfolios.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        **params : any</span>
+<span class="sd">        **params : Any</span>
 <span class="sd">            Portfolio parameters.</span>
 
 <span class="sd">        Returns</span>

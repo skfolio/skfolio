@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**05:03.674** total execution time for 14 files **from auto_examples/1_mean_risk**:
+**05:07.935** total execution time for 14 files **from auto_examples/1_mean_risk**:
 
 .. container::
 
@@ -33,44 +33,44 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_9_uncertainty_set.py` (``plot_9_uncertainty_set.py``)
-     - 03:02.976
+     - 03:05.552
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_8_regularization.py` (``plot_8_regularization.py``)
-     - 01:14.807
+     - 01:16.187
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_4_mean_variance_cdar.py` (``plot_4_mean_variance_cdar.py``)
-     - 00:20.792
+     - 00:20.584
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py` (``plot_6_transaction_costs.py``)
-     - 00:07.411
+     - 00:07.623
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_7_management_fees.py` (``plot_7_management_fees.py``)
-     - 00:04.053
+     - 00:04.128
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_13_factor_model.py` (``plot_13_factor_model.py``)
-     - 00:03.280
+     - 00:03.323
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_14_black_litterman_factor_model.py` (``plot_14_black_litterman_factor_model.py``)
-     - 00:02.493
+     - 00:02.535
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_1_maximum_sharpe_ratio.py` (``plot_1_maximum_sharpe_ratio.py``)
-     - 00:02.106
+     - 00:02.136
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_2_minimum_CVaR.py` (``plot_2_minimum_CVaR.py``)
-     - 00:01.603
+     - 00:01.590
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_10_tracking_error.py` (``plot_10_tracking_error.py``)
-     - 00:01.167
+     - 00:01.201
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_11_empirical_prior.py` (``plot_11_empirical_prior.py``)
-     - 00:01.140
+     - 00:01.185
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_3_efficient_frontier.py` (``plot_3_efficient_frontier.py``)
-     - 00:01.050
+     - 00:01.077
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_12_black_and_litterman.py` (``plot_12_black_and_litterman.py``)
-     - 00:00.443
+     - 00:00.455
      - 0.0
    * - :ref:`sphx_glr_auto_examples_1_mean_risk_plot_5_weight_constraints.py` (``plot_5_weight_constraints.py``)
-     - 00:00.353
+     - 00:00.361
      - 0.0
