@@ -10,6 +10,7 @@
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +42,7 @@ class AutoEnum(str, Enum):
 
     @staticmethod
     def _generate_next_value_(
-        name: str, start: int, count: int, last_values: any
+        name: str, start: int, count: int, last_values: Any
     ) -> str:
         """Overriding `auto()`"""
         return name.lower()
@@ -179,7 +180,7 @@ def args_names(func: object) -> list[str]:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None, default: skb.BaseEstimator, check_type: any
+    estimator: skb.BaseEstimator | None, default: skb.BaseEstimator, check_type: Any
 ):
     """Check the estimator type and returns its cloned version it provided, otherwise
      return the default estimator.
@@ -192,7 +193,7 @@ def check_estimator(
     default : BaseEstimator
         Default estimator to return when `estimator` is `None`.
 
-    check_type : any
+    check_type : Any
         Expected type of the estimator to check against.
 
     Returns
@@ -211,7 +212,7 @@ def check_estimator(
 def input_to_array(
     items: dict | npt.ArrayLike,
     n_assets: int,
-    fill_value: any,
+    fill_value: Any,
     dim: int,
     assets_names: np.ndarray | None,
     name: str,
@@ -228,7 +229,7 @@ def input_to_array(
         Expected number of assets.
         Used to verify the shape of the converted array.
 
-    fill_value : any
+    fill_value : Any
         When `items` is a dictionary, elements that are not in `asset_names` are filled
         with `fill_value` in the converted array.
 
@@ -424,7 +425,7 @@ def safe_split(
 
 
 def fit_single_estimator(
-    estimator: any,
+    estimator: Any,
     X: npt.ArrayLike,
     y: npt.ArrayLike | None = None,
     indices: np.ndarray | None = None,
@@ -463,7 +464,7 @@ def fit_single_estimator(
 
 
 def fit_and_predict(
-    estimator: any,
+    estimator: Any,
     X: npt.ArrayLike,
     y: npt.ArrayLike | None,
     train: np.ndarray,
