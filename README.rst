@@ -8,7 +8,7 @@
 .. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
    :target: https://codecov.io/gh/skfolio/skfolio
 
-.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
+.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg
    :target: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
@@ -17,7 +17,7 @@
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/psf/black
 
-.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml?logo=github
+.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml.svg?logo=github
    :target: https://github.com/skfolio/skfolio/raw/main/LICENSE
 
 .. |Downloads| image:: https://static.pepy.tech/badge/skfolio
@@ -29,7 +29,7 @@
 .. |Contribution| image:: https://img.shields.io/badge/Contributions-Welcome-blue
    :target: https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md
 
-.. |Website| image:: https://img.shields.io/website-up-down-53cc0d-red/http/skfolio.org
+.. |Website| image:: https://img.shields.io/website.svg?down_color=red&down_message=down&up_color=53cc0d&up_message=up&url=https://skfolio.org
    :target: https://skfolio.org
 
 .. |PythonMinVersion| replace:: 3.10
