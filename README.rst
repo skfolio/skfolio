@@ -1,36 +1,36 @@
 .. -*- mode: rst -*-
 
-|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_ |Downloads|_ |Ruff|_ |Contribution|_ |Website|_
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
-.. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
+   :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
 
 .. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
-.. _Codecov: https://codecov.io/gh/skfolio/skfolio
+   :target: https://codecov.io/gh/skfolio/skfolio
 
 .. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
-.. _PythonVersion: https://pypi.org/project/skfolio/
+   :target: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
-.. _PyPi: https://pypi.org/project/skfolio
+   :target: https://pypi.org/project/skfolio
 
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-.. _Black: https://github.com/psf/black
+   :target: https://github.com/psf/black
 
 .. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml?logo=github
-.. _CI/CD: https://github.com/skfolio/skfolio/raw/main/LICENSE
+   :target: https://github.com/skfolio/skfolio/raw/main/LICENSE
 
 .. |Downloads| image:: https://static.pepy.tech/badge/skfolio
-.. _Downloads: https://pepy.tech/project/skfolio
+   :target: https://pepy.tech/project/skfolio
 
 .. |Ruff| image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
-.. _Ruff: https://github.com/astral-sh/ruff
+   :target: https://github.com/astral-sh/ruff
 
 .. |Contribution| image:: https://img.shields.io/badge/Contributions-Welcome-blue
-.. _Contribution: https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md
+   :target: https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md
 
 .. |Website| image:: https://img.shields.io/website-up-down-53cc0d-red/http/skfolio.org
-.. _Website: https://skfolio.org
+   :target: https://skfolio.org
 
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
