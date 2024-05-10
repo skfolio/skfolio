@@ -43,7 +43,7 @@
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
     <script src="../../../_static/documentation_options.js?v=61571c06"></script>
-    <script src="../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
@@ -393,7 +393,7 @@ document.write(`
 <span class="kn">import</span> <span class="nn">scipy.interpolate</span> <span class="k">as</span> <span class="nn">sci</span>
 
 <span class="kn">import</span> <span class="nn">skfolio.typing</span> <span class="k">as</span> <span class="nn">skt</span>
-<span class="kn">from</span> <span class="nn">skfolio.portfolio</span> <span class="kn">import</span> <span class="n">BasePortfolio</span><span class="p">,</span> <span class="n">MultiPeriodPortfolio</span><span class="p">,</span> <span class="n">Portfolio</span>
+<span class="kn">from</span> <span class="nn">skfolio.portfolio</span> <span class="kn">import</span> <span class="n">BasePortfolio</span><span class="p">,</span> <span class="n">MultiPeriodPortfolio</span>
 <span class="kn">from</span> <span class="nn">skfolio.utils.sorting</span> <span class="kn">import</span> <span class="n">non_denominated_sort</span>
 <span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">deduplicate_names</span>
 
@@ -410,14 +410,14 @@ document.write(`
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    iterable : list[Portfolio | MultiPeriodPortfolio]</span>
+<span class="sd">    iterable : list[BasePortfolio]</span>
 <span class="sd">        The list of portfolios. Each item can be of type</span>
 <span class="sd">        :class:`~skfolio.portfolio.Portfolio` and/or</span>
 <span class="sd">        :class:`~skfolio.portfolio.MultiPeriodPortfolio`.</span>
 <span class="sd">        Empty list are accepted.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iterable</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BasePortfolio</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">iterable</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -425,16 +425,16 @@ document.write(`
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">indices</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="nb">slice</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Portfolio | MultiPeriodPortfolio|Population&quot;</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BasePortfolio | Population&quot;</span><span class="p">:</span>
         <span class="n">item</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">item</span>
 
-    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span>
 
-    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Population&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Population</span><span class="p">):</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Cannot add a Population with an object of type </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -443,21 +443,21 @@ document.write(`
 
 <div class="viewcode-block" id="Population.insert">
 <a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.insert">[docs]</a>
-    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Insert portfolio before index.&quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="Population.append">
 <a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.append">[docs]</a>
-    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Append portfolio to the end of the population list.&quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_validate_item</span><span class="p">(</span><span class="n">item</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="Population.extend">
 <a class="viewcode-back" href="../../../generated/skfolio.population.Population.html#skfolio.population.Population.extend">[docs]</a>
-    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Extend population list by appending elements from the iterable.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)):</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
@@ -503,13 +503,14 @@ document.write(`
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_validate_item</span><span class="p">(</span>
-        <span class="n">item</span><span class="p">:</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+        <span class="n">item</span><span class="p">:</span> <span class="n">BasePortfolio</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BasePortfolio</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that items are of type Portfolio or MultiPeriodPortfolio.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">BasePortfolio</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">item</span>
         <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-            <span class="s2">&quot;Population only accept items of type Portfolio and MultiPeriodPortfolio&quot;</span>
+            <span class="s2">&quot;Population only accept items that inherit from BasePortfolio such as &quot;</span>
+            <span class="s2">&quot;Portfolio or MultiPeriodPortfolio&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">item</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
 
@@ -736,7 +737,7 @@ document.write(`
         <span class="n">q</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
         <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BasePortfolio</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio corresponding to the `q` quantile for a given portfolio</span>
 <span class="sd">        measure.</span>
 
@@ -756,7 +757,7 @@ document.write(`
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">        values : BasePortfolio</span>
 <span class="sd">           Portfolio corresponding to the `q` quantile for the measure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">q</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
@@ -775,7 +776,7 @@ document.write(`
         <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
         <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BasePortfolio</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio with the minimum measure.</span>
 
 <span class="sd">        Parameters</span>
@@ -791,7 +792,7 @@ document.write(`
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">        values : BasePortfolio</span>
 <span class="sd">            The portfolio with minimum measure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span></div>
@@ -804,7 +805,7 @@ document.write(`
         <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span><span class="p">,</span>
         <span class="n">names</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Names</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">tags</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Tags</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Portfolio</span> <span class="o">|</span> <span class="n">MultiPeriodPortfolio</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BasePortfolio</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the portfolio with the maximum measure.</span>
 
 <span class="sd">        Parameters</span>
@@ -820,7 +821,7 @@ document.write(`
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        values : Portfolio | MultiPeriodPortfolio</span>
+<span class="sd">        values : BasePortfolio</span>
 <span class="sd">            The portfolio with maximum measure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="n">measure</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">names</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span></div>
@@ -1372,7 +1373,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
     <br/>
   </p>
 </div>

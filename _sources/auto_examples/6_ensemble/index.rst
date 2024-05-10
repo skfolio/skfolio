@@ -16,6 +16,7 @@ Examples concerning ensemble optimizations.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -33,6 +34,8 @@ Examples concerning ensemble optimizations.
       <div class="sphx-glr-thumbnail-title">Stacking Optimization</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

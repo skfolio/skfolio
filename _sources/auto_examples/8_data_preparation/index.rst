@@ -17,6 +17,7 @@ Examples about data preparation.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -34,6 +35,8 @@ Examples about data preparation.
       <div class="sphx-glr-thumbnail-title">Investment Horizon</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

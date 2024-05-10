@@ -17,6 +17,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -51,6 +52,8 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
       <div class="sphx-glr-thumbnail-title">Select Best Performers</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

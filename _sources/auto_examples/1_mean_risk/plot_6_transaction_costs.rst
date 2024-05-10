@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_1_mean_risk_plot_6_transaction_costs.py>`
-        to download the full example code or to run this example in your browser via Binder
+        to download the full example code. or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -422,7 +422,7 @@ If we exclude the unrealistic prediction without TC, we notice that the model
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 7.623 seconds)
+   **Total running time of the script:** (0 minutes 7.750 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_6_transaction_costs.py:

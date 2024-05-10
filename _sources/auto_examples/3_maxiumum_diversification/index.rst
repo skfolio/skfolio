@@ -16,6 +16,7 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -33,6 +34,8 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
       <div class="sphx-glr-thumbnail-title">Maximum Diversification</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

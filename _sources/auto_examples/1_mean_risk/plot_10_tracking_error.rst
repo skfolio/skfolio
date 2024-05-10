@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py>`
-        to download the full example code or to run this example in your browser via Binder
+        to download the full example code. or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -309,7 +309,7 @@ compared to the model without tracking error.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.201 seconds)
+   **Total running time of the script:** (0 minutes 1.246 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py:

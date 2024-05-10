@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py>`
-        to download the full example code or to run this example in your browser via Binder
+        to download the full example code. or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -467,7 +467,7 @@ Finally, you can also directly provide the matrix :math:`A` and the vector
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.361 seconds)
+   **Total running time of the script:** (0 minutes 0.368 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py:

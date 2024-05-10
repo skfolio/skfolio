@@ -16,6 +16,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -67,6 +68,8 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
       <div class="sphx-glr-thumbnail-title">Risk Parity - Covariance shrinkage</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

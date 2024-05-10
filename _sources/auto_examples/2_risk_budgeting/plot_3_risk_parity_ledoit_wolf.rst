@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py>`
-        to download the full example code or to run this example in your browser via Binder
+        to download the full example code. or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -482,7 +482,7 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.211 seconds)
+   **Total running time of the script:** (0 minutes 1.273 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:

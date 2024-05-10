@@ -15,6 +15,7 @@ Examples concerning hierarchical clustering based optimizations.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -100,6 +101,8 @@ Examples concerning hierarchical clustering based optimizations.
       <div class="sphx-glr-thumbnail-title">NCO - Combinatorial Purged CV</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

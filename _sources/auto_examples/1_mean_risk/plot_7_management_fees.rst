@@ -11,7 +11,7 @@
         :class: sphx-glr-download-link-note
 
         :ref:`Go to the end <sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py>`
-        to download the full example code or to run this example in your browser via Binder
+        to download the full example code. or to run this example in your browser via Binder
 
 .. rst-class:: sphx-glr-example-title
 
@@ -294,7 +294,7 @@ MF**.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.128 seconds)
+   **Total running time of the script:** (0 minutes 4.292 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py:

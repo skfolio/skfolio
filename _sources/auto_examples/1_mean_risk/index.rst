@@ -16,6 +16,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -254,6 +255,8 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
       <div class="sphx-glr-thumbnail-title">Black & Litterman Factor Model</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 

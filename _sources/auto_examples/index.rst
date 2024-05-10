@@ -16,6 +16,9 @@ or :ref:`sphx_glr_auto_examples_1_mean_risk_plot_2_minimum_CVaR.py` before movin
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -34,6 +37,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -273,6 +277,8 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -290,6 +296,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -342,6 +349,8 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -359,6 +368,7 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -377,6 +387,8 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -394,6 +406,7 @@ Examples concerning the :class:`~skfolio.optimization.DistributionallyRobustCVaR
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -412,6 +425,8 @@ Examples concerning the :class:`~skfolio.optimization.DistributionallyRobustCVaR
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -428,6 +443,7 @@ Examples concerning hierarchical clustering based optimizations.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -514,6 +530,8 @@ Examples concerning hierarchical clustering based optimizations.
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -531,6 +549,7 @@ Examples concerning ensemble optimizations.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -548,6 +567,8 @@ Examples concerning ensemble optimizations.
       <div class="sphx-glr-thumbnail-title">Stacking Optimization</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
@@ -567,6 +588,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -602,6 +624,8 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
     </div>
 
 
+.. thumbnail-parent-div-close
+
 .. raw:: html
 
     </div>
@@ -620,6 +644,7 @@ Examples about data preparation.
 
     <div class="sphx-glr-thumbnails">
 
+.. thumbnail-parent-div-open
 
 .. raw:: html
 
@@ -637,6 +662,8 @@ Examples about data preparation.
       <div class="sphx-glr-thumbnail-title">Investment Horizon</div>
     </div>
 
+
+.. thumbnail-parent-div-close
 
 .. raw:: html
 
