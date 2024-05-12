@@ -1,6 +1,10 @@
-import numpy as np
 import math
+
+import numpy as np
+import pytest
+
 from skfolio.model_selection import CombinatorialPurgedCV, optimal_folds_number
+from skfolio.model_selection._combinatorial import _avg_train_size, _n_test_paths
 
 
 def assert_split_equal(split, res):
@@ -171,39 +175,83 @@ def test_combinatorial_purged_cv():
     )
 
 
-def test_optimal_folds_number():
-    n_observations = 100
-    n_folds, n_test_folds = optimal_folds_number(
-        n_observations=n_observations, target_train_size=10, target_n_test_paths=5,
+def optimal_folds_number_full_search(
+        n_observations: int,
+        target_train_size: int,
+        target_n_test_paths: int,
+) -> tuple[int, int]:
+    def _cost(
+            x: int,
+            y: int,
+    ) -> float:
+        n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
+        avg_train_size = _avg_train_size(
+            n_observations=n_observations, n_folds=x, n_test_folds=y
+        )
+        return (
+                abs(n_test_paths - target_n_test_paths)
+                / target_n_test_paths
+                + abs(avg_train_size - target_train_size)
+                / target_train_size
+        )
+
+    res = []
+    costs = []
+    for n_folds in range(3, n_observations + 1):
+        for n_test_folds in range(2, n_folds):
+            res.append((n_folds, n_test_folds))
+            costs.append(_cost(x=n_folds, y=n_test_folds))
+    i = np.argmin(costs)
+    return res[i]
+
+
+@pytest.mark.parametrize("n_observations,target_n_test_paths,target_train_size,expected",
+                        [
+                            (10, 10, 1, (10, 9)),
+                            (10, 2, 100,  (3, 2)),
+                            (10, 2, 5,  (3, 2)),
+                            (100, 20, 10, (21, 20)),
+                            (100, 5, 30,  (6, 5)),
+                            (1000, 300, 50, (26, 24)),
+                        ]
+                        )
+def test_optimal_folds_number(
+        n_observations: int, target_train_size: int, target_n_test_paths: int,
+        expected: tuple[int, int]):
+    res = optimal_folds_number(
+        n_observations=n_observations,
+        target_train_size=target_train_size,
+        target_n_test_paths=target_n_test_paths,
     )
-    avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
-    n_test_paths = int(math.comb(n_folds, n_test_folds)) * n_test_folds // n_folds
+    assert res == expected
 
-    assert n_folds == 6
-    assert n_test_folds == 5
-    assert int(avg_train_size) == 16
-    assert n_test_paths == 5
 
-    n_observations = 1000
+def test_optimal_folds_number_weight():
+    n_observations = 5000
+    target_train_size = 250
+    target_n_test_paths = 50
+
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=n_observations, target_train_size=10, target_n_test_paths=50
+        n_observations=n_observations, target_train_size=target_train_size,
+        target_n_test_paths=target_n_test_paths,
     )
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = int(math.comb(n_folds, n_test_folds)) * n_test_folds // n_folds
 
     assert n_folds == 51
     assert n_test_folds == 50
-    assert int(avg_train_size) == 19
+    assert int(avg_train_size) == 98
     assert n_test_paths == 50
 
-    n_observations = 5000
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=n_observations, target_train_size=252, target_n_test_paths=15
+        n_observations=n_observations, target_train_size=target_train_size,
+        target_n_test_paths=target_n_test_paths,
+        weight_train_size=2,
     )
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = int(math.comb(n_folds, n_test_folds)) * n_test_folds // n_folds
-    
-    assert n_folds == 16
-    assert n_test_folds == 15
-    assert int(avg_train_size) == 312
-    assert n_test_paths == 15
+
+    assert n_folds == 20
+    assert n_test_folds == 19
+    assert int(avg_train_size) == 250
+    assert n_test_paths == 19

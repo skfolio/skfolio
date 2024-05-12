@@ -37,7 +37,6 @@
 #       the class attributes with the argument name preceded by the measure name and
 #       separated by '_'.
 
-
 import warnings
 from abc import abstractmethod
 from typing import ClassVar

@@ -472,38 +472,32 @@ def _avg_train_size(n_observations: int, n_folds: int, n_test_folds: int) -> flo
     return n_observations / n_folds * (n_folds - n_test_folds)
 
 
-def _optimal_n_test_folds(
-    n_observations: int, n_folds: int, target_train_size: int
-) -> int:
-    """Optimal number of test folds for a target training size given the total
-    number of folds
-
-    Parameters
-    ----------
-    n_observations : int
-        Number of observations.
-
-    n_folds : int
-        Number of folds.
-
-    target_train_size : int
-        The target number of observation in the training set.
-
-    Returns
-    -------
-    n_test_folds : int
-        Optimal number of test folds.
-    """
-    return n_folds * (n_observations - target_train_size) // n_observations
-
-
 def optimal_folds_number(
     n_observations: int,
     target_train_size: int,
     target_n_test_paths: int,
+    weight_train_size: float = 1,
+    weight_n_test_paths: float = 1,
 ) -> tuple[int, int]:
-    """Optimal number of folds (total and test folds) for a target training size
-    and a target number of test paths.
+    r"""Find the optimal number of folds (total folds and test folds) for a target
+    training size and a target number of test paths.
+
+    We find `x = n_folds` and `y = n_test_folds` that minimizes the below
+    cost function of the relative distance from the two targets:
+
+    .. math::
+           cost(x,y) = w_{f} \times \abs{\frac{f(x,y)-f_{target}}{f_{target}}} + w_{g} \times \abs{\frac{g(x,y)-g_{target}}{g_{target}}}
+
+    with :math:`w_{f}` and :math:`w_{g}` the weights assigned to the distance
+    from each target and :math:`f(x,y)` and :math:`g(x,y)` the average training size
+    and the number of test paths as a function of the number of total folds and test
+    folds.
+
+    This is a combinatorial problem with :math:`\frac{T\times(T-3)}{2}` combinations,
+    with :math:`T` the number of observations.
+
+    We reduce the search space by using the combinatorial symetry
+    :math:`{n \choose k}={n \choose n-k}` and skipping cost computation above 1e5.
 
     Parameters
     ----------
@@ -517,6 +511,14 @@ def optimal_folds_number(
         The target number of test paths (that can be reconstructed from the train/test
         combinations).
 
+    weight_train_size : float, default=1
+        The weight assigned to the distance from the target train size.
+        The default value is 1.
+
+    weight_n_test_paths : float, default=1
+        The weight assigned to the distance from the target number of test paths.
+        The default value is 1.
+
     Returns
     -------
     n_folds : int
@@ -525,55 +527,35 @@ def optimal_folds_number(
     n_test_folds : int
         Optimal number of test folds.
     """
-    # Solved by binary search on the total number of folds.
-    lower = 2
-    upper = n_observations
-    while True:
-        n_folds = (lower + upper) // 2
-        n_test_folds = _optimal_n_test_folds(
-            n_observations=n_observations,
-            n_folds=n_folds,
-            target_train_size=target_train_size,
+
+    def _cost(
+        x: int,
+        y: int,
+    ) -> float:
+        n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
+        avg_train_size = _avg_train_size(
+            n_observations=n_observations, n_folds=x, n_test_folds=y
+        )
+        return (
+            weight_n_test_paths
+            * abs(n_test_paths - target_n_test_paths)
+            / target_n_test_paths
+            + weight_train_size
+            * abs(avg_train_size - target_train_size)
+            / target_train_size
         )
 
-        if upper == lower:
-            break
+    costs = []
+    res = []
+    for n_folds in range(3, n_observations + 1):
+        i = None
+        for n_test_folds in range(2, n_folds):
+            if i is None or n_folds - n_test_folds <= i:
+                cost = _cost(x=n_folds, y=n_test_folds)
+                costs.append(cost)
+                res.append((n_folds, n_test_folds))
+                if i is None and cost > 1e5:
+                    i = n_test_folds
 
-        if upper == lower + 1:
-            lower_n_test_folds = _optimal_n_test_folds(
-                n_observations=n_observations,
-                n_folds=lower,
-                target_train_size=target_train_size,
-            )
-            upper_n_test_folds = _optimal_n_test_folds(
-                n_observations=n_observations,
-                n_folds=upper,
-                target_train_size=target_train_size,
-            )
-
-            lower_n_test_paths = _n_test_paths(
-                n_folds=n_folds, n_test_folds=lower_n_test_folds
-            )
-            upper_n_test_paths = _n_test_paths(
-                n_folds=n_folds, n_test_folds=upper_n_test_folds
-            )
-
-            if abs(lower_n_test_paths - target_n_test_paths) < abs(
-                upper_n_test_paths - target_n_test_paths
-            ):
-                n_folds = lower
-            else:
-                n_folds = upper
-            break
-
-        n_test_paths = _n_test_paths(n_folds=n_folds, n_test_folds=n_test_folds)
-
-        if n_test_paths == target_n_test_paths:
-            break
-
-        if n_test_paths < target_n_test_paths:
-            lower = n_folds
-        else:
-            upper = n_folds
-
-    return n_folds, n_test_folds
+    j = np.argmin(costs)
+    return res[j]
