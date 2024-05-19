@@ -29,8 +29,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -84,7 +84,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             ptf_kwargs = self.portfolio_params.copy()
 
         # Set the default portfolio parameters equal to the optimization parameters
-        for param in ["transaction_costs", "management_fees", "previous_weights"]:
+        for param in [
+            "transaction_costs",
+            "management_fees",
+            "previous_weights",
+            "risk_free_rate",
+        ]:
             if param not in ptf_kwargs and hasattr(self, param):
                 ptf_kwargs[param] = getattr(self, param)
 

@@ -8,6 +8,7 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -183,8 +184,8 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -235,7 +236,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         self,
         value: float | dict | np.ndarray | list,
         n_assets: int,
-        fill_value: any,
+        fill_value: Any,
         name: str,
     ) -> np.ndarray:
         """Convert input to cleaned 1D array
@@ -250,7 +251,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         n_assets : int
             Number of assets. Used to verify the shape of the converted array.
 
-        fill_value : any
+        fill_value : Any
             When `items` is a dictionary, elements that are not in `asset_names` are
             filled with `fill_value` in the converted array.
 

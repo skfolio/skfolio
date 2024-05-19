@@ -9,6 +9,7 @@
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -403,8 +404,8 @@ class ConvexOptimization(BaseOptimization, ABC):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -575,7 +576,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         value: float | dict | npt.ArrayLike | None,
         n_assets: int,
-        fill_value: any,
+        fill_value: Any,
         name: str,
     ) -> float | np.ndarray:
         """Convert input to cleaned float or ndarray.
@@ -588,7 +589,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets : int
             Number of assets. Used to verify the shape of the converted array.
 
-        fill_value : any
+        fill_value : Any
             When `items` is a dictionary, elements that are not in `asset_names` are
             filled with `fill_value` in the converted array.
 

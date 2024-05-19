@@ -12,9 +12,9 @@ from skfolio.prior import FactorModel
 @pytest.fixture(scope="module")
 def X_y():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2014, 1, 1) :]
+    prices = prices.loc[dt.date(2014, 1, 1):]
     factor_prices = load_factors_dataset()
-    factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
+    factor_prices = factor_prices.loc[dt.date(2014, 1, 1):]
     X, y = prices_to_returns(X=prices, y=factor_prices)
     return X, y
 
