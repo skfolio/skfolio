@@ -105,3 +105,21 @@ When used with :func:`cross_val_predict`, the object returned is a
     portfolio = pred.quantile(measure=RatioMeasure.SHARPE_RATIO, q=0.95)
     print(portfolio.annualized_sharpe_ratio)
 
+
+The default parameters of the `CombinatorialPurgedCV` are `n_folds=10` and
+`n_test_folds=8`. You may want to choose these parameters to target a number of test
+paths and an average training size. The later depends on the number of observations.
+For that, you can use the function :func:`optimal_folds_number` as shown in the example
+:ref:`sphx_glr_auto_examples_5_clustering_plot_3_htp_vs_herc.py`.
+
+.. code-block:: python
+
+    n_folds, n_test_folds = optimal_folds_number(
+        n_observations=X_test.shape[0],
+        target_n_test_paths=100,
+        target_train_size=252,
+    )
+
+    cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
+    cv.summary(X_test)
+

@@ -486,7 +486,7 @@ def optimal_folds_number(
     cost function of the relative distance from the two targets:
 
     .. math::
-           cost(x,y) = w_{f} \times \abs{\frac{f(x,y)-f_{target}}{f_{target}}} + w_{g} \times \abs{\frac{g(x,y)-g_{target}}{g_{target}}}
+           cost(x,y) = w_{f} \times \lvert\frac{f(x,y)-f_{target}}{f_{target}}\rvert + w_{g} \times \lvert\frac{g(x,y)-g_{target}}{g_{target}}\rvert
 
     with :math:`w_{f}` and :math:`w_{g}` the weights assigned to the distance
     from each target and :math:`f(x,y)` and :math:`g(x,y)` the average training size
