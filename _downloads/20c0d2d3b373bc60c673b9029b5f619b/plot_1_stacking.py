@@ -36,6 +36,7 @@ from skfolio.model_selection import (
     CombinatorialPurgedCV,
     WalkForward,
     cross_val_predict,
+    optimal_folds_number,
 )
 from skfolio.moments import EmpiricalCovariance, LedoitWolf
 from skfolio.optimization import (
@@ -177,12 +178,17 @@ population.summary()
 # Only using one testing path (the historical path) may not be enough for comparing both
 # models. For a more robust analysis, we can use the
 # :class:`~skfolio.model_selection.CombinatorialPurgedCV` to create multiple testing
-# paths from different training folds combinations:
-cv = CombinatorialPurgedCV(n_folds=20, n_test_folds=18)
+# paths from different training folds combinations.
+#
+# We choose `n_folds` and `n_test_folds` to obtain around 170 test paths and an average
+# training size of 252 days:
+n_folds, n_test_folds = optimal_folds_number(
+    n_observations=X_test.shape[0],
+    target_n_test_paths=170,
+    target_train_size=252,
+)
 
-# %%
-# We choose `n_folds` and `n_test_folds` to obtain more than 100 test paths and an
-# average training size of approximately 252 days:
+cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
 cv.summary(X_test)
 
 # %%

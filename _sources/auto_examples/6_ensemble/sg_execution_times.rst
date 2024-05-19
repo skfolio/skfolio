@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**02:21.855** total execution time for 1 file **from auto_examples/6_ensemble**:
+**02:18.375** total execution time for 1 file **from auto_examples/6_ensemble**:
 
 .. container::
 
@@ -33,5 +33,5 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_6_ensemble_plot_1_stacking.py` (``plot_1_stacking.py``)
-     - 02:21.855
+     - 02:18.375
      - 0.0

@@ -533,6 +533,7 @@ Functions
     :template: function.rst
 
     model_selection.cross_val_predict
+    model_selection.optimal_folds_number
 
 .. _metrics_ref:
 
