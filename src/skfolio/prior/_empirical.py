@@ -134,7 +134,7 @@ class EmpiricalPrior(BasePrior):
                 )
             # Convert linear returns to log returns
             X_log = np.log(1 + X)
-            y_log = np.log(1 + y) if y is None else None
+            y_log = np.log(1 + y) if y is not None else None
 
             # Estimates the moments on the log returns
             # Expected returns
