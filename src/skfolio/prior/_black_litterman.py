@@ -156,7 +156,7 @@ class BlackLitterman(BasePrior):
             check_type=BasePrior,
         )
         # fitting prior estimator
-        self.prior_estimator_.fit(X)
+        self.prior_estimator_.fit(X, y)
 
         prior_mu = self.prior_estimator_.prior_model_.mu
         prior_covariance = self.prior_estimator_.prior_model_.covariance
