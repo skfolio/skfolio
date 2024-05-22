@@ -479,7 +479,7 @@ Black & Litterman Factor Model
 ------------------------------
 .. code-block:: python
 
-    factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - TLT == 0.04", "VLUE == 0.06"]
+    factor_views = ["MTUM - QUAL == 0.03 ", "VLUE == 0.06"]
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         prior_estimator=FactorModel(
