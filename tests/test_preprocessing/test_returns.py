@@ -37,3 +37,8 @@ def test_returns(prices, factor_prices):
     assert np.all(X.columns == prices.columns)
     assert np.all(y.columns == factor_prices.columns)
     assert np.all(X.index == y.index)
+
+    # Test index_intersect by making the first column mostly 0's
+    prices[prices.columns.values[0]].iloc[:-10] = 0.0
+    X = prices_to_returns(X=prices, index_intersect=False)
+    assert X.shape[0] < prices.shape[0] - 1
