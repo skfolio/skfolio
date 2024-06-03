@@ -61,8 +61,8 @@ def prices_to_returns(
         Drop observations (rows) that have a percentage of missing assets prices above
         this threshold. The default (`1.0`) is to keep all the observations.
 
-    index_intersect : bool, default=True
-        Use the intersection of the index to determine when the dataframe index begins.
+    drop_inceptions_nan : bool, default=True
+        If this is set to True,  observations at the beginning are dropped if any of the asset values are missing, otherwise we keep the NaNs. This is useful when you work with a large universe of assets with different inception dates coupled with a pre-selection Transformer.
 
     Returns
     -------
