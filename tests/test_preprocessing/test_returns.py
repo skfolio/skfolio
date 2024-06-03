@@ -40,5 +40,5 @@ def test_returns(prices, factor_prices):
 
     # Test index_intersect by making the first column mostly 0's
     prices.loc[:prices.index[-10], "AAPL"] = 0.0
-    X = prices_to_returns(X=prices, index_intersect=False)
+    X = prices_to_returns(X=prices, drop_inceptions_nan=False)
     assert X.shape[0] < prices.shape[0] - 1

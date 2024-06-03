@@ -14,7 +14,7 @@ def prices_to_returns(
     log_returns: bool = False,
     nan_threshold: float = 1,
     join: str = "outer",
-    index_intersect: bool = True,
+    drop_inceptions_nan: bool = True,
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     r"""Transforms a DataFrame of prices to linear or logarithmic returns.
 
@@ -108,7 +108,7 @@ def prices_to_returns(
     df.dropna(axis=1, how="all", inplace=True)
 
     # returns
-    all_returns = df.pct_change().dropna(how="any" if index_intersect else "all")
+    all_returns = df.pct_change().dropna(how="any" if drop_inceptions_nan else "all")
     if log_returns:
         all_returns = np.log1p(all_returns)
 
