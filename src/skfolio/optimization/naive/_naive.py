@@ -5,6 +5,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
@@ -53,8 +54,19 @@ class InverseVolatility(BaseOptimization):
         super().__init__(portfolio_params=portfolio_params)
         self.prior_estimator = prior_estimator
 
+    def get_metadata_routing(self):
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            # We add the routing for the transformer.
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "InverseVolatility":
         """Fit the Inverse Volatility estimator.
 
@@ -72,13 +84,15 @@ class InverseVolatility(BaseOptimization):
         self : InverseVolatility
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # fitting prior estimator
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         covariance = self.prior_estimator_.prior_model_.covariance
         w = 1 / np.sqrt(np.diag(covariance))
         self.weights_ = w / sum(w)

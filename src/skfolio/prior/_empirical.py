@@ -6,6 +6,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
 from skfolio.prior._base import BasePrior, PriorModel
@@ -86,7 +87,22 @@ class EmpiricalPrior(BasePrior):
         self.is_log_normal = is_log_normal
         self.investment_horizon = investment_horizon
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalPrior":
+    def get_metadata_routing(self):
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            # We add the routing for the transformer.
+            .add(
+                mu_estimator=self.mu_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                covariance_estimator=self.covariance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EmpiricalPrior":
         """Fit the Empirical Prior estimator.
 
         Parameters
@@ -102,6 +118,8 @@ class EmpiricalPrior(BasePrior):
         self : EmpiricalPrior
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.mu_estimator_ = check_estimator(
             self.mu_estimator,
             default=EmpiricalMu(),
@@ -120,11 +138,13 @@ class EmpiricalPrior(BasePrior):
                     "`is_log_normal` is `False`"
                 )
             # Expected returns
-            self.mu_estimator_.fit(X, y)
+            self.mu_estimator_.fit(X, y, **routed_params.mu_estimator.fit)
             mu = self.mu_estimator_.mu_
 
             # Covariance
-            self.covariance_estimator_.fit(X, y)
+            self.covariance_estimator_.fit(
+                X, y, **routed_params.covariance_estimator.fit
+            )
             covariance = self.covariance_estimator_.covariance_
         else:
             if self.investment_horizon is None:
@@ -138,11 +158,13 @@ class EmpiricalPrior(BasePrior):
 
             # Estimates the moments on the log returns
             # Expected returns
-            self.mu_estimator_.fit(X_log, y_log)
+            self.mu_estimator_.fit(X_log, y_log, **routed_params.mu_estimator.fit)
             mu = self.mu_estimator_.mu_
 
             # Covariance
-            self.covariance_estimator_.fit(X_log, y_log)
+            self.covariance_estimator_.fit(
+                X_log, y_log, **routed_params.covariance_estimator.fit
+            )
             covariance = self.covariance_estimator_.covariance_
 
             # Using the property of aggregation across time we scale this distribution

@@ -3,13 +3,14 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from skfolio.datasets import load_sp500_dataset
+from skfolio.datasets import load_sp500_dataset, load_sp500_implied_vol_dataset
 from skfolio.moments import (
     DenoiseCovariance,
     DetoneCovariance,
     EWCovariance,
     EmpiricalCovariance,
     GerberCovariance,
+    ImpliedCovariance
 )
 from skfolio.preprocessing import prices_to_returns
 
@@ -20,6 +21,22 @@ def X():
     prices = prices.loc[dt.date(2014, 1, 1) :]
     X = prices_to_returns(X=prices, log_returns=False)
     return X
+
+@pytest.fixture(scope="module")
+def implied_vol():
+    implied_vol = load_sp500_implied_vol_dataset()
+    return implied_vol
+
+def test_implied_covariance(X, implied_vol):
+    implied_vol = implied_vol[X.index[0]:]
+    model = ImpliedCovariance()
+
+    with pytest.raises(ValueError):
+        model.fit(X)
+
+    model.fit(X, implied_vol=implied_vol)
+    assert model.covariance_.shape == (20, 20)
+    # np.testing.assert_almost_equal(model.covariance_, np.cov(X.T))
 
 
 def test_empirical_covariance(X):

@@ -13,10 +13,12 @@ import pandas as pd
 import scipy.optimize as sco
 import sklearn.covariance as skc
 import sklearn.neighbors as skn
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
-from skfolio.utils.tools import check_estimator
+from skfolio.utils.tools import _safe_indexing, check_estimator
+from skfolio.utils.validation import _check_implied_vol
 
 
 class EmpiricalCovariance(BaseCovariance):
@@ -82,7 +84,7 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalCovariance":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EmpiricalCovariance":
         """Fit the empirical covariance estimator.
 
         Parameters
@@ -207,7 +209,7 @@ class GerberCovariance(BaseCovariance):
         self.threshold = threshold
         self.psd_variant = psd_variant
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "GerberCovariance":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "GerberCovariance":
         """Fit the Gerber covariance estimator.
 
         Parameters
@@ -325,7 +327,7 @@ class DenoiseCovariance(BaseCovariance):
         )
         self.covariance_estimator = covariance_estimator
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "DenoiseCovariance":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "DenoiseCovariance":
         """Fit the Covariance Denoising estimator.
 
         Parameters
@@ -473,7 +475,7 @@ class DetoneCovariance(BaseCovariance):
         self.covariance_estimator = covariance_estimator
         self.n_markets = n_markets
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "DetoneCovariance":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "DetoneCovariance":
         """Fit the Covariance Detoning estimator.
 
         Parameters
@@ -581,7 +583,7 @@ class EWCovariance(BaseCovariance):
         self.window_size = window_size
         self.alpha = alpha
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
         """Fit the Exponentially Weighted Covariance estimator.
 
         Parameters
@@ -718,7 +720,7 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
             block_size=block_size,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "LedoitWolf":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "LedoitWolf":
         """Fit the Ledoit-Wolf shrunk covariance model to X.
 
         Parameters
@@ -820,7 +822,7 @@ class OAS(BaseCovariance, skc.OAS):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "OAS":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "OAS":
         """Fit the Oracle Approximating Shrinkage covariance model to X.
 
         Parameters
@@ -911,7 +913,7 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
             shrinkage=shrinkage,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "ShrunkCovariance":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "ShrunkCovariance":
         """Fit the shrunk covariance model to X.
 
         Parameters
@@ -1093,7 +1095,7 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X, y=None) -> "GraphicalLassoCV":
+    def fit(self, X, y=None, **fit_params) -> "GraphicalLassoCV":
         """Fit the GraphicalLasso covariance model to X.
 
         Parameters
@@ -1111,4 +1113,138 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
         """
         skc.GraphicalLassoCV.fit(self, X)
         self._set_covariance(self.covariance_)
+        return self
+
+
+class ImpliedCovariance(BaseCovariance):
+    """Implied Covariance estimator.
+    The covariance matrix is first estimated using a Covariance estimator (for example
+    `EmpiricalCovariance`) then the diagonal elements are shrunken toward the expected
+    variances computed from the implied volatilities.
+
+    Parameters
+    ----------
+    covariance_estimator : BaseCovariance, optional
+        :ref:`Covariance estimator <covariance_estimator>` to estimate the covariance
+        matrix prior shrinking.
+        The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
+
+    annualized_factor: float, default=252.0
+
+
+
+    nearest : bool, default=False
+        If this is set to True, the covariance is replaced by the nearest covariance
+        matrix that is positive definite and with a Cholesky decomposition than can be
+        computed. The variance is left unchanged. A covariance matrix is in theory PSD.
+        However, due to floating-point inaccuracies, we can end up with a covariance
+        matrix that is slightly non-PSD or where Cholesky decomposition is failing.
+        This often occurs in high dimensional problems.
+        For more details, see :func:`~skfolio.units.stats.cov_nearest`.
+        The default is `False`.
+
+    higham : bool, default=False
+        If this is set to True, the Higham & Nick (2002) algorithm is used to find the
+        nearest PSD covariance, otherwise the eigenvalues are clipped to a threshold
+        above zeros (1e-13). The default is `False` and use the clipping method as the
+        Higham & Nick algorithm can be slow for large datasets.
+
+    higham_max_iteration : int, default=100
+        Maximum number of iteration of the Higham & Nick (2002) algorithm.
+        The default value is `100`.
+
+    Attributes
+    ----------
+    covariance_ : ndarray of shape (n_assets, n_assets)
+        Estimated covariance matrix.
+
+    n_features_in_ : int
+        Number of assets seen during `fit`.
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of assets seen during `fit`. Defined only when `X`
+        has assets names that are all strings.
+    """
+
+    covariance_estimator_: BaseCovariance
+
+    def __init__(
+        self,
+        covariance_estimator: BaseCovariance | None = None,
+        annualized_factor: float = 252.0,
+        alpha: float = 1.0,
+        method: str = "last",
+        nearest: bool = False,
+        higham: bool = False,
+        higham_max_iteration: int = 100,
+    ):
+        super().__init__(
+            nearest=nearest,
+            higham=higham,
+            higham_max_iteration=higham_max_iteration,
+        )
+        self.covariance_estimator = covariance_estimator
+        self.annualized_factor = annualized_factor
+        self.alpha = alpha
+        self.method = method
+
+    def fit(
+        self, X: npt.ArrayLike, y=None, implied_vol: npt.ArrayLike = None, **fit_params
+    ) -> "ImpliedCovariance":
+        """Fit the implied covariance estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+           Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        implied_vol : array-like of shape (n_observations, n_assets)
+            Implied volatilities of the assets.
+
+        Returns
+        -------
+        self : ImpliedCovariance
+            Fitted estimator.
+        """
+        # fitting estimators
+        self.covariance_estimator_ = check_estimator(
+            self.covariance_estimator,
+            default=EmpiricalCovariance(),
+            check_type=BaseCovariance,
+        )
+        self.covariance_estimator_.fit(X)
+
+        covariance = self.covariance_estimator_.covariance_
+
+        print(implied_vol)
+
+        assets_names = skv._get_feature_names(X)
+        if assets_names is not None:
+            vol_assets_names = skv._get_feature_names(implied_vol)
+            if vol_assets_names is not None:
+                missing_assets = assets_names[~np.in1d(assets_names, vol_assets_names)]
+                if len(missing_assets) > 0:
+                    raise ValueError(
+                        f"The following assets are missing from "
+                        f"`implied_vol`: {missing_assets}"
+                    )
+                indices = [
+                    np.argwhere(x == vol_assets_names)[0][0] for x in assets_names
+                ]
+                # Select same columns as X (needed for Pipeline with preselection)
+                # and re-order to follow X ordering.
+                implied_vol = _safe_indexing(implied_vol, indices=indices, axis=1)
+
+        X = self._validate_data(X)
+
+        implied_vol = _check_implied_vol(implied_vol=implied_vol, X=X)
+
+        expected_var = implied_vol**2 / self.annualized_factor  # TODO: paper
+        shrunk_var = expected_var * self.alpha + np.diag(covariance) * (1 - self.alpha)
+        np.fill_diagonal(covariance, shrunk_var)
+
+        self._set_covariance(covariance)
         return self

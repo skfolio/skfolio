@@ -15,6 +15,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import scipy.sparse as sp
 import sklearn as sk
 import sklearn.base as skb
 
@@ -28,7 +29,7 @@ __all__ = [
     "bisection",
     "safe_split",
     "fit_single_estimator",
-    "fit_and_predict",
+    "_fit_and_predict",
     "deduplicate_names",
     "default_asset_names",
     "check_estimator",
@@ -348,7 +349,7 @@ def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:
             yield [e[0:mid], e[mid:n]]
 
 
-def safe_indexing(
+def _safe_indexing(
     X: npt.ArrayLike | pd.DataFrame, indices: npt.ArrayLike | None, axis: int = 0
 ):
     """
@@ -416,9 +417,9 @@ def safe_split(
         Indexed targets.
     """
 
-    X_subset = safe_indexing(X, indices=indices, axis=axis)
+    X_subset = _safe_indexing(X, indices=indices, axis=axis)
     if y is not None:
-        y_subset = safe_indexing(y, indices=indices, axis=axis)
+        y_subset = _safe_indexing(y, indices=indices, axis=axis)
     else:
         y_subset = None
     return X_subset, y_subset
@@ -463,7 +464,63 @@ def fit_single_estimator(
     return estimator
 
 
-def fit_and_predict(
+def _make_indexable(iterable):
+    """Ensure iterable supports indexing or convert to an indexable variant.
+
+    Convert sparse matrices to csr and other non-indexable iterable to arrays.
+    Let `None` and indexable objects (e.g. pandas dataframes) pass unchanged.
+
+    Parameters
+    ----------
+    iterable : {list, dataframe, ndarray, sparse matrix} or None
+        Object to be converted to an indexable iterable.
+    """
+    if sp.issparse(iterable):
+        return iterable.tocsr()
+    elif hasattr(iterable, "__getitem__") or hasattr(iterable, "iloc"):
+        return iterable
+    elif iterable is None:
+        return iterable
+    return np.array(iterable)
+
+
+def _check_method_params(X: npt.ArrayLike, params: dict, indices: np.ndarray = None):
+    """Check and validate the parameters passed to a specific
+    method like `fit`.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Data array.
+
+    params : dict
+        Dictionary containing the parameters passed to the method.
+
+    indices : ndarray of shape (n_samples,), default=None
+        Indices to be selected if the parameter has the same size as `X`.
+
+    Returns
+    -------
+    method_params_validated : dict
+        Validated parameters. We ensure that the values support indexing.
+    """
+    n_observations = X.shape[0]
+    method_params_validated = {}
+    for param_key, param_value in params.items():
+        if param_value.shape[0] != n_observations:
+            raise ValueError(
+                f"param_key has wrong number of observations, "
+                f"received={param_value.shape[0]}, "
+                f"expected={n_observations}"
+            )
+        method_params_validated[param_key] = _make_indexable(param_value)
+        method_params_validated[param_key] = _safe_indexing(
+            method_params_validated[param_key], indices
+        )
+    return method_params_validated
+
+
+def _fit_and_predict(
     estimator: Any,
     X: npt.ArrayLike,
     y: npt.ArrayLike | None,
@@ -511,6 +568,8 @@ def fit_and_predict(
         results of calling 'estimator.method' on each test set in `test`.
     """
     fit_params = fit_params if fit_params is not None else {}
+    fit_params = _check_method_params(X, params=fit_params, indices=train)
+
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X_train, y_train = safe_split(X, y, indices=train, axis=0)
     if y_train is None:

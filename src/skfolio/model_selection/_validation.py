@@ -14,24 +14,38 @@ import sklearn as sk
 import sklearn.base as skb
 import sklearn.model_selection as skm
 import sklearn.utils as sku
+import sklearn.utils.metadata_routing as skmr
 import sklearn.utils.parallel as skp
 
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
 from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio
-from skfolio.utils.tools import fit_and_predict, safe_split
+from skfolio.utils.tools import _fit_and_predict, safe_split
+
+
+def _routing_enabled():
+    """Return whether metadata routing is enabled.
+
+    .. versionadded:: 1.3
+
+    Returns
+    -------
+    enabled : bool
+        Whether metadata routing is enabled. If the config is not set, it
+        defaults to False.
+    """
+    return sk.get_config().get("enable_metadata_routing", False)
 
 
 def cross_val_predict(
     estimator: skb.BaseEstimator,
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
-    groups: np.ndarray | None = None,
     cv: skm.BaseCrossValidator | BaseCombinatorialCV | int | None = None,
     n_jobs: int | None = None,
     method: str = "predict",
     verbose: int = 0,
-    fit_params: dict | None = None,
+    params: dict | None = None,
     pre_dispatch: str = "2*n_jobs",
     column_indices: np.ndarray | None = None,
     portfolio_params: dict | None = None,
@@ -65,11 +79,6 @@ def cross_val_predict(
         Target data (optional).
         For example, the price returns of the factors.
 
-    groups : array-like of shape (n_observations,), optional
-        Group labels for the samples used while splitting the dataset into
-        train/test set. Only used in conjunction with a "Group" `cv`
-        instance (e.g., `GroupKFold`).
-
     cv : int | cross-validation generator, optional
         Determines the cross-validation splitting strategy.
         Possible inputs for cv are:
@@ -90,8 +99,8 @@ def cross_val_predict(
     verbose : int, default=0
         The verbosity level.
 
-    fit_params : dict, optional
-        Parameters to pass to the fit method of the estimator.
+    params : dict, optional
+        Parameters to pass to the underlying estimator's ``fit`` and the CV splitter.
 
     pre_dispatch : int or str, default='2*n_jobs'
         Controls the number of jobs that get dispatched during parallel
@@ -122,9 +131,52 @@ def cross_val_predict(
         This is the result of calling `predict`
     """
     X, y = safe_split(X, y, indices=column_indices, axis=1)
-    X, y, groups = sku.indexable(X, y, groups)
+    X, y = sku.indexable(X, y)
+
+    if _routing_enabled():
+        # For estimators, a MetadataRouter is created in get_metadata_routing
+        # methods. For these router methods, we create the router to use
+        # `process_routing` on it.
+        router = (
+            skmr.MetadataRouter(owner="cross_validate")
+            .add(
+                splitter=cv,
+                method_mapping=skmr.MethodMapping().add(caller="fit", callee="split"),
+            )
+            .add(
+                estimator=estimator,
+                method_mapping=skmr.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        try:
+            routed_params = skmr.process_routing(router, "fit", **params)
+        except skmr.UnsetMetadataPassedError as e:
+            # The default exception would mention `fit` since in the above
+            # `process_routing` code, we pass `fit` as the caller. However,
+            # the user is not calling `fit` directly, so we change the message
+            # to make it more suitable for this case.
+            unrequested_params = sorted(e.unrequested_params)
+            raise skmr.UnsetMetadataPassedError(
+                message=(
+                    f"{unrequested_params} are passed to `cross_val_predict` but are"
+                    " not explicitly set as requested or not requested for"
+                    f" cross_validate's estimator: {estimator.__class__.__name__} Call"
+                    " `.set_fit_request({{metadata}}=True)` on the estimator for"
+                    f" each metadata in {unrequested_params} that you want to use and"
+                    " `metadata=False` for not using it. See the Metadata Routing User"
+                    " guide <https://scikit-learn.org/stable/metadata_routing.html>"
+                    " for more information."
+                ),
+                unrequested_params=e.unrequested_params,
+                routed_params=e.routed_params,
+            ) from None
+    else:
+        routed_params = sku.Bunch()
+        routed_params.estimator = sku.Bunch(fit=params)
+
     cv = skm.check_cv(cv, y)
-    splits = list(cv.split(X, y, groups))
+    splits = list(cv.split(X, y, **routed_params.splitter.split))
+
     portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
 
     # We ensure that the folds are not shuffled
@@ -149,13 +201,13 @@ def cross_val_predict(
     parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
     # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
     predictions = parallel(
-        skp.delayed(fit_and_predict)(
+        skp.delayed(_fit_and_predict)(
             sk.clone(estimator),
             X,
             y,
             train=train,
             test=test,
-            fit_params=fit_params,
+            fit_params=routed_params.estimator.fit,
             method=method,
         )
         for train, test in splits

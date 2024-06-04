@@ -46,7 +46,7 @@ class EmpiricalMu(BaseMu):
     def __init__(self, window_size: int | None = None):
         self.window_size = window_size
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalMu":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EmpiricalMu":
         """Fit the Mu Empirical estimator model.
 
         Parameters
@@ -102,7 +102,7 @@ class EWMu(BaseMu):
         self.window_size = window_size
         self.alpha = alpha
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EWMu":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EWMu":
         """Fit the EWMu estimator model.
 
         Parameters
@@ -179,7 +179,7 @@ class EquilibriumMu(BaseMu):
         self.weights = weights
         self.covariance_estimator = covariance_estimator
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EquilibriumMu":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EquilibriumMu":
         """Fit the EquilibriumMu estimator model.
 
         Parameters
@@ -336,7 +336,7 @@ class ShrunkMu(BaseMu):
         self.vol_weighted_target = vol_weighted_target
         self.method = method
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "ShrunkMu":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "ShrunkMu":
         """Fit the ShrunkMu estimator model.
 
         Parameters

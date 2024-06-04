@@ -11,6 +11,7 @@ from skfolio.moments.covariance._covariance import (
     EmpiricalCovariance,
     GerberCovariance,
     GraphicalLassoCV,
+    ImpliedCovariance,
     LedoitWolf,
     ShrunkCovariance,
 )
@@ -26,4 +27,5 @@ __all__ = [
     "OAS",
     "ShrunkCovariance",
     "GraphicalLassoCV",
+    "ImpliedCovariance",
 ]

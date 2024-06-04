@@ -8,7 +8,7 @@ from skfolio.utils.tools import (
     default_asset_names,
     format_measure,
     input_to_array,
-    safe_indexing,
+    _safe_indexing,
     safe_split,
 )
 
@@ -110,7 +110,7 @@ class TestSafeIndexing:
     def test_returns_entire_data_if_indices_is_none(self):
         X = np.array([1, 2, 3, 4, 5])
         indices = None
-        result = safe_indexing(X, indices)
+        result = _safe_indexing(X, indices)
         assert np.array_equal(result, X)
 
 

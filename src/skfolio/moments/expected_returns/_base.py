@@ -31,5 +31,5 @@ class BaseMu(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
         pass
