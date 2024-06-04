@@ -14,6 +14,7 @@ def prices_to_returns(
     log_returns: bool = False,
     nan_threshold: float = 1,
     join: str = "outer",
+    drop_inceptions_nan: bool = True,
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     r"""Transforms a DataFrame of prices to linear or logarithmic returns.
 
@@ -60,6 +61,9 @@ def prices_to_returns(
         Drop observations (rows) that have a percentage of missing assets prices above
         this threshold. The default (`1.0`) is to keep all the observations.
 
+    drop_inceptions_nan : bool, default=True
+        If this is set to True,  observations at the beginning are dropped if any of the asset values are missing, otherwise we keep the NaNs. This is useful when you work with a large universe of assets with different inception dates coupled with a pre-selection Transformer.
+
     Returns
     -------
     X : DataFrame
@@ -104,7 +108,7 @@ def prices_to_returns(
     df.dropna(axis=1, how="all", inplace=True)
 
     # returns
-    all_returns = df.pct_change().dropna()
+    all_returns = df.pct_change().dropna(how="any" if drop_inceptions_nan else "all")
     if log_returns:
         all_returns = np.log1p(all_returns)
 
