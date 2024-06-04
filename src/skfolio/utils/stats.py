@@ -448,7 +448,7 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     """
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
-    max_clusters = max(8, round(np.sqrt(n)))
+    max_clusters = min(n, max(8, round(np.sqrt(n))))
     dispersion = []
     for k in range(max_clusters):
         level = cut_tree[:, n - k - 1]
