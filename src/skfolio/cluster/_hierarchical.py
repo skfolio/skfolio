@@ -13,8 +13,8 @@ import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as scd
 import sklearn.base as skb
 import sklearn.utils.validation as skv
+from plotly.figure_factory import create_dendrogram
 
-from skfolio.utils.fixes import create_dendrogram
 from skfolio.utils.stats import assert_is_distance, compute_optimal_n_clusters
 from skfolio.utils.tools import AutoEnum, default_asset_names
 
