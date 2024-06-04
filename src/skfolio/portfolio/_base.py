@@ -61,10 +61,6 @@ from skfolio.utils.tools import (
     format_measure,
 )
 
-# TODO: remove and use plotly express
-pd.options.plotting.backend = "plotly"
-
-
 _ZERO_THRESHOLD = 1e-5
 _MEASURES = {
     e for enu in [PerfMeasure, RiskMeasure, ExtraRiskMeasure, RatioMeasure] for e in enu
@@ -988,7 +984,7 @@ class BasePortfolio:
             yaxis_title = title
             title = f"{title} (non-compounded)"
 
-        fig = df.plot()
+        fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
@@ -1019,7 +1015,7 @@ class BasePortfolio:
         """
         if idx is None:
             idx = slice(None)
-        fig = self.returns_df.iloc[idx].plot()
+        fig = self.returns_df.iloc[idx].plot(backend="plotly")
         fig.update_layout(
             title="Returns",
             xaxis_title="Observations",
@@ -1050,7 +1046,7 @@ class BasePortfolio:
         """
         rolling = self.rolling_measure(measure=measure, window=window)
         rolling.name = f"{measure} {window} observations"
-        fig = rolling.plot()
+        fig = rolling.plot(backend="plotly")
         fig.add_hline(
             y=getattr(self, measure.value),
             line_width=1,

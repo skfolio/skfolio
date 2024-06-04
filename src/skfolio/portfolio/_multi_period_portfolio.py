@@ -18,8 +18,6 @@ from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.utils.tools import deduplicate_names
 
-pd.options.plotting.backend = "plotly"
-
 
 class MultiPeriodPortfolio(BasePortfolio):
     r"""Multi-Period Portfolio class.

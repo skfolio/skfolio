@@ -20,8 +20,6 @@ from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names
 
-pd.options.plotting.backend = "plotly"
-
 
 class Population(list):
     """Population Class.
@@ -616,7 +614,7 @@ class Population(list):
         df = pd.concat(cumulative_returns, axis=1).iloc[:, idx]
         df.columns = deduplicate_names(names)
 
-        fig = df.plot()
+        fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",

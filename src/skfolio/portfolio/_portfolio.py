@@ -26,8 +26,6 @@ from skfolio.utils.tools import (
     input_to_array,
 )
 
-pd.options.plotting.backend = "plotly"
-
 
 class Portfolio(BasePortfolio):
     r"""
