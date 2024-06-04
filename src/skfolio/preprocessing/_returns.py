@@ -4,6 +4,8 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 
@@ -13,7 +15,7 @@ def prices_to_returns(
     y: pd.DataFrame | None = None,
     log_returns: bool = False,
     nan_threshold: float = 1,
-    join: str = "outer",
+    join: Literal["left", "right", "inner", "outer", "cross"] = "outer",
     drop_inceptions_nan: bool = True,
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     r"""Transforms a DataFrame of prices to linear or logarithmic returns.
@@ -54,7 +56,7 @@ def prices_to_returns(
     log_returns : bool, default=True
         If this is set to True, logarithmic returns are used instead of simple returns.
 
-    join : str, default='outer
+    join : str, default="outer"
         The join method between `X` and `y` when `y` is provided.
 
     nan_threshold : float, default=1.0
@@ -62,7 +64,10 @@ def prices_to_returns(
         this threshold. The default (`1.0`) is to keep all the observations.
 
     drop_inceptions_nan : bool, default=True
-        If this is set to True,  observations at the beginning are dropped if any of the asset values are missing, otherwise we keep the NaNs. This is useful when you work with a large universe of assets with different inception dates coupled with a pre-selection Transformer.
+        If this is set to True, observations at the beginning are dropped if any of
+        the asset values are missing, otherwise we keep the NaNs. This is useful when
+        you work with a large universe of assets with different inception dates coupled
+        with a pre-selection Transformer.
 
     Returns
     -------
@@ -86,7 +91,7 @@ def prices_to_returns(
     else:
         if not isinstance(y, pd.DataFrame):
             raise TypeError("`y` must be a DataFrame")
-        df = X.join(y, how="outer")
+        df = X.join(y, how=join)
 
     n_observations, n_assets = X.shape
 
@@ -102,18 +107,20 @@ def prices_to_returns(
 
     # Forward fill missing values
     df.ffill(inplace=True)
-    # Drop rows if any of its values is missing
-    df.dropna(axis=0, how="any", inplace=True)
+    # Drop rows according to drop_inceptions_nan
+    # noinspection PyTypeChecker
+    df.dropna(how="any" if drop_inceptions_nan else "all", inplace=True)
     # Drop column if all its values are missing
     df.dropna(axis=1, how="all", inplace=True)
 
     # returns
-    all_returns = df.pct_change().dropna(how="any" if drop_inceptions_nan else "all")
+    all_returns = df.pct_change().iloc[1:]
     if log_returns:
         all_returns = np.log1p(all_returns)
 
     if y is None:
         return all_returns
+
     returns = all_returns[[x for x in X.columns if x in df.columns]]
     factor_returns = all_returns[[x for x in y.columns if x in df.columns]]
     return returns, factor_returns
