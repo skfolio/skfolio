@@ -21,7 +21,7 @@ dependencies = [
     "cvxpy>=1.4.1",
     "scikit-learn>=1.5.0",
     "joblib>=1.3.2",
-    "plotly>=5.15.0"
+    "plotly>=5.22.0"
 ]
 keywords = [
     "portfolio",
