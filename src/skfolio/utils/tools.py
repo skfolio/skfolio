@@ -29,7 +29,8 @@ __all__ = [
     "bisection",
     "safe_split",
     "fit_single_estimator",
-    "_fit_and_predict",
+    "fit_and_predict",
+    "safe_indexing",
     "deduplicate_names",
     "default_asset_names",
     "check_estimator",
@@ -349,7 +350,7 @@ def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:
             yield [e[0:mid], e[mid:n]]
 
 
-def _safe_indexing(
+def safe_indexing(
     X: npt.ArrayLike | pd.DataFrame, indices: npt.ArrayLike | None, axis: int = 0
 ):
     """
@@ -417,9 +418,9 @@ def safe_split(
         Indexed targets.
     """
 
-    X_subset = _safe_indexing(X, indices=indices, axis=axis)
+    X_subset = safe_indexing(X, indices=indices, axis=axis)
     if y is not None:
-        y_subset = _safe_indexing(y, indices=indices, axis=axis)
+        y_subset = safe_indexing(y, indices=indices, axis=axis)
     else:
         y_subset = None
     return X_subset, y_subset
@@ -514,13 +515,13 @@ def _check_method_params(X: npt.ArrayLike, params: dict, indices: np.ndarray = N
                 f"expected={n_observations}"
             )
         method_params_validated[param_key] = _make_indexable(param_value)
-        method_params_validated[param_key] = _safe_indexing(
+        method_params_validated[param_key] = safe_indexing(
             method_params_validated[param_key], indices
         )
     return method_params_validated
 
 
-def _fit_and_predict(
+def fit_and_predict(
     estimator: Any,
     X: npt.ArrayLike,
     y: npt.ArrayLike | None,

@@ -2,7 +2,7 @@ import numpy as np
 import sklearn.utils.validation as skv
 
 
-def _check_implied_vol(implied_vol, X):
+def check_implied_vol(implied_vol, X):
     """Validate sample weights.
 
     Note that passing sample_weight=None will output an array of ones.

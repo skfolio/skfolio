@@ -13,8 +13,8 @@ import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
-from skfolio.utils.tools import _safe_indexing, check_estimator
-from skfolio.utils.validation import _check_implied_vol
+from skfolio.utils.tools import check_estimator, safe_indexing
+from skfolio.utils.validation import check_implied_vol
 
 
 class ImpliedCovariance(BaseCovariance):
@@ -137,11 +137,11 @@ class ImpliedCovariance(BaseCovariance):
                 ]
                 # Select same columns as X (needed for Pipeline with preselection)
                 # and re-order to follow X ordering.
-                implied_vol = _safe_indexing(implied_vol, indices=indices, axis=1)
+                implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
         X = self._validate_data(X)
 
-        implied_vol = _check_implied_vol(implied_vol=implied_vol, X=X)
+        implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
 
         expected_var = implied_vol**2 / self.annualized_factor  # TODO: paper
         shrunk_var = expected_var * self.alpha + np.diag(covariance) * (1 - self.alpha)

@@ -20,7 +20,7 @@ import sklearn.utils.parallel as skp
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
 from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio
-from skfolio.utils.tools import _fit_and_predict, safe_split
+from skfolio.utils.tools import fit_and_predict, safe_split
 
 
 def _routing_enabled():
@@ -201,7 +201,7 @@ def cross_val_predict(
     parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
     # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
     predictions = parallel(
-        skp.delayed(_fit_and_predict)(
+        skp.delayed(fit_and_predict)(
             sk.clone(estimator),
             X,
             y,
