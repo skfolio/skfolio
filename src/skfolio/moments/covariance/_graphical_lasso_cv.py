@@ -189,6 +189,6 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
         self : GraphicalLassoCV
           Fitted estimator.
         """
-        skc.GraphicalLassoCV.fit(self, X)
+        skc.GraphicalLassoCV.fit(self, X, **fit_params)
         self._set_covariance(self.covariance_)
         return self

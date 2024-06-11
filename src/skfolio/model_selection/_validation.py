@@ -12,6 +12,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
+import sklearn.exceptions as ske
 import sklearn.model_selection as skm
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skmr
@@ -25,9 +26,6 @@ from skfolio.utils.tools import fit_and_predict, safe_split
 
 def _routing_enabled():
     """Return whether metadata routing is enabled.
-
-    .. versionadded:: 1.3
-
     Returns
     -------
     enabled : bool
@@ -130,6 +128,8 @@ def cross_val_predict(
     predictions : MultiPeriodPortfolio | Population
         This is the result of calling `predict`
     """
+    params = {} if params is None else params
+
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
 
@@ -137,6 +137,7 @@ def cross_val_predict(
         # For estimators, a MetadataRouter is created in get_metadata_routing
         # methods. For these router methods, we create the router to use
         # `process_routing` on it.
+        # noinspection PyTypeChecker
         router = (
             skmr.MetadataRouter(owner="cross_validate")
             .add(
@@ -150,13 +151,13 @@ def cross_val_predict(
         )
         try:
             routed_params = skmr.process_routing(router, "fit", **params)
-        except skmr.UnsetMetadataPassedError as e:
+        except ske.UnsetMetadataPassedError as e:
             # The default exception would mention `fit` since in the above
             # `process_routing` code, we pass `fit` as the caller. However,
             # the user is not calling `fit` directly, so we change the message
             # to make it more suitable for this case.
             unrequested_params = sorted(e.unrequested_params)
-            raise skmr.UnsetMetadataPassedError(
+            raise ske.UnsetMetadataPassedError(
                 message=(
                     f"{unrequested_params} are passed to `cross_val_predict` but are"
                     " not explicitly set as requested or not requested for"
@@ -172,6 +173,7 @@ def cross_val_predict(
             ) from None
     else:
         routed_params = sku.Bunch()
+        routed_params.splitter = sku.Bunch(split={})
         routed_params.estimator = sku.Bunch(fit=params)
 
     cv = skm.check_cv(cv, y)

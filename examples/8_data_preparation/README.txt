@@ -1,8 +1,8 @@
-.. _data_preparation_examples:
+.. _metadata_routing_examples:
 
-Data Preparation
+Metadata Routing
 ----------------
 
-Examples about data preparation.
+Examples about metadata routing.
 
 

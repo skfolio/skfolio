@@ -176,7 +176,7 @@ class ImpliedCovariance(BaseCovariance):
         implied_vol /= np.sqrt(self.annualized_factor)
 
         if self.volatility_risk_premium_adj is not None:
-            if self.volatility_risk_premium_adj < 1:
+            if self.volatility_risk_premium_adj <= 0:
                 raise ValueError(
                     "volatility_risk_premium_adj must be strictly positive, "
                     f"received {self.volatility_risk_premium_adj}"

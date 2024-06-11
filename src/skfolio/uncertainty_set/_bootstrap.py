@@ -11,6 +11,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.uncertainty_set._base import (
@@ -104,8 +105,16 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         self.block_size = block_size
         self.seed = seed
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "BootstrapMuUncertaintySet":
         """Fit the Bootstrap Mu Uncertainty set estimator.
 
@@ -123,13 +132,15 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         self : BootstrapMuUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         mu = self.prior_estimator_.prior_model_.mu
         returns = self.prior_estimator_.prior_model_.returns
         n_assets = returns.shape[1]
@@ -235,7 +246,17 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self.block_size = block_size
         self.seed = seed
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "BootstrapCovarianceUncertaintySet":
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    def fit(
+        self, X: npt.ArrayLike, y=None, **fit_params
+    ) -> "BootstrapCovarianceUncertaintySet":
         """Fit the Bootstrap Covariance Uncertainty set estimator.
 
         Parameters
@@ -252,6 +273,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self : EmpiricalCovarianceUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
 
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
@@ -259,7 +281,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         covariance = self.prior_estimator_.prior_model_.covariance
         returns = self.prior_estimator_.prior_model_.returns
         n_assets = returns.shape[1]

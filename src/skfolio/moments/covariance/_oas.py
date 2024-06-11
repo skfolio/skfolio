@@ -110,6 +110,6 @@ class OAS(BaseCovariance, skc.OAS):
         self : OAS
           Fitted estimator.
         """
-        skc.OAS.fit(self, X)
+        skc.OAS.fit(self, X, **fit_params)
         self._set_covariance(self.covariance_)
         return self

@@ -99,6 +99,6 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
         self : ShrunkCovariance
           Fitted estimator.
         """
-        skc.ShrunkCovariance.fit(self, X)
+        skc.ShrunkCovariance.fit(self, X, **fit_params)
         self._set_covariance(self.covariance_)
         return self

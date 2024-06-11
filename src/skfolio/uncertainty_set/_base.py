@@ -60,7 +60,7 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
         pass
 
 
@@ -81,7 +81,7 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
         pass
 
     def _validate_X_y(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):

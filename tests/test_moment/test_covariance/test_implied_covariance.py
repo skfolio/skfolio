@@ -191,21 +191,20 @@ def test_implied_covariance_meta_data_routing(X, implied_vol):
 
 
 def test_implied_covariance_ledoit_wolf(X, implied_vol):
-    model = ImpliedCovariance(
-        covariance_estimator=LedoitWolf()
-    )
-    model.fit(X, implied_vol=implied_vol)
+        model = ImpliedCovariance(
+            covariance_estimator=LedoitWolf()
+        )
+        model.fit(X, implied_vol=implied_vol)
 
-    model_imp_ref = ImpliedCovariance()
-    model_imp_ref.fit(X, implied_vol=implied_vol)
+        model_imp_ref = ImpliedCovariance()
+        model_imp_ref.fit(X, implied_vol=implied_vol)
 
-    model_led_ref = LedoitWolf()
-    model_led_ref.fit(X)
+        model_led_ref = LedoitWolf()
+        model_led_ref.fit(X)
 
-    np.testing.assert_almost_equal(np.diag(model.covariance_),
-                                   np.diag(model_imp_ref.covariance_))
+        np.testing.assert_almost_equal(np.diag(model.covariance_),np.diag(model_imp_ref.covariance_))
 
-    np.fill_diagonal(model.covariance_, 0)
-    np.fill_diagonal(model_led_ref.covariance_, 0)
+        np.fill_diagonal(model.covariance_, 0)
+        np.fill_diagonal(model_led_ref.covariance_, 0)
 
-    np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_)
+        np.testing.assert_almost_equal(model.covariance_,model_led_ref.covariance_)

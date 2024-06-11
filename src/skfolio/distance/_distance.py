@@ -9,7 +9,8 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.spatial.distance as scd
 import scipy.stats as sct
-import sklearn.metrics as skm
+import sklearn.metrics as skmc
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.distance._base import BaseDistance
 from skfolio.moments import BaseCovariance, GerberCovariance
@@ -300,7 +301,15 @@ class CovarianceDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "CovarianceDistance":
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            covariance_estimator=self.covariance_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "CovarianceDistance":
         """Fit the Covariance Distance estimator.
 
         Parameters
@@ -316,13 +325,15 @@ class CovarianceDistance(BaseDistance):
         self : CovarianceDistance
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # fitting estimators
         self.covariance_estimator_ = check_estimator(
             self.covariance_estimator,
             default=GerberCovariance(),
             check_type=BaseCovariance,
         )
-        self.covariance_estimator_.fit(X)
+        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep the
         # features names information.
@@ -512,7 +523,7 @@ class MutualInformation(BaseDistance):
             x = X[:, i]
             y = X[:, j]
             contingency = np.histogram2d(x, y, bins=n_bins)[0]
-            mutual_information = skm.mutual_info_score(
+            mutual_information = skmc.mutual_info_score(
                 None, None, contingency=contingency
             )
             entropy_x = sct.entropy(np.histogram(x, n_bins)[0])

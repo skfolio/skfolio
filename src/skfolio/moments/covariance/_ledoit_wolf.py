@@ -135,6 +135,6 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
         self : LedoitWolf
           Fitted estimator.
         """
-        skc.LedoitWolf.fit(self, X)
+        skc.LedoitWolf.fit(self, X, **fit_params)
         self._set_covariance(self.covariance_)
         return self
