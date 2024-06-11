@@ -9,11 +9,15 @@
 
 import numpy as np
 import numpy.typing as npt
-import sklearn.utils.validation as skv
+import sklearn as sk
+import sklearn.base as skb
+import sklearn.linear_model as skl
+import sklearn.metrics as skm
 
+import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
-from skfolio.utils.tools import check_estimator, safe_indexing
+from skfolio.utils.tools import check_estimator, get_feature_names, safe_indexing
 from skfolio.utils.validation import check_implied_vol
 
 
@@ -32,7 +36,12 @@ class ImpliedCovariance(BaseCovariance):
 
     annualized_factor: float, default=252.0
 
-
+    volatility_risk_premium_adj : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset fee) and the input `X` of the `fit` method must be a
+        DataFrame with the assets names in columns.
+        The default value is `0.0`.
 
     nearest : bool, default=False
         If this is set to True, the covariance is replaced by the nearest covariance
@@ -63,18 +72,24 @@ class ImpliedCovariance(BaseCovariance):
         Number of assets seen during `fit`.
 
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of assets seen during `fit`. Defined only when `X`
+        Names of assets seen during `fit`. Defined only when `returns`
         has assets names that are all strings.
     """
 
     covariance_estimator_: BaseCovariance
+    pred_realised_vols_: np.ndarray
+    linear_regressors_: list
+    coefs_: np.ndarray
+    intercepts_: np.ndarray
+    r2_scores_: np.ndarray
 
     def __init__(
         self,
         covariance_estimator: BaseCovariance | None = None,
         annualized_factor: float = 252.0,
-        alpha: float = 1.0,
-        method: str = "last",
+        window: int = 21,
+        linear_regressor: skb.BaseEstimator | None = None,
+        volatility_risk_premium_adj: skt.MultiInput | None = None,
         nearest: bool = False,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -86,8 +101,9 @@ class ImpliedCovariance(BaseCovariance):
         )
         self.covariance_estimator = covariance_estimator
         self.annualized_factor = annualized_factor
-        self.alpha = alpha
-        self.method = method
+        self.linear_regressor = linear_regressor
+        self.window = window
+        self.volatility_risk_premium_adj = volatility_risk_premium_adj
 
     def fit(
         self, X: npt.ArrayLike, y=None, implied_vol: npt.ArrayLike = None, **fit_params
@@ -117,14 +133,11 @@ class ImpliedCovariance(BaseCovariance):
             check_type=BaseCovariance,
         )
         self.covariance_estimator_.fit(X)
-
         covariance = self.covariance_estimator_.covariance_
 
-        print(implied_vol)
-
-        assets_names = skv._get_feature_names(X)
+        assets_names = get_feature_names(X)
         if assets_names is not None:
-            vol_assets_names = skv._get_feature_names(implied_vol)
+            vol_assets_names = get_feature_names(implied_vol)
             if vol_assets_names is not None:
                 missing_assets = assets_names[~np.in1d(assets_names, vol_assets_names)]
                 if len(missing_assets) > 0:
@@ -135,17 +148,115 @@ class ImpliedCovariance(BaseCovariance):
                 indices = [
                     np.argwhere(x == vol_assets_names)[0][0] for x in assets_names
                 ]
-                # Select same columns as X (needed for Pipeline with preselection)
-                # and re-order to follow X ordering.
+                # Select same columns as returns (needed for Pipeline with preselection)
+                # and re-order to follow returns ordering.
                 implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
         X = self._validate_data(X)
-
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
+        implied_vol /= np.sqrt(self.annualized_factor)
 
-        expected_var = implied_vol**2 / self.annualized_factor  # TODO: paper
-        shrunk_var = expected_var * self.alpha + np.diag(covariance) * (1 - self.alpha)
-        np.fill_diagonal(covariance, shrunk_var)
+        if self.volatility_risk_premium_adj is not None:
+            if self.volatility_risk_premium_adj < 1:
+                raise ValueError(
+                    "volatility_risk_premium_adj must be strictly positive, "
+                    f"received {self.volatility_risk_premium_adj}"
+                )
+            self.pred_realised_vols_ = (
+                implied_vol[-1] / self.volatility_risk_premium_adj
+            )
+        else:
+            if self.window is None or self.window < 3:
+                raise ValueError(
+                    f"window must be strictly greater than 2, "
+                    f"received {self.window}"
+                )
+            _linear_regressor = check_estimator(
+                self.linear_regressor,
+                default=skl.LinearRegression(fit_intercept=True),
+                check_type=skb.BaseEstimator,
+            )
+            # OLS of ln(RV(t) = a + b1 ln(IV(t-1)) + b2 ln(RV(t-1)) + epsilon
+            self._predict_realised_vols(
+                linear_regressor=_linear_regressor, returns=X, implied_vol=implied_vol
+            )
+
+        np.fill_diagonal(covariance, self.pred_realised_vols_**2)
 
         self._set_covariance(covariance)
         return self
+
+    def _predict_realised_vols(
+        self,
+        linear_regressor: skb.BaseEstimator,
+        returns: np.ndarray,
+        implied_vol: np.ndarray,
+    ) -> None:
+        n_observations, n_assets = returns.shape
+
+        n_folds = n_observations // self.window
+        if n_folds < 3:
+            raise ValueError(
+                f"Not enough observations to compute the volatility regression "
+                f"coefficients. The window size of {self.window} on {n_observations} "
+                f"observations produces {n_folds} non-overlapping folds. "
+                f"The minimum number of fold is 3. You can either increase the number "
+                f"of observation in your training set or decrease the window size."
+            )
+
+        realised_vol = _compute_realised_vol(
+            returns=returns, window=self.window, ddof=1
+        )
+
+        implied_vol = _compute_implied_vol(implied_vol=implied_vol, window=self.window)
+
+        if realised_vol.shape != implied_vol.shape:
+            raise ValueError("`realised_vol`and `implied_vol` must have same shape")
+
+        assert realised_vol.shape[0] == n_folds
+
+        rv = np.log(realised_vol)
+        iv = np.log(implied_vol)
+
+        self.linear_regressors_ = []
+        self.pred_realised_vols_ = np.zeros(n_assets)
+        self.coefs_ = np.zeros((n_assets, 2))
+        self.intercepts_ = np.zeros(n_assets)
+        self.r2_scores_ = np.zeros(n_assets)
+        for i in range(n_assets):
+            model = sk.clone(linear_regressor)
+            X = np.hstack((iv[:, [i]], rv[:, [i]]))
+            X_train = X[:-1]
+            X_pred = X[[-1]]
+            y_train = rv[1:, i]
+
+            model.fit(X=X_train, y=y_train)
+            self.coefs_[i, :] = model.coef_
+            self.intercepts_[i] = model.intercept_
+            self.r2_scores_[i] = skm.r2_score(y_train, model.predict(X_train))
+            rv_pred = model.predict(X_pred)
+            self.pred_realised_vols_[i] = np.exp(rv_pred[0])
+            self.linear_regressors_.append(model)
+
+
+def _compute_realised_vol(
+    returns: np.ndarray, window: int, ddof: int = 1
+) -> np.ndarray:
+    n_observations, n_assets = returns.shape
+    chunks = n_observations // window
+
+    return np.std(
+        np.reshape(
+            returns[n_observations - chunks * window :, :], (chunks, window, n_assets)
+        ),
+        ddof=ddof,
+        axis=1,
+    )
+
+
+def _compute_implied_vol(implied_vol: np.ndarray, window: int) -> np.ndarray:
+    n_observations, _ = implied_vol.shape
+    chunks = n_observations // window
+    return implied_vol[
+        np.arange(n_observations - (chunks - 1) * window - 1, n_observations, window)
+    ]
