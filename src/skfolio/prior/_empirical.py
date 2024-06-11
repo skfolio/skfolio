@@ -88,9 +88,9 @@ class EmpiricalPrior(BasePrior):
         self.investment_horizon = investment_horizon
 
     def get_metadata_routing(self):
+        # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
-            # We add the routing for the transformer.
             .add(
                 mu_estimator=self.mu_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),

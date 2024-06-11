@@ -2,7 +2,7 @@ import datetime as dt
 
 import numpy as np
 import pytest
-from sklearn import set_config
+from sklearn import set_config, config_context
 from sklearn.model_selection import KFold
 from skfolio.datasets import load_sp500_dataset, load_sp500_implied_vol_dataset
 from skfolio.moments import (

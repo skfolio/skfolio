@@ -12,7 +12,8 @@ import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.linear_model as skl
-import sklearn.metrics as skm
+import sklearn.metrics as sks
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
@@ -105,6 +106,18 @@ class ImpliedCovariance(BaseCovariance):
         self.window = window
         self.volatility_risk_premium_adj = volatility_risk_premium_adj
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                covariance_estimator=self.covariance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(
         self, X: npt.ArrayLike, y=None, implied_vol: npt.ArrayLike = None, **fit_params
     ) -> "ImpliedCovariance":
@@ -126,13 +139,19 @@ class ImpliedCovariance(BaseCovariance):
         self : ImpliedCovariance
             Fitted estimator.
         """
+        if implied_vol is not None:
+            fit_params["implied_vol"] = implied_vol
+
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # fitting estimators
         self.covariance_estimator_ = check_estimator(
             self.covariance_estimator,
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        self.covariance_estimator_.fit(X)
+        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
+
         covariance = self.covariance_estimator_.covariance_
 
         assets_names = get_feature_names(X)
@@ -233,7 +252,7 @@ class ImpliedCovariance(BaseCovariance):
             model.fit(X=X_train, y=y_train)
             self.coefs_[i, :] = model.coef_
             self.intercepts_[i] = model.intercept_
-            self.r2_scores_[i] = skm.r2_score(y_train, model.predict(X_train))
+            self.r2_scores_[i] = sks.r2_score(y_train, model.predict(X_train))
             rv_pred = model.predict(X_pred)
             self.pred_realised_vols_[i] = np.exp(rv_pred[0])
             self.linear_regressors_.append(model)

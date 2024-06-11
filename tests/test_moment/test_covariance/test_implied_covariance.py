@@ -3,9 +3,11 @@ import datetime as dt
 import numpy as np
 import pytest
 import sklearn.linear_model as skl
+from sklearn import config_context
+from sklearn.exceptions import UnsetMetadataPassedError
 
 from skfolio.datasets import load_sp500_dataset, load_sp500_implied_vol_dataset
-from skfolio.moments import ImpliedCovariance
+from skfolio.moments import ImpliedCovariance, LedoitWolf
 from skfolio.moments.covariance._implied_covariance import (
     _compute_implied_vol,
     _compute_realised_vol,
@@ -164,3 +166,46 @@ def test_implied_covariance_small(X, implied_vol, window):
     model = ImpliedCovariance(window=window)
     model.fit(X, implied_vol=implied_vol)
     assert np.any(model.coefs_ != 0)
+
+
+def test_implied_covariance_meta_data_routing_error(X, implied_vol):
+    with config_context(enable_metadata_routing=True):
+        model = ImpliedCovariance(
+            covariance_estimator=ImpliedCovariance()
+        )
+        with pytest.raises(UnsetMetadataPassedError):
+            model.fit(X, implied_vol=implied_vol)
+
+
+def test_implied_covariance_meta_data_routing(X, implied_vol):
+    with config_context(enable_metadata_routing=True):
+        model = ImpliedCovariance(
+            covariance_estimator=ImpliedCovariance().set_fit_request(implied_vol=True)
+        )
+        model.fit(X, implied_vol=implied_vol)
+
+        model_ref = ImpliedCovariance()
+        model_ref.fit(X, implied_vol=implied_vol)
+
+        np.testing.assert_almost_equal(model.covariance_, model_ref.covariance_)
+
+
+def test_implied_covariance_ledoit_wolf(X, implied_vol):
+    model = ImpliedCovariance(
+        covariance_estimator=LedoitWolf()
+    )
+    model.fit(X, implied_vol=implied_vol)
+
+    model_imp_ref = ImpliedCovariance()
+    model_imp_ref.fit(X, implied_vol=implied_vol)
+
+    model_led_ref = LedoitWolf()
+    model_led_ref.fit(X)
+
+    np.testing.assert_almost_equal(np.diag(model.covariance_),
+                                   np.diag(model_imp_ref.covariance_))
+
+    np.fill_diagonal(model.covariance_, 0)
+    np.fill_diagonal(model_led_ref.covariance_, 0)
+
+    np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_)
