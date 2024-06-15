@@ -12,6 +12,7 @@ from enum import auto
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -139,6 +140,18 @@ class ShrunkMu(BaseMu):
         self.vol_weighted_target = vol_weighted_target
         self.method = method
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                covariance_estimator=self.covariance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "ShrunkMu":
         """Fit the ShrunkMu estimator model.
 
@@ -155,6 +168,8 @@ class ShrunkMu(BaseMu):
         self : ShrunkMu
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         if not isinstance(self.method, ShrunkMuMethods):
             raise ValueError(
                 "`method` must be of type ShrunkMuMethods, got"
@@ -166,7 +181,7 @@ class ShrunkMu(BaseMu):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        self.covariance_estimator_.fit(X)
+        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.

@@ -9,6 +9,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -69,6 +70,18 @@ class EquilibriumMu(BaseMu):
         self.weights = weights
         self.covariance_estimator = covariance_estimator
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                covariance_estimator=self.covariance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EquilibriumMu":
         """Fit the EquilibriumMu estimator model.
 
@@ -85,13 +98,15 @@ class EquilibriumMu(BaseMu):
         self : EquilibriumMu
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # fitting estimators
         self.covariance_estimator_ = check_estimator(
             self.covariance_estimator,
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        self.covariance_estimator_.fit(X)
+        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.

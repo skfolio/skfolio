@@ -430,7 +430,8 @@ def safe_split(
 def fit_single_estimator(
     estimator: Any,
     X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    y: npt.ArrayLike | None,
+    fit_params: dict,
     indices: np.ndarray | None = None,
     axis: int = 0,
 ):
@@ -462,7 +463,7 @@ def fit_single_estimator(
     """
 
     X, y = safe_split(X, y, indices=indices, axis=axis)
-    estimator.fit(X, y)
+    estimator.fit(X, y, **fit_params)
     return estimator
 
 

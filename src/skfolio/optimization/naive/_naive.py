@@ -55,13 +55,10 @@ class InverseVolatility(BaseOptimization):
         self.prior_estimator = prior_estimator
 
     def get_metadata_routing(self):
-        router = (
-            skm.MetadataRouter(owner=self.__class__.__name__)
-            # We add the routing for the transformer.
-            .add(
-                prior_estimator=self.prior_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 

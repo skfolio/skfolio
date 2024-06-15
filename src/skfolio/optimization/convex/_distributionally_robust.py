@@ -7,6 +7,7 @@
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -302,8 +303,20 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.risk_aversion = risk_aversion
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "DistributionallyRobustCVaR":
         """Fit the Distributionally Robust CVaR Optimization estimator.
 
@@ -321,6 +334,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self : DistributionallyRobustCVaR
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self._check_feature_names(X, reset=True)
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
@@ -329,7 +344,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
 

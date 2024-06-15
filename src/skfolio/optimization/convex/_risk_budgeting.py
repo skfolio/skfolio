@@ -9,6 +9,7 @@
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -440,7 +441,19 @@ class RiskBudgeting(ConvexOptimization):
                 " otherwise the problem becomes non-convex."
             )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "RiskBudgeting":
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "RiskBudgeting":
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters
@@ -458,6 +471,8 @@ class RiskBudgeting(ConvexOptimization):
         self : RiskBudgeting
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self._check_feature_names(X, reset=True)
         # Validate
         self._validation()
@@ -468,7 +483,7 @@ class RiskBudgeting(ConvexOptimization):
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
 

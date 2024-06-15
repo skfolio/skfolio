@@ -398,7 +398,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "MaximumDiversification":
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -424,5 +424,5 @@ class MaximumDiversification(MeanRisk):
             return np.sqrt(np.diag(covariance)) @ w
 
         self.overwrite_expected_return = func
-        super().fit(X, y)
+        super().fit(X, y, **fit_params)
         return self
