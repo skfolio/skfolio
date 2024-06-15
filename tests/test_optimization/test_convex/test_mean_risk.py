@@ -340,7 +340,7 @@ def test_mean_risk_minimize_risk_2(
         p.mean, model.problem_values_["expected_return"], precision
     )
 
-
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_mean_risk_under_risk_and_return_constraint(
     X,
     precisions3,

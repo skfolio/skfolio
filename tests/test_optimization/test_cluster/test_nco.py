@@ -93,7 +93,8 @@ def test_nco_1(X):
         ]),
     )
 
-
+# TODO: remove warnings at the estimator level
+@pytest.mark.filterwarnings("ignore:Wrong pattern encountered")
 def test_nco_2(X):
     model = NestedClustersOptimization(
         inner_estimator=MeanRisk(linear_constraints=["AAPL>=0.001"]),

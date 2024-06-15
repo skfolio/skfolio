@@ -158,7 +158,7 @@ def test_risk_budgeting_groups(X, groups, linear_constraints):
         ]),
     )
 
-
+@pytest.mark.filterwarnings("ignore:The EVaR problem will be relaxed")
 def test_risk_budgeting_transaction_costs_and_management_fees(X2, risk_measure):
     model = RiskBudgeting(risk_measure=risk_measure)
     ptf = model.fit_predict(X2)
