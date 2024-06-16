@@ -303,18 +303,6 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.risk_aversion = risk_aversion
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = (
-            skm.MetadataRouter(owner=self.__class__.__name__)
-            .add_self_request(self)
-            .add(
-                prior_estimator=self.prior_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-        )
-        return router
-
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "DistributionallyRobustCVaR":
@@ -328,6 +316,13 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         y : array-like of shape (n_observations, n_factors), optional
             Price returns of factors.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------

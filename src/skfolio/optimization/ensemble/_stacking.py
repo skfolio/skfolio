@@ -232,11 +232,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
 
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
-        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            final_estimator=self.final_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-        )
-
+        router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:
             router.add(
                 **{name: estimator},
@@ -353,9 +349,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
                     )
                     y = y[test_indices]
 
-        fit_single_estimator(
-            self.final_estimator_, X_pred, y, routed_params.final_estimator.fit
-        )
+        fit_single_estimator(self.final_estimator_, X_pred, y, {})
         outer_weights = self.final_estimator_.weights_
         self.weights_ = outer_weights @ inner_weights
         return self

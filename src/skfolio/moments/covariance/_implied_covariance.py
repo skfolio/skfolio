@@ -14,12 +14,12 @@ import sklearn.base as skb
 import sklearn.linear_model as skl
 import sklearn.metrics as sks
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.utils.tools import check_estimator, get_feature_names, safe_indexing
-from skfolio.utils.validation import check_implied_vol
 
 
 class ImpliedCovariance(BaseCovariance):
@@ -134,12 +134,20 @@ class ImpliedCovariance(BaseCovariance):
         implied_vol : array-like of shape (n_observations, n_assets)
             Implied volatilities of the assets.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : ImpliedCovariance
             Fitted estimator.
         """
         if implied_vol is not None:
+            # noinspection PyTypeChecker
             fit_params["implied_vol"] = implied_vol
 
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -150,6 +158,7 @@ class ImpliedCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
+        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         covariance = self.covariance_estimator_.covariance_
@@ -279,3 +288,52 @@ def _compute_implied_vol(implied_vol: np.ndarray, window: int) -> np.ndarray:
     return implied_vol[
         np.arange(n_observations - (chunks - 1) * window - 1, n_observations, window)
     ]
+
+
+def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike):
+    """Validate implied volatilities.
+
+
+    Parameters
+    ----------
+    implied_vol : {ndarray, Number or None}, shape (n_samples,)
+        Input sample weights.
+
+    X : {ndarray, list, sparse matrix}
+        Input data.
+
+
+    Returns
+    -------
+    sample_weight : ndarray of shape (n_samples,)
+        Validated sample weight. It is guaranteed to be "C" contiguous.
+    """
+    # noinspection PyUnresolvedReferences
+    n_observations, n_assets = X.shape
+
+    if implied_vol is None:
+        raise ValueError("`implied_vol` cannot be None")
+    else:
+        implied_vol = skv.check_array(
+            implied_vol,
+            accept_sparse=False,
+            ensure_2d=False,
+            dtype=[np.float64, np.float32],
+            order="C",
+            copy=False,
+            input_name="implied_vol",
+        )
+        if implied_vol.ndim != 2:
+            raise ValueError(
+                "Sample weights must be 2D array of shape (n_observation, n_assets)"
+            )
+
+        if implied_vol.shape != (n_observations, n_assets):
+            raise ValueError(
+                f"implied_vol.shape == {(implied_vol.shape)}, "
+                f"expected {(n_observations, n_assets)}"
+            )
+
+    skv.check_non_negative((n_observations, n_assets), "`implied_vol`")
+
+    return implied_vol

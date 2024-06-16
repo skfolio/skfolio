@@ -209,12 +209,7 @@ class NestedClustersOptimization(BaseOptimization):
                 inner_estimator=self.inner_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
             )
-            .add(
-                outer_estimator=self.outer_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
         )
-
         return router
 
     def fit(
@@ -230,6 +225,13 @@ class NestedClustersOptimization(BaseOptimization):
         y : array-like of shape (n_observations, n_targets), optional
             Price returns of factors or a target benchmark.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------
@@ -259,6 +261,7 @@ class NestedClustersOptimization(BaseOptimization):
             check_type=BaseOptimization,
         )
 
+        # noinspection PyArgumentList
         self.distance_estimator_.fit(X, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
         n_assets = distance.shape[0]
@@ -382,9 +385,7 @@ class NestedClustersOptimization(BaseOptimization):
         else:
             assert not any(cv_predictions), "cv_predictions iterator must be empty"
 
-        fit_single_estimator(
-            self.outer_estimator_, X_pred, y_pred, routed_params.outer_estimator.fit
-        )
+        fit_single_estimator(self.outer_estimator_, X_pred, y_pred, fit_params={})
         outer_weights = self.outer_estimator_.weights_
         self.weights_ = outer_weights @ inner_weights
         return self

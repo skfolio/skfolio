@@ -116,6 +116,13 @@ class DetoneCovariance(BaseCovariance):
         y : Ignored
            Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : DetoneCovariance
@@ -129,6 +136,7 @@ class DetoneCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
+        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep

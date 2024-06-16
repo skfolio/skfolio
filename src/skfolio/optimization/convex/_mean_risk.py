@@ -685,11 +685,8 @@ class MeanRisk(ConvexOptimization):
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
         router = (
-            skm.MetadataRouter(owner=self.__class__.__name__)
-            .add(
-                prior_estimator=self.prior_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
+            super()
+            .get_metadata_routing()
             .add(
                 mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),

@@ -1,9 +1,9 @@
-import datetime as dt
-
 import cvxpy as cp
 import numpy as np
 import pytest
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
+from sklearn import config_context
+
 from skfolio import (
     MultiPeriodPortfolio,
     Population,
@@ -11,11 +11,9 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
-from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.model_selection import cross_val_predict
-from skfolio.moments import EmpiricalMu
+from skfolio.moments import EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import MeanRisk, ObjectiveFunction
-from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
 from skfolio.uncertainty_set import (
     EmpiricalCovarianceUncertaintySet,
@@ -54,101 +52,13 @@ def precisions3(precisions):
 
 
 @pytest.fixture(scope="module")
-def X_y():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2018, 1, 1) :]
-    factor_prices = load_factors_dataset()
-    factor_prices = factor_prices.loc[dt.date(2018, 1, 1) :]
-    X, y = prices_to_returns(X=prices, y=factor_prices)
-    return X, y
+def X(X):
+    return X["2018-01-03":]
 
 
 @pytest.fixture(scope="module")
-def X(X_y):
-    return X_y[0]
-
-
-@pytest.fixture(scope="module")
-def y(X_y):
-    return X_y[1]
-
-
-@pytest.fixture(scope="module")
-def X2():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2022, 1, 1) :]
-    X2 = prices_to_returns(X=prices)
-    return X2
-
-
-@pytest.fixture(scope="module")
-def previous_weights():
-    return np.array([
-        0.06663786,
-        -0.02609581,
-        -0.12200097,
-        -0.03729676,
-        -0.18604607,
-        -0.09291357,
-        -0.22839449,
-        -0.08750029,
-        0.01262641,
-        0.08712638,
-        -0.15731865,
-        0.14594815,
-        0.11637876,
-        0.02163102,
-        0.03458678,
-        -0.1106219,
-        -0.05892651,
-        0.05990245,
-        -0.08750029,
-        0.01262641,
-    ])
-
-
-@pytest.fixture(scope="module")
-def transaction_costs():
-    return np.array([
-        1.35823376e-06,
-        5.43149178e-06,
-        5.78932342e-05,
-        2.25837045e-06,
-        1.38853806e-06,
-        6.10805422e-06,
-        4.49537883e-06,
-        7.10354498e-06,
-        9.57317662e-08,
-        5.04014556e-06,
-        3.95397852e-06,
-        3.22918558e-05,
-        8.05391670e-05,
-        8.83970181e-05,
-        3.78429663e-06,
-        6.10805422e-06,
-        4.49537883e-06,
-        4.49537883e-06,
-        5.04014556e-05,
-        3.95397852e-06,
-    ])
-
-
-@pytest.fixture(scope="module")
-def groups():
-    return [
-        ["Equity"] * 3 + ["Fund"] * 5 + ["Bond"] * 12,
-        ["US"] * 2 + ["Europe"] * 8 + ["Japan"] * 10,
-    ]
-
-
-@pytest.fixture(scope="module")
-def linear_constraints():
-    return [
-        "Equity <= 0.5 * Bond",
-        "US >= 0.1",
-        "Europe >= 0.5 * Fund",
-        "Japan <= 1",
-    ]
+def y(y):
+    return y["2018-01-03":]
 
 
 @pytest.fixture(
@@ -320,7 +230,7 @@ def test_mean_risk_minimize_risk(
 
 
 def test_mean_risk_minimize_risk_2(
-    X2,
+    X_small,
     precisions,
     risk_measure2,
 ):
@@ -332,13 +242,14 @@ def test_mean_risk_minimize_risk_2(
         risk_measure=risk_measure2,
     )
 
-    p = model.fit_predict(X2)
+    p = model.fit_predict(X_small)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
     np.testing.assert_almost_equal(
         p.mean, model.problem_values_["expected_return"], precision
     )
+
 
 @pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_mean_risk_under_risk_and_return_constraint(
@@ -413,7 +324,7 @@ def test_mean_risk_under_risk_and_return_constraint(
 
 
 def test_mean_risk_under_risk_and_return_constraint_2(
-    X2,
+    X_small,
     precisions2,
     risk_measure2,
 ):
@@ -426,7 +337,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         risk_measure=risk_measure2,
     )
 
-    min_risk_model_ptf = min_risk_model.fit_predict(X2)
+    min_risk_model_ptf = min_risk_model.fit_predict(X_small)
     risk_constraint = (min_risk_model.problem_values_["risk"] + 1e-7) * 1.05
 
     # Maximize return under upper risk constraint
@@ -436,7 +347,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         **{max_risk_arg: risk_constraint},
     )
 
-    p = max_return_model.fit_predict(X2)
+    p = max_return_model.fit_predict(X_small)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), risk_constraint, precision
     )
@@ -460,7 +371,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         min_return=max_return_model.problem_values_["expected_return"],
     )
 
-    p = model.fit_predict(X2)
+    p = model.fit_predict(X_small)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -509,7 +420,7 @@ def test_mean_risk_utility(
 
 
 def test_mean_risk_utility2(
-    X2,
+    X_small,
     precisions2,
     risk_measure2,
 ):
@@ -523,7 +434,7 @@ def test_mean_risk_utility2(
         risk_aversion=risk_aversion,
     )
 
-    p = model.fit_predict(X2)
+    p = model.fit_predict(X_small)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -566,7 +477,7 @@ def test_mean_risk_ratio(
 
 
 def test_mean_risk_ratio2(
-    X2,
+    X_small,
     precisions2,
     risk_measure2,
 ):
@@ -577,7 +488,7 @@ def test_mean_risk_ratio2(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         risk_measure=risk_measure2,
     )
-    p = model.fit_predict(X2)
+    p = model.fit_predict(X_small)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -623,7 +534,7 @@ def test_mean_risk_set_params():
 
 def test_mean_risk_cross_val_predict(X):
     prediction_mpp = cross_val_predict(
-        MeanRisk(), X, cv=skm.KFold(n_splits=5), n_jobs=None
+        MeanRisk(), X, cv=sks.KFold(n_splits=5), n_jobs=None
     )
     assert isinstance(prediction_mpp, MultiPeriodPortfolio)
     assert np.asarray(prediction_mpp).shape == (X.shape[0],)
@@ -999,94 +910,119 @@ def test_optimization_factor_black_litterman(X, y):
     model.fit(X, y)
     np.testing.assert_almost_equal(
         model.prior_estimator_.prior_model_.mu,
-        np.array([
-            0.04573766,
-            0.07949394,
-            0.05322793,
-            0.04596431,
-            0.04373008,
-            0.05400534,
-            0.03507889,
-            0.00876922,
-            0.04644162,
-            0.00956013,
-            0.01111351,
-            0.01195771,
-            0.04378188,
-            0.01147724,
-            0.0107007,
-            0.00863476,
-            0.06883195,
-            0.02906054,
-            0.01349415,
-            0.04004494,
-        ]),
+        np.array(
+            [
+                0.04573766,
+                0.07949394,
+                0.05322793,
+                0.04596431,
+                0.04373008,
+                0.05400534,
+                0.03507889,
+                0.00876922,
+                0.04644162,
+                0.00956013,
+                0.01111351,
+                0.01195771,
+                0.04378188,
+                0.01147724,
+                0.0107007,
+                0.00863476,
+                0.06883195,
+                0.02906054,
+                0.01349415,
+                0.04004494,
+            ]
+        ),
     )
 
     assert model.prior_estimator_.prior_model_.covariance.shape == (n_assets, n_assets)
     np.testing.assert_almost_equal(
         model.prior_estimator_.prior_model_.covariance[:5, 15:],
-        np.array([
+        np.array(
             [
-                1.25634529e-04,
-                2.32021683e-04,
-                1.95783005e-04,
-                1.03417221e-04,
-                1.80971856e-04,
-            ],
-            [
-                1.41305357e-04,
-                3.33556413e-04,
-                2.47133368e-04,
-                1.27595433e-04,
-                2.35518998e-04,
-            ],
-            [
-                1.22471913e-04,
-                3.59441727e-04,
-                2.05669219e-04,
-                1.06975737e-04,
-                2.70975567e-04,
-            ],
-            [
-                1.24972237e-04,
-                2.79875907e-04,
-                1.97230854e-04,
-                1.04532010e-04,
-                2.19851561e-04,
-            ],
-            [
-                1.12629723e-04,
-                2.88745927e-04,
-                1.81882528e-04,
-                9.56316906e-05,
-                2.23238864e-04,
-            ],
-        ]),
+                [
+                    1.25634529e-04,
+                    2.32021683e-04,
+                    1.95783005e-04,
+                    1.03417221e-04,
+                    1.80971856e-04,
+                ],
+                [
+                    1.41305357e-04,
+                    3.33556413e-04,
+                    2.47133368e-04,
+                    1.27595433e-04,
+                    2.35518998e-04,
+                ],
+                [
+                    1.22471913e-04,
+                    3.59441727e-04,
+                    2.05669219e-04,
+                    1.06975737e-04,
+                    2.70975567e-04,
+                ],
+                [
+                    1.24972237e-04,
+                    2.79875907e-04,
+                    1.97230854e-04,
+                    1.04532010e-04,
+                    2.19851561e-04,
+                ],
+                [
+                    1.12629723e-04,
+                    2.88745927e-04,
+                    1.81882528e-04,
+                    9.56316906e-05,
+                    2.23238864e-04,
+                ],
+            ]
+        ),
     )
 
     np.testing.assert_almost_equal(
         model.weights_,
-        np.array([
-            3.23889556e-09,
-            4.37353839e-01,
-            3.50041391e-09,
-            3.55794921e-09,
-            3.73876428e-09,
-            4.67673649e-09,
-            3.69469609e-09,
-            2.81118740e-09,
-            3.57468357e-09,
-            2.36272378e-09,
-            2.51196427e-09,
-            3.73429426e-09,
-            3.55000669e-09,
-            2.69088597e-09,
-            2.56698189e-09,
-            2.84579902e-09,
-            5.62646099e-01,
-            3.55289624e-09,
-            5.57309135e-09,
-            4.32763989e-09,
-        ]),
+        np.array(
+            [
+                3.23889556e-09,
+                4.37353839e-01,
+                3.50041391e-09,
+                3.55794921e-09,
+                3.73876428e-09,
+                4.67673649e-09,
+                3.69469609e-09,
+                2.81118740e-09,
+                3.57468357e-09,
+                2.36272378e-09,
+                2.51196427e-09,
+                3.73429426e-09,
+                3.55000669e-09,
+                2.69088597e-09,
+                2.56698189e-09,
+                2.84579902e-09,
+                5.62646099e-01,
+                3.55289624e-09,
+                5.57309135e-09,
+                4.32763989e-09,
+            ]
+        ),
     )
+
+
+def test_metadata_routing(X_small, implied_vol_small):
+    with config_context(enable_metadata_routing=True):
+        model = MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance(nearest=True).set_fit_request(
+                    implied_vol=True
+                )
+            )
+        )
+
+        with pytest.raises(ValueError):
+            model.fit(X_small)
+
+        model.fit(X_small, implied_vol=implied_vol_small)
+
+    # noinspection PyUnresolvedReferences
+    assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)

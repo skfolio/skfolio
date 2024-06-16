@@ -119,7 +119,7 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
             block_size=block_size,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "LedoitWolf":
+    def fit(self, X: npt.ArrayLike, y=None) -> "LedoitWolf":
         """Fit the Ledoit-Wolf shrunk covariance model to X.
 
         Parameters
@@ -135,6 +135,6 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
         self : LedoitWolf
           Fitted estimator.
         """
-        skc.LedoitWolf.fit(self, X, **fit_params)
+        skc.LedoitWolf.fit(self, X)
         self._set_covariance(self.covariance_)
         return self

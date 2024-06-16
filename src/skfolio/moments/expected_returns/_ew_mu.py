@@ -46,7 +46,7 @@ class EWMu(BaseMu):
         self.window_size = window_size
         self.alpha = alpha
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EWMu":
+    def fit(self, X: npt.ArrayLike, y=None) -> "EWMu":
         """Fit the EWMu estimator model.
 
         Parameters

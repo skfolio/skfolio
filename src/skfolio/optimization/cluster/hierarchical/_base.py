@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -438,6 +439,25 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         )
         return alpha
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                distance_estimator=self.distance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                hierarchical_clustering_estimator=self.hierarchical_clustering_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: None = None):
+    def fit(self, X: npt.ArrayLike, y: None = None, **fit_params):
         pass

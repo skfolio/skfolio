@@ -271,26 +271,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = (
-            skm.MetadataRouter(owner=self.__class__.__name__)
-            .add(
-                prior_estimator=self.prior_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-            .add(
-                distance_estimator=self.distance_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-            .add(
-                hierarchical_clustering_estimator=self.hierarchical_clustering_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-        )
-
-        return router
-
     def fit(
         self, X: npt.ArrayLike, y: None = None, **fit_params
     ) -> "HierarchicalRiskParity":
@@ -341,6 +321,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
+        # noinspection PyArgumentList
         self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
@@ -348,6 +329,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
+        # noinspection PyArgumentList
         self.hierarchical_clustering_estimator_.fit(
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )

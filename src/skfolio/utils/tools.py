@@ -118,6 +118,144 @@ def _make_key(args, kwds) -> int:
     return hash(key)
 
 
+def _make_indexable(iterable):
+    """Ensure iterable supports indexing or convert to an indexable variant.
+
+    Convert sparse matrices to csr and other non-indexable iterable to arrays.
+    Let `None` and indexable objects (e.g. pandas dataframes) pass unchanged.
+
+    Parameters
+    ----------
+    iterable : {list, dataframe, ndarray, sparse matrix} or None
+        Object to be converted to an indexable iterable.
+    """
+    if sp.issparse(iterable):
+        return iterable.tocsr()
+    elif hasattr(iterable, "__getitem__") or hasattr(iterable, "iloc"):
+        return iterable
+    elif iterable is None:
+        return iterable
+    return np.array(iterable)
+
+
+def _check_method_params(
+    X: npt.ArrayLike, params: dict, indices: np.ndarray = None, axis: int = 0
+):
+    """Check and validate the parameters passed to a specific
+    method like `fit`.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_samples, n_features)
+        Data array.
+
+    params : dict
+        Dictionary containing the parameters passed to the method.
+
+    indices : ndarray of shape (n_samples,), default=None
+        Indices to be selected if the parameter has the same size as `X`.
+
+    axis : int, default=0
+        The axis along which `X` will be sub-sampled. `axis=0` will select
+        rows while `axis=1` will select columns.
+
+    Returns
+    -------
+    method_params_validated : dict
+        Validated parameters. We ensure that the values support indexing.
+    """
+    # noinspection PyUnresolvedReferences
+    n_observations = X.shape[0]
+    method_params_validated = {}
+    for param_key, param_value in params.items():
+        if param_value.shape[0] != n_observations:
+            raise ValueError(
+                f"param_key has wrong number of observations, "
+                f"received={param_value.shape[0]}, "
+                f"expected={n_observations}"
+            )
+        method_params_validated[param_key] = _make_indexable(param_value)
+        method_params_validated[param_key] = safe_indexing(
+            X=method_params_validated[param_key], indices=indices, axis=axis
+        )
+    return method_params_validated
+
+
+def safe_indexing(
+    X: npt.ArrayLike | pd.DataFrame, indices: npt.ArrayLike | None, axis: int = 0
+):
+    """Return rows, items or columns of X using indices.
+
+    Parameters
+    ----------
+    X : array-like
+        Data from which to sample rows.
+
+    indices : array-like, optional
+        Indices of rows or columns.
+        The default (`None`) is to select the entire data.
+
+    axis : int, default=0
+        The axis along which `X` will be sub-sampled. `axis=0` will select
+        rows while `axis=1` will select columns.
+
+    Returns
+    -------
+    subset :
+        Subset of X on axis 0.
+    """
+    if indices is None:
+        return X
+    if hasattr(X, "iloc"):
+        return X.take(indices, axis=axis)
+    if axis == 0:
+        return X[indices]
+    return X[:, indices]
+
+
+def safe_split(
+    X: npt.ArrayLike,
+    y: npt.ArrayLike | None = None,
+    indices: np.ndarray | None = None,
+    axis: int = 0,
+):
+    """Create subset of dataset.
+
+    Slice X, y according to indices for cross-validation.
+
+    Parameters
+    ----------
+    X : array-like
+        Data to be indexed.
+
+    y : array-like
+        Data to be indexed.
+
+    indices : ndarray of int, optional
+        Rows or columns to select from X and y.
+        The default (`None`) is to select the entire data.
+
+    axis : int, default=0
+        The axis along which `X` will be sub-sampled. `axis=0` will select
+        rows while `axis=1` will select columns.
+
+    Returns
+    -------
+    X_subset : array-like
+        Indexed data.
+
+    y_subset : array-like
+        Indexed targets.
+    """
+
+    X_subset = safe_indexing(X, indices=indices, axis=axis)
+    if y is not None:
+        y_subset = safe_indexing(y, indices=indices, axis=axis)
+    else:
+        y_subset = None
+    return X_subset, y_subset
+
+
 def cache_method(cache_name: str) -> Callable:
     """Decorator that caches class methods results into a class dictionary.
 
@@ -351,82 +489,6 @@ def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:
             yield [e[0:mid], e[mid:n]]
 
 
-def safe_indexing(
-    X: npt.ArrayLike | pd.DataFrame, indices: npt.ArrayLike | None, axis: int = 0
-):
-    """
-    Return rows, items or columns of X using indices.
-
-    Parameters
-    ----------
-    X : array-like
-        Data from which to sample rows.
-
-    indices : array-like, optional
-        Indices of rows or columns.
-        The default (`None`) is to select the entire data.
-
-    axis : int, default=0
-        The axis along which `X` will be sub-sampled. `axis=0` will select
-        rows while `axis=1` will select columns.
-
-    Returns
-    -------
-    subset :
-        Subset of X on axis 0.
-    """
-    if indices is None:
-        return X
-    if hasattr(X, "iloc"):
-        return X.take(indices, axis=axis)
-    if axis == 0:
-        return X[indices]
-    return X[:, indices]
-
-
-def safe_split(
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
-    indices: np.ndarray | None = None,
-    axis: int = 0,
-):
-    """Create subset of dataset.
-
-    Slice X, y according to indices for cross-validation.
-
-    Parameters
-    ----------
-    X : array-like
-        Data to be indexed.
-
-    y : array-like
-        Data to be indexed.
-
-    indices : ndarray of int, optional
-        Rows or columns to select from X and y.
-        The default (`None`) is to select the entire data.
-
-    axis : int, default=0
-        The axis along which `X` will be sub-sampled. `axis=0` will select
-        rows while `axis=1` will select columns.
-
-    Returns
-    -------
-    X_subset : array-like
-        Indexed data.
-
-    y_subset : array-like
-        Indexed targets.
-    """
-
-    X_subset = safe_indexing(X, indices=indices, axis=axis)
-    if y is not None:
-        y_subset = safe_indexing(y, indices=indices, axis=axis)
-    else:
-        y_subset = None
-    return X_subset, y_subset
-
-
 def fit_single_estimator(
     estimator: Any,
     X: npt.ArrayLike,
@@ -448,6 +510,9 @@ def fit_single_estimator(
     y : array-like of shape (n_observations, n_targets), optional
         The target array if provided.
 
+    fit_params : dict
+        Parameters that will be passed to `estimator.fit`.
+
     indices : ndarray of int, optional
         Rows or columns to select from X and y.
         The default (`None`) is to select the entire data.
@@ -461,66 +526,12 @@ def fit_single_estimator(
     fitted_estimator : estimator
         The fitted estimator.
     """
+    fit_params = fit_params if fit_params is not None else {}
+    fit_params = _check_method_params(X, params=fit_params, indices=indices, axis=axis)
 
     X, y = safe_split(X, y, indices=indices, axis=axis)
     estimator.fit(X, y, **fit_params)
     return estimator
-
-
-def _make_indexable(iterable):
-    """Ensure iterable supports indexing or convert to an indexable variant.
-
-    Convert sparse matrices to csr and other non-indexable iterable to arrays.
-    Let `None` and indexable objects (e.g. pandas dataframes) pass unchanged.
-
-    Parameters
-    ----------
-    iterable : {list, dataframe, ndarray, sparse matrix} or None
-        Object to be converted to an indexable iterable.
-    """
-    if sp.issparse(iterable):
-        return iterable.tocsr()
-    elif hasattr(iterable, "__getitem__") or hasattr(iterable, "iloc"):
-        return iterable
-    elif iterable is None:
-        return iterable
-    return np.array(iterable)
-
-
-def _check_method_params(X: npt.ArrayLike, params: dict, indices: np.ndarray = None):
-    """Check and validate the parameters passed to a specific
-    method like `fit`.
-
-    Parameters
-    ----------
-    X : array-like of shape (n_samples, n_features)
-        Data array.
-
-    params : dict
-        Dictionary containing the parameters passed to the method.
-
-    indices : ndarray of shape (n_samples,), default=None
-        Indices to be selected if the parameter has the same size as `X`.
-
-    Returns
-    -------
-    method_params_validated : dict
-        Validated parameters. We ensure that the values support indexing.
-    """
-    n_observations = X.shape[0]
-    method_params_validated = {}
-    for param_key, param_value in params.items():
-        if param_value.shape[0] != n_observations:
-            raise ValueError(
-                f"param_key has wrong number of observations, "
-                f"received={param_value.shape[0]}, "
-                f"expected={n_observations}"
-            )
-        method_params_validated[param_key] = _make_indexable(param_value)
-        method_params_validated[param_key] = safe_indexing(
-            method_params_validated[param_key], indices
-        )
-    return method_params_validated
 
 
 def fit_and_predict(
@@ -553,7 +564,7 @@ def fit_and_predict(
         Indices of test samples or list of indices.
 
     fit_params : dict
-        Parameters that will be passed to ``estimator.fit``.
+        Parameters that will be passed to `estimator.fit`.
 
     method : str
         Invokes the passed method name of the passed estimator.

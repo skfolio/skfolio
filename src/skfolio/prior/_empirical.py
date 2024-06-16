@@ -113,6 +113,13 @@ class EmpiricalPrior(BasePrior):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : EmpiricalPrior
@@ -138,10 +145,12 @@ class EmpiricalPrior(BasePrior):
                     "`is_log_normal` is `False`"
                 )
             # Expected returns
+            # noinspection PyArgumentList
             self.mu_estimator_.fit(X, y, **routed_params.mu_estimator.fit)
             mu = self.mu_estimator_.mu_
 
             # Covariance
+            # noinspection PyArgumentList
             self.covariance_estimator_.fit(
                 X, y, **routed_params.covariance_estimator.fit
             )
@@ -158,10 +167,12 @@ class EmpiricalPrior(BasePrior):
 
             # Estimates the moments on the log returns
             # Expected returns
+            # noinspection PyArgumentList
             self.mu_estimator_.fit(X_log, y_log, **routed_params.mu_estimator.fit)
             mu = self.mu_estimator_.mu_
 
             # Covariance
+            # noinspection PyArgumentList
             self.covariance_estimator_.fit(
                 X_log, y_log, **routed_params.covariance_estimator.fit
             )

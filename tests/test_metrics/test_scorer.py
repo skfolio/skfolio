@@ -1,22 +1,9 @@
-import datetime as dt
-
 import numpy as np
-import pytest
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
 
 from skfolio import RatioMeasure, RiskMeasure
-from skfolio.datasets import load_sp500_dataset
 from skfolio.metrics import make_scorer
 from skfolio.optimization import MeanRisk, ObjectiveFunction
-from skfolio.preprocessing import prices_to_returns
-
-
-@pytest.fixture(scope="module")
-def X():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2020, 1, 1) :]
-    X = prices_to_returns(X=prices)
-    return X
 
 
 def test_default_score(X):
@@ -25,8 +12,8 @@ def test_default_score(X):
         max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
-    cv = skm.KFold(3)
-    grid_search = skm.GridSearchCV(
+    cv = sks.KFold(3)
+    grid_search = sks.GridSearchCV(
         estimator=model, cv=cv, n_jobs=-1, param_grid={"l2_coef": l2_coefs}
     )
     grid_search.fit(X)
@@ -61,10 +48,10 @@ def test_measure_score_ratio(X):
         max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
-    cv = skm.KFold(3)
+    cv = sks.KFold(3)
 
     # ratio measure
-    grid_search = skm.GridSearchCV(
+    grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
         n_jobs=-1,
@@ -103,9 +90,9 @@ def test_measure_score_risk_measure(X):
         max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
-    cv = skm.KFold(3)
+    cv = sks.KFold(3)
     # risk measure
-    grid_search = skm.GridSearchCV(
+    grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
         n_jobs=-1,
@@ -144,13 +131,13 @@ def test_measure_score_custom(X):
         max_variance=0.3**2 / 252,
     )
     l2_coefs = [0.001, 0.01]
-    cv = skm.KFold(3)
+    cv = sks.KFold(3)
 
     # Custom
     def custom(prediction):
         return prediction.cvar - 2 * prediction.cdar
 
-    grid_search = skm.GridSearchCV(
+    grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
         n_jobs=-1,

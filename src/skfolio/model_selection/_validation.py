@@ -13,9 +13,9 @@ import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.exceptions as ske
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
 import sklearn.utils as sku
-import sklearn.utils.metadata_routing as skmr
+import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
 
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
@@ -39,7 +39,7 @@ def cross_val_predict(
     estimator: skb.BaseEstimator,
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
-    cv: skm.BaseCrossValidator | BaseCombinatorialCV | int | None = None,
+    cv: sks.BaseCrossValidator | BaseCombinatorialCV | int | None = None,
     n_jobs: int | None = None,
     method: str = "predict",
     verbose: int = 0,
@@ -139,18 +139,18 @@ def cross_val_predict(
         # `process_routing` on it.
         # noinspection PyTypeChecker
         router = (
-            skmr.MetadataRouter(owner="cross_validate")
+            skm.MetadataRouter(owner="cross_validate")
             .add(
                 splitter=cv,
-                method_mapping=skmr.MethodMapping().add(caller="fit", callee="split"),
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
             )
             .add(
                 estimator=estimator,
-                method_mapping=skmr.MethodMapping().add(caller="fit", callee="fit"),
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
             )
         )
         try:
-            routed_params = skmr.process_routing(router, "fit", **params)
+            routed_params = skm.process_routing(router, "fit", **params)
         except ske.UnsetMetadataPassedError as e:
             # The default exception would mention `fit` since in the above
             # `process_routing` code, we pass `fit` as the caller. However,
@@ -176,7 +176,7 @@ def cross_val_predict(
         routed_params.splitter = sku.Bunch(split={})
         routed_params.estimator = sku.Bunch(fit=params)
 
-    cv = skm.check_cv(cv, y)
+    cv = sks.check_cv(cv, y)
     splits = list(cv.split(X, y, **routed_params.splitter.split))
 
     portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
@@ -202,6 +202,7 @@ def cross_val_predict(
     # and that it is pickle-able.
     parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
     # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
+    # noinspection PyCallingNonCallable
     predictions = parallel(
         skp.delayed(fit_and_predict)(
             sk.clone(estimator),

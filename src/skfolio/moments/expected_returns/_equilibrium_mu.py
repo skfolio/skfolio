@@ -72,13 +72,9 @@ class EquilibriumMu(BaseMu):
 
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
-        router = (
-            skm.MetadataRouter(owner=self.__class__.__name__)
-            .add_self_request(self)
-            .add(
-                covariance_estimator=self.covariance_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            covariance_estimator=self.covariance_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
@@ -93,6 +89,13 @@ class EquilibriumMu(BaseMu):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : EquilibriumMu
@@ -106,6 +109,7 @@ class EquilibriumMu(BaseMu):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
+        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep

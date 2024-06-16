@@ -76,7 +76,7 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EmpiricalCovariance":
+    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalCovariance":
         """Fit the empirical covariance estimator.
 
         Parameters

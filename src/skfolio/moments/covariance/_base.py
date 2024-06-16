@@ -68,7 +68,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+    def fit(self, X: npt.ArrayLike, y=None):
         pass
 
     def _sanity_check(self, covariance: np.ndarray) -> None:

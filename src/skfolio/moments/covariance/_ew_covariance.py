@@ -78,7 +78,7 @@ class EWCovariance(BaseCovariance):
         self.window_size = window_size
         self.alpha = alpha
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+    def fit(self, X: npt.ArrayLike, y=None):
         """Fit the Exponentially Weighted Covariance estimator.
 
         Parameters

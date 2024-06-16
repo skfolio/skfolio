@@ -76,6 +76,13 @@ class InverseVolatility(BaseOptimization):
             Price returns of factors or a target benchmark.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : InverseVolatility

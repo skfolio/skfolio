@@ -9,8 +9,8 @@ from skfolio.datasets import (
     load_ftse100_dataset,
     load_nasdaq_dataset,
     load_sp500_dataset,
+    load_sp500_implied_vol_dataset,
     load_sp500_index,
-    load_sp500_implied_vol_dataset
 )
 from skfolio.datasets._base import clear_data_home, get_data_home
 

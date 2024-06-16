@@ -403,7 +403,7 @@ def load_sp500_implied_vol_dataset(
     This dataset is composed of the 3 months ATM implied volatility of 20 assets
     from the S&P 500 composition starting from 2010-01-04 up to 2022-12-28.
 
-    The data comes from the Yahoo public API.
+    The data comes from the Yahoo public API option chains.
 
     ==============   ==================
     Observations     3270

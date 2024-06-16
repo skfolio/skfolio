@@ -115,7 +115,7 @@ class GerberCovariance(BaseCovariance):
         self.threshold = threshold
         self.psd_variant = psd_variant
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "GerberCovariance":
+    def fit(self, X: npt.ArrayLike, y=None) -> "GerberCovariance":
         """Fit the Gerber covariance estimator.
 
         Parameters

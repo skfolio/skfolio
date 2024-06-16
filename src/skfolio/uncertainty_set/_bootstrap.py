@@ -87,8 +87,6 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         Patton, Politis & White (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
@@ -98,20 +96,12 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         block_size: float | None = None,
         seed: int | None = None,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
         self.n_bootstrap_samples = n_bootstrap_samples
         self.block_size = block_size
         self.seed = seed
-
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            prior_estimator=self.prior_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-        )
-        return router
 
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
@@ -126,6 +116,13 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         y : array-like of shape (n_observations, n_factors), optional
             Price returns of factors.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------
@@ -228,8 +225,6 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Patton, Politis & White (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
@@ -239,20 +234,12 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         block_size: float | None = None,
         seed: int | None = None,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
         self.n_bootstrap_samples = n_bootstrap_samples
         self.block_size = block_size
         self.seed = seed
-
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            prior_estimator=self.prior_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-        )
-        return router
 
     def fit(
         self, X: npt.ArrayLike, y=None, **fit_params
@@ -267,6 +254,13 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         y : array-like of shape (n_observations, n_factors), optional
             Price returns of factors.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------

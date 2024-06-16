@@ -102,7 +102,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
     x = np.sort(x)
     n = len(x)
 
-    def func(y: float):
+    def func(y: np.ndarray) -> float:
         y = y[0]
         if y <= 0:
             return np.inf

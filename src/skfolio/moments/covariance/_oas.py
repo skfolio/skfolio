@@ -94,7 +94,7 @@ class OAS(BaseCovariance, skc.OAS):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "OAS":
+    def fit(self, X: npt.ArrayLike, y=None) -> "OAS":
         """Fit the Oracle Approximating Shrinkage covariance model to X.
 
         Parameters
@@ -110,6 +110,6 @@ class OAS(BaseCovariance, skc.OAS):
         self : OAS
           Fitted estimator.
         """
-        skc.OAS.fit(self, X, **fit_params)
+        skc.OAS.fit(self, X)
         self._set_covariance(self.covariance_)
         return self

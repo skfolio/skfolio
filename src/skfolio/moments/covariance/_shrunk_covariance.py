@@ -83,7 +83,7 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
             shrinkage=shrinkage,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "ShrunkCovariance":
+    def fit(self, X: npt.ArrayLike, y=None) -> "ShrunkCovariance":
         """Fit the shrunk covariance model to X.
 
         Parameters
@@ -99,6 +99,6 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
         self : ShrunkCovariance
           Fitted estimator.
         """
-        skc.ShrunkCovariance.fit(self, X, **fit_params)
+        skc.ShrunkCovariance.fit(self, X)
         self._set_covariance(self.covariance_)
         return self
