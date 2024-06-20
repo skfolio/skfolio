@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:14.603** total execution time for 1 file **from auto_examples/4_distributionally_robust_cvar**:
+**00:15.916** total execution time for 1 file **from auto_examples/4_distributionally_robust_cvar**:
 
 .. container::
 
@@ -33,5 +33,5 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_4_distributionally_robust_cvar_plot_1_distributionally_robust_cvar.py` (``plot_1_distributionally_robust_cvar.py``)
-     - 00:14.603
+     - 00:15.916
      - 0.0

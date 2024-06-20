@@ -294,7 +294,7 @@ MF**.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.083 seconds)
+   **Total running time of the script:** (0 minutes 4.268 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py:
