@@ -21,26 +21,63 @@ from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.utils.tools import check_estimator, get_feature_names, safe_indexing
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
+from skfolio.utils.tools import  input_to_array
 
 
 class ImpliedCovariance(BaseCovariance):
     """Implied Covariance estimator.
 
+    For each asset, the implied volatility time series is used to estimate the realised
+    volatility using the non-overlapping log transformed OLS model [6]_:
 
-    The covariance matrix is first estimated using a Covariance estimator (for example
-    `EmpiricalCovariance`) then the diagonal elements are shrunken toward the expected
-    variances computed from the implied volatilities.
+    .. math:: \ln(RV_{t}) = \alpha + \beta_{1} \ln(IV_{t-1}) + \beta_{2} \ln(RV_{t-1}) + \epsilon
+
+    with :math:`\alpha`, :math:`\beta_{1}` and :math:`\beta_{2}` the intercept and
+    coefficients to estimate, :math:`RV` the realised volatility and :math:`IV` the
+    implied volatility. The training set uses non-overlapping data of sample size
+    `window_size` to avoid possible regression errors caused by autocorrelation.
+    The logarithmic transformation of volatilities is used for its better finite sample
+    properties and distribution which is closer to normality, less skewed and
+    leptokurtic [6]_.
+
+    Alternatively, if `volatility_risk_premium_adj` is provided, the realised
+    volatility is estimated using:
+
+    .. math:: RV_{t} = \frac{IV_{t-1}}{VRPA}
+
+    with :math:`VRPA` the volatility risk premium adjustment.
+
+
+    The covariance estimator is then used to compute the correlation matrix.
+    The final step is the reconstruction of the covariance matrix from the correlation
+    and estimated realised volatilities math:`D`:
+
+    .. math:: \Sigma = D \ Corr \ D
 
     Parameters
     ----------
     covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` to estimate the covariance
-        matrix prior shrinking.
+        matrix used for the correlation estimates.
         The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
 
-    annualized_factor: float, default=252.0
+    annualized_factor : float, default=252
+        Annualized factor (AF) used to covert the implied volatilities into the same
+        frequency as the returns using math:`\frac{IV}{\sqrt{AF}}.
+        The default is 252 which corresponds to **daily** returns and implied volatility
+        expressed in **p.a.**
+
+    window_size : int, default=20
+        Window size used to construct the non-overlapping training set of realised
+        volatilities and implied volatilities used in the regression.
+
+    linear_regressor : BaseEstimator, optional
+        Estimator of the linear regression used to estimate the realised volatilities
+        from the implied volatilities. The default is to use the scikit-learn OLS
+        estimator `LinearRegression`.
 
     volatility_risk_premium_adj : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        TODO
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset fee) and the input `X` of the `fit` method must be a
@@ -72,6 +109,15 @@ class ImpliedCovariance(BaseCovariance):
     covariance_ : ndarray of shape (n_assets, n_assets)
         Estimated covariance matrix.
 
+    TODO
+    pred_realised_vols_ : ndarray of shape (n_assets,)
+
+    linear_regressors_ : list[BaseEstimator]
+
+    coefs_ : ndarray of shape (n_assets, 2)
+
+    intercepts_ : ndarray of shape (n_assets,)
+
     n_features_in_ : int
         Number of assets seen during `fit`.
 
@@ -79,47 +125,27 @@ class ImpliedCovariance(BaseCovariance):
         Names of assets seen during `fit`. Defined only when `returns`
         has assets names that are all strings.
 
+    References
+    ----------
+    .. [1] "New evidence on the implied-realized volatility relation".
+        Christensen & Hansen (2002).
 
+    .. [2] "The relation between implied and realized volatility".
+        Christensen & Prabhala (2002).
 
-    Christensen, B., Hansen, C. (2002). New evidence on the implied-realized volatility relation. The
-European Journal of Finance. 8(2): 187-205.
+    .. [3] "Can implied volatility predict returns on the carry trade?".
+        Egbers & Swinkels (2015).
 
-    Christensen, B., Prabhala, N. (1998). The relation between implied and realized volatility.
-Journal of Financial Economics. 50: 125-150.
+    .. [4] "Volatility and correlation forecasting".
+        Egbers & Swinkels (2015).
 
-Egbers, T., Swinkels, L. (2015). Can implied volatility predict returns on the carry trade?.
-Journal of Banking and Finance. 59: 14-26.
+    .. [5] "Volatility and correlation forecasting".
+        Andersen, Bollerslev, Christoffersen & Diebol (2006).
 
-Andersen,T. G., Bollerslev, T., Christoffersen, P. F., & Diebold, F.X. (2006).
- Volatility and correlation forecasting. in G. Elliott, C.W.J. Granger, and A.
- Timmermann (eds.), Handbook of Economic Forecasting. Amsterdam: North-Holland,
-
-How Well Does Implied Volatility Predict
-Future Stock Index Returns and Volatility?
-A study of Option-Implied Volatility Derived from OMXS30 Index Options
-Authors: Sara Vikberg and Julia Björkman
-
-
-    Christensen & Prabhala (1998)
-    Christensen and Hansen (2002)
-    Egbers and Swinkels (2015)
-
-    monthly nonoverlapping data in our study to avoid
-    possible regression errors caused by autocorrelation.
-
-    use logarithmical volatility data due to its better finite sample properties
-    compared to nonlogarithmized data.
-
-    As typically the case with volatility measures (see Andersen et al. (2006) for
-instance), a simple logarithmic transformation would almost lead to normality, we notice
-from Table 1 that the distribution of log-volatility series are less skewed and leptokurtic
-compared to that of the level series, which reveals that the log volatility is more
-conformable with the normal distribution. Regressions based on the log volatility are thus
-statistically better specified than those based on level series.
-
-
-
-
+    .. [6] "How Well Does Implied Volatility Predict Future Stock Index Returns and
+        Volatility? : A Study of Option-Implied Volatility Derived from OMXS30 Index
+        Options".
+        Sara Vikberg & Julia Björkman (2020).
     """
 
     covariance_estimator_: BaseCovariance
@@ -133,7 +159,7 @@ statistically better specified than those based on level series.
         self,
         covariance_estimator: BaseCovariance | None = None,
         annualized_factor: float = 252.0,
-        window_size: int = 21,
+        window_size: int = 20,
         linear_regressor: skb.BaseEstimator | None = None,
         volatility_risk_premium_adj: skt.MultiInput | None = None,
         nearest: bool = False,
@@ -226,17 +252,36 @@ statistically better specified than those based on level series.
                 implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
         X = self._validate_data(X)
+        _, n_assets = X.shape
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
         implied_vol /= np.sqrt(self.annualized_factor)
 
         if self.volatility_risk_premium_adj is not None:
-            if self.volatility_risk_premium_adj <= 0:
+            volatility_risk_premium_adj = input_to_array(
+                items=self.volatility_risk_premium_adj,
+                n_assets=n_assets,
+                fill_value=np.nan,
+                dim=1,
+                assets_names=(
+                    self.feature_names_in_ if hasattr(self,
+                                                      "feature_names_in_") else None
+                ),
+                name="volatility_risk_premium_adj",
+            )
+
+            if np.any(np.isnan(volatility_risk_premium_adj)):
+                raise ValueError(
+                    "volatility_risk_premium_adj must contain a value for each assets, "
+                    f"received {self.volatility_risk_premium_adj}"
+                )
+            if np.any(volatility_risk_premium_adj <= 0):
                 raise ValueError(
                     "volatility_risk_premium_adj must be strictly positive, "
                     f"received {self.volatility_risk_premium_adj}"
                 )
+
             self.pred_realised_vols_ = (
-                implied_vol[-1] / self.volatility_risk_premium_adj
+                implied_vol[-1] / volatility_risk_premium_adj
             )
         else:
             if self.window_size is None or self.window_size < 3:
