@@ -20,10 +20,13 @@ import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.utils.tools import check_estimator, get_feature_names, safe_indexing
+from skfolio.utils.stats import corr_to_cov, cov_to_corr
 
 
 class ImpliedCovariance(BaseCovariance):
     """Implied Covariance estimator.
+
+
     The covariance matrix is first estimated using a Covariance estimator (for example
     `EmpiricalCovariance`) then the diagonal elements are shrunken toward the expected
     variances computed from the implied volatilities.
@@ -75,6 +78,48 @@ class ImpliedCovariance(BaseCovariance):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `returns`
         has assets names that are all strings.
+
+
+
+    Christensen, B., Hansen, C. (2002). New evidence on the implied-realized volatility relation. The
+European Journal of Finance. 8(2): 187-205.
+
+    Christensen, B., Prabhala, N. (1998). The relation between implied and realized volatility.
+Journal of Financial Economics. 50: 125-150.
+
+Egbers, T., Swinkels, L. (2015). Can implied volatility predict returns on the carry trade?.
+Journal of Banking and Finance. 59: 14-26.
+
+Andersen,T. G., Bollerslev, T., Christoffersen, P. F., & Diebold, F.X. (2006).
+ Volatility and correlation forecasting. in G. Elliott, C.W.J. Granger, and A.
+ Timmermann (eds.), Handbook of Economic Forecasting. Amsterdam: North-Holland,
+
+How Well Does Implied Volatility Predict
+Future Stock Index Returns and Volatility?
+A study of Option-Implied Volatility Derived from OMXS30 Index Options
+Authors: Sara Vikberg and Julia Björkman
+
+
+    Christensen & Prabhala (1998)
+    Christensen and Hansen (2002)
+    Egbers and Swinkels (2015)
+
+    monthly nonoverlapping data in our study to avoid
+    possible regression errors caused by autocorrelation.
+
+    use logarithmical volatility data due to its better finite sample properties
+    compared to nonlogarithmized data.
+
+    As typically the case with volatility measures (see Andersen et al. (2006) for
+instance), a simple logarithmic transformation would almost lead to normality, we notice
+from Table 1 that the distribution of log-volatility series are less skewed and leptokurtic
+compared to that of the level series, which reveals that the log volatility is more
+conformable with the normal distribution. Regressions based on the log volatility are thus
+statistically better specified than those based on level series.
+
+
+
+
     """
 
     covariance_estimator_: BaseCovariance
@@ -88,7 +133,7 @@ class ImpliedCovariance(BaseCovariance):
         self,
         covariance_estimator: BaseCovariance | None = None,
         annualized_factor: float = 252.0,
-        window: int = 21,
+        window_size: int = 21,
         linear_regressor: skb.BaseEstimator | None = None,
         volatility_risk_premium_adj: skt.MultiInput | None = None,
         nearest: bool = False,
@@ -103,7 +148,7 @@ class ImpliedCovariance(BaseCovariance):
         self.covariance_estimator = covariance_estimator
         self.annualized_factor = annualized_factor
         self.linear_regressor = linear_regressor
-        self.window = window
+        self.window_size = window_size
         self.volatility_risk_premium_adj = volatility_risk_premium_adj
 
     def get_metadata_routing(self):
@@ -161,7 +206,7 @@ class ImpliedCovariance(BaseCovariance):
         # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
-        covariance = self.covariance_estimator_.covariance_
+        corr, _ = cov_to_corr(self.covariance_estimator_.covariance_)
 
         assets_names = get_feature_names(X)
         if assets_names is not None:
@@ -194,10 +239,10 @@ class ImpliedCovariance(BaseCovariance):
                 implied_vol[-1] / self.volatility_risk_premium_adj
             )
         else:
-            if self.window is None or self.window < 3:
+            if self.window_size is None or self.window_size < 3:
                 raise ValueError(
                     f"window must be strictly greater than 2, "
-                    f"received {self.window}"
+                    f"received {self.window_size}"
                 )
             _linear_regressor = check_estimator(
                 self.linear_regressor,
@@ -209,7 +254,7 @@ class ImpliedCovariance(BaseCovariance):
                 linear_regressor=_linear_regressor, returns=X, implied_vol=implied_vol
             )
 
-        np.fill_diagonal(covariance, self.pred_realised_vols_**2)
+        covariance = corr_to_cov(corr, self.pred_realised_vols_)
 
         self._set_covariance(covariance)
         return self
@@ -222,21 +267,21 @@ class ImpliedCovariance(BaseCovariance):
     ) -> None:
         n_observations, n_assets = returns.shape
 
-        n_folds = n_observations // self.window
+        n_folds = n_observations // self.window_size
         if n_folds < 3:
             raise ValueError(
                 f"Not enough observations to compute the volatility regression "
-                f"coefficients. The window size of {self.window} on {n_observations} "
+                f"coefficients. The window size of {self.window_size} on {n_observations} "
                 f"observations produces {n_folds} non-overlapping folds. "
                 f"The minimum number of fold is 3. You can either increase the number "
                 f"of observation in your training set or decrease the window size."
             )
 
         realised_vol = _compute_realised_vol(
-            returns=returns, window=self.window, ddof=1
+            returns=returns, window_size=self.window_size, ddof=1
         )
 
-        implied_vol = _compute_implied_vol(implied_vol=implied_vol, window=self.window)
+        implied_vol = _compute_implied_vol(implied_vol=implied_vol, window_size=self.window_size)
 
         if realised_vol.shape != implied_vol.shape:
             raise ValueError("`realised_vol`and `implied_vol` must have same shape")
@@ -268,25 +313,25 @@ class ImpliedCovariance(BaseCovariance):
 
 
 def _compute_realised_vol(
-    returns: np.ndarray, window: int, ddof: int = 1
+    returns: np.ndarray, window_size: int, ddof: int = 1
 ) -> np.ndarray:
     n_observations, n_assets = returns.shape
-    chunks = n_observations // window
+    chunks = n_observations // window_size
 
     return np.std(
         np.reshape(
-            returns[n_observations - chunks * window :, :], (chunks, window, n_assets)
+            returns[n_observations - chunks * window_size:, :], (chunks, window_size, n_assets)
         ),
         ddof=ddof,
         axis=1,
     )
 
 
-def _compute_implied_vol(implied_vol: np.ndarray, window: int) -> np.ndarray:
+def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarray:
     n_observations, _ = implied_vol.shape
-    chunks = n_observations // window
+    chunks = n_observations // window_size
     return implied_vol[
-        np.arange(n_observations - (chunks - 1) * window - 1, n_observations, window)
+        np.arange(n_observations - (chunks - 1) * window_size - 1, n_observations, window_size)
     ]
 
 

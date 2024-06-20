@@ -252,7 +252,6 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
         est = MeanRisk(
             prior_estimator=EmpiricalPrior(
                 covariance_estimator=ImpliedCovariance(
-                    nearest=True,
                 ).set_fit_request(implied_vol=True)
             )
         )

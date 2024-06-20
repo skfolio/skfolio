@@ -54,16 +54,16 @@ model.r2_scores_
 
 #
 coefs={}
-for window in [10, 20, 60, 100]:
-    model = ImpliedCovariance(window=window)
+for window_size in [10, 20, 60, 100]:
+    model = ImpliedCovariance(window_size=window_size)
     model.fit(X, implied_vol=implied_vol)
-    coefs[window]=model.r2_scores_
+    coefs[window_size]=model.r2_scores_
 
 df = pd.DataFrame(coefs, index=X.columns).unstack().reset_index().rename(
-    columns={'level_0': 'window', "level_1": "asset", 0: "R2"})
-df['window'] = df['window'].astype(str)
+    columns={'level_0': 'window_size', "level_1": "asset", 0: "R2"})
+df['window_size'] = df['window_size'].astype(str)
 fig = px.bar(df, x="asset", y="R2",
-                 color="window", barmode="group")
+                 color="window_size", barmode="group")
 fig.show()
 
 {k: np.mean(v) for k, v in coefs.items()}

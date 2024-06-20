@@ -154,7 +154,7 @@ def test_metadata_routing(X_small, implied_vol_small):
     with config_context(enable_metadata_routing=True):
         model = RiskBudgeting(
             prior_estimator=EmpiricalPrior(
-                covariance_estimator=ImpliedCovariance(nearest=True).set_fit_request(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
                     implied_vol=True
                 )
             )

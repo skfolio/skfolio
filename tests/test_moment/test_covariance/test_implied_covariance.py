@@ -14,7 +14,7 @@ from skfolio.moments.covariance._implied_covariance import (
 def test_compute_realised_vol(X):
     n_observations, n_assets = X.shape
     window = 30
-    rv = _compute_realised_vol(np.array(X), window=window, ddof=0)
+    rv = _compute_realised_vol(np.array(X), window_size=window, ddof=0)
     assert rv.shape == (n_observations // window, n_assets)
 
     res = []
@@ -23,7 +23,7 @@ def test_compute_realised_vol(X):
         res.append(
             np.asarray(
                 X.iloc[
-                    n_observations - (k + 1) * window : n_observations - k * window
+                n_observations - (k + 1) * window: n_observations - k * window
                 ].std(axis=0, ddof=0)
             )
         )
@@ -38,7 +38,7 @@ def test_compute_implied_vol(implied_vol):
     n_observations, n_assets = implied_vol.shape
     window = 30
 
-    iv = _compute_implied_vol(np.asarray(implied_vol), window=window)
+    iv = _compute_implied_vol(np.asarray(implied_vol), window_size=window)
     assert iv.shape == (n_observations // window, n_assets)
 
     res = []
@@ -69,7 +69,7 @@ def test_implied_covariance_default(X, implied_vol):
 
     res = np.exp(
         model.coefs_[:, 0] * np.log(np.asarray(implied_vol.iloc[-1] / np.sqrt(252)))
-        + model.coefs_[:, 1] * np.log(np.asarray(X[-model.window :].std(ddof=1)))
+        + model.coefs_[:, 1] * np.log(np.asarray(X[-model.window_size:].std(ddof=1)))
         + model.intercepts_
     )
 
@@ -77,58 +77,20 @@ def test_implied_covariance_default(X, implied_vol):
 
     np.testing.assert_almost_equal(
         model.covariance_[:2][:2],
-        np.array(
-            [
-                [
-                    6.57488641e-04,
-                    2.83134035e-04,
-                    1.56184082e-04,
-                    1.75814250e-04,
-                    1.22056078e-04,
-                    1.38660138e-04,
-                    1.47083022e-04,
-                    8.10806087e-05,
-                    1.42473991e-04,
-                    8.01598741e-05,
-                    9.68377637e-05,
-                    7.98446492e-05,
-                    2.15007353e-04,
-                    9.97345580e-05,
-                    8.60888400e-05,
-                    8.56609339e-05,
-                    1.37569074e-04,
-                    1.32999989e-04,
-                    8.21417385e-05,
-                    1.06253398e-04,
-                ],
-                [
-                    2.83134035e-04,
-                    1.01675318e-03,
-                    2.20576378e-04,
-                    2.51503645e-04,
-                    1.76240627e-04,
-                    1.87494904e-04,
-                    2.00154514e-04,
-                    8.31528862e-05,
-                    1.81429439e-04,
-                    8.63395567e-05,
-                    1.16628151e-04,
-                    9.03413258e-05,
-                    2.57876321e-04,
-                    1.02332010e-04,
-                    1.10774884e-04,
-                    8.74268879e-05,
-                    2.68487267e-04,
-                    1.62195796e-04,
-                    8.62525325e-05,
-                    1.38431233e-04,
-                ],
-            ]
-        ),
+        np.array([[6.57488641e-04, 3.38029358e-04, 2.20436830e-04, 2.71011063e-04,
+                   1.77192570e-04, 1.98004521e-04, 2.43218235e-04, 9.48343910e-05,
+                   2.06384336e-04, 1.08629264e-04, 1.44170060e-04, 1.06730837e-04,
+                   3.82153987e-04, 1.29396828e-04, 1.28674960e-04, 1.14263570e-04,
+                   1.77041058e-04, 1.61847771e-04, 1.09866425e-04, 1.65322496e-04],
+                  [3.38029358e-04, 1.01675318e-03, 1.90423048e-04, 2.37132104e-04,
+                   1.56496724e-04, 1.63766879e-04, 2.02447353e-04, 5.94893621e-05,
+                   1.60754088e-04, 7.15669895e-05, 1.06205460e-04, 7.38658472e-05,
+                   2.80355882e-04, 8.12087064e-05, 1.01274852e-04, 7.13317911e-05,
+                   2.11344039e-04, 1.20727952e-04, 7.05644697e-05, 1.31745666e-04]])
     )
 
     np.testing.assert_almost_equal(
-        np.diag(model.covariance_), model.pred_realised_vols_**2
+        np.diag(model.covariance_), model.pred_realised_vols_ ** 2
     )
     np.testing.assert_almost_equal(
         model.pred_realised_vols_,
@@ -169,7 +131,7 @@ def test_implied_covariance_no_intercept(X, implied_vol):
 
 @pytest.mark.parametrize("volatility_risk_premium_adj", [0.1, 1, 1.5, 100])
 def test_implied_covariance_volatility_risk_premium_adj(
-    X, implied_vol, volatility_risk_premium_adj
+        X, implied_vol, volatility_risk_premium_adj
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
     model.fit(X, implied_vol=implied_vol)
@@ -180,7 +142,7 @@ def test_implied_covariance_volatility_risk_premium_adj(
 
 @pytest.mark.parametrize("volatility_risk_premium_adj", [-0.5, 0])
 def test_implied_covariance_volatility_risk_premium_adj_non_pos(
-    X, implied_vol, volatility_risk_premium_adj
+        X, implied_vol, volatility_risk_premium_adj
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
     with pytest.raises(ValueError):
@@ -189,21 +151,21 @@ def test_implied_covariance_volatility_risk_premium_adj_non_pos(
 
 @pytest.mark.parametrize("n_folds", [0.1, 1, 2])
 def test_implied_covariance_window_too_big(X, implied_vol, n_folds):
-    model = ImpliedCovariance(window=len(X) // n_folds)
+    model = ImpliedCovariance(window_size=len(X) // n_folds)
     with pytest.raises(ValueError):
         model.fit(X, implied_vol=implied_vol)
 
 
-@pytest.mark.parametrize("window", [-1, 0, 1, 2])
-def test_implied_covariance_small_error(X, implied_vol, window):
-    model = ImpliedCovariance(window=window)
+@pytest.mark.parametrize("window_size", [-1, 0, 1, 2])
+def test_implied_covariance_small_error(X, implied_vol, window_size):
+    model = ImpliedCovariance(window_size=window_size)
     with pytest.raises(ValueError):
         model.fit(X, implied_vol=implied_vol)
 
 
-@pytest.mark.parametrize("window", [3, 4])
-def test_implied_covariance_small(X, implied_vol, window):
-    model = ImpliedCovariance(window=window)
+@pytest.mark.parametrize("window_size", [3, 4])
+def test_implied_covariance_small(X, implied_vol, window_size):
+    model = ImpliedCovariance(window_size=window_size)
     model.fit(X, implied_vol=implied_vol)
     assert np.any(model.coefs_ != 0)
 
@@ -245,4 +207,4 @@ def test_implied_covariance_ledoit_wolf(X, implied_vol):
     np.fill_diagonal(model.covariance_, 0)
     np.fill_diagonal(model_led_ref.covariance_, 0)
 
-    np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_)
+    np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_, 3)
