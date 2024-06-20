@@ -1,9 +1,15 @@
 """Factor Model estimator"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -109,10 +115,12 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
         )
-        self.intercepts_ = np.array([
-            self.multi_output_regressor_.estimators_[i].intercept_
-            for i in range(n_assets)
-        ])
+        self.intercepts_ = np.array(
+            [
+                self.multi_output_regressor_.estimators_[i].intercept_
+                for i in range(n_assets)
+            ]
+        )
 
 
 class FactorModel(BasePrior):
@@ -189,7 +197,7 @@ class FactorModel(BasePrior):
         self.max_iteration = max_iteration
 
     # noinspection PyMethodOverriding, PyPep8Naming
-    def fit(self, X: npt.ArrayLike, y: any):
+    def fit(self, X: npt.ArrayLike, y: Any):
         """Fit the Factor Model estimator.
 
         Parameters

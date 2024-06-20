@@ -1,7 +1,11 @@
 """Black & Litterman Prior Model estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# PyPortfolioOpt, Copyright (c) 2018 Robert Andrew Martin, Licensed under MIT Licence.
 
 import numpy as np
 import numpy.typing as npt
@@ -152,7 +156,7 @@ class BlackLitterman(BasePrior):
             check_type=BasePrior,
         )
         # fitting prior estimator
-        self.prior_estimator_.fit(X)
+        self.prior_estimator_.fit(X, y)
 
         prior_mu = self.prior_estimator_.prior_model_.mu
         prior_covariance = self.prior_estimator_.prior_model_.covariance

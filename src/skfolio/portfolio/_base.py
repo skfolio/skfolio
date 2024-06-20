@@ -1,5 +1,6 @@
 """Base Portfolio module"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
@@ -36,7 +37,6 @@
 #       the class attributes with the argument name preceded by the measure name and
 #       separated by '_'.
 
-
 import warnings
 from abc import abstractmethod
 from typing import ClassVar
@@ -60,10 +60,6 @@ from skfolio.utils.tools import (
     cached_property_slots,
     format_measure,
 )
-
-# TODO: remove and use plotly express
-pd.options.plotting.backend = "plotly"
-
 
 _ZERO_THRESHOLD = 1e-5
 _MEASURES = {
@@ -97,7 +93,7 @@ class BasePortfolio:
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=255.0
+    annualized_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -368,7 +364,6 @@ class BasePortfolio:
     _read_only_attrs: ClassVar[set] = {
         "returns",
         "observations",
-        "n_observations",
     }
 
     # Arguments globally used in measures computation
@@ -400,7 +395,6 @@ class BasePortfolio:
         # public read-only
         "returns",
         "observations",
-        "n_observations",
         # private
         "_loaded",
         # custom getter and setter
@@ -484,7 +478,7 @@ class BasePortfolio:
         observations: np.ndarray | list,
         name: str | None = None,
         tag: str | None = None,
-        annualized_factor: float = 255.0,
+        annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         risk_free_rate: float = 0.0,
         compounded: bool = False,
@@ -520,7 +514,6 @@ class BasePortfolio:
             self._fitness_measures = [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
         else:
             self._fitness_measures = fitness_measures
-        self.n_observations = len(observations)
         self._loaded = True
 
     def __reduce__(self):
@@ -529,9 +522,6 @@ class BasePortfolio:
         return self.__class__, tuple(
             [getattr(self, arg) for arg in args_names(self.__init__)]
         )
-
-    def __len__(self) -> int:
-        return len(self.observations)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
@@ -679,6 +669,11 @@ class BasePortfolio:
 
     # Classic property
     @property
+    def n_observations(self) -> int:
+        """Number of observations"""
+        return len(self.observations)
+
+    @property
     def returns_df(self) -> pd.Series:
         """Portfolio returns DataFrame."""
         return pd.Series(index=self.observations, data=self.returns, name="returns")
@@ -705,7 +700,7 @@ class BasePortfolio:
         return self.__copy__()
 
     def clear(self) -> None:
-        """CLear all measures, fitness, cumulative returns and drawdowns in slots"""
+        """Clear all measures, fitness, cumulative returns and drawdowns in slots"""
         attrs = ["_fitness", "_cumulative_returns", "_drawdowns"]
         for attr in attrs + list(_MEASURES_VALUES):
             delattr(self, attr)
@@ -989,7 +984,7 @@ class BasePortfolio:
             yaxis_title = title
             title = f"{title} (non-compounded)"
 
-        fig = df.plot()
+        fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
@@ -1020,7 +1015,7 @@ class BasePortfolio:
         """
         if idx is None:
             idx = slice(None)
-        fig = self.returns_df.iloc[idx].plot()
+        fig = self.returns_df.iloc[idx].plot(backend="plotly")
         fig.update_layout(
             title="Returns",
             xaxis_title="Observations",
@@ -1051,7 +1046,7 @@ class BasePortfolio:
         """
         rolling = self.rolling_measure(measure=measure, window=window)
         rolling.name = f"{measure} {window} observations"
-        fig = rolling.plot()
+        fig = rolling.plot(backend="plotly")
         fig.add_hline(
             y=getattr(self, measure.value),
             line_width=1,

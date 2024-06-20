@@ -76,6 +76,7 @@ Functions
     measures.ulcer_index
     measures.gini_mean_difference
     measures.owa_gmd_weights
+    measures.effective_number_assets
 
 .. _portfolio_ref:
 
@@ -532,6 +533,7 @@ Functions
     :template: function.rst
 
     model_selection.cross_val_predict
+    model_selection.optimal_folds_number
 
 .. _metrics_ref:
 

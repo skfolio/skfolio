@@ -52,7 +52,7 @@ It is not uncommon to witness the following steps [1]_:
 #. Take the daily prices :math:`S_{t}, S_{t+1}, ...,` for all the n securities
 #. Transform the daily prices to daily logarithmic returns
 #. Estimate the expected returns vector :math:`\mu` and covariance matrix :math:`\Sigma` from the daily logarithmic returns
-#. Determine the investment horizon, for example k = 255 days
+#. Determine the investment horizon, for example k = 252 days
 #. Project the expected returns and covariance to the horizon using the square-root rule: :math:`\mu_{k} ≡ k \times \mu` and :math:`\Sigma_{k} ≡ k \times \Sigma`
 #. Compute the mean-variance efficient frontier :math:`\max_{w} \Biggl\{ w^T \mu - \lambda \times w^T \Sigma w \Biggr\}`
 
@@ -82,10 +82,10 @@ Example for stocks
 #. Take the prices :math:`S_{t}, S_{t+1}, ...,` (for example daily) for all the n securities
 #. Transform the daily prices to daily logarithmic returns. Note that linear return is also a market invariant for stock, however logarithmic return is going to simplify step 3) and 4).
 #. Estimate the joint distribution of market invariants by fitting parametrically the daily logarithmic returns to a multivariate normal distribution: estimate the joint distribution parameters :math:`\mu^{Log}_{daily}` and :math:`\Sigma^{Log}_{daily}`
-#. Project the distribution of invariants to the time period of investment (for example one year i.e. 255 business days). Because logarithmic returns are additive across time, we have:
+#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have:
 
-        * .. math:: \mu^{Log}_{yearly} = 255 \times \mu^{Log}_{daily}
-        * .. math:: \Sigma^{Log}_{yearly} = 255 \times \Sigma^{Log}_{daily}
+        * .. math:: \mu^{Log}_{yearly} = 252 \times \mu^{Log}_{daily}
+        * .. math:: \Sigma^{Log}_{yearly} = 252 \times \Sigma^{Log}_{daily}
 #. Compute the distribution of linear returns at the investment horizon. Using the characteristic function of the normal distribution, and the pricing function :math:`S_{yearly} = S_{0} e^{R^{Log}_{yearly}}`, we get:
 
         * .. math:: \mathbb{E}(S_{yearly}) = \pmb{s}_{0} \circ exp\Biggl(\pmb{\mu}^{Log}_{yearly} + \frac{1}{2} diag\Biggl(\pmb{\Sigma}^{Log}_{yearly}\Biggr)\Biggr)

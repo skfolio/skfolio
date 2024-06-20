@@ -2,8 +2,12 @@
 Follow same implementation as Base composition from sklearn
 """
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 from abc import ABC, abstractmethod
 from contextlib import suppress
@@ -76,9 +80,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
         invalid_names = set(names).intersection(self.get_params(deep=False))
         if invalid_names:
             raise ValueError(
-                "Estimator names conflict with constructor arguments: {!r}".format(
-                    sorted(invalid_names)
-                )
+                f"Estimator names conflict with constructor arguments: {sorted(invalid_names)!r}"
             )
         invalid_names = [name for name in names if "__" in name]
         if invalid_names:

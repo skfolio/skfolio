@@ -1,7 +1,10 @@
 """Mean Risk Optimization estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# The optimization features are derived
+# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 import cvxpy as cp
 import numpy as np
@@ -507,8 +510,8 @@ class MeanRisk(ConvexOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the 
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -931,7 +934,7 @@ class MeanRisk(ConvexOptimization):
             case ObjectiveFunction.MAXIMIZE_RATIO:
                 if expected_return.is_affine():
                     # Charnes-Cooper's variable transformation for Fractional
-                    # Programing problem :Max(f1/f2) with f2 linear
+                    # Programming problem :Max(f1/f2) with f2 linear
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
@@ -941,7 +944,7 @@ class MeanRisk(ConvexOptimization):
                     ]
                 else:
                     # Schaible's generalization of Charnes-Cooper's variable
-                    # transformation for Fractional Programing problem :Max(f1/f2)
+                    # transformation for Fractional Programming problem :Max(f1/f2)
                     # with f1 concave instead of linear: Schaible,"Parameter-free
                     # Convex Equivalent and Dual Programs of Fractional Programming
                     # Problems".

@@ -26,6 +26,8 @@ warnings.filterwarnings(
     ),
 )
 warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 # -- Project information -----------------------------------------------------
 
 project = "skfolio"

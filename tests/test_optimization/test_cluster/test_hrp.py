@@ -27,6 +27,10 @@ def X(X_y):
 def y(X_y):
     return X_y[1]
 
+@pytest.fixture(scope="module")
+def small_X(X):
+    return X[["AAPL", "AMD", "BAC"]]
+
 
 @pytest.fixture(
     scope="module",
@@ -218,3 +222,9 @@ def test_transaction_costs(X, previous_weights, transaction_costs):
     )
     model_tc.fit(X)
     assert np.sum(np.abs(model.weights_ - model_tc.weights_)) > 0.1
+
+
+def test_hrp_small_X(small_X):
+    model = HierarchicalRiskParity()
+    model.fit(small_X)
+    assert model.hierarchical_clustering_estimator_.n_clusters_ == 1

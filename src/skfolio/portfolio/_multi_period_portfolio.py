@@ -3,6 +3,7 @@
 `MultiPeriodPortfolio` is a list of `Portfolio`.
 """
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
@@ -16,8 +17,6 @@ import skfolio.typing as skt
 from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.utils.tools import deduplicate_names
-
-pd.options.plotting.backend = "plotly"
 
 
 class MultiPeriodPortfolio(BasePortfolio):
@@ -45,7 +44,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=255.0
+    annualized_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -332,7 +331,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         name: str | None = None,
         tag: str | None = None,
         risk_free_rate: float = 0,
-        annualized_factor: float = 255.0,
+        annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
         min_acceptable_return: float | None = None,
@@ -367,6 +366,9 @@ class MultiPeriodPortfolio(BasePortfolio):
         )
         self.check_observations_order = check_observations_order
         self._set_portfolios(portfolios=portfolios)
+
+    def __len__(self) -> int:
+        return len(self.portfolios)
 
     def __getitem__(self, key: int | slice) -> Portfolio | list[Portfolio]:
         return self._portfolios[key]
@@ -570,12 +572,12 @@ class MultiPeriodPortfolio(BasePortfolio):
         """
         df = super().summary(formatted=formatted)
         portfolios_number = len(self)
-        avg_assets_per_portfolio = np.mean([len(p) for p in self])
+        avg_assets_per_portfolio = np.mean([p.n_assets for p in self])
         if formatted:
             portfolios_number = str(int(portfolios_number))
             avg_assets_per_portfolio = f"{avg_assets_per_portfolio:0.1f}"
-        df["Portfolios number"] = portfolios_number
-        df["Avg nb of assets per portfolio"] = avg_assets_per_portfolio
+        df["Portfolios Number"] = portfolios_number
+        df["Avg nb of Assets per Portfolio"] = avg_assets_per_portfolio
         return df
 
     # Public methods

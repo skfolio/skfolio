@@ -1,25 +1,36 @@
 .. -*- mode: rst -*-
 
-|Licence|_ |Codecov|_ |Black|_ |PythonVersion|_ |PyPi|_ |CI/CD|_
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
-.. _Licence: https://github.com/skfolio/skfolio/blob/main/LICENSE
+   :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
 
-.. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/branch/main/graph/badge.svg
-.. _Codecov: https://codecov.io/gh/skfolio/skfolio
+.. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
+   :target: https://codecov.io/gh/skfolio/skfolio
 
-.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue
-.. _PythonVersion: https://pypi.org/project/skfolio/
+.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg
+   :target: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
-.. _PyPi: https://pypi.org/project/skfolio
+   :target: https://pypi.org/project/skfolio
 
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-.. _Black: https://github.com/psf/black
+   :target: https://github.com/psf/black
 
-.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml?logo=github
-.. _CI/CD: https://github.com/skfolio/skfolio/raw/main/LICENSE
+.. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml.svg?logo=github
+   :target: https://github.com/skfolio/skfolio/raw/main/LICENSE
 
+.. |Downloads| image:: https://static.pepy.tech/badge/skfolio
+   :target: https://pepy.tech/project/skfolio
+
+.. |Ruff| image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+   :target: https://github.com/astral-sh/ruff
+
+.. |Contribution| image:: https://img.shields.io/badge/Contributions-Welcome-blue
+   :target: https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md
+
+.. |Website| image:: https://img.shields.io/website.svg?down_color=red&down_message=down&up_color=53cc0d&up_message=up&url=https://skfolio.org
+   :target: https://skfolio.org
 
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
@@ -34,7 +45,7 @@
 ===============
 |icon|  skfolio
 ===============
-.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/favicon.png
+.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/logo_animate.svg
     :width: 100
     :alt: skfolio documentation
     :target: https://skfolio.org/
@@ -380,7 +391,7 @@ Randomized Search of the L2 Norm
 
     randomized_search = RandomizedSearchCV(
         estimator=MeanRisk(),
-        cv=WalkForward(train_size=255, test_size=60),
+        cv=WalkForward(train_size=252, test_size=60),
         param_distributions={
             "l2_coef": loguniform(1e-3, 1e-1),
         },
@@ -468,7 +479,7 @@ Black & Litterman Factor Model
 ------------------------------
 .. code-block:: python
 
-    factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - TLT == 0.04", "VLUE == 0.06"]
+    factor_views = ["MTUM - QUAL == 0.03 ", "VLUE == 0.06"]
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         prior_estimator=FactorModel(
@@ -549,9 +560,9 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
 Bibtex entry::
 
     @misc{skfolio,
-          author = {Hugo Delatte},
-          title = {skfolio},
-          year  = {2023},
-          url   = {https://github.com/skfolio/skfolio}
-
+      author = {Delatte, Hugo and Nicolini, Carlo},
+      title = {skfolio},
+      year  = {2023},
+      url   = {https://github.com/skfolio/skfolio}
+    }
 

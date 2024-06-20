@@ -3,18 +3,31 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from skfolio.datasets import load_sp500_dataset
+from skfolio.datasets import load_sp500_dataset, load_factors_dataset
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import BlackLitterman
+from skfolio.prior import BlackLitterman, FactorModel
 from skfolio.utils.equations import equations_to_matrix
 
 
 @pytest.fixture(scope="module")
-def X():
+def X_y():
     prices = load_sp500_dataset()
     prices = prices.loc[dt.date(2014, 1, 1) :]
-    X = prices_to_returns(X=prices, log_returns=False)
-    return X
+    factor_prices = load_factors_dataset()
+    factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
+    X, y = prices_to_returns(X=prices, y=factor_prices)
+    return X, y
+
+
+@pytest.fixture(scope="module")
+def X(X_y):
+    return X_y[0]
+
+
+@pytest.fixture(scope="module")
+def y(X_y):
+    return X_y[1]
+
 
 
 def test_views_to_matrix(X):
@@ -597,3 +610,18 @@ def test_black_litterman(X):
     np.testing.assert_almost_equal(
         model2.prior_model_.covariance, model.prior_model_.covariance
     )
+
+
+def test_nested_black_litterman(X, y):
+    views = ["AAPL - BBY == 0.03 ", "MSFT == 0.06 "]
+    factor_views = ["MTUM - QUAL == 0.03 ", "VLUE == 0.06"]
+
+    model = BlackLitterman(
+        views=views,
+        prior_estimator=FactorModel(
+            factor_prior_estimator=BlackLitterman(views=factor_views),
+        )
+    )
+
+    model.fit(X, y)
+    assert model.prior_model_.covariance.shape == (20, 20)

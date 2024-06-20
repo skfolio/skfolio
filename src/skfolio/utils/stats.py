@@ -1,8 +1,11 @@
 """Tools module"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
-
+# Implementation derived from:
+# Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
 
 from enum import auto
 
@@ -445,7 +448,7 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     """
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
-    max_clusters = max(8, round(np.sqrt(n)))
+    max_clusters = min(n, max(8, round(np.sqrt(n))))
     dispersion = []
     for k in range(max_clusters):
         level = cut_tree[:, n - k - 1]

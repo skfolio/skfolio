@@ -1,11 +1,13 @@
-""" Population module.
+"""Population module.
 A population is a collection of portfolios.
 """
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
 import inspect
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,11 +16,9 @@ import plotly.graph_objects as go
 import scipy.interpolate as sci
 
 import skfolio.typing as skt
-from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio, Portfolio
+from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names
-
-pd.options.plotting.backend = "plotly"
 
 
 class Population(list):
@@ -29,14 +29,14 @@ class Population(list):
 
     Parameters
     ----------
-    iterable : list[Portfolio | MultiPeriodPortfolio]
+    iterable : list[BasePortfolio]
         The list of portfolios. Each item can be of type
         :class:`~skfolio.portfolio.Portfolio` and/or
         :class:`~skfolio.portfolio.MultiPeriodPortfolio`.
         Empty list are accepted.
     """
 
-    def __init__(self, iterable: list[Portfolio | MultiPeriodPortfolio]) -> None:
+    def __init__(self, iterable: list[BasePortfolio]) -> None:
         super().__init__(self._validate_item(item) for item in iterable)
 
     def __repr__(self) -> str:
@@ -44,43 +44,43 @@ class Population(list):
 
     def __getitem__(
         self, indices: int | list[int] | slice
-    ) -> "Portfolio | MultiPeriodPortfolio|Population":
+    ) -> "BasePortfolio | Population":
         item = super().__getitem__(indices)
         if isinstance(item, list):
             return self.__class__(item)
         return item
 
-    def __setitem__(self, index: int, item: Portfolio | MultiPeriodPortfolio) -> None:
+    def __setitem__(self, index: int, item: BasePortfolio) -> None:
         super().__setitem__(index, self._validate_item(item))
 
-    def __add__(self, other: Portfolio | MultiPeriodPortfolio) -> "Population":
+    def __add__(self, other: BasePortfolio) -> "Population":
         if not isinstance(other, Population):
             raise TypeError(
                 f"Cannot add a Population with an object of type {type(other)}"
             )
         return self.__class__(super().__add__(other))
 
-    def insert(self, index, item: Portfolio | MultiPeriodPortfolio) -> None:
+    def insert(self, index, item: BasePortfolio) -> None:
         """Insert portfolio before index."""
         super().insert(index, self._validate_item(item))
 
-    def append(self, item: Portfolio | MultiPeriodPortfolio) -> None:
+    def append(self, item: BasePortfolio) -> None:
         """Append portfolio to the end of the population list."""
         super().append(self._validate_item(item))
 
-    def extend(self, other: Portfolio | MultiPeriodPortfolio) -> None:
+    def extend(self, other: BasePortfolio) -> None:
         """Extend population list by appending elements from the iterable."""
         if isinstance(other, type(self)):
             super().extend(other)
         else:
             super().extend(self._validate_item(item) for item in other)
 
-    def set_portfolio_params(self, **params: any) -> "Population":
+    def set_portfolio_params(self, **params: Any) -> "Population":
         """Set the parameters of all the portfolios.
 
         Parameters
         ----------
-        **params : any
+        **params : Any
             Portfolio parameters.
 
         Returns
@@ -110,13 +110,14 @@ class Population(list):
 
     @staticmethod
     def _validate_item(
-        item: Portfolio | MultiPeriodPortfolio,
-    ) -> Portfolio | MultiPeriodPortfolio:
+        item: BasePortfolio,
+    ) -> BasePortfolio:
         """Validate that items are of type Portfolio or MultiPeriodPortfolio."""
-        if isinstance(item, Portfolio | MultiPeriodPortfolio):
+        if isinstance(item, BasePortfolio):
             return item
         raise TypeError(
-            "Population only accept items of type Portfolio and MultiPeriodPortfolio"
+            "Population only accept items that inherit from BasePortfolio such as "
+            "Portfolio or MultiPeriodPortfolio"
             f", got {type(item).__name__}"
         )
 
@@ -139,9 +140,12 @@ class Population(list):
             non-dominated portfolios.
         """
         n = len(self)
-        if n > 0 and np.any([
-            portfolio.fitness_measures != self[0].fitness_measures for portfolio in self
-        ]):
+        if n > 0 and np.any(
+            [
+                portfolio.fitness_measures != self[0].fitness_measures
+                for portfolio in self
+            ]
+        ):
             raise ValueError(
                 "Cannot compute non denominated sorting with Portfolios "
                 "containing mixed `fitness_measures`"
@@ -152,7 +156,7 @@ class Population(list):
         )
         return fronts
 
-    def filter(  # noqa: A003
+    def filter(
         self, names: skt.Names | None = None, tags: skt.Tags | None = None
     ) -> "Population":
         """Filter the Population of portfolios by names and tags.
@@ -186,11 +190,13 @@ class Population(list):
             return self.__class__(
                 [portfolio for portfolio in self if portfolio.tag in tags]
             )
-        return self.__class__([
-            portfolio
-            for portfolio in self
-            if portfolio.name in names and portfolio.tag in tags
-        ])
+        return self.__class__(
+            [
+                portfolio
+                for portfolio in self
+                if portfolio.name in names and portfolio.tag in tags
+            ]
+        )
 
     def measures(
         self,
@@ -318,7 +324,7 @@ class Population(list):
         q: float,
         names: skt.Names | None = None,
         tags: skt.Tags | None = None,
-    ) -> Portfolio | MultiPeriodPortfolio:
+    ) -> BasePortfolio:
         """Returns the portfolio corresponding to the `q` quantile for a given portfolio
         measure.
 
@@ -338,7 +344,7 @@ class Population(list):
 
         Returns
         -------
-        values : Portfolio | MultiPeriodPortfolio
+        values : BasePortfolio
            Portfolio corresponding to the `q` quantile for the measure.
         """
         if not 0 <= q <= 1:
@@ -354,7 +360,7 @@ class Population(list):
         measure: skt.Measure,
         names: skt.Names | None = None,
         tags: skt.Tags | None = None,
-    ) -> Portfolio | MultiPeriodPortfolio:
+    ) -> BasePortfolio:
         """Returns the portfolio with the minimum measure.
 
         Parameters
@@ -370,7 +376,7 @@ class Population(list):
 
         Returns
         -------
-        values : Portfolio | MultiPeriodPortfolio
+        values : BasePortfolio
             The portfolio with minimum measure.
         """
         return self.quantile(measure=measure, q=0, names=names, tags=tags)
@@ -380,7 +386,7 @@ class Population(list):
         measure: skt.Measure,
         names: skt.Names | None = None,
         tags: skt.Tags | None = None,
-    ) -> Portfolio | MultiPeriodPortfolio:
+    ) -> BasePortfolio:
         """Returns the portfolio with the maximum measure.
 
         Parameters
@@ -396,7 +402,7 @@ class Population(list):
 
         Returns
         -------
-        values : Portfolio | MultiPeriodPortfolio
+        values : BasePortfolio
             The portfolio with maximum measure.
         """
         return self.quantile(measure=measure, q=1, names=names, tags=tags)
@@ -608,7 +614,7 @@ class Population(list):
         df = pd.concat(cumulative_returns, axis=1).iloc[:, idx]
         df.columns = deduplicate_names(names)
 
-        fig = df.plot()
+        fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
@@ -783,15 +789,17 @@ class Population(list):
                         x=xi,
                         y=yi,
                         z=Z,
-                        hovertemplate="<br>".join([
-                            str(e)
-                            + ": %{"
-                            + v
-                            + ":"
-                            + (",.3%" if not e.is_ratio else None)
-                            + "}"
-                            for e, v in [(x, "x"), (y, "y"), (z, "z")]
-                        ])
+                        hovertemplate="<br>".join(
+                            [
+                                str(e)
+                                + ": %{"
+                                + v
+                                + ":"
+                                + (",.3%" if not e.is_ratio else None)
+                                + "}"
+                                for e, v in [(x, "x"), (y, "y"), (z, "z")]
+                            ]
+                        )
                         + "<extra></extra>",
                         colorbar=dict(
                             title=str(z),

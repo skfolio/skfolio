@@ -332,7 +332,7 @@ Randomized Search of the L2 Norm
 
     randomized_search = RandomizedSearchCV(
         estimator=MeanRisk(),
-        cv=WalkForward(train_size=255, test_size=60),
+        cv=WalkForward(train_size=252, test_size=60),
         param_distributions={
             "l2_coef": loguniform(1e-3, 1e-1),
         },
@@ -493,7 +493,7 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
 Bibtex entry::
 
     @misc{skfolio,
-          author = {Hugo Delatte},
+          author = {Hugo Delatte, Carlo Nicolini},
           title = {skfolio},
           year  = {2023},
           url   = {https://github.com/skfolio/skfolio}

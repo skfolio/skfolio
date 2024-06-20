@@ -1,7 +1,11 @@
 """Stacking Optimization estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 from copy import deepcopy
 
@@ -308,10 +312,12 @@ class StackingOptimization(BaseOptimization, BaseComposition):
                 _ = self._validate_data(X)
 
             if isinstance(self.cv, BaseCombinatorialCV):
-                X_pred = np.array([
-                    pred.quantile(measure=self.quantile_measure, q=self.quantile)
-                    for pred in cv_predictions
-                ]).T
+                X_pred = np.array(
+                    [
+                        pred.quantile(measure=self.quantile_measure, q=self.quantile)
+                        for pred in cv_predictions
+                    ]
+                ).T
             else:
                 X_pred = np.array(cv_predictions).T
                 if y is not None:

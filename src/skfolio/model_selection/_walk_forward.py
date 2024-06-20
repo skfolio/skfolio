@@ -1,7 +1,12 @@
 """Walk Forward cross-validator"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 from collections.abc import Iterator
 
@@ -39,7 +44,7 @@ class WalkForward(skm.BaseCrossValidator):
 
     reduce_test : bool, default=False
         If this is set to True, the last train/test split will be returned even if the
-        test set is partial (if it constains less observations than `test_size`),
+        test set is partial (if it contains less observations than `test_size`),
         otherwise it will be ignored.
         The default is `False`
 

@@ -26,6 +26,7 @@ from skfolio.model_selection import (
     CombinatorialPurgedCV,
     WalkForward,
     cross_val_predict,
+    optimal_folds_number,
 )
 from skfolio.optimization import (
     EqualWeighted,
@@ -57,8 +58,8 @@ model_nco = NestedClustersOptimization(
 # We find the model parameters that maximizes the out-of-sample Sharpe ratio using
 # `GridSearchCV` with `WalkForward` cross-validation on the training set.
 # The `WalkForward` are chosen to simulate a three months (60 business days) rolling
-# portfolio fitted on the previous year (255 business days):
-cv = WalkForward(train_size=255, test_size=60)
+# portfolio fitted on the previous year (252 business days):
+cv = WalkForward(train_size=252, test_size=60)
 
 grid_search_hrp = GridSearchCV(
     estimator=model_nco,
@@ -133,11 +134,16 @@ for ptf in population:
 # models. For a more robust analysis, we can use
 # :class:`~skfolio.model_selection.CombinatorialPurgedCV` to create multiple testing
 # paths from different training folds combinations.
-cv = CombinatorialPurgedCV(n_folds=9, n_test_folds=7)
+#
+# We choose `n_folds` and `n_test_folds` to obtain around 30 test paths and an average
+# training size of 252 days:
+n_folds, n_test_folds = optimal_folds_number(
+    n_observations=X_test.shape[0],
+    target_n_test_paths=30,
+    target_train_size=252,
+)
 
-# %%
-# We choose `n_folds` and `n_test_folds` to obtain more than 30 test paths and an average
-# training size of approximately 255 days:
+cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
 cv.summary(X_test)
 
 # %%
@@ -157,9 +163,7 @@ pred_nco = cross_val_predict(
 # Distribution
 # ============
 # We plot the out-of-sample distribution of Sharpe Ratio for the NCO model:
-pred_nco.plot_distribution(
-    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO]
-)
+pred_nco.plot_distribution(measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO])
 
 # %%
 # Let's print the average and standard-deviation of out-of-sample Sharpe Ratios:

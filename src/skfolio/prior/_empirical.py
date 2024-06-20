@@ -1,7 +1,9 @@
 """Empirical Prior Model estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+
 import numpy as np
 import numpy.typing as npt
 
@@ -118,11 +120,11 @@ class EmpiricalPrior(BasePrior):
                     "`is_log_normal` is `False`"
                 )
             # Expected returns
-            self.mu_estimator_.fit(X)
+            self.mu_estimator_.fit(X, y)
             mu = self.mu_estimator_.mu_
 
             # Covariance
-            self.covariance_estimator_.fit(X)
+            self.covariance_estimator_.fit(X, y)
             covariance = self.covariance_estimator_.covariance_
         else:
             if self.investment_horizon is None:
@@ -132,14 +134,15 @@ class EmpiricalPrior(BasePrior):
                 )
             # Convert linear returns to log returns
             X_log = np.log(1 + X)
+            y_log = np.log(1 + y) if y is not None else None
 
             # Estimates the moments on the log returns
             # Expected returns
-            self.mu_estimator_.fit(X_log)
+            self.mu_estimator_.fit(X_log, y_log)
             mu = self.mu_estimator_.mu_
 
             # Covariance
-            self.covariance_estimator_.fit(X_log)
+            self.covariance_estimator_.fit(X_log, y_log)
             covariance = self.covariance_estimator_.covariance_
 
             # Using the property of aggregation across time we scale this distribution

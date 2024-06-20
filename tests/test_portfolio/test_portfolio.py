@@ -5,6 +5,7 @@ import tracemalloc
 from copy import copy
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pytest
 import skfolio.measures as mt
@@ -24,7 +25,7 @@ from skfolio.utils.tools import args_names
 
 
 @pytest.fixture(scope="module")
-def X():
+def X() -> pd.DataFrame:
     prices = load_sp500_dataset()
     prices = prices.loc[dt.date(2017, 1, 1) :]
     X = prices_to_returns(X=prices)
@@ -32,7 +33,7 @@ def X():
 
 
 @pytest.fixture(scope="module")
-def weights():
+def weights() -> np.ndarray:
     weights = np.array([
         0.12968013,
         0.09150399,
@@ -56,6 +57,12 @@ def weights():
         0.01029202,
     ])
     return weights
+
+
+@pytest.fixture
+def portfolio(X: pd.DataFrame, weights: np.ndarray) -> Portfolio:
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+    return portfolio
 
 
 @pytest.fixture(
@@ -88,8 +95,7 @@ def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array
     return returns
 
 
-def test_pickle(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+def test_pickle(portfolio):
     portfolio.sharpe_ratio = 5
     pickled = pickle.dumps(portfolio)
     unpickled = pickle.loads(pickled)
@@ -141,7 +147,7 @@ def test_portfolio_annualized(X, weights, annualized_factor):
         portfolio = Portfolio(X=X, weights=weights, annualized_factor=annualized_factor)
 
     if annualized_factor is None:
-        annualized_factor = 255.0
+        annualized_factor = 252.0
     assert portfolio.annualized_factor == annualized_factor
 
     np.testing.assert_almost_equal(
@@ -174,7 +180,8 @@ def test_portfolio_annualized(X, weights, annualized_factor):
 def test_portfolio_methods(X, weights):
     portfolio = Portfolio(X=X, weights=weights)
     returns = _portfolio_returns(asset_returns=X.to_numpy(), weights=weights)
-    assert len(portfolio) == X.shape[0]
+    assert portfolio.n_observations == X.shape[0]
+    assert portfolio.n_assets == X.shape[1]
     np.testing.assert_almost_equal(returns, portfolio.returns)
     np.testing.assert_almost_equal(returns.mean(), portfolio.mean)
     np.testing.assert_almost_equal(returns.std(ddof=1), portfolio.standard_deviation)
@@ -227,7 +234,7 @@ def test_portfolio_methods(X, weights):
     assert isinstance(portfolio.summary(), pd.Series)
     assert isinstance(portfolio.summary(formatted=False), pd.Series)
     assert portfolio.get_weight(asset=portfolio.nonzero_assets[5])
-    portfolio.annualized_factor = 255
+    portfolio.annualized_factor = 252
     assert isinstance(portfolio.summary(), pd.Series)
 
 
@@ -235,7 +242,8 @@ def test_portfolio_magic_methods(X, weights):
     n_assets = X.shape[1]
     ptf_1 = Portfolio(X=X, weights=rand_weights(n=n_assets))
     ptf_2 = Portfolio(X=X, weights=rand_weights(n=n_assets))
-    assert len(ptf_1) == X.shape[0]
+    assert ptf_1.n_observations == X.shape[0]
+    assert ptf_1.n_assets == X.shape[1]
     ptf = ptf_1 + ptf_2
     assert np.array_equal(ptf.weights, ptf_1.weights + ptf_2.weights)
     ptf = ptf_1 - ptf_2
@@ -290,14 +298,13 @@ def test_portfolio_dominate(X):
 
 
 def test_portfolio_risk_contribution(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
     # noinspection PyUnresolvedReferences
     assert contribution.shape == (X.shape[1],)
 
 
-def test_portfolio_metrics(X, weights, measure):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+def test_portfolio_metrics(portfolio, measure):
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
     assert not np.isnan(m)
@@ -305,10 +312,23 @@ def test_portfolio_metrics(X, weights, measure):
     assert portfolio.skew
     assert portfolio.kurtosis
     assert portfolio.diversification
+    assert portfolio.effective_number_assets
+
+
+def test_portfolio_effective_number_assets(portfolio):
+    np.testing.assert_almost_equal(portfolio.effective_number_assets, 6.00342169912319)
+
+
+def test_portfolio_sric(portfolio):
+    np.testing.assert_almost_equal(portfolio.sric, -0.20309958369097764)
+
+
+def test_portfolio_diversification(portfolio):
+    np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
 def test_portfolio_slots(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     for attr in portfolio._slots():
         if attr[0] == "_":
             try:
@@ -319,7 +339,7 @@ def test_portfolio_slots(X, weights):
 
 
 def test_copy(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     try:
         _ = portfolio._assets_names
         raise
@@ -330,7 +350,7 @@ def test_copy(X, weights):
 
 
 def test_portfolio_cache(X, weights, measure):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     # time for accessing cached attributes
     n = int(1e5)
     ref = timeit.timeit(lambda: portfolio.name, number=n) / n
@@ -378,7 +398,7 @@ def test_portfolio_clear_cache(X, weights, measure):
 
 
 def test_portfolio_read_only(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     for attr in Portfolio._read_only_attrs:
         try:
             setattr(portfolio, attr, 0)
@@ -388,7 +408,7 @@ def test_portfolio_read_only(X, weights):
 
 
 def test_portfolio_delete_attr(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     try:
         delattr(portfolio, "dummy")
         raise
@@ -398,8 +418,8 @@ def test_portfolio_delete_attr(X, weights):
 
 def test_portfolio_rolling_measure(X, weights):
     window = 30
-    portfolio = Portfolio(X=X[:50], weights=weights, annualized_factor=255)
-    ref = Portfolio(X=X.iloc[50 - window : 50], weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X[:50], weights=weights, annualized_factor=252)
+    ref = Portfolio(X=X.iloc[50 - window : 50], weights=weights, annualized_factor=252)
 
     for measure in _MEASURES:
         res = portfolio.rolling_measure(measure=measure, window=30)
@@ -428,7 +448,7 @@ def test_portfolio_variance_from_assets(X, weights):
 
 
 def test_portfolio_plot_cumulative_returns(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=255)
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
 
     assert portfolio.plot_cumulative_returns()
 

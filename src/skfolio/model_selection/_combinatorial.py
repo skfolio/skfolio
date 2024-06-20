@@ -1,7 +1,12 @@
 """Combinatorial module"""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 import itertools
 import math
@@ -192,19 +197,13 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     @property
     def n_splits(self) -> int:
         """Number of splits"""
-        return int(
-            math.factorial(self.n_folds)
-            / (
-                math.factorial(self.n_test_folds)
-                * math.factorial(self.n_folds - self.n_test_folds)
-            )
-        )
+        return _n_splits(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def n_test_paths(self) -> int:
         """Number of test paths that can be reconstructed from the train/test
         combinations"""
-        return self.n_splits * self.n_test_folds // self.n_folds
+        return _n_test_paths(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def test_set_index(self) -> np.ndarray:
@@ -315,19 +314,24 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             yield train_index, test_index_list
 
     def summary(self, X) -> pd.Series:
-        n_samples = X.shape[0]
-        return pd.Series({
-            "Number of Observations": n_samples,
-            "Total Number of Folds": self.n_folds,
-            "Number of Test Folds": self.n_test_folds,
-            "Purge Size": self.purged_size,
-            "Embargo Size": self.embargo_size,
-            "Average Training Size": int(
-                n_samples / self.n_folds * (self.n_folds - self.n_test_folds)
-            ),
-            "Number of Test Paths": self.n_test_paths,
-            "Number of Training Combinations": self.n_splits,
-        })
+        n_observations = X.shape[0]
+        avg_train_size = _avg_train_size(
+            n_observations=n_observations,
+            n_folds=self.n_folds,
+            n_test_folds=self.n_test_folds,
+        )
+        return pd.Series(
+            {
+                "Number of Observations": n_observations,
+                "Total Number of Folds": self.n_folds,
+                "Number of Test Folds": self.n_test_folds,
+                "Purge Size": self.purged_size,
+                "Embargo Size": self.embargo_size,
+                "Average Training Size": int(avg_train_size),
+                "Number of Test Paths": self.n_test_paths,
+                "Number of Training Combinations": self.n_splits,
+            }
+        )
 
     def plot_train_test_folds(self) -> skt.Figure:
         """Plot the train/test fold locations"""
@@ -403,3 +407,155 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         )
 
         return fig
+
+
+def _n_splits(n_folds: int, n_test_folds: int) -> int:
+    """Number of splits.
+
+    Parameters
+    ----------
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    n_splits : int
+        Number of splits
+    """
+    return int(math.comb(n_folds, n_test_folds))
+
+
+def _n_test_paths(n_folds: int, n_test_folds: int) -> int:
+    """Number of test paths that can be reconstructed from the train/test
+    combinations
+
+    Parameters
+    ----------
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    n_splits : int
+        Number of test paths.
+    """
+    return (
+        _n_splits(n_folds=n_folds, n_test_folds=n_test_folds) * n_test_folds // n_folds
+    )
+
+
+def _avg_train_size(n_observations: int, n_folds: int, n_test_folds: int) -> float:
+    """Average number of observations contained in each training set.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    n_folds : int
+        Number of folds.
+
+    n_test_folds : int
+        Number of test folds.
+
+    Returns
+    -------
+    avg_train_size : float
+        Average number of observations contained in each training set.
+    """
+    return n_observations / n_folds * (n_folds - n_test_folds)
+
+
+def optimal_folds_number(
+    n_observations: int,
+    target_train_size: int,
+    target_n_test_paths: int,
+    weight_train_size: float = 1,
+    weight_n_test_paths: float = 1,
+) -> tuple[int, int]:
+    r"""Find the optimal number of folds (total folds and test folds) for a target
+    training size and a target number of test paths.
+
+    We find `x = n_folds` and `y = n_test_folds` that minimizes the below
+    cost function of the relative distance from the two targets:
+
+    .. math::
+           cost(x,y) = w_{f} \times \lvert\frac{f(x,y)-f_{target}}{f_{target}}\rvert + w_{g} \times \lvert\frac{g(x,y)-g_{target}}{g_{target}}\rvert
+
+    with :math:`w_{f}` and :math:`w_{g}` the weights assigned to the distance
+    from each target and :math:`f(x,y)` and :math:`g(x,y)` the average training size
+    and the number of test paths as a function of the number of total folds and test
+    folds.
+
+    This is a combinatorial problem with :math:`\frac{T\times(T-3)}{2}` combinations,
+    with :math:`T` the number of observations.
+
+    We reduce the search space by using the combinatorial symetry
+    :math:`{n \choose k}={n \choose n-k}` and skipping cost computation above 1e5.
+
+    Parameters
+    ----------
+    n_observations : int
+        Number of observations.
+
+    target_train_size : int
+        The target number of observation in the training set.
+
+    target_n_test_paths : int
+        The target number of test paths (that can be reconstructed from the train/test
+        combinations).
+
+    weight_train_size : float, default=1
+        The weight assigned to the distance from the target train size.
+        The default value is 1.
+
+    weight_n_test_paths : float, default=1
+        The weight assigned to the distance from the target number of test paths.
+        The default value is 1.
+
+    Returns
+    -------
+    n_folds : int
+        Optimal number of total folds.
+
+    n_test_folds : int
+        Optimal number of test folds.
+    """
+
+    def _cost(
+        x: int,
+        y: int,
+    ) -> float:
+        n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
+        avg_train_size = _avg_train_size(
+            n_observations=n_observations, n_folds=x, n_test_folds=y
+        )
+        return (
+            weight_n_test_paths
+            * abs(n_test_paths - target_n_test_paths)
+            / target_n_test_paths
+            + weight_train_size
+            * abs(avg_train_size - target_train_size)
+            / target_train_size
+        )
+
+    costs = []
+    res = []
+    for n_folds in range(3, n_observations + 1):
+        i = None
+        for n_test_folds in range(2, n_folds):
+            if i is None or n_folds - n_test_folds <= i:
+                cost = _cost(x=n_folds, y=n_test_folds)
+                costs.append(cost)
+                res.append((n_folds, n_test_folds))
+                if i is None and cost > 1e5:
+                    i = n_test_folds
+
+    j = np.argmin(costs)
+    return res[j]

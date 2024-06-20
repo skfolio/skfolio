@@ -1,11 +1,15 @@
 """Base Convex Optimization estimator."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# The optimization features are derived
+# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -43,7 +47,7 @@ class ObjectiveFunction(AutoEnum):
     MAXIMIZE_UTILITY : str
         Maximize the utility  :math:`w^T\mu - \lambda \times risk(w)`.
 
-    MAXIMIZE_UTILITY : str
+    MAXIMIZE_RATIO : str
         Maximize the ratio  :math:`\frac{w^T\mu - R_{f}}{risk(w)}`.
     """
 
@@ -400,8 +404,8 @@ class ConvexOptimization(BaseOptimization, ABC):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -572,7 +576,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         value: float | dict | npt.ArrayLike | None,
         n_assets: int,
-        fill_value: any,
+        fill_value: Any,
         name: str,
     ) -> float | np.ndarray:
         """Convert input to cleaned float or ndarray.
@@ -585,7 +589,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets : int
             Number of assets. Used to verify the shape of the converted array.
 
-        fill_value : any
+        fill_value : Any
             When `items` is a dictionary, elements that are not in `asset_names` are
             filled with `fill_value` in the converted array.
 
@@ -765,8 +769,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                     f" {right_inequality.shape[0]}"
                 )
             constraints.append(
-                self.left_inequality @ w * self._scale_constraints
-                - self.right_inequality * factor * self._scale_constraints
+                left_inequality @ w * self._scale_constraints
+                - right_inequality * factor * self._scale_constraints
                 <= 0
             )
 

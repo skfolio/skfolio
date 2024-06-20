@@ -14,6 +14,14 @@ from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
 
+# Copyright (c) 2023
+# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# License: BSD 3 clause
+# Implementation derived from:
+# scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
+
 
 class BaseOptimization(skb.BaseEstimator, ABC):
     """Base class for all portfolio optimizations in skfolio.
@@ -21,8 +29,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -76,7 +84,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             ptf_kwargs = self.portfolio_params.copy()
 
         # Set the default portfolio parameters equal to the optimization parameters
-        for param in ["transaction_costs", "management_fees", "previous_weights"]:
+        for param in [
+            "transaction_costs",
+            "management_fees",
+            "previous_weights",
+            "risk_free_rate",
+        ]:
             if param not in ptf_kwargs and hasattr(self, param):
                 ptf_kwargs[param] = getattr(self, param)
 
@@ -89,15 +102,17 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # For a 2D array we return a population of portfolios.
         if self.weights_.ndim == 2:
             n_portfolios = self.weights_.shape[0]
-            return Population([
-                Portfolio(
-                    X=X,
-                    weights=self.weights_[i],
-                    name=f"ptf{i} - {name}",
-                    **ptf_kwargs,
-                )
-                for i in range(n_portfolios)
-            ])
+            return Population(
+                [
+                    Portfolio(
+                        X=X,
+                        weights=self.weights_[i],
+                        name=f"ptf{i} - {name}",
+                        **ptf_kwargs,
+                    )
+                    for i in range(n_portfolios)
+                ]
+            )
         return Portfolio(X=X, weights=self.weights_, name=name, **ptf_kwargs)
 
     def score(self, X: npt.ArrayLike, y: npt.ArrayLike = None) -> float:

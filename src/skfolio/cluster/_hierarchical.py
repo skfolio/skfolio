@@ -1,5 +1,6 @@
 """Hierarchical Clustering estimators."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
@@ -7,12 +8,12 @@ from enum import auto
 
 import numpy as np
 import numpy.typing as npt
-import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as scd
 import sklearn.base as skb
 import sklearn.utils.validation as skv
+from plotly.figure_factory import create_dendrogram
 
 from skfolio.utils.stats import assert_is_distance, compute_optimal_n_clusters
 from skfolio.utils.tools import AutoEnum, default_asset_names
@@ -244,7 +245,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
             asset_names = default_asset_names(n_assets=n_assets)
 
         if not heatmap:
-            fig = ff.create_dendrogram(
+            fig = create_dendrogram(
                 np.ones(1),
                 distfun=lambda x: None,
                 linkagefun=lambda x: linkage_matrix,
@@ -263,7 +264,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
             return fig
 
         # Initialize figure by creating upper dendrogram
-        fig = ff.create_dendrogram(
+        fig = create_dendrogram(
             np.ones(1),
             orientation="bottom",
             distfun=lambda x: None,
@@ -276,7 +277,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
             fig["data"][i]["yaxis"] = "y2"
 
         # Create Side Dendrogram
-        side_dendrogram = ff.create_dendrogram(
+        side_dendrogram = create_dendrogram(
             np.ones(1),
             orientation="right",
             distfun=lambda x: None,

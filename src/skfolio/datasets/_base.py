@@ -1,7 +1,12 @@
 """Datasets module."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
+# Implementation derived from:
+# scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
+# scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
+# Grisel Licensed under BSD 3 clause.
 
 import gzip
 import os
@@ -135,7 +140,10 @@ def download_dataset(
         DataFrame with each row representing one observation and each column
         representing the asset price of a given observation.
     """
-    url = f"https://github.com/skfolio/skfolio/raw/main/datasets/{data_filename}.csv.gz"
+    url = (
+        f"https://github.com/skfolio/skfolio-datasets/raw/main/"
+        f"datasets/{data_filename}.csv.gz"
+    )
 
     data_home = get_data_home(data_home=data_home)
     filepath = os.path.join(data_home, f"{data_filename}.pkz")

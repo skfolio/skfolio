@@ -16,6 +16,7 @@ from skfolio.measures._measures import (
     cvar,
     drawdown_at_risk,
     edar,
+    effective_number_assets,
     entropic_risk_measure,
     evar,
     first_lower_partial_moment,
@@ -73,4 +74,5 @@ __all__ = [
     "owa_gmd_weights",
     "skew",
     "kurtosis",
+    "effective_number_assets",
 ]

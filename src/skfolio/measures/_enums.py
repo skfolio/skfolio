@@ -1,5 +1,6 @@
 """Module that includes all Measures enums used across `skfolio`."""
 
+# Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 
@@ -18,7 +19,9 @@ class BaseMeasure(AutoEnum):
             (
                 word.capitalize()
                 if len(word) > 3
-                else word.upper() if len(word) != 2 else word.lower()
+                else word.upper()
+                if len(word) != 2
+                else word.lower()
             )
             for word in self.value.split("_")
         ]
