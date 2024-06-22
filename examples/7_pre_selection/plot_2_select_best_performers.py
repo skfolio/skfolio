@@ -44,19 +44,15 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # Model
 # =====
 # First, we create a Minimum Variance model without pre-selection:
-benchmark = MeanRisk(
-    prior_estimator=EmpiricalPrior(
-        covariance_estimator=EmpiricalCovariance(nearest=True)
-    ),
-)
+benchmark = MeanRisk()
 # %%
 # .. note::
 #   A covariance matrix is in theory positive semi-definite (PSD). However, due to
 #   floating-point inaccuracies, we can end up with a covariance matrix that is just
-#   slightly non-PSD. This often occurs in high dimensional problems. By setting the
-#   `nearest` parameter from the covariance estimator to `True`, when the covariance
-#   is not positive semi-definite (PSD), it is replaced by the nearest covariance that
-#   is PSD without changing the variance.
+#   slightly non-PSD. This often occurs in high dimensional problems. By default, the
+#   parameter named `nearest` from the covariance estimator is set to `True`: when the
+#   covariance is not positive semi-definite (PSD), it is replaced by the nearest
+#   covariance that is PSD without changing the variance.
 
 # %%
 # Pipeline

@@ -4,7 +4,7 @@ from sklearn import config_context
 
 from skfolio import RiskMeasure
 from skfolio.model_selection import CombinatorialPurgedCV
-from skfolio.moments import EmpiricalCovariance, ImpliedCovariance
+from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import MeanRisk, StackingOptimization
 from skfolio.prior import EmpiricalPrior, FactorModel
 
@@ -153,7 +153,7 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
     with config_context(enable_metadata_routing=True):
         est1 = MeanRisk(
             prior_estimator=EmpiricalPrior(
-                covariance_estimator=ImpliedCovariance(nearest=True).set_fit_request(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
                     implied_vol=True
                 )
             )
@@ -161,7 +161,7 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
 
         est2 = MeanRisk(
             prior_estimator=EmpiricalPrior(
-                covariance_estimator=ImpliedCovariance(nearest=True).set_fit_request(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
                     implied_vol=True
                 )
             )
@@ -169,11 +169,6 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
         est3 = MeanRisk()
         model = StackingOptimization(
             estimators=[("est1", est1), ("est2", est2), ("est3", est3)],
-            final_estimator=MeanRisk(
-                prior_estimator=EmpiricalPrior(
-                    covariance_estimator=EmpiricalCovariance(nearest=True)
-                )
-            ),
         )
 
         model.fit(X_medium, implied_vol=implied_vol_medium)
