@@ -251,8 +251,9 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
     with config_context(enable_metadata_routing=True):
         est = MeanRisk(
             prior_estimator=EmpiricalPrior(
-                covariance_estimator=ImpliedCovariance(
-                ).set_fit_request(implied_vol=True)
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
             )
         )
         model = NestedClustersOptimization(inner_estimator=est)

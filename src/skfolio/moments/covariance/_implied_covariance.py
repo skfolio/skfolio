@@ -19,25 +19,29 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
-from skfolio.utils.tools import check_estimator, get_feature_names, safe_indexing
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
-from skfolio.utils.tools import  input_to_array
+from skfolio.utils.tools import (
+    check_estimator,
+    get_feature_names,
+    input_to_array,
+    safe_indexing,
+)
 
 
 class ImpliedCovariance(BaseCovariance):
-    """Implied Covariance estimator.
+    r"""Implied Covariance estimator.
 
     For each asset, the implied volatility time series is used to estimate the realised
-    volatility using the non-overlapping log transformed OLS model [6]_:
+    volatility using the non-overlapping log-transformed OLS model [6]_:
 
     .. math:: \ln(RV_{t}) = \alpha + \beta_{1} \ln(IV_{t-1}) + \beta_{2} \ln(RV_{t-1}) + \epsilon
 
     with :math:`\alpha`, :math:`\beta_{1}` and :math:`\beta_{2}` the intercept and
-    coefficients to estimate, :math:`RV` the realised volatility and :math:`IV` the
+    coefficients to estimate, :math:`RV` the realised volatility, and :math:`IV` the
     implied volatility. The training set uses non-overlapping data of sample size
-    `window_size` to avoid possible regression errors caused by autocorrelation.
+    `window_size` to avoid possible regression errors caused by auto-correlation.
     The logarithmic transformation of volatilities is used for its better finite sample
-    properties and distribution which is closer to normality, less skewed and
+    properties and distribution, which is closer to normality, less skewed and
     leptokurtic [6]_.
 
     Alternatively, if `volatility_risk_premium_adj` is provided, the realised
@@ -46,7 +50,6 @@ class ImpliedCovariance(BaseCovariance):
     .. math:: RV_{t} = \frac{IV_{t-1}}{VRPA}
 
     with :math:`VRPA` the volatility risk premium adjustment.
-
 
     The covariance estimator is then used to compute the correlation matrix.
     The final step is the reconstruction of the covariance matrix from the correlation
@@ -77,12 +80,17 @@ class ImpliedCovariance(BaseCovariance):
         estimator `LinearRegression`.
 
     volatility_risk_premium_adj : float | dict[str, float] | array-like of shape (n_assets, ), optional
-        TODO
+        If provided, instead of using the regression model, the realised volatility is
+        estimated using:
+
+        .. math:: RV_{t} = \frac{IV_{t-1}}{VRPA}
+
+        with math:`VRPA` the volatility risk premium adjustment.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset fee) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
-        The default value is `0.0`.
 
     nearest : bool, default=False
         If this is set to True, the covariance is replaced by the nearest covariance
@@ -109,14 +117,17 @@ class ImpliedCovariance(BaseCovariance):
     covariance_ : ndarray of shape (n_assets, n_assets)
         Estimated covariance matrix.
 
-    TODO
     pred_realised_vols_ : ndarray of shape (n_assets,)
+        The predicted realised volatilities
 
     linear_regressors_ : list[BaseEstimator]
+        The fitted linear regressions.
 
     coefs_ : ndarray of shape (n_assets, 2)
+        The coefficients of the log transformed regression model for each asset.
 
     intercepts_ : ndarray of shape (n_assets,)
+        The intercepts of the log transformed regression model for each asset.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -257,17 +268,21 @@ class ImpliedCovariance(BaseCovariance):
         implied_vol /= np.sqrt(self.annualized_factor)
 
         if self.volatility_risk_premium_adj is not None:
-            volatility_risk_premium_adj = input_to_array(
-                items=self.volatility_risk_premium_adj,
-                n_assets=n_assets,
-                fill_value=np.nan,
-                dim=1,
-                assets_names=(
-                    self.feature_names_in_ if hasattr(self,
-                                                      "feature_names_in_") else None
-                ),
-                name="volatility_risk_premium_adj",
-            )
+            if np.isscalar(self.volatility_risk_premium_adj):
+                volatility_risk_premium_adj = self.volatility_risk_premium_adj
+            else:
+                volatility_risk_premium_adj = input_to_array(
+                    items=self.volatility_risk_premium_adj,
+                    n_assets=n_assets,
+                    fill_value=np.nan,
+                    dim=1,
+                    assets_names=(
+                        self.feature_names_in_
+                        if hasattr(self, "feature_names_in_")
+                        else None
+                    ),
+                    name="volatility_risk_premium_adj",
+                )
 
             if np.any(np.isnan(volatility_risk_premium_adj)):
                 raise ValueError(
@@ -280,9 +295,7 @@ class ImpliedCovariance(BaseCovariance):
                     f"received {self.volatility_risk_premium_adj}"
                 )
 
-            self.pred_realised_vols_ = (
-                implied_vol[-1] / volatility_risk_premium_adj
-            )
+            self.pred_realised_vols_ = implied_vol[-1] / volatility_risk_premium_adj
         else:
             if self.window_size is None or self.window_size < 3:
                 raise ValueError(
@@ -326,7 +339,9 @@ class ImpliedCovariance(BaseCovariance):
             returns=returns, window_size=self.window_size, ddof=1
         )
 
-        implied_vol = _compute_implied_vol(implied_vol=implied_vol, window_size=self.window_size)
+        implied_vol = _compute_implied_vol(
+            implied_vol=implied_vol, window_size=self.window_size
+        )
 
         if realised_vol.shape != implied_vol.shape:
             raise ValueError("`realised_vol`and `implied_vol` must have same shape")
@@ -360,12 +375,14 @@ class ImpliedCovariance(BaseCovariance):
 def _compute_realised_vol(
     returns: np.ndarray, window_size: int, ddof: int = 1
 ) -> np.ndarray:
+    """Create the realised volatilities samples for the regression model."""
     n_observations, n_assets = returns.shape
     chunks = n_observations // window_size
 
     return np.std(
         np.reshape(
-            returns[n_observations - chunks * window_size:, :], (chunks, window_size, n_assets)
+            returns[n_observations - chunks * window_size :, :],
+            (chunks, window_size, n_assets),
         ),
         ddof=ddof,
         axis=1,
@@ -373,30 +390,32 @@ def _compute_realised_vol(
 
 
 def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarray:
+    """Create the implied volatilities samples for the regression model."""
     n_observations, _ = implied_vol.shape
     chunks = n_observations // window_size
     return implied_vol[
-        np.arange(n_observations - (chunks - 1) * window_size - 1, n_observations, window_size)
+        np.arange(
+            n_observations - (chunks - 1) * window_size - 1, n_observations, window_size
+        )
     ]
 
 
-def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike):
+def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike) -> np.ndarray:
     """Validate implied volatilities.
 
 
     Parameters
     ----------
-    implied_vol : {ndarray, Number or None}, shape (n_samples,)
-        Input sample weights.
+    implied_vol : array-like of shape (n_observations, n_assets)
+        Implied volatilities of the assets.
 
-    X : {ndarray, list, sparse matrix}
-        Input data.
-
+    X : array-like of shape (n_observations, n_assets)
+        Price returns of the assets.
 
     Returns
     -------
-    sample_weight : ndarray of shape (n_samples,)
-        Validated sample weight. It is guaranteed to be "C" contiguous.
+    implied_vol : ndarray of shape (n_observations, n_assets)
+        Validated implied volatilities.
     """
     # noinspection PyUnresolvedReferences
     n_observations, n_assets = X.shape
@@ -420,10 +439,10 @@ def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike):
 
         if implied_vol.shape != (n_observations, n_assets):
             raise ValueError(
-                f"implied_vol.shape == {(implied_vol.shape)}, "
+                f"implied_vol.shape == {(implied_vol.shape,)}, "
                 f"expected {(n_observations, n_assets)}"
             )
 
     skv.check_non_negative((n_observations, n_assets), "`implied_vol`")
-
+    # noinspection PyTypeChecker
     return implied_vol

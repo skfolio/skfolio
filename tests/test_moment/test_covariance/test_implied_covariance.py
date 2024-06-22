@@ -23,7 +23,7 @@ def test_compute_realised_vol(X):
         res.append(
             np.asarray(
                 X.iloc[
-                n_observations - (k + 1) * window: n_observations - k * window
+                    n_observations - (k + 1) * window : n_observations - k * window
                 ].std(axis=0, ddof=0)
             )
         )
@@ -69,7 +69,7 @@ def test_implied_covariance_default(X, implied_vol):
 
     res = np.exp(
         model.coefs_[:, 0] * np.log(np.asarray(implied_vol.iloc[-1] / np.sqrt(252)))
-        + model.coefs_[:, 1] * np.log(np.asarray(X[-model.window_size:].std(ddof=1)))
+        + model.coefs_[:, 1] * np.log(np.asarray(X[-model.window_size :].std(ddof=1)))
         + model.intercepts_
     )
 
@@ -77,45 +77,83 @@ def test_implied_covariance_default(X, implied_vol):
 
     np.testing.assert_almost_equal(
         model.covariance_[:2][:2],
-        np.array([[6.57488641e-04, 3.38029358e-04, 2.20436830e-04, 2.71011063e-04,
-                   1.77192570e-04, 1.98004521e-04, 2.43218235e-04, 9.48343910e-05,
-                   2.06384336e-04, 1.08629264e-04, 1.44170060e-04, 1.06730837e-04,
-                   3.82153987e-04, 1.29396828e-04, 1.28674960e-04, 1.14263570e-04,
-                   1.77041058e-04, 1.61847771e-04, 1.09866425e-04, 1.65322496e-04],
-                  [3.38029358e-04, 1.01675318e-03, 1.90423048e-04, 2.37132104e-04,
-                   1.56496724e-04, 1.63766879e-04, 2.02447353e-04, 5.94893621e-05,
-                   1.60754088e-04, 7.15669895e-05, 1.06205460e-04, 7.38658472e-05,
-                   2.80355882e-04, 8.12087064e-05, 1.01274852e-04, 7.13317911e-05,
-                   2.11344039e-04, 1.20727952e-04, 7.05644697e-05, 1.31745666e-04]])
+        np.array(
+            [
+                [
+                    5.90463014e-04,
+                    3.14255178e-04,
+                    1.98741290e-04,
+                    2.51797303e-04,
+                    1.61212665e-04,
+                    1.80530097e-04,
+                    2.20630221e-04,
+                    8.93487189e-05,
+                    1.89943341e-04,
+                    9.79986309e-05,
+                    1.31366228e-04,
+                    9.34134473e-05,
+                    3.60097117e-04,
+                    1.20963142e-04,
+                    1.19939740e-04,
+                    1.06662034e-04,
+                    1.65682862e-04,
+                    1.52434019e-04,
+                    1.00953936e-04,
+                    1.48998657e-04,
+                ],
+                [
+                    3.14255178e-04,
+                    9.78514216e-04,
+                    1.77724392e-04,
+                    2.28075160e-04,
+                    1.47394907e-04,
+                    1.54569628e-04,
+                    1.90109818e-04,
+                    5.80210200e-05,
+                    1.53155622e-04,
+                    6.68358535e-05,
+                    1.00179549e-04,
+                    6.69247480e-05,
+                    2.73473028e-04,
+                    7.85878850e-05,
+                    9.77224291e-05,
+                    6.89300792e-05,
+                    2.04746823e-04,
+                    1.17708165e-04,
+                    6.71224688e-05,
+                    1.22916537e-04,
+                ],
+            ]
+        ),
     )
 
     np.testing.assert_almost_equal(
-        np.diag(model.covariance_), model.pred_realised_vols_ ** 2
+        np.diag(model.covariance_), model.pred_realised_vols_**2
     )
     np.testing.assert_almost_equal(
         model.pred_realised_vols_,
         np.array(
             [
-                0.02564154,
-                0.03188657,
-                0.02002452,
-                0.02736693,
-                0.01973539,
-                0.02245573,
-                0.01815133,
-                0.00957966,
-                0.01799403,
-                0.01123385,
-                0.01780456,
-                0.01307078,
-                0.02186195,
-                0.01093394,
-                0.0151937,
-                0.01116985,
-                0.03529737,
-                0.01416595,
-                0.0128378,
-                0.01956481,
+                0.02429944,
+                0.03128121,
+                0.01905083,
+                0.02683106,
+                0.01894729,
+                0.02160476,
+                0.01737502,
+                0.00952402,
+                0.01747525,
+                0.01069423,
+                0.01711937,
+                0.01207171,
+                0.02173792,
+                0.01078584,
+                0.01494446,
+                0.01100265,
+                0.0348573,
+                0.0140789,
+                0.01244791,
+                0.01860689,
             ]
         ),
     )
@@ -129,20 +167,55 @@ def test_implied_covariance_no_intercept(X, implied_vol):
     np.testing.assert_almost_equal(model.intercepts_, np.zeros(20))
 
 
-@pytest.mark.parametrize("volatility_risk_premium_adj", [0.1, 1, 1.5, 100])
+@pytest.mark.parametrize(
+    "volatility_risk_premium_adj, expected",
+    [
+        (0.1, 0.1),
+        (1, 1),
+        (1.5, 1.5),
+        (100, 100),
+        (np.arange(1, 21), np.arange(1, 21)),
+        (
+            {
+                "GE": 6,
+                "HD": 7,
+                "JNJ": 8,
+                "JPM": 9,
+                "KO": 10,
+                "LLY": 11,
+                "MRK": 12,
+                "MSFT": 13,
+                "PEP": 14,
+                "PFE": 15,
+                "AAPL": 1,
+                "AMD": 2,
+                "BAC": 3,
+                "BBY": 4,
+                "CVX": 5,
+                "PG": 16,
+                "RRC": 17,
+                "UNH": 18,
+                "WMT": 19,
+                "XOM": 20,
+                "error": 100,
+            },
+            np.arange(1, 21),
+        ),
+    ],
+)
 def test_implied_covariance_volatility_risk_premium_adj(
-        X, implied_vol, volatility_risk_premium_adj
+    X, implied_vol, volatility_risk_premium_adj, expected
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
     model.fit(X, implied_vol=implied_vol)
 
-    res = np.asarray(implied_vol.iloc[-1] / np.sqrt(252) / volatility_risk_premium_adj)
+    res = np.asarray(implied_vol.iloc[-1] / np.sqrt(252) / expected)
     np.testing.assert_almost_equal(model.pred_realised_vols_, res)
 
 
 @pytest.mark.parametrize("volatility_risk_premium_adj", [-0.5, 0])
 def test_implied_covariance_volatility_risk_premium_adj_non_pos(
-        X, implied_vol, volatility_risk_premium_adj
+    X, implied_vol, volatility_risk_premium_adj
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
     with pytest.raises(ValueError):
