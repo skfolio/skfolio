@@ -46,7 +46,7 @@ class GerberCovariance(BaseCovariance):
         Otherwise, the Gerber et al. (2019) variant is used.
         The default is `True`.
 
-    nearest : bool, default=False
+    nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
         matrix that is positive definite and with a Cholesky decomposition than can be
         computed. The variance is left unchanged. A covariance matrix is in theory PSD.
@@ -54,7 +54,7 @@ class GerberCovariance(BaseCovariance):
         matrix that is slightly non-PSD or where Cholesky decomposition is failing.
         This often occurs in high dimensional problems.
         For more details, see :func:`~skfolio.units.stats.cov_nearest`.
-        The default is `False`.
+        The default is `True`.
 
     higham : bool, default=False
         If this is set to True, the Higham & Nick (2002) algorithm is used to find the
@@ -102,7 +102,7 @@ class GerberCovariance(BaseCovariance):
         window_size: int | None = None,
         threshold: float = 0.5,
         psd_variant: bool = True,
-        nearest: bool = False,
+        nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
     ):

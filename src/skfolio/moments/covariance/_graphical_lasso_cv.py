@@ -150,7 +150,7 @@ class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
         n_jobs=None,
         verbose=False,
         assume_centered=False,
-        nearest: bool = False,
+        nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
     ):
