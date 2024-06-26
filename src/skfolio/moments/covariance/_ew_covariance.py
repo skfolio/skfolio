@@ -96,7 +96,7 @@ class EWCovariance(BaseCovariance):
         """
         X = self._validate_data(X)
         if self.window_size is not None:
-            X = X[-self.window_size :]
+            X = X[-int(self.window_size) :]
         n_observations = X.shape[0]
         covariance = (
             pd.DataFrame(X)

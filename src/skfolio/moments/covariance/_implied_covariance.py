@@ -234,6 +234,7 @@ class ImpliedCovariance(BaseCovariance):
 
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
+        window_size = int(self.window_size)
         # fitting estimators
         self.covariance_estimator_ = check_estimator(
             self.covariance_estimator,
@@ -297,7 +298,7 @@ class ImpliedCovariance(BaseCovariance):
 
             self.pred_realised_vols_ = implied_vol[-1] / volatility_risk_premium_adj
         else:
-            if self.window_size is None or self.window_size < 3:
+            if window_size is None or window_size < 3:
                 raise ValueError(
                     f"window must be strictly greater than 2, "
                     f"received {self.window_size}"
@@ -309,7 +310,10 @@ class ImpliedCovariance(BaseCovariance):
             )
             # OLS of ln(RV(t) = a + b1 ln(IV(t-1)) + b2 ln(RV(t-1)) + epsilon
             self._predict_realised_vols(
-                linear_regressor=_linear_regressor, returns=X, implied_vol=implied_vol
+                linear_regressor=_linear_regressor,
+                returns=X,
+                implied_vol=implied_vol,
+                window_size=window_size,
             )
 
         covariance = corr_to_cov(corr, self.pred_realised_vols_)
@@ -322,25 +326,26 @@ class ImpliedCovariance(BaseCovariance):
         linear_regressor: skb.BaseEstimator,
         returns: np.ndarray,
         implied_vol: np.ndarray,
+        window_size: int,
     ) -> None:
         n_observations, n_assets = returns.shape
 
-        n_folds = n_observations // self.window_size
+        n_folds = n_observations // window_size
         if n_folds < 3:
             raise ValueError(
                 f"Not enough observations to compute the volatility regression "
-                f"coefficients. The window size of {self.window_size} on {n_observations} "
+                f"coefficients. The window size of {window_size} on {n_observations} "
                 f"observations produces {n_folds} non-overlapping folds. "
                 f"The minimum number of fold is 3. You can either increase the number "
                 f"of observation in your training set or decrease the window size."
             )
 
         realised_vol = _compute_realised_vol(
-            returns=returns, window_size=self.window_size, ddof=1
+            returns=returns, window_size=window_size, ddof=1
         )
 
         implied_vol = _compute_implied_vol(
-            implied_vol=implied_vol, window_size=self.window_size
+            implied_vol=implied_vol, window_size=window_size
         )
 
         if realised_vol.shape != implied_vol.shape:
