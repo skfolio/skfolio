@@ -4,5 +4,3 @@ Metadata Routing
 ----------------
 
 Examples about metadata routing.
-
-

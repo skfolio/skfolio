@@ -1,13 +1,13 @@
 """
 ==============================================
-Using Implied Volatility with Metadata routing
+Using Implied Volatility with Metadata Routing
 ==============================================
 
-This tutorial shows how to use the :ref:`metadata routing <metadata_routing>`.
+This tutorial shows how to use :ref:`metadata routing <metadata_routing>`.
 
-We will use :class:`~skfolio.moments.ImpliedCovariance` inside optimization models and
-grid search procedures to show how the implied volatility time series can be routed
-inside meta estimators.
+We will use the :class:`~skfolio.moments.ImpliedCovariance` estimator inside
+optimization models and grid search procedures to show how the implied volatility
+time series can be routed.
 """
 # %%
 # Load Datasets
@@ -53,7 +53,7 @@ implied_vol.head()
 #
 # Below, we give a quick summary of the `ImpliedCovariance` estimator. The detailed
 # documentation and literature references is available
-# `here <~skfolio.moments.ImpliedCovariance>`.
+# `here <~skfolio.moments.ImpliedCovariance>_`.
 #
 # For each asset, the implied volatility time series is used to estimate the realised
 # volatility using the non-overlapping log-transformed OLS model:
@@ -69,14 +69,14 @@ implied_vol.head()
 # leptokurtic.
 # The covariance estimator is then used to compute the correlation matrix.
 # The final step is the reconstruction of the covariance matrix from the correlation
-# and estimated realised volatilities math:`D`:
+# and estimated realised volatilities :math:`D`:
 #
-#     .. math:: \Sigma = D \ Corr \ D
+# .. math:: \Sigma = D \ Corr \ D
 #
 
 model = ImpliedCovariance()
 model.fit(X, implied_vol=implied_vol)
-
+print(model.covariance_.shape)
 # %%
 # The intercept, coefficients and R2 score are saved in `model.intercepts_`,
 # `model.coefs_` and `model.r2_scores_`
@@ -96,9 +96,12 @@ fig = px.bar(df, x="Asset", y="R2 score",
 show(fig)
 
 # %%
+# |
 # Let's print the average R2 per window size:
 print({k: f"{np.mean(v):0.1%}" for k, v in coefs.items()})
-# THe highest R2 is achieved for a window size of 20 observations.
+
+# %%
+# The highest R2 is achieved for a window size of 20 observations.
 
 # %%
 # Inverse Volatility
@@ -147,7 +150,7 @@ print(summary.loc[["Annualized Standard Deviation", "Annualized Sharpe Ratio"]])
 
 # %%
 # Let's plot the Composition and Cumulative returns:
-population.plot_composition()
+population.plot_composition(display_sub_ptf_name=False)
 # %%
 population.plot_cumulative_returns()
 
@@ -161,7 +164,7 @@ X_train, X_test, implied_vol_train, implied_vol_test = train_test_split(
     X, implied_vol, test_size=1 / 2, shuffle=False)
 
 # %%
-# We create a Minimum Variance model based on the `ImpliedCovariance` estimator.
+# We create a Minimum Variance that uses the `ImpliedCovariance` estimator:
 model = MeanRisk(
     prior_estimator=EmpiricalPrior(
         covariance_estimator=ImpliedCovariance(
@@ -174,9 +177,8 @@ model = MeanRisk(
 # maximizes the out-of-sample Sharpe Ratio of the Minimum Variance model:
 grid_search = GridSearchCV(
     estimator=model,
-    n_jobs=-1,
     param_grid={
-        "prior_estimator__covariance_estimator__window_size": np.arange(3, 100, 2),
+        "prior_estimator__covariance_estimator__window_size": np.arange(5, 50, 3),
         "prior_estimator__covariance_estimator__covariance_estimator": [
             LedoitWolf(),
             GerberCovariance(),
@@ -184,7 +186,9 @@ grid_search = GridSearchCV(
         ],
     },
     return_train_score=True,
-    scoring=make_scorer(RatioMeasure.ANNUALIZED_SHARPE_RATIO)
+    scoring=make_scorer(RatioMeasure.ANNUALIZED_SHARPE_RATIO),
+    n_jobs=-1,
+    cv=cv
 )
 grid_search.fit(X_train, implied_vol=implied_vol_train)
 gs_model = grid_search.best_estimator_
@@ -201,15 +205,15 @@ df = pd.DataFrame({
     "Window Size": cv_results[
         "param_prior_estimator__covariance_estimator__window_size"],
     "Test Sharpe Ratio": cv_results["mean_test_score"],
-    "error": cv_results["std_test_score"]
-
+    "error": cv_results["std_test_score"] / 10  # one tenth of std for readability
 })
 px.line(df, x="Window Size", y="Test Sharpe Ratio", color="Cov Estimator",
         error_y="error", title="Out-of-Sample Sharpe Ratio")
 
 # %%
 # Finally, we compare the optimal Grid Search model with a naive Minimum Variance
-# benchmark:
+# benchmark on the **test set**:
+
 pred_gs_model = cross_val_predict(gs_model, X_test,
                                   params={"implied_vol": implied_vol_test}, cv=cv,
                                   n_jobs=-1)

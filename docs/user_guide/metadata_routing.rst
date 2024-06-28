@@ -7,19 +7,19 @@ Metadata Routing
 ****************
 This document shows how you can use the metadata routing mechanism to route metadata
 to the estimators consuming them.
-For a complete explanation, you can refer to the `scikit-learn documentation <https://scikit-learn.org/stable/auto_examples/miscellaneous/plot_metadata_routing.html#sphx-glr-auto-examples-miscellaneous-plot-metadata-routing-py>`
+For a complete explanation, you can refer to the `scikit-learn documentation <https://scikit-learn.org/stable/auto_examples/miscellaneous/plot_metadata_routing.html#sphx-glr-auto-examples-miscellaneous-plot-metadata-routing-py>`_
 
 
-A full example is available here: :ref:`sphx_glr_auto_examples_9_metadata_routing_plot_1_implied_volatility.py`
+A full example is available here: :ref:`sphx_glr_auto_examples_8_metadata_routing_plot_1_implied_volatility.py`
 
-Let's suppose you to use the :class:`~skfolio.moments.ImpliedCovariance` estimator
+Let's suppose you use the :class:`~skfolio.moments.ImpliedCovariance` estimator
 inside a :class:`~skfolio.optimization.MeanRisk` estimator.
 In addition to the assets' returns `X`, the `ImpliedCovariance` estimator also needs
 the assets implied volatilities passed to its `fit` method.
 In order to root the implied volatilities time series from the `MeanRisk` estimator
-to the `ImpliedCovariance` estimator, we need the metadata rooting API.
+to the `ImpliedCovariance` estimator, we need metadata rooting.
 
-First a few imports and some random data for the rest of the script.
+First a few imports and some random data for the rest of the script:
 
 .. code-block:: python
 
@@ -28,7 +28,14 @@ First a few imports and some random data for the rest of the script.
     from skfolio.moments import ImpliedCovariance
     from skfolio.optimization import MeanRisk
     from skfolio.prior import EmpiricalPrior
+    from skfolio.preprocessing import prices_to_returns
+    from skfolio.datasets import load_sp500_dataset, load_sp500_implied_vol_dataset
 
+    prices = load_sp500_dataset()
+    implied_vol = load_sp500_implied_vol_dataset()
+
+    X = prices_to_returns(prices)
+    X = X.loc["2010":]
 
 Metadata routing is only available if explicitly enabled:
 

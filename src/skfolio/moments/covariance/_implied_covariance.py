@@ -29,6 +29,7 @@ from skfolio.utils.tools import (
 
 
 class ImpliedCovariance(BaseCovariance):
+
     r"""Implied Covariance estimator.
 
     For each asset, the implied volatility time series is used to estimate the realised
@@ -53,7 +54,7 @@ class ImpliedCovariance(BaseCovariance):
 
     The covariance estimator is then used to compute the correlation matrix.
     The final step is the reconstruction of the covariance matrix from the correlation
-    and estimated realised volatilities math:`D`:
+    and estimated realised volatilities :math:`D`:
 
     .. math:: \Sigma = D \ Corr \ D
 
@@ -66,13 +67,14 @@ class ImpliedCovariance(BaseCovariance):
 
     annualized_factor : float, default=252
         Annualized factor (AF) used to covert the implied volatilities into the same
-        frequency as the returns using math:`\frac{IV}{\sqrt{AF}}.
+        frequency as the returns using :math:`\frac{IV}{\sqrt{AF}}.
         The default is 252 which corresponds to **daily** returns and implied volatility
         expressed in **p.a.**
 
     window_size : int, default=20
         Window size used to construct the non-overlapping training set of realised
         volatilities and implied volatilities used in the regression.
+        The default is 20 observations.
 
     linear_regressor : BaseEstimator, optional
         Estimator of the linear regression used to estimate the realised volatilities
@@ -80,16 +82,16 @@ class ImpliedCovariance(BaseCovariance):
         estimator `LinearRegression`.
 
     volatility_risk_premium_adj : float | dict[str, float] | array-like of shape (n_assets, ), optional
-        If provided, instead of using the regression model, the realised volatility is
-        estimated using:
+        If provided, instead of using the regression model, the realised volatilities
+        are estimated using:
 
         .. math:: RV_{t} = \frac{IV_{t-1}}{VRPA}
 
-        with math:`VRPA` the volatility risk premium adjustment.
+        with :math:`VRPA` the volatility risk premium adjustment.
 
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset fee) and the input `X` of the `fit` method must be a
+        (asset name/asset :math:`VRPA`) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
     nearest : bool, default=True
@@ -158,7 +160,6 @@ class ImpliedCovariance(BaseCovariance):
         Options".
         Sara Vikberg & Julia Björkman (2020).
     """
-
     covariance_estimator_: BaseCovariance
     pred_realised_vols_: np.ndarray
     linear_regressors_: list
