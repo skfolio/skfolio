@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import sklearn.model_selection as sks
 from sklearn import config_context
 
@@ -148,6 +149,7 @@ def test_get_metadata_routing_without_fit():
         model.get_metadata_routing()
 
 
+@pytest.mark.filterwarnings("ignore:The covariance matrix is not positive definite")
 def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
     """Test that metadata is routed correctly for Stacking*."""
     with config_context(enable_metadata_routing=True):

@@ -47,13 +47,13 @@ implied_vol.head()
 # %%
 # Implied Covariance Estimator
 # ============================
-# We uses the :class:`~skfolio.moments.ImpliedCovariance` estimator as an example for
+# We use the :class:`~skfolio.moments.ImpliedCovariance` estimator as an example for
 # metadata routing because, in addition to the assets' returns `X`, it also needs
-# the assets implied volatilities passed to its `fit` method.
+# the assets' implied volatilities passed to its `fit` method.
 #
-# Below, we give a quick summary of the `ImpliedCovariance` estimator. The detailed
-# documentation and literature references is available
-# `here <~skfolio.moments.ImpliedCovariance>_`.
+# Below, we give a quick summary of the estimator. The detailed
+# documentation and literature references are available in the docstring:
+# :class:`~skfolio.moments.ImpliedCovariance`.
 #
 # For each asset, the implied volatility time series is used to estimate the realised
 # volatility using the non-overlapping log-transformed OLS model:
@@ -65,7 +65,7 @@ implied_vol.head()
 # implied volatility. The training set uses non-overlapping data of sample size
 # `window_size` to avoid possible regression errors caused by auto-correlation.
 # The logarithmic transformation of volatilities is used for its better finite sample
-# properties and distribution, which is closer to normality, less skewed and
+# properties and distribution, which is closer to normality, less skewed, and
 # leptokurtic.
 # The covariance estimator is then used to compute the correlation matrix.
 # The final step is the reconstruction of the covariance matrix from the correlation
@@ -97,6 +97,7 @@ show(fig)
 
 # %%
 # |
+#
 # Let's print the average R2 per window size:
 print({k: f"{np.mean(v):0.1%}" for k, v in coefs.items()})
 
@@ -108,7 +109,7 @@ print({k: f"{np.mean(v):0.1%}" for k, v in coefs.items()})
 # ==================
 # To use the `ImpliedCovariance` estimator inside a meta-estimator such as the
 # `InverseVolatility`, you must enable metadata routing with `set_config` and
-# specify where to root the implied vol using `set_fit_request` as shown below:
+# specify where to route the implied vol using `set_fit_request` as shown below:
 set_config(enable_metadata_routing=True)
 
 model = InverseVolatility(
@@ -155,7 +156,7 @@ population.plot_composition(display_sub_ptf_name=False)
 population.plot_cumulative_returns()
 
 # %%
-# Hyper Parameters Tuning
+# Hyper-Parameters Tuning
 # =======================
 # In this section, we show how to use metadata routing with `GridSearchCV`.
 # First, we split the data into a train and a test set:
@@ -173,7 +174,7 @@ model = MeanRisk(
 )
 
 # %%
-# Then, we find the hyperparameters of the `ImpliedCovariance` estimator that
+# Then, we find the hyper-parameters of the `ImpliedCovariance` estimator that
 # maximizes the out-of-sample Sharpe Ratio of the Minimum Variance model:
 grid_search = GridSearchCV(
     estimator=model,

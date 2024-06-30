@@ -29,7 +29,6 @@ from skfolio.utils.tools import (
 
 
 class ImpliedCovariance(BaseCovariance):
-
     r"""Implied Covariance estimator.
 
     For each asset, the implied volatility time series is used to estimate the realised
@@ -67,7 +66,7 @@ class ImpliedCovariance(BaseCovariance):
 
     annualized_factor : float, default=252
         Annualized factor (AF) used to covert the implied volatilities into the same
-        frequency as the returns using :math:`\frac{IV}{\sqrt{AF}}.
+        frequency as the returns using :math:`\frac{IV}{\sqrt{AF}}`.
         The default is 252 which corresponds to **daily** returns and implied volatility
         expressed in **p.a.**
 
@@ -97,16 +96,16 @@ class ImpliedCovariance(BaseCovariance):
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
         matrix that is positive definite and with a Cholesky decomposition than can be
-        computed. The variance is left unchanged. A covariance matrix is in theory PSD.
-        However, due to floating-point inaccuracies, we can end up with a covariance
-        matrix that is slightly non-PSD or where Cholesky decomposition is failing.
-        This often occurs in high dimensional problems.
-        For more details, see :func:`~skfolio.units.stats.cov_nearest`.
+        computed. The variance is left unchanged.
+        A covariance matrix that is not positive definite often occurs in high
+        dimensional problems. It can be due to multicollinearity, floating-point
+        inaccuracies, or when the number of observations is smaller than the number of
+        assets. For more details, see :func:`~skfolio.utils.stats.cov_nearest`.
         The default is `True`.
 
     higham : bool, default=False
         If this is set to True, the Higham & Nick (2002) algorithm is used to find the
-        nearest PSD covariance, otherwise the eigenvalues are clipped to a threshold
+        nearest PD covariance, otherwise the eigenvalues are clipped to a threshold
         above zeros (1e-13). The default is `False` and use the clipping method as the
         Higham & Nick algorithm can be slow for large datasets.
 
@@ -160,6 +159,7 @@ class ImpliedCovariance(BaseCovariance):
         Options".
         Sara Vikberg & Julia Björkman (2020).
     """
+
     covariance_estimator_: BaseCovariance
     pred_realised_vols_: np.ndarray
     linear_regressors_: list

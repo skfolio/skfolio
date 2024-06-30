@@ -47,12 +47,13 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 benchmark = MeanRisk()
 # %%
 # .. note::
-#   A covariance matrix is in theory positive semi-definite (PSD). However, due to
-#   floating-point inaccuracies, we can end up with a covariance matrix that is just
-#   slightly non-PSD. This often occurs in high dimensional problems. By default, the
-#   parameter named `nearest` from the covariance estimator is set to `True`: when the
-#   covariance is not positive semi-definite (PSD), it is replaced by the nearest
-#   covariance that is PSD without changing the variance.
+#   A covariance matrix that is not positive definite often occurs in high
+#   dimensional problems. It can be due to multicollinearity, floating-point
+#   inaccuracies, or when the number of observations is smaller than the number of
+#   assets. By default, the parameter named `nearest` from the covariance estimator is
+#   set to `True`: if the covariance is not positive definite (PD), it is replaced by
+#   the nearest covariance that is PD without changing the variance.
+#   For more details, see :func:`~skfolio.utils.stats.cov_nearest`.
 
 # %%
 # Pipeline

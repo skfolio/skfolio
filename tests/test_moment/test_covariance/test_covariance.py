@@ -950,6 +950,7 @@ class TestDenoiseCovariance:
 
 
 class TestDetoneCovariance:
+    @pytest.mark.filterwarnings("ignore:The covariance matrix is not positive definite")
     def test_detone_covariance(self, X):
         model = DetoneCovariance(covariance_estimator=DenoiseCovariance())
         model.fit(X)
@@ -1402,6 +1403,7 @@ class TestDetoneCovariance:
             ),
         )
 
+    @pytest.mark.filterwarnings("ignore:The covariance matrix is not positive definite")
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
             model = DetoneCovariance(

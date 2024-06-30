@@ -16,10 +16,10 @@ Let's suppose you use the :class:`~skfolio.moments.ImpliedCovariance` estimator
 inside a :class:`~skfolio.optimization.MeanRisk` estimator.
 In addition to the assets' returns `X`, the `ImpliedCovariance` estimator also needs
 the assets implied volatilities passed to its `fit` method.
-In order to root the implied volatilities time series from the `MeanRisk` estimator
-to the `ImpliedCovariance` estimator, we need metadata rooting.
+In order to route the implied volatilities time series from the `MeanRisk` estimator
+to the `ImpliedCovariance` estimator, we need metadata routing.
 
-First a few imports and some random data for the rest of the script:
+First, a few imports and some random data for the rest of the script:
 
 .. code-block:: python
 
@@ -37,14 +37,14 @@ First a few imports and some random data for the rest of the script:
     X = prices_to_returns(prices)
     X = X.loc["2010":]
 
-Metadata routing is only available if explicitly enabled:
+Metadata routing is available only if explicitly enabled:
 
 .. code-block:: python
 
     set_config(enable_metadata_routing=True)
 
 
-Then, in order to root the metadata, you must use `set_fit_request`:
+Then, in order to route the metadata, you must use `set_fit_request`:
 
 .. code-block:: python
 
