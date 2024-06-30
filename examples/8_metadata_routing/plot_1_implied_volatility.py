@@ -9,6 +9,7 @@ We will use the :class:`~skfolio.moments.ImpliedCovariance` estimator inside
 optimization models and grid search procedures to show how the implied volatility
 time series can be routed.
 """
+
 # %%
 # Load Datasets
 # =============
@@ -88,11 +89,21 @@ for window_size in [10, 20, 60, 100]:
     model.fit(X, implied_vol=implied_vol)
     coefs[window_size] = model.r2_scores_
 
-df = pd.DataFrame(coefs, index=X.columns).unstack().reset_index().rename(
-    columns={'level_0': 'Window Size', "level_1": "Asset", 0: "R2 score"})
-df['Window Size'] = df['Window Size'].astype(str)
-fig = px.bar(df, x="Asset", y="R2 score",
-             color="Window Size", barmode="group", title="R2 score per Window Size")
+df = (
+    pd.DataFrame(coefs, index=X.columns)
+    .unstack()
+    .reset_index()
+    .rename(columns={"level_0": "Window Size", "level_1": "Asset", 0: "R2 score"})
+)
+df["Window Size"] = df["Window Size"].astype(str)
+fig = px.bar(
+    df,
+    x="Asset",
+    y="R2 score",
+    color="Window Size",
+    barmode="group",
+    title="R2 score per Window Size",
+)
 show(fig)
 
 # %%
@@ -162,14 +173,14 @@ population.plot_cumulative_returns()
 # First, we split the data into a train and a test set:
 
 X_train, X_test, implied_vol_train, implied_vol_test = train_test_split(
-    X, implied_vol, test_size=1 / 2, shuffle=False)
+    X, implied_vol, test_size=1 / 2, shuffle=False
+)
 
 # %%
 # We create a Minimum Variance that uses the `ImpliedCovariance` estimator:
 model = MeanRisk(
     prior_estimator=EmpiricalPrior(
-        covariance_estimator=ImpliedCovariance(
-        ).set_fit_request(implied_vol=True)
+        covariance_estimator=ImpliedCovariance().set_fit_request(implied_vol=True)
     )
 )
 
@@ -189,7 +200,7 @@ grid_search = GridSearchCV(
     return_train_score=True,
     scoring=make_scorer(RatioMeasure.ANNUALIZED_SHARPE_RATIO),
     n_jobs=-1,
-    cv=cv
+    cv=cv,
 )
 grid_search.fit(X_train, implied_vol=implied_vol_train)
 gs_model = grid_search.best_estimator_
@@ -200,24 +211,37 @@ print(gs_model)
 # covariance estimator:
 cv_results = grid_search.cv_results_
 
-df = pd.DataFrame({
-    "Cov Estimator": [str(x) for x in cv_results[
-        "param_prior_estimator__covariance_estimator__covariance_estimator"]],
-    "Window Size": cv_results[
-        "param_prior_estimator__covariance_estimator__window_size"],
-    "Test Sharpe Ratio": cv_results["mean_test_score"],
-    "error": cv_results["std_test_score"] / 10  # one tenth of std for readability
-})
-px.line(df, x="Window Size", y="Test Sharpe Ratio", color="Cov Estimator",
-        error_y="error", title="Out-of-Sample Sharpe Ratio")
+df = pd.DataFrame(
+    {
+        "Cov Estimator": [
+            str(x)
+            for x in cv_results[
+                "param_prior_estimator__covariance_estimator__covariance_estimator"
+            ]
+        ],
+        "Window Size": cv_results[
+            "param_prior_estimator__covariance_estimator__window_size"
+        ],
+        "Test Sharpe Ratio": cv_results["mean_test_score"],
+        "error": cv_results["std_test_score"] / 10,  # one tenth of std for readability
+    }
+)
+px.line(
+    df,
+    x="Window Size",
+    y="Test Sharpe Ratio",
+    color="Cov Estimator",
+    error_y="error",
+    title="Out-of-Sample Sharpe Ratio",
+)
 
 # %%
 # Finally, we compare the optimal Grid Search model with a naive Minimum Variance
 # benchmark on the **test set**:
 
-pred_gs_model = cross_val_predict(gs_model, X_test,
-                                  params={"implied_vol": implied_vol_test}, cv=cv,
-                                  n_jobs=-1)
+pred_gs_model = cross_val_predict(
+    gs_model, X_test, params={"implied_vol": implied_vol_test}, cv=cv, n_jobs=-1
+)
 pred_gs_model.name = "GS Model"
 
 benchmark = MeanRisk()
