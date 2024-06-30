@@ -15,7 +15,7 @@ A full example is available here: :ref:`sphx_glr_auto_examples_8_metadata_routin
 Let's suppose you use the :class:`~skfolio.moments.ImpliedCovariance` estimator
 inside a :class:`~skfolio.optimization.MeanRisk` estimator.
 In addition to the assets' returns `X`, the `ImpliedCovariance` estimator also needs
-the assets implied volatilities passed to its `fit` method.
+the assets' implied volatilities passed to its `fit` method.
 In order to route the implied volatilities time series from the `MeanRisk` estimator
 to the `ImpliedCovariance` estimator, we need metadata routing.
 
