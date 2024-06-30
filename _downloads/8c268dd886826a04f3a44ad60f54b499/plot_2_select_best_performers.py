@@ -30,11 +30,9 @@ from skfolio.model_selection import (
     WalkForward,
     cross_val_predict,
 )
-from skfolio.moments import EmpiricalCovariance
 from skfolio.optimization import MeanRisk
 from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EmpiricalPrior
 
 prices = load_ftse100_dataset()
 X = prices_to_returns(prices)
@@ -44,19 +42,16 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # Model
 # =====
 # First, we create a Minimum Variance model without pre-selection:
-benchmark = MeanRisk(
-    prior_estimator=EmpiricalPrior(
-        covariance_estimator=EmpiricalCovariance(nearest=True)
-    ),
-)
+benchmark = MeanRisk()
 # %%
 # .. note::
-#   A covariance matrix is in theory positive semi-definite (PSD). However, due to
-#   floating-point inaccuracies, we can end up with a covariance matrix that is just
-#   slightly non-PSD. This often occurs in high dimensional problems. By setting the
-#   `nearest` parameter from the covariance estimator to `True`, when the covariance
-#   is not positive semi-definite (PSD), it is replaced by the nearest covariance that
-#   is PSD without changing the variance.
+#   A covariance matrix that is not positive definite often occurs in high
+#   dimensional problems. It can be due to multicollinearity, floating-point
+#   inaccuracies, or when the number of observations is smaller than the number of
+#   assets. By default, the parameter named `nearest` from the covariance estimator is
+#   set to `True`: if the covariance is not positive definite (PD), it is replaced by
+#   the nearest covariance that is PD without changing the variance.
+#   For more details, see :func:`~skfolio.utils.stats.cov_nearest`.
 
 # %%
 # Pipeline
@@ -97,54 +92,56 @@ print(model)
 # Let's plot the train and test scores as a function of the number of pre-selected
 # assets. The vertical line represents the best test score and the selected model:
 cv_results = grid_search.cv_results_
-fig = go.Figure([
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_train_score"],
-        name="Train",
-        mode="lines",
-        line=dict(color="rgb(31, 119, 180)"),
-    ),
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_train_score"] + cv_results["std_train_score"],
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-    ),
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_train_score"] - cv_results["std_train_score"],
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-        fillcolor="rgba(31, 119, 180,0.15)",
-        fill="tonexty",
-    ),
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_test_score"],
-        name="Test",
-        mode="lines",
-        line=dict(color="rgb(255,165,0)"),
-    ),
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_test_score"] + cv_results["std_test_score"],
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-    ),
-    go.Scatter(
-        x=cv_results["param_pre_selection__k"],
-        y=cv_results["mean_test_score"] - cv_results["std_test_score"],
-        line=dict(width=0),
-        mode="lines",
-        fillcolor="rgba(255,165,0, 0.15)",
-        fill="tonexty",
-        showlegend=False,
-    ),
-])
+fig = go.Figure(
+    [
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_train_score"],
+            name="Train",
+            mode="lines",
+            line=dict(color="rgb(31, 119, 180)"),
+        ),
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_train_score"] + cv_results["std_train_score"],
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_train_score"] - cv_results["std_train_score"],
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            fillcolor="rgba(31, 119, 180,0.15)",
+            fill="tonexty",
+        ),
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_test_score"],
+            name="Test",
+            mode="lines",
+            line=dict(color="rgb(255,165,0)"),
+        ),
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_test_score"] + cv_results["std_test_score"],
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=cv_results["param_pre_selection__k"],
+            y=cv_results["mean_test_score"] - cv_results["std_test_score"],
+            line=dict(width=0),
+            mode="lines",
+            fillcolor="rgba(255,165,0, 0.15)",
+            fill="tonexty",
+            showlegend=False,
+        ),
+    ]
+)
 fig.add_vline(
     x=grid_search.best_params_["pre_selection__k"],
     line_width=2,

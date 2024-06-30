@@ -28,7 +28,7 @@ from skfolio.datasets import load_ftse100_dataset
 from skfolio.model_selection import (
     CombinatorialPurgedCV,
     cross_val_predict,
-    optimal_folds_number
+    optimal_folds_number,
 )
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.pre_selection import DropCorrelated
@@ -55,10 +55,12 @@ model1.weights_
 # fit it on the training set:
 set_config(transform_output="pandas")
 
-model2 = Pipeline([
-    ("pre_selection", DropCorrelated(threshold=0.5)),
-    ("optimization", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
-])
+model2 = Pipeline(
+    [
+        ("pre_selection", DropCorrelated(threshold=0.5)),
+        ("optimization", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
+    ]
+)
 model2.fit(X_train)
 model2.named_steps["optimization"].weights_
 

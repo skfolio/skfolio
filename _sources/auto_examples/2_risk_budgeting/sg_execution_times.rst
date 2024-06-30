@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:04.679** total execution time for 3 files **from auto_examples/2_risk_budgeting**:
+**00:04.378** total execution time for 3 files **from auto_examples/2_risk_budgeting**:
 
 .. container::
 
@@ -32,12 +32,12 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
-   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_busgeting_CVaR.py` (``plot_2_risk_busgeting_CVaR.py``)
-     - 00:01.938
+   * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_budgeting_CVaR.py` (``plot_2_risk_budgeting_CVaR.py``)
+     - 00:01.820
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_1_risk_parity_variance.py` (``plot_1_risk_parity_variance.py``)
-     - 00:01.489
+     - 00:01.361
      - 0.0
    * - :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py` (``plot_3_risk_parity_ledoit_wolf.py``)
-     - 00:01.251
+     - 00:01.197
      - 0.0

@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="We recommend starting with Maximum Sharpe Ratio or Minimum CVaR before moving to more advanced examples. Mean-Risk: Examples using the MeanRisk optimization. Maximum Sharpe Ratio Minimum CVaR Effic..." />
 
-    <title>Examples &#8212; skfolio 0.2.3 documentation</title>
+    <title>Examples &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../_static/documentation_options.js?v=6512192e"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -360,7 +360,7 @@ document.write(`
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="2_risk_budgeting/index.html">Risk Budgeting</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="2_risk_budgeting/plot_1_risk_parity_variance.html">Risk Parity - Variance</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_risk_budgeting/plot_2_risk_busgeting_CVaR.html">Risk Budgeting - CVaR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_risk_budgeting/plot_2_risk_budgeting_CVaR.html">Risk Budgeting - CVaR</a></li>
 <li class="toctree-l2"><a class="reference internal" href="2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.html">Risk Parity - Covariance shrinkage</a></li>
 </ul>
 </li>
@@ -389,8 +389,12 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="7_pre_selection/plot_2_select_best_performers.html">Select Best Performers</a></li>
 </ul>
 </li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="8_data_preparation/index.html">Data Preparation</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="8_data_preparation/plot_1_investment_horizon.html">Investment Horizon</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="8_metadata_routing/index.html">Metadata Routing</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="8_metadata_routing/plot_1_implied_volatility.html">Using Implied Volatility with Metadata Routing</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="9_data_preparation/index.html">Data Preparation</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-9"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="9_data_preparation/plot_1_investment_horizon.html">Investment Horizon</a></li>
 </ul>
 </li>
 </ul>
@@ -472,7 +476,7 @@ or <a class="reference internal" href="1_mean_risk/plot_2_minimum_CVaR.html#sphx
 </div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate transaction costs (TC) into the MeanRisk optimization."><img alt="" src="../_images/sphx_glr_plot_6_transaction_costs_thumb.png" />
 <p><a class="reference internal" href="1_mean_risk/plot_6_transaction_costs.html#sphx-glr-auto-examples-1-mean-risk-plot-6-transaction-costs-py"><span class="std std-ref">Transaction Costs</span></a></p>
   <div class="sphx-glr-thumbnail-title">Transaction Costs</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the  MeanRisk optimization."><img alt="" src="../_images/sphx_glr_plot_7_management_fees_thumb.png" />
+</div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the MeanRisk optimization."><img alt="" src="../_images/sphx_glr_plot_7_management_fees_thumb.png" />
 <p><a class="reference internal" href="1_mean_risk/plot_7_management_fees.html#sphx-glr-auto-examples-1-mean-risk-plot-7-management-fees-py"><span class="std std-ref">Management Fees</span></a></p>
   <div class="sphx-glr-thumbnail-title">Management Fees</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate regularization into the MeanRisk optimization."><img alt="" src="../_images/sphx_glr_plot_8_regularization_thumb.png" />
@@ -503,8 +507,8 @@ or <a class="reference internal" href="1_mean_risk/plot_2_minimum_CVaR.html#sphx
 <div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to find the risk parity portfolio with varian..."><img alt="" src="../_images/sphx_glr_plot_1_risk_parity_variance_thumb.png" />
 <p><a class="reference internal" href="2_risk_budgeting/plot_1_risk_parity_variance.html#sphx-glr-auto-examples-2-risk-budgeting-plot-1-risk-parity-variance-py"><span class="std std-ref">Risk Parity - Variance</span></a></p>
   <div class="sphx-glr-thumbnail-title">Risk Parity - Variance</div>
-</div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specif..."><img alt="" src="../_images/sphx_glr_plot_2_risk_busgeting_CVaR_thumb.png" />
-<p><a class="reference internal" href="2_risk_budgeting/plot_2_risk_busgeting_CVaR.html#sphx-glr-auto-examples-2-risk-budgeting-plot-2-risk-busgeting-cvar-py"><span class="std std-ref">Risk Budgeting - CVaR</span></a></p>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specif..."><img alt="" src="../_images/sphx_glr_plot_2_risk_budgeting_CVaR_thumb.png" />
+<p><a class="reference internal" href="2_risk_budgeting/plot_2_risk_budgeting_CVaR.html#sphx-glr-auto-examples-2-risk-budgeting-plot-2-risk-budgeting-cvar-py"><span class="std std-ref">Risk Budgeting - CVaR</span></a></p>
   <div class="sphx-glr-thumbnail-title">Risk Budgeting - CVaR</div>
 </div><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate covariance shrinkage in the RiskBudgeting optimization."><img alt="" src="../_images/sphx_glr_plot_3_risk_parity_ledoit_wolf_thumb.png" />
 <p><a class="reference internal" href="2_risk_budgeting/plot_3_risk_parity_ledoit_wolf.html#sphx-glr-auto-examples-2-risk-budgeting-plot-3-risk-parity-ledoit-wolf-py"><span class="std std-ref">Risk Parity - Covariance shrinkage</span></a></p>
@@ -560,11 +564,18 @@ or <a class="reference internal" href="1_mean_risk/plot_2_minimum_CVaR.html#sphx
 <p><a class="reference internal" href="7_pre_selection/plot_2_select_best_performers.html#sphx-glr-auto-examples-7-pre-selection-plot-2-select-best-performers-py"><span class="std std-ref">Select Best Performers</span></a></p>
   <div class="sphx-glr-thumbnail-title">Select Best Performers</div>
 </div></div></section>
+<section id="metadata-routing">
+<h2>Metadata Routing<a class="headerlink" href="#metadata-routing" title="Link to this heading">#</a></h2>
+<p>Examples about metadata routing.</p>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use metadata routing &lt;metadata_routing&gt;."><img alt="" src="../_images/sphx_glr_plot_1_implied_volatility_thumb.png" />
+<p><a class="reference internal" href="8_metadata_routing/plot_1_implied_volatility.html#sphx-glr-auto-examples-8-metadata-routing-plot-1-implied-volatility-py"><span class="std std-ref">Using Implied Volatility with Metadata Routing</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Using Implied Volatility with Metadata Routing</div>
+</div></div></section>
 <section id="data-preparation">
 <h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Link to this heading">#</a></h2>
 <p>Examples about data preparation.</p>
 <div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This tutorial explores the difference between the general procedure using different investment ..."><img alt="" src="../_images/sphx_glr_plot_1_investment_horizon_thumb.png" />
-<p><a class="reference internal" href="8_data_preparation/plot_1_investment_horizon.html#sphx-glr-auto-examples-8-data-preparation-plot-1-investment-horizon-py"><span class="std std-ref">Investment Horizon</span></a></p>
+<p><a class="reference internal" href="9_data_preparation/plot_1_investment_horizon.html#sphx-glr-auto-examples-9-data-preparation-plot-1-investment-horizon-py"><span class="std std-ref">Investment Horizon</span></a></p>
   <div class="sphx-glr-thumbnail-title">Investment Horizon</div>
 </div></div><div class="toctree-wrapper compound">
 </div>

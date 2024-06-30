@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.uncertainty_set._empirical &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.uncertainty_set._empirical &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../../../_static/documentation_options.js?v=6512192e"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -388,6 +388,7 @@ document.write(`
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
 <span class="kn">import</span> <span class="nn">scipy.stats</span> <span class="k">as</span> <span class="nn">st</span>
+<span class="kn">import</span> <span class="nn">sklearn.utils.metadata_routing</span> <span class="k">as</span> <span class="nn">skm</span>
 
 <span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">BasePrior</span><span class="p">,</span> <span class="n">EmpiricalPrior</span>
 <span class="kn">from</span> <span class="nn">skfolio.uncertainty_set._base</span> <span class="kn">import</span> <span class="p">(</span>
@@ -456,22 +457,20 @@ document.write(`
 <span class="sd">        Schöttle &amp; Werner (2009).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">prior_estimator_</span><span class="p">:</span> <span class="n">BasePrior</span>
-
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">prior_estimator</span><span class="p">:</span> <span class="n">BasePrior</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
         <span class="n">diagonal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span> <span class="o">=</span> <span class="n">prior_estimator</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">prior_estimator</span><span class="o">=</span><span class="n">prior_estimator</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span> <span class="o">=</span> <span class="n">confidence_level</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">diagonal</span> <span class="o">=</span> <span class="n">diagonal</span>
 
 <div class="viewcode-block" id="EmpiricalMuUncertaintySet.fit">
 <a class="viewcode-back" href="../../../generated/skfolio.uncertainty_set.EmpiricalMuUncertaintySet.html#skfolio.uncertainty_set.EmpiricalMuUncertaintySet.fit">[docs]</a>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">fit_params</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;EmpiricalMuUncertaintySet&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the Empirical Mu Uncertainty set estimator.</span>
 
@@ -484,18 +483,27 @@ document.write(`
 <span class="sd">            Price returns of factors.</span>
 <span class="sd">            The default is `None`.</span>
 
+<span class="sd">        **fit_params : dict</span>
+<span class="sd">            Parameters to pass to the underlying estimators.</span>
+<span class="sd">            Only available if `enable_metadata_routing=True`, which can be</span>
+<span class="sd">            set by using ``sklearn.set_config(enable_metadata_routing=True)``.</span>
+<span class="sd">            See :ref:`Metadata Routing User Guide &lt;metadata_routing&gt;` for</span>
+<span class="sd">            more details.</span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        self : EmpiricalMuUncertaintySet</span>
 <span class="sd">            Fitted estimator.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">routed_params</span> <span class="o">=</span> <span class="n">skm</span><span class="o">.</span><span class="n">process_routing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">fit_params</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(),</span>
             <span class="n">check_type</span><span class="o">=</span><span class="n">BasePrior</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># fitting estimators</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">routed_params</span><span class="o">.</span><span class="n">prior_estimator</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span>
 
         <span class="n">prior_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span>
         <span class="n">n_observations</span><span class="p">,</span> <span class="n">n_assets</span> <span class="o">=</span> <span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">shape</span>
@@ -570,22 +578,20 @@ document.write(`
 <span class="sd">        Schöttle &amp; Werner (2009).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">prior_estimator_</span><span class="p">:</span> <span class="n">BasePrior</span>
-
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">prior_estimator</span><span class="p">:</span> <span class="n">BasePrior</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span>
         <span class="n">diagonal</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span> <span class="o">=</span> <span class="n">prior_estimator</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">prior_estimator</span><span class="o">=</span><span class="n">prior_estimator</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span> <span class="o">=</span> <span class="n">confidence_level</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">diagonal</span> <span class="o">=</span> <span class="n">diagonal</span>
 
 <div class="viewcode-block" id="EmpiricalCovarianceUncertaintySet.fit">
 <a class="viewcode-back" href="../../../generated/skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.html#skfolio.uncertainty_set.EmpiricalCovarianceUncertaintySet.fit">[docs]</a>
     <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">fit_params</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;EmpiricalCovarianceUncertaintySet&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Fit the Empirical Covariance Uncertainty set estimator.</span>
 
@@ -598,18 +604,27 @@ document.write(`
 <span class="sd">            Price returns of factors.</span>
 <span class="sd">            The default is `None`.</span>
 
+<span class="sd">        **fit_params : dict</span>
+<span class="sd">            Parameters to pass to the underlying estimators.</span>
+<span class="sd">            Only available if `enable_metadata_routing=True`, which can be</span>
+<span class="sd">            set by using ``sklearn.set_config(enable_metadata_routing=True)``.</span>
+<span class="sd">            See :ref:`Metadata Routing User Guide &lt;metadata_routing&gt;` for</span>
+<span class="sd">            more details.</span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        self : EmpiricalCovarianceUncertaintySet</span>
 <span class="sd">            Fitted estimator.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">routed_params</span> <span class="o">=</span> <span class="n">skm</span><span class="o">.</span><span class="n">process_routing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">fit_params</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(),</span>
             <span class="n">check_type</span><span class="o">=</span><span class="n">BasePrior</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># fitting estimators</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">routed_params</span><span class="o">.</span><span class="n">prior_estimator</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span>
 
         <span class="n">prior_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span><span class="o">.</span><span class="n">prior_model_</span>
         <span class="n">n_observations</span><span class="p">,</span> <span class="n">n_assets</span> <span class="o">=</span> <span class="n">prior_model</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">shape</span>

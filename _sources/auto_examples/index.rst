@@ -143,7 +143,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the  MeanRisk optimization.">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the MeanRisk optimization.">
 
 .. only:: html
 
@@ -321,10 +321,10 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. only:: html
 
-  .. image:: /auto_examples/2_risk_budgeting/images/thumb/sphx_glr_plot_2_risk_busgeting_CVaR_thumb.png
+  .. image:: /auto_examples/2_risk_budgeting/images/thumb/sphx_glr_plot_2_risk_budgeting_CVaR_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_busgeting_CVaR.py`
+  :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_budgeting_CVaR.py`
 
 .. raw:: html
 
@@ -631,6 +631,43 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
     </div>
 
 
+Metadata Routing
+----------------
+
+Examples about metadata routing.
+
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+.. thumbnail-parent-div-open
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use metadata routing &lt;metadata_routing&gt;.">
+
+.. only:: html
+
+  .. image:: /auto_examples/8_metadata_routing/images/thumb/sphx_glr_plot_1_implied_volatility_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_8_metadata_routing_plot_1_implied_volatility.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Using Implied Volatility with Metadata Routing</div>
+    </div>
+
+
+.. thumbnail-parent-div-close
+
+.. raw:: html
+
+    </div>
+
+
 Data Preparation
 ----------------
 
@@ -652,10 +689,10 @@ Examples about data preparation.
 
 .. only:: html
 
-  .. image:: /auto_examples/8_data_preparation/images/thumb/sphx_glr_plot_1_investment_horizon_thumb.png
+  .. image:: /auto_examples/9_data_preparation/images/thumb/sphx_glr_plot_1_investment_horizon_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_8_data_preparation_plot_1_investment_horizon.py`
+  :ref:`sphx_glr_auto_examples_9_data_preparation_plot_1_investment_horizon.py`
 
 .. raw:: html
 
@@ -682,7 +719,8 @@ Examples about data preparation.
    /auto_examples/5_clustering/index.rst
    /auto_examples/6_ensemble/index.rst
    /auto_examples/7_pre_selection/index.rst
-   /auto_examples/8_data_preparation/index.rst
+   /auto_examples/8_metadata_routing/index.rst
+   /auto_examples/9_data_preparation/index.rst
 
 
 .. only:: html

@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.model_selection.cross_val_predict &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.model_selection.cross_val_predict &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -51,7 +51,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../_static/documentation_options.js?v=6512192e"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -447,6 +447,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ImpliedCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ImpliedCovariance</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
@@ -581,7 +582,7 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.cross_val_predict<a class="headerlink" href="#skfolio-model-selection-cross-val-predict" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="skfolio.model_selection.cross_val_predict">
-<span class="sig-prename descclassname"><span class="pre">skfolio.model_selection.</span></span><span class="sig-name descname"><span class="pre">cross_val_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'predict'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2*n_jobs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/model_selection/_validation.html#cross_val_predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.model_selection.cross_val_predict" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">skfolio.model_selection.</span></span><span class="sig-name descname"><span class="pre">cross_val_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'predict'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pre_dispatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'2*n_jobs'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_indices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">portfolio_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/model_selection/_validation.html#cross_val_predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.model_selection.cross_val_predict" title="Link to this definition">#</a></dt>
 <dd><p>Generate cross-validated <code class="docutils literal notranslate"><span class="pre">Portfolios</span></code> estimates.</p>
 <p>The data is split according to the <code class="docutils literal notranslate"><span class="pre">cv</span></code> parameter.
 The optimization estimator is fitted on the training set and portfolios are
@@ -605,10 +606,6 @@ collection of multiple paths instead of one single path).</p>
 <dt><strong>y</strong><span class="classifier">array-like of shape (n_observations, n_targets), optional</span></dt><dd><p>Target data (optional).
 For example, the price returns of the factors.</p>
 </dd>
-<dt><strong>groups</strong><span class="classifier">array-like of shape (n_observations,), optional</span></dt><dd><p>Group labels for the samples used while splitting the dataset into
-train/test set. Only used in conjunction with a “Group” <code class="docutils literal notranslate"><span class="pre">cv</span></code>
-instance (e.g., <code class="docutils literal notranslate"><span class="pre">GroupKFold</span></code>).</p>
-</dd>
 <dt><strong>cv</strong><span class="classifier">int | cross-validation generator, optional</span></dt><dd><p>Determines the cross-validation splitting strategy.
 Possible inputs for cv are:</p>
 <ul class="simple">
@@ -626,7 +623,7 @@ using all processors.</p>
 </dd>
 <dt><strong>verbose</strong><span class="classifier">int, default=0</span></dt><dd><p>The verbosity level.</p>
 </dd>
-<dt><strong>fit_params</strong><span class="classifier">dict, optional</span></dt><dd><p>Parameters to pass to the fit method of the estimator.</p>
+<dt><strong>params</strong><span class="classifier">dict, optional</span></dt><dd><p>Parameters to pass to the underlying estimator’s <code class="docutils literal notranslate"><span class="pre">fit</span></code> and the CV splitter.</p>
 </dd>
 <dt><strong>pre_dispatch</strong><span class="classifier">int or str, default=’2*n_jobs’</span></dt><dd><p>Controls the number of jobs that get dispatched during parallel
 execution. Reducing this number can be useful to avoid an

@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.datasets._base &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.datasets._base &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../../../_static/documentation_options.js?v=6512192e"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -784,6 +784,57 @@ document.write(`
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">df</span></div>
 
+
+
+<span class="k">def</span> <span class="nf">load_sp500_implied_vol_dataset</span><span class="p">(</span>
+    <span class="n">data_home</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the 3 months ATM implied volatility of the 20 assets from the</span>
+<span class="sd">    SP500 dataset.</span>
+
+<span class="sd">    This dataset is composed of the 3 months ATM implied volatility of 20 assets</span>
+<span class="sd">    from the S&amp;P 500 composition starting from 2010-01-04 up to 2022-12-28.</span>
+
+<span class="sd">    The data comes from the Yahoo public API option chains.</span>
+
+<span class="sd">    ==============   ==================</span>
+<span class="sd">    Observations     3270</span>
+<span class="sd">    Assets           20</span>
+<span class="sd">    ==============   ==================</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data_home : str, optional</span>
+<span class="sd">        Specify another download and cache folder for the datasets.</span>
+<span class="sd">        By default, all skfolio data is stored in `~/skfolio_data` subfolders.</span>
+
+<span class="sd">    download_if_missing : bool, default=True</span>
+<span class="sd">        If False, raise an OSError if the data is not locally available</span>
+<span class="sd">        instead of trying to download the data from the source site.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    df : DataFrame of shape (n_observations, n_assets)</span>
+<span class="sd">        Implied volatility DataFrame</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; from skfolio.datasets import load_sp500_implied_vol_dataset</span>
+<span class="sd">    &gt;&gt;&gt; implied_vol = load_sp500_implied_vol_dataset()</span>
+<span class="sd">    &gt;&gt;&gt; implied_vol.head()</span>
+<span class="sd">                    AAPL       AMD       BAC  ...       UNH       WMT       XOM</span>
+<span class="sd">    Date                                      ...</span>
+<span class="sd">    2010-01-04  0.364353  0.572056  0.382926  ...  0.362751  0.171737  0.201485</span>
+<span class="sd">    2010-01-05  0.371865  0.568791  0.374699  ...  0.368504  0.174764  0.203852</span>
+<span class="sd">    2010-01-06  0.356746  0.558054  0.349220  ...  0.368514  0.171892  0.197475</span>
+<span class="sd">    2010-01-07  0.361084  0.560475  0.354942  ...  0.355792  0.169083  0.200046</span>
+<span class="sd">    2010-01-08  0.348085  0.543932  0.360345  ...  0.351130  0.170897  0.204832</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data_filename</span> <span class="o">=</span> <span class="s2">&quot;sp500_implied_vol_dataset&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">download_dataset</span><span class="p">(</span>
+        <span class="n">data_filename</span><span class="p">,</span> <span class="n">data_home</span><span class="o">=</span><span class="n">data_home</span><span class="p">,</span> <span class="n">download_if_missing</span><span class="o">=</span><span class="n">download_if_missing</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
 </pre></div>
 
                 </article>

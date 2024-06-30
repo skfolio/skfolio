@@ -41,10 +41,10 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. only:: html
 
-  .. image:: /auto_examples/2_risk_budgeting/images/thumb/sphx_glr_plot_2_risk_busgeting_CVaR_thumb.png
+  .. image:: /auto_examples/2_risk_budgeting/images/thumb/sphx_glr_plot_2_risk_budgeting_CVaR_thumb.png
     :alt:
 
-  :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_busgeting_CVaR.py`
+  :ref:`sphx_glr_auto_examples_2_risk_budgeting_plot_2_risk_budgeting_CVaR.py`
 
 .. raw:: html
 
@@ -80,6 +80,6 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
    :hidden:
 
    /auto_examples/2_risk_budgeting/plot_1_risk_parity_variance
-   /auto_examples/2_risk_budgeting/plot_2_risk_busgeting_CVaR
+   /auto_examples/2_risk_budgeting/plot_2_risk_budgeting_CVaR
    /auto_examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf
 

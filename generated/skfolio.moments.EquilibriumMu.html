@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.moments.EquilibriumMu &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.moments.EquilibriumMu &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -51,7 +51,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../_static/documentation_options.js?v=6512192e"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -448,6 +448,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ImpliedCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ImpliedCovariance</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
@@ -582,7 +583,7 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.EquilibriumMu<a class="headerlink" href="#skfolio-moments-equilibriummu" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="skfolio.moments.EquilibriumMu">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.moments.</span></span><span class="sig-name descname"><span class="pre">EquilibriumMu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">risk_aversion</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariance_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/expected_returns/_expected_returns.html#EquilibriumMu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.EquilibriumMu" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.moments.</span></span><span class="sig-name descname"><span class="pre">EquilibriumMu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">risk_aversion</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">covariance_estimator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/expected_returns/_equilibrium_mu.html#EquilibriumMu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.EquilibriumMu" title="Link to this definition">#</a></dt>
 <dd><p>Equilibrium Expected Returns (Mu) estimator.</p>
 <p>The Equilibrium is defined as:</p>
 <blockquote>
@@ -640,7 +641,7 @@ has assets names that are all strings.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.moments.EquilibriumMu.fit">
-<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/expected_returns/_expected_returns.html#EquilibriumMu.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.EquilibriumMu.fit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">fit_params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/expected_returns/_equilibrium_mu.html#EquilibriumMu.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.EquilibriumMu.fit" title="Link to this definition">#</a></dt>
 <dd><p>Fit the EquilibriumMu estimator model.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -648,6 +649,12 @@ has assets names that are all strings.</p>
 <dt><strong>X</strong><span class="classifier">array-like of shape (n_observations, n_assets)</span></dt><dd><p>Price returns of the assets.</p>
 </dd>
 <dt><strong>y</strong><span class="classifier">Ignored</span></dt><dd><p>Not used, present for API consistency by convention.</p>
+</dd>
+<dt><strong>**fit_params</strong><span class="classifier">dict</span></dt><dd><p>Parameters to pass to the underlying estimators.
+Only available if <code class="docutils literal notranslate"><span class="pre">enable_metadata_routing=True</span></code>, which can be
+set by using <code class="docutils literal notranslate"><span class="pre">sklearn.set_config(enable_metadata_routing=True)</span></code>.
+See <a class="reference internal" href="../user_guide/metadata_routing.html#metadata-routing"><span class="std std-ref">Metadata Routing User Guide</span></a> for
+more details.</p>
 </dd>
 </dl>
 </dd>
@@ -662,9 +669,9 @@ has assets names that are all strings.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.moments.EquilibriumMu.get_metadata_routing">
-<span class="sig-name descname"><span class="pre">get_metadata_routing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.moments.EquilibriumMu.get_metadata_routing" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_metadata_routing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/expected_returns/_equilibrium_mu.html#EquilibriumMu.get_metadata_routing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.EquilibriumMu.get_metadata_routing" title="Link to this definition">#</a></dt>
 <dd><p>Get metadata routing of this object.</p>
-<p>Please check <span class="xref std std-ref">User Guide</span> on how the routing
+<p>Please check <a class="reference internal" href="../user_guide/metadata_routing.html#metadata-routing"><span class="std std-ref">User Guide</span></a> on how the routing
 mechanism works.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>

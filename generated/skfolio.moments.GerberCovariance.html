@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.moments.GerberCovariance &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.moments.GerberCovariance &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -51,7 +51,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../_static/documentation_options.js?v=6512192e"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -447,6 +447,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.moments.ImpliedCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ImpliedCovariance</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
@@ -581,8 +582,8 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GerberCovariance<a class="headerlink" href="#skfolio-moments-gerbercovariance" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="skfolio.moments.GerberCovariance">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.moments.</span></span><span class="sig-name descname"><span class="pre">GerberCovariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psd_variant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nearest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">higham</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">higham_max_iteration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/covariance/_covariance.html#GerberCovariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.GerberCovariance" title="Link to this definition">#</a></dt>
-<dd><p>Gerber covariance estimator.</p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.moments.</span></span><span class="sig-name descname"><span class="pre">GerberCovariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">window_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">psd_variant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nearest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">higham</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">higham_max_iteration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/covariance/_gerber_covariance.html#GerberCovariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.GerberCovariance" title="Link to this definition">#</a></dt>
+<dd><p>Gerber Covariance estimator.</p>
 <p>Robust co-movement measure which ignores fluctuations below a certain threshold
 while simultaneously limiting the effects of extreme movements.
 The Gerber statistic extends Kendall’s Tau by counting the proportion of
@@ -610,17 +611,17 @@ positive semi-definite matrix.
 Otherwise, the Gerber et al. (2019) variant is used.
 The default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
 </dd>
-<dt><strong>nearest</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the covariance is replaced by the nearest covariance
+<dt><strong>nearest</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, the covariance is replaced by the nearest covariance
 matrix that is positive definite and with a Cholesky decomposition than can be
-computed. The variance is left unchanged. A covariance matrix is in theory PSD.
-However, due to floating-point inaccuracies, we can end up with a covariance
-matrix that is slightly non-PSD or where Cholesky decomposition is failing.
-This often occurs in high dimensional problems.
-For more details, see <code class="xref py py-func docutils literal notranslate"><span class="pre">cov_nearest</span></code>.
-The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+computed. The variance is left unchanged.
+A covariance matrix that is not positive definite often occurs in high
+dimensional problems. It can be due to multicollinearity, floating-point
+inaccuracies, or when the number of observations is smaller than the number of
+assets. For more details, see <a class="reference internal" href="skfolio.utils.stats.cov_nearest.html#skfolio.utils.stats.cov_nearest" title="skfolio.utils.stats.cov_nearest"><code class="xref py py-func docutils literal notranslate"><span class="pre">cov_nearest</span></code></a>.
+The default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
 </dd>
 <dt><strong>higham</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the Higham &amp; Nick (2002) algorithm is used to find the
-nearest PSD covariance, otherwise the eigenvalues are clipped to a threshold
+nearest PD covariance, otherwise the eigenvalues are clipped to a threshold
 above zeros (1e-13). The default is <code class="docutils literal notranslate"><span class="pre">False</span></code> and use the clipping method as the
 Higham &amp; Nick algorithm can be slow for large datasets.</p>
 </dd>
@@ -687,7 +688,7 @@ Flint &amp; Polakow, 2023.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.moments.GerberCovariance.fit">
-<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/covariance/_covariance.html#GerberCovariance.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.GerberCovariance.fit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/moments/covariance/_gerber_covariance.html#GerberCovariance.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.moments.GerberCovariance.fit" title="Link to this definition">#</a></dt>
 <dd><p>Fit the Gerber covariance estimator.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -711,7 +712,7 @@ Flint &amp; Polakow, 2023.</p>
 <dt class="sig sig-object py" id="skfolio.moments.GerberCovariance.get_metadata_routing">
 <span class="sig-name descname"><span class="pre">get_metadata_routing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.moments.GerberCovariance.get_metadata_routing" title="Link to this definition">#</a></dt>
 <dd><p>Get metadata routing of this object.</p>
-<p>Please check <span class="xref std std-ref">User Guide</span> on how the routing
+<p>Please check <a class="reference internal" href="../user_guide/metadata_routing.html#metadata-routing"><span class="std std-ref">User Guide</span></a> on how the routing
 mechanism works.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>

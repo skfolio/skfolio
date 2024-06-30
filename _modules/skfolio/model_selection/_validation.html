@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.model_selection._validation &#8212; skfolio 0.2.3 documentation</title>
+    <title>skfolio.model_selection._validation &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=c591aceb"></script>
+    <script src="../../../_static/documentation_options.js?v=6512192e"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -389,8 +389,10 @@ document.write(`
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
 <span class="kn">import</span> <span class="nn">sklearn</span> <span class="k">as</span> <span class="nn">sk</span>
 <span class="kn">import</span> <span class="nn">sklearn.base</span> <span class="k">as</span> <span class="nn">skb</span>
-<span class="kn">import</span> <span class="nn">sklearn.model_selection</span> <span class="k">as</span> <span class="nn">skm</span>
+<span class="kn">import</span> <span class="nn">sklearn.exceptions</span> <span class="k">as</span> <span class="nn">ske</span>
+<span class="kn">import</span> <span class="nn">sklearn.model_selection</span> <span class="k">as</span> <span class="nn">sks</span>
 <span class="kn">import</span> <span class="nn">sklearn.utils</span> <span class="k">as</span> <span class="nn">sku</span>
+<span class="kn">import</span> <span class="nn">sklearn.utils.metadata_routing</span> <span class="k">as</span> <span class="nn">skm</span>
 <span class="kn">import</span> <span class="nn">sklearn.utils.parallel</span> <span class="k">as</span> <span class="nn">skp</span>
 
 <span class="kn">from</span> <span class="nn">skfolio.model_selection._combinatorial</span> <span class="kn">import</span> <span class="n">BaseCombinatorialCV</span>
@@ -399,18 +401,28 @@ document.write(`
 <span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">fit_and_predict</span><span class="p">,</span> <span class="n">safe_split</span>
 
 
+<span class="k">def</span> <span class="nf">_routing_enabled</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether metadata routing is enabled.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    enabled : bool</span>
+<span class="sd">        Whether metadata routing is enabled. If the config is not set, it</span>
+<span class="sd">        defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">sk</span><span class="o">.</span><span class="n">get_config</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_metadata_routing&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="cross_val_predict">
 <a class="viewcode-back" href="../../../generated/skfolio.model_selection.cross_val_predict.html#skfolio.model_selection.cross_val_predict">[docs]</a>
 <span class="k">def</span> <span class="nf">cross_val_predict</span><span class="p">(</span>
     <span class="n">estimator</span><span class="p">:</span> <span class="n">skb</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">,</span>
     <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">groups</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">cv</span><span class="p">:</span> <span class="n">skm</span><span class="o">.</span><span class="n">BaseCrossValidator</span> <span class="o">|</span> <span class="n">BaseCombinatorialCV</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">cv</span><span class="p">:</span> <span class="n">sks</span><span class="o">.</span><span class="n">BaseCrossValidator</span> <span class="o">|</span> <span class="n">BaseCombinatorialCV</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;predict&quot;</span><span class="p">,</span>
     <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="n">fit_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">pre_dispatch</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;2*n_jobs&quot;</span><span class="p">,</span>
     <span class="n">column_indices</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">portfolio_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -444,11 +456,6 @@ document.write(`
 <span class="sd">        Target data (optional).</span>
 <span class="sd">        For example, the price returns of the factors.</span>
 
-<span class="sd">    groups : array-like of shape (n_observations,), optional</span>
-<span class="sd">        Group labels for the samples used while splitting the dataset into</span>
-<span class="sd">        train/test set. Only used in conjunction with a &quot;Group&quot; `cv`</span>
-<span class="sd">        instance (e.g., `GroupKFold`).</span>
-
 <span class="sd">    cv : int | cross-validation generator, optional</span>
 <span class="sd">        Determines the cross-validation splitting strategy.</span>
 <span class="sd">        Possible inputs for cv are:</span>
@@ -469,8 +476,8 @@ document.write(`
 <span class="sd">    verbose : int, default=0</span>
 <span class="sd">        The verbosity level.</span>
 
-<span class="sd">    fit_params : dict, optional</span>
-<span class="sd">        Parameters to pass to the fit method of the estimator.</span>
+<span class="sd">    params : dict, optional</span>
+<span class="sd">        Parameters to pass to the underlying estimator&#39;s ``fit`` and the CV splitter.</span>
 
 <span class="sd">    pre_dispatch : int or str, default=&#39;2*n_jobs&#39;</span>
 <span class="sd">        Controls the number of jobs that get dispatched during parallel</span>
@@ -500,10 +507,57 @@ document.write(`
 <span class="sd">    predictions : MultiPeriodPortfolio | Population</span>
 <span class="sd">        This is the result of calling `predict`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">params</span>
+
     <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">safe_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">column_indices</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-    <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">groups</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">indexable</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">groups</span><span class="p">)</span>
-    <span class="n">cv</span> <span class="o">=</span> <span class="n">skm</span><span class="o">.</span><span class="n">check_cv</span><span class="p">(</span><span class="n">cv</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-    <span class="n">splits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">groups</span><span class="p">))</span>
+    <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">indexable</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">_routing_enabled</span><span class="p">():</span>
+        <span class="c1"># For estimators, a MetadataRouter is created in get_metadata_routing</span>
+        <span class="c1"># methods. For these router methods, we create the router to use</span>
+        <span class="c1"># `process_routing` on it.</span>
+        <span class="c1"># noinspection PyTypeChecker</span>
+        <span class="n">router</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">skm</span><span class="o">.</span><span class="n">MetadataRouter</span><span class="p">(</span><span class="n">owner</span><span class="o">=</span><span class="s2">&quot;cross_validate&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                <span class="n">splitter</span><span class="o">=</span><span class="n">cv</span><span class="p">,</span>
+                <span class="n">method_mapping</span><span class="o">=</span><span class="n">skm</span><span class="o">.</span><span class="n">MethodMapping</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">caller</span><span class="o">=</span><span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="n">callee</span><span class="o">=</span><span class="s2">&quot;split&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="o">.</span><span class="n">add</span><span class="p">(</span>
+                <span class="n">estimator</span><span class="o">=</span><span class="n">estimator</span><span class="p">,</span>
+                <span class="n">method_mapping</span><span class="o">=</span><span class="n">skm</span><span class="o">.</span><span class="n">MethodMapping</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">caller</span><span class="o">=</span><span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="n">callee</span><span class="o">=</span><span class="s2">&quot;fit&quot;</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">routed_params</span> <span class="o">=</span> <span class="n">skm</span><span class="o">.</span><span class="n">process_routing</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ske</span><span class="o">.</span><span class="n">UnsetMetadataPassedError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># The default exception would mention `fit` since in the above</span>
+            <span class="c1"># `process_routing` code, we pass `fit` as the caller. However,</span>
+            <span class="c1"># the user is not calling `fit` directly, so we change the message</span>
+            <span class="c1"># to make it more suitable for this case.</span>
+            <span class="n">unrequested_params</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">unrequested_params</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ske</span><span class="o">.</span><span class="n">UnsetMetadataPassedError</span><span class="p">(</span>
+                <span class="n">message</span><span class="o">=</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">unrequested_params</span><span class="si">}</span><span class="s2"> are passed to `cross_val_predict` but are&quot;</span>
+                    <span class="s2">&quot; not explicitly set as requested or not requested for&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; cross_validate&#39;s estimator: </span><span class="si">{</span><span class="n">estimator</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> Call&quot;</span>
+                    <span class="s2">&quot; `.set_fit_request({{metadata}}=True)` on the estimator for&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; each metadata in </span><span class="si">{</span><span class="n">unrequested_params</span><span class="si">}</span><span class="s2"> that you want to use and&quot;</span>
+                    <span class="s2">&quot; `metadata=False` for not using it. See the Metadata Routing User&quot;</span>
+                    <span class="s2">&quot; guide &lt;https://scikit-learn.org/stable/metadata_routing.html&gt;&quot;</span>
+                    <span class="s2">&quot; for more information.&quot;</span>
+                <span class="p">),</span>
+                <span class="n">unrequested_params</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">unrequested_params</span><span class="p">,</span>
+                <span class="n">routed_params</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">routed_params</span><span class="p">,</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">routed_params</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">Bunch</span><span class="p">()</span>
+        <span class="n">routed_params</span><span class="o">.</span><span class="n">splitter</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">Bunch</span><span class="p">(</span><span class="n">split</span><span class="o">=</span><span class="p">{})</span>
+        <span class="n">routed_params</span><span class="o">.</span><span class="n">estimator</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">Bunch</span><span class="p">(</span><span class="n">fit</span><span class="o">=</span><span class="n">params</span><span class="p">)</span>
+
+    <span class="n">cv</span> <span class="o">=</span> <span class="n">sks</span><span class="o">.</span><span class="n">check_cv</span><span class="p">(</span><span class="n">cv</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="n">splits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">cv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">routed_params</span><span class="o">.</span><span class="n">splitter</span><span class="o">.</span><span class="n">split</span><span class="p">))</span>
+
     <span class="n">portfolio_params</span> <span class="o">=</span> <span class="p">{}</span> <span class="k">if</span> <span class="n">portfolio_params</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">portfolio_params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
     <span class="c1"># We ensure that the folds are not shuffled</span>
@@ -527,6 +581,7 @@ document.write(`
     <span class="c1"># and that it is pickle-able.</span>
     <span class="n">parallel</span> <span class="o">=</span> <span class="n">skp</span><span class="o">.</span><span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">pre_dispatch</span><span class="o">=</span><span class="n">pre_dispatch</span><span class="p">)</span>
     <span class="c1"># TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed</span>
+    <span class="c1"># noinspection PyCallingNonCallable</span>
     <span class="n">predictions</span> <span class="o">=</span> <span class="n">parallel</span><span class="p">(</span>
         <span class="n">skp</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">fit_and_predict</span><span class="p">)(</span>
             <span class="n">sk</span><span class="o">.</span><span class="n">clone</span><span class="p">(</span><span class="n">estimator</span><span class="p">),</span>
@@ -534,7 +589,7 @@ document.write(`
             <span class="n">y</span><span class="p">,</span>
             <span class="n">train</span><span class="o">=</span><span class="n">train</span><span class="p">,</span>
             <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">,</span>
-            <span class="n">fit_params</span><span class="o">=</span><span class="n">fit_params</span><span class="p">,</span>
+            <span class="n">fit_params</span><span class="o">=</span><span class="n">routed_params</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">fit</span><span class="p">,</span>
             <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">for</span> <span class="n">train</span><span class="p">,</span> <span class="n">test</span> <span class="ow">in</span> <span class="n">splits</span>

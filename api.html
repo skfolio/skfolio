@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="This is the class and function reference of skfolio. Please refer to the full user guide for further details, as the class and function raw specifications may not be enough to give full guidelines ..." />
 
-    <title>API Reference &#8212; skfolio 0.2.3 documentation</title>
+    <title>API Reference &#8212; skfolio 0.3.0 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="_static/documentation_options.js?v=c591aceb"></script>
+    <script src="_static/documentation_options.js?v=6512192e"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -70,7 +70,7 @@
     <link rel="canonical" href="https://skfolio.org/api.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="skfolio.measures.BaseMeasure" href="generated/skfolio.measures.BaseMeasure.html" />
-    <link rel="prev" title="Investment Horizon" href="auto_examples/8_data_preparation/plot_1_investment_horizon.html" />
+    <link rel="prev" title="Investment Horizon" href="auto_examples/9_data_preparation/plot_1_investment_horizon.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -450,6 +450,7 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.OAS.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.OAS</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.ShrunkCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ShrunkCovariance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.GraphicalLassoCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.GraphicalLassoCV</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.moments.ImpliedCovariance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.moments</span></code>.ImpliedCovariance</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.distance.BaseDistance.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.distance</span></code>.BaseDistance</a></li>
@@ -945,13 +946,13 @@ is the dot product of the assets weights with the assets returns and
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.EmpiricalCovariance.html#skfolio.moments.EmpiricalCovariance" title="skfolio.moments.EmpiricalCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EmpiricalCovariance</span></code></a></p></td>
-<td><p>Empirical covariance estimator.</p></td>
+<td><p>Empirical Covariance estimator.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.EWCovariance.html#skfolio.moments.EWCovariance" title="skfolio.moments.EWCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.EWCovariance</span></code></a></p></td>
 <td><p>Exponentially Weighted Covariance estimator.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.GerberCovariance.html#skfolio.moments.GerberCovariance" title="skfolio.moments.GerberCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.GerberCovariance</span></code></a></p></td>
-<td><p>Gerber covariance estimator.</p></td>
+<td><p>Gerber Covariance estimator.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.DenoiseCovariance.html#skfolio.moments.DenoiseCovariance" title="skfolio.moments.DenoiseCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.DenoiseCovariance</span></code></a></p></td>
 <td><p>Covariance Denoising estimator.</p></td>
@@ -960,7 +961,7 @@ is the dot product of the assets weights with the assets returns and
 <td><p>Covariance Detoning estimator.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.LedoitWolf.html#skfolio.moments.LedoitWolf" title="skfolio.moments.LedoitWolf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.LedoitWolf</span></code></a></p></td>
-<td><p>LedoitWolf Estimator.</p></td>
+<td><p>LedoitWolf Covariance Estimator.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.OAS.html#skfolio.moments.OAS" title="skfolio.moments.OAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.OAS</span></code></a></p></td>
 <td><p>Oracle Approximating Shrinkage Estimator as proposed in <a class="reference internal" href="generated/skfolio.moments.OAS.html#re9a22b087643-1" id="id14"><span>[Re9a22b087643-1]</span></a>.</p></td>
@@ -970,6 +971,9 @@ is the dot product of the assets weights with the assets returns and
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.moments.GraphicalLassoCV.html#skfolio.moments.GraphicalLassoCV" title="skfolio.moments.GraphicalLassoCV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.GraphicalLassoCV</span></code></a></p></td>
 <td><p>Sparse inverse covariance with cross-validated choice of the l1 penalty.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.moments.ImpliedCovariance.html#skfolio.moments.ImpliedCovariance" title="skfolio.moments.ImpliedCovariance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">moments.ImpliedCovariance</span></code></a></p></td>
+<td><p>Implied Covariance estimator.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1255,7 +1259,7 @@ is the dot product of the assets weights with the assets returns and
     <div class="footer-article-item"><!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="auto_examples/8_data_preparation/plot_1_investment_horizon.html"
+       href="auto_examples/9_data_preparation/plot_1_investment_horizon.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">

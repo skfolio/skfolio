@@ -122,7 +122,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the  MeanRisk optimization.">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate management fees (MF) into the MeanRisk optimization.">
 
 .. only:: html
 
