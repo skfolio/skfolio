@@ -612,6 +612,8 @@ class Population(list):
             title = f"{title} (non-compounded)"
 
         df = pd.concat(cumulative_returns, axis=1).iloc[:, idx]
+        # Sort index because pd.concat unsort NaNs at the end
+        df.sort_index(inplace=True)
         df.columns = deduplicate_names(names)
 
         fig = df.plot(backend="plotly")

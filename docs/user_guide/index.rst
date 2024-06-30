@@ -31,5 +31,6 @@ and overfitting.
     Pre-Selection <pre_selection>
     Model Selection <model_selection>
     Hyper-Parameters Tuning <hyper_parameters_tuning>
+    Metadata Routing <metadata_routing>
     Datasets <datasets>
     Data Preparation <data_preparation>

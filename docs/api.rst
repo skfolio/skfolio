@@ -364,6 +364,7 @@ Classes
     moments.OAS
     moments.ShrunkCovariance
     moments.GraphicalLassoCV
+    moments.ImpliedCovariance
 
 .. _distance_ref:
 

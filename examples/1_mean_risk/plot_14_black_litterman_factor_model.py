@@ -120,9 +120,8 @@ model = BlackLitterman(
     views=assets_views,
     prior_estimator=FactorModel(
         factor_prior_estimator=BlackLitterman(views=factor_views),
-    )
+    ),
 )
 
 model.fit(X, y)
 print(model.prior_model_.covariance.shape)
-

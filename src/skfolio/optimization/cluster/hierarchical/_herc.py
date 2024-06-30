@@ -10,6 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -269,7 +270,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         )
 
     def fit(
-        self, X: npt.ArrayLike, y: None = None
+        self, X: npt.ArrayLike, y: None = None, **fit_params
     ) -> "HierarchicalEqualRiskContribution":
         """Fit the Hierarchical Equal Risk Contribution estimator.
 
@@ -281,11 +282,20 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : HierarchicalEqualRiskContribution
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # Validate
         if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
             raise TypeError(
@@ -308,7 +318,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         )
 
         # Fit the estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         returns = prior_model.returns
 
@@ -316,14 +326,18 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        self.distance_estimator_.fit(returns)
+        # noinspection PyArgumentList
+        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        self.hierarchical_clustering_estimator_.fit(distance)
+        # noinspection PyArgumentList
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
 
         n_clusters = self.hierarchical_clustering_estimator_.n_clusters_
         labels = self.hierarchical_clustering_estimator_.labels_

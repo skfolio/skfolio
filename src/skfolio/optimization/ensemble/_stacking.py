@@ -12,8 +12,9 @@ from copy import deepcopy
 import numpy as np
 import numpy.typing as npt
 import sklearn as sk
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
 import sklearn.utils as sku
+import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
@@ -138,7 +139,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         self,
         estimators: list[tuple[str, BaseOptimization]],
         final_estimator: BaseOptimization | None = None,
-        cv: skm.BaseCrossValidator | BaseCombinatorialCV | str | int | None = None,
+        cv: sks.BaseCrossValidator | BaseCombinatorialCV | str | int | None = None,
         quantile: float = 0.5,
         quantile_measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         n_jobs: int | None = None,
@@ -229,8 +230,18 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         """
         return super()._get_params("estimators", deep=deep)
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__)
+        for name, estimator in self.estimators:
+            router.add(
+                **{name: estimator},
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "StackingOptimization":
         """Fit the Stacking Optimization estimator.
 
@@ -243,11 +254,20 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             Price returns of factors or a target benchmark.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : StackingOptimization
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         names, all_estimators = self._validate_estimators()
         self.final_estimator_ = check_estimator(
             self.final_estimator,
@@ -266,8 +286,10 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             # They are exposed publicly.
             # noinspection PyCallingNonCallable
             self.estimators_ = skp.Parallel(n_jobs=self.n_jobs)(
-                skp.delayed(fit_single_estimator)(sk.clone(est), X, y)
-                for est in all_estimators
+                skp.delayed(fit_single_estimator)(
+                    sk.clone(est), X, y, routed_params[name]["fit"]
+                )
+                for name, est in zip(names, all_estimators, strict=True)
             )
 
         self.named_estimators_ = {
@@ -287,21 +309,22 @@ class StackingOptimization(BaseOptimization, BaseComposition):
                 [estimator.predict(X) for estimator in self.estimators_]
             ).T
         else:
-            cv = skm.check_cv(self.cv)
+            cv = sks.check_cv(self.cv)
             if hasattr(cv, "random_state") and cv.random_state is None:
                 cv.random_state = np.random.RandomState()
             # noinspection PyCallingNonCallable
             cv_predictions = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(cross_val_predict)(
-                    sk.clone(estimator),
+                    sk.clone(est),
                     X,
                     y,
                     cv=deepcopy(cv),
                     method="predict",
                     n_jobs=self.n_jobs,
+                    params=routed_params[name]["fit"],
                     verbose=self.verbose,
                 )
-                for estimator in all_estimators
+                for name, est in zip(names, all_estimators, strict=True)
             )
 
             # We validate and convert to numpy array only after base-estimator fitting
@@ -326,7 +349,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
                     )
                     y = y[test_indices]
 
-        fit_single_estimator(self.final_estimator_, X_pred, y)
+        fit_single_estimator(self.final_estimator_, X_pred, y, {})
         outer_weights = self.final_estimator_.weights_
         self.weights_ = outer_weights @ inner_weights
         return self

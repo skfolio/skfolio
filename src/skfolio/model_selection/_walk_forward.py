@@ -12,11 +12,11 @@ from collections.abc import Iterator
 
 import numpy as np
 import numpy.typing as npt
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 
-class WalkForward(skm.BaseCrossValidator):
+class WalkForward(sks.BaseCrossValidator):
     """Walk Forward cross-validator.
 
     Provides train/test indices to split time series data samples in a walk forward
@@ -196,7 +196,7 @@ class WalkForward(skm.BaseCrossValidator):
                 )
             test_start = test_end
 
-    def get_n_splits(self, X: npt.ArrayLike, y=None, groups=None) -> int:
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
         """Returns the number of splitting iterations in the cross-validator
 
         Parameters

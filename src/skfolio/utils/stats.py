@@ -1,12 +1,13 @@
 """Tools module"""
 
+import warnings
+
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
-
 from enum import auto
 
 import numpy as np
@@ -102,7 +103,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
     x = np.sort(x)
     n = len(x)
 
-    def func(y: float):
+    def func(y: np.ndarray) -> float:
         y = y[0]
         if y <= 0:
             return np.inf
@@ -301,9 +302,18 @@ def corr_to_cov(corr: np.ndarray, std: np.ndarray):
 _CLIPPING_VALUE = 1e-13
 
 
-def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int = 100):
+def cov_nearest(
+    cov: np.ndarray,
+    higham: bool = False,
+    higham_max_iteration: int = 100,
+    warn: bool = False,
+):
     """Compute the nearest covariance matrix that is positive definite and with a
     cholesky decomposition than can be computed. The variance is left unchanged.
+    A covariance matrix that is not positive definite often occurs in high
+    dimensional problems. It can be due to multicollinearity, floating-point
+    inaccuracies, or when the number of observations is smaller than the number of
+    assets.
 
     First, it converts the covariance matrix to a correlation matrix.
     Then, it finds the nearest correlation matrix and converts it back to a covariance
@@ -330,6 +340,10 @@ def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int
         Maximum number of iteration of the Higham & Nick (2002) algorithm.
         The default value is `100`.
 
+    warn : bool, default=False
+        If this is set to True, a user warning is emitted when the covariance matrix
+        is not positive definite and replaced by the nearest. The default is False.
+
     Returns
     -------
     cov : ndarray
@@ -348,6 +362,13 @@ def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int
     if is_cholesky_dec(cov) and is_positive_definite(cov):
         return cov
 
+    if warn:
+        warnings.warn(
+            "The covariance matrix is not positive definite. "
+            f"The {'Higham' if higham else 'Clipping'} algorithm will be used to find "
+            "the nearest positive definite covariance.",
+            stacklevel=2,
+        )
     corr, std = cov_to_corr(cov)
 
     if higham:

@@ -1,18 +1,8 @@
 import numpy as np
-import pytest
 from sklearn import set_config
 
 from skfolio import PerfMeasure
-from skfolio.datasets import load_sp500_dataset
 from skfolio.pre_selection import DropCorrelated, SelectKExtremes, SelectNonDominated
-from skfolio.preprocessing import prices_to_returns
-
-
-@pytest.fixture(scope="module")
-def X():
-    prices = load_sp500_dataset()
-    X = prices_to_returns(X=prices)
-    return X
 
 
 def test_drop_high_correlation(X):

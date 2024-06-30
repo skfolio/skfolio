@@ -1,8 +1,8 @@
-import datetime as dt
-
 import numpy as np
 import pytest
-from skfolio.datasets import load_sp500_dataset
+from sklearn import config_context
+from sklearn.exceptions import UnsetMetadataPassedError
+
 from skfolio.distance import (
     CovarianceDistance,
     DistanceCorrelation,
@@ -12,16 +12,7 @@ from skfolio.distance import (
     PearsonDistance,
     SpearmanDistance,
 )
-from skfolio.moments import GerberCovariance
-from skfolio.preprocessing import prices_to_returns
-
-
-@pytest.fixture(scope="module")
-def X():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2014, 1, 1) :]
-    X = prices_to_returns(X=prices)
-    return X
+from skfolio.moments import GerberCovariance, ImpliedCovariance
 
 
 class TestPearsonDistance:
@@ -123,6 +114,40 @@ class TestCovarianceDistance:
         assert isinstance(distance.distance_, np.ndarray)
         assert distance.absolute is False
         assert distance.power == 1
+
+    def test_metadata_routing_errors(self, X, implied_vol):
+        distance = CovarianceDistance(covariance_estimator=ImpliedCovariance())
+
+        with pytest.raises(ValueError):
+            distance.fit(X)
+
+        with pytest.raises(UnsetMetadataPassedError):
+            distance.fit(X, implied_vol=implied_vol)
+
+        with pytest.raises(ValueError):
+            with config_context(enable_metadata_routing=True):
+                distance.fit(X)
+
+        with pytest.raises(UnsetMetadataPassedError):
+            with config_context(enable_metadata_routing=True):
+                distance.fit(X, implied_vol=implied_vol)
+
+    def test_metadata_routing(self, X, implied_vol):
+        with config_context(enable_metadata_routing=True):
+            distance = CovarianceDistance(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+
+            with pytest.raises(ValueError):
+                distance.fit(X)
+
+            distance.fit(X, implied_vol=implied_vol)
+
+        # noinspection PyUnresolvedReferences
+        assert distance.covariance_estimator_.r2_scores_.shape == (20,)
+        assert distance.distance_.shape == (20, 20)
 
 
 class TestDistanceCorrelation:

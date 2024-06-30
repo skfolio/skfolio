@@ -398,7 +398,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "MaximumDiversification":
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -410,6 +410,13 @@ class MaximumDiversification(MeanRisk):
         y : array-like of shape (n_observations, n_targets), optional
             Price returns of factors or a target benchmark.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------
@@ -424,5 +431,5 @@ class MaximumDiversification(MeanRisk):
             return np.sqrt(np.diag(covariance)) @ w
 
         self.overwrite_expected_return = func
-        super().fit(X, y)
+        super().fit(X, y, **fit_params)
         return self

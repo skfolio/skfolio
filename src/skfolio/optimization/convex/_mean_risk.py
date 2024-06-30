@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -681,7 +682,25 @@ class MeanRisk(ConvexOptimization):
                     "`objective_function = ObjectiveFunction.MINIMIZE_RISK`"
                 )
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None) -> "MeanRisk":
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            super()
+            .get_metadata_routing()
+            .add(
+                mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                covariance_uncertainty_set_estimator=self.covariance_uncertainty_set_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
+    def fit(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+    ) -> "MeanRisk":
         """Fit the Mean-Risk Optimization estimator.
 
         Parameters
@@ -698,6 +717,8 @@ class MeanRisk(ConvexOptimization):
         self : MeanRisk
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self._check_feature_names(X, reset=True)
         # Validate
         self._validation()
@@ -708,7 +729,7 @@ class MeanRisk(ConvexOptimization):
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
 
@@ -766,7 +787,9 @@ class MeanRisk(ConvexOptimization):
             self.mu_uncertainty_set_estimator_ = sk.clone(
                 self.mu_uncertainty_set_estimator
             )
-            self.mu_uncertainty_set_estimator_.fit(X, y)
+            self.mu_uncertainty_set_estimator_.fit(
+                X, y, **routed_params.mu_uncertainty_set_estimator.fit
+            )
             mu_uncertainty_set = self._cvx_mu_uncertainty_set(
                 mu_uncertainty_set=self.mu_uncertainty_set_estimator_.uncertainty_set_,
                 w=w,
@@ -831,11 +854,11 @@ class MeanRisk(ConvexOptimization):
                 efficient_frontier_size=None,
                 portfolio_params=dict(annualized_factor=1),
             )
-            model.fit(X)
+            model.fit(X, y, **fit_params)
             min_return = model.problem_values_["expected_return"]
             # noinspection PyTypeChecker
             model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
-            model.fit(X)
+            model.fit(X, y, **fit_params)
             max_return = model.problem_values_["expected_return"]
             if max_return <= 0:
                 raise ValueError(
@@ -888,7 +911,11 @@ class MeanRisk(ConvexOptimization):
                         self.covariance_uncertainty_set_estimator_ = sk.clone(
                             self.covariance_uncertainty_set_estimator
                         )
-                        self.covariance_uncertainty_set_estimator_.fit(X, y)
+                        self.covariance_uncertainty_set_estimator_.fit(
+                            X,
+                            y,
+                            **routed_params.covariance_uncertainty_set_estimator.fit,
+                        )
                         args[arg_name] = (
                             self.covariance_uncertainty_set_estimator_.uncertainty_set_
                         )

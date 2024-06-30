@@ -8,6 +8,7 @@ from skfolio.datasets._base import (
     load_ftse100_dataset,
     load_nasdaq_dataset,
     load_sp500_dataset,
+    load_sp500_implied_vol_dataset,
     load_sp500_index,
 )
 
@@ -17,4 +18,5 @@ __all__ = [
     "load_ftse100_dataset",
     "load_sp500_dataset",
     "load_sp500_index",
+    "load_sp500_implied_vol_dataset",
 ]
