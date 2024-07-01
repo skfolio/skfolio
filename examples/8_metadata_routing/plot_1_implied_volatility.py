@@ -66,14 +66,17 @@ implied_vol.head()
 # implied volatility. The training set uses non-overlapping data of sample size
 # `window_size` to avoid possible regression errors caused by auto-correlation.
 # The logarithmic transformation of volatilities is used for its better finite sample
-# properties and distribution, which is closer to normality, less skewed, and
+# properties and distribution, which is closer to normality, less skewed and
 # leptokurtic.
-# The covariance estimator is then used to compute the correlation matrix.
+#
 # The final step is the reconstruction of the covariance matrix from the correlation
 # and estimated realised volatilities :math:`D`:
 #
 # .. math:: \Sigma = D \ Corr \ D
 #
+# With :math:`Corr`, the correlation matrix computed from the prior covariance
+# estimator. The default is the `EmpiricalCovariance`. It can be changed to any
+# covariance estimator using `prior_covariance_estimator`.
 
 model = ImpliedCovariance()
 model.fit(X, implied_vol=implied_vol)
@@ -191,7 +194,7 @@ grid_search = GridSearchCV(
     estimator=model,
     param_grid={
         "prior_estimator__covariance_estimator__window_size": np.arange(5, 50, 3),
-        "prior_estimator__covariance_estimator__covariance_estimator": [
+        "prior_estimator__covariance_estimator__prior_covariance_estimator": [
             LedoitWolf(),
             GerberCovariance(),
             EmpiricalCovariance(),
@@ -208,15 +211,15 @@ print(gs_model)
 
 # %%
 # Let's plot the out-of-sample Sharpe Ratio as a function of the window size and
-# covariance estimator:
+# the prior covariance estimator used to compute the correlation matrix:
 cv_results = grid_search.cv_results_
 
 df = pd.DataFrame(
     {
-        "Cov Estimator": [
+        "Prior Cov Estimator": [
             str(x)
             for x in cv_results[
-                "param_prior_estimator__covariance_estimator__covariance_estimator"
+                "param_prior_estimator__covariance_estimator__prior_covariance_estimator"
             ]
         ],
         "Window Size": cv_results[
@@ -230,7 +233,7 @@ px.line(
     df,
     x="Window Size",
     y="Test Sharpe Ratio",
-    color="Cov Estimator",
+    color="Prior Cov Estimator",
     error_y="error",
     title="Out-of-Sample Sharpe Ratio",
 )

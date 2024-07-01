@@ -245,7 +245,7 @@ def test_implied_covariance_small(X, implied_vol, window_size):
 
 def test_implied_covariance_meta_data_routing_error(X, implied_vol):
     with config_context(enable_metadata_routing=True):
-        model = ImpliedCovariance(covariance_estimator=ImpliedCovariance())
+        model = ImpliedCovariance(prior_covariance_estimator=ImpliedCovariance())
         with pytest.raises(UnsetMetadataPassedError):
             model.fit(X, implied_vol=implied_vol)
 
@@ -253,7 +253,9 @@ def test_implied_covariance_meta_data_routing_error(X, implied_vol):
 def test_implied_covariance_meta_data_routing(X, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = ImpliedCovariance(
-            covariance_estimator=ImpliedCovariance().set_fit_request(implied_vol=True)
+            prior_covariance_estimator=ImpliedCovariance().set_fit_request(
+                implied_vol=True
+            )
         )
         model.fit(X, implied_vol=implied_vol)
 
@@ -264,7 +266,7 @@ def test_implied_covariance_meta_data_routing(X, implied_vol):
 
 
 def test_implied_covariance_ledoit_wolf(X, implied_vol):
-    model = ImpliedCovariance(covariance_estimator=LedoitWolf())
+    model = ImpliedCovariance(prior_covariance_estimator=LedoitWolf())
     model.fit(X, implied_vol=implied_vol)
 
     model_imp_ref = ImpliedCovariance()

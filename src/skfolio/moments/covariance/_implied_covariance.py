@@ -51,17 +51,20 @@ class ImpliedCovariance(BaseCovariance):
 
     with :math:`VRPA` the volatility risk premium adjustment.
 
-    The covariance estimator is then used to compute the correlation matrix.
     The final step is the reconstruction of the covariance matrix from the correlation
     and estimated realised volatilities :math:`D`:
 
     .. math:: \Sigma = D \ Corr \ D
 
+    With :math:`Corr`, the correlation matrix computed from the prior covariance
+    estimator. The default is the `EmpiricalCovariance`. It can be changed to any
+    covariance estimator using `prior_covariance_estimator`.
+
     Parameters
     ----------
-    covariance_estimator : BaseCovariance, optional
+    prior_covariance_estimator : BaseCovariance, optional
         :ref:`Covariance estimator <covariance_estimator>` to estimate the covariance
-        matrix used for the correlation estimates.
+        matrix used for the correlation estimates prior the volatilities update.
         The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
 
     annualized_factor : float, default=252
@@ -118,6 +121,9 @@ class ImpliedCovariance(BaseCovariance):
     covariance_ : ndarray of shape (n_assets, n_assets)
         Estimated covariance matrix.
 
+    prior_covariance_estimator_ : BaseEstimator
+        Fitted prior covariance estimator.
+
     pred_realised_vols_ : ndarray of shape (n_assets,)
         The predicted realised volatilities
 
@@ -160,7 +166,7 @@ class ImpliedCovariance(BaseCovariance):
         Sara Vikberg & Julia Björkman (2020).
     """
 
-    covariance_estimator_: BaseCovariance
+    prior_covariance_estimator_: BaseCovariance
     pred_realised_vols_: np.ndarray
     linear_regressors_: list
     coefs_: np.ndarray
@@ -169,7 +175,7 @@ class ImpliedCovariance(BaseCovariance):
 
     def __init__(
         self,
-        covariance_estimator: BaseCovariance | None = None,
+        prior_covariance_estimator: BaseCovariance | None = None,
         annualized_factor: float = 252.0,
         window_size: int = 20,
         linear_regressor: skb.BaseEstimator | None = None,
@@ -183,7 +189,7 @@ class ImpliedCovariance(BaseCovariance):
             higham=higham,
             higham_max_iteration=higham_max_iteration,
         )
-        self.covariance_estimator = covariance_estimator
+        self.prior_covariance_estimator = prior_covariance_estimator
         self.annualized_factor = annualized_factor
         self.linear_regressor = linear_regressor
         self.window_size = window_size
@@ -195,7 +201,7 @@ class ImpliedCovariance(BaseCovariance):
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add_self_request(self)
             .add(
-                covariance_estimator=self.covariance_estimator,
+                prior_covariance_estimator=self.prior_covariance_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
             )
         )
@@ -237,15 +243,17 @@ class ImpliedCovariance(BaseCovariance):
 
         window_size = int(self.window_size)
         # fitting estimators
-        self.covariance_estimator_ = check_estimator(
-            self.covariance_estimator,
+        self.prior_covariance_estimator_ = check_estimator(
+            self.prior_covariance_estimator,
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
         # noinspection PyArgumentList
-        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
+        self.prior_covariance_estimator_.fit(
+            X, y, **routed_params.prior_covariance_estimator.fit
+        )
 
-        corr, _ = cov_to_corr(self.covariance_estimator_.covariance_)
+        corr, _ = cov_to_corr(self.prior_covariance_estimator_.covariance_)
 
         assets_names = get_feature_names(X)
         if assets_names is not None:
