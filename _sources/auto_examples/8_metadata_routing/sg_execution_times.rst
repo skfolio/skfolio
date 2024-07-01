@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**01:05.759** total execution time for 1 file **from auto_examples/8_metadata_routing**:
+**01:06.783** total execution time for 1 file **from auto_examples/8_metadata_routing**:
 
 .. container::
 
@@ -33,5 +33,5 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_8_metadata_routing_plot_1_implied_volatility.py` (``plot_1_implied_volatility.py``)
-     - 01:05.759
+     - 01:06.783
      - 0.0

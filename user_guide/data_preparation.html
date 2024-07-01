@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="Most fit methods of skfolio estimators take the assets returns as input X. Therefore, the choice of methodology to convert prices to returns is left to the user. There are two different notions of ..." />
 
-    <title>Data Preparation &#8212; skfolio 0.3.0 documentation</title>
+    <title>Data Preparation &#8212; skfolio 0.3.1 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=6512192e"></script>
+    <script src="../_static/documentation_options.js?v=92d7079b"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -530,7 +530,7 @@ Here we demonstrated the general procedure.</p>
 <p>In <code class="docutils literal notranslate"><span class="pre">skfolio</span></code>, the above can be achieved using <a class="reference internal" href="../generated/skfolio.prior.EmpiricalPrior.html#skfolio.prior.EmpiricalPrior" title="skfolio.prior.EmpiricalPrior"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmpiricalPrior</span></code></a>
 by setting <code class="docutils literal notranslate"><span class="pre">is_log_normal</span></code> to <code class="docutils literal notranslate"><span class="pre">True</span></code> and providing <code class="docutils literal notranslate"><span class="pre">investment_horizon</span></code>. The input <code class="docutils literal notranslate"><span class="pre">X</span></code>
 must be linear returns. The conversion to logarithmic returns is performed inside the estimator.</p>
-<p>However, as seen in the example <span class="xref std std-ref">sphx_glr_auto_examples_8_data_preparation_plot_1_investment_horizon.py</span>,
+<p>However, as seen in the example <a class="reference internal" href="../auto_examples/9_data_preparation/plot_1_investment_horizon.html#sphx-glr-auto-examples-9-data-preparation-plot-1-investment-horizon-py"><span class="std std-ref">Investment Horizon</span></a>,
 for frequently rebalanced portfolios (investment horizon less than a year), the general procedure and the
 below simplified one will give very close results:</p>
 <ol class="arabic simple">

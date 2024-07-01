@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.moments.covariance._implied_covariance &#8212; skfolio 0.3.0 documentation</title>
+    <title>skfolio.moments.covariance._implied_covariance &#8212; skfolio 0.3.1 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../../_static/documentation_options.js?v=6512192e"></script>
+    <script src="../../../../_static/documentation_options.js?v=92d7079b"></script>
     <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -430,17 +430,20 @@ document.write(`
 
 <span class="sd">    with :math:`VRPA` the volatility risk premium adjustment.</span>
 
-<span class="sd">    The covariance estimator is then used to compute the correlation matrix.</span>
 <span class="sd">    The final step is the reconstruction of the covariance matrix from the correlation</span>
 <span class="sd">    and estimated realised volatilities :math:`D`:</span>
 
 <span class="sd">    .. math:: \Sigma = D \ Corr \ D</span>
 
+<span class="sd">    With :math:`Corr`, the correlation matrix computed from the prior covariance</span>
+<span class="sd">    estimator. The default is the `EmpiricalCovariance`. It can be changed to any</span>
+<span class="sd">    covariance estimator using `prior_covariance_estimator`.</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    covariance_estimator : BaseCovariance, optional</span>
+<span class="sd">    prior_covariance_estimator : BaseCovariance, optional</span>
 <span class="sd">        :ref:`Covariance estimator &lt;covariance_estimator&gt;` to estimate the covariance</span>
-<span class="sd">        matrix used for the correlation estimates.</span>
+<span class="sd">        matrix used for the correlation estimates prior the volatilities update.</span>
 <span class="sd">        The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.</span>
 
 <span class="sd">    annualized_factor : float, default=252</span>
@@ -497,6 +500,9 @@ document.write(`
 <span class="sd">    covariance_ : ndarray of shape (n_assets, n_assets)</span>
 <span class="sd">        Estimated covariance matrix.</span>
 
+<span class="sd">    prior_covariance_estimator_ : BaseEstimator</span>
+<span class="sd">        Fitted prior covariance estimator.</span>
+
 <span class="sd">    pred_realised_vols_ : ndarray of shape (n_assets,)</span>
 <span class="sd">        The predicted realised volatilities</span>
 
@@ -539,7 +545,7 @@ document.write(`
 <span class="sd">        Sara Vikberg &amp; Julia Björkman (2020).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">covariance_estimator_</span><span class="p">:</span> <span class="n">BaseCovariance</span>
+    <span class="n">prior_covariance_estimator_</span><span class="p">:</span> <span class="n">BaseCovariance</span>
     <span class="n">pred_realised_vols_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
     <span class="n">linear_regressors_</span><span class="p">:</span> <span class="nb">list</span>
     <span class="n">coefs_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
@@ -548,7 +554,7 @@ document.write(`
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">covariance_estimator</span><span class="p">:</span> <span class="n">BaseCovariance</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">prior_covariance_estimator</span><span class="p">:</span> <span class="n">BaseCovariance</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">annualized_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">252.0</span><span class="p">,</span>
         <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
         <span class="n">linear_regressor</span><span class="p">:</span> <span class="n">skb</span><span class="o">.</span><span class="n">BaseEstimator</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -562,7 +568,7 @@ document.write(`
             <span class="n">higham</span><span class="o">=</span><span class="n">higham</span><span class="p">,</span>
             <span class="n">higham_max_iteration</span><span class="o">=</span><span class="n">higham_max_iteration</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator</span> <span class="o">=</span> <span class="n">covariance_estimator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator</span> <span class="o">=</span> <span class="n">prior_covariance_estimator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">annualized_factor</span> <span class="o">=</span> <span class="n">annualized_factor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">linear_regressor</span> <span class="o">=</span> <span class="n">linear_regressor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">window_size</span> <span class="o">=</span> <span class="n">window_size</span>
@@ -576,7 +582,7 @@ document.write(`
             <span class="n">skm</span><span class="o">.</span><span class="n">MetadataRouter</span><span class="p">(</span><span class="n">owner</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
             <span class="o">.</span><span class="n">add_self_request</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
             <span class="o">.</span><span class="n">add</span><span class="p">(</span>
-                <span class="n">covariance_estimator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator</span><span class="p">,</span>
+                <span class="n">prior_covariance_estimator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator</span><span class="p">,</span>
                 <span class="n">method_mapping</span><span class="o">=</span><span class="n">skm</span><span class="o">.</span><span class="n">MethodMapping</span><span class="p">()</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">caller</span><span class="o">=</span><span class="s2">&quot;fit&quot;</span><span class="p">,</span> <span class="n">callee</span><span class="o">=</span><span class="s2">&quot;fit&quot;</span><span class="p">),</span>
             <span class="p">)</span>
         <span class="p">)</span>
@@ -621,15 +627,17 @@ document.write(`
 
         <span class="n">window_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">window_size</span><span class="p">)</span>
         <span class="c1"># fitting estimators</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator</span><span class="p">,</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalCovariance</span><span class="p">(),</span>
             <span class="n">check_type</span><span class="o">=</span><span class="n">BaseCovariance</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="c1"># noinspection PyArgumentList</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">routed_params</span><span class="o">.</span><span class="n">covariance_estimator</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator_</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">**</span><span class="n">routed_params</span><span class="o">.</span><span class="n">prior_covariance_estimator</span><span class="o">.</span><span class="n">fit</span>
+        <span class="p">)</span>
 
-        <span class="n">corr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cov_to_corr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">covariance_estimator_</span><span class="o">.</span><span class="n">covariance_</span><span class="p">)</span>
+        <span class="n">corr</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cov_to_corr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prior_covariance_estimator_</span><span class="o">.</span><span class="n">covariance_</span><span class="p">)</span>
 
         <span class="n">assets_names</span> <span class="o">=</span> <span class="n">get_feature_names</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">assets_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
