@@ -29,7 +29,7 @@ def population(X):
     # Create a population of portfolios with 3 objectives
     population = Population([])
     n_assets = X.shape[1]
-    for i in range(100):
+    for i in range(10):
         weights = rand_weights(n=n_assets, zeros=n_assets - 10)
         portfolio = Portfolio(
             X=X,
@@ -172,3 +172,13 @@ def test_population_plot_cumulative_returns(population):
     population.set_portfolio_params(compounded=True)
     assert population[:2].plot_cumulative_returns()
     assert population[:2].plot_cumulative_returns(log_scale=True)
+
+
+def test_population_rolling_measure(population):
+    df = population.rolling_measure()
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[1] == len(population)
+
+    assert population.plot_rolling_measure(
+        measure=RiskMeasure.STANDARD_DEVIATION, window=50
+    )

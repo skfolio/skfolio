@@ -811,7 +811,7 @@ class BasePortfolio:
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
-            The window size. The default value is `30`.
+            The window size. The default value is `30` observations.
 
         Returns
         -------
@@ -1053,19 +1053,18 @@ class BasePortfolio:
             line_dash="dash",
             line_color="blue",
         )
-        max_val = rolling.max()
-        min_val = rolling.min()
-        if max_val > 0:
+        max_val = np.max(rolling)
+        min_val = np.min(rolling)
+        if max_val > 0 > min_val:
             fig.add_hrect(
                 y0=0, y1=max_val * 1.3, line_width=0, fillcolor="green", opacity=0.1
             )
-        if min_val < 0:
             fig.add_hrect(
                 y0=min_val * 1.3, y1=0, line_width=0, fillcolor="red", opacity=0.1
             )
 
         fig.update_layout(
-            title=f"rolling {measure} - {window} observations window",
+            title=f"Rolling {measure} - {window} observations window",
             xaxis_title="Observations",
             yaxis_title=str(measure),
             showlegend=False,

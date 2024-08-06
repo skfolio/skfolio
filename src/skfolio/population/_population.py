@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 import scipy.interpolate as sci
 
 import skfolio.typing as skt
+from skfolio.measures import RatioMeasure
 from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names
@@ -448,7 +449,7 @@ class Population(list):
         tags: skt.Tags | None = None,
         display_sub_ptf_name: bool = True,
     ) -> pd.DataFrame:
-        """Composition of the portfolios in the population.
+        """Composition of each portfolio in the population.
 
         Parameters
         ----------
@@ -483,6 +484,37 @@ class Population(list):
         df = pd.concat(comp_list, axis=1)
         df.columns = deduplicate_names(list(df.columns))
         df.fillna(0, inplace=True)
+        return df
+
+    def rolling_measure(
+        self, measure: skt.Measure = RatioMeasure.SHARPE_RATIO, window: int = 30
+    ) -> pd.DataFrame:
+        """Compute the measure over a rolling window for each portfolio in the
+         population.
+
+        Parameters
+        ----------
+        measure : ct.Measure, default=RatioMeasure.SHARPE_RATIO
+            The measure. The default measure is the Sharpe Ratio.
+
+        window : int, default=30
+            The window size. The default value is `30` observations.
+
+        Returns
+        -------
+        dataframe : pandas DataFrame
+            The rolling measures.
+        """
+
+        rolling_measures = []
+        names = []
+        for ptf in self:
+            rolling_measures.append(ptf.rolling_measure(measure=measure, window=window))
+            names.append(_ptf_name_with_tag(ptf))
+        df = pd.concat(rolling_measures, axis=1)
+        df.columns = deduplicate_names(names)
+        # Sort index because pd.concat unsort NaNs at the end
+        df.sort_index(inplace=True)
         return df
 
     def plot_distribution(
@@ -582,7 +614,7 @@ class Population(list):
         compounded = []
         for ptf in portfolios:
             cumulative_returns.append(ptf.cumulative_returns_df)
-            names.append(f"{ptf.name}_{ptf.tag}" if ptf.tag is not None else ptf.name)
+            names.append(_ptf_name_with_tag(ptf))
             compounded.append(ptf.compounded)
         compounded = set(compounded)
 
@@ -884,3 +916,49 @@ class Population(list):
                 legend=dict(yanchor="top", y=0.96, xanchor="left", x=1.25),
             )
         return fig
+
+    def plot_rolling_measure(
+        self,
+        measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
+        window: int = 30,
+    ) -> go.Figure:
+        """Plot the measure over a rolling window for each portfolio in the population.
+
+        Parameters
+        ----------
+        measure : ct.Measure, default = RatioMeasure.SHARPE_RATIO
+           The measure.
+
+        window : int, default=30
+           The window size.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object
+        """
+        df = self.rolling_measure(measure=measure, window=window)
+        fig = df.plot(backend="plotly")
+        max_val = np.max(df)
+        min_val = np.min(df)
+        if max_val > 0 > min_val:
+            fig.add_hrect(
+                y0=0, y1=max_val * 1.3, line_width=0, fillcolor="green", opacity=0.1
+            )
+            fig.add_hrect(
+                y0=min_val * 1.3, y1=0, line_width=0, fillcolor="red", opacity=0.1
+            )
+
+        fig.update_layout(
+            title=f"Rolling {measure} - {window} observations window",
+            xaxis_title="Observations",
+            yaxis_title=str(measure),
+            showlegend=False,
+        )
+        return fig
+
+
+def _ptf_name_with_tag(portfolio: BasePortfolio) -> str:
+    if portfolio.tag is None:
+        return portfolio.name
+    return f"{portfolio.name}_{portfolio.tag}"
