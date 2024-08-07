@@ -95,7 +95,8 @@ version_toml = [
     "pyproject.toml:project.version",
 ]
 branch = "main"
-major_on_zero = true
+allow_zero_version = true
+major_on_zero = false
 tag_format = "v{version}"
 upload_to_pypi = false
 upload_to_vcs_release = true
