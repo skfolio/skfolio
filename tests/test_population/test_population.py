@@ -133,11 +133,10 @@ def test_population_multi_period_portfolio(population, multi_period_portfolio):
     assert population.plot_measures(
         x=RiskMeasure.STANDARD_DEVIATION, y=PerfMeasure.MEAN, show_fronts=True
     )
-    assert population.plot_measures(
+    assert population.filter(tags="random").plot_measures(
         x=RiskMeasure.STANDARD_DEVIATION,
         y=PerfMeasure.MEAN,
         hover_measures=[RatioMeasure.SHARPE_RATIO],
-        tags="random",
         title="Portfolios -- with sharpe ration",
     )
 
@@ -182,3 +181,8 @@ def test_population_rolling_measure(population):
     assert population.plot_rolling_measure(
         measure=RiskMeasure.STANDARD_DEVIATION, window=50
     )
+
+
+def test_population_filter_chaining(population):
+    res = population.filter(names=["1", "2"]).composition()
+    assert res.shape[1] == 2
