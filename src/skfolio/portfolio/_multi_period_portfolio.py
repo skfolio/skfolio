@@ -556,6 +556,42 @@ class MultiPeriodPortfolio(BasePortfolio):
         df.columns = deduplicate_names(df.columns)
         return df
 
+    def contribution(
+        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
+    ) -> np.ndarray | pd.DataFrame:
+        r"""Compute the contribution of each asset to a given measure for each
+        portfolio.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        to_df : bool, default=False
+            If this is set to True, a DataFrame with asset names in index and portfolio
+            names in columns is returned, otherwise a list of numpy array is returned.
+            When a DataFrame is returned, the assets with zero weights are removed.
+
+        Returns
+        -------
+        values : list of numpy array of shape (n_assets,) for each portfolio or a DataFrame
+            The measure contribution of each asset for each portfolio.
+        """
+        contributions = [
+            ptf.contribution(measure=measure, spacing=spacing, to_df=to_df)
+            for ptf in self
+        ]
+        if not to_df:
+            return contributions
+        df = pd.concat(contributions, axis=1)
+        df.fillna(0, inplace=True)
+        df.columns = deduplicate_names(df.columns)
+        return df
+
     def summary(self, formatted: bool = True) -> pd.Series:
         """Portfolio summary of all its measures.
 

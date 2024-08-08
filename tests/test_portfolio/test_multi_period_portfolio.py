@@ -401,3 +401,18 @@ def test_portfolio_summary(portfolio_and_returns, periods):
     df = portfolio.summary(formatted=False)
     assert df.loc["Portfolios Number"] == 3.0
     assert df.loc["Avg nb of Assets per Portfolio"] == 20.0
+
+
+def test_portfolio_risk_contribution(portfolio):
+    contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
+    assert isinstance(contribution, pd.DataFrame)
+    assert contribution.shape == (17, 3)
+
+    contribution = portfolio.contribution(
+        measure=RiskMeasure.STANDARD_DEVIATION, to_df=False
+    )
+    assert isinstance(contribution, list)
+    assert len(contribution) == 3
+    assert contribution[0].shape == (20,)
+
+    assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION).show()

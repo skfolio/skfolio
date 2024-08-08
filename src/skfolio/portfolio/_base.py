@@ -614,6 +614,13 @@ class BasePortfolio:
         """DataFrame of the Portfolio composition"""
         pass
 
+    @abstractmethod
+    def contribution(
+        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
+    ) -> np.ndarray | pd.DataFrame:
+        """Compute the contribution of each asset to a given measure"""
+        pass
+
     # Custom attribute setter and getter
     @property
     def fitness_measures(self) -> list[skt.Measure]:
@@ -1086,5 +1093,31 @@ class BasePortfolio:
             xaxis_title="Portfolio",
             yaxis_title="Weight",
             legend_title_text="Assets",
+        )
+        return fig
+
+    def plot_contribution(self, measure: skt.Measure, spacing: float | None = None):
+        r"""Plot the contribution of each asset to a given measure.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        Returns
+        -------
+        plot : Figure
+            The plotly Figure of assets contribution to the measure.
+        """
+        df = self.contribution(measure=measure, spacing=spacing, to_df=True)
+        fig = px.bar(df, x=df.index, y=df.columns, barmode="group")
+        fig.update_layout(
+            title=f"{measure} contribution",
+            xaxis_title="Asset",
+            yaxis_title="Contribution",
         )
         return fig

@@ -302,8 +302,16 @@ def test_portfolio_dominate(X):
 def test_portfolio_risk_contribution(X, weights):
     portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
-    # noinspection PyUnresolvedReferences
+    assert isinstance(contribution, pd.DataFrame)
+    assert contribution.shape == (10, 1)
+
+    contribution = portfolio.contribution(
+        measure=RiskMeasure.STANDARD_DEVIATION, to_df=False
+    )
+    assert isinstance(contribution, np.ndarray)
     assert contribution.shape == (X.shape[1],)
+
+    assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
 
 
 def test_portfolio_metrics(portfolio, measure):
