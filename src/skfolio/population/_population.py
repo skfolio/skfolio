@@ -19,7 +19,7 @@ import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
 from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
 from skfolio.utils.sorting import non_denominated_sort
-from skfolio.utils.tools import deduplicate_names
+from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
 
 
 class Population(list):
@@ -383,22 +383,71 @@ class Population(list):
 
         Returns
         -------
-        summary : DataFrame
+        df : DataFrame
             Composition of the portfolios in the population.
         """
-        comp_list = []
-        for p in self:
-            comp = p.composition
+        res = []
+        for ptf in self:
+            comp = ptf.composition
             if display_sub_ptf_name:
-                if isinstance(p, MultiPeriodPortfolio):
+                if isinstance(ptf, MultiPeriodPortfolio):
                     comp.rename(
-                        columns={c: f"{p.name}_{c}" for c in comp.columns}, inplace=True
+                        columns={c: f"{ptf.name}_{c}" for c in comp.columns},
+                        inplace=True,
                     )
             else:
-                comp.rename(columns={c: p.name for c in comp.columns}, inplace=True)
-            comp_list.append(comp)
+                comp.rename(columns={c: ptf.name for c in comp.columns}, inplace=True)
+            res.append(comp)
 
-        df = pd.concat(comp_list, axis=1)
+        df = pd.concat(res, axis=1)
+        df.columns = deduplicate_names(list(df.columns))
+        df.fillna(0, inplace=True)
+        return df
+
+    def contribution(
+        self,
+        measure: skt.Measure,
+        spacing: float | None = None,
+        display_sub_ptf_name: bool = True,
+    ) -> pd.DataFrame:
+        """Contribution of each asset to a given measure of each portfolio in the
+        population.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        display_sub_ptf_name : bool, default=True
+            If this is set to True, each sub-portfolio name composing a multi-period
+            portfolio is displayed.
+
+        Returns
+        -------
+        df : DataFrame
+            Contribution of each asset to a given measure of each portfolio in the
+            population.
+        """
+        res = []
+        for ptf in self:
+            contribution = ptf.contribution(measure=measure, spacing=spacing)
+            if display_sub_ptf_name:
+                if isinstance(ptf, MultiPeriodPortfolio):
+                    contribution.rename(
+                        columns={c: f"{ptf.name}_{c}" for c in contribution.columns},
+                        inplace=True,
+                    )
+            else:
+                contribution.rename(
+                    columns={c: ptf.name for c in contribution.columns}, inplace=True
+                )
+            res.append(contribution)
+
+        df = pd.concat(res, axis=1)
         df.columns = deduplicate_names(list(df.columns))
         df.fillna(0, inplace=True)
         return df
@@ -587,13 +636,58 @@ class Population(list):
         fig = px.bar(df, x=df.index, y=df.columns)
         fig.update_layout(
             title="Portfolios Composition",
-            xaxis={
-                "title": "Portfolios",
-            },
+            xaxis_title="Portfolios",
             yaxis={
                 "title": "Weight",
                 "tickformat": ",.0%",
             },
+            legend=dict(yanchor="top", y=0.99, xanchor="left", x=1.15),
+        )
+        return fig
+
+    def plot_contribution(
+        self,
+        measure: skt.Measure,
+        spacing: float | None = None,
+        display_sub_ptf_name: bool = True,
+    ) -> go.Figure:
+        """Plot the contribution of each asset to a given measure of the portfolios
+        in the population.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        display_sub_ptf_name : bool, default=True
+            If this is set to True, each sub-portfolio name composing a multi-period
+            portfolio is displayed.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plotly Figure object.
+        """
+        df = self.contribution(
+            display_sub_ptf_name=display_sub_ptf_name, measure=measure, spacing=spacing
+        ).T
+        fig = px.bar(df, x=df.index, y=df.columns)
+
+        yaxis = {
+            "title": "Contribution",
+        }
+        if not measure.is_ratio:
+            n = optimal_rounding_decimals(df.sum(axis=1).max())
+            yaxis["tickformat"] = f",.{n}%"
+
+        fig.update_layout(
+            title=f"{measure} Contribution",
+            xaxis_title="Portfolios",
+            yaxis=yaxis,
             legend=dict(yanchor="top", y=0.99, xanchor="left", x=1.15),
         )
         return fig
@@ -831,10 +925,17 @@ class Population(list):
                 y0=min_val * 1.3, y1=0, line_width=0, fillcolor="red", opacity=0.1
             )
 
+        yaxis = {
+            "title": str(measure),
+        }
+        if not measure.is_ratio:
+            n = optimal_rounding_decimals(max_val)
+            yaxis["tickformat"] = f",.{n}%"
+
         fig.update_layout(
             title=f"Rolling {measure} - {window} observations window",
             xaxis_title="Observations",
-            yaxis_title=str(measure),
+            yaxis=yaxis,
             showlegend=False,
         )
         return fig

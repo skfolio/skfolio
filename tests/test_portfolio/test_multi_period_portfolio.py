@@ -403,7 +403,7 @@ def test_portfolio_summary(portfolio_and_returns, periods):
     assert df.loc["Avg nb of Assets per Portfolio"] == 20.0
 
 
-def test_portfolio_risk_contribution(portfolio):
+def test_portfolio_contribution(portfolio):
     contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
     assert isinstance(contribution, pd.DataFrame)
     assert contribution.shape == (17, 3)

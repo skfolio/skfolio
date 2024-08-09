@@ -59,6 +59,7 @@ from skfolio.utils.tools import (
     args_names,
     cached_property_slots,
     format_measure,
+    optimal_rounding_decimals,
 )
 
 _ZERO_THRESHOLD = 1e-5
@@ -932,11 +933,9 @@ class BasePortfolio:
                 key = f"{e!s} at {beta:.0%}"
             except AttributeError:
                 key = str(e)
-            if isinstance(e, RatioMeasure) or e in [
+            if e.is_ratio or e in [
                 ExtraRiskMeasure.ENTROPIC_RISK_MEASURE,
                 RiskMeasure.ULCER_INDEX,
-                ExtraRiskMeasure.SKEW,
-                ExtraRiskMeasure.KURTOSIS,
             ]:
                 percent = False
             else:
@@ -1113,13 +1112,21 @@ class BasePortfolio:
         plot : Figure
             The plotly Figure of assets contribution to the measure.
         """
-        df = self.contribution(measure=measure, spacing=spacing, to_df=True)
-        df = df.T
+        df = self.contribution(measure=measure, spacing=spacing).T
+
         fig = px.bar(df, x=df.index, y=df.columns)
+
+        yaxis = {
+            "title": "Contribution",
+        }
+        if not measure.is_ratio:
+            n = optimal_rounding_decimals(df.sum(axis=1).max())
+            yaxis["tickformat"] = f",.{n}%"
+
         fig.update_layout(
             title=f"{measure} Contribution",
             xaxis_title="Portfolio",
-            yaxis_title="Contribution",
+            yaxis=yaxis,
             legend_title_text="Assets",
         )
         return fig

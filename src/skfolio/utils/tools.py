@@ -26,6 +26,7 @@ __all__ = [
     "input_to_array",
     "args_names",
     "format_measure",
+    "optimal_rounding_decimals",
     "bisection",
     "safe_split",
     "fit_single_estimator",
@@ -465,8 +466,24 @@ def format_measure(x: float, percent: bool = False) -> str:
     if xn == 0:
         n = 0
     else:
-        n = min(6, max(int(-np.log10(abs(xn))) + 2, 2))
+        n = optimal_rounding_decimals(xn)
     return "{value:{fmt}}".format(value=x, fmt=f".{n}{f}")
+
+
+def optimal_rounding_decimals(x: float) -> int:
+    """Return the optimal rounding decimal number for a user-friendly formatting.
+
+    Parameters
+    ----------
+    x : float
+        Number to round.
+
+    Returns
+    -------
+    n : int
+        Rounding decimal number.
+    """
+    return min(6, max(int(-np.log10(abs(x))) + 2, 2))
 
 
 def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:

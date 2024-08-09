@@ -186,3 +186,11 @@ def test_population_rolling_measure(population):
 def test_population_filter_chaining(population):
     res = population.filter(names=["1", "2"]).composition()
     assert res.shape[1] == 2
+
+
+def test_portfolio_contribution(population):
+    contribution = population.contribution(measure=RiskMeasure.CVAR)
+    assert isinstance(contribution, pd.DataFrame)
+    assert contribution.shape == (20, 10)
+
+    assert population.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
