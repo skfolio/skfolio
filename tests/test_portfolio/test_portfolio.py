@@ -299,17 +299,19 @@ def test_portfolio_dominate(X):
         ) == portfolio_1.dominates(portfolio_2)
 
 
-def test_portfolio_risk_contribution(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_risk_contribution(portfolio):
     contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
     assert isinstance(contribution, pd.DataFrame)
     assert contribution.shape == (10, 1)
+    assert np.isclose(contribution.sum().sum(), portfolio.cvar)
 
     contribution = portfolio.contribution(
         measure=RiskMeasure.STANDARD_DEVIATION, to_df=False
     )
     assert isinstance(contribution, np.ndarray)
-    assert contribution.shape == (X.shape[1],)
+    assert contribution.shape == (20,)
+
+    assert np.isclose(np.sum(contribution), portfolio.standard_deviation)
 
     assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
 

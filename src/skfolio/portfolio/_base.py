@@ -1114,10 +1114,12 @@ class BasePortfolio:
             The plotly Figure of assets contribution to the measure.
         """
         df = self.contribution(measure=measure, spacing=spacing, to_df=True)
-        fig = px.bar(df, x=df.index, y=df.columns, barmode="group")
+        df = df.T
+        fig = px.bar(df, x=df.index, y=df.columns)
         fig.update_layout(
-            title=f"{measure} contribution",
-            xaxis_title="Asset",
+            title=f"{measure} Contribution",
+            xaxis_title="Portfolio",
             yaxis_title="Contribution",
+            legend_title_text="Assets",
         )
         return fig

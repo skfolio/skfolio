@@ -415,4 +415,4 @@ def test_portfolio_risk_contribution(portfolio):
     assert len(contribution) == 3
     assert contribution[0].shape == (20,)
 
-    assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION).show()
+    assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
