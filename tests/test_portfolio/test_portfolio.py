@@ -470,3 +470,13 @@ def test_portfolio_contribution(portfolio):
     assert np.isclose(np.sum(contribution), portfolio.standard_deviation)
 
     assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+
+
+def test_weights_per_observation(portfolio):
+    df = portfolio.weights_per_observation
+    np.testing.assert_array_equal(df.index.values, portfolio.observations)
+    assert len(df.columns) == 10
+    np.testing.assert_array_equal(df.columns.values, portfolio.nonzero_assets)
+    np.testing.assert_array_equal(
+        df.values[0], portfolio.weights[portfolio.nonzero_assets_index]
+    )

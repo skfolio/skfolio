@@ -556,6 +556,15 @@ class MultiPeriodPortfolio(BasePortfolio):
         df.columns = deduplicate_names(df.columns)
         return df
 
+    @property
+    def weights_per_observation(self) -> pd.DataFrame:
+        """DataFrame of the Portfolio weights per observation."""
+        return (
+            pd.concat([p.weights_per_observation for p in self], axis=0)
+            .fillna(0)
+            .sort_index()
+        )
+
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
     ) -> np.ndarray | pd.DataFrame:

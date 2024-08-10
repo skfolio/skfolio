@@ -667,6 +667,19 @@ class Portfolio(BasePortfolio):
         return df
 
     @property
+    def weights_per_observation(self) -> pd.DataFrame:
+        """DataFrame of the Portfolio weights per observation."""
+        idx = self.nonzero_assets_index
+        weights = self.weights[idx]
+        assets = self.assets[idx]
+        df = pd.DataFrame(
+            np.ones((len(self.observations), len(assets))) * weights,
+            index=self.observations,
+            columns=assets,
+        )
+        return df
+
+    @property
     def diversification(self) -> float:
         """Weighted average of volatility divided by the portfolio volatility."""
         return (
