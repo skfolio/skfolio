@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from skfolio.model_selection import WalkForward
 
@@ -9,7 +10,19 @@ def assert_split_equal(split, res):
         assert np.array_equal(test, res[i][1])
 
 
-def test_walk_forward():
+def test_walk_forward_with_period(X):
+    cv = WalkForward(test_size=2, train_size=3, period="WOM-3FRI")
+
+    list(cv.split(X))
+
+    cv = WalkForward(
+        test_size=1, train_size=pd.tseries.offsets.Week(3), period="WOM-3FRI"
+    )
+
+    list(cv.split(X))
+
+
+def test_walk_forward_without_period():
     X = np.random.randn(12, 2)
 
     cv = WalkForward(

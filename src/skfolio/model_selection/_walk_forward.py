@@ -12,6 +12,7 @@ from collections.abc import Iterator
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import sklearn.model_selection as sks
 import sklearn.utils as sku
 
@@ -34,7 +35,7 @@ class WalkForward(sks.BaseCrossValidator):
     test_size : int
         Number of observations in each test set.
 
-    train_size : int
+    train_size : int | offset
         Number of observations in each training set.
 
     expend_train : bool, default=False
@@ -124,13 +125,15 @@ class WalkForward(sks.BaseCrossValidator):
     def __init__(
         self,
         test_size: int,
-        train_size: int,
+        train_size: int | pd.tseries.offsets.BaseOffset,
+        period: str | None = None,
         expend_train: bool = False,
         reduce_test: bool = False,
         purged_size: int = 0,
     ):
         self.test_size = test_size
         self.train_size = train_size
+        self.period = period
         self.expend_train = expend_train
         self.reduce_test = reduce_test
         self.purged_size = purged_size
@@ -161,40 +164,49 @@ class WalkForward(sks.BaseCrossValidator):
         """
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
-        # Make sure we have enough samples for the given split parameters
-        if self.train_size + self.purged_size >= n_samples:
-            raise ValueError(
-                "The sum of `train_size` with `purged_size` "
-                f"({self.train_size + self.purged_size}) cannot be greater than the"
-                f" number of samples ({n_samples})."
+
+        if not isinstance(self.test_size, int):
+            raise ValueError("test_size` must be an integer")
+
+        if self.period is None:
+            if not isinstance(self.train_size, int):
+                raise ValueError(
+                    "When `period` is None, `train_size` must be an integer"
+                )
+            return _split_without_period(
+                n_samples=n_samples,
+                train_size=self.train_size,
+                test_size=self.test_size,
+                purged_size=self.purged_size,
+                expend_train=self.expend_train,
+                reduce_test=self.reduce_test,
             )
 
-        indices = np.arange(n_samples)
-
-        test_start = self.train_size + self.purged_size
-        while True:
-            if test_start >= n_samples:
-                return
-            test_end = test_start + self.test_size
-            train_end = test_start - self.purged_size
-            if self.expend_train:
-                train_start = 0
-            else:
-                train_start = train_end - self.train_size
-
-            if test_end > n_samples:
-                if not self.reduce_test:
-                    return
-                yield (
-                    indices[train_start:train_end],
-                    indices[test_start:],
-                )
-            else:
-                yield (
-                    indices[train_start:train_end],
-                    indices[test_start:test_end],
-                )
-            test_start = test_end
+        if not hasattr(X, "index") or not isinstance(X.index, pd.DatetimeIndex):
+            raise ValueError(
+                "X must be a DataFrame with an index of type DatetimeIndex"
+            )
+        if isinstance(self.train_size, int):
+            return _split_from_period_without_train_offset(
+                n_samples=n_samples,
+                train_size=self.train_size,
+                test_size=self.test_size,
+                period=self.period,
+                purged_size=self.purged_size,
+                expend_train=self.expend_train,
+                reduce_test=self.reduce_test,
+                ts_index=X.index,
+            )
+        return _split_from_period_with_train_offset(
+            n_samples=n_samples,
+            train_size=self.train_size,
+            test_size=self.test_size,
+            period=self.period,
+            purged_size=self.purged_size,
+            expend_train=self.expend_train,
+            reduce_test=self.reduce_test,
+            ts_index=X.index,
+        )
 
     def get_n_splits(self, X=None, y=None, groups=None) -> int:
         """Returns the number of splitting iterations in the cross-validator
@@ -224,3 +236,118 @@ class WalkForward(sks.BaseCrossValidator):
         if self.reduce_test and n % self.test_size != 0:
             return n // self.test_size + 1
         return n // self.test_size
+
+
+def _split_without_period(
+    n_samples: int,
+    train_size: int,
+    test_size: int,
+    purged_size: int,
+    expend_train: bool,
+    reduce_test: bool,
+) -> Iterator[np.ndarray, np.ndarray]:
+    if train_size + purged_size >= n_samples:
+        raise ValueError(
+            "The sum of `train_size` with `purged_size` "
+            f"({train_size + purged_size}) cannot be greater than the"
+            f" number of samples ({n_samples})."
+        )
+
+    indices = np.arange(n_samples)
+
+    test_start = train_size + purged_size
+    while True:
+        if test_start >= n_samples:
+            return
+        test_end = test_start + test_size
+        train_end = test_start - purged_size
+        if expend_train:
+            train_start = 0
+        else:
+            train_start = train_end - train_size
+
+        if test_end > n_samples:
+            if not reduce_test:
+                return
+            test_indices = indices[test_start:]
+        else:
+            test_indices = indices[test_start:test_end]
+        train_indices = indices[train_start:train_end]
+        yield train_indices, test_indices
+
+        test_start = test_end
+
+
+def _split_from_period_without_train_offset(
+    n_samples: int,
+    train_size: int,
+    test_size: int,
+    period: str,
+    purged_size: int,
+    expend_train: bool,
+    reduce_test: bool,
+    ts_index,
+) -> Iterator[np.ndarray, np.ndarray]:
+    date_range = pd.date_range(start=ts_index[0], end=ts_index[-1], freq=period)
+    idx = ts_index.get_indexer(date_range, method="ffill")
+    n = len(idx)
+    i = 0
+    while True:
+        if i + train_size >= n:
+            return
+
+        if i + train_size + test_size >= n:
+            if not reduce_test:
+                return
+            test_indices = np.arange(idx[i + train_size], n_samples)
+
+        else:
+            test_indices = np.arange(
+                idx[i + train_size], idx[i + train_size + test_size]
+            )
+        if expend_train:
+            train_start = 0
+        else:
+            train_start = idx[i]
+        train_indices = np.arange(train_start, idx[i + train_size] - purged_size)
+        yield train_indices, test_indices
+
+        i += test_size
+
+
+def _split_from_period_with_train_offset(
+    n_samples: int,
+    train_size: pd.tseries.offsets.BaseOffset,
+    test_size: int,
+    period: str,
+    purged_size: int,
+    expend_train: bool,
+    reduce_test: bool,
+    ts_index,
+) -> Iterator[np.ndarray, np.ndarray]:
+    date_range = pd.date_range(start=ts_index[0], end=ts_index[-1], freq=period)
+    idx = ts_index.get_indexer(date_range, method="ffill")
+    train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
+
+    n = len(idx)
+
+    i = np.argmax(train_idx > -1)
+    while True:
+        if i >= n:
+            return
+
+        if i + test_size >= n:
+            if not reduce_test:
+                return
+            test_indices = np.arange(idx[i], n_samples)
+        else:
+            test_indices = np.arange(idx[i], idx[i + test_size] - purged_size)
+
+        if expend_train:
+            train_start = 0
+        else:
+            train_start = train_idx[i]
+        train_indices = np.arange(train_start, idx[i])
+        yield train_indices, test_indices
+
+        i += test_size
