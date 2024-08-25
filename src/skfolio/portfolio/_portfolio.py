@@ -762,7 +762,7 @@ class Portfolio(BasePortfolio):
         return float(self.weights @ assets_covariance @ self.weights.T)
 
     def contribution(
-        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
+        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = False
     ) -> np.ndarray | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure.
 
@@ -778,7 +778,7 @@ class Portfolio(BasePortfolio):
         to_df : bool, default=False
             If this is set to True, a DataFrame with asset names in index is returned,
             otherwise a numpy array is returned. When a DataFrame is returned, the
-            values are sorted in descending order and the assets with zero weights are
+            values are sorted in descending order and assets with zero weights are
             removed.
 
         Returns

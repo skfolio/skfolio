@@ -50,7 +50,8 @@ def y_medium(y):
 
 @pytest.fixture(scope="module")
 def X_small(X):
-    return X["2022":]
+    X_small = X["2022":]
+    return X_small
 
 
 @pytest.fixture(scope="module")

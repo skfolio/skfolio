@@ -434,7 +434,9 @@ class Population(list):
         """
         res = []
         for ptf in self:
-            contribution = ptf.contribution(measure=measure, spacing=spacing)
+            contribution = ptf.contribution(
+                measure=measure, spacing=spacing, to_df=True
+            )
             if display_sub_ptf_name:
                 if isinstance(ptf, MultiPeriodPortfolio):
                     contribution.rename(

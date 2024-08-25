@@ -29,7 +29,7 @@ def population(X):
     # Create a population of portfolios with 3 objectives
     population = Population([])
     n_assets = X.shape[1]
-    for i in range(10):
+    for i in range(100):
         weights = rand_weights(n=n_assets, zeros=n_assets - 10)
         portfolio = Portfolio(
             X=X,
@@ -42,6 +42,18 @@ def population(X):
             name=str(i),
         )
         population.append(portfolio)
+    return population
+
+
+@pytest.fixture(scope="function")
+def small_population(X):
+    n_assets = X.shape[1]
+    population = Population(
+        [
+            Portfolio(X=X, weights=rand_weights(n=n_assets, zeros=n_assets - 10))
+            for _ in range(10)
+        ]
+    )
     return population
 
 
@@ -173,12 +185,12 @@ def test_population_plot_cumulative_returns(population):
     assert population[:2].plot_cumulative_returns(log_scale=True)
 
 
-def test_population_rolling_measure(population):
-    df = population.rolling_measure()
+def test_population_rolling_measure(small_population):
+    df = small_population.rolling_measure()
     assert isinstance(df, pd.DataFrame)
-    assert df.shape[1] == len(population)
+    assert df.shape[1] == len(small_population)
 
-    assert population.plot_rolling_measure(
+    assert small_population.plot_rolling_measure(
         measure=RiskMeasure.STANDARD_DEVIATION, window=50
     )
 
@@ -188,9 +200,9 @@ def test_population_filter_chaining(population):
     assert res.shape[1] == 2
 
 
-def test_portfolio_contribution(population):
-    contribution = population.contribution(measure=RiskMeasure.CVAR)
+def test_portfolio_contribution(small_population):
+    contribution = small_population.contribution(measure=RiskMeasure.CVAR)
     assert isinstance(contribution, pd.DataFrame)
     assert contribution.shape == (20, 10)
 
-    assert population.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+    assert small_population.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)

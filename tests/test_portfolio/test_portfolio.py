@@ -456,14 +456,12 @@ def test_portfolio_plot_cumulative_returns(X, weights):
 
 
 def test_portfolio_contribution(portfolio):
-    contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
+    contribution = portfolio.contribution(measure=RiskMeasure.CVAR, to_df=True)
     assert isinstance(contribution, pd.DataFrame)
     assert contribution.shape == (10, 1)
     assert np.isclose(contribution.sum().sum(), portfolio.cvar)
 
-    contribution = portfolio.contribution(
-        measure=RiskMeasure.STANDARD_DEVIATION, to_df=False
-    )
+    contribution = portfolio.contribution(measure=RiskMeasure.STANDARD_DEVIATION)
     assert isinstance(contribution, np.ndarray)
     assert contribution.shape == (20,)
 
