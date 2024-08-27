@@ -250,7 +250,7 @@ def load_factors_dataset() -> pd.DataFrame:
     The factors are:
 
         * "MTUM": Momentum
-        * "QUAL": Quanlity
+        * "QUAL": Quality
         * "SIZE": Size
         * "VLUE": Value
         * "USMV": low volatility
