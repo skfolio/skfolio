@@ -10,6 +10,9 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 import sklearn.base as skb
+import sklearn.utils.metadata_routing as skm
+
+from skfolio.prior import BasePrior
 
 
 # frozen=True with eq=False will lead to an id-based hashing which is needed for
@@ -54,13 +57,22 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
     """
 
     uncertainty_set_: UncertaintySet
+    prior_estimator_: BasePrior
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self, prior_estimator: BasePrior | None = None):
+        self.prior_estimator = prior_estimator
+
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
         pass
 
 
@@ -75,14 +87,11 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
     """
 
     uncertainty_set_: UncertaintySet
+    prior_estimator_: BasePrior
 
     @abstractmethod
-    def __init__(self):
-        pass
-
-    @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
-        pass
+    def __init__(self, prior_estimator: BasePrior | None = None):
+        self.prior_estimator = prior_estimator
 
     def _validate_X_y(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):
         """Validate X and y if provided.
@@ -108,3 +117,15 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         else:
             X, y = self._validate_data(X, y, multi_output=True)
         return X, y
+
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    @abstractmethod
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+        pass

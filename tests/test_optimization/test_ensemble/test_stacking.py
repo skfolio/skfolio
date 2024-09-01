@@ -1,36 +1,16 @@
-import datetime as dt
-
 import numpy as np
 import pytest
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
+from sklearn import config_context
+
 from skfolio import RiskMeasure
-from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.model_selection import CombinatorialPurgedCV
+from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import MeanRisk, StackingOptimization
-from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import FactorModel
+from skfolio.prior import EmpiricalPrior, FactorModel
 
 
-@pytest.fixture(scope="module")
-def X_y():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2020, 1, 1) :]
-    factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(X=prices, y=factor_prices)
-    return X, y
-
-
-@pytest.fixture(scope="module")
-def X(X_y):
-    return X_y[0]
-
-
-@pytest.fixture(scope="module")
-def y(X_y):
-    return X_y[1]
-
-
-def test_stacking(X):
+def test_stacking(X_medium):
     estimators = [
         ("model1", MeanRisk(risk_measure=RiskMeasure.CVAR)),
         ("model2", MeanRisk(risk_measure=RiskMeasure.VARIANCE)),
@@ -40,35 +20,37 @@ def test_stacking(X):
         estimators=estimators,
         final_estimator=MeanRisk(),
     )
-    model.fit(X)
+    model.fit(X_medium)
     np.testing.assert_almost_equal(
         model.weights_,
-        np.array([
-            4.14712340e-07,
-            6.30177808e-07,
-            1.93291519e-07,
-            4.99502695e-07,
-            2.83295643e-07,
-            4.30655193e-07,
-            6.47726679e-07,
-            2.72459010e-01,
-            3.21357278e-07,
-            1.47898551e-01,
-            6.22014698e-07,
-            1.78790660e-01,
-            4.15677703e-07,
-            6.08486611e-07,
-            5.34806929e-02,
-            4.07012545e-02,
-            6.55843498e-07,
-            2.70811727e-07,
-            2.68970614e-01,
-            3.76932238e-02,
-        ]),
+        np.array(
+            [
+                3.99739931e-07,
+                6.03152100e-07,
+                1.86626824e-07,
+                4.82851689e-07,
+                2.73813779e-07,
+                4.13381765e-07,
+                6.25186283e-07,
+                2.72402456e-01,
+                3.10208157e-07,
+                1.47969334e-01,
+                6.06730174e-07,
+                1.78672692e-01,
+                4.00826603e-07,
+                5.87809472e-07,
+                5.35000921e-02,
+                4.08781684e-02,
+                6.47868626e-07,
+                2.61714137e-07,
+                2.68921638e-01,
+                3.76498188e-02,
+            ]
+        ),
     )
 
 
-def test_stacking_factor(X, y):
+def test_stacking_factor(X_medium, y_medium):
     estimators = [
         (
             "model1",
@@ -80,36 +62,38 @@ def test_stacking_factor(X, y):
     model = StackingOptimization(
         estimators=estimators, final_estimator=MeanRisk(), n_jobs=-1
     )
-    model.fit(X, y)
+    model.fit(X_medium, y_medium)
     np.testing.assert_almost_equal(
         model.weights_,
-        np.array([
-            3.75619933e-07,
-            5.70711164e-07,
-            1.75092940e-07,
-            4.52393785e-07,
-            2.56615594e-07,
-            3.90043142e-07,
-            5.86634418e-07,
-            2.46726487e-01,
-            2.91072041e-07,
-            1.33930284e-01,
-            5.12046309e-07,
-            1.61904465e-01,
-            3.76494088e-07,
-            5.51161003e-07,
-            4.84295934e-02,
-            3.68571303e-02,
-            5.42851438e-07,
-            2.45331929e-07,
-            3.38013445e-01,
-            3.41332699e-02,
-        ]),
+        np.array(
+            [
+                3.62263765e-07,
+                5.46552549e-07,
+                1.69148295e-07,
+                4.37563016e-07,
+                2.48163560e-07,
+                3.74612339e-07,
+                5.66544044e-07,
+                2.46820960e-01,
+                2.81131218e-07,
+                1.34073524e-01,
+                4.94835562e-07,
+                1.61893180e-01,
+                3.63248260e-07,
+                5.32727893e-07,
+                4.84757670e-02,
+                3.70391927e-02,
+                5.32322322e-07,
+                2.37218098e-07,
+                3.37578129e-01,
+                3.41141002e-02,
+            ]
+        ),
     )
 
 
-def test_stacking_cv(X):
-    X_train, X_test = skm.train_test_split(X, test_size=0.33, shuffle=False)
+def test_stacking_cv(X_medium):
+    X_train, X_test = sks.train_test_split(X_medium, test_size=0.33, shuffle=False)
 
     estimators = [
         ("model1", MeanRisk(risk_measure=RiskMeasure.CVAR)),
@@ -139,9 +123,9 @@ def test_stacking_cv(X):
     model3.fit(X_train)
 
     assert model.get_params(deep=True)
-    gs = skm.GridSearchCV(
+    gs = sks.GridSearchCV(
         estimator=model,
-        cv=skm.KFold(n_splits=5, shuffle=False),
+        cv=sks.KFold(n_splits=5, shuffle=False),
         n_jobs=-1,
         param_grid={
             "model1__cvar_beta": [0.95, 0.80],
@@ -149,3 +133,57 @@ def test_stacking_cv(X):
         },
     )
     gs.fit(X_train)
+
+
+def test_get_metadata_routing_without_fit():
+    # Test that metadata_routing() doesn't raise when called before fit.
+    with config_context(enable_metadata_routing=True):
+        est = MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+        )
+        model = StackingOptimization(estimators=[("est", est)])
+        model.get_metadata_routing()
+
+
+@pytest.mark.filterwarnings("ignore:The covariance matrix is not positive definite")
+def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
+    """Test that metadata is routed correctly for Stacking*."""
+    with config_context(enable_metadata_routing=True):
+        est1 = MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+        )
+
+        est2 = MeanRisk(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+        )
+        est3 = MeanRisk()
+        model = StackingOptimization(
+            estimators=[("est1", est1), ("est2", est2), ("est3", est3)],
+        )
+
+        model.fit(X_medium, implied_vol=implied_vol_medium)
+
+        model.predict(X_medium)
+
+    for i in range(2):
+        # noinspection PyUnresolvedReferences
+        assert model.estimators_[
+            i
+        ].prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+    # noinspection PyUnresolvedReferences
+    assert not hasattr(
+        model.estimators_[2].prior_estimator_.covariance_estimator_, "r2_scores_"
+    )

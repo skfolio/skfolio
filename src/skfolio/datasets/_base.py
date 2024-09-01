@@ -250,7 +250,7 @@ def load_factors_dataset() -> pd.DataFrame:
     The factors are:
 
         * "MTUM": Momentum
-        * "QUAL": Quanlity
+        * "QUAL": Quality
         * "SIZE": Size
         * "VLUE": Value
         * "USMV": low volatility
@@ -388,6 +388,57 @@ def load_nasdaq_dataset(data_home=None, download_if_missing=True) -> pd.DataFram
     2018-01-08  50.809  38.37  36.103  41.811  ...  82.4  8.310  12.550  2.825
     """
     data_filename = "nasdaq_dataset"
+    df = download_dataset(
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+
+def load_sp500_implied_vol_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Load the 3 months ATM implied volatility of the 20 assets from the
+    SP500 dataset.
+
+    This dataset is composed of the 3 months ATM implied volatility of 20 assets
+    from the S&P 500 composition starting from 2010-01-04 up to 2022-12-28.
+
+    The data comes from the Yahoo public API option chains.
+
+    ==============   ==================
+    Observations     3270
+    Assets           20
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_sp500_implied_vol_dataset
+    >>> implied_vol = load_sp500_implied_vol_dataset()
+    >>> implied_vol.head()
+                    AAPL       AMD       BAC  ...       UNH       WMT       XOM
+    Date                                      ...
+    2010-01-04  0.364353  0.572056  0.382926  ...  0.362751  0.171737  0.201485
+    2010-01-05  0.371865  0.568791  0.374699  ...  0.368504  0.174764  0.203852
+    2010-01-06  0.356746  0.558054  0.349220  ...  0.368514  0.171892  0.197475
+    2010-01-07  0.361084  0.560475  0.354942  ...  0.355792  0.169083  0.200046
+    2010-01-08  0.348085  0.543932  0.360345  ...  0.351130  0.170897  0.204832
+    """
+    data_filename = "sp500_implied_vol_dataset"
     df = download_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
     )

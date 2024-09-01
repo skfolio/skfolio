@@ -18,7 +18,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 import skfolio.typing as skt
@@ -39,7 +39,7 @@ class BaseCombinatorialCV(ABC):
         """Return the path id of each test sets in each split"""
         pass
 
-    __repr__ = skm.BaseCrossValidator.__repr__
+    __repr__ = sks.BaseCrossValidator.__repr__
 
 
 # TODO: review params and function naming

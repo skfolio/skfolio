@@ -5,9 +5,9 @@ import tracemalloc
 from copy import copy
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import pytest
+
 import skfolio.measures as mt
 from skfolio import (
     ExtraRiskMeasure,
@@ -34,28 +34,30 @@ def X() -> pd.DataFrame:
 
 @pytest.fixture(scope="module")
 def weights() -> np.ndarray:
-    weights = np.array([
-        0.12968013,
-        0.09150399,
-        0.12715628,
-        0.0,
-        0.0,
-        0.05705225,
-        0.0,
-        0.0,
-        0.1094415,
-        0.30989117,
-        0.0,
-        0.0,
-        0.09861857,
-        0.0,
-        0.0,
-        0.00224294,
-        0.06412114,
-        0.0,
-        0.0,
-        0.01029202,
-    ])
+    weights = np.array(
+        [
+            0.12968013,
+            0.09150399,
+            0.12715628,
+            0.0,
+            0.0,
+            0.05705225,
+            0.0,
+            0.0,
+            0.1094415,
+            0.30989117,
+            0.0,
+            0.0,
+            0.09861857,
+            0.0,
+            0.0,
+            0.00224294,
+            0.06412114,
+            0.0,
+            0.0,
+            0.01029202,
+        ]
+    )
     return weights
 
 

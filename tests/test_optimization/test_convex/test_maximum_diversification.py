@@ -1,31 +1,12 @@
-import datetime as dt
-
 import numpy as np
 import pytest
-from skfolio.datasets import load_factors_dataset, load_sp500_dataset
-from skfolio.optimization.convex import MaximumDiversification
-from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import FactorModel
+from sklearn import config_context
 
-
-@pytest.fixture(scope="module")
-def X_y():
-    prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2018, 1, 1) :]
-    factor_prices = load_factors_dataset()
-    factor_prices = factor_prices.loc[dt.date(2018, 1, 1) :]
-    X, y = prices_to_returns(X=prices, y=factor_prices)
-    return X, y
-
-
-@pytest.fixture(scope="module")
-def X(X_y):
-    return X_y[0]
-
-
-@pytest.fixture(scope="module")
-def y(X_y):
-    return X_y[1]
+from skfolio.moments import ImpliedCovariance
+from skfolio.optimization.convex import (
+    MaximumDiversification,
+)
+from skfolio.prior import EmpiricalPrior, FactorModel
 
 
 def test_maximum_diversification(X):
@@ -47,3 +28,22 @@ def test_maximum_diversification_factor(X, y):
     )
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
+
+
+def test_metadata_routing(X, implied_vol):
+    with config_context(enable_metadata_routing=True):
+        model = MaximumDiversification(
+            prior_estimator=EmpiricalPrior(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+        )
+
+        with pytest.raises(ValueError):
+            model.fit(X)
+
+        model.fit(X, implied_vol=implied_vol)
+
+    # noinspection PyUnresolvedReferences
+    assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)

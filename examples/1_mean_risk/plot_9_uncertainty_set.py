@@ -175,15 +175,17 @@ sort_idx = np.argsort(x)
 y_test_mean = cv_results["mean_test_score"][sort_idx]
 x = x[sort_idx]
 
-fig = go.Figure([
-    go.Scatter(
-        x=x,
-        y=y_test_mean,
-        name="Test",
-        mode="lines",
-        line=dict(color="rgb(255,165,0)"),
-    ),
-])
+fig = go.Figure(
+    [
+        go.Scatter(
+            x=x,
+            y=y_test_mean,
+            name="Test",
+            mode="lines",
+            line=dict(color="rgb(255,165,0)"),
+        ),
+    ]
+)
 fig.add_vline(
     x=randomized_search.best_params_["mu_uncertainty_set_estimator__confidence_level"],
     line_width=2,

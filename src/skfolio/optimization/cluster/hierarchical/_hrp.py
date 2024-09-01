@@ -10,6 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -270,7 +271,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
 
-    def fit(self, X: npt.ArrayLike, y: None = None) -> "HierarchicalRiskParity":
+    def fit(
+        self, X: npt.ArrayLike, y: None = None, **fit_params
+    ) -> "HierarchicalRiskParity":
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters
@@ -286,6 +289,8 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         self : HierarchicalRiskParity
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # Validate
         if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
             raise TypeError(
@@ -308,7 +313,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         )
 
         # Fit the estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         returns = prior_model.returns
 
@@ -316,14 +321,18 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        self.distance_estimator_.fit(returns)
+        # noinspection PyArgumentList
+        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        self.hierarchical_clustering_estimator_.fit(distance)
+        # noinspection PyArgumentList
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
 
         X = self._validate_data(X)
         n_assets = X.shape[1]

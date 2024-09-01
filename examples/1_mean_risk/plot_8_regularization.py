@@ -230,54 +230,56 @@ y_test_mean = cv_results["mean_test_score"][sort_idx]
 y_test_std = cv_results["std_test_score"][sort_idx]
 x = x[sort_idx]
 
-fig = go.Figure([
-    go.Scatter(
-        x=x,
-        y=y_train_mean,
-        name="Train",
-        mode="lines",
-        line=dict(color="rgb(31, 119, 180)"),
-    ),
-    go.Scatter(
-        x=x,
-        y=y_train_mean + y_train_std,
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-    ),
-    go.Scatter(
-        x=x,
-        y=y_train_mean - y_train_std,
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-        fillcolor="rgba(31, 119, 180,0.15)",
-        fill="tonexty",
-    ),
-    go.Scatter(
-        x=x,
-        y=y_test_mean,
-        name="Test",
-        mode="lines",
-        line=dict(color="rgb(255,165,0)"),
-    ),
-    go.Scatter(
-        x=x,
-        y=y_test_mean + y_test_std,
-        mode="lines",
-        line=dict(width=0),
-        showlegend=False,
-    ),
-    go.Scatter(
-        x=x,
-        y=y_test_mean - y_test_std,
-        line=dict(width=0),
-        mode="lines",
-        fillcolor="rgba(255,165,0, 0.15)",
-        fill="tonexty",
-        showlegend=False,
-    ),
-])
+fig = go.Figure(
+    [
+        go.Scatter(
+            x=x,
+            y=y_train_mean,
+            name="Train",
+            mode="lines",
+            line=dict(color="rgb(31, 119, 180)"),
+        ),
+        go.Scatter(
+            x=x,
+            y=y_train_mean + y_train_std,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=x,
+            y=y_train_mean - y_train_std,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            fillcolor="rgba(31, 119, 180,0.15)",
+            fill="tonexty",
+        ),
+        go.Scatter(
+            x=x,
+            y=y_test_mean,
+            name="Test",
+            mode="lines",
+            line=dict(color="rgb(255,165,0)"),
+        ),
+        go.Scatter(
+            x=x,
+            y=y_test_mean + y_test_std,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+        ),
+        go.Scatter(
+            x=x,
+            y=y_test_mean - y_test_std,
+            line=dict(width=0),
+            mode="lines",
+            fillcolor="rgba(255,165,0, 0.15)",
+            fill="tonexty",
+            showlegend=False,
+        ),
+    ]
+)
 fig.add_vline(
     x=randomized_search.best_params_["l2_coef"],
     line_width=2,

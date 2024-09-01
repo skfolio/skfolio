@@ -11,6 +11,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.uncertainty_set._base import (
@@ -77,20 +78,18 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         Schöttle & Werner (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "EmpiricalMuUncertaintySet":
         """Fit the Empirical Mu Uncertainty set estimator.
 
@@ -103,18 +102,27 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
             Price returns of factors.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : EmpiricalMuUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
@@ -185,20 +193,18 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Schöttle & Werner (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "EmpiricalCovarianceUncertaintySet":
         """Fit the Empirical Covariance Uncertainty set estimator.
 
@@ -211,18 +217,27 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
             Price returns of factors.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : EmpiricalCovarianceUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape

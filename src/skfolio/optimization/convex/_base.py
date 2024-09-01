@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy as sc
 import scipy.sparse.linalg as scl
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure, owa_gmd_weights
@@ -1959,6 +1960,14 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params):
         pass

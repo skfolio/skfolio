@@ -41,7 +41,7 @@ def test_returns(prices, factor_prices):
 
 def test_returns_drop_inceptions_nan(prices):
     # Test index_intersect by making the first column mostly 0's
-    prices.loc[:prices.index[-10], "AAPL"] = np.nan
+    prices.loc[: prices.index[-10], "AAPL"] = np.nan
 
     X = prices_to_returns(X=prices)
     assert X.shape[0] == 8

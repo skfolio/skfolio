@@ -176,23 +176,21 @@ def test_combinatorial_purged_cv():
 
 
 def optimal_folds_number_full_search(
-        n_observations: int,
-        target_train_size: int,
-        target_n_test_paths: int,
+    n_observations: int,
+    target_train_size: int,
+    target_n_test_paths: int,
 ) -> tuple[int, int]:
     def _cost(
-            x: int,
-            y: int,
+        x: int,
+        y: int,
     ) -> float:
         n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
         avg_train_size = _avg_train_size(
             n_observations=n_observations, n_folds=x, n_test_folds=y
         )
         return (
-                abs(n_test_paths - target_n_test_paths)
-                / target_n_test_paths
-                + abs(avg_train_size - target_train_size)
-                / target_train_size
+            abs(n_test_paths - target_n_test_paths) / target_n_test_paths
+            + abs(avg_train_size - target_train_size) / target_train_size
         )
 
     res = []
@@ -205,19 +203,23 @@ def optimal_folds_number_full_search(
     return res[i]
 
 
-@pytest.mark.parametrize("n_observations,target_n_test_paths,target_train_size,expected",
-                        [
-                            (10, 10, 1, (10, 9)),
-                            (10, 2, 100,  (3, 2)),
-                            (10, 2, 5,  (3, 2)),
-                            (100, 20, 10, (21, 20)),
-                            (100, 5, 30,  (6, 5)),
-                            (1000, 300, 50, (26, 24)),
-                        ]
-                        )
+@pytest.mark.parametrize(
+    "n_observations,target_n_test_paths,target_train_size,expected",
+    [
+        (10, 10, 1, (10, 9)),
+        (10, 2, 100, (3, 2)),
+        (10, 2, 5, (3, 2)),
+        (100, 20, 10, (21, 20)),
+        (100, 5, 30, (6, 5)),
+        (1000, 300, 50, (26, 24)),
+    ],
+)
 def test_optimal_folds_number(
-        n_observations: int, target_train_size: int, target_n_test_paths: int,
-        expected: tuple[int, int]):
+    n_observations: int,
+    target_train_size: int,
+    target_n_test_paths: int,
+    expected: tuple[int, int],
+):
     res = optimal_folds_number(
         n_observations=n_observations,
         target_train_size=target_train_size,
@@ -232,7 +234,8 @@ def test_optimal_folds_number_weight():
     target_n_test_paths = 50
 
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=n_observations, target_train_size=target_train_size,
+        n_observations=n_observations,
+        target_train_size=target_train_size,
         target_n_test_paths=target_n_test_paths,
     )
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
@@ -244,7 +247,8 @@ def test_optimal_folds_number_weight():
     assert n_test_paths == 50
 
     n_folds, n_test_folds = optimal_folds_number(
-        n_observations=n_observations, target_train_size=target_train_size,
+        n_observations=n_observations,
+        target_train_size=target_train_size,
         target_n_test_paths=target_n_test_paths,
         weight_train_size=2,
     )
