@@ -422,7 +422,7 @@ If we exclude the unrealistic prediction without TC, we notice that the model
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 7.612 seconds)
+   **Total running time of the script:** (0 minutes 7.555 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_6_transaction_costs.py:
@@ -445,6 +445,10 @@ If we exclude the unrealistic prediction without TC, we notice that the model
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_6_transaction_costs.py <plot_6_transaction_costs.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_6_transaction_costs.zip <plot_6_transaction_costs.zip>`
 
 
 .. only:: html

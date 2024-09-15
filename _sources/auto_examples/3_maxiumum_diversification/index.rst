@@ -20,7 +20,7 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MaximumDiversification optimization to find the portfolio that maximizes...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MaximumDiversification optimization to find the portfolio that maximizes the diversification ratio, which is the ratio of the weighted volatilities over the total volatility.">
 
 .. only:: html
 

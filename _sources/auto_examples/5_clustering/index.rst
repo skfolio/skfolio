@@ -53,7 +53,7 @@ Examples concerning hierarchical clustering based optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial, we will compare the HierarchicalRiskParity (HRP) optimization with the Hierar...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial, we will compare the HierarchicalRiskParity (HRP) optimization with the HierarchicalEqualRiskContribution (HERC) optimization.">
 
 .. only:: html
 

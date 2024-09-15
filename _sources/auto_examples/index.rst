@@ -58,7 +58,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find the minimum CVaR (Conditional Value at Ris...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find the minimum CVaR (Conditional Value at Risk) portfolio.">
 
 .. only:: html
 
@@ -75,7 +75,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the Mean-Variance efficient frontier (pareto font).">
 
 .. only:: html
 
@@ -92,7 +92,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the Mean-Variance-CDaR efficient frontier.">
 
 .. only:: html
 
@@ -177,7 +177,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate expected returns uncertainty sets into the MeanRisk opti...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate expected returns uncertainty sets into the MeanRisk optimization.">
 
 .. only:: html
 
@@ -194,7 +194,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate a tracking error constraint into the MeanRisk optimizati...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate a tracking error constraint into the MeanRisk optimization.">
 
 .. only:: html
 
@@ -262,7 +262,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use the FactorModel estimator coupled with the BlackLitterman estima...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use the FactorModel estimator coupled with the BlackLitterman estimator in the MeanRisk optimization.">
 
 .. only:: html
 
@@ -300,7 +300,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to find the risk parity portfolio with varian...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to find the risk parity portfolio with variance as the risk measure.">
 
 .. only:: html
 
@@ -317,7 +317,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specif...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specifying a risk budget on each asset with CVaR as the risk measure.">
 
 .. only:: html
 
@@ -372,7 +372,7 @@ Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` op
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MaximumDiversification optimization to find the portfolio that maximizes...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MaximumDiversification optimization to find the portfolio that maximizes the diversification ratio, which is the ratio of the weighted volatilities over the total volatility.">
 
 .. only:: html
 
@@ -481,7 +481,7 @@ Examples concerning hierarchical clustering based optimizations.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial, we will compare the HierarchicalRiskParity (HRP) optimization with the Hierar...">
+    <div class="sphx-glr-thumbcontainer" tooltip="In this tutorial, we will compare the HierarchicalRiskParity (HRP) optimization with the HierarchicalEqualRiskContribution (HERC) optimization.">
 
 .. only:: html
 
@@ -592,7 +592,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the  pre-selection transformers &lt;pre_selection&gt; DropCorrelated to remo...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the  pre-selection transformers &lt;pre_selection&gt; DropCorrelated to remove highly correlated assets before the optimization.">
 
 .. only:: html
 
@@ -609,7 +609,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the pre-selection transformers &lt;pre_selection&gt; SelectKExtremes to sele...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the pre-selection transformers &lt;pre_selection&gt; SelectKExtremes to select the k best or the k worst assets according to a given measure before the optimization.">
 
 .. only:: html
 
@@ -685,7 +685,7 @@ Examples about data preparation.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial explores the difference between the general procedure using different investment ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial explores the difference between the general procedure using different investment horizon and the simplified procedure as explained in data preparation &lt;data_preparation&gt;.">
 
 .. only:: html
 

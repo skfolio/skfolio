@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.population.Population &#8212; skfolio 0.3.1 documentation</title>
+    <title>skfolio.population.Population &#8212; skfolio 0.4.0 documentation</title>
   
   
   
@@ -40,18 +40,18 @@
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=92d7079b"></script>
+    <script src="../_static/documentation_options.js?v=9453eeee"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -606,49 +606,55 @@ Empty list are accepted.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.clear" title="skfolio.population.Population.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>(/)</p></td>
 <td><p>Remove all items from list.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.composition" title="skfolio.population.Population.composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">composition</span></code></a>([names, tags, display_sub_ptf_name])</p></td>
-<td><p>Composition of the portfolios in the population.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.composition" title="skfolio.population.Population.composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">composition</span></code></a>([display_sub_ptf_name])</p></td>
+<td><p>Composition of each portfolio in the population.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.copy" title="skfolio.population.Population.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(/)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.contribution" title="skfolio.population.Population.contribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contribution</span></code></a>(measure[, spacing, ...])</p></td>
+<td><p>Contribution of each asset to a given measure of each portfolio in the</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.copy" title="skfolio.population.Population.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>(/)</p></td>
 <td><p>Return a shallow copy of the list.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.count" title="skfolio.population.Population.count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code></a>(value, /)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.count" title="skfolio.population.Population.count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count</span></code></a>(value, /)</p></td>
 <td><p>Return number of occurrences of value.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.extend" title="skfolio.population.Population.extend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extend</span></code></a>(other)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.extend" title="skfolio.population.Population.extend"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extend</span></code></a>(other)</p></td>
 <td><p>Extend population list by appending elements from the iterable.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.filter" title="skfolio.population.Population.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>([names, tags])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.filter" title="skfolio.population.Population.filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter</span></code></a>([names, tags])</p></td>
 <td><p>Filter the Population of portfolios by names and tags.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.index" title="skfolio.population.Population.index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code></a>(value[, start, stop])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.index" title="skfolio.population.Population.index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">index</span></code></a>(value[, start, stop])</p></td>
 <td><p>Return first index of value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.insert" title="skfolio.population.Population.insert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert</span></code></a>(index, item)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.insert" title="skfolio.population.Population.insert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert</span></code></a>(index, item)</p></td>
 <td><p>Insert portfolio before index.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.max_measure" title="skfolio.population.Population.max_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_measure</span></code></a>(measure[, names, tags])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.max_measure" title="skfolio.population.Population.max_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_measure</span></code></a>(measure)</p></td>
 <td><p>Returns the portfolio with the maximum measure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.measures" title="skfolio.population.Population.measures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures</span></code></a>(measure[, names, tags])</p></td>
-<td><p>Vector of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.measures" title="skfolio.population.Population.measures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures</span></code></a>(measure)</p></td>
+<td><p>Vector of portfolios measures for each portfolio from the population.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_mean" title="skfolio.population.Population.measures_mean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_mean</span></code></a>(measure[, names, tags])</p></td>
-<td><p>Mean of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_mean" title="skfolio.population.Population.measures_mean"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_mean</span></code></a>(measure)</p></td>
+<td><p>Mean of portfolios measures for each portfolio from the population.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_std" title="skfolio.population.Population.measures_std"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_std</span></code></a>(measure[, names, tags])</p></td>
-<td><p>Standard-deviation of portfolios measures for each portfolio from the population filtered by names and tags.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.measures_std" title="skfolio.population.Population.measures_std"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measures_std</span></code></a>(measure)</p></td>
+<td><p>Standard-deviation of portfolios measures for each portfolio from the population.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.min_measure" title="skfolio.population.Population.min_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min_measure</span></code></a>(measure[, names, tags])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.min_measure" title="skfolio.population.Population.min_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">min_measure</span></code></a>(measure)</p></td>
 <td><p>Returns the portfolio with the minimum measure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.non_denominated_sort" title="skfolio.population.Population.non_denominated_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">non_denominated_sort</span></code></a>([first_front_only])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.non_denominated_sort" title="skfolio.population.Population.non_denominated_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">non_denominated_sort</span></code></a>([first_front_only])</p></td>
 <td><p>Fast non-dominated sorting.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_composition" title="skfolio.population.Population.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>([names, tags, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_composition" title="skfolio.population.Population.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>([display_sub_ptf_name])</p></td>
 <td><p>Plot the compositions of the portfolios in the population.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_cumulative_returns" title="skfolio.population.Population.plot_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cumulative_returns</span></code></a>([log_scale, idx, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_contribution" title="skfolio.population.Population.plot_contribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_contribution</span></code></a>(measure[, spacing, ...])</p></td>
+<td><p>Plot the contribution of each asset to a given measure of the portfolios</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_cumulative_returns" title="skfolio.population.Population.plot_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cumulative_returns</span></code></a>([log_scale, idx])</p></td>
 <td><p>Plot the population's portfolios cumulative returns.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_distribution" title="skfolio.population.Population.plot_distribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_distribution</span></code></a>(measure_list[, tag_list, ...])</p></td>
@@ -657,17 +663,23 @@ Empty list are accepted.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_measures" title="skfolio.population.Population.plot_measures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_measures</span></code></a>(x, y[, z, to_surface, ...])</p></td>
 <td><p>Plot the 2D (or 3D) scatter points (or surface) of a given set of measures for each portfolio in the population.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.pop" title="skfolio.population.Population.pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pop</span></code></a>([index])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.plot_rolling_measure" title="skfolio.population.Population.plot_rolling_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_rolling_measure</span></code></a>([measure, window])</p></td>
+<td><p>Plot the measure over a rolling window for each portfolio in the population.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.pop" title="skfolio.population.Population.pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pop</span></code></a>([index])</p></td>
 <td><p>Remove and return item at index (default last).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.quantile" title="skfolio.population.Population.quantile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quantile</span></code></a>(measure, q[, names, tags])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.quantile" title="skfolio.population.Population.quantile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quantile</span></code></a>(measure, q)</p></td>
 <td><p>Returns the portfolio corresponding to the <code class="docutils literal notranslate"><span class="pre">q</span></code> quantile for a given portfolio measure.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.remove" title="skfolio.population.Population.remove"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove</span></code></a>(value, /)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.remove" title="skfolio.population.Population.remove"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove</span></code></a>(value, /)</p></td>
 <td><p>Remove first occurrence of value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.reverse" title="skfolio.population.Population.reverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reverse</span></code></a>(/)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.reverse" title="skfolio.population.Population.reverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reverse</span></code></a>(/)</p></td>
 <td><p>Reverse <em>IN PLACE</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.rolling_measure" title="skfolio.population.Population.rolling_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rolling_measure</span></code></a>([measure, window])</p></td>
+<td><p>Compute the measure over a rolling window for each portfolio in the</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.set_portfolio_params" title="skfolio.population.Population.set_portfolio_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_portfolio_params</span></code></a>(**params)</p></td>
 <td><p>Set the parameters of all the portfolios.</p></td>
@@ -675,10 +687,10 @@ Empty list are accepted.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.sort" title="skfolio.population.Population.sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort</span></code></a>(*[, key, reverse])</p></td>
 <td><p>Sort the list in ascending order and return None.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.sort_measure" title="skfolio.population.Population.sort_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort_measure</span></code></a>(measure[, reverse, names, tags])</p></td>
-<td><p>Sort the population by a given portfolio measure and filter the portfolios by names and tags.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.population.Population.sort_measure" title="skfolio.population.Population.sort_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort_measure</span></code></a>(measure[, reverse])</p></td>
+<td><p>Sort the population by a given portfolio measure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.summary" title="skfolio.population.Population.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a>([formatted, names, tags])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.population.Population.summary" title="skfolio.population.Population.summary"><code class="xref py py-obj docutils literal notranslate"><span class="pre">summary</span></code></a>([formatted])</p></td>
 <td><p>Summary of the portfolios in the population</p></td>
 </tr>
 </tbody>
@@ -697,15 +709,11 @@ Empty list are accepted.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.composition">
-<span class="sig-name descname"><span class="pre">composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.composition" title="Link to this definition">#</a></dt>
-<dd><p>Composition of the portfolios in the population.</p>
+<span class="sig-name descname"><span class="pre">composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.composition" title="Link to this definition">#</a></dt>
+<dd><p>Composition of each portfolio in the population.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
-</dd>
 <dt><strong>display_sub_ptf_name</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
 portfolio is displayed.</p>
 </dd>
@@ -713,7 +721,44 @@ portfolio is displayed.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>summary</strong><span class="classifier">DataFrame</span></dt><dd><p>Composition of the portfolios in the population.</p>
+<dt><strong>df</strong><span class="classifier">DataFrame</span></dt><dd><p>Composition of the portfolios in the population.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.contribution">
+<span class="sig-name descname"><span class="pre">contribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.contribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.contribution" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>Contribution of each asset to a given measure of each portfolio in the</dt><dd><p>population.</p>
+</dd>
+</dl>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><blockquote>
+<div><p>The measure used for the contribution computation.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>spacing<span class="classifier">float, optional</span></dt><dd><p>Spacing “h” of the finite difference:
+:math:<a href="#id1"><span class="problematic" id="id2">`</span></a>contribution(wi)=</p>
+</dd>
+</dl>
+</dd>
+<dt><strong>rac{measure(wi-h) - measure(wi+h)}{2h}`</strong></dt><dd><dl class="simple">
+<dt>display_sub_ptf_name<span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
+portfolio is displayed.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>df</strong><span class="classifier">DataFrame</span></dt><dd><p>Contribution of each asset to a given measure of each portfolio in the
+population.</p>
 </dd>
 </dl>
 </dd>
@@ -776,16 +821,12 @@ If both names and tags are provided, the intersection is returned.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.max_measure">
-<span class="sig-name descname"><span class="pre">max_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.max_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.max_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.max_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.max_measure" title="Link to this definition">#</a></dt>
 <dd><p>Returns the portfolio with the maximum measure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure: Measure</strong></dt><dd><p>The portfolio measure.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -800,17 +841,13 @@ If both names and tags are provided, the intersection is returned.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.measures">
-<span class="sig-name descname"><span class="pre">measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures" title="Link to this definition">#</a></dt>
 <dd><p>Vector of portfolios measures for each portfolio from the
-population filtered by names and tags.</p>
+population.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -825,17 +862,13 @@ population filtered by names and tags.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.measures_mean">
-<span class="sig-name descname"><span class="pre">measures_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_mean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_mean" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measures_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_mean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_mean" title="Link to this definition">#</a></dt>
 <dd><p>Mean of portfolios measures for each portfolio from the
-population filtered by names and tags.</p>
+population.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -850,17 +883,13 @@ population filtered by names and tags.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.measures_std">
-<span class="sig-name descname"><span class="pre">measures_std</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_std"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_std" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">measures_std</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.measures_std"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.measures_std" title="Link to this definition">#</a></dt>
 <dd><p>Standard-deviation of portfolios measures for each portfolio from the
-population filtered by names and tags.</p>
+population.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -875,16 +904,12 @@ population filtered by names and tags.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.min_measure">
-<span class="sig-name descname"><span class="pre">min_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.min_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.min_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">min_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.min_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.min_measure" title="Link to this definition">#</a></dt>
 <dd><p>Returns the portfolio with the minimum measure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -924,15 +949,11 @@ non-dominated portfolios.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.plot_composition">
-<span class="sig-name descname"><span class="pre">plot_composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_composition" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_composition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_composition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_composition" title="Link to this definition">#</a></dt>
 <dd><p>Plot the compositions of the portfolios in the population.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
-</dd>
 <dt><strong>display_sub_ptf_name</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
 portfolio is displayed.</p>
 </dd>
@@ -948,8 +969,44 @@ portfolio is displayed.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_contribution">
+<span class="sig-name descname"><span class="pre">plot_contribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_sub_ptf_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_contribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_contribution" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>Plot the contribution of each asset to a given measure of the portfolios</dt><dd><p>in the population.</p>
+</dd>
+</dl>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><blockquote>
+<div><p>The measure used for the contribution computation.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>spacing<span class="classifier">float, optional</span></dt><dd><p>Spacing “h” of the finite difference:
+:math:<a href="#id3"><span class="problematic" id="id4">`</span></a>contribution(wi)=</p>
+</dd>
+</dl>
+</dd>
+<dt><strong>rac{measure(wi-h) - measure(wi+h)}{2h}`</strong></dt><dd><dl class="simple">
+<dt>display_sub_ptf_name<span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, each sub-portfolio name composing a multi-period
+portfolio is displayed.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plotly Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.plot_cumulative_returns">
-<span class="sig-name descname"><span class="pre">plot_cumulative_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_cumulative_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_cumulative_returns" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_cumulative_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_cumulative_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_cumulative_returns" title="Link to this definition">#</a></dt>
 <dd><p>Plot the population’s portfolios cumulative returns.
 Non-compounded cumulative returns start at 0.
 Compounded cumulative returns are rescaled to start at 1000.</p>
@@ -962,10 +1019,6 @@ must be compounded otherwise an exception is raise.</p>
 </dd>
 <dt><strong>idx</strong><span class="classifier">slice | array, optional</span></dt><dd><p>Indexes or slice of the observations to plot.
 The default (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is to take all observations.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -1007,7 +1060,7 @@ for each tag provided.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.plot_measures">
-<span class="sig-name descname"><span class="pre">plot_measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_surface</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hover_measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_fronts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Portfolios'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_measures" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_measures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_surface</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hover_measures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_fronts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Portfolios'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_measures"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_measures" title="Link to this definition">#</a></dt>
 <dd><p>Plot the 2D (or 3D) scatter points (or surface) of a given set of
 measures for each portfolio in the population.</p>
 <dl class="field-list simple">
@@ -1030,15 +1083,33 @@ The default is <code class="docutils literal notranslate"><span class="pre">Fals
 </dd>
 <dt><strong>title</strong><span class="classifier">str, default=”Portfolios”</span></dt><dd><p>The graph title. The default value is “Portfolios”.</p>
 </dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
-</dd>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plotly Figure object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.plot_rolling_measure">
+<span class="sig-name descname"><span class="pre">plot_rolling_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure=Sharpe</span> <span class="pre">Ratio</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window=30</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.plot_rolling_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.plot_rolling_measure" title="Link to this definition">#</a></dt>
+<dd><p>Plot the measure over a rolling window for each portfolio in the population.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">ct.Measure, default = RatioMeasure.SHARPE_RATIO</span></dt><dd><p>The measure.</p>
+</dd>
+<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>Returns the plot Figure object</p>
 </dd>
 </dl>
 </dd>
@@ -1054,7 +1125,7 @@ The default is <code class="docutils literal notranslate"><span class="pre">Fals
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.quantile">
-<span class="sig-name descname"><span class="pre">quantile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.quantile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.quantile" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">quantile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.quantile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.quantile" title="Link to this definition">#</a></dt>
 <dd><p>Returns the portfolio corresponding to the <code class="docutils literal notranslate"><span class="pre">q</span></code> quantile for a given portfolio
 measure.</p>
 <dl class="field-list simple">
@@ -1063,10 +1134,6 @@ measure.</p>
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
 </dd>
 <dt><strong>q</strong><span class="classifier">float</span></dt><dd><p>The quantile value.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -1090,6 +1157,31 @@ measure.</p>
 <dt class="sig sig-object py" id="skfolio.population.Population.reverse">
 <span class="sig-name descname"><span class="pre">reverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#skfolio.population.Population.reverse" title="Link to this definition">#</a></dt>
 <dd><p>Reverse <em>IN PLACE</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.population.Population.rolling_measure">
+<span class="sig-name descname"><span class="pre">rolling_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure=Sharpe</span> <span class="pre">Ratio</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window=30</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.rolling_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.rolling_measure" title="Link to this definition">#</a></dt>
+<dd><dl class="simple">
+<dt>Compute the measure over a rolling window for each portfolio in the</dt><dd><p>population.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">ct.Measure, default=RatioMeasure.SHARPE_RATIO</span></dt><dd><p>The measure. The default measure is the Sharpe Ratio.</p>
+</dd>
+<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size. The default value is <code class="docutils literal notranslate"><span class="pre">30</span></code> observations.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>dataframe</strong><span class="classifier">pandas DataFrame</span></dt><dd><p>The rolling measures.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1125,19 +1217,14 @@ ascending or descending, according to their function values.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.sort_measure">
-<span class="sig-name descname"><span class="pre">sort_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.sort_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.sort_measure" title="Link to this definition">#</a></dt>
-<dd><p>Sort the population by a given portfolio measure and filter the portfolios
-by names and tags.</p>
+<span class="sig-name descname"><span class="pre">sort_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reverse</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.sort_measure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.sort_measure" title="Link to this definition">#</a></dt>
+<dd><p>Sort the population by a given portfolio measure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The portfolio measure.</p>
 </dd>
 <dt><strong>reverse</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the order is reversed.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -1152,7 +1239,7 @@ by names and tags.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.population.Population.summary">
-<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">formatted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.summary" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">formatted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/population/_population.html#Population.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.population.Population.summary" title="Link to this definition">#</a></dt>
 <dd><p>Summary of the portfolios in the population</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1160,10 +1247,6 @@ by names and tags.</p>
 <dt><strong>formatted</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, the measures are formatted into rounded string with
 units.
 The default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
-</dd>
-<dt><strong>names</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio names.</p>
-</dd>
-<dt><strong>tags</strong><span class="classifier">str | list[str], optional</span></dt><dd><p>If provided, the population is filtered by portfolio tags.</p>
 </dd>
 </dl>
 </dd>
@@ -1249,7 +1332,7 @@ The default is <code class="docutils literal notranslate"><span class="pre">True
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
     <br/>
   </p>
 </div>

@@ -467,7 +467,7 @@ Finally, you can also directly provide the matrix :math:`A` and the vector
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.360 seconds)
+   **Total running time of the script:** (0 minutes 0.366 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py:
@@ -490,6 +490,10 @@ Finally, you can also directly provide the matrix :math:`A` and the vector
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_5_weight_constraints.py <plot_5_weight_constraints.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_5_weight_constraints.zip <plot_5_weight_constraints.zip>`
 
 
 .. only:: html

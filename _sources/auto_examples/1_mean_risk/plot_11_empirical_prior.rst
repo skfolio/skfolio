@@ -181,7 +181,7 @@ We predict both models on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.184 seconds)
+   **Total running time of the script:** (0 minutes 1.250 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_11_empirical_prior.py:
@@ -204,6 +204,10 @@ We predict both models on the test set:
     .. container:: sphx-glr-download sphx-glr-download-python
 
       :download:`Download Python source code: plot_11_empirical_prior.py <plot_11_empirical_prior.py>`
+
+    .. container:: sphx-glr-download sphx-glr-download-zip
+
+      :download:`Download zipped: plot_11_empirical_prior.zip <plot_11_empirical_prior.zip>`
 
 
 .. only:: html

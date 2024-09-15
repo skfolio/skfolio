@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:00.922** total execution time for 1 file **from auto_examples/9_data_preparation**:
+**00:00.941** total execution time for 1 file **from auto_examples/9_data_preparation**:
 
 .. container::
 
@@ -33,5 +33,5 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_auto_examples_9_data_preparation_plot_1_investment_horizon.py` (``plot_1_investment_horizon.py``)
-     - 00:00.922
+     - 00:00.941
      - 0.0

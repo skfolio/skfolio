@@ -21,7 +21,7 @@ Examples about data preparation.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial explores the difference between the general procedure using different investment ...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial explores the difference between the general procedure using different investment horizon and the simplified procedure as explained in data preparation &lt;data_preparation&gt;.">
 
 .. only:: html
 

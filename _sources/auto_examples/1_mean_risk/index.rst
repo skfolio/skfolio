@@ -37,7 +37,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find the minimum CVaR (Conditional Value at Ris...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find the minimum CVaR (Conditional Value at Risk) portfolio.">
 
 .. only:: html
 
@@ -54,7 +54,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the Mean-Variance efficient frontier (pareto font).">
 
 .. only:: html
 
@@ -71,7 +71,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the MeanRisk optimization to find an ensemble of portfolios belonging to the Mean-Variance-CDaR efficient frontier.">
 
 .. only:: html
 
@@ -156,7 +156,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate expected returns uncertainty sets into the MeanRisk opti...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate expected returns uncertainty sets into the MeanRisk optimization.">
 
 .. only:: html
 
@@ -173,7 +173,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate a tracking error constraint into the MeanRisk optimizati...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to incorporate a tracking error constraint into the MeanRisk optimization.">
 
 .. only:: html
 
@@ -241,7 +241,7 @@ Examples using the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use the FactorModel estimator coupled with the BlackLitterman estima...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial shows how to use the FactorModel estimator coupled with the BlackLitterman estimator in the MeanRisk optimization.">
 
 .. only:: html
 

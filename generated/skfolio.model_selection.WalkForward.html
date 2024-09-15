@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.model_selection.WalkForward &#8212; skfolio 0.3.1 documentation</title>
+    <title>skfolio.model_selection.WalkForward &#8212; skfolio 0.4.0 documentation</title>
   
   
   
@@ -40,18 +40,18 @@
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=92d7079b"></script>
+    <script src="../_static/documentation_options.js?v=9453eeee"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -582,34 +582,98 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.WalkForward<a class="headerlink" href="#skfolio-model-selection-walkforward" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="skfolio.model_selection.WalkForward">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.model_selection.</span></span><span class="sig-name descname"><span class="pre">WalkForward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expend_train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce_test</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">purged_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/model_selection/_walk_forward.html#WalkForward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.model_selection.WalkForward" title="Link to this definition">#</a></dt>
-<dd><p>Walk Forward cross-validator.</p>
-<p>Provides train/test indices to split time series data samples in a walk forward
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.model_selection.</span></span><span class="sig-name descname"><span class="pre">WalkForward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq_offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">previous</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expend_train</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce_test</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">purged_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/model_selection/_walk_forward.html#WalkForward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.model_selection.WalkForward" title="Link to this definition">#</a></dt>
+<dd><p>Walk Forward Cross-Validator.</p>
+<p>Provides train/test indices to split time series data samples using a walk-forward
 logic.</p>
-<p>In each split, test indices must be higher than before, and thus shuffling
-in cross validator is inappropriate.</p>
+<p>In each split, test indices must be higher than the previous ones; therefore,
+shuffling in cross-validator is inappropriate.</p>
 <p>Compared to <code class="docutils literal notranslate"><span class="pre">sklearn.model_selection.TimeSeriesSplit</span></code>, you control the train/test
-folds by providing a number of training and test samples instead of a number of
-split making it more suitable for portfolio cross-validation.</p>
-<dl class="field-list simple">
+folds by specifying the number of training and test samples instead of the number
+of splits, making it more suitable for portfolio cross-validation.</p>
+<p>If your data is a DataFrame indexed with a DatetimeIndex, you can split the data
+using specific datetime frequencies and offsets.</p>
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>test_size</strong><span class="classifier">int</span></dt><dd><p>Number of observations in each test set.</p>
+<dd class="field-odd"><dl>
+<dt><strong>test_size</strong><span class="classifier">int</span></dt><dd><p>Length of each test set.
+If <code class="docutils literal notranslate"><span class="pre">freq</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), it represents the number of observations.
+Otherwise, it represents the number of periods defined by <code class="docutils literal notranslate"><span class="pre">freq</span></code>.</p>
 </dd>
-<dt><strong>train_size</strong><span class="classifier">int</span></dt><dd><p>Number of observations in each training set.</p>
+<dt><strong>train_size</strong><span class="classifier">int | pandas.offsets.DateOffset | datetime.timedelta</span></dt><dd><p>Length of each training set.
+If <code class="docutils literal notranslate"><span class="pre">freq</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), it represents the number of observations.
+Otherwise, for integers, it represents the number of periods defined by <code class="docutils literal notranslate"><span class="pre">freq</span></code>;
+for pandas DateOffset or datetime timedelta it represents the date offset
+applied to the start of each period.</p>
 </dd>
-<dt><strong>expend_train</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, each subsequent training set after the first one will
+<dt><strong>freq</strong><span class="classifier">str | pandas.offsets.DateOffset, optional</span></dt><dd><p>If provided, it must be a frequency string or a pandas DateOffset, and the
+returns <code class="docutils literal notranslate"><span class="pre">X</span></code> must be a DataFrame with an index of type <code class="docutils literal notranslate"><span class="pre">DatetimeIndex</span></code>.
+For a list of pandas frequencies and offsets, see <a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">here</a>.
+The defaul (<code class="docutils literal notranslate"><span class="pre">None</span></code>) means <code class="docutils literal notranslate"><span class="pre">test_size</span></code> and <code class="docutils literal notranslate"><span class="pre">train_size</span></code> represent the number of
+observations.</p>
+<p>Below are some common examples:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Rebalancing    : Montly on the first day</p></li>
+<li><p>Test Duration  : 1 month</p></li>
+<li><p>Train Duration : 6 months</p></li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">WalkForward</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;MS&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Rebalancing    : Quarterly on the first day</p></li>
+<li><p>Test Duration  : 1 quarter</p></li>
+<li><p>Train Duration : 2 months</p></li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">WalkForward</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DateOffset</span><span class="p">(</span><span class="n">months</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;QS&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Rebalancing    : Montly on the third Friday</p></li>
+<li><p>Test Duration  : 1 month</p></li>
+<li><p>Train Duration : 6 weeks</p></li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">WalkForward</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">Week</span><span class="p">(</span><span class="mi">6</span><span class="p">),</span> <span class="n">freq</span><span class="o">=</span> <span class="s2">&quot;WOM-3FRI&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Rebalancing    : Semi-annually on the last day</p></li>
+<li><p>Test Duration  : 6 months</p></li>
+<li><p>Train Duration : 1 year</p></li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">WalkForward</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">SemiMonthEnd</span><span class="p">())</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Rebalancing    : Every 2 months on the second day</p></li>
+<li><p>Test Duration  : 2 months</p></li>
+<li><p>Train Duration : 6 months</p></li>
+</ul>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cv</span> <span class="o">=</span> <span class="n">WalkForward</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">train_size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;MS&quot;</span><span class="p">,</span> <span class="n">freq_offset</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+</div></blockquote>
+</dd>
+<dt><strong>freq_offset</strong><span class="classifier">pandas DateOffset | datetime timedelta, optional</span></dt><dd><p>Only used if <code class="docutils literal notranslate"><span class="pre">freq</span></code> is provided. Offsets the <code class="docutils literal notranslate"><span class="pre">freq</span></code> by a pandas DateOffset or a
+datetime timedelta offset.</p>
+</dd>
+<dt><strong>previous</strong><span class="classifier">bool, default=False</span></dt><dd><p>Only used if <code class="docutils literal notranslate"><span class="pre">freq</span></code> is provided. If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, and if the period start
+or period end is not in the <code class="docutils literal notranslate"><span class="pre">DatetimeIndex</span></code>, the previous observation is used;
+otherwise, the next observation is used (default).</p>
+</dd>
+<dt><strong>expend_train</strong><span class="classifier">bool, default=False</span></dt><dd><p>If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, each subsequent training set after the first one will
 use all past observations.
-The default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
 </dd>
-<dt><strong>reduce_test</strong><span class="classifier">bool, default=False</span></dt><dd><p>If this is set to True, the last train/test split will be returned even if the
-test set is partial (if it contains less observations than <code class="docutils literal notranslate"><span class="pre">test_size</span></code>),
-otherwise it will be ignored.
-The default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+<dt><strong>reduce_test</strong><span class="classifier">bool, default=False</span></dt><dd><p>If set to <code class="docutils literal notranslate"><span class="pre">True</span></code>, the last train/test split will be returned even if the
+test set is partial (i.e., it contains fewer observations than <code class="docutils literal notranslate"><span class="pre">test_size</span></code>),
+otherwise, it will be ignored.
+The default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
 </dd>
-<dt><strong>purged_size</strong><span class="classifier">int, default=0</span></dt><dd><p>Number of observations to exclude from the end of each train set before the
-test set.
-The default value is <code class="docutils literal notranslate"><span class="pre">0</span></code></p>
+<dt><strong>purged_size</strong><span class="classifier">int, default=0</span></dt><dd><p>The number of observations to exclude from the end of each training set before
+the test set.
+The default value is <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
 </dd>
 </dl>
 </dd>
@@ -835,7 +899,7 @@ routing information.</p>
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
     <br/>
   </p>
 </div>

@@ -20,7 +20,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to find the risk parity portfolio with varian...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to find the risk parity portfolio with variance as the risk measure.">
 
 .. only:: html
 
@@ -37,7 +37,7 @@ Examples concerning the :class:`~skfolio.optimization.RiskBudgeting` optimizatio
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specif...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial uses the RiskBudgeting optimization to build a risk budgeting portfolio by specifying a risk budget on each asset with CVaR as the risk measure.">
 
 .. only:: html
 

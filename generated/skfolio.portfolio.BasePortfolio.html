@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.portfolio.BasePortfolio &#8212; skfolio 0.3.1 documentation</title>
+    <title>skfolio.portfolio.BasePortfolio &#8212; skfolio 0.4.0 documentation</title>
   
   
   
@@ -40,18 +40,18 @@
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
-    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=92d7079b"></script>
+    <script src="../_static/documentation_options.js?v=9453eeee"></script>
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -827,17 +827,23 @@ Difference.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.clear" title="skfolio.portfolio.BasePortfolio.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>
 <td><p>Clear all measures, fitness, cumulative returns and drawdowns in slots</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.copy" title="skfolio.portfolio.BasePortfolio.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.contribution" title="skfolio.portfolio.BasePortfolio.contribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contribution</span></code></a>(measure[, spacing, to_df])</p></td>
+<td><p>Compute the contribution of each asset to a given measure</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.copy" title="skfolio.portfolio.BasePortfolio.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
 <td><p>Copy the Portfolio attributes without its measures values.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.dominates" title="skfolio.portfolio.BasePortfolio.dominates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dominates</span></code></a>(other[, idx])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.dominates" title="skfolio.portfolio.BasePortfolio.dominates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dominates</span></code></a>(other[, idx])</p></td>
 <td><p>Portfolio domination.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.get_measure" title="skfolio.portfolio.BasePortfolio.get_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_measure</span></code></a>(measure)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.get_measure" title="skfolio.portfolio.BasePortfolio.get_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_measure</span></code></a>(measure)</p></td>
 <td><p>Returns the value of a given measure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.plot_composition" title="skfolio.portfolio.BasePortfolio.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.plot_composition" title="skfolio.portfolio.BasePortfolio.plot_composition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_composition</span></code></a>()</p></td>
 <td><p>Plot the Portfolio composition.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.plot_contribution" title="skfolio.portfolio.BasePortfolio.plot_contribution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_contribution</span></code></a>(measure[, spacing])</p></td>
+<td><p>Plot the contribution of each asset to a given measure.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#skfolio.portfolio.BasePortfolio.plot_cumulative_returns" title="skfolio.portfolio.BasePortfolio.plot_cumulative_returns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cumulative_returns</span></code></a>([log_scale, idx])</p></td>
 <td><p>Plot the Portfolio cumulative returns.</p></td>
@@ -872,6 +878,12 @@ Difference.</p>
 <dt class="sig sig-object py" id="skfolio.portfolio.BasePortfolio.composition">
 <em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">composition</span></span><a class="headerlink" href="#skfolio.portfolio.BasePortfolio.composition" title="Link to this definition">#</a></dt>
 <dd><p>DataFrame of the Portfolio composition</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.BasePortfolio.contribution">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">contribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to_df</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_base.html#BasePortfolio.contribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.BasePortfolio.contribution" title="Link to this definition">#</a></dt>
+<dd><p>Compute the contribution of each asset to a given measure</p>
 </dd></dl>
 
 <dl class="py method">
@@ -983,6 +995,29 @@ The default (<code class="docutils literal notranslate"><span class="pre">None</
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="skfolio.portfolio.BasePortfolio.plot_contribution">
+<span class="sig-name descname"><span class="pre">plot_contribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">measure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spacing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_base.html#BasePortfolio.plot_contribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.BasePortfolio.plot_contribution" title="Link to this definition">#</a></dt>
+<dd><p>Plot the contribution of each asset to a given measure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>measure</strong><span class="classifier">Measure</span></dt><dd><p>The measure used for the contribution computation.</p>
+</dd>
+<dt><strong>spacing</strong><span class="classifier">float, optional</span></dt><dd><p>Spacing “h” of the finite difference:
+<span class="math notranslate nohighlight">\(contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}\)</span></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>plot</strong><span class="classifier">Figure</span></dt><dd><p>The plotly Figure of assets contribution to the measure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="skfolio.portfolio.BasePortfolio.plot_cumulative_returns">
 <span class="sig-name descname"><span class="pre">plot_cumulative_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/portfolio/_base.html#BasePortfolio.plot_cumulative_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.portfolio.BasePortfolio.plot_cumulative_returns" title="Link to this definition">#</a></dt>
 <dd><p>Plot the Portfolio cumulative returns.
@@ -1067,7 +1102,7 @@ The default (<code class="docutils literal notranslate"><span class="pre">None</
 <dd class="field-odd"><dl class="simple">
 <dt><strong>measure</strong><span class="classifier">ct.Measure, default=RatioMeasure.SHARPE_RATIO</span></dt><dd><p>The measure. The default measure is the Sharpe Ratio.</p>
 </dd>
-<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size. The default value is <code class="docutils literal notranslate"><span class="pre">30</span></code>.</p>
+<dt><strong>window</strong><span class="classifier">int, default=30</span></dt><dd><p>The window size. The default value is <code class="docutils literal notranslate"><span class="pre">30</span></code> observations.</p>
 </dd>
 </dl>
 </dd>
@@ -1174,7 +1209,7 @@ with units.</p>
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
     <br/>
   </p>
 </div>

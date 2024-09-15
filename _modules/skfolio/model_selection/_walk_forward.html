@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.model_selection._walk_forward &#8212; skfolio 0.3.1 documentation</title>
+    <title>skfolio.model_selection._walk_forward &#8212; skfolio 0.4.0 documentation</title>
   
   
   
@@ -31,18 +31,18 @@
     <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/togglebutton.css?v=13237357" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=61a4c737" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=87e54e7c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=0f37f9aa" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=92d7079b"></script>
+    <script src="../../../_static/documentation_options.js?v=9453eeee"></script>
     <script src="../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -385,10 +385,12 @@ document.write(`
 <span class="c1"># scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier</span>
 <span class="c1"># Grisel Licensed under BSD 3 clause.</span>
 
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
 <span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterator</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">sklearn.model_selection</span> <span class="k">as</span> <span class="nn">sks</span>
 <span class="kn">import</span> <span class="nn">sklearn.utils</span> <span class="k">as</span> <span class="nn">sku</span>
 
@@ -396,41 +398,98 @@ document.write(`
 <div class="viewcode-block" id="WalkForward">
 <a class="viewcode-back" href="../../../generated/skfolio.model_selection.WalkForward.html#skfolio.model_selection.WalkForward">[docs]</a>
 <span class="k">class</span> <span class="nc">WalkForward</span><span class="p">(</span><span class="n">sks</span><span class="o">.</span><span class="n">BaseCrossValidator</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Walk Forward cross-validator.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Walk Forward Cross-Validator.</span>
 
-<span class="sd">    Provides train/test indices to split time series data samples in a walk forward</span>
+<span class="sd">    Provides train/test indices to split time series data samples using a walk-forward</span>
 <span class="sd">    logic.</span>
 
-<span class="sd">    In each split, test indices must be higher than before, and thus shuffling</span>
-<span class="sd">    in cross validator is inappropriate.</span>
+<span class="sd">    In each split, test indices must be higher than the previous ones; therefore,</span>
+<span class="sd">    shuffling in cross-validator is inappropriate.</span>
 
 <span class="sd">    Compared to `sklearn.model_selection.TimeSeriesSplit`, you control the train/test</span>
-<span class="sd">    folds by providing a number of training and test samples instead of a number of</span>
-<span class="sd">    split making it more suitable for portfolio cross-validation.</span>
+<span class="sd">    folds by specifying the number of training and test samples instead of the number</span>
+<span class="sd">    of splits, making it more suitable for portfolio cross-validation.</span>
+
+<span class="sd">    If your data is a DataFrame indexed with a DatetimeIndex, you can split the data</span>
+<span class="sd">    using specific datetime frequencies and offsets.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    test_size : int</span>
-<span class="sd">        Number of observations in each test set.</span>
+<span class="sd">        Length of each test set.</span>
+<span class="sd">        If `freq` is `None` (default), it represents the number of observations.</span>
+<span class="sd">        Otherwise, it represents the number of periods defined by `freq`.</span>
 
-<span class="sd">    train_size : int</span>
-<span class="sd">        Number of observations in each training set.</span>
+<span class="sd">    train_size : int | pandas.offsets.DateOffset | datetime.timedelta</span>
+<span class="sd">        Length of each training set.</span>
+<span class="sd">        If `freq` is `None` (default), it represents the number of observations.</span>
+<span class="sd">        Otherwise, for integers, it represents the number of periods defined by `freq`;</span>
+<span class="sd">        for pandas DateOffset or datetime timedelta it represents the date offset</span>
+<span class="sd">        applied to the start of each period.</span>
+
+<span class="sd">    freq : str | pandas.offsets.DateOffset, optional</span>
+<span class="sd">        If provided, it must be a frequency string or a pandas DateOffset, and the</span>
+<span class="sd">        returns `X` must be a DataFrame with an index of type `DatetimeIndex`.</span>
+<span class="sd">        For a list of pandas frequencies and offsets, see `here &lt;https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases&gt;`_.</span>
+<span class="sd">        The defaul (`None`) means `test_size` and `train_size` represent the number of</span>
+<span class="sd">        observations.</span>
+
+<span class="sd">        Below are some common examples:</span>
+
+<span class="sd">            * Rebalancing    : Montly on the first day</span>
+<span class="sd">            * Test Duration  : 1 month</span>
+<span class="sd">            * Train Duration : 6 months</span>
+
+<span class="sd">            &gt;&gt;&gt; cv = WalkForward(test_size=1, train_size=6, freq=&quot;MS&quot;)</span>
+
+<span class="sd">            * Rebalancing    : Quarterly on the first day</span>
+<span class="sd">            * Test Duration  : 1 quarter</span>
+<span class="sd">            * Train Duration : 2 months</span>
+
+<span class="sd">            &gt;&gt;&gt; cv = WalkForward(test_size=1, train_size=pd.DateOffset(months=2), freq=&quot;QS&quot;)</span>
+
+<span class="sd">            * Rebalancing    : Montly on the third Friday</span>
+<span class="sd">            * Test Duration  : 1 month</span>
+<span class="sd">            * Train Duration : 6 weeks</span>
+
+<span class="sd">            &gt;&gt;&gt; cv = WalkForward(test_size=1, train_size=pd.offsets.Week(6), freq= &quot;WOM-3FRI&quot;)</span>
+
+<span class="sd">            * Rebalancing    : Semi-annually on the last day</span>
+<span class="sd">            * Test Duration  : 6 months</span>
+<span class="sd">            * Train Duration : 1 year</span>
+
+<span class="sd">            &gt;&gt;&gt; cv = WalkForward(test_size=1, train_size=2, freq=pd.offsets.SemiMonthEnd())</span>
+
+<span class="sd">            * Rebalancing    : Every 2 months on the second day</span>
+<span class="sd">            * Test Duration  : 2 months</span>
+<span class="sd">            * Train Duration : 6 months</span>
+
+<span class="sd">            &gt;&gt;&gt; cv = WalkForward(test_size=2, train_size=6, freq=&quot;MS&quot;, freq_offset=dt.timedelta(days=2))</span>
+
+<span class="sd">    freq_offset : pandas DateOffset | datetime timedelta, optional</span>
+<span class="sd">        Only used if `freq` is provided. Offsets the `freq` by a pandas DateOffset or a</span>
+<span class="sd">        datetime timedelta offset.</span>
+
+<span class="sd">    previous : bool, default=False</span>
+<span class="sd">        Only used if `freq` is provided. If set to `True`, and if the period start</span>
+<span class="sd">        or period end is not in the `DatetimeIndex`, the previous observation is used;</span>
+<span class="sd">        otherwise, the next observation is used (default).</span>
 
 <span class="sd">    expend_train : bool, default=False</span>
-<span class="sd">        If this is set to True, each subsequent training set after the first one will</span>
+<span class="sd">        If set to `True`, each subsequent training set after the first one will</span>
 <span class="sd">        use all past observations.</span>
-<span class="sd">        The default is `False`</span>
+<span class="sd">        The default is `False`.</span>
 
 <span class="sd">    reduce_test : bool, default=False</span>
-<span class="sd">        If this is set to True, the last train/test split will be returned even if the</span>
-<span class="sd">        test set is partial (if it contains less observations than `test_size`),</span>
-<span class="sd">        otherwise it will be ignored.</span>
-<span class="sd">        The default is `False`</span>
+<span class="sd">        If set to `True`, the last train/test split will be returned even if the</span>
+<span class="sd">        test set is partial (i.e., it contains fewer observations than `test_size`),</span>
+<span class="sd">        otherwise, it will be ignored.</span>
+<span class="sd">        The default is `False`.</span>
 
 <span class="sd">    purged_size : int, default=0</span>
-<span class="sd">        Number of observations to exclude from the end of each train set before the</span>
-<span class="sd">        test set.</span>
-<span class="sd">        The default value is `0`</span>
+<span class="sd">        The number of observations to exclude from the end of each training set before</span>
+<span class="sd">        the test set.</span>
+<span class="sd">        The default value is `0`.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -503,13 +562,19 @@ document.write(`
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">train_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">train_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">,</span>
+        <span class="n">freq</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">freq_offset</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">previous</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">expend_train</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">reduce_test</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">purged_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">test_size</span> <span class="o">=</span> <span class="n">test_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">train_size</span> <span class="o">=</span> <span class="n">train_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="o">=</span> <span class="n">freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">freq_offset</span> <span class="o">=</span> <span class="n">freq_offset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">previous</span> <span class="o">=</span> <span class="n">previous</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">expend_train</span> <span class="o">=</span> <span class="n">expend_train</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reduce_test</span> <span class="o">=</span> <span class="n">reduce_test</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span> <span class="o">=</span> <span class="n">purged_size</span>
@@ -542,40 +607,51 @@ document.write(`
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">sku</span><span class="o">.</span><span class="n">indexable</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
         <span class="n">n_samples</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="c1"># Make sure we have enough samples for the given split parameters</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_size</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span> <span class="o">&gt;=</span> <span class="n">n_samples</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="s2">&quot;The sum of `train_size` with `purged_size` &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="si">}</span><span class="s2">) cannot be greater than the&quot;</span>
-                <span class="sa">f</span><span class="s2">&quot; number of samples (</span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2">).&quot;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;test_size` must be an integer&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;When `freq` is None, `train_size` must be an integer&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">_split_without_period</span><span class="p">(</span>
+                <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+                <span class="n">train_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="p">,</span>
+                <span class="n">test_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_size</span><span class="p">,</span>
+                <span class="n">purged_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="p">,</span>
+                <span class="n">expend_train</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">expend_train</span><span class="p">,</span>
+                <span class="n">reduce_test</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reduce_test</span><span class="p">,</span>
             <span class="p">)</span>
 
-        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)</span>
-
-        <span class="n">test_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_size</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span>
-        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">test_start</span> <span class="o">&gt;=</span> <span class="n">n_samples</span><span class="p">:</span>
-                <span class="k">return</span>
-            <span class="n">test_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_size</span>
-            <span class="n">train_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expend_train</span><span class="p">:</span>
-                <span class="n">train_start</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">train_start</span> <span class="o">=</span> <span class="n">train_end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_size</span>
-
-            <span class="k">if</span> <span class="n">test_end</span> <span class="o">&gt;</span> <span class="n">n_samples</span><span class="p">:</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_test</span><span class="p">:</span>
-                    <span class="k">return</span>
-                <span class="k">yield</span> <span class="p">(</span>
-                    <span class="n">indices</span><span class="p">[</span><span class="n">train_start</span><span class="p">:</span><span class="n">train_end</span><span class="p">],</span>
-                    <span class="n">indices</span><span class="p">[</span><span class="n">test_start</span><span class="p">:],</span>
-                <span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">yield</span> <span class="p">(</span>
-                    <span class="n">indices</span><span class="p">[</span><span class="n">train_start</span><span class="p">:</span><span class="n">train_end</span><span class="p">],</span>
-                    <span class="n">indices</span><span class="p">[</span><span class="n">test_start</span><span class="p">:</span><span class="n">test_end</span><span class="p">],</span>
-                <span class="p">)</span>
-            <span class="n">test_start</span> <span class="o">=</span> <span class="n">test_end</span></div>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;index&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;X must be a DataFrame with an index of type DatetimeIndex&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">_split_from_period_without_train_offset</span><span class="p">(</span>
+                <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+                <span class="n">train_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="p">,</span>
+                <span class="n">test_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_size</span><span class="p">,</span>
+                <span class="n">freq</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+                <span class="n">freq_offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_offset</span><span class="p">,</span>
+                <span class="n">previous</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">previous</span><span class="p">,</span>
+                <span class="n">purged_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="p">,</span>
+                <span class="n">expend_train</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">expend_train</span><span class="p">,</span>
+                <span class="n">reduce_test</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reduce_test</span><span class="p">,</span>
+                <span class="n">ts_index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">_split_from_period_with_train_offset</span><span class="p">(</span>
+            <span class="n">n_samples</span><span class="o">=</span><span class="n">n_samples</span><span class="p">,</span>
+            <span class="n">train_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">train_size</span><span class="p">,</span>
+            <span class="n">test_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_size</span><span class="p">,</span>
+            <span class="n">freq</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">freq</span><span class="p">,</span>
+            <span class="n">freq_offset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_offset</span><span class="p">,</span>
+            <span class="n">previous</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">previous</span><span class="p">,</span>
+            <span class="n">purged_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">purged_size</span><span class="p">,</span>
+            <span class="n">expend_train</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">expend_train</span><span class="p">,</span>
+            <span class="n">reduce_test</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reduce_test</span><span class="p">,</span>
+            <span class="n">ts_index</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="WalkForward.get_n_splits">
@@ -610,6 +686,144 @@ document.write(`
         <span class="k">return</span> <span class="n">n</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_size</span></div>
 </div>
 
+
+
+<span class="k">def</span> <span class="nf">_split_without_period</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">train_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">purged_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">expend_train</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">reduce_test</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="k">if</span> <span class="n">train_size</span> <span class="o">+</span> <span class="n">purged_size</span> <span class="o">&gt;=</span> <span class="n">n_samples</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The sum of `train_size` with `purged_size` &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">train_size</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">purged_size</span><span class="si">}</span><span class="s2">) cannot be greater than the&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; number of samples (</span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2">).&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)</span>
+
+    <span class="n">test_start</span> <span class="o">=</span> <span class="n">train_size</span> <span class="o">+</span> <span class="n">purged_size</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">test_start</span> <span class="o">&gt;=</span> <span class="n">n_samples</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">test_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">+</span> <span class="n">test_size</span>
+        <span class="n">train_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">-</span> <span class="n">purged_size</span>
+        <span class="k">if</span> <span class="n">expend_train</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="n">train_end</span> <span class="o">-</span> <span class="n">train_size</span>
+
+        <span class="k">if</span> <span class="n">test_end</span> <span class="o">&gt;</span> <span class="n">n_samples</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">reduce_test</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">test_start</span><span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">test_start</span><span class="p">:</span><span class="n">test_end</span><span class="p">]</span>
+        <span class="n">train_indices</span> <span class="o">=</span> <span class="n">indices</span><span class="p">[</span><span class="n">train_start</span><span class="p">:</span><span class="n">train_end</span><span class="p">]</span>
+        <span class="k">yield</span> <span class="n">train_indices</span><span class="p">,</span> <span class="n">test_indices</span>
+
+        <span class="n">test_start</span> <span class="o">=</span> <span class="n">test_end</span>
+
+
+<span class="k">def</span> <span class="nf">_split_from_period_without_train_offset</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">train_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">freq</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">freq_offset</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">previous</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">purged_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">expend_train</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">reduce_test</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">ts_index</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">ts_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">ts_index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">freq_offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">-</span> <span class="n">freq_offset</span><span class="p">)</span>
+
+    <span class="n">date_range</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">freq_offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">date_range</span> <span class="o">+=</span> <span class="n">freq_offset</span>
+
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">ts_index</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">date_range</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ffill&quot;</span> <span class="k">if</span> <span class="n">previous</span> <span class="k">else</span> <span class="s2">&quot;bfill&quot;</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span> <span class="o">+</span> <span class="n">test_size</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">reduce_test</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span><span class="p">],</span> <span class="n">n_samples</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                <span class="n">idx</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span><span class="p">],</span> <span class="n">idx</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span> <span class="o">+</span> <span class="n">test_size</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">expend_train</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">train_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">train_start</span><span class="p">,</span> <span class="n">idx</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">train_size</span><span class="p">]</span> <span class="o">-</span> <span class="n">purged_size</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">train_indices</span><span class="p">,</span> <span class="n">test_indices</span>
+
+        <span class="n">i</span> <span class="o">+=</span> <span class="n">test_size</span>
+
+
+<span class="k">def</span> <span class="nf">_split_from_period_with_train_offset</span><span class="p">(</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">train_size</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">,</span>
+    <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">freq</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">freq_offset</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">offsets</span><span class="o">.</span><span class="n">BaseOffset</span> <span class="o">|</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">previous</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">purged_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">expend_train</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">reduce_test</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">ts_index</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">ts_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">end</span> <span class="o">=</span> <span class="n">ts_index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">freq_offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">start</span> <span class="o">-</span> <span class="n">freq_offset</span><span class="p">)</span>
+
+    <span class="n">date_range</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">freq</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">freq_offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">date_range</span> <span class="o">+=</span> <span class="n">freq_offset</span>
+
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">ts_index</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">date_range</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ffill&quot;</span> <span class="k">if</span> <span class="n">previous</span> <span class="k">else</span> <span class="s2">&quot;bfill&quot;</span><span class="p">)</span>
+    <span class="n">train_idx</span> <span class="o">=</span> <span class="n">ts_index</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">date_range</span> <span class="o">-</span> <span class="n">train_size</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;ffill&quot;</span><span class="p">)</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">train_idx</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="k">return</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">train_idx</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="n">test_size</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">reduce_test</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">n_samples</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">test_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">idx</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">test_size</span><span class="p">]</span> <span class="o">-</span> <span class="n">purged_size</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">expend_train</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">train_start</span> <span class="o">=</span> <span class="n">train_idx</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">train_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">train_start</span><span class="p">,</span> <span class="n">idx</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">yield</span> <span class="n">train_indices</span><span class="p">,</span> <span class="n">test_indices</span>
+
+        <span class="n">i</span> <span class="o">+=</span> <span class="n">test_size</span>
 </pre></div>
 
                 </article>
@@ -662,7 +876,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
     <br/>
   </p>
 </div>

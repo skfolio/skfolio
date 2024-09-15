@@ -21,7 +21,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the  pre-selection transformers &lt;pre_selection&gt; DropCorrelated to remo...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the  pre-selection transformers &lt;pre_selection&gt; DropCorrelated to remove highly correlated assets before the optimization.">
 
 .. only:: html
 
@@ -38,7 +38,7 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the pre-selection transformers &lt;pre_selection&gt; SelectKExtremes to sele...">
+    <div class="sphx-glr-thumbcontainer" tooltip="This tutorial introduces the pre-selection transformers &lt;pre_selection&gt; SelectKExtremes to select the k best or the k worst assets according to a given measure before the optimization.">
 
 .. only:: html
 
