@@ -776,7 +776,7 @@ class Portfolio(BasePortfolio):
             :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
 
         to_df : bool, default=False
-            If this is set to True, a DataFrame with asset names in index is returned,
+            If set to True, a DataFrame with asset names in index is returned,
             otherwise a numpy array is returned. When a DataFrame is returned, the
             values are sorted in descending order and assets with zero weights are
             removed.

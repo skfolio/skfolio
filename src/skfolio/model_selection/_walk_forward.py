@@ -51,36 +51,41 @@ class WalkForward(sks.BaseCrossValidator):
     freq : str | pandas.offsets.DateOffset, optional
         If provided, it must be a frequency string or a pandas DateOffset, and the
         returns `X` must be a DataFrame with an index of type `DatetimeIndex`.
-        For a list of pandas frequencies and offsets, see :ref:`here <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases>`.
+        For a list of pandas frequencies and offsets, see `here <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases>`_.
         The defaul (`None`) means `test_size` and `train_size` represent the number of
         observations.
 
         Below are some common examples:
 
-        * Rebalancing    = Montly on the first day
-        * Test Duration  = 1 month
-        * Train Duration = 6 months
-        >>> cv = WalkForward(test_size=1, train_size=6, freq="MS")
+            * Rebalancing    : Montly on the first day
+            * Test Duration  : 1 month
+            * Train Duration : 6 months
 
-        * Rebalancing    = Quarterly on the first day
-        * Test Duration  = 1 quarter
-        * Train Duration = 2 months
-        >>> cv = WalkForward(test_size=1, train_size=pd.DateOffset(months=2), freq="QS")
+            >>> cv = WalkForward(test_size=1, train_size=6, freq="MS")
 
-        * Rebalancing    = Montly on the third Friday
-        * Test Duration  = 1 month
-        * Train Duration = 6 weeks
-         >>> cv = WalkForward(test_size=1, train_size=pd.offsets.Week(6), freq= "WOM-3FRI")
+            * Rebalancing    : Quarterly on the first day
+            * Test Duration  : 1 quarter
+            * Train Duration : 2 months
 
-        * Rebalancing    = Semi-annually on the last day
-        * Test Duration  = 6 months
-        * Train Duration = 1 year
-        >>> cv = WalkForward(test_size=1, train_size=2, freq=pd.offsets.SemiMonthEnd())
+            >>> cv = WalkForward(test_size=1, train_size=pd.DateOffset(months=2), freq="QS")
 
-        * Rebalancing    = Every 2 months on the second day
-        * Test Duration  = 2 months
-        * Train Duration = 6 months
-        >>> cv = WalkForward(test_size=2, train_size=6, freq="MS", freq_offset=dt.timedelta(days=2))
+            * Rebalancing    : Montly on the third Friday
+            * Test Duration  : 1 month
+            * Train Duration : 6 weeks
+
+            >>> cv = WalkForward(test_size=1, train_size=pd.offsets.Week(6), freq= "WOM-3FRI")
+
+            * Rebalancing    : Semi-annually on the last day
+            * Test Duration  : 6 months
+            * Train Duration : 1 year
+
+            >>> cv = WalkForward(test_size=1, train_size=2, freq=pd.offsets.SemiMonthEnd())
+
+            * Rebalancing    : Every 2 months on the second day
+            * Test Duration  : 2 months
+            * Train Duration : 6 months
+
+            >>> cv = WalkForward(test_size=2, train_size=6, freq="MS", freq_offset=dt.timedelta(days=2))
 
     freq_offset : pandas DateOffset | datetime timedelta, optional
         Only used if `freq` is provided. Offsets the `freq` by a pandas DateOffset or a
