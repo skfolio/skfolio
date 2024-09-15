@@ -119,16 +119,17 @@ population_test = (
 )
 
 for tag in ["No Regularization", "L1 Regularization"]:
+
     print("=================")
     print(tag)
     print("=================")
     print(
         "Avg Sharpe Ratio Train:"
-        f" {population_train.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO, tags=tag):0.2f}"
+        f" {population_train.filter(tags=tag).measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
     )
     print(
         "Avg Sharpe Ratio Test:"
-        f" {population_test.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO, tags=tag):0.2f}"
+        f" {population_test.filter(tags=tag).measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO):0.2f}"
     )
     print(
         "Avg non-zeros assets:"

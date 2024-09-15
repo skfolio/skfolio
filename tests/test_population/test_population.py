@@ -46,6 +46,18 @@ def population(X):
 
 
 @pytest.fixture(scope="function")
+def small_population(X):
+    n_assets = X.shape[1]
+    population = Population(
+        [
+            Portfolio(X=X, weights=rand_weights(n=n_assets, zeros=n_assets - 10))
+            for _ in range(10)
+        ]
+    )
+    return population
+
+
+@pytest.fixture(scope="function")
 def multi_period_portfolio(X):
     # Add the multi period portfolio
     periods = [
@@ -133,11 +145,10 @@ def test_population_multi_period_portfolio(population, multi_period_portfolio):
     assert population.plot_measures(
         x=RiskMeasure.STANDARD_DEVIATION, y=PerfMeasure.MEAN, show_fronts=True
     )
-    assert population.plot_measures(
+    assert population.filter(tags="random").plot_measures(
         x=RiskMeasure.STANDARD_DEVIATION,
         y=PerfMeasure.MEAN,
         hover_measures=[RatioMeasure.SHARPE_RATIO],
-        tags="random",
         title="Portfolios -- with sharpe ration",
     )
 
@@ -172,3 +183,26 @@ def test_population_plot_cumulative_returns(population):
     population.set_portfolio_params(compounded=True)
     assert population[:2].plot_cumulative_returns()
     assert population[:2].plot_cumulative_returns(log_scale=True)
+
+
+def test_population_rolling_measure(small_population):
+    df = small_population.rolling_measure()
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[1] == len(small_population)
+
+    assert small_population.plot_rolling_measure(
+        measure=RiskMeasure.STANDARD_DEVIATION, window=50
+    )
+
+
+def test_population_filter_chaining(population):
+    res = population.filter(names=["1", "2"]).composition()
+    assert res.shape[1] == 2
+
+
+def test_portfolio_contribution(small_population):
+    contribution = small_population.contribution(measure=RiskMeasure.CVAR)
+    assert isinstance(contribution, pd.DataFrame)
+    assert contribution.shape == (20, 10)
+
+    assert small_population.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)

@@ -299,13 +299,6 @@ def test_portfolio_dominate(X):
         ) == portfolio_1.dominates(portfolio_2)
 
 
-def test_portfolio_risk_contribution(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
-    contribution = portfolio.contribution(measure=RiskMeasure.CVAR)
-    # noinspection PyUnresolvedReferences
-    assert contribution.shape == (X.shape[1],)
-
-
 def test_portfolio_metrics(portfolio, measure):
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
@@ -460,3 +453,28 @@ def test_portfolio_plot_cumulative_returns(X, weights):
     portfolio.compounded = True
     assert portfolio.plot_cumulative_returns()
     assert portfolio.plot_cumulative_returns(log_scale=True)
+
+
+def test_portfolio_contribution(portfolio):
+    contribution = portfolio.contribution(measure=RiskMeasure.CVAR, to_df=True)
+    assert isinstance(contribution, pd.DataFrame)
+    assert contribution.shape == (10, 1)
+    assert np.isclose(contribution.sum().sum(), portfolio.cvar)
+
+    contribution = portfolio.contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+    assert isinstance(contribution, np.ndarray)
+    assert contribution.shape == (20,)
+
+    assert np.isclose(np.sum(contribution), portfolio.standard_deviation)
+
+    assert portfolio.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+
+
+def test_weights_per_observation(portfolio):
+    df = portfolio.weights_per_observation
+    np.testing.assert_array_equal(df.index.values, portfolio.observations)
+    assert len(df.columns) == 10
+    np.testing.assert_array_equal(df.columns.values, portfolio.nonzero_assets)
+    np.testing.assert_array_equal(
+        df.values[0], portfolio.weights[portfolio.nonzero_assets_index]
+    )
