@@ -410,7 +410,7 @@ class Population(list):
         spacing: float | None = None,
         display_sub_ptf_name: bool = True,
     ) -> pd.DataFrame:
-        """Contribution of each asset to a given measure of each portfolio in the
+        r"""Contribution of each asset to a given measure of each portfolio in the
         population.
 
         Parameters
@@ -420,7 +420,7 @@ class Population(list):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`.
 
         display_sub_ptf_name : bool, default=True
             If this is set to True, each sub-portfolio name composing a multi-period
