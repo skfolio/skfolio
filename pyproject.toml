@@ -15,7 +15,7 @@ description = "Portfolio optimization built on top of scikit-learn"
 readme = "README.rst"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=1.23.4, <2.0.0", # TODO: remove "<2.0.0" when https://github.com/cvxpy/cvxpy/issues/2474 is completed
+    "numpy>=1.23.4",
     "scipy>=1.8.0",
     "pandas>=1.4.1",
     "cvxpy>=1.4.1",
