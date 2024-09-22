@@ -377,7 +377,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         ]
         values = self.index_train_test_.T
         values = np.insert(values, 0, np.arange(n_samples), axis=0)
-        fill_color = np.select(cond, ["green", "blue", "red"]).T
+        fill_color = np.select(cond, ["green", "blue", "red"], default="green").T
         fill_color = fill_color.astype(object)
         fill_color = np.insert(
             fill_color, 0, np.array(["darkblue" for _ in range(n_samples)]), axis=0
