@@ -148,7 +148,7 @@ def mean_risk_params_linear_constraints(request, groups, linear_constraints):
     params=[True, False],
 )
 def mean_risk_params_inequalities(request, groups, linear_constraints):
-    left_inequality, right_inequality = equations_to_matrix(
+    _, _, left_inequality, right_inequality = equations_to_matrix(
         groups=np.array(groups), equations=linear_constraints
     )
     if request.param:
@@ -860,11 +860,8 @@ def test_groups(X, groups, linear_constraints):
     model.fit(X)
     w3 = model.weights_
     p3 = model.fit_predict(X)
-    try:
+    with pytest.raises(ValueError):
         model.fit(np.array(X))
-        raise
-    except ValueError:
-        pass
     np.testing.assert_almost_equal(w1, w3)
     np.testing.assert_almost_equal(p1.returns, p2.returns)
     np.testing.assert_almost_equal(p1.returns, p3.returns)
@@ -1026,3 +1023,16 @@ def test_metadata_routing(X_small, implied_vol_small):
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_mean_risk_linear_constraints_equalities(
+    X,
+):
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        linear_constraints=["AMD == 0.2", "UNH==0.6"],
+    )
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[1], 0.2)
+    np.testing.assert_almost_equal(model.weights_[17], 0.6)

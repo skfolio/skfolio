@@ -208,13 +208,16 @@ class BlackLitterman(BasePrior):
                 ),
                 name="groups",
             )
-        self.picking_matrix_, self.views_ = equations_to_matrix(
+        self.picking_matrix_, self.views_, a_ineq, b_ineq = equations_to_matrix(
             groups=self.groups_,
             equations=views,
             sum_to_one=True,
             raise_if_group_missing=True,
             names=("groups", "views"),
         )
+
+        if len(a_ineq) != 0:
+            raise ValueError("Inequalities (<=, >=) are not supported in views")
 
         if self.view_confidences is None:
             omega = np.diag(

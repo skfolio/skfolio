@@ -12,6 +12,7 @@ __all__ = [
     "EquationToMatrixError",
     "GroupNotFoundError",
     "NonPositiveVarianceError",
+    "DuplicateGroupsError",
 ]
 
 
@@ -25,6 +26,10 @@ class EquationToMatrixError(Exception):
 
 class GroupNotFoundError(Exception):
     """Group name not found in the groups"""
+
+
+class DuplicateGroupsError(Exception):
+    """Group name appear in multiple group levels"""
 
 
 class NonPositiveVarianceError(Exception):
