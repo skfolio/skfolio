@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.optimization.convex._mean_risk &#8212; skfolio 0.4.1 documentation</title>
+    <title>skfolio.optimization.convex._mean_risk &#8212; skfolio 0.4.2 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../../_static/documentation_options.js?v=6396f05b"></script>
+    <script src="../../../../_static/documentation_options.js?v=a0a8d5c5"></script>
     <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -713,7 +713,7 @@ document.write(`
 
 <span class="sd">           * &quot;2.5 * ref1 + 0.10 * ref2 + 0.0013 &lt;= 2.5 * ref3&quot;</span>
 <span class="sd">           * &quot;ref1 &gt;= 2.9 * ref2&quot;</span>
-<span class="sd">           * &quot;ref1 &lt;= ref2&quot;</span>
+<span class="sd">           * &quot;ref1 == ref2&quot;</span>
 <span class="sd">           * &quot;ref1 &gt;= ref1&quot;</span>
 
 <span class="sd">        With &quot;ref1&quot;, &quot;ref2&quot; ... the assets names or the groups names provided</span>
@@ -725,8 +725,8 @@ document.write(`
 
 <span class="sd">            * &quot;SPX &gt;= 0.10&quot; --&gt; SPX weight must be greater than 10% (note that you can also use `min_weights`)</span>
 <span class="sd">            * &quot;SX5E + TLT &gt;= 0.2&quot; --&gt; the sum of SX5E and TLT weights must be greater than 20%</span>
-<span class="sd">            * &quot;US &gt;= 0.7&quot; --&gt; the sum of all US weights must be greater than 70%</span>
-<span class="sd">            * &quot;Equity &lt;= 3 * Bond&quot; --&gt; the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.</span>
+<span class="sd">            * &quot;US == 0.7&quot; --&gt; the sum of all US weights must be equal to 70%</span>
+<span class="sd">            * &quot;Equity == 3 * Bond&quot; --&gt; the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.</span>
 <span class="sd">            * &quot;2*SPX + 3*Europe &lt;= Bond + 0.05&quot; --&gt; mixing assets and group constraints</span>
 
 <span class="sd">    groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional</span>

@@ -390,7 +390,7 @@ is a list if strings following the below patterns:
 
   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
   * "ref1 >= 2.9 * ref2"
-  * "ref1 <= ref2"
+  * "ref1 == ref2"
   * "ref1 >= ref1"
 
 Let's create a model with groups constraints on "industry sector" and
@@ -467,7 +467,7 @@ Finally, you can also directly provide the matrix :math:`A` and the vector
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.318 seconds)
+   **Total running time of the script:** (0 minutes 0.326 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py:
