@@ -35,7 +35,7 @@ def equations_to_matrix(
     sum_to_one: bool = False,
     raise_if_group_missing: bool = False,
     names: tuple[str, str] = ("groups", "equations"),
-) -> tuple[np.ndarray, np.ndarray,np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Convert a list of linear equations into the left and right matrices of the
     inequality A <= B and equality A == B.
 
