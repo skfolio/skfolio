@@ -290,7 +290,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
            * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
            * "ref1 >= 2.9 * ref2"
-           * "ref1 <= ref2"
+           * "ref1 == ref2"
            * "ref1 >= ref1"
 
         With "ref1", "ref2" ... the assets names or the groups names provided
@@ -302,8 +302,8 @@ class ConvexOptimization(BaseOptimization, ABC):
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US >= 0.7" --> the sum of all US weights must be greater than 70%
-            * "Equity <= 3 * Bond" --> the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.
+            * "US == 0.7" --> the sum of all US weights must be equal to 70%
+            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
             * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
@@ -733,15 +733,21 @@ class ConvexOptimization(BaseOptimization, ABC):
                     ),
                     name="groups",
                 )
-            a, b = equations_to_matrix(
+            a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
                 groups=groups,
                 equations=self.linear_constraints,
                 raise_if_group_missing=False,
             )
-            if np.any(a != 0):
+            if len(a_eq) != 0:
                 constraints.append(
-                    a @ w * self._scale_constraints
-                    - b * factor * self._scale_constraints
+                    a_eq @ w * self._scale_constraints
+                    - b_eq * factor * self._scale_constraints
+                    == 0
+                )
+            if len(a_ineq) != 0:
+                constraints.append(
+                    a_ineq @ w * self._scale_constraints
+                    - b_ineq * factor * self._scale_constraints
                     <= 0
                 )
 

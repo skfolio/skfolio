@@ -11,7 +11,7 @@ def test_views_to_matrix(X):
     views = ["AAPL - BBY == 0.03 ", "CVX - KO== 0.04", "MSFT == 0.06 "]
     groups = np.array([X.columns])
 
-    picking_matrix, views = equations_to_matrix(
+    picking_matrix, views, _, _ = equations_to_matrix(
         groups=groups, equations=views, sum_to_one=True
     )
     np.testing.assert_almost_equal(
