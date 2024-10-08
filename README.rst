@@ -515,7 +515,7 @@ K-fold Cross-Validation
     # mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
 
     mmp.plot_cumulative_returns()
-    print(mmp.summary()
+    print(mmp.summary())
 
 
 Combinatorial Purged Cross-Validation
