@@ -1,3 +1,4 @@
+import cvxpy as cp
 import numpy as np
 import pytest
 import scipy.cluster.hierarchy as sch
@@ -17,6 +18,7 @@ from skfolio.utils.stats import (
     cov_nearest,
     cov_to_corr,
     is_cholesky_dec,
+    minimize_relative_weight_deviation,
     n_bins_freedman,
     n_bins_knuth,
     rand_weights,
@@ -67,6 +69,21 @@ def linkage_matrix(distance):
         optimal_ordering=False,
     )
     return linkage_matrix
+
+
+@pytest.fixture()
+def weights():
+    weights = np.array(
+        [
+            0.15686274156862742,
+            0.09803922098039221,
+            0.07843137078431371,
+            0.12500000125000002,
+            0.20833333208333335,
+            0.3333333333333333,
+        ]
+    )
+    return weights
 
 
 def test_n_bins_freedman(returns):
@@ -478,3 +495,28 @@ class TestCovNearest:
         cov = np.array([[1, 2], [3, 4]])
         with pytest.raises(ValueError):
             cov_nearest(cov)
+
+
+class TestMinimizeRelativeWeightDeviation:
+    def tests_no_constraints(self, weights):
+        new_weights = minimize_relative_weight_deviation(
+            weights=weights, min_weights=np.zeros(6), max_weights=np.ones(6)
+        )
+
+        np.testing.assert_array_almost_equal(weights, new_weights)
+
+    def tests_constraints(self, weights):
+        new_weights = minimize_relative_weight_deviation(
+            weights=weights, min_weights=np.ones(6) * 0.1, max_weights=np.ones(6) * 0.18
+        )
+
+        assert np.isclose(sum(new_weights), 1.0)
+        np.testing.assert_array_almost_equal(
+            new_weights, np.array([0.18, 0.16116994, 0.11883005, 0.18, 0.18, 0.18])
+        )
+
+    def test_non_feasible(self, weights):
+        with pytest.raises(cp.SolverError):
+            _ = minimize_relative_weight_deviation(
+                weights=weights, min_weights=np.zeros(6), max_weights=np.ones(6) * 0.1
+            )

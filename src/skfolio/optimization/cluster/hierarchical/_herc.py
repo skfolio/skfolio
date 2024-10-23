@@ -3,8 +3,7 @@
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
-# The risk measure generalization and constraint features are derived
-# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# Weight constraints is a novel implementation, see docstring for more details.
 
 import numpy as np
 import numpy.typing as npt
@@ -20,6 +19,7 @@ from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.utils.stats import minimize_relative_weight_deviation
 from skfolio.utils.tools import check_estimator
 
 
@@ -44,6 +44,32 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         The default linkage method is set to the Ward variance minimization algorithm,
         which is more stable and has better properties than the single-linkage
         method [4]_.
+
+        Also, the initial paper does not provide an algorithm for handling weight
+        constraints, and no standard solution currently exists.
+        In contrast to HRP (Hierarchical Risk Parity), where weight constraints
+        can be applied to the split factor at each bisection step, HERC
+        (Hierarchical Equal Risk Contribution) cannot incorporate weight constraints
+        during the intermediate steps of the allocation. Therefore, in HERC, the
+        weight constraints must be enforced after the top-down allocation has been
+        completed.
+        In skfolio, we minimize the relative deviation of the final weights from
+        the initial weights. This is formulated as a convex optimization problem:
+
+        .. math::
+            \begin{cases}
+            \begin{aligned}
+            &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
+            &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
+            & & & w_{min} \leq w_i \leq w_{max}, \quad \forall i
+            \end{aligned}
+            \end{cases}
+
+        The reason for minimizing the relative deviation (as opposed to the absolute
+        deviation) is that we want to limit the impact on the risk contribution of
+        each asset. Since HERC allocates inversely to risk, adjusting the weights
+        based on relative deviation ensures that the assets' risk contributions
+        remain proportionally consistent with the initial allocation.
 
     Parameters
     ----------
@@ -70,8 +96,6 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             * ENTROPIC_RISK_MEASURE
             * FOURTH_CENTRAL_MOMENT
             * FOURTH_LOWER_PARTIAL_MOMENT
-            * SKEW
-            * KURTOSIS
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -98,12 +122,12 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Minimum assets weights (weights lower bounds). Negative weights are not allowed.
-        If a float is provided, it is applied to each asset. `None` is equivalent to
-        `-np.Inf` (no lower bound). If a dictionary is provided, its (key/value) pair
-        must be the (asset name/asset minium weight) and the input `X` of the `fit`
-        methods must be a DataFrame with the assets names in columns. When using a
-        dictionary, assets values that are not provided are assigned a minimum weight
-        of `0.0`. The default is 0.0 (no short selling).
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset minium weight) and the input `X` of the `fit` methods must be
+        a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned a
+        minimum weight of `0.0`. The default is 0.0 (no short selling).
 
         Example:
 
@@ -114,12 +138,12 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
         Maximum assets weights (weights upper bounds). Weights above 1.0 are not
-        allowed. If a float is provided, it is applied to each asset. `None` is
-        equivalent to `+np.Inf` (no upper bound). If a dictionary is provided, its
-        (key/value) pair must be the (asset name/asset maximum weight) and the input `X`
-        of the `fit` method must be a DataFrame with the assets names in columns. When
-        using a dictionary, assets values that are not provided are assigned a minimum
-        weight of `1.0`. The default is 1.0 (each asset is below 100%).
+        allowed. If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset maximum weight) and the input `X` of the `fit` method must be
+        a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned a
+        minimum weight of `1.0`. The default is 1.0 (each asset is below 100%).
 
         Example:
 
@@ -208,6 +232,19 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
         optimization model and passed to the portfolio.
 
+    solver : str, default="CLARABEL"
+        The solver used for the weights constraints optimization. The default is
+        "CLARABEL" which is written in Rust and has better numerical stability and
+        performance than ECOS and SCS.
+        For more details about available solvers, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
+
+    solver_params : dict, optional
+        Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is to use the CVXPY default.
+        For more details about solver arguments, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+
     Attributes
     ----------
     weights_ : ndarray of shape (n_assets,)
@@ -251,6 +288,8 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -268,6 +307,8 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
         )
+        self.solver = solver
+        self.solver_params = solver_params
 
     def fit(
         self, X: npt.ArrayLike, y: None = None, **fit_params
@@ -301,6 +342,13 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             raise TypeError(
                 "`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`"
             )
+
+        if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
+            # Because Skew and Kurtosis can take negative values
+            raise ValueError(
+                f"risk_measure {self.risk_measure} currently not supported" f"in HERC"
+            )
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
@@ -393,20 +441,11 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
             left_cluster = np.array(left_cluster)
             right_cluster = np.array(right_cluster)
+
             left_risk = np.sum(cluster_risks[left_cluster])
             right_risk = np.sum(cluster_risks[right_cluster])
 
             alpha = 1 - left_risk / (left_risk + right_risk)
-
-            # Weights constraints
-            alpha = self._apply_weight_constraints_to_alpha(
-                alpha=alpha,
-                weights=weights,
-                max_weights=max_weights,
-                min_weights=min_weights,
-                left_cluster=left_cluster,
-                right_cluster=right_cluster,
-            )
 
             clusters_weights[left_cluster] *= alpha
             clusters_weights[right_cluster] *= 1 - alpha
@@ -421,5 +460,15 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         for i, cluster_ids in enumerate(clusters):
             weights[cluster_ids] *= clusters_weights[i]
 
+        # Apply weights constraints
+        weights = minimize_relative_weight_deviation(
+            weights=weights,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            solver=self.solver,
+            solver_params=self.solver_params,
+        )
+
         self.weights_ = weights
+
         return self

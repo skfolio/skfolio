@@ -16,7 +16,11 @@ def small_X(X):
 
 @pytest.fixture(
     scope="module",
-    params=list(RiskMeasure) + list(ExtraRiskMeasure),
+    params=[
+        x
+        for x in [*RiskMeasure, *ExtraRiskMeasure]
+        if x not in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
+    ],
 )
 def risk_measure(request):
     return request.param
