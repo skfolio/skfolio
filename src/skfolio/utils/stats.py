@@ -10,9 +10,11 @@ import warnings
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
 from enum import auto
 
+import cvxpy as cp
 import numpy as np
 import scipy.cluster.hierarchy as sch
 import scipy.optimize as sco
+import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
@@ -34,6 +36,7 @@ __all__ = [
     "compute_optimal_n_clusters",
     "rand_weights",
     "rand_weights_dirichlet",
+    "minimize_relative_weight_deviation",
 ]
 
 
@@ -488,3 +491,87 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     # k=0 represents one cluster
     k = np.argmax(gaps) + 2
     return k
+
+
+def minimize_relative_weight_deviation(
+    weights: np.ndarray,
+    min_weights: np.ndarray,
+    max_weights: np.ndarray,
+    solver: str = "CLARABEL",
+    solver_params: dict | None = None,
+) -> np.ndarray:
+    r"""
+    Apply weight constraints to an initial array of weights by minimizing the relative
+    weight deviation of the final weights from the initial weights.
+
+    .. math::
+            \begin{cases}
+            \begin{aligned}
+            &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
+            &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
+            & & & w_{min} \leq w_i \leq w_{max}, \quad \forall i
+            \end{aligned}
+            \end{cases}
+
+    Parameters
+    ----------
+    weights : ndarray of shape (n_assets,)
+        Initial weights.
+
+    min_weights : ndarray of shape (n_assets,)
+        Minimum assets weights (weights lower bounds).
+
+    max_weights : ndarray of shape (n_assets,)
+        Maximum assets weights (weights upper bounds).
+
+    solver : str, default="CLARABEL"
+        The solver to use. The default is "CLARABEL" which is written in Rust and has
+        better numerical stability and performance than ECOS and SCS.
+        For more details about available solvers, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
+
+    solver_params : dict, optional
+        Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is to use the CVXPY default.
+        For more details about solver arguments, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+    """
+    if not (weights.shape == min_weights.shape == max_weights.shape):
+        raise ValueError("`min_weights` and `max_weights` must have same size")
+
+    if np.any(weights < 0):
+        raise ValueError("Initial weights must be strictly positive")
+
+    if not np.isclose(np.sum(weights), 1.0):
+        raise ValueError("Initial weights must sum to one")
+
+    if np.any(max_weights < min_weights):
+        raise ValueError("`min_weights` must be lower or equal to `max_weights`")
+
+    if np.all((weights >= min_weights) & (weights <= max_weights)):
+        return weights
+
+    if solver_params is None:
+        solver_params = {}
+
+    n = len(weights)
+    w = cp.Variable(n)
+
+    objective = cp.Minimize(cp.norm(w / weights - 1))
+    constraints = [cp.sum(w) == 1, w >= min_weights, w <= max_weights]
+    problem = cp.Problem(objective, constraints)
+
+    try:
+        problem.solve(solver=solver, **solver_params)
+
+        if w.value is None:
+            raise cp.SolverError("No solution found")
+
+    except (cp.SolverError, scl.ArpackNoConvergence):
+        raise cp.SolverError(
+            f"Solver '{solver}' failed. Try another"
+            " solver, or solve with solver_params=dict(verbose=True) for more"
+            " information"
+        ) from None
+
+    return w.value
