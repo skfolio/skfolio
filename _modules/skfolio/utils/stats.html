@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.utils.stats &#8212; skfolio 0.4.2 documentation</title>
+    <title>skfolio.utils.stats &#8212; skfolio 0.4.3 documentation</title>
   
   
   
@@ -42,8 +42,8 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=a0a8d5c5"></script>
-    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/documentation_options.js?v=576dcb70"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../_static/copybutton.js?v=f281be69"></script>
@@ -387,9 +387,11 @@ document.write(`
 <span class="c1"># Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">auto</span>
 
+<span class="kn">import</span> <span class="nn">cvxpy</span> <span class="k">as</span> <span class="nn">cp</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">scipy.cluster.hierarchy</span> <span class="k">as</span> <span class="nn">sch</span>
 <span class="kn">import</span> <span class="nn">scipy.optimize</span> <span class="k">as</span> <span class="nn">sco</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse.linalg</span> <span class="k">as</span> <span class="nn">scl</span>
 <span class="kn">import</span> <span class="nn">scipy.spatial.distance</span> <span class="k">as</span> <span class="nn">scd</span>
 <span class="kn">import</span> <span class="nn">scipy.special</span> <span class="k">as</span> <span class="nn">scs</span>
 <span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">csr_matrix</span>
@@ -411,6 +413,7 @@ document.write(`
     <span class="s2">&quot;compute_optimal_n_clusters&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rand_weights&quot;</span><span class="p">,</span>
     <span class="s2">&quot;rand_weights_dirichlet&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;minimize_relative_weight_deviation&quot;</span><span class="p">,</span>
 <span class="p">]</span>
 
 
@@ -907,6 +910,93 @@ document.write(`
     <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">gaps</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span>
     <span class="k">return</span> <span class="n">k</span></div>
 
+
+
+<div class="viewcode-block" id="minimize_relative_weight_deviation">
+<a class="viewcode-back" href="../../../generated/skfolio.utils.stats.minimize_relative_weight_deviation.html#skfolio.utils.stats.minimize_relative_weight_deviation">[docs]</a>
+<span class="k">def</span> <span class="nf">minimize_relative_weight_deviation</span><span class="p">(</span>
+    <span class="n">weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">min_weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">max_weights</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;CLARABEL&quot;</span><span class="p">,</span>
+    <span class="n">solver_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply weight constraints to an initial array of weights by minimizing the relative</span>
+<span class="sd">    weight deviation of the final weights from the initial weights.</span>
+
+<span class="sd">    .. math::</span>
+<span class="sd">            \begin{cases}</span>
+<span class="sd">            \begin{aligned}</span>
+<span class="sd">            &amp;\min_{w} &amp; &amp; \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\</span>
+<span class="sd">            &amp;\text{s.t.} &amp; &amp; \sum_{i=1}^{N} w_{i} = 1 \\</span>
+<span class="sd">            &amp; &amp; &amp; w_{min} \leq w_i \leq w_{max}, \quad \forall i</span>
+<span class="sd">            \end{aligned}</span>
+<span class="sd">            \end{cases}</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    weights : ndarray of shape (n_assets,)</span>
+<span class="sd">        Initial weights.</span>
+
+<span class="sd">    min_weights : ndarray of shape (n_assets,)</span>
+<span class="sd">        Minimum assets weights (weights lower bounds).</span>
+
+<span class="sd">    max_weights : ndarray of shape (n_assets,)</span>
+<span class="sd">        Maximum assets weights (weights upper bounds).</span>
+
+<span class="sd">    solver : str, default=&quot;CLARABEL&quot;</span>
+<span class="sd">        The solver to use. The default is &quot;CLARABEL&quot; which is written in Rust and has</span>
+<span class="sd">        better numerical stability and performance than ECOS and SCS.</span>
+<span class="sd">        For more details about available solvers, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver</span>
+
+<span class="sd">    solver_params : dict, optional</span>
+<span class="sd">        Solver parameters. For example, `solver_params=dict(verbose=True)`.</span>
+<span class="sd">        The default (`None`) is to use the CVXPY default.</span>
+<span class="sd">        For more details about solver arguments, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">weights</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">min_weights</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="n">max_weights</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`min_weights` and `max_weights` must have same size&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">weights</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Initial weights must be strictly positive&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Initial weights must sum to one&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">max_weights</span> <span class="o">&lt;</span> <span class="n">min_weights</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`min_weights` must be lower or equal to `max_weights`&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">weights</span> <span class="o">&gt;=</span> <span class="n">min_weights</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">weights</span> <span class="o">&lt;=</span> <span class="n">max_weights</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">weights</span>
+
+    <span class="k">if</span> <span class="n">solver_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">solver_params</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="n">objective</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Minimize</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">w</span> <span class="o">/</span> <span class="n">weights</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">constraints</span> <span class="o">=</span> <span class="p">[</span><span class="n">cp</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="n">w</span> <span class="o">&gt;=</span> <span class="n">min_weights</span><span class="p">,</span> <span class="n">w</span> <span class="o">&lt;=</span> <span class="n">max_weights</span><span class="p">]</span>
+    <span class="n">problem</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Problem</span><span class="p">(</span><span class="n">objective</span><span class="p">,</span> <span class="n">constraints</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">problem</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">solver</span><span class="o">=</span><span class="n">solver</span><span class="p">,</span> <span class="o">**</span><span class="n">solver_params</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">w</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">cp</span><span class="o">.</span><span class="n">SolverError</span><span class="p">(</span><span class="s2">&quot;No solution found&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">SolverError</span><span class="p">,</span> <span class="n">scl</span><span class="o">.</span><span class="n">ArpackNoConvergence</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">cp</span><span class="o">.</span><span class="n">SolverError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Solver &#39;</span><span class="si">{</span><span class="n">solver</span><span class="si">}</span><span class="s2">&#39; failed. Try another&quot;</span>
+            <span class="s2">&quot; solver, or solve with solver_params=dict(verbose=True) for more&quot;</span>
+            <span class="s2">&quot; information&quot;</span>
+        <span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">w</span><span class="o">.</span><span class="n">value</span></div>
+
 </pre></div>
 
                 </article>
@@ -959,7 +1049,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
     <br/>
   </p>
 </div>

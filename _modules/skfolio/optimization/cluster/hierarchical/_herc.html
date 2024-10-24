@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.optimization.cluster.hierarchical._herc &#8212; skfolio 0.4.2 documentation</title>
+    <title>skfolio.optimization.cluster.hierarchical._herc &#8212; skfolio 0.4.3 documentation</title>
   
   
   
@@ -42,8 +42,8 @@
   <link rel="preload" as="script" href="../../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../../../_static/documentation_options.js?v=a0a8d5c5"></script>
-    <script src="../../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../../_static/documentation_options.js?v=576dcb70"></script>
+    <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../../../../_static/copybutton.js?v=f281be69"></script>
@@ -380,8 +380,7 @@ document.write(`
 <span class="c1"># Copyright (c) 2023</span>
 <span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
 <span class="c1"># License: BSD 3 clause</span>
-<span class="c1"># The risk measure generalization and constraint features are derived</span>
-<span class="c1"># from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.</span>
+<span class="c1"># Weight constraints is a novel implementation, see docstring for more details.</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">numpy.typing</span> <span class="k">as</span> <span class="nn">npt</span>
@@ -397,6 +396,7 @@ document.write(`
     <span class="n">BaseHierarchicalOptimization</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">skfolio.prior</span> <span class="kn">import</span> <span class="n">BasePrior</span><span class="p">,</span> <span class="n">EmpiricalPrior</span>
+<span class="kn">from</span> <span class="nn">skfolio.utils.stats</span> <span class="kn">import</span> <span class="n">minimize_relative_weight_deviation</span>
 <span class="kn">from</span> <span class="nn">skfolio.utils.tools</span> <span class="kn">import</span> <span class="n">check_estimator</span>
 
 
@@ -424,6 +424,32 @@ document.write(`
 <span class="sd">        which is more stable and has better properties than the single-linkage</span>
 <span class="sd">        method [4]_.</span>
 
+<span class="sd">        Also, the initial paper does not provide an algorithm for handling weight</span>
+<span class="sd">        constraints, and no standard solution currently exists.</span>
+<span class="sd">        In contrast to HRP (Hierarchical Risk Parity), where weight constraints</span>
+<span class="sd">        can be applied to the split factor at each bisection step, HERC</span>
+<span class="sd">        (Hierarchical Equal Risk Contribution) cannot incorporate weight constraints</span>
+<span class="sd">        during the intermediate steps of the allocation. Therefore, in HERC, the</span>
+<span class="sd">        weight constraints must be enforced after the top-down allocation has been</span>
+<span class="sd">        completed.</span>
+<span class="sd">        In skfolio, we minimize the relative deviation of the final weights from</span>
+<span class="sd">        the initial weights. This is formulated as a convex optimization problem:</span>
+
+<span class="sd">        .. math::</span>
+<span class="sd">            \begin{cases}</span>
+<span class="sd">            \begin{aligned}</span>
+<span class="sd">            &amp;\min_{w} &amp; &amp; \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\</span>
+<span class="sd">            &amp;\text{s.t.} &amp; &amp; \sum_{i=1}^{N} w_{i} = 1 \\</span>
+<span class="sd">            &amp; &amp; &amp; w_{min} \leq w_i \leq w_{max}, \quad \forall i</span>
+<span class="sd">            \end{aligned}</span>
+<span class="sd">            \end{cases}</span>
+
+<span class="sd">        The reason for minimizing the relative deviation (as opposed to the absolute</span>
+<span class="sd">        deviation) is that we want to limit the impact on the risk contribution of</span>
+<span class="sd">        each asset. Since HERC allocates inversely to risk, adjusting the weights</span>
+<span class="sd">        based on relative deviation ensures that the assets&#39; risk contributions</span>
+<span class="sd">        remain proportionally consistent with the initial allocation.</span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    risk_measure : RiskMeasure or ExtraRiskMeasure, default=RiskMeasure.VARIANCE</span>
@@ -449,8 +475,6 @@ document.write(`
 <span class="sd">            * ENTROPIC_RISK_MEASURE</span>
 <span class="sd">            * FOURTH_CENTRAL_MOMENT</span>
 <span class="sd">            * FOURTH_LOWER_PARTIAL_MOMENT</span>
-<span class="sd">            * SKEW</span>
-<span class="sd">            * KURTOSIS</span>
 
 <span class="sd">        The default is `RiskMeasure.VARIANCE`.</span>
 
@@ -477,12 +501,12 @@ document.write(`
 
 <span class="sd">    min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0</span>
 <span class="sd">        Minimum assets weights (weights lower bounds). Negative weights are not allowed.</span>
-<span class="sd">        If a float is provided, it is applied to each asset. `None` is equivalent to</span>
-<span class="sd">        `-np.Inf` (no lower bound). If a dictionary is provided, its (key/value) pair</span>
-<span class="sd">        must be the (asset name/asset minium weight) and the input `X` of the `fit`</span>
-<span class="sd">        methods must be a DataFrame with the assets names in columns. When using a</span>
-<span class="sd">        dictionary, assets values that are not provided are assigned a minimum weight</span>
-<span class="sd">        of `0.0`. The default is 0.0 (no short selling).</span>
+<span class="sd">        If a float is provided, it is applied to each asset.</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset minium weight) and the input `X` of the `fit` methods must be</span>
+<span class="sd">        a DataFrame with the assets names in columns.</span>
+<span class="sd">        When using a dictionary, assets values that are not provided are assigned a</span>
+<span class="sd">        minimum weight of `0.0`. The default is 0.0 (no short selling).</span>
 
 <span class="sd">        Example:</span>
 
@@ -493,12 +517,12 @@ document.write(`
 
 <span class="sd">    max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0</span>
 <span class="sd">        Maximum assets weights (weights upper bounds). Weights above 1.0 are not</span>
-<span class="sd">        allowed. If a float is provided, it is applied to each asset. `None` is</span>
-<span class="sd">        equivalent to `+np.Inf` (no upper bound). If a dictionary is provided, its</span>
-<span class="sd">        (key/value) pair must be the (asset name/asset maximum weight) and the input `X`</span>
-<span class="sd">        of the `fit` method must be a DataFrame with the assets names in columns. When</span>
-<span class="sd">        using a dictionary, assets values that are not provided are assigned a minimum</span>
-<span class="sd">        weight of `1.0`. The default is 1.0 (each asset is below 100%).</span>
+<span class="sd">        allowed. If a float is provided, it is applied to each asset.</span>
+<span class="sd">        If a dictionary is provided, its (key/value) pair must be the</span>
+<span class="sd">        (asset name/asset maximum weight) and the input `X` of the `fit` method must be</span>
+<span class="sd">        a DataFrame with the assets names in columns.</span>
+<span class="sd">        When using a dictionary, assets values that are not provided are assigned a</span>
+<span class="sd">        minimum weight of `1.0`. The default is 1.0 (each asset is below 100%).</span>
 
 <span class="sd">        Example:</span>
 
@@ -587,6 +611,19 @@ document.write(`
 <span class="sd">        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the</span>
 <span class="sd">        optimization model and passed to the portfolio.</span>
 
+<span class="sd">    solver : str, default=&quot;CLARABEL&quot;</span>
+<span class="sd">        The solver used for the weights constraints optimization. The default is</span>
+<span class="sd">        &quot;CLARABEL&quot; which is written in Rust and has better numerical stability and</span>
+<span class="sd">        performance than ECOS and SCS.</span>
+<span class="sd">        For more details about available solvers, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver</span>
+
+<span class="sd">    solver_params : dict, optional</span>
+<span class="sd">        Solver parameters. For example, `solver_params=dict(verbose=True)`.</span>
+<span class="sd">        The default (`None`) is to use the CVXPY default.</span>
+<span class="sd">        For more details about solver arguments, check the CVXPY documentation:</span>
+<span class="sd">        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options</span>
+
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
 <span class="sd">    weights_ : ndarray of shape (n_assets,)</span>
@@ -630,6 +667,8 @@ document.write(`
         <span class="n">hierarchical_clustering_estimator</span><span class="p">:</span> <span class="n">HierarchicalClustering</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">min_weights</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">max_weights</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">solver</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;CLARABEL&quot;</span><span class="p">,</span>
+        <span class="n">solver_params</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">transaction_costs</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">management_fees</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
         <span class="n">previous_weights</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">MultiInput</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -647,6 +686,8 @@ document.write(`
             <span class="n">previous_weights</span><span class="o">=</span><span class="n">previous_weights</span><span class="p">,</span>
             <span class="n">portfolio_params</span><span class="o">=</span><span class="n">portfolio_params</span><span class="p">,</span>
         <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="n">solver</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">solver_params</span> <span class="o">=</span> <span class="n">solver_params</span>
 
 <div class="viewcode-block" id="HierarchicalEqualRiskContribution.fit">
 <a class="viewcode-back" href="../../../../../generated/skfolio.optimization.HierarchicalEqualRiskContribution.html#skfolio.optimization.HierarchicalEqualRiskContribution.fit">[docs]</a>
@@ -682,6 +723,13 @@ document.write(`
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="s2">&quot;`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`&quot;</span>
             <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">risk_measure</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ExtraRiskMeasure</span><span class="o">.</span><span class="n">SKEW</span><span class="p">,</span> <span class="n">ExtraRiskMeasure</span><span class="o">.</span><span class="n">KURTOSIS</span><span class="p">]:</span>
+            <span class="c1"># Because Skew and Kurtosis can take negative values</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;risk_measure </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">risk_measure</span><span class="si">}</span><span class="s2"> currently not supported&quot;</span> <span class="sa">f</span><span class="s2">&quot;in HERC&quot;</span>
+            <span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator_</span> <span class="o">=</span> <span class="n">check_estimator</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">prior_estimator</span><span class="p">,</span>
             <span class="n">default</span><span class="o">=</span><span class="n">EmpiricalPrior</span><span class="p">(),</span>
@@ -774,20 +822,11 @@ document.write(`
 
             <span class="n">left_cluster</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">left_cluster</span><span class="p">)</span>
             <span class="n">right_cluster</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">right_cluster</span><span class="p">)</span>
+
             <span class="n">left_risk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cluster_risks</span><span class="p">[</span><span class="n">left_cluster</span><span class="p">])</span>
             <span class="n">right_risk</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cluster_risks</span><span class="p">[</span><span class="n">right_cluster</span><span class="p">])</span>
 
             <span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">left_risk</span> <span class="o">/</span> <span class="p">(</span><span class="n">left_risk</span> <span class="o">+</span> <span class="n">right_risk</span><span class="p">)</span>
-
-            <span class="c1"># Weights constraints</span>
-            <span class="n">alpha</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_weight_constraints_to_alpha</span><span class="p">(</span>
-                <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
-                <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
-                <span class="n">max_weights</span><span class="o">=</span><span class="n">max_weights</span><span class="p">,</span>
-                <span class="n">min_weights</span><span class="o">=</span><span class="n">min_weights</span><span class="p">,</span>
-                <span class="n">left_cluster</span><span class="o">=</span><span class="n">left_cluster</span><span class="p">,</span>
-                <span class="n">right_cluster</span><span class="o">=</span><span class="n">right_cluster</span><span class="p">,</span>
-            <span class="p">)</span>
 
             <span class="n">clusters_weights</span><span class="p">[</span><span class="n">left_cluster</span><span class="p">]</span> <span class="o">*=</span> <span class="n">alpha</span>
             <span class="n">clusters_weights</span><span class="p">[</span><span class="n">right_cluster</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span>
@@ -802,7 +841,17 @@ document.write(`
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cluster_ids</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clusters</span><span class="p">):</span>
             <span class="n">weights</span><span class="p">[</span><span class="n">cluster_ids</span><span class="p">]</span> <span class="o">*=</span> <span class="n">clusters_weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
 
+        <span class="c1"># Apply weights constraints</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">minimize_relative_weight_deviation</span><span class="p">(</span>
+            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+            <span class="n">min_weights</span><span class="o">=</span><span class="n">min_weights</span><span class="p">,</span>
+            <span class="n">max_weights</span><span class="o">=</span><span class="n">max_weights</span><span class="p">,</span>
+            <span class="n">solver</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solver</span><span class="p">,</span>
+            <span class="n">solver_params</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">solver_params</span><span class="p">,</span>
+        <span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">weights_</span> <span class="o">=</span> <span class="n">weights</span>
+
         <span class="k">return</span> <span class="bp">self</span></div>
 </div>
 
@@ -858,7 +907,7 @@ document.write(`
       
         <div class="footer-item">
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.0.2.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
     <br/>
   </p>
 </div>
