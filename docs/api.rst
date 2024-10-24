@@ -617,4 +617,5 @@ Functions
     stats.compute_optimal_n_clusters
     stats.rand_weights
     stats.rand_weights_dirichlet
+    stats.minimize_relative_weight_deviation
 

@@ -504,14 +504,14 @@ def minimize_relative_weight_deviation(
     Apply weight constraints to an initial array of weights by minimizing the relative
     weight deviation of the final weights from the initial weights.
 
-    .. math::   \begin{cases}
-                \begin{aligned}
-                &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
-                &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
-                & & & w \ge w_{min} \\
-                & & & w \le w_{max}
-                \end{aligned}
-                \end{cases}
+    .. math::
+            \begin{cases}
+            \begin{aligned}
+            &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
+            &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
+            & & & w_{min} \leq w_i \leq w_{max}, \quad \forall i
+            \end{aligned}
+            \end{cases}
 
     Parameters
     ----------
