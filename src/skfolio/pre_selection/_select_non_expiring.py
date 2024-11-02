@@ -36,7 +36,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         Used to check if each asset expires within the date offset.
         Assets with no expiration date will be retained by default.
 
-    expiration_lookahead : :pd.DateOffset | dt.timedelta, optional
+    expiration_lookahead : pd.offsets.BaseOffset | dt.timedelta, optional
         The lookahead period after the end of the dataset within which assets with
         expiration dates will be removed.
 
@@ -93,7 +93,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     def __init__(
         self,
         expiration_dates: dict[str, dt.datetime | pd.Timestamp] | None = None,
-        expiration_lookahead: pd.DateOffset | dt.timedelta | None = None,
+        expiration_lookahead: pd.offsets.BaseOffset | dt.timedelta | None = None,
     ):
         self.expiration_dates = expiration_dates
         self.expiration_lookahead = expiration_lookahead

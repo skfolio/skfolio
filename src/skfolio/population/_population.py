@@ -653,7 +653,7 @@ class Population(list):
         spacing: float | None = None,
         display_sub_ptf_name: bool = True,
     ) -> go.Figure:
-        """Plot the contribution of each asset to a given measure of the portfolios
+        r"""Plot the contribution of each asset to a given measure of the portfolios
         in the population.
 
         Parameters
