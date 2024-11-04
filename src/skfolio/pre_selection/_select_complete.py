@@ -50,6 +50,7 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
     Examples
     --------
 
+        >>> import numpy as np
         >>> import pandas as pd
         >>> from skfolio.pre_selection import SelectComplete
         >>> X = pd.DataFrame({
@@ -85,7 +86,7 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
+            Returns of the assets.
 
         y : Ignored
             Not used, present for API consistency by convention.

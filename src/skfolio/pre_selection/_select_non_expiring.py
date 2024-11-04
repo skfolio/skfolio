@@ -59,8 +59,8 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     Examples
     --------
     >>> import pandas as pd
+    >>> import datetime as dt
     >>> from sklearn import set_config
-    >>> from pandas.tseries.offsets import DateOffset
     >>> set_config(transform_output="pandas")
     >>> X = pd.DataFrame(
     ...    {
@@ -104,7 +104,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         Parameters
         ----------
         X : pd.DataFrame of shape (n_observations, n_assets)
-            Price returns of the assets.
+            Returns of the assets.
 
         y : Ignored
             Not used, present for API consistency by convention.
@@ -123,10 +123,10 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
             )
 
         if self.expiration_dates is None:
-            raise ValueError("`expiration_dates` must be provided")
+            raise ValueError("`expiration_lookahead` must be provided")
 
         if self.expiration_lookahead is None:
-            raise ValueError("`expiration_dates` must be provided")
+            raise ValueError("`expiration_lookahead` must be provided")
 
         # Calculate the cutoff date
         end_date = X.index[-1]

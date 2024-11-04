@@ -492,6 +492,8 @@ Classes
     pre_selection.DropCorrelated
     pre_selection.SelectKExtremes
     pre_selection.SelectNonDominated
+    pre_selection.SelectComplete
+    pre_selection.SelectNonExpiring
 
 .. _model_selection_ref:
 
