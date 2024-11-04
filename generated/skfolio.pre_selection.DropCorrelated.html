@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.pre_selection.DropCorrelated &#8212; skfolio 0.4.3 documentation</title>
+    <title>skfolio.pre_selection.DropCorrelated &#8212; skfolio 0.5.0 documentation</title>
   
   
   
@@ -51,7 +51,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=576dcb70"></script>
+    <script src="../_static/documentation_options.js?v=f7ee7eb5"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -481,6 +481,8 @@ document.write(`
 <li class="toctree-l1 current active"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectComplete.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectComplete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonExpiring.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonExpiring</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
@@ -583,7 +585,7 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated<a class="headerlink" href="#skfolio-pre-selection-dropcorrelated" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="skfolio.pre_selection.DropCorrelated">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.pre_selection.</span></span><span class="sig-name descname"><span class="pre">DropCorrelated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absolute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/pre_selection/_pre_selection.html#DropCorrelated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.pre_selection.DropCorrelated" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">skfolio.pre_selection.</span></span><span class="sig-name descname"><span class="pre">DropCorrelated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absolute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/pre_selection/_drop_correlated.html#DropCorrelated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.pre_selection.DropCorrelated" title="Link to this definition">#</a></dt>
 <dd><p>Transformer for dropping highly correlated assets.</p>
 <p>Simply removing all correlation pairs above the threshold will remove more assets
 than necessary and a naive sequential removal is suboptimal and depends on the
@@ -660,7 +662,7 @@ has assets names that are all strings.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="skfolio.pre_selection.DropCorrelated.fit">
-<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/pre_selection/_pre_selection.html#DropCorrelated.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.pre_selection.DropCorrelated.fit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/pre_selection/_drop_correlated.html#DropCorrelated.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.pre_selection.DropCorrelated.fit" title="Link to this definition">#</a></dt>
 <dd><p>Run the correlation transformer and get the appropriate assets.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

@@ -135,7 +135,7 @@ Examples:
 
  .. code-block:: none
 
-    0.5
+    0.4999999999999999
 
     array([0.11391513, 0.28246101, 0.10362386])
 
@@ -165,7 +165,7 @@ positions (sum of all weights). The default is `None`. If provided, you must set
 
  .. code-block:: none
 
-    0.30000034617916516
+    0.3000003461791651
 
     array([0.06832987, 0.16956647, 0.06210401])
 
@@ -229,7 +229,7 @@ Let's create a model that allows short positions with a budget of -100%:
 
  .. code-block:: none
 
-    -1.0000000000000002
+    -1.0
 
     array([-0.22770271, -0.56559255, -0.20670474])
 
@@ -257,7 +257,7 @@ respectively:
 
  .. code-block:: none
 
-    1.0000000000000002
+    1.0
 
     array([0.22788246, 0.56548525, 0.20663228])
 
@@ -308,7 +308,7 @@ Let's create the same model as above but using partial dictionary:
 
  .. code-block:: none
 
-    1.0000000000000002
+    1.0
 
     array([0.22788246, 0.56548525, 0.20663228])
 
@@ -335,7 +335,7 @@ Let's create a model with a leverage of 3 and every weights below 150%:
 
  .. code-block:: none
 
-    3.000000000000002
+    3.0
 
     array([0.74197781, 1.49999867, 0.75802352])
 
@@ -428,7 +428,7 @@ Let's create a model with groups constraints on "industry sector" and
  .. code-block:: none
 
 
-    array([6.66666667e-01, 1.17341817e-11, 3.33333333e-01])
+    array([6.66666667e-01, 1.17341943e-11, 3.33333333e-01])
 
 
 
@@ -460,14 +460,14 @@ Finally, you can also directly provide the matrix :math:`A` and the vector
  .. code-block:: none
 
 
-    array([6.66666667e-01, 1.17341817e-11, 3.33333333e-01])
+    array([6.66666667e-01, 1.17341943e-11, 3.33333333e-01])
 
 
 
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.335 seconds)
+   **Total running time of the script:** (0 minutes 0.315 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_5_weight_constraints.py:

@@ -136,7 +136,7 @@ aversion of 1.0:
  .. code-block:: none
 
 
-    array([6.17733231e-01, 3.78775169e-09, 3.82266765e-01])
+    array([6.17733231e-01, 3.78775541e-09, 3.82266765e-01])
 
 
 
@@ -189,7 +189,7 @@ First, we assume that there is no previous position:
  .. code-block:: none
 
 
-    array([4.11868007e-01, 1.40979832e-07, 5.88131852e-01])
+    array([4.11868007e-01, 1.40979621e-07, 5.88131852e-01])
 
 
 
@@ -212,7 +212,7 @@ The higher TC of Apple induced a change of weights toward JPMorgan:
  .. code-block:: none
 
 
-    array([-2.05865225e-01,  1.37192080e-07,  2.05865087e-01])
+    array([-2.05865225e-01,  1.37191866e-07,  2.05865087e-01])
 
 
 
@@ -422,7 +422,7 @@ If we exclude the unrealistic prediction without TC, we notice that the model
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 7.707 seconds)
+   **Total running time of the script:** (0 minutes 7.632 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_6_transaction_costs.py:

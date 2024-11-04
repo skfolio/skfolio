@@ -16,7 +16,7 @@
 <meta property="og:image" content="https://skfolio.org/_images/expo.jpg" />
 <meta property="og:image:alt" content="skfolio" />
 
-    <title>skfolio.preprocessing.prices_to_returns &#8212; skfolio 0.4.3 documentation</title>
+    <title>skfolio.preprocessing.prices_to_returns &#8212; skfolio 0.5.0 documentation</title>
   
   
   
@@ -51,7 +51,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../_static/documentation_options.js?v=576dcb70"></script>
+    <script src="../_static/documentation_options.js?v=f7ee7eb5"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -482,6 +482,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectComplete.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectComplete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="skfolio.pre_selection.SelectNonExpiring.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonExpiring</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
@@ -584,7 +586,7 @@ document.write(`
 <h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.preprocessing</span></code>.prices_to_returns<a class="headerlink" href="#skfolio-preprocessing-prices-to-returns" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="skfolio.preprocessing.prices_to_returns">
-<span class="sig-prename descclassname"><span class="pre">skfolio.preprocessing.</span></span><span class="sig-name descname"><span class="pre">prices_to_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_returns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">join</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'outer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_inceptions_nan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/preprocessing/_returns.html#prices_to_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.preprocessing.prices_to_returns" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">skfolio.preprocessing.</span></span><span class="sig-name descname"><span class="pre">prices_to_returns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_returns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nan_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">join</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'outer'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_inceptions_nan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill_nan</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/skfolio/preprocessing/_returns.html#prices_to_returns"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#skfolio.preprocessing.prices_to_returns" title="Link to this definition">#</a></dt>
 <dd><p>Transforms a DataFrame of prices to linear or logarithmic returns.</p>
 <dl>
 <dt>Linear returns (also called simple returns) are defined as:</dt><dd><div class="math notranslate nohighlight">
@@ -625,10 +627,13 @@ observations.</p>
 <dt><strong>nan_threshold</strong><span class="classifier">float, default=1.0</span></dt><dd><p>Drop observations (rows) that have a percentage of missing assets prices above
 this threshold. The default (<code class="docutils literal notranslate"><span class="pre">1.0</span></code>) is to keep all the observations.</p>
 </dd>
-<dt><strong>drop_inceptions_nan</strong><span class="classifier">bool, default=True</span></dt><dd><p>If this is set to True, observations at the beginning are dropped if any of
+<dt><strong>drop_inceptions_nan</strong><span class="classifier">bool, default=True</span></dt><dd><p>If set to True, observations at the beginning are dropped if any of
 the asset values are missing, otherwise we keep the NaNs. This is useful when
 you work with a large universe of assets with different inception dates coupled
 with a pre-selection Transformer.</p>
+</dd>
+<dt><strong>fill_nan</strong><span class="classifier">bool, default=True</span></dt><dd><p>If set to True, missing prices (NaNs) are forward filled using the previous
+price. Otherwise, NaNs are kept.</p>
 </dd>
 </dl>
 </dd>

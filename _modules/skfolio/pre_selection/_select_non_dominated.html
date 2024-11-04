@@ -7,7 +7,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>skfolio.pre_selection._pre_selection &#8212; skfolio 0.4.3 documentation</title>
+    <title>skfolio.pre_selection._select_non_dominated &#8212; skfolio 0.5.0 documentation</title>
   
   
   
@@ -42,7 +42,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../../_static/documentation_options.js?v=576dcb70"></script>
+    <script src="../../../_static/documentation_options.js?v=f7ee7eb5"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,8 +54,8 @@
     <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
     <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
-    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/pre_selection/_pre_selection';</script>
-    <link rel="canonical" href="https://skfolio.org/_modules/skfolio/pre_selection/_pre_selection.html" />
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/skfolio/pre_selection/_select_non_dominated';</script>
+    <link rel="canonical" href="https://skfolio.org/_modules/skfolio/pre_selection/_select_non_dominated.html" />
     <link rel="search" title="Search" href="../../../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -357,7 +357,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">skfolio.pre_selection._pre_selection</li>
+    <li class="breadcrumb-item active" aria-current="page">skfolio.pre_selection._select_non_dominated</li>
   </ul>
 </nav>
 </div>
@@ -374,8 +374,8 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article" role="main">
                   
-  <h1>Source code for skfolio.pre_selection._pre_selection</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;pre-selection estimators module&quot;&quot;&quot;</span>
+  <h1>Source code for skfolio.pre_selection._select_non_dominated</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Pre-selection SelectNonDominated module&quot;&quot;&quot;</span>
 
 <span class="c1"># Copyright (c) 2023</span>
 <span class="c1"># Author: Hugo Delatte &lt;delatte.hugo@gmail.com&gt;</span>
@@ -388,202 +388,8 @@ document.write(`
 <span class="kn">import</span> <span class="nn">sklearn.utils.validation</span> <span class="k">as</span> <span class="nn">skv</span>
 
 <span class="kn">import</span> <span class="nn">skfolio.typing</span> <span class="k">as</span> <span class="nn">skt</span>
-<span class="kn">from</span> <span class="nn">skfolio.measures</span> <span class="kn">import</span> <span class="n">RatioMeasure</span>
 <span class="kn">from</span> <span class="nn">skfolio.population</span> <span class="kn">import</span> <span class="n">Population</span>
 <span class="kn">from</span> <span class="nn">skfolio.portfolio</span> <span class="kn">import</span> <span class="n">Portfolio</span>
-
-
-<div class="viewcode-block" id="DropCorrelated">
-<a class="viewcode-back" href="../../../generated/skfolio.pre_selection.DropCorrelated.html#skfolio.pre_selection.DropCorrelated">[docs]</a>
-<span class="k">class</span> <span class="nc">DropCorrelated</span><span class="p">(</span><span class="n">skf</span><span class="o">.</span><span class="n">SelectorMixin</span><span class="p">,</span> <span class="n">skb</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transformer for dropping highly correlated assets.</span>
-
-<span class="sd">    Simply removing all correlation pairs above the threshold will remove more assets</span>
-<span class="sd">    than necessary and a naive sequential removal is suboptimal and depends on the</span>
-<span class="sd">    initial assets ordering.</span>
-
-<span class="sd">    Let&#39;s suppose X,Y,Z are three random variables with corr(X,Y) and corr(X,Z) above</span>
-<span class="sd">    the threshold and corr(Y,Z) below.</span>
-<span class="sd">    The first approach would remove X,Y,Z and the second approach would remove either</span>
-<span class="sd">    Y and Z or X depending on the initial ordering.</span>
-
-<span class="sd">    To avoid these shortcomings, we implement the below algorithm:</span>
-
-<span class="sd">        * Step 1: select all correlation pairs above the threshold.</span>
-<span class="sd">        * Step 2: sort all the selected correlation pairs from highest to lowest.</span>
-<span class="sd">        * Step 3: for each pair, if none of the two assets has been removed, keep the</span>
-<span class="sd">          asset with the lowest average correlation against the other assets.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    threshold : float, default=0.95</span>
-<span class="sd">        Correlation threshold. The default value is `0.95`.</span>
-
-<span class="sd">    absolute : bool, default=False</span>
-<span class="sd">        If this is set to True, we take the absolute value of the correlation. This has</span>
-<span class="sd">        for effect to also include negatively correlated assets.</span>
-
-<span class="sd">    Attributes</span>
-<span class="sd">    ----------</span>
-<span class="sd">    to_keep_ : ndarray of shape (n_assets, )</span>
-<span class="sd">        Boolean array indicating which assets are remaining.</span>
-
-<span class="sd">    n_features_in_ : int</span>
-<span class="sd">        Number of assets seen during `fit`.</span>
-
-<span class="sd">    feature_names_in_ : ndarray of shape (`n_features_in_`,)</span>
-<span class="sd">        Names of assets seen during `fit`. Defined only when `X`</span>
-<span class="sd">        has assets names that are all strings.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">to_keep_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.95</span><span class="p">,</span> <span class="n">absolute</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">=</span> <span class="n">threshold</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">absolute</span> <span class="o">=</span> <span class="n">absolute</span>
-
-<div class="viewcode-block" id="DropCorrelated.fit">
-<a class="viewcode-back" href="../../../generated/skfolio.pre_selection.DropCorrelated.html#skfolio.pre_selection.DropCorrelated.fit">[docs]</a>
-    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the correlation transformer and get the appropriate assets.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        X : array-like of shape (n_observations, n_assets)</span>
-<span class="sd">            Price returns of the assets.</span>
-
-<span class="sd">        y : Ignored</span>
-<span class="sd">            Not used, present for API consistency by convention.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        self : DropCorrelated</span>
-<span class="sd">            Fitted estimator.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="o">-</span><span class="mi">1</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`threshold` must be between -1 and 1&quot;</span><span class="p">)</span>
-
-        <span class="n">n_assets</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">corr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
-        <span class="n">mean_corr</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-        <span class="n">triu_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu_indices</span><span class="p">(</span><span class="n">n_assets</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-
-        <span class="c1"># select all correlation pairs above the threshold</span>
-        <span class="n">selected_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="n">triu_idx</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-
-        <span class="c1"># sort all the selected correlation pairs from highest to lowest</span>
-        <span class="n">selected_idx</span> <span class="o">=</span> <span class="n">selected_idx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="o">-</span><span class="n">corr</span><span class="p">[</span><span class="n">triu_idx</span><span class="p">][</span><span class="n">selected_idx</span><span class="p">])]</span>
-
-        <span class="c1"># for each pair, if none of the two assets has been removed, keep the asset with</span>
-        <span class="c1"># the lowest average correlation with other assets</span>
-        <span class="n">to_remove</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">selected_idx</span><span class="p">:</span>
-            <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">triu_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">idx</span><span class="p">],</span> <span class="n">triu_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">idx</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">to_remove</span> <span class="ow">and</span> <span class="n">j</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">mean_corr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">mean_corr</span><span class="p">[</span><span class="n">j</span><span class="p">]:</span>
-                    <span class="n">to_remove</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">to_remove</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">to_keep_</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_assets</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="n">to_remove</span><span class="p">))</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
-
-
-    <span class="k">def</span> <span class="nf">_get_support_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">skv</span><span class="o">.</span><span class="n">check_is_fitted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_keep_</span></div>
-
-
-
-<div class="viewcode-block" id="SelectKExtremes">
-<a class="viewcode-back" href="../../../generated/skfolio.pre_selection.SelectKExtremes.html#skfolio.pre_selection.SelectKExtremes">[docs]</a>
-<span class="k">class</span> <span class="nc">SelectKExtremes</span><span class="p">(</span><span class="n">skf</span><span class="o">.</span><span class="n">SelectorMixin</span><span class="p">,</span> <span class="n">skb</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Transformer for selecting the `k` best or worst assets.</span>
-
-<span class="sd">    Keep the `k` best or worst assets according to a given measure.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    k : int, default=10</span>
-<span class="sd">        Number of assets to select. If `k` is higher than the number of assets, all</span>
-<span class="sd">        assets are selected.</span>
-
-<span class="sd">    measure : Measure, default=RatioMeasure.SHARPE_RATIO</span>
-<span class="sd">        The :ref:`measure &lt;measures_ref&gt;` used to sort the assets.</span>
-<span class="sd">        The default is `RatioMeasure.SHARPE_RATIO`.</span>
-
-<span class="sd">    highest : bool, default=True</span>
-<span class="sd">        If this is set to True, the `k` assets with the highest `measure` are selected,</span>
-<span class="sd">        otherwise it is the `k` lowest.</span>
-
-<span class="sd">    Attributes</span>
-<span class="sd">    ----------</span>
-<span class="sd">    to_keep_ : ndarray of shape (n_assets, )</span>
-<span class="sd">       Boolean array indicating which assets are remaining.</span>
-
-<span class="sd">    n_features_in_ : int</span>
-<span class="sd">       Number of assets seen during `fit`.</span>
-
-<span class="sd">    feature_names_in_ : ndarray of shape (`n_features_in_`,)</span>
-<span class="sd">       Names of features seen during `fit`. Defined only when `X`</span>
-<span class="sd">       has feature names that are all strings.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">to_keep_</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
-
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
-        <span class="n">measure</span><span class="p">:</span> <span class="n">skt</span><span class="o">.</span><span class="n">Measure</span> <span class="o">=</span> <span class="n">RatioMeasure</span><span class="o">.</span><span class="n">SHARPE_RATIO</span><span class="p">,</span>
-        <span class="n">highest</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">k</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">measure</span> <span class="o">=</span> <span class="n">measure</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">highest</span> <span class="o">=</span> <span class="n">highest</span>
-
-<div class="viewcode-block" id="SelectKExtremes.fit">
-<a class="viewcode-back" href="../../../generated/skfolio.pre_selection.SelectKExtremes.html#skfolio.pre_selection.SelectKExtremes.fit">[docs]</a>
-    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">:</span> <span class="n">npt</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SelectKExtremes&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the SelectKExtremes transformer and get the appropriate assets.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        X : array-like of shape (n_observations, n_assets)</span>
-<span class="sd">            Price returns of the assets.</span>
-
-<span class="sd">        y : Ignored</span>
-<span class="sd">            Not used, present for API consistency by convention.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        self : SelectKExtremes</span>
-<span class="sd">            Fitted estimator.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-        <span class="n">k</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`k` must be strictly positive&quot;</span><span class="p">)</span>
-        <span class="n">n_assets</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="c1"># Build a population of single assets portfolio</span>
-        <span class="n">population</span> <span class="o">=</span> <span class="n">Population</span><span class="p">([])</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_assets</span><span class="p">):</span>
-            <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_assets</span><span class="p">)</span>
-            <span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-            <span class="n">population</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Portfolio</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">X</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">))</span>
-
-        <span class="n">selected</span> <span class="o">=</span> <span class="n">population</span><span class="o">.</span><span class="n">sort_measure</span><span class="p">(</span><span class="n">measure</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">measure</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">highest</span><span class="p">)[</span>
-            <span class="p">:</span><span class="n">k</span>
-        <span class="p">]</span>
-        <span class="n">selected_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">nonzero_assets_index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">selected</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">to_keep_</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_assets</span><span class="p">),</span> <span class="n">selected_idx</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span></div>
-
-
-    <span class="k">def</span> <span class="nf">_get_support_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">skv</span><span class="o">.</span><span class="n">check_is_fitted</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_keep_</span></div>
-
 
 
 <div class="viewcode-block" id="SelectNonDominated">

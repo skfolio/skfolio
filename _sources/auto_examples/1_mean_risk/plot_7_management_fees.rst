@@ -110,7 +110,7 @@ aversion of 1.0:
  .. code-block:: none
 
 
-    array([6.17733231e-01, 3.78775169e-09, 3.82266765e-01])
+    array([6.17733231e-01, 3.78775541e-09, 3.82266765e-01])
 
 
 
@@ -151,7 +151,7 @@ We suppose 252 trading days in a year:
  .. code-block:: none
 
 
-    array([5.74787861e-01, 1.43028265e-08, 4.25212125e-01])
+    array([5.74787861e-01, 1.43028625e-08, 4.25212125e-01])
 
 
 
@@ -174,7 +174,7 @@ The higher MF of Apple induced a change of weights toward JPMorgan:
  .. code-block:: none
 
 
-    array([-4.29453703e-02,  1.05150748e-08,  4.29453598e-02])
+    array([-4.29453703e-02,  1.05151071e-08,  4.29453598e-02])
 
 
 
@@ -294,7 +294,7 @@ MF**.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 4.075 seconds)
+   **Total running time of the script:** (0 minutes 4.002 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_7_management_fees.py:

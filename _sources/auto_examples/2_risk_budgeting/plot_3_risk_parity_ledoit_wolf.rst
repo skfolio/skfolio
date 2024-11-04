@@ -89,10 +89,10 @@ the covariance estimator then fit it on the training set:
  .. code-block:: none
 
 
-    array([0.04774432, 0.0437015 , 0.04503263, 0.04647771, 0.0528462 ,
-           0.04907541, 0.04852969, 0.0537393 , 0.0453914 , 0.05360544,
-           0.0517859 , 0.05137979, 0.04927078, 0.05375933, 0.05112798,
-           0.05417573, 0.04755329, 0.04988135, 0.05199345, 0.0529288 ])
+    array([0.04774388, 0.0437015 , 0.0450291 , 0.04647791, 0.05284612,
+           0.04907476, 0.04852985, 0.05373832, 0.04539473, 0.05360597,
+           0.05178557, 0.05138231, 0.04927258, 0.05375682, 0.05112774,
+           0.05417536, 0.04755091, 0.04988152, 0.05199293, 0.05293211])
 
 
 
@@ -121,10 +121,10 @@ To compare this model, we use a basic risk parity without covariance shrinkage:
  .. code-block:: none
 
 
-    array([0.0413538 , 0.03210848, 0.03372647, 0.03785094, 0.06105331,
-           0.04432756, 0.0425223 , 0.06593521, 0.03451801, 0.06469243,
-           0.05418786, 0.0520937 , 0.04535355, 0.06568282, 0.05103838,
-           0.06894686, 0.04046603, 0.04667582, 0.05627071, 0.06119574])
+    array([0.04135261, 0.03210859, 0.03372588, 0.03785038, 0.06105344,
+           0.04432799, 0.04252186, 0.06593408, 0.03451951, 0.06469301,
+           0.05418934, 0.05209466, 0.04535479, 0.06568174, 0.05104143,
+           0.06894357, 0.0404652 , 0.04667615, 0.05627036, 0.06119539])
 
 
 
@@ -364,12 +364,12 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Skew</th>
-          <td>-3.67%</td>
-          <td>-5.67%</td>
+          <td>-3.68%</td>
+          <td>-5.68%</td>
         </tr>
         <tr>
           <th>Kurtosis</th>
-          <td>1996.82%</td>
+          <td>1996.81%</td>
           <td>2065.52%</td>
         </tr>
         <tr>
@@ -464,8 +464,8 @@ Finally, we print a full summary of both strategies evaluated on the test set:
         </tr>
         <tr>
           <th>Effective Number of Assets</th>
-          <td>19.921033968992518</td>
-          <td>18.995810799947282</td>
+          <td>19.92102950954716</td>
+          <td>18.99586745481971</td>
         </tr>
         <tr>
           <th>Assets Number</th>
@@ -482,7 +482,7 @@ Finally, we print a full summary of both strategies evaluated on the test set:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.167 seconds)
+   **Total running time of the script:** (0 minutes 1.201 seconds)
 
 
 .. _sphx_glr_download_auto_examples_2_risk_budgeting_plot_3_risk_parity_ledoit_wolf.py:

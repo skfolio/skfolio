@@ -70,6 +70,23 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
     </div>
 
 
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="When working with large datasets over long timeframes, we commonly encounter:">
+
+.. only:: html
+
+  .. image:: /auto_examples/7_pre_selection/images/thumb/sphx_glr_plot_4_incomplete_dataset_thumb.png
+    :alt:
+
+  :ref:`sphx_glr_auto_examples_7_pre_selection_plot_4_incomplete_dataset.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Handling Incomplete Datasets: Inception, Expiry, and Default</div>
+    </div>
+
+
 .. thumbnail-parent-div-close
 
 .. raw:: html
@@ -83,4 +100,5 @@ Examples of using :ref:`pre-selection transformers <pre_selection>` with `Pipeli
    /auto_examples/7_pre_selection/plot_1_drop_correlated
    /auto_examples/7_pre_selection/plot_2_select_best_performers
    /auto_examples/7_pre_selection/plot_3_custom_pre_selection_volumes
+   /auto_examples/7_pre_selection/plot_4_incomplete_dataset
 

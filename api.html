@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="This is the class and function reference of skfolio. Please refer to the full user guide for further details, as the class and function raw specifications may not be enough to give full guidelines ..." />
 
-    <title>API Reference &#8212; skfolio 0.4.3 documentation</title>
+    <title>API Reference &#8212; skfolio 0.5.0 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="_static/documentation_options.js?v=576dcb70"></script>
+    <script src="_static/documentation_options.js?v=f7ee7eb5"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -484,6 +484,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.DropCorrelated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.DropCorrelated</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectKExtremes.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectKExtremes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonDominated.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonDominated</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectComplete.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectComplete</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonExpiring.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.pre_selection</span></code>.SelectNonExpiring</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/skfolio.model_selection.BaseCombinatorialCV.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">skfolio.model_selection</span></code>.BaseCombinatorialCV</a></li>
@@ -1097,6 +1099,12 @@ is the dot product of the assets weights with the assets returns and
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonDominated.html#skfolio.pre_selection.SelectNonDominated" title="skfolio.pre_selection.SelectNonDominated"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.SelectNonDominated</span></code></a></p></td>
 <td><p>Transformer for selecting non dominated assets.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.SelectComplete.html#skfolio.pre_selection.SelectComplete" title="skfolio.pre_selection.SelectComplete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.SelectComplete</span></code></a></p></td>
+<td><p>Transformer to select assets with complete data across the entire observation period.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/skfolio.pre_selection.SelectNonExpiring.html#skfolio.pre_selection.SelectNonExpiring" title="skfolio.pre_selection.SelectNonExpiring"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pre_selection.SelectNonExpiring</span></code></a></p></td>
+<td><p>Transformer to select assets that do not expire within a specified lookahead period after the end of the observation period.</p></td>
 </tr>
 </tbody>
 </table>
