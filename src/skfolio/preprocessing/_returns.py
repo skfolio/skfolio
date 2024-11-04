@@ -17,6 +17,7 @@ def prices_to_returns(
     nan_threshold: float = 1,
     join: Literal["left", "right", "inner", "outer", "cross"] = "outer",
     drop_inceptions_nan: bool = True,
+    fill_nan: bool = True,
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
     r"""Transforms a DataFrame of prices to linear or logarithmic returns.
 
@@ -64,10 +65,14 @@ def prices_to_returns(
         this threshold. The default (`1.0`) is to keep all the observations.
 
     drop_inceptions_nan : bool, default=True
-        If this is set to True, observations at the beginning are dropped if any of
+        If set to True, observations at the beginning are dropped if any of
         the asset values are missing, otherwise we keep the NaNs. This is useful when
         you work with a large universe of assets with different inception dates coupled
         with a pre-selection Transformer.
+
+    fill_nan : bool, default=True
+        If set to True, missing prices (NaNs) are forward filled using the previous
+        price. Otherwise, NaNs are kept.
 
     Returns
     -------
@@ -106,7 +111,8 @@ def prices_to_returns(
             df.drop(to_drop, axis=0, inplace=True)
 
     # Forward fill missing values
-    df.ffill(inplace=True)
+    if fill_nan:
+        df.ffill(inplace=True)
     # Drop rows according to drop_inceptions_nan
     # noinspection PyTypeChecker
     df.dropna(how="any" if drop_inceptions_nan else "all", inplace=True)
@@ -114,7 +120,7 @@ def prices_to_returns(
     df.dropna(axis=1, how="all", inplace=True)
 
     # returns
-    all_returns = df.pct_change().iloc[1:]
+    all_returns = df.pct_change(fill_method=None).iloc[1:]
     if log_returns:
         all_returns = np.log1p(all_returns)
 
