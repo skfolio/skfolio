@@ -740,8 +740,30 @@ class MeanRisk(ConvexOptimization):
         else:
             self._set_solver_params(default=None)
 
-        # set scales
+        # set scales and check measure
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
+            if self.overwrite_expected_return is not None:
+                if self.risk_measure == RiskMeasure.VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the "
+                        "optimization will return the maximum Sharpe Ratio portfolio. "
+                        "This is because the mean/variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/std. To suppress this"
+                        "warning, replace 'VARIANCE' by 'STANDARD_DEVIATION'",
+                        stacklevel=2,
+                    )
+
+                elif self.risk_measure == RiskMeasure.SEMI_VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
+                        "optimization will return the maximum Sortino Ratio portfolio. "
+                        "This is because the mean/semi-variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/semi-std ratio. To "
+                        "suppress this warning, replace 'SEMI_VARIANCE' by "
+                        "'SEMI_DEVIATION'",
+                        stacklevel=2,
+                    )
+
             self._set_scale_objective(default=1)
             self._set_scale_constraints(default=1)
         else:
@@ -776,27 +798,6 @@ class MeanRisk(ConvexOptimization):
         constraints = []
 
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
-            if self.risk_measure == RiskMeasure.VARIANCE:
-                warnings.warn(
-                    "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the optimization "
-                    "will return the maximum Sharpe Ratio portfolio. This is because "
-                    "the mean/variance ratio is not a 1-homogeneous function, unlike "
-                    "the mean/std. To suppress this warning, replace 'VARIANCE' by "
-                    "'STANDARD_DEVIATION'",
-                    stacklevel=2,
-                )
-
-            if self.risk_measure == RiskMeasure.SEMI_VARIANCE:
-                warnings.warn(
-                    "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
-                    "optimization will return the maximum Sortino Ratio portfolio. "
-                    "This is because the mean/semi-variance ratio is not a "
-                    "1-homogeneous function, unlike the mean/semi-std ratio. To "
-                    "suppress this warning, replace 'SEMI_VARIANCE' by "
-                    "'SEMI_DEVIATION'",
-                    stacklevel=2,
-                )
-
             factor = cp.Variable()
         else:
             factor = cp.Constant(1)
