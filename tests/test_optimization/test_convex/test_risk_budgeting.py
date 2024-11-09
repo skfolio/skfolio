@@ -211,6 +211,7 @@ def test_risk_budgeting_weight_constraints_dict(X_small):
                 0.01165966,
             ]
         ),
+        3,
     )
 
 

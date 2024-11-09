@@ -185,7 +185,7 @@ def is_cholesky_dec(x: np.ndarray) -> bool:
     try:
         np.linalg.cholesky(x)
         return True
-    except np.linalg.linalg.LinAlgError:
+    except np.linalg.LinAlgError:
         return False
 
 
@@ -200,7 +200,7 @@ def is_positive_definite(x: np.ndarray) -> bool:
     Returns
     -------
     value : bool
-        True if if the matrix is positive definite, False otherwise.
+        True if the matrix is positive definite, False otherwise.
     """
     return np.all(np.linalg.eigvals(x) > 0)
 

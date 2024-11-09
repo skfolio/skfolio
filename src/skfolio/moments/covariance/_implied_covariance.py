@@ -259,7 +259,7 @@ class ImpliedCovariance(BaseCovariance):
         if assets_names is not None:
             vol_assets_names = get_feature_names(implied_vol)
             if vol_assets_names is not None:
-                missing_assets = assets_names[~np.in1d(assets_names, vol_assets_names)]
+                missing_assets = assets_names[~np.isin(assets_names, vol_assets_names)]
                 if len(missing_assets) > 0:
                     raise ValueError(
                         f"The following assets are missing from "
