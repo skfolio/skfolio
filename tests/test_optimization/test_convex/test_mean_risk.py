@@ -571,6 +571,7 @@ def test_mean_risk_predict(X):
     assert population.measures_mean(RatioMeasure.SHARPE_RATIO) == sharpe
 
 
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_regularization(X, risk_measure, mean_risk_params_coef):
     diff = 0.01
 

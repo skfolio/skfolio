@@ -432,15 +432,6 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def _validation(self) -> None:
-        if not isinstance(self.risk_measure, RiskMeasure):
-            raise TypeError("risk_measure must be of type `RiskMeasure`")
-        if self.min_weights < 0:
-            raise ValueError(
-                "Risk Budgeting must have non negative `min_weights` constraint"
-                " otherwise the problem becomes non-convex."
-            )
-
     def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "RiskBudgeting":
         """Fit the Risk Budgeting Optimization estimator.
 
@@ -462,8 +453,10 @@ class RiskBudgeting(ConvexOptimization):
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         self._check_feature_names(X, reset=True)
-        # Validate
-        self._validation()
+
+        if not isinstance(self.risk_measure, RiskMeasure):
+            raise TypeError("risk_measure must be of type `RiskMeasure`")
+
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(
@@ -518,7 +511,7 @@ class RiskBudgeting(ConvexOptimization):
 
         # weight constraints
         constraints += self._get_weight_constraints(
-            n_assets=n_assets, w=w, factor=factor
+            n_assets=n_assets, w=w, factor=factor, allow_negative_weights=False
         )
 
         parameters_values = []

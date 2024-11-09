@@ -622,7 +622,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         self._cvx_cache = {}
 
     def _get_weight_constraints(
-        self, n_assets: int, w: cp.Variable, factor: skt.Factor
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        allow_negative_weights: bool = True,
     ) -> list[cpc.Constraint]:
         """Compute weight constraints from input parameters.
 
@@ -651,6 +655,13 @@ class ConvexOptimization(BaseOptimization, ABC):
                 fill_value=0,
                 name="min_weights",
             )
+
+            if not allow_negative_weights and np.any(min_weights < 0):
+                raise ValueError(
+                    f"{self.__class__.__name__} must have non negative `min_weights` "
+                    f"constraint otherwise the problem becomes non-convex."
+                )
+
             constraints.append(
                 w * self._scale_constraints
                 >= min_weights * factor * self._scale_constraints
