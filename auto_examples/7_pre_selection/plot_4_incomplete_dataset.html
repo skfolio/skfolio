@@ -18,7 +18,7 @@
 <meta property="og:image:alt" content="skfolio" />
 <meta name="description" content="When working with large datasets over long timeframes, we commonly encounter: Inception: Assets that began trading after the start of the dataset., Expiry: Expiring assets such as bonds, options, a..." />
 
-    <title>Handling Incomplete Datasets: Inception, Expiry, and Default &#8212; skfolio 0.5.0 documentation</title>
+    <title>Handling Incomplete Datasets: Inception, Expiry, and Default &#8212; skfolio 0.5.1 documentation</title>
   
   
   
@@ -53,7 +53,7 @@
   <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
 
-    <script src="../../_static/documentation_options.js?v=f7ee7eb5"></script>
+    <script src="../../_static/documentation_options.js?v=002b6000"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -572,14 +572,14 @@ while <code class="docutils literal notranslate"><span class="pre">SelectNonExpi
 <span class="n">df</span>
 </pre></div>
 </div>
-<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>2024-01-10   -0.002125
-2024-01-11   -0.335616
-2024-01-12    0.001848
-2024-01-15    0.009908
-2024-01-16    0.004411
-2024-01-17    0.006969
-2024-01-18    0.007042
-2024-01-19   -0.003695
+<div class="sphx-glr-script-out highlight-none notranslate"><div class="highlight"><pre><span></span>2024-01-10    0.012630
+2024-01-11   -0.338689
+2024-01-12    0.001842
+2024-01-15    0.002177
+2024-01-16   -0.005285
+2024-01-17    0.006521
+2024-01-18    0.001912
+2024-01-19   -0.003645
 Name: returns, dtype: float64
 </pre></div>
 </div>
@@ -607,13 +607,13 @@ asset
 defaulted       0.333333
 expired         0.333333
 complete        0.333333
-[-0.00212535 -0.33561596  0.00184821  0.00990834]
+[ 0.01263027 -0.33868916  0.00184163  0.00217699]
 Rebalancing Period 2
            EqualWeighted
 asset
 inception            0.5
 complete             0.5
-[ 0.00441122  0.00696856  0.00704222 -0.00369475]
+[-0.00528499  0.00652079  0.00191167 -0.00364507]
 </pre></div>
 </div>
 </section>
@@ -636,7 +636,7 @@ bond expires:</p>
 <span class="n">model</span> <span class="o">=</span> <span class="n">grid_search</span><span class="o">.</span><span class="n">best_estimator_</span>
 </pre></div>
 </div>
-<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.455 seconds)</p>
+<p class="sphx-glr-timing"><strong>Total running time of the script:</strong> (0 minutes 0.450 seconds)</p>
 <div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-7-pre-selection-plot-4-incomplete-dataset-py">
 <div class="binder-badge docutils container">
 <a class="reference external image-reference" href="https://mybinder.org/v2/gh/skfolio/skfolio/gh-pages?urlpath=lab/tree/notebooks/auto_examples/7_pre_selection/plot_4_incomplete_dataset.ipynb"><img alt="Launch binder" src="../../_images/binder_badge_logo6.svg" style="width: 150px;" />

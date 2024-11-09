@@ -283,14 +283,14 @@ And from the out-of-sample returns, we can see that the default event was captur
  .. code-block:: none
 
 
-    2024-01-10   -0.002125
-    2024-01-11   -0.335616
-    2024-01-12    0.001848
-    2024-01-15    0.009908
-    2024-01-16    0.004411
-    2024-01-17    0.006969
-    2024-01-18    0.007042
-    2024-01-19   -0.003695
+    2024-01-10    0.012630
+    2024-01-11   -0.338689
+    2024-01-12    0.001842
+    2024-01-15    0.002177
+    2024-01-16   -0.005285
+    2024-01-17    0.006521
+    2024-01-18    0.001912
+    2024-01-19   -0.003645
     Name: returns, dtype: float64
 
 
@@ -332,13 +332,13 @@ period:
     defaulted       0.333333
     expired         0.333333
     complete        0.333333
-    [-0.00212535 -0.33561596  0.00184821  0.00990834]
+    [ 0.01263027 -0.33868916  0.00184163  0.00217699]
     Rebalancing Period 2
                EqualWeighted
     asset                   
     inception            0.5
     complete             0.5
-    [ 0.00441122  0.00696856  0.00704222 -0.00369475]
+    [-0.00528499  0.00652079  0.00191167 -0.00364507]
 
 
 
@@ -379,7 +379,7 @@ bond expires:
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 0.455 seconds)
+   **Total running time of the script:** (0 minutes 0.450 seconds)
 
 
 .. _sphx_glr_download_auto_examples_7_pre_selection_plot_4_incomplete_dataset.py:

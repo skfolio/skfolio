@@ -309,7 +309,7 @@ compared to the model without tracking error.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (0 minutes 1.173 seconds)
+   **Total running time of the script:** (0 minutes 1.119 seconds)
 
 
 .. _sphx_glr_download_auto_examples_1_mean_risk_plot_10_tracking_error.py:
