@@ -497,6 +497,38 @@ def test_mean_risk_ratio2(
     )
 
 
+def test_mean_risk_ratio_convergence(
+    X,
+    risk_measure,
+):
+    if risk_measure == RiskMeasure.VARIANCE:
+        risk_measure_verify = RiskMeasure.STANDARD_DEVIATION
+    elif risk_measure == RiskMeasure.SEMI_VARIANCE:
+        risk_measure_verify = RiskMeasure.SEMI_DEVIATION
+    else:
+        risk_measure_verify = risk_measure
+
+    # Maximize ratio
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_measure=risk_measure
+    )
+    p = model.fit_predict(X)
+    ratio = p.mean / getattr(p, risk_measure_verify)
+
+    model = MeanRisk(
+        risk_measure=risk_measure,
+        efficient_frontier_size=30,
+    )
+    pop = model.fit_predict(X)
+    expected_ratio = max([p.mean / getattr(p, risk_measure_verify) for p in pop])
+
+    print(risk_measure.value)
+    print(ratio)
+    print(expected_ratio)
+
+    np.testing.assert_almost_equal(ratio, expected_ratio, 4)
+
+
 def test_mean_risk_feature_names_in_(X):
     model = MeanRisk()
     model.fit(X)

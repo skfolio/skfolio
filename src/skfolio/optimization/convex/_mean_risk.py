@@ -1,11 +1,12 @@
 """Mean Risk Optimization estimator."""
 
+import warnings
+
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
-
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
@@ -511,7 +512,7 @@ class MeanRisk(ConvexOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the 
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
         optimization model and passed to the portfolio.
 
     Attributes
@@ -775,6 +776,27 @@ class MeanRisk(ConvexOptimization):
         constraints = []
 
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
+            if self.risk_measure == RiskMeasure.VARIANCE:
+                warnings.warn(
+                    "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the optimization "
+                    "will return the maximum Sharpe Ratio portfolio. This is because "
+                    "the mean/variance ratio is not a 1-homogeneous function, unlike "
+                    "the mean/std. To suppress this warning, replace 'VARIANCE' by "
+                    "'STANDARD_DEVIATION'",
+                    stacklevel=2,
+                )
+
+            if self.risk_measure == RiskMeasure.SEMI_VARIANCE:
+                warnings.warn(
+                    "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
+                    "optimization will return the maximum Sortino Ratio portfolio. "
+                    "This is because the mean/semi-variance ratio is not a "
+                    "1-homogeneous function, unlike the mean/semi-std ratio. To "
+                    "suppress this warning, replace 'SEMI_VARIANCE' by "
+                    "'SEMI_DEVIATION'",
+                    stacklevel=2,
+                )
+
             factor = cp.Variable()
         else:
             factor = cp.Constant(1)
