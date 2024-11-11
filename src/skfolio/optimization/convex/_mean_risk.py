@@ -558,6 +558,10 @@ class MeanRisk(ConvexOptimization):
         max_budget: float | None = None,
         max_short: float | None = None,
         max_long: float | None = None,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        threshold_long: skt.MultiInput | None = 0.0,
+        threshold_short: skt.MultiInput | None = 0.0,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -618,6 +622,10 @@ class MeanRisk(ConvexOptimization):
             max_budget=max_budget,
             max_short=max_short,
             max_long=max_long,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            threshold_long=threshold_long,
+            threshold_short=threshold_short,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
             previous_weights=previous_weights,
@@ -984,7 +992,8 @@ class MeanRisk(ConvexOptimization):
             case ObjectiveFunction.MAXIMIZE_RATIO:
                 if expected_return.is_affine():
                     # Charnes-Cooper's variable transformation for Fractional
-                    # Programming problem :Max(f1/f2) with f2 linear
+                    # Programming problem Max(f1/f2) with f2 linear and with
+                    # 1-homogeneous function (homogeneous technique)
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
@@ -995,9 +1004,10 @@ class MeanRisk(ConvexOptimization):
                 else:
                     # Schaible's generalization of Charnes-Cooper's variable
                     # transformation for Fractional Programming problem :Max(f1/f2)
-                    # with f1 concave instead of linear: Schaible,"Parameter-free
-                    # Convex Equivalent and Dual Programs of Fractional Programming
-                    # Problems".
+                    # with f1 concave instead of linear and with 1-homogeneous function.
+                    # (homogeneous technique)
+                    # Schaible,"Parameter-free Convex Equivalent and Dual Programs of
+                    # Fractional Programming Problems".
                     # The condition to work is f1 >= 0, so we need to raise an user
                     # warning when it's not the case.
                     # TODO: raise user warning when f1<0

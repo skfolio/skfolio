@@ -16,7 +16,7 @@ from skfolio.exceptions import (
     GroupNotFoundError,
 )
 
-__all__ = ["equations_to_matrix"]
+__all__ = ["equations_to_matrix", "group_cardinalities_to_matrix"]
 
 _EQUALITY_OPERATORS = {"==", "="}
 _INEQUALITY_OPERATORS = {">=", "<="}
@@ -127,6 +127,63 @@ def equations_to_matrix(
     return (
         np.array(a_equality),
         np.array(b_equality),
+        np.array(a_inequality),
+        np.array(b_inequality),
+    )
+
+
+def group_cardinalities_to_matrix(
+    groups: npt.ArrayLike,
+    group_cardinalities: dict[str, int],
+    raise_if_group_missing: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Convert a list of linear equations into the left and right matrices of the
+    inequality A <= B and equality A == B.
+
+    Parameters
+    ----------
+    groups : array-like of shape (n_groups, n_assets)
+       2D array of assets groups.
+
+       Examples:
+             groups = np.array(
+                [
+                    ["Equity", "Equity", "Equity", "Bond"],
+                    ["US", "Europe", "Japan", "US"],
+                ]
+            )
+
+    group_cardinalities : dict[str, int]
+       Dictionary of cardinality constraint per group.
+       Examples: {"Equity": 1, "US": 3}
+
+    raise_if_group_missing : bool, default=False
+        If this is set to True, an error is raised when a group is not found in the
+        groups, otherwise only a warning is shown.
+        The default is False.
+
+    Returns
+    -------
+    left_inequality: ndarray of shape (n_constraints, n_assets)
+    right_inequality: ndarray of shape (n_constraints,)
+        The left and right matrices of the cardinality inequality.
+    """
+    groups = _validate_groups(groups, name="group")
+
+    a_inequality = []
+    b_inequality = []
+
+    for group, card in group_cardinalities.items():
+        try:
+            arr = _matching_array(values=groups, key=group, sum_to_one=False)
+            a_inequality.append(arr)
+            b_inequality.append(card)
+
+        except GroupNotFoundError as e:
+            if raise_if_group_missing:
+                raise
+            warnings.warn(str(e), stacklevel=2)
+    return (
         np.array(a_inequality),
         np.array(b_inequality),
     )

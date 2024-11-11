@@ -18,6 +18,7 @@ import numpy.typing as npt
 import scipy as sc
 import scipy.sparse.linalg as scl
 import sklearn.utils.metadata_routing as skm
+from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure, owa_gmd_weights
@@ -28,7 +29,7 @@ from skfolio.uncertainty_set import (
     BaseMuUncertaintySet,
     UncertaintySet,
 )
-from skfolio.utils.equations import equations_to_matrix
+from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
 from skfolio.utils.tools import AutoEnum, cache_method, input_to_array
 
 INSTALLED_SOLVERS = cp.installed_solvers()
@@ -453,6 +454,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         max_budget: float | None = None,
         max_short: float | None = None,
         max_long: float | None = None,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        threshold_long: skt.MultiInput | None = 0.0,
+        threshold_short: skt.MultiInput | None = 0.0,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -502,6 +507,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.max_budget = max_budget
         self.max_short = max_short
         self.max_long = max_long
+        self.cardinality = cardinality
+        self.group_cardinalities = group_cardinalities
+        self.threshold_long = threshold_long
+        self.threshold_short = threshold_short
         self.min_acceptable_return = min_acceptable_return
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
@@ -648,32 +657,72 @@ class ConvexOptimization(BaseOptimization, ABC):
         """
         constraints = []
 
-        if self.min_weights is not None:
+        is_mip = (
+            (self.cardinality is not None and self.cardinality < n_assets)
+            or (self.group_cardinalities is not None)
+            or self.threshold_long is not None
+            or self.threshold_short is not None
+        )
+
+        if is_mip and self.solver not in MI_SOLVERS:
+            raise ValueError(
+                "You are using constraints that require a mixed-integer solver and "
+                f"{self.solver} doesn't support MIP problems. For an open-source "
+                "mixed-integer solver, we recommend you use SCIP (solver='SCIP'). "
+                "To install it: `pip install cvxpy[SCIP]`. For commercial ones, you "
+                "can use MOSEK, GUROBI or CPLEX"
+            )
+
+        # Clean and convert to array
+        groups = self.groups
+        min_weights = self.min_weights
+        max_weights = self.max_weights
+        threshold_long = self.threshold_long
+        threshold_short = self.threshold_short
+
+        if min_weights is not None:
             min_weights = self._clean_input(
-                self.min_weights,
+                min_weights,
                 n_assets=n_assets,
                 fill_value=0,
                 name="min_weights",
             )
 
+        if max_weights is not None:
+            max_weights = self._clean_input(
+                max_weights,
+                n_assets=n_assets,
+                fill_value=1,
+                name="max_weights",
+            )
+
+        if groups is not None:
+            groups = input_to_array(
+                items=groups,
+                n_assets=n_assets,
+                fill_value="",
+                dim=2,
+                assets_names=(
+                    self.feature_names_in_
+                    if hasattr(self, "feature_names_in_")
+                    else None
+                ),
+                name="groups",
+            )
+
+        # Constraints
+        if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
                     f"{self.__class__.__name__} must have non negative `min_weights` "
                     f"constraint otherwise the problem becomes non-convex."
                 )
-
             constraints.append(
                 w * self._scale_constraints
                 >= min_weights * factor * self._scale_constraints
             )
 
-        if self.max_weights is not None:
-            max_weights = self._clean_input(
-                self.max_weights,
-                n_assets=n_assets,
-                fill_value=1,
-                name="max_weights",
-            )
+        if max_weights is not None:
             constraints.append(
                 w * self._scale_constraints
                 <= max_weights * factor * self._scale_constraints
@@ -723,27 +772,76 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
+        if is_mip:
+            if max_weights is None or min_weights is None:
+                raise ValueError(
+                    "'max_weights' and 'min_weights' must be provided with cardinality "
+                    "constraint"
+                )
+
+            card_bool = cp.Variable(n_assets, boolean=True)
+
+            if self.cardinality is not None and self.cardinality < n_assets:
+                constraints.append(cp.sum(card_bool) <= self.cardinality)
+
+            if self.group_cardinalities is not None:
+                if groups is None:
+                    raise ValueError(
+                        "When 'group_cardinalities' is provided, you must also "
+                        "also provide 'groups'"
+                    )
+                a_card, b_card = group_cardinalities_to_matrix(
+                    groups=groups,
+                    group_cardinalities=self.group_cardinalities,
+                    raise_if_group_missing=False,
+                )
+                constraints.append(a_card @ card_bool - b_card <= 0)
+
+            if isinstance(factor, cp.Variable):
+                card_float = cp.Variable(n_assets, nonneg=True)
+                # We want (w <= cp.multiply(card_bool, max_weights) * factor
+                # but this is not DCP. So we introduce another variable and set
+                # constraint to ensure its value is either card_bool * factor
+                scale = 1e7
+                constraints += [
+                    card_float <= factor,
+                    # We don't know in advance how big is factor, so we make room
+                    card_float <= scale * card_bool,
+                    # This ensures that if factor was bigger than scale, we fail
+                    card_float >= factor - scale * (1 - card_bool),
+                ]
+                card_var = card_float
+            else:
+                card_var = card_bool
+
+            if threshold_long is not None:
+                constraints.append(
+                    w * self._scale_constraints
+                    >= cp.multiply(card_var, threshold_long) * self._scale_constraints
+                )
+            if threshold_short is not None:
+                pass
+            # TODO
+
+            constraints.append(
+                w * self._scale_constraints
+                <= cp.multiply(card_var, max_weights) * self._scale_constraints
+            )
+
+            if np.any(min_weights < 0):
+                constraints.append(
+                    w * self._scale_constraints
+                    >= cp.multiply(card_var, min_weights) * self._scale_constraints
+                )
+
         if self.linear_constraints is not None:
-            if self.groups is None:
+            if groups is None:
                 if not hasattr(self, "feature_names_in_"):
                     raise ValueError(
                         "If `linear_constraints` is provided you must provide either"
                         " `groups` or `X` as a DataFrame with asset names in columns"
                     )
                 groups = np.asarray([self.feature_names_in_])
-            else:
-                groups = input_to_array(
-                    items=self.groups,
-                    n_assets=n_assets,
-                    fill_value="",
-                    dim=2,
-                    assets_names=(
-                        self.feature_names_in_
-                        if hasattr(self, "feature_names_in_")
-                        else None
-                    ),
-                    name="groups",
-                )
             a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
                 groups=groups,
                 equations=self.linear_constraints,

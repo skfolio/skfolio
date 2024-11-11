@@ -521,11 +521,6 @@ def test_mean_risk_ratio_convergence(
     )
     pop = model.fit_predict(X)
     expected_ratio = max([p.mean / getattr(p, risk_measure_verify) for p in pop])
-
-    print(risk_measure.value)
-    print(ratio)
-    print(expected_ratio)
-
     np.testing.assert_almost_equal(ratio, expected_ratio, 4)
 
 
@@ -583,13 +578,11 @@ def test_mean_risk_predict(X):
 
     model = MeanRisk(min_return=[0.0005, 0.0001])
     model.fit(X)
-    print(model.weights_)
     population = model.predict(X)
     assert isinstance(population, Population)
 
     model = MeanRisk(min_return=[0.0005, 0.0001], max_cdar=0.15)
     model.fit(X.to_numpy())
-    print(model.weights_)
     population = model.predict(X.to_numpy())
     assert isinstance(population, Population)
     assert population[0].cdar <= 0.15
@@ -1058,9 +1051,7 @@ def test_metadata_routing(X_small, implied_vol_small):
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 
-def test_mean_risk_linear_constraints_equalities(
-    X,
-):
+def test_mean_risk_linear_constraints_equalities(X):
     model = MeanRisk(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.VARIANCE,
@@ -1069,3 +1060,161 @@ def test_mean_risk_linear_constraints_equalities(
     model.fit(X)
     np.testing.assert_almost_equal(model.weights_[1], 0.2)
     np.testing.assert_almost_equal(model.weights_[17], 0.6)
+
+
+@pytest.mark.parametrize(
+    "objective_function,expected",
+    [
+        [
+            ObjectiveFunction.MINIMIZE_RISK,
+            np.array(
+                [
+                    0.0,
+                    -0.00345807,
+                    -0.03,
+                    0.00305342,
+                    -0.03,
+                    0.00115625,
+                    0.02168898,
+                    0.19756382,
+                    0.0,
+                    0.2,
+                    0.0,
+                    0.157976,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.09288301,
+                    0.0,
+                    0.0,
+                    0.2,
+                    0.08913658,
+                ]
+            ),
+        ],
+        [
+            ObjectiveFunction.MAXIMIZE_RATIO,
+            np.array(
+                [
+                    0.0,
+                    0.19220672,
+                    -0.03,
+                    -0.03,
+                    -0.00199019,
+                    -0.03,
+                    -0.02509008,
+                    -0.03,
+                    0.0,
+                    0.0,
+                    0.2,
+                    0.2,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.2,
+                    0.05942478,
+                    0.19544877,
+                    0.0,
+                    0.0,
+                ]
+            ),
+        ],
+    ],
+)
+def test_group_cardinalities_constraint(X, groups, objective_function, expected):
+    group_cardinalities = {"Equity": 2, "Bond": 5, "US": 1}
+
+    model = MeanRisk(
+        objective_function=objective_function,
+        min_weights=-0.03,
+        max_weights=0.2,
+        budget=0.9,
+        group_cardinalities=group_cardinalities,
+        groups=groups,
+        solver="SCIP",
+    )
+    model.fit(X)
+    w = model.weights_
+    assert np.sum(abs(w) > 1e-10) == 12
+    np.testing.assert_almost_equal(np.sum(w), 0.9)
+    assert np.max(w) - 0.2 <= 1e-8
+    assert np.min(w) + 0.03 >= -1e-8
+
+    np.testing.assert_almost_equal(w, expected)
+
+
+@pytest.mark.parametrize(
+    "objective_function",
+    [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
+)
+def test_cardinality_and_group_cardinalities_constraint(X, groups, objective_function):
+    group_cardinalities = {"Equity": 2, "Bond": 5, "US": 1}
+
+    model = MeanRisk(
+        objective_function=objective_function,
+        min_weights=-0.03,
+        max_weights=0.2,
+        budget=0.9,
+        group_cardinalities=group_cardinalities,
+        cardinality=10,
+        groups=groups,
+        solver="SCIP",
+    )
+    model.fit(X)
+    w = model.weights_
+    assert np.sum(abs(w) > 1e-10) == 10
+    np.testing.assert_almost_equal(np.sum(w), 0.9)
+    assert np.max(w) - 0.2 <= 1e-8
+    assert np.min(w) + 0.03 >= -1e-8
+
+
+@pytest.mark.parametrize(
+    "objective_function",
+    [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
+)
+@pytest.mark.parametrize("cardinality", [3, 7, 11, 15, 20])
+def test_cardinality_constraint(X, objective_function, cardinality):
+    max_weights = 1 / (cardinality - 2)
+    model = MeanRisk(
+        objective_function=objective_function,
+        min_weights=-0.03,
+        max_weights=max_weights,
+        budget=0.9,
+        cardinality=cardinality,
+        solver="SCIP",
+    )
+    model.fit(X)
+    w = model.weights_
+    assert np.sum(abs(w) > 1e-10) == cardinality
+    np.testing.assert_almost_equal(np.sum(w), 0.9)
+    assert np.max(w) - max_weights <= 1e-8
+    assert np.min(w) + 0.03 >= -1e-8
+
+
+def test_cardinality_constraint_ratio_convergence(X):
+    risk_measure = RiskMeasure.STANDARD_DEVIATION
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        min_weights=-0.03,
+        max_weights=0.2,
+        budget=0.9,
+        cardinality=7,
+        risk_measure=risk_measure,
+        solver="SCIP",
+    )
+    p = model.fit_predict(X)
+    ratio = p.mean / getattr(p, risk_measure)
+
+    model = MeanRisk(
+        risk_measure=risk_measure,
+        min_weights=-0.03,
+        max_weights=0.2,
+        budget=0.9,
+        cardinality=7,
+        efficient_frontier_size=20,
+        solver="SCIP",
+    )
+    pop = model.fit_predict(X)
+    expected_ratio = max([p.mean / getattr(p, risk_measure) for p in pop])
+    np.testing.assert_almost_equal(ratio, expected_ratio, 4)
