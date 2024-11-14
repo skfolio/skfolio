@@ -560,8 +560,8 @@ class MeanRisk(ConvexOptimization):
         max_long: float | None = None,
         cardinality: int | None = None,
         group_cardinalities: dict[str, int] | None = None,
-        threshold_long: skt.MultiInput | None = 0.0,
-        threshold_short: skt.MultiInput | None = 0.0,
+        threshold_long: skt.MultiInput | None = None,
+        threshold_short: skt.MultiInput | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -743,10 +743,17 @@ class MeanRisk(ConvexOptimization):
         n_observations, n_assets = prior_model.returns.shape
 
         # set solvers params
-        if self.solver == "CLARABEL":
-            self._set_solver_params(default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9})
-        else:
-            self._set_solver_params(default=None)
+        match self.solver:
+            case "CLARABEL":
+                self._set_solver_params(
+                    default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
+                )
+            case "SCIP":
+                self._set_solver_params(
+                    default={"numerics/feastol": 1e-7, "limits/gap": 1e-8}
+                )
+            case _:
+                self._set_solver_params(default=None)
 
         # set scales and check measure
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:

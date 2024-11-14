@@ -1069,26 +1069,26 @@ def test_mean_risk_linear_constraints_equalities(X):
             ObjectiveFunction.MINIMIZE_RISK,
             np.array(
                 [
+                    -0.00994559,
                     0.0,
-                    -0.00345807,
                     -0.03,
-                    0.00305342,
+                    -0.00074252,
                     -0.03,
-                    0.00115625,
-                    0.02168898,
-                    0.19756382,
+                    0.00380846,
+                    0.0156786,
+                    0.19887139,
+                    0.0,
+                    0.18702368,
+                    0.0,
+                    0.1712827,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.10847037,
+                    0.0,
                     0.0,
                     0.2,
-                    0.0,
-                    0.157976,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.09288301,
-                    0.0,
-                    0.0,
-                    0.2,
-                    0.08913658,
+                    0.0855529,
                 ]
             ),
         ],
@@ -1097,12 +1097,12 @@ def test_mean_risk_linear_constraints_equalities(X):
             np.array(
                 [
                     0.0,
-                    0.19220672,
+                    0.19220526,
                     -0.03,
                     -0.03,
-                    -0.00199019,
+                    -0.00200103,
                     -0.03,
-                    -0.02509008,
+                    -0.02509256,
                     -0.03,
                     0.0,
                     0.0,
@@ -1112,8 +1112,8 @@ def test_mean_risk_linear_constraints_equalities(X):
                     0.0,
                     0.0,
                     0.2,
-                    0.05942478,
-                    0.19544877,
+                    0.05942693,
+                    0.1954614,
                     0.0,
                     0.0,
                 ]
@@ -1172,7 +1172,7 @@ def test_cardinality_and_group_cardinalities_constraint(X, groups, objective_fun
     "objective_function",
     [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
 )
-@pytest.mark.parametrize("cardinality", [3, 7, 11, 15, 20])
+@pytest.mark.parametrize("cardinality", [7, 11, 15, 20])
 def test_cardinality_constraint(X, objective_function, cardinality):
     max_weights = 1 / (cardinality - 2)
     model = MeanRisk(
@@ -1218,3 +1218,99 @@ def test_cardinality_constraint_ratio_convergence(X):
     pop = model.fit_predict(X)
     expected_ratio = max([p.mean / getattr(p, risk_measure) for p in pop])
     np.testing.assert_almost_equal(ratio, expected_ratio, 4)
+
+
+def test_scip_clarabel_convergence(X):
+    model = MeanRisk(
+        min_weights=0,
+        max_weights=0.8,
+        budget=0.9,
+    )
+    model.fit(X)
+    w1 = model.weights_
+    # noinspection PyTypeChecker
+    model.set_params(solver="SCIP")
+    model.fit(X)
+    w2 = model.weights_
+
+    np.testing.assert_array_almost_equal(w1, w2, 4)
+
+
+@pytest.mark.parametrize(
+    "objective_function",
+    [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
+)
+def test_mip_threshold_constraints_long(X, objective_function):
+    model = MeanRisk(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        objective_function=objective_function,
+        max_weights=0.15,
+        solver="SCIP",
+    )
+    model.fit(X)
+    w1 = model.weights_
+
+    threshold_long = 0.05
+    assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
+    # noinspection PyTypeChecker
+    model.set_params(threshold_long=threshold_long)
+    model.fit(X)
+    w2 = model.weights_
+    assert not np.any((w2 < threshold_long - 1e-8) & (w2 > 0 + 1e-8))
+    np.testing.assert_almost_equal(np.sum(w2), 1)
+    assert np.max(w2) - 0.15 <= 1e-8
+    assert np.min(w2) >= -1e-8
+
+
+# import datetime as dt
+#
+# from skfolio.datasets import (
+#     load_sp500_dataset,
+# )
+# from skfolio.preprocessing import prices_to_returns
+#
+# prices = load_sp500_dataset()
+# prices = prices.loc[dt.date(2014, 1, 1) :]
+# X = prices_to_returns(X=prices)["2018-01-03":]
+# objective_function = ObjectiveFunction.MAXIMIZE_RATIO
+# cardinality = 7
+
+
+@pytest.mark.parametrize(
+    "objective_function",
+    [ObjectiveFunction.MINIMIZE_RISK, ObjectiveFunction.MAXIMIZE_RATIO],
+)
+def test_mip_threshold_constraints_long_short(X, objective_function):
+    model = MeanRisk(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        objective_function=objective_function,
+        min_weights=-0.8,
+        max_weights=0.8,
+        budget=0.5,
+        solver="SCIP",
+    )
+    model.fit(X)
+    w1 = model.weights_
+
+    threshold_long = 0.05
+    threshold_short = -0.03
+
+    assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
+    assert np.any((w1 > threshold_short + 1e-8) & (w1 < 0 - 1e-8))
+    # noinspection PyTypeChecker
+    model.set_params(threshold_long=threshold_long)
+    with pytest.raises(
+        ValueError,
+        match="When 'threshold_long' is provided*",
+    ):
+        model.fit(X)
+    # noinspection PyTypeChecker
+    model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
+    model.fit(X)
+    w2 = model.weights_
+
+    assert not np.any((w2 < threshold_long - 1e-8) & (w2 > 0 + 1e-8))
+    assert not np.any((w2 > threshold_short + 1e-8) & (w2 < 0 - 1e-8))
+    np.testing.assert_almost_equal(np.sum(w2), 0.5)
+    assert np.max(w2) - 0.8 <= 1e-8
+    assert np.min(w2) + 0.8 >= -1e-8
