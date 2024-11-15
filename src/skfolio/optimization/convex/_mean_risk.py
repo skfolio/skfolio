@@ -750,7 +750,7 @@ class MeanRisk(ConvexOptimization):
                 )
             case "SCIP":
                 self._set_solver_params(
-                    default={"numerics/feastol": 1e-7, "limits/gap": 1e-8}
+                    default={"numerics/feastol": 1e-8, "limits/gap": 1e-8}
                 )
             case _:
                 self._set_solver_params(default=None)
@@ -997,6 +997,10 @@ class MeanRisk(ConvexOptimization):
                     + custom_objective * self._scale_objective
                 )
             case ObjectiveFunction.MAXIMIZE_RATIO:
+                homogenization_factor = _optimal_homogenization_factor(
+                    mu=prior_model.mu
+                )
+
                 if expected_return.is_affine():
                     # Charnes-Cooper's variable transformation for Fractional
                     # Programming problem Max(f1/f2) with f2 linear and with
@@ -1006,7 +1010,7 @@ class MeanRisk(ConvexOptimization):
                         - cp.Constant(self.risk_free_rate)
                         * factor
                         * self._scale_constraints
-                        == cp.Constant(1) * self._scale_constraints
+                        == cp.Constant(homogenization_factor) * self._scale_constraints
                     ]
                 else:
                     # Schaible's generalization of Charnes-Cooper's variable
@@ -1018,12 +1022,13 @@ class MeanRisk(ConvexOptimization):
                     # The condition to work is f1 >= 0, so we need to raise an user
                     # warning when it's not the case.
                     # TODO: raise user warning when f1<0
+
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
                         * factor
                         * self._scale_constraints
-                        >= cp.Constant(1) * self._scale_constraints
+                        >= cp.Constant(homogenization_factor) * self._scale_constraints
                     ]
                 objective = cp.Minimize(
                     risk * self._scale_objective
@@ -1054,3 +1059,27 @@ class MeanRisk(ConvexOptimization):
         )
 
         return self
+
+
+def _optimal_homogenization_factor(mu: np.ndarray) -> float:
+    """
+    Compute the optimal homogenization factor for ratio optimization based on expected
+    returns.
+
+    While a default value of 1 is commonly used in textbooks for simplicity,
+    fine-tuning this factor based on the underlying data can enhance convergence.
+    Additionally, using a data-driven approach to determine this factor can improve the
+    robustness of certain constraints, such as the calibration of big M methods.
+
+    Parameters
+    ----------
+    mu : ndarray of shape (n_assets,)
+        Vector of expected returns.
+
+    Returns
+    -------
+    value : float
+        Homogenization factor.
+    """
+
+    return min(1e3, max(1e-3, np.mean(np.abs(mu))))

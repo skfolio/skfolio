@@ -1097,6 +1097,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                 weights = w.value / factor.value
                 problem_values = {
                     name: expression.value / factor.value
+                    if name != "factor"
+                    else expression.value
                     for name, expression in expressions.items()
                 }
                 problem_values["objective"] = (
@@ -2112,46 +2114,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         pass
 
 
-def _mip_weight_constraints(
-    n_assets: int,
-    w: cp.Variable,
-    factor: skt.Factor,
-    scale_constraints: float,
-    cardinality: int | None = None,
-    group_cardinalities: dict[str, int] | None = None,
-    max_weights: np.ndarray | None = None,
-    groups: np.ndarray | None = None,
-    min_weights: np.ndarray | None = None,
-    threshold_long: np.ndarray | None = None,
-    threshold_short: np.ndarray | None = None,
-):
-    constraints = []
-
-    if max_weights is None or min_weights is None:
-        raise ValueError(
-            "'max_weights' and 'min_weights' must be provided with cardinality and "
-            "threshold constraints."
-        )
-
-    # If threshold_short and min_weights are negative, we need to create a long and
-    # short boolean variables.
-    is_short = np.any(min_weights < 0)
-
-    if threshold_long is not None:
-        if is_short and threshold_short is None:
-            raise ValueError(
-                "When 'threshold_long' is provided and 'min_weights' can be negative "
-                "(short position are allowed), then 'threshold_short' must also be "
-                "provided"
-            )
-
-    if threshold_short is not None and threshold_long is None:
-        raise ValueError(
-            "When 'threshold_short' is provided, 'threshold_long' must also be "
-            "provided"
-        )
-
-
 def _mip_weight_constraints_no_short_threshold(
     n_assets: int,
     w: cp.Variable,
@@ -2187,7 +2149,12 @@ def _mip_weight_constraints_no_short_threshold(
         # but this is not DCP. So we introduce another variable and set
         # constraint to ensure its value is either card_bool * factor
 
-        M = 1e6  # Big M method to activate or deactivate constraints
+        M = 1e3
+        # Big M method to activate or deactivate constraints
+        # In the ratio homogenization procedure, the factor has been calibrated
+        # to be around 0.1-10. By using M=1e3, we ensure that M is large enough while
+        # not too large for improved MIP convergence.
+
         constraints += [
             is_invested_factor <= factor,
             is_invested_factor <= M * is_invested_bool,
@@ -2247,21 +2214,24 @@ def _mip_weight_constraints_threshold_short(
         )
         constraints.append(a_card @ is_invested_bool - b_card <= 0)
 
+    # Big M method to activate or deactivate constraints. We want M1 bigger than
+    # factor, but as small as possible for improved convergence.
+    M = 1e3
+
     if isinstance(factor, cp.Variable):
         is_invested_short_factor = cp.Variable(n_assets, nonneg=True)
         is_invested_long_factor = cp.Variable(n_assets, nonneg=True)
         # We want (w <= cp.multiply(is_invested_short_bool, max_weights) * factor
         # but this is not DCP. So we introduce another variable and set
-        # constraint to ensure its value is either card_bool * factor
-        M1 = 1e6  # Big M method to activate or deactivate constraints
+        # constraint to ensure its value is equal to is_invested_short_bool * factor
 
         constraints += [
             is_invested_short_factor <= factor,
             is_invested_long_factor <= factor,
-            is_invested_short_factor <= M1 * is_invested_short_bool,
-            is_invested_long_factor <= M1 * is_invested_long_bool,
-            is_invested_short_factor >= factor - M1 * (1 - is_invested_short_bool),
-            is_invested_long_factor >= factor - M1 * (1 - is_invested_long_bool),
+            is_invested_short_factor <= M * is_invested_short_bool,
+            is_invested_long_factor <= M * is_invested_long_bool,
+            is_invested_short_factor >= factor - M * (1 - is_invested_short_bool),
+            is_invested_long_factor >= factor - M * (1 - is_invested_long_bool),
         ]
         is_invested_short = is_invested_short_factor
         is_invested_long = is_invested_long_factor
@@ -2269,23 +2239,22 @@ def _mip_weight_constraints_threshold_short(
         is_invested_short = is_invested_short_bool
         is_invested_long = is_invested_long_bool
 
-    k = scale_constraints
-
-    M2 = 1e3  # Big M method to activate or deactivate constraints
     constraints += [
         is_invested_bool <= 1.0,
-        w <= cp.multiply(is_invested_long, max_weights),
-        w >= cp.multiply(is_invested_short, min_weights),
+        w * scale_constraints
+        <= cp.multiply(is_invested_long, max_weights) * scale_constraints,
+        w * scale_constraints
+        >= cp.multiply(is_invested_short, min_weights) * scale_constraints,
         # Apply threshold_long if is_invested_long == 1,
         # unrestricted if is_invested_long == 0
-        w
-        >= cp.multiply(is_invested_long, threshold_long)
-        - M2 * (1 - is_invested_long_bool),
+        w * scale_constraints
+        >= cp.multiply(is_invested_long, threshold_long) * scale_constraints
+        - M * (1 - is_invested_long_bool) * scale_constraints,
         # # Apply threshold_short if is_invested_short == 1,
         # # unrestricted if is_invested_short == 0
-        w
-        <= cp.multiply(is_invested_short, threshold_short)
-        + M2 * (1 - is_invested_short_bool),
+        w * scale_constraints
+        <= cp.multiply(is_invested_short, threshold_short) * scale_constraints
+        + M * (1 - is_invested_short_bool) * scale_constraints,
     ]
 
     return constraints
