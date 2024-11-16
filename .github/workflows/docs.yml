@@ -41,12 +41,6 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
-      - name: Debug - Upload Documentation Site Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docs
-          path: docs/_build
       
       - name: Upload Documentation Site Artifact
         uses: actions/upload-pages-artifact@v3
