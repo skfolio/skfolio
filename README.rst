@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website|
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -31,6 +31,9 @@
 
 .. |Website| image:: https://img.shields.io/website.svg?down_color=red&down_message=down&up_color=53cc0d&up_message=up&url=https://skfolio.org
    :target: https://skfolio.org
+
+.. |JupyterLite| image:: https://jupyterlite.rtfd.io/en/latest/_static/badge.svg
+   :target: https://skfolio.org/lite
 
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
