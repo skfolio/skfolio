@@ -15,14 +15,16 @@ jobs:
   deploy:
     runs-on: ubuntu-22.04
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     concurrency: release
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
