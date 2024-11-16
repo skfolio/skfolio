@@ -70,7 +70,7 @@ docs = [
     "sphinx-design",
     "pydata-sphinx-theme==0.13.3",
     "matplotlib",
-    "kaleido",
+    "kaleido==0.2.1",
     "sphinx-copybutton",
     "numpydoc",
     "sphinx-togglebutton",
