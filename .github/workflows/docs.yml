@@ -1,6 +1,9 @@
 name: Deploy Documentation
 
 on:
+  push:
+    branches:
+      - feat/jupyterlite-for-docs
   workflow_run:
     workflows: ["Semantic Release"]
     types:
@@ -11,7 +14,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-22.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: write
     concurrency: release
@@ -35,8 +37,20 @@ jobs:
         working-directory: ./docs
         run: sphinx-build . _build
 
-      - name: Deploy Sphinx Docs
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Debug - Upload Documentation Site Artifact
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/_build
+          name: docs
+          path: docs/_build
+      
+      - name: Upload Documentation Site Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build
+
+      - name: Deploy Sphinx Docs to GitHub Pages
+        id: gh_pages_deployment
+        uses: actions/deploy-pages@v4
