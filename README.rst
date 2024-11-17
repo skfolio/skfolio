@@ -40,9 +40,9 @@
 .. |ScipyMinVersion| replace:: 1.8.0
 .. |PandasMinVersion| replace:: 1.4.1
 .. |CvxpyMinVersion| replace:: 1.4.1
-.. |SklearnMinVersion| replace:: 1.3.2
+.. |SklearnMinVersion| replace:: 1.5.0
 .. |JoblibMinVersion| replace:: 1.3.2
-.. |PlotlyMinVersion| replace:: 5.15.0
+.. |PlotlyMinVersion| replace:: 5.22.0
 
 
 ===============
