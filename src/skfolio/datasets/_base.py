@@ -9,6 +9,7 @@
 # Grisel Licensed under BSD 3 clause.
 
 import gzip
+import sys
 import os
 import shutil
 import urllib.request as ur
@@ -141,6 +142,8 @@ def download_dataset(
         representing the asset price of a given observation.
     """
     url = (
+        # Use a CORS proxy when triggering requests from the browser
+        "https://corsproxy.io/?" if sys.platform == "emscripten" else ""
         f"https://github.com/skfolio/skfolio-datasets/raw/main/"
         f"datasets/{data_filename}.csv.gz"
     )
