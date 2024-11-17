@@ -16,6 +16,9 @@ jobs:
       contents: read
       pages: write
       id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.gh_pages_deployment.outputs.page_url }}
     concurrency: release
 
     steps:
