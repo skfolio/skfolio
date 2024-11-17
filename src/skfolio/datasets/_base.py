@@ -9,9 +9,9 @@
 # Grisel Licensed under BSD 3 clause.
 
 import gzip
-import sys
 import os
 import shutil
+import sys
 import urllib.request as ur
 from importlib import resources
 from pathlib import Path
@@ -141,9 +141,9 @@ def download_dataset(
         DataFrame with each row representing one observation and each column
         representing the asset price of a given observation.
     """
-    url = (
-        # Use a CORS proxy when triggering requests from the browser
-        "https://corsproxy.io/?" if sys.platform == "emscripten" else ""
+    # Use a CORS proxy when triggering requests from the browser
+    url_prefix = "https://corsproxy.io/?" if sys.platform == "emscripten" else ""
+    url = url_prefix + (
         f"https://github.com/skfolio/skfolio-datasets/raw/main/"
         f"datasets/{data_filename}.csv.gz"
     )
