@@ -13,14 +13,16 @@ jobs:
     runs-on: ubuntu-22.04
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
-      contents: write
+      contents: read
+      pages: write
+      id-token: write
     concurrency: release
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -35,8 +37,14 @@ jobs:
         working-directory: ./docs
         run: sphinx-build . _build
 
-      - name: Deploy Sphinx Docs
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      
+      - name: Upload Documentation Site Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/_build
+          path: docs/_build
+
+      - name: Deploy Sphinx Docs to GitHub Pages
+        id: gh_pages_deployment
+        uses: actions/deploy-pages@v4

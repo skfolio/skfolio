@@ -78,7 +78,10 @@ docs = [
     "sphinx-prompt",
     "sphinxext.opengraph",
     "sphinx-sitemap",
-    "sphinx-favicon"
+    "sphinx-favicon",
+    "jupyterlite-sphinx",
+    "jupyterlite-pyodide-kernel",
+    "nbformat",
 ]
 
 [project.urls]
