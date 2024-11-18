@@ -170,6 +170,54 @@ class ConvexOptimization(BaseOptimization, ABC):
         weights.
         The default (`None`) means no maximum long position.
 
+    cardinality : int, optional
+        Specifies the cardinality constraint to limit the number of invested assets.
+        This feature requires a mixed-integer solver. For an open-source option,
+        we recommend using SCIP by setting `solver="SCIP"`. To install it, use:
+        `pip install cvxpy[SCIP]`. For commercial solvers, supported options include
+        MOSEK, GUROBI, or CPLEX.
+
+    group_cardinalities : dict[str, int], optional
+        A dictionary specifying cardinality constraints for specific groups of assets.
+        The keys represent group names (strings), and the values specify the maximum
+        number of assets allowed in each group. You must provide the groups using the
+        `groups` parameter. This requires a mixed-integer solver (see `cardinality`
+        for more details).
+
+        Example
+        -------
+        >>> group_cardinalities = {'tech': 3, 'healthcare': 2}
+
+    threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the minimum weight threshold for assets in the portfolio to be
+        considered as a long position. Assets with weights below this threshold
+        will not be included as part of the portfolio's long positions. This
+        constraint can help eliminate insignificant allocations.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+        Example
+        -------
+        To ensure that only assets with a weight of at least 0.05 (5%) are considered
+        as long positions, you can set:
+
+        >>> threshold_long = 0.05
+
+    threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the maximum weight threshold for assets in the portfolio to be
+        considered as a short position. Assets with weights above this threshold
+        will not be included as part of the portfolio's short positions. This
+        constraint can help control the magnitude of short positions.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+        Example
+        -------
+        To ensure that only assets with a weight of at most -0.02 (-2%) are considered
+        as short positions, you can set:
+
+        >>> threshold_short = -0.02
+
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to
         the optimization problem:
@@ -383,7 +431,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
         for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
-        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+        https://www.cvxpy.org/tutorial/solvers
 
     scale_objective : float, optional
         Scale each objective element by this value.
@@ -725,9 +773,9 @@ class ConvexOptimization(BaseOptimization, ABC):
             raise ValueError(
                 "You are using constraints that require a mixed-integer solver and "
                 f"{self.solver} doesn't support MIP problems. For an open-source "
-                "mixed-integer solver, we recommend you use SCIP (solver='SCIP'). "
-                "To install it: `pip install cvxpy[SCIP]`. For commercial ones, you "
-                "can use MOSEK, GUROBI or CPLEX"
+                "option, we recommend using SCIP by setting `solver='SCIP'`. "
+                "To install it, use: `pip install cvxpy[SCIP]`. For commercial "
+                "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
         # Constraints
@@ -2125,7 +2173,12 @@ def _mip_weight_constraints_no_short_threshold(
     groups: np.ndarray | None,
     min_weights: np.ndarray | None,
     threshold_long: np.ndarray | None,
-) -> list:
+) -> list[cp.Expression]:
+    """
+    Create a list of MIP constraints for cardinality and threshold conditions
+    when no short threshold is present. This only requires the creation of a single
+    boolean variable array.
+    """
     constraints = []
 
     is_short = np.any(min_weights < 0)
@@ -2145,9 +2198,9 @@ def _mip_weight_constraints_no_short_threshold(
 
     if isinstance(factor, cp.Variable):
         is_invested_factor = cp.Variable(n_assets, nonneg=True)
-        # We want (w <= cp.multiply(card_bool, max_weights) * factor
+        # We want (w <= cp.multiply(is_invested_short_bool, max_weights) * factor
         # but this is not DCP. So we introduce another variable and set
-        # constraint to ensure its value is either card_bool * factor
+        # constraint to ensure its value is equal to is_invested_short_bool * factor
 
         M = 1e3
         # Big M method to activate or deactivate constraints
@@ -2196,7 +2249,12 @@ def _mip_weight_constraints_threshold_short(
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
     groups: np.ndarray | None,
-) -> list:
+) -> list[cp.Expression]:
+    """
+    Create a list of MIP constraints for cardinality and threshold constraints
+    when a short threshold is allowed. This requires the creation of two boolean
+    variable arrays, one for long positions and one for short positions.
+    """
     constraints = []
 
     is_invested_short_bool = cp.Variable(n_assets, boolean=True)
@@ -2214,9 +2272,11 @@ def _mip_weight_constraints_threshold_short(
         )
         constraints.append(a_card @ is_invested_bool - b_card <= 0)
 
-    # Big M method to activate or deactivate constraints. We want M1 bigger than
-    # factor, but as small as possible for improved convergence.
     M = 1e3
+    # Big M method to activate or deactivate constraints
+    # In the ratio homogenization procedure, the factor has been calibrated
+    # to be around 0.1-10. By using M=1e3, we ensure that M is large enough while
+    # not too large for improved MIP convergence.
 
     if isinstance(factor, cp.Variable):
         is_invested_short_factor = cp.Variable(n_assets, nonneg=True)

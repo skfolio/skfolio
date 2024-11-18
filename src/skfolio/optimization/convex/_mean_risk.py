@@ -145,6 +145,11 @@ class MeanRisk(ConvexOptimization):
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
+    efficient_frontier_size : int, optional
+        If provided, it represents the number of Pareto-optimal portfolios along the
+        efficient frontier to be computed. This parameter can only be used with
+        `objective_function = ObjectiveFunction.MINIMIZE_RISK`.
+
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ) | None, default=0.0
         Minimum assets weights (weights lower bounds).
         If a float is provided, it is applied to each asset.
@@ -213,6 +218,54 @@ class MeanRisk(ConvexOptimization):
         Maximum long position. The long position is defined as the sum of positive
         weights.
         The default (`None`) means no maximum long position.
+
+    cardinality : int, optional
+        Specifies the cardinality constraint to limit the number of invested assets.
+        This feature requires a mixed-integer solver. For an open-source option,
+        we recommend using SCIP by setting `solver="SCIP"`. To install it, use:
+        `pip install cvxpy[SCIP]`. For commercial solvers, supported options include
+        MOSEK, GUROBI, or CPLEX.
+
+    group_cardinalities : dict[str, int], optional
+        A dictionary specifying cardinality constraints for specific groups of assets.
+        The keys represent group names (strings), and the values specify the maximum
+        number of assets allowed in each group. You must provide the groups using the
+        `groups` parameter. This requires a mixed-integer solver (see `cardinality`
+        for more details).
+
+        Example
+        -------
+        >>> group_cardinalities = {'tech': 3, 'healthcare': 2}
+
+    threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the minimum weight threshold for assets in the portfolio to be
+        considered as a long position. Assets with weights below this threshold
+        will not be included as part of the portfolio's long positions. This
+        constraint can help eliminate insignificant allocations.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+        Example
+        -------
+        To ensure that only assets with a weight of at least 0.05 (5%) are considered
+        as long positions, you can set:
+
+        >>> threshold_long = 0.05
+
+    threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the maximum weight threshold for assets in the portfolio to be
+        considered as a short position. Assets with weights above this threshold
+        will not be included as part of the portfolio's short positions. This
+        constraint can help control the magnitude of short positions.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+        Example
+        -------
+        To ensure that only assets with a weight of at most -0.02 (-2%) are considered
+        as short positions, you can set:
+
+        >>> threshold_short = -0.02
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to
@@ -487,9 +540,10 @@ class MeanRisk(ConvexOptimization):
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
         The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
-        for the solver "CLARABEL" and the CVXPY default otherwise.
+        for "CLARABEL", `{"numerics/feastol": 1e-8, "limits/gap": 1e-8}` for SCIP
+        and the solver default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
-        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+        https://www.cvxpy.org/tutorial/solvers
 
     scale_objective : float, optional
         Scale each objective element by this value.

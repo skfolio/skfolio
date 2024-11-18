@@ -447,6 +447,7 @@ def test_mean_risk_utility2(
     np.testing.assert_almost_equal(p_utility, utility, precision)
 
 
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_mean_risk_ratio(
     X,
     precisions,
