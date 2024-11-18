@@ -6,9 +6,9 @@ Cardinality Constraints
 This tutorial shows how to use cardinality constraints with the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-The cardinality constraint specifies the total number of invested assets in the
-portfolio. Cardinality can also be specified for specific groups of assets (e.g., tech,
-healthcare).
+Cardinality constraint controls the total number of invested assets (non-zero weights)
+in the portfolio. Cardinality constraints can also be specified for specific groups of
+assets (e.g., tech, healthcare).
 
 In a previous tutorial, we showed how to reduce the number of assets using L1
 regularization. However, asset managers sometimes require more granularity and
@@ -21,7 +21,7 @@ MOSEK, GUROBI, or CPLEX.
 
 Mixed-Integer Programming (MIP) involves optimization with both continuous and integer
 variables and is inherently non-convex due to the discrete nature of integer variables.
-Over recent decades, MIP solvers have significantly advanced, leveraging techniques
+Over recent decades, MIP solvers have significantly advanced, utilizing methods
 like Branch and Bound and cutting planes to improve efficiency.
 
 By leveraging specialized techniques such as homogenization and the Big M method,
@@ -52,12 +52,8 @@ X = prices_to_returns(prices)
 # %%
 # Cardinality Constraint
 # ======================
-# let's use a Minimum CVaR model and limit the total number of asset to 5:
-model = MeanRisk(
-    risk_measure=RiskMeasure.CVAR,
-    cardinality=5,
-    solver="SCIP"
-)
+# let's use a Minimum CVaR model and limit the total number of assets to 5:
+model = MeanRisk(risk_measure=RiskMeasure.CVAR, cardinality=5, solver="SCIP")
 model.fit(X)
 model.weights_
 
@@ -73,56 +69,54 @@ model.weights_
 # First, let's assign two groups to each asset: sector and capitalization.
 
 groups = {
-    'AAPL': ['Technology', 'Mega Cap'],
-    'AMD': ['Technology', 'Large Cap'],
-    'BAC': ['Financials', 'Mega Cap'],
-    'BBY': ['Consumer', 'Large Cap'],
-    'CVX': ['Energy', 'Mega Cap'],
-    'GE': ['Industrials', 'Large Cap'],
-    'HD': ['Consumer', 'Mega Cap'],
-    'JNJ': ['Healthcare', 'Mega Cap'],
-    'JPM': ['Financials', 'Mega Cap'],
-    'KO': ['Consumer', 'Mega Cap'],
-    'LLY': ['Healthcare', 'Mega Cap'],
-    'MRK': ['Healthcare', 'Mega Cap'],
-    'MSFT': ['Technology', 'Mega Cap'],
-    'PEP': ['Consumer', 'Mega Cap'],
-    'PFE': ['Healthcare', 'Mega Cap'],
-    'PG': ['Consumer', 'Mega Cap'],
-    'RRC': ['Energy', 'Small Cap'],
-    'UNH': ['Healthcare', 'Mega Cap'],
-    'WMT': ['Consumer', 'Mega Cap'],
-    'XOM': ['Energy', 'Mega Cap']
+    "AAPL": ["Technology", "Mega Cap"],
+    "AMD": ["Technology", "Large Cap"],
+    "BAC": ["Financials", "Mega Cap"],
+    "BBY": ["Consumer", "Large Cap"],
+    "CVX": ["Energy", "Mega Cap"],
+    "GE": ["Industrials", "Large Cap"],
+    "HD": ["Consumer", "Mega Cap"],
+    "JNJ": ["Healthcare", "Mega Cap"],
+    "JPM": ["Financials", "Mega Cap"],
+    "KO": ["Consumer", "Mega Cap"],
+    "LLY": ["Healthcare", "Mega Cap"],
+    "MRK": ["Healthcare", "Mega Cap"],
+    "MSFT": ["Technology", "Mega Cap"],
+    "PEP": ["Consumer", "Mega Cap"],
+    "PFE": ["Healthcare", "Mega Cap"],
+    "PG": ["Consumer", "Mega Cap"],
+    "RRC": ["Energy", "Small Cap"],
+    "UNH": ["Healthcare", "Mega Cap"],
+    "WMT": ["Consumer", "Mega Cap"],
+    "XOM": ["Energy", "Mega Cap"],
 }
 
 # %%
 # Let's restrict the maximum number of assets in the following groups:
-# * Healthcare: 2
-# * Small Cap: 1
-# * Mega Cap: 4
+#
+#  * Healthcare: 2
+#  * Small Cap: 1
+#  * Mega Cap: 4
 
 model = MeanRisk(
     risk_measure=RiskMeasure.CVAR,
     groups=groups,
-    group_cardinalities={
-        "Healthcare":2,
-        "Small Cap": 1,
-        "Mega Cap":4
-    },
-    solver="SCIP"
+    group_cardinalities={"Healthcare": 2, "Small Cap": 1, "Mega Cap": 4},
+    solver="SCIP",
 )
-portfolio = model.fit_predict(X)
-portfolio.composition
+model.fit(X)
+model.weights_
 
 # %%
 # We can see that the maximum number of assets per group has been respected:
-print({k:groups[k] for k in portfolio.composition.index})
+portfolio = model.predict(X)
+print({k: groups[k] for k in portfolio.composition.index})
 
 # %%
 # Efficient Frontier
 # ==================
 # Let's plot the efficient frontiers of cardinality-constrained and unconstrained
-# mean-CVaR portfolios on both the training set and the test set.
+# mean-CVaR portfolios on the training set and analyze the results on the test set.
 # We will focus only on the portfolios on the frontier that have a CVaR at 95% below 5%:
 
 X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
@@ -159,12 +153,14 @@ show(fig)
 
 
 # %%
+# |
 # Let's plot the compositions:
-population_train.plot_composition().show()
+population_train.plot_composition()
 
 # %%
 # Finlay, we can analyse the test population using methods such as:
-# * `population_test.summary()`
-# * `population_test.plot_cumulative_returns()`
-# * `population_test.plot_distribution(measure_list=[RatioMeasure.CVAR_RATIO, RatioMeasure.ANNUALIZED_SHARPE_RATIO])`
-# * `population_test.plot_rolling_measure(measure=RatioMeasure.CVAR_RATIO)`
+#
+#  * `population_test.summary()`
+#  * `population_test.plot_cumulative_returns()`
+#  * `population_test.plot_distribution(measure_list=[RatioMeasure.CVAR_RATIO, RatioMeasure.ANNUALIZED_SHARPE_RATIO])`
+#  * `population_test.plot_rolling_measure(measure=RatioMeasure.CVAR_RATIO)`

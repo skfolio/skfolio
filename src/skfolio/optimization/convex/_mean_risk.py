@@ -220,11 +220,11 @@ class MeanRisk(ConvexOptimization):
         The default (`None`) means no maximum long position.
 
     cardinality : int, optional
-        Specifies the cardinality constraint to limit the number of invested assets.
-        This feature requires a mixed-integer solver. For an open-source option,
-        we recommend using SCIP by setting `solver="SCIP"`. To install it, use:
-        `pip install cvxpy[SCIP]`. For commercial solvers, supported options include
-        MOSEK, GUROBI, or CPLEX.
+        Specifies the cardinality constraint to limit the number of invested assets
+        (non-zero weights). This feature requires a mixed-integer solver. For an
+        open-source option, we recommend using SCIP by setting `solver="SCIP"`.
+        To install it, use: `pip install cvxpy[SCIP]`. For commercial solvers,
+        supported options include MOSEK, GUROBI, or CPLEX.
 
     group_cardinalities : dict[str, int], optional
         A dictionary specifying cardinality constraints for specific groups of assets.
@@ -232,10 +232,6 @@ class MeanRisk(ConvexOptimization):
         number of assets allowed in each group. You must provide the groups using the
         `groups` parameter. This requires a mixed-integer solver (see `cardinality`
         for more details).
-
-        Example
-        -------
-        >>> group_cardinalities = {'tech': 3, 'healthcare': 2}
 
     threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Specifies the minimum weight threshold for assets in the portfolio to be
@@ -245,13 +241,6 @@ class MeanRisk(ConvexOptimization):
         This requires a mixed-integer solver (see `cardinality` for more details).
         It follows the same format as `min_weights` and `max_weights`.
 
-        Example
-        -------
-        To ensure that only assets with a weight of at least 0.05 (5%) are considered
-        as long positions, you can set:
-
-        >>> threshold_long = 0.05
-
     threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Specifies the maximum weight threshold for assets in the portfolio to be
         considered as a short position. Assets with weights above this threshold
@@ -259,13 +248,6 @@ class MeanRisk(ConvexOptimization):
         constraint can help control the magnitude of short positions.
         This requires a mixed-integer solver (see `cardinality` for more details).
         It follows the same format as `min_weights` and `max_weights`.
-
-        Example
-        -------
-        To ensure that only assets with a weight of at most -0.02 (-2%) are considered
-        as short positions, you can set:
-
-        >>> threshold_short = -0.02
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to

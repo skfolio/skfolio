@@ -19,7 +19,7 @@ MOSEK, GUROBI, or CPLEX.
 
 Mixed-Integer Programming (MIP) involves optimization with both continuous and integer
 variables and is inherently non-convex due to the discrete nature of integer variables.
-Over recent decades, MIP solvers have significantly advanced, leveraging techniques
+Over recent decades, MIP solvers have significantly advanced, utilizing methods
 like Branch and Bound and cutting planes to improve efficiency.
 
 By leveraging specialized techniques such as homogenization and the Big M method,
@@ -58,13 +58,13 @@ model.weights_
 # %%
 # Now, let's assume we don't want weights that are too small. This means that
 # if an asset is invested (non-zero weight), it needs to be between
-# -100% to -3% **or** +5% to +100%:
+# -100% to -10% **or** +15% to +100%:
 model_threshold = MeanRisk(
     min_weights=-1,
     risk_measure=RiskMeasure.CVAR,
     threshold_long=0.15,
     threshold_short=-0.10,
-    solver="SCIP"
+    solver="SCIP",
 )
 model_threshold.fit(X)
 model_threshold.weights_
