@@ -1679,8 +1679,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets = prior_model.returns.shape[1]
         x = cp.Variable((n_assets, n_assets), symmetric=True)
         y = cp.Variable((n_assets, n_assets), symmetric=True)
-        w_reshaped = cp.reshape(w, (n_assets, 1))
-        factor_reshaped = cp.reshape(factor, (1, 1))
+        w_reshaped = cp.reshape(w, (n_assets, 1), order="F")
+        factor_reshaped = cp.reshape(factor, (1, 1), order="F")
         z1 = cp.vstack([x, w_reshaped.T])
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
@@ -2126,7 +2126,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             ptf_returns * self._scale_constraints
             - ptf_transaction_cost * self._scale_constraints
             - ptf_management_fee * self._scale_constraints
-            == cp.reshape(z, (observation_nb,)) * self._scale_constraints,
+            == cp.reshape(z, (observation_nb,), order="F") * self._scale_constraints,
             z @ gmd_w.T <= ones @ x.T + y @ ones.T,
         ]
         return risk, constraints

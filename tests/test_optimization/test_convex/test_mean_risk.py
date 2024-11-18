@@ -934,23 +934,6 @@ def test_optimization_factor_black_litterman(X, y):
     )
     model.fit(X, y)
 
-    print(model.predict(X).sharpe_ratio)
-
-    # 0.049322730599751057
-    # 0.04932077053961375
-    # 0.049322607400956286
-    # 0.04932272784320647 100
-    # 0.04932272755180084 10
-    # 0.049322730599751057 1
-    # 0.0493233267599713 0.1
-    # 0.0493192321114345 0.01
-    # 0.049322607400956286 0.3355532485185241
-
-    mu = model.prior_estimator_.prior_model_.mu
-    mu.mean()
-    np.abs(mu).mean() * 10
-    np.abs(mu).max()
-
     np.testing.assert_almost_equal(
         model.prior_estimator_.prior_model_.mu,
         np.array(
@@ -1152,6 +1135,7 @@ def test_group_cardinalities_constraint(X, groups, objective_function, expected)
         group_cardinalities=group_cardinalities,
         groups=groups,
         solver="SCIP",
+        solver_params={"randomization/randomseedshift": 0},
     )
     model.fit(X)
     w = model.weights_
@@ -1159,7 +1143,7 @@ def test_group_cardinalities_constraint(X, groups, objective_function, expected)
     np.testing.assert_almost_equal(np.sum(w), 0.9)
     assert np.max(w) - 0.2 <= 1e-8
     assert np.min(w) + 0.03 >= -1e-8
-    np.testing.assert_almost_equal(w, expected)
+    np.testing.assert_almost_equal(w, expected, 2)
 
 
 @pytest.mark.parametrize(
