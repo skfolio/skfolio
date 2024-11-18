@@ -279,15 +279,18 @@ sphinx_gallery_conf = {
 # We use the current directory
 jupyterlite_dir = str(Path(__file__).parent.absolute())
 
-# Pure-python packages which are not available in Pyodide distribution but `skfolio` depends on
+# Pure-python packages which are not available in Pyodide distribution but `skfolio`
+# depends on
 PACKAGES_TO_PRE_INSTALL = ['plotly', 'nbformat']
 
-# Runtime dependencies of `skfolio` which need to be pre-imported by the Pyodide kernel before running notebooks
+# Runtime dependencies of `skfolio` which need to be pre-imported by the Pyodide kernel
+# before running notebooks
 PACKAGES_TO_PRE_IMPORT = ['pandas', 'sklearn', 'plotly', 'cvxpy', 'nbformat', 'skfolio']
 
-# Each JupyterLite notebook's first cell will be set to this piece of code ensuring that the environment is set up correctly
-PATCH_CELL_CODE = \
-f"""
+# Each JupyterLite notebook's first cell will be set to this piece of code ensuring that
+# the environment is set up correctly
+PATCH_CELL_CODE = (
+    f"""
 # JupyterLite Initialization
 
 # We want the execution to be quiet
@@ -299,33 +302,48 @@ import piplite
 await piplite.install({json.dumps(PACKAGES_TO_PRE_INSTALL)})
 await piplite.install(['skfolio'], deps=False)
 
+# Allows external dataset download
+import pyodide_http
+pyodide_http.patch_all()
+
 # Run top-level imports
 import {', '.join(PACKAGES_TO_PRE_IMPORT)}
 """.strip()
+)
 
 # Actual notebook node with hidden source (collapsed by default in the UI)
-PATCH_CELL = nbformat.v4.new_code_cell(PATCH_CELL_CODE, metadata={'tags': ['jupyterlite'], 'jupyter': {'source_hidden': True}})
+PATCH_CELL = nbformat.v4.new_code_cell(
+    PATCH_CELL_CODE,
+    metadata={'tags': ['jupyterlite'],
+              'jupyter': {'source_hidden': True}}
+)
+
 
 def patch_jupyterlite_notebooks():
     """
-    Iterates over all ipynb files in the _build/lite/files directory and prepends the `PATCH_CELL` node to each notebook.
-    
-    We assume that the entire Sphinx build has been completed prior to running this function.
+    Iterates over all ipynb files in the _build/lite/files directory and prepends the
+    `PATCH_CELL` node to each notebook.
+
+    We assume that the entire Sphinx build has been completed prior to running this
+    function.
 
     :raises FileNotFoundError if the JupyterLite build directory is not found
     """
-    built_jupyterlite_dir = Path(jupyterlite_dir) / '_build' / 'lite'
-    if not built_jupyterlite_dir.exists():
-        raise FileNotFoundError(f'JupyterLite build directory not found at {built_jupyterlite_dir}.')
 
-    notebook_paths = (built_jupyterlite_dir / 'files').rglob('*.ipynb')
+    built_jupyterlite_dir = Path(jupyterlite_dir, '_build', 'lite')
+    if not built_jupyterlite_dir.exists():
+        raise FileNotFoundError(
+            f'JupyterLite build directory not found at {built_jupyterlite_dir}.')
+
+    notebook_paths = Path(built_jupyterlite_dir, 'files').rglob('*.ipynb')
     for notebook_path in notebook_paths:
         print(f'Patching {notebook_path}')
         with open(notebook_path, 'r') as f:
             nb = nbformat.read(f, as_version=4)
             nb.cells.insert(0, PATCH_CELL)
-            with open(notebook_path, 'w') as f:
-                nbformat.write(nb, f)
+            with open(notebook_path, 'w') as file:
+                nbformat.write(nb, file)
+
 
 # -- Sphinx Hooks ----------------------------------------------------------------
 
@@ -337,12 +355,13 @@ def on_build_finished(app, exception):
         print("Build finished successfully, running custom code now...")
         patch_jupyterlite_notebooks()
 
+
 def setup(app):
     """
     Setup function to register the build-finished hook
     """
     app.connect('build-finished', on_build_finished)
-    
+
     return {
         'version': '1.0',
         'parallel_read_safe': True,

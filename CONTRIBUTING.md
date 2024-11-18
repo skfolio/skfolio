@@ -83,7 +83,7 @@ Ready to contribute? Here's how to set yourself up for local development.
    ```shell
    $ pip install --editable ".[docs]"
    $ cd docs
-   $ make html
+   $ sphinx-build . _build
    ```
 
 8. Commit your changes and push your branch to GitHub:

@@ -154,6 +154,7 @@ show(fig)
 
 # %%
 # |
+#
 # Let's plot the compositions:
 population_train.plot_composition()
 
