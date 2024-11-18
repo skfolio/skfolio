@@ -1135,7 +1135,6 @@ def test_group_cardinalities_constraint(X, groups, objective_function, expected)
         group_cardinalities=group_cardinalities,
         groups=groups,
         solver="SCIP",
-        solver_params={"randomization/randomseedshift": 0},
     )
     model.fit(X)
     w = model.weights_
