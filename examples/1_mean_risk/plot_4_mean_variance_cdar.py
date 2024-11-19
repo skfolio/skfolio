@@ -33,7 +33,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # =====
 # First, we create a Maximum Sharpe Ratio model that we fit on the training set:
 model = MeanRisk(
-    risk_measure=RiskMeasure.VARIANCE,
+    risk_measure=RiskMeasure.STANDARD_DEVIATION,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
 )
 portfolio = model.fit_predict(X_train)
@@ -54,7 +54,7 @@ print(portfolio.cdar)
 # Now we find the pareto optimal portfolios that maximizes the Sharpe under CDaR
 # constraint ranging from 9.72% to 17%:
 model = MeanRisk(
-    risk_measure=RiskMeasure.VARIANCE,
+    risk_measure=RiskMeasure.STANDARD_DEVIATION,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
     max_cdar=np.linspace(start=0.0972, stop=0.17, num=10),
 )

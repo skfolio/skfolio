@@ -7,8 +7,8 @@ This tutorial shows how to use cardinality constraints with the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
 Cardinality constraint controls the total number of invested assets (non-zero weights)
-in the portfolio. Cardinality constraints can also be specified for specific groups of
-assets (e.g., tech, healthcare).
+in the portfolio. Cardinality constraints can also be specified for asset groups
+(e.g., tech, healthcare).
 
 In a previous tutorial, we showed how to reduce the number of assets using L1
 regularization. However, asset managers sometimes require more granularity and

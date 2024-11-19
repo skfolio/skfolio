@@ -56,9 +56,9 @@ model.fit(X)
 model.weights_
 
 # %%
-# Now, let's assume we don't want weights that are too small. This means that
-# if an asset is invested (non-zero weight), it needs to be between
-# -100% to -10% **or** +15% to +100%:
+# Now, let's assume we don't want weights that are too small.
+# This means that, let’s say, if an asset is invested (non-zero weight), it needs to be
+# between -100% to -10% **or** +15% to +100%:
 model_threshold = MeanRisk(
     min_weights=-1,
     risk_measure=RiskMeasure.CVAR,
