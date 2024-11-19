@@ -18,6 +18,7 @@ import numpy.typing as npt
 import scipy as sc
 import scipy.sparse.linalg as scl
 import sklearn.utils.metadata_routing as skm
+from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure, owa_gmd_weights
@@ -28,7 +29,7 @@ from skfolio.uncertainty_set import (
     BaseMuUncertaintySet,
     UncertaintySet,
 )
-from skfolio.utils.equations import equations_to_matrix
+from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
 from skfolio.utils.tools import AutoEnum, cache_method, input_to_array
 
 INSTALLED_SOLVERS = cp.installed_solvers()
@@ -168,6 +169,36 @@ class ConvexOptimization(BaseOptimization, ABC):
         Maximum long position. The long position is defined as the sum of positive
         weights.
         The default (`None`) means no maximum long position.
+
+    cardinality : int, optional
+        Specifies the cardinality constraint to limit the number of invested assets
+        (non-zero weights). This feature requires a mixed-integer solver. For an
+        open-source option, we recommend using SCIP by setting `solver="SCIP"`.
+        To install it, use: `pip install cvxpy[SCIP]`. For commercial solvers,
+        supported options include MOSEK, GUROBI, or CPLEX.
+
+    group_cardinalities : dict[str, int], optional
+        A dictionary specifying cardinality constraints for specific groups of assets.
+        The keys represent group names (strings), and the values specify the maximum
+        number of assets allowed in each group. You must provide the groups using the
+        `groups` parameter. This requires a mixed-integer solver (see `cardinality`
+        for more details).
+
+    threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the minimum weight threshold for assets in the portfolio to be
+        considered as a long position. Assets with weights below this threshold
+        will not be included as part of the portfolio's long positions. This
+        constraint can help eliminate insignificant allocations.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+    threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the maximum weight threshold for assets in the portfolio to be
+        considered as a short position. Assets with weights above this threshold
+        will not be included as part of the portfolio's short positions. This
+        constraint can help control the magnitude of short positions.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to
@@ -382,7 +413,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
         for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
-        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+        https://www.cvxpy.org/tutorial/solvers
 
     scale_objective : float, optional
         Scale each objective element by this value.
@@ -453,6 +484,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         max_budget: float | None = None,
         max_short: float | None = None,
         max_long: float | None = None,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        threshold_long: skt.MultiInput | None = None,
+        threshold_short: skt.MultiInput | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -502,6 +537,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.max_budget = max_budget
         self.max_short = max_short
         self.max_long = max_long
+        self.cardinality = cardinality
+        self.group_cardinalities = group_cardinalities
+        self.threshold_long = threshold_long
+        self.threshold_short = threshold_short
         self.min_acceptable_return = min_acceptable_return
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
@@ -648,32 +687,92 @@ class ConvexOptimization(BaseOptimization, ABC):
         """
         constraints = []
 
-        if self.min_weights is not None:
+        # Clean and convert to array
+        min_weights = self.min_weights
+        max_weights = self.max_weights
+        threshold_long = self.threshold_long
+        threshold_short = self.threshold_short
+        groups = self.groups
+
+        if min_weights is not None:
             min_weights = self._clean_input(
-                self.min_weights,
+                min_weights,
                 n_assets=n_assets,
                 fill_value=0,
                 name="min_weights",
             )
 
+        if max_weights is not None:
+            max_weights = self._clean_input(
+                max_weights,
+                n_assets=n_assets,
+                fill_value=1,
+                name="max_weights",
+            )
+
+        if threshold_long is not None:
+            threshold_long = self._clean_input(
+                threshold_long,
+                n_assets=n_assets,
+                fill_value=0,
+                name="threshold_long",
+            )
+            if np.all(threshold_long == 0):
+                threshold_long = None
+
+        if threshold_short is not None:
+            threshold_short = self._clean_input(
+                threshold_short,
+                n_assets=n_assets,
+                fill_value=0,
+                name="threshold_short",
+            )
+            if np.all(threshold_short == 0):
+                threshold_short = None
+
+        if groups is not None:
+            groups = input_to_array(
+                items=groups,
+                n_assets=n_assets,
+                fill_value="",
+                dim=2,
+                assets_names=(
+                    self.feature_names_in_
+                    if hasattr(self, "feature_names_in_")
+                    else None
+                ),
+                name="groups",
+            )
+
+        is_mip = (
+            (self.cardinality is not None and self.cardinality < n_assets)
+            or (self.group_cardinalities is not None)
+            or self.threshold_long is not None
+            or self.threshold_short is not None
+        )
+
+        if is_mip and self.solver not in MI_SOLVERS:
+            raise ValueError(
+                "You are using constraints that require a mixed-integer solver and "
+                f"{self.solver} doesn't support MIP problems. For an open-source "
+                "option, we recommend using SCIP by setting `solver='SCIP'`. "
+                "To install it, use: `pip install cvxpy[SCIP]`. For commercial "
+                "solvers, supported options include MOSEK, GUROBI, or CPLEX."
+            )
+
+        # Constraints
+        if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
                     f"{self.__class__.__name__} must have non negative `min_weights` "
                     f"constraint otherwise the problem becomes non-convex."
                 )
-
             constraints.append(
                 w * self._scale_constraints
                 >= min_weights * factor * self._scale_constraints
             )
 
-        if self.max_weights is not None:
-            max_weights = self._clean_input(
-                self.max_weights,
-                n_assets=n_assets,
-                fill_value=1,
-                name="max_weights",
-            )
+        if max_weights is not None:
             constraints.append(
                 w * self._scale_constraints
                 <= max_weights * factor * self._scale_constraints
@@ -723,27 +822,80 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
+        if is_mip:
+            is_short = np.any(min_weights < 0)
+
+            if max_weights is None or min_weights is None:
+                raise ValueError(
+                    "'max_weights' and 'min_weights' must be provided with cardinality "
+                    "constraint"
+                )
+            if np.all(min_weights > 0):
+                raise ValueError(
+                    "Cardinality and Threshold constraint can only be applied "
+                    "if 'min_weights' are not all strictly positive (you allow some "
+                    "weights to be 0)"
+                )
+
+            if self.group_cardinalities is not None and groups is None:
+                raise ValueError(
+                    "When 'group_cardinalities' is provided, you must also "
+                    "also provide 'groups'"
+                )
+
+            if (
+                self.threshold_long is not None
+                and self.threshold_short is None
+                and is_short
+            ):
+                raise ValueError(
+                    "When 'threshold_long' is provided and 'min_weights' can be negative "
+                    "(short position are allowed), then 'threshold_short' must also be "
+                    "provided"
+                )
+
+            if threshold_short is not None and threshold_long is None:
+                raise ValueError(
+                    "When 'threshold_short' is provided, 'threshold_long' must also be "
+                    "provided"
+                )
+
+            if self.threshold_short is not None and is_short:
+                constraints += _mip_weight_constraints_threshold_short(
+                    n_assets=n_assets,
+                    w=w,
+                    factor=factor,
+                    scale_constraints=self._scale_constraints,
+                    cardinality=self.cardinality,
+                    group_cardinalities=self.group_cardinalities,
+                    max_weights=max_weights,
+                    groups=groups,
+                    min_weights=min_weights,
+                    threshold_long=threshold_long,
+                    threshold_short=threshold_short,
+                )
+            else:
+                constraints += _mip_weight_constraints_no_short_threshold(
+                    n_assets=n_assets,
+                    w=w,
+                    factor=factor,
+                    scale_constraints=self._scale_constraints,
+                    cardinality=self.cardinality,
+                    group_cardinalities=self.group_cardinalities,
+                    max_weights=max_weights,
+                    groups=groups,
+                    min_weights=min_weights,
+                    threshold_long=threshold_long,
+                )
+
         if self.linear_constraints is not None:
-            if self.groups is None:
+            if groups is None:
                 if not hasattr(self, "feature_names_in_"):
                     raise ValueError(
                         "If `linear_constraints` is provided you must provide either"
                         " `groups` or `X` as a DataFrame with asset names in columns"
                     )
                 groups = np.asarray([self.feature_names_in_])
-            else:
-                groups = input_to_array(
-                    items=self.groups,
-                    n_assets=n_assets,
-                    fill_value="",
-                    dim=2,
-                    assets_names=(
-                        self.feature_names_in_
-                        if hasattr(self, "feature_names_in_")
-                        else None
-                    ),
-                    name="groups",
-                )
             a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
                 groups=groups,
                 equations=self.linear_constraints,
@@ -975,6 +1127,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                 weights = w.value / factor.value
                 problem_values = {
                     name: expression.value / factor.value
+                    if name != "factor"
+                    else expression.value
                     for name, expression in expressions.items()
                 }
                 problem_values["objective"] = (
@@ -1000,7 +1154,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 if len(params_string) != 0:
                     params_string = f" with parameters {params_string}"
                 msg = (
-                    f"Solver '{self.solver}' failed for {params_string}. Try another"
+                    f"Solver '{self.solver}' failed{params_string}. Try another"
                     " solver, or solve with solver_params=dict(verbose=True) for more"
                     " information"
                 )
@@ -1525,8 +1679,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets = prior_model.returns.shape[1]
         x = cp.Variable((n_assets, n_assets), symmetric=True)
         y = cp.Variable((n_assets, n_assets), symmetric=True)
-        w_reshaped = cp.reshape(w, (n_assets, 1))
-        factor_reshaped = cp.reshape(factor, (1, 1))
+        w_reshaped = cp.reshape(w, (n_assets, 1), order="F")
+        factor_reshaped = cp.reshape(factor, (1, 1), order="F")
         z1 = cp.vstack([x, w_reshaped.T])
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
@@ -1972,7 +2126,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             ptf_returns * self._scale_constraints
             - ptf_transaction_cost * self._scale_constraints
             - ptf_management_fee * self._scale_constraints
-            == cp.reshape(z, (observation_nb,)) * self._scale_constraints,
+            == cp.reshape(z, (observation_nb,), order="F") * self._scale_constraints,
             z @ gmd_w.T <= ones @ x.T + y @ ones.T,
         ]
         return risk, constraints
@@ -1988,3 +2142,161 @@ class ConvexOptimization(BaseOptimization, ABC):
     @abstractmethod
     def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params):
         pass
+
+
+def _mip_weight_constraints_no_short_threshold(
+    n_assets: int,
+    w: cp.Variable,
+    factor: skt.Factor,
+    scale_constraints: cp.Constant,
+    cardinality: int | None,
+    group_cardinalities: dict[str, int] | None,
+    max_weights: np.ndarray | None,
+    groups: np.ndarray | None,
+    min_weights: np.ndarray | None,
+    threshold_long: np.ndarray | None,
+) -> list[cp.Expression]:
+    """
+    Create a list of MIP constraints for cardinality and threshold conditions
+    when no short threshold is present. This only requires the creation of a single
+    boolean variable array.
+    """
+    constraints = []
+
+    is_short = np.any(min_weights < 0)
+
+    is_invested_bool = cp.Variable(n_assets, boolean=True)
+
+    if cardinality is not None and cardinality < n_assets:
+        constraints.append(cp.sum(is_invested_bool) <= cardinality)
+
+    if group_cardinalities is not None:
+        a_card, b_card = group_cardinalities_to_matrix(
+            groups=groups,
+            group_cardinalities=group_cardinalities,
+            raise_if_group_missing=False,
+        )
+        constraints.append(a_card @ is_invested_bool - b_card <= 0)
+
+    if isinstance(factor, cp.Variable):
+        is_invested_factor = cp.Variable(n_assets, nonneg=True)
+        # We want (w <= cp.multiply(is_invested_short_bool, max_weights) * factor
+        # but this is not DCP. So we introduce another variable and set
+        # constraint to ensure its value is equal to is_invested_short_bool * factor
+
+        M = 1e3
+        # Big M method to activate or deactivate constraints
+        # In the ratio homogenization procedure, the factor has been calibrated
+        # to be around 0.1-10. By using M=1e3, we ensure that M is large enough while
+        # not too large for improved MIP convergence.
+
+        constraints += [
+            is_invested_factor <= factor,
+            is_invested_factor <= M * is_invested_bool,
+            is_invested_factor >= factor - M * (1 - is_invested_bool),
+        ]
+        is_invested = is_invested_factor
+    else:
+        is_invested = is_invested_bool
+
+    if threshold_long is not None:
+        constraints.append(
+            w * scale_constraints
+            >= cp.multiply(is_invested, threshold_long) * scale_constraints
+        )
+
+    constraints.append(
+        w * scale_constraints
+        <= cp.multiply(is_invested, max_weights) * scale_constraints
+    )
+
+    if is_short:
+        constraints.append(
+            w * scale_constraints
+            >= cp.multiply(is_invested, min_weights) * scale_constraints
+        )
+
+    return constraints
+
+
+def _mip_weight_constraints_threshold_short(
+    n_assets: int,
+    w: cp.Variable,
+    factor: skt.Factor,
+    scale_constraints: cp.Constant,
+    max_weights: np.ndarray,
+    min_weights: np.ndarray,
+    threshold_long: np.ndarray,
+    threshold_short: np.ndarray,
+    cardinality: int | None,
+    group_cardinalities: dict[str, int] | None,
+    groups: np.ndarray | None,
+) -> list[cp.Expression]:
+    """
+    Create a list of MIP constraints for cardinality and threshold constraints
+    when a short threshold is allowed. This requires the creation of two boolean
+    variable arrays, one for long positions and one for short positions.
+    """
+    constraints = []
+
+    is_invested_short_bool = cp.Variable(n_assets, boolean=True)
+    is_invested_long_bool = cp.Variable(n_assets, boolean=True)
+    is_invested_bool = is_invested_short_bool + is_invested_long_bool
+
+    if cardinality is not None and cardinality < n_assets:
+        constraints.append(cp.sum(is_invested_bool) <= cardinality)
+
+    if group_cardinalities is not None:
+        a_card, b_card = group_cardinalities_to_matrix(
+            groups=groups,
+            group_cardinalities=group_cardinalities,
+            raise_if_group_missing=False,
+        )
+        constraints.append(a_card @ is_invested_bool - b_card <= 0)
+
+    M = 1e3
+    # Big M method to activate or deactivate constraints
+    # In the ratio homogenization procedure, the factor has been calibrated
+    # to be around 0.1-10. By using M=1e3, we ensure that M is large enough while
+    # not too large for improved MIP convergence.
+
+    if isinstance(factor, cp.Variable):
+        is_invested_short_factor = cp.Variable(n_assets, nonneg=True)
+        is_invested_long_factor = cp.Variable(n_assets, nonneg=True)
+        # We want (w <= cp.multiply(is_invested_short_bool, max_weights) * factor
+        # but this is not DCP. So we introduce another variable and set
+        # constraint to ensure its value is equal to is_invested_short_bool * factor
+
+        constraints += [
+            is_invested_short_factor <= factor,
+            is_invested_long_factor <= factor,
+            is_invested_short_factor <= M * is_invested_short_bool,
+            is_invested_long_factor <= M * is_invested_long_bool,
+            is_invested_short_factor >= factor - M * (1 - is_invested_short_bool),
+            is_invested_long_factor >= factor - M * (1 - is_invested_long_bool),
+        ]
+        is_invested_short = is_invested_short_factor
+        is_invested_long = is_invested_long_factor
+    else:
+        is_invested_short = is_invested_short_bool
+        is_invested_long = is_invested_long_bool
+
+    constraints += [
+        is_invested_bool <= 1.0,
+        w * scale_constraints
+        <= cp.multiply(is_invested_long, max_weights) * scale_constraints,
+        w * scale_constraints
+        >= cp.multiply(is_invested_short, min_weights) * scale_constraints,
+        # Apply threshold_long if is_invested_long == 1,
+        # unrestricted if is_invested_long == 0
+        w * scale_constraints
+        >= cp.multiply(is_invested_long, threshold_long) * scale_constraints
+        - M * (1 - is_invested_long_bool) * scale_constraints,
+        # # Apply threshold_short if is_invested_short == 1,
+        # # unrestricted if is_invested_short == 0
+        w * scale_constraints
+        <= cp.multiply(is_invested_short, threshold_short) * scale_constraints
+        + M * (1 - is_invested_short_bool) * scale_constraints,
+    ]
+
+    return constraints

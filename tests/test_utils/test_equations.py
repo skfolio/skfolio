@@ -4,9 +4,11 @@ import pytest
 from skfolio.exceptions import DuplicateGroupsError, EquationToMatrixError
 from skfolio.utils.equations import (
     _COMPARISON_OPERATORS,
+    _matching_array,
     _split_equation_string,
     _string_to_equation,
     equations_to_matrix,
+    group_cardinalities_to_matrix,
 )
 
 
@@ -16,6 +18,12 @@ def groups():
         [["a", "a", "b", "b"], ["c", "c", "j", "c"], ["d", "e", "d", "e"]]
     )
     return groups
+
+
+@pytest.fixture
+def group_cardinalities():
+    group_cardinalities = {"a": 2, "b": 3, "e": 4}
+    return group_cardinalities
 
 
 def test_split_equation_string():
@@ -64,6 +72,19 @@ def test_string_to_equation():
     assert is_inequality is False
     np.testing.assert_array_almost_equal(left, np.array([-2.5, -2.5, -2, -2.1, 0]))
     assert right == -1.5
+
+
+def test_matching_array(groups):
+    arr = _matching_array(values=groups, key="a", sum_to_one=False)
+
+    assert np.array_equal(arr, np.array([1.0, 1.0, 0.0, 0.0]))
+
+    arr = _matching_array(values=groups, key="e", sum_to_one=False)
+    assert np.array_equal(arr, np.array([0.0, 1.0, 0.0, 1.0]))
+
+    arr = _matching_array(values=groups, key="a", sum_to_one=True)
+
+    assert np.array_equal(arr, np.array([0.5, 0.5, 0.0, 0.0]))
 
 
 def test_equations_to_matrix_inequality(groups):
@@ -191,3 +212,22 @@ def test_views():
         ),
     )
     assert np.array_equal(b_eq, np.array([0.03, 0.04, 0.06]))
+
+
+def test_group_cardinalities_to_matrix(groups, group_cardinalities):
+    a, b = group_cardinalities_to_matrix(
+        groups=groups, group_cardinalities=group_cardinalities
+    )
+
+    assert np.array_equal(
+        a, np.array([[1.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 0.0, 1.0]])
+    )
+
+    assert np.array_equal(b, np.array([2, 3, 4]))
+
+
+def test_group_cardinalities_to_matrix_error(groups, group_cardinalities):
+    with pytest.raises(EquationToMatrixError):
+        _ = group_cardinalities_to_matrix(
+            groups=groups, group_cardinalities={"x": 5}, raise_if_group_missing=True
+        )

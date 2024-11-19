@@ -119,7 +119,6 @@ population_test = (
 )
 
 for tag in ["No Regularization", "L1 Regularization"]:
-
     print("=================")
     print(tag)
     print("=================")

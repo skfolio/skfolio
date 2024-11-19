@@ -40,7 +40,7 @@ print(X_train.head())
 # returned by the `predict` method. It can be
 # omitted, here we use it to give a name to our maximum Sharpe Ration portfolio:
 model = MeanRisk(
-    risk_measure=RiskMeasure.VARIANCE,
+    risk_measure=RiskMeasure.STANDARD_DEVIATION,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
     portfolio_params=dict(name="Max Sharpe"),
 )

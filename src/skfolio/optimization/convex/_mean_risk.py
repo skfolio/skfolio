@@ -1,11 +1,12 @@
 """Mean Risk Optimization estimator."""
 
+import warnings
+
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
-
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
@@ -144,6 +145,11 @@ class MeanRisk(ConvexOptimization):
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
+    efficient_frontier_size : int, optional
+        If provided, it represents the number of Pareto-optimal portfolios along the
+        efficient frontier to be computed. This parameter can only be used with
+        `objective_function = ObjectiveFunction.MINIMIZE_RISK`.
+
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ) | None, default=0.0
         Minimum assets weights (weights lower bounds).
         If a float is provided, it is applied to each asset.
@@ -212,6 +218,36 @@ class MeanRisk(ConvexOptimization):
         Maximum long position. The long position is defined as the sum of positive
         weights.
         The default (`None`) means no maximum long position.
+
+    cardinality : int, optional
+        Specifies the cardinality constraint to limit the number of invested assets
+        (non-zero weights). This feature requires a mixed-integer solver. For an
+        open-source option, we recommend using SCIP by setting `solver="SCIP"`.
+        To install it, use: `pip install cvxpy[SCIP]`. For commercial solvers,
+        supported options include MOSEK, GUROBI, or CPLEX.
+
+    group_cardinalities : dict[str, int], optional
+        A dictionary specifying cardinality constraints for specific groups of assets.
+        The keys represent group names (strings), and the values specify the maximum
+        number of assets allowed in each group. You must provide the groups using the
+        `groups` parameter. This requires a mixed-integer solver (see `cardinality`
+        for more details).
+
+    threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the minimum weight threshold for assets in the portfolio to be
+        considered as a long position. Assets with weights below this threshold
+        will not be included as part of the portfolio's long positions. This
+        constraint can help eliminate insignificant allocations.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
+
+    threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Specifies the maximum weight threshold for assets in the portfolio to be
+        considered as a short position. Assets with weights above this threshold
+        will not be included as part of the portfolio's short positions. This
+        constraint can help control the magnitude of short positions.
+        This requires a mixed-integer solver (see `cardinality` for more details).
+        It follows the same format as `min_weights` and `max_weights`.
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to
@@ -486,9 +522,10 @@ class MeanRisk(ConvexOptimization):
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
         The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
-        for the solver "CLARABEL" and the CVXPY default otherwise.
+        for "CLARABEL", `{"numerics/feastol": 1e-8, "limits/gap": 1e-8}` for SCIP
+        and the solver default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
-        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+        https://www.cvxpy.org/tutorial/solvers
 
     scale_objective : float, optional
         Scale each objective element by this value.
@@ -511,7 +548,7 @@ class MeanRisk(ConvexOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the 
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
         optimization model and passed to the portfolio.
 
     Attributes
@@ -557,6 +594,10 @@ class MeanRisk(ConvexOptimization):
         max_budget: float | None = None,
         max_short: float | None = None,
         max_long: float | None = None,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        threshold_long: skt.MultiInput | None = None,
+        threshold_short: skt.MultiInput | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -617,6 +658,10 @@ class MeanRisk(ConvexOptimization):
             max_budget=max_budget,
             max_short=max_short,
             max_long=max_long,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            threshold_long=threshold_long,
+            threshold_short=threshold_short,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
             previous_weights=previous_weights,
@@ -734,13 +779,42 @@ class MeanRisk(ConvexOptimization):
         n_observations, n_assets = prior_model.returns.shape
 
         # set solvers params
-        if self.solver == "CLARABEL":
-            self._set_solver_params(default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9})
-        else:
-            self._set_solver_params(default=None)
+        match self.solver:
+            case "CLARABEL":
+                self._set_solver_params(
+                    default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
+                )
+            case "SCIP":
+                self._set_solver_params(
+                    default={"numerics/feastol": 1e-8, "limits/gap": 1e-8}
+                )
+            case _:
+                self._set_solver_params(default=None)
 
-        # set scales
+        # set scales and check measure
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
+            if self.overwrite_expected_return is not None:
+                if self.risk_measure == RiskMeasure.VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the "
+                        "optimization will return the maximum Sharpe Ratio portfolio. "
+                        "This is because the mean/variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/std. To suppress this"
+                        "warning, replace 'VARIANCE' by 'STANDARD_DEVIATION'",
+                        stacklevel=2,
+                    )
+
+                elif self.risk_measure == RiskMeasure.SEMI_VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
+                        "optimization will return the maximum Sortino Ratio portfolio. "
+                        "This is because the mean/semi-variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/semi-std ratio. To "
+                        "suppress this warning, replace 'SEMI_VARIANCE' by "
+                        "'SEMI_DEVIATION'",
+                        stacklevel=2,
+                    )
+
             self._set_scale_objective(default=1)
             self._set_scale_constraints(default=1)
         else:
@@ -959,31 +1033,38 @@ class MeanRisk(ConvexOptimization):
                     + custom_objective * self._scale_objective
                 )
             case ObjectiveFunction.MAXIMIZE_RATIO:
+                homogenization_factor = _optimal_homogenization_factor(
+                    mu=prior_model.mu
+                )
+
                 if expected_return.is_affine():
                     # Charnes-Cooper's variable transformation for Fractional
-                    # Programming problem :Max(f1/f2) with f2 linear
+                    # Programming problem Max(f1/f2) with f2 linear and with
+                    # 1-homogeneous function (homogeneous technique)
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
                         * factor
                         * self._scale_constraints
-                        == cp.Constant(1) * self._scale_constraints
+                        == cp.Constant(homogenization_factor) * self._scale_constraints
                     ]
                 else:
                     # Schaible's generalization of Charnes-Cooper's variable
                     # transformation for Fractional Programming problem :Max(f1/f2)
-                    # with f1 concave instead of linear: Schaible,"Parameter-free
-                    # Convex Equivalent and Dual Programs of Fractional Programming
-                    # Problems".
+                    # with f1 concave instead of linear and with 1-homogeneous function.
+                    # (homogeneous technique)
+                    # Schaible,"Parameter-free Convex Equivalent and Dual Programs of
+                    # Fractional Programming Problems".
                     # The condition to work is f1 >= 0, so we need to raise an user
                     # warning when it's not the case.
                     # TODO: raise user warning when f1<0
+
                     constraints += [
                         expected_return * self._scale_constraints
                         - cp.Constant(self.risk_free_rate)
                         * factor
                         * self._scale_constraints
-                        >= cp.Constant(1) * self._scale_constraints
+                        >= cp.Constant(homogenization_factor) * self._scale_constraints
                     ]
                 objective = cp.Minimize(
                     risk * self._scale_objective
@@ -1014,3 +1095,27 @@ class MeanRisk(ConvexOptimization):
         )
 
         return self
+
+
+def _optimal_homogenization_factor(mu: np.ndarray) -> float:
+    """
+    Compute the optimal homogenization factor for ratio optimization based on expected
+    returns.
+
+    While a default value of 1 is commonly used in textbooks for simplicity,
+    fine-tuning this factor based on the underlying data can enhance convergence.
+    Additionally, using a data-driven approach to determine this factor can improve the
+    robustness of certain constraints, such as the calibration of big M methods.
+
+    Parameters
+    ----------
+    mu : ndarray of shape (n_assets,)
+        Vector of expected returns.
+
+    Returns
+    -------
+    value : float
+        Homogenization factor.
+    """
+
+    return min(1e3, max(1e-3, np.mean(np.abs(mu))))

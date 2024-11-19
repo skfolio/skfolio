@@ -13,8 +13,8 @@ def test_maximum_diversification(X):
     model = MaximumDiversification()
     model.fit(X)
     ptf = model.predict(X)
-    diversification = model.problem_values_["expected_return"] / np.sqrt(
-        model.problem_values_["risk"]
+    diversification = (
+        model.problem_values_["expected_return"] / model.problem_values_["risk"]
     )
     np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
@@ -23,9 +23,10 @@ def test_maximum_diversification_factor(X, y):
     model = MaximumDiversification(prior_estimator=FactorModel())
     model.fit(X, y)
     ptf = model.predict(X)
-    diversification = model.problem_values_["expected_return"] / np.sqrt(
-        model.problem_values_["risk"]
+    diversification = (
+        model.problem_values_["expected_return"] / model.problem_values_["risk"]
     )
+
     with pytest.raises(AssertionError):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 

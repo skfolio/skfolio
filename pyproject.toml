@@ -60,11 +60,13 @@ classifiers = [
 
 [project.optional-dependencies]
 tests = [
+    "cvxpy[SCIP]",
     "pytest",
     "pytest-cov",
     "ruff"
 ]
 docs = [
+    "cvxpy[SCIP]",
     "Sphinx",
     "sphinx-gallery",
     "sphinx-design",

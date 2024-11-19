@@ -364,7 +364,7 @@ class MaximumDiversification(MeanRisk):
     ):
         super().__init__(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-            risk_measure=RiskMeasure.VARIANCE,
+            risk_measure=RiskMeasure.STANDARD_DEVIATION,
             prior_estimator=prior_estimator,
             min_weights=min_weights,
             max_weights=max_weights,
