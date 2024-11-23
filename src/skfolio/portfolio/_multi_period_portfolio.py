@@ -18,8 +18,6 @@ from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.utils.tools import deduplicate_names
 
-pd.options.plotting.backend = "plotly"
-
 
 class MultiPeriodPortfolio(BasePortfolio):
     r"""Multi-Period Portfolio class.
@@ -554,6 +552,51 @@ class MultiPeriodPortfolio(BasePortfolio):
     def composition(self) -> pd.DataFrame:
         """DataFrame of the Portfolio composition."""
         df = pd.concat([p.composition for p in self], axis=1)
+        df.fillna(0, inplace=True)
+        df.columns = deduplicate_names(df.columns)
+        return df
+
+    @property
+    def weights_per_observation(self) -> pd.DataFrame:
+        """DataFrame of the Portfolio weights per observation."""
+        return (
+            pd.concat([p.weights_per_observation for p in self], axis=0)
+            .fillna(0)
+            .sort_index()
+        )
+
+    def contribution(
+        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
+    ) -> np.ndarray | pd.DataFrame:
+        r"""Compute the contribution of each asset to a given measure for each
+        portfolio.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        to_df : bool, default=False
+            If this is set to True, a DataFrame with asset names in index and portfolio
+            names in columns is returned, otherwise a list of numpy array is returned.
+            When a DataFrame is returned, the assets with zero weights are removed.
+
+        Returns
+        -------
+        values : list of numpy array of shape (n_assets,) for each portfolio or a DataFrame
+            The measure contribution of each asset for each portfolio.
+        """
+        contributions = [
+            ptf.contribution(measure=measure, spacing=spacing, to_df=to_df)
+            for ptf in self
+        ]
+        if not to_df:
+            return contributions
+        df = pd.concat(contributions, axis=1)
         df.fillna(0, inplace=True)
         df.columns = deduplicate_names(df.columns)
         return df

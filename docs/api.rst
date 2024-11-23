@@ -364,6 +364,7 @@ Classes
     moments.OAS
     moments.ShrunkCovariance
     moments.GraphicalLassoCV
+    moments.ImpliedCovariance
 
 .. _distance_ref:
 
@@ -491,6 +492,8 @@ Classes
     pre_selection.DropCorrelated
     pre_selection.SelectKExtremes
     pre_selection.SelectNonDominated
+    pre_selection.SelectComplete
+    pre_selection.SelectNonExpiring
 
 .. _model_selection_ref:
 
@@ -533,6 +536,7 @@ Functions
     :template: function.rst
 
     model_selection.cross_val_predict
+    model_selection.optimal_folds_number
 
 .. _metrics_ref:
 
@@ -615,4 +619,5 @@ Functions
     stats.compute_optimal_n_clusters
     stats.rand_weights
     stats.rand_weights_dirichlet
+    stats.minimize_relative_weight_deviation
 

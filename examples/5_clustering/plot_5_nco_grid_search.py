@@ -26,6 +26,7 @@ from skfolio.model_selection import (
     CombinatorialPurgedCV,
     WalkForward,
     cross_val_predict,
+    optimal_folds_number,
 )
 from skfolio.optimization import (
     EqualWeighted,
@@ -133,11 +134,16 @@ for ptf in population:
 # models. For a more robust analysis, we can use
 # :class:`~skfolio.model_selection.CombinatorialPurgedCV` to create multiple testing
 # paths from different training folds combinations.
-cv = CombinatorialPurgedCV(n_folds=9, n_test_folds=7)
+#
+# We choose `n_folds` and `n_test_folds` to obtain around 30 test paths and an average
+# training size of 252 days:
+n_folds, n_test_folds = optimal_folds_number(
+    n_observations=X_test.shape[0],
+    target_n_test_paths=30,
+    target_train_size=252,
+)
 
-# %%
-# We choose `n_folds` and `n_test_folds` to obtain more than 30 test paths and an average
-# training size of approximately 252 days:
+cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
 cv.summary(X_test)
 
 # %%

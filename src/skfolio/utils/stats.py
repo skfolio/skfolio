@@ -1,5 +1,7 @@
 """Tools module"""
 
+import warnings
+
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # License: BSD 3 clause
@@ -7,12 +9,13 @@
 # Precise, Copyright (c) 2021, Peter Cotton.
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
-
 from enum import auto
 
+import cvxpy as cp
 import numpy as np
 import scipy.cluster.hierarchy as sch
 import scipy.optimize as sco
+import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
@@ -34,6 +37,7 @@ __all__ = [
     "compute_optimal_n_clusters",
     "rand_weights",
     "rand_weights_dirichlet",
+    "minimize_relative_weight_deviation",
     "inverse_multiply",
     "multiply_by_inverse",
     "symmetric_step_up_matrix",
@@ -106,7 +110,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
     x = np.sort(x)
     n = len(x)
 
-    def func(y: float):
+    def func(y: np.ndarray) -> float:
         y = y[0]
         if y <= 0:
             return np.inf
@@ -185,7 +189,7 @@ def is_cholesky_dec(x: np.ndarray) -> bool:
     try:
         np.linalg.cholesky(x)
         return True
-    except np.linalg.linalg.LinAlgError:
+    except np.linalg.LinAlgError:
         return False
 
 
@@ -200,7 +204,7 @@ def is_positive_definite(x: np.ndarray) -> bool:
     Returns
     -------
     value : bool
-        True if if the matrix is positive definite, False otherwise.
+        True if the matrix is positive definite, False otherwise.
     """
     return np.all(np.linalg.eigvals(x) > 0)
 
@@ -305,16 +309,25 @@ def corr_to_cov(corr: np.ndarray, std: np.ndarray):
 _CLIPPING_VALUE = 1e-13
 
 
-def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int = 100):
+def cov_nearest(
+    cov: np.ndarray,
+    higham: bool = False,
+    higham_max_iteration: int = 100,
+    warn: bool = False,
+):
     """Compute the nearest covariance matrix that is positive definite and with a
     cholesky decomposition than can be computed. The variance is left unchanged.
+    A covariance matrix that is not positive definite often occurs in high
+    dimensional problems. It can be due to multicollinearity, floating-point
+    inaccuracies, or when the number of observations is smaller than the number of
+    assets.
 
     First, it converts the covariance matrix to a correlation matrix.
     Then, it finds the nearest correlation matrix and converts it back to a covariance
     matrix using the initial standard deviation.
 
     Cholesky decomposition can fail for symmetric positive definite (SPD) matrix due
-    to floating point error and inversely, Cholesky decomposition can success for
+    to floating point error and inversely, Cholesky decomposition can succeed for
     non-SPD matrix. Therefore, we need to test for both. We always start by testing
     for Cholesky decomposition which is significantly faster than checking for positive
     eigenvalues.
@@ -334,6 +347,10 @@ def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int
         Maximum number of iteration of the Higham & Nick (2002) algorithm.
         The default value is `100`.
 
+    warn : bool, default=False
+        If this is set to True, a user warning is emitted when the covariance matrix
+        is not positive definite and replaced by the nearest. The default is False.
+
     Returns
     -------
     cov : ndarray
@@ -352,6 +369,13 @@ def cov_nearest(cov: np.ndarray, higham: bool = False, higham_max_iteration: int
     if is_cholesky_dec(cov) and is_positive_definite(cov):
         return cov
 
+    if warn:
+        warnings.warn(
+            "The covariance matrix is not positive definite. "
+            f"The {'Higham' if higham else 'Clipping'} algorithm will be used to find "
+            "the nearest positive definite covariance.",
+            stacklevel=2,
+        )
     corr, std = cov_to_corr(cov)
 
     if higham:
@@ -451,7 +475,7 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     """
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
-    max_clusters = max(8, round(np.sqrt(n)))
+    max_clusters = min(n, max(8, round(np.sqrt(n))))
     dispersion = []
     for k in range(max_clusters):
         level = cut_tree[:, n - k - 1]
@@ -470,6 +494,90 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
     # k=0 represents one cluster
     k = np.argmax(gaps) + 2
     return k
+
+
+def minimize_relative_weight_deviation(
+    weights: np.ndarray,
+    min_weights: np.ndarray,
+    max_weights: np.ndarray,
+    solver: str = "CLARABEL",
+    solver_params: dict | None = None,
+) -> np.ndarray:
+    r"""
+    Apply weight constraints to an initial array of weights by minimizing the relative
+    weight deviation of the final weights from the initial weights.
+
+    .. math::
+            \begin{cases}
+            \begin{aligned}
+            &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
+            &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
+            & & & w_{min} \leq w_i \leq w_{max}, \quad \forall i
+            \end{aligned}
+            \end{cases}
+
+    Parameters
+    ----------
+    weights : ndarray of shape (n_assets,)
+        Initial weights.
+
+    min_weights : ndarray of shape (n_assets,)
+        Minimum assets weights (weights lower bounds).
+
+    max_weights : ndarray of shape (n_assets,)
+        Maximum assets weights (weights upper bounds).
+
+    solver : str, default="CLARABEL"
+        The solver to use. The default is "CLARABEL" which is written in Rust and has
+        better numerical stability and performance than ECOS and SCS.
+        For more details about available solvers, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
+
+    solver_params : dict, optional
+        Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is to use the CVXPY default.
+        For more details about solver arguments, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+    """
+    if not (weights.shape == min_weights.shape == max_weights.shape):
+        raise ValueError("`min_weights` and `max_weights` must have same size")
+
+    if np.any(weights < 0):
+        raise ValueError("Initial weights must be strictly positive")
+
+    if not np.isclose(np.sum(weights), 1.0):
+        raise ValueError("Initial weights must sum to one")
+
+    if np.any(max_weights < min_weights):
+        raise ValueError("`min_weights` must be lower or equal to `max_weights`")
+
+    if np.all((weights >= min_weights) & (weights <= max_weights)):
+        return weights
+
+    if solver_params is None:
+        solver_params = {}
+
+    n = len(weights)
+    w = cp.Variable(n)
+
+    objective = cp.Minimize(cp.norm(w / weights - 1))
+    constraints = [cp.sum(w) == 1, w >= min_weights, w <= max_weights]
+    problem = cp.Problem(objective, constraints)
+
+    try:
+        problem.solve(solver=solver, **solver_params)
+
+        if w.value is None:
+            raise cp.SolverError("No solution found")
+
+    except (cp.SolverError, scl.ArpackNoConvergence):
+        raise cp.SolverError(
+            f"Solver '{solver}' failed. Try another"
+            " solver, or solve with solver_params=dict(verbose=True) for more"
+            " information"
+        ) from None
+
+    return w.value
 
 
 def inverse_multiply(a: np.ndarray, b: np.ndarray) -> np.ndarray:

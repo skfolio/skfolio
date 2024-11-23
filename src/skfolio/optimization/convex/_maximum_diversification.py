@@ -201,7 +201,7 @@ class MaximumDiversification(MeanRisk):
 
            * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
            * "ref1 >= 2.9 * ref2"
-           * "ref1 <= ref2"
+           * "ref1 == ref2"
            * "ref1 >= ref1"
 
         With "ref1", "ref2" ... the assets names or the groups names provided
@@ -213,8 +213,8 @@ class MaximumDiversification(MeanRisk):
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US >= 0.7" --> the sum of all US weights must be greater than 70%
-            * "Equity <= 3 * Bond" --> the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.
+            * "US == 0.7" --> the sum of all US weights must be equal to 70%
+            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
             * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
@@ -303,8 +303,8 @@ class MaximumDiversification(MeanRisk):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -364,7 +364,7 @@ class MaximumDiversification(MeanRisk):
     ):
         super().__init__(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-            risk_measure=RiskMeasure.VARIANCE,
+            risk_measure=RiskMeasure.STANDARD_DEVIATION,
             prior_estimator=prior_estimator,
             min_weights=min_weights,
             max_weights=max_weights,
@@ -398,7 +398,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "MaximumDiversification":
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -410,6 +410,13 @@ class MaximumDiversification(MeanRisk):
         y : array-like of shape (n_observations, n_targets), optional
             Price returns of factors or a target benchmark.
             The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
 
         Returns
         -------
@@ -424,5 +431,5 @@ class MaximumDiversification(MeanRisk):
             return np.sqrt(np.diag(covariance)) @ w
 
         self.overwrite_expected_return = func
-        super().fit(X, y)
+        super().fit(X, y, **fit_params)
         return self

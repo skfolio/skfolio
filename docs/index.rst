@@ -96,6 +96,7 @@ Available models
     * Oracle Approximating Shrinkage
     * Shrunk Covariance
     * Graphical Lasso CV
+    * Implied Covariance
 
 * Distance Estimator:
     * Pearson Distance

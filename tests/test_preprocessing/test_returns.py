@@ -5,7 +5,7 @@ from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.preprocessing import prices_to_returns
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def prices():
     prices = load_sp500_dataset()
     return prices
@@ -37,3 +37,14 @@ def test_returns(prices, factor_prices):
     assert np.all(X.columns == prices.columns)
     assert np.all(y.columns == factor_prices.columns)
     assert np.all(X.index == y.index)
+
+
+def test_returns_drop_inceptions_nan(prices):
+    # Test index_intersect by making the first column mostly 0's
+    prices.loc[: prices.index[-10], "AAPL"] = np.nan
+
+    X = prices_to_returns(X=prices)
+    assert X.shape[0] == 8
+
+    X = prices_to_returns(X=prices, drop_inceptions_nan=False)
+    assert X.shape[0] == prices.shape[0] - 1

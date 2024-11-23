@@ -11,6 +11,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.uncertainty_set._base import (
@@ -86,8 +87,6 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         Patton, Politis & White (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
@@ -97,7 +96,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         block_size: float | None = None,
         seed: int | None = None,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
         self.n_bootstrap_samples = n_bootstrap_samples
@@ -105,7 +104,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         self.seed = seed
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "BootstrapMuUncertaintySet":
         """Fit the Bootstrap Mu Uncertainty set estimator.
 
@@ -118,18 +117,27 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
             Price returns of factors.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : BootstrapMuUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         mu = self.prior_estimator_.prior_model_.mu
         returns = self.prior_estimator_.prior_model_.returns
         n_assets = returns.shape[1]
@@ -217,8 +225,6 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Patton, Politis & White (2009).
     """
 
-    prior_estimator_: BasePrior
-
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
@@ -228,14 +234,16 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         block_size: float | None = None,
         seed: int | None = None,
     ):
-        self.prior_estimator = prior_estimator
+        super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
         self.n_bootstrap_samples = n_bootstrap_samples
         self.block_size = block_size
         self.seed = seed
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "BootstrapCovarianceUncertaintySet":
+    def fit(
+        self, X: npt.ArrayLike, y=None, **fit_params
+    ) -> "BootstrapCovarianceUncertaintySet":
         """Fit the Bootstrap Covariance Uncertainty set estimator.
 
         Parameters
@@ -247,11 +255,19 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
             Price returns of factors.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : EmpiricalCovarianceUncertaintySet
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
 
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
@@ -259,7 +275,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
             check_type=BasePrior,
         )
         # fitting estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         covariance = self.prior_estimator_.prior_model_.covariance
         returns = self.prior_estimator_.prior_model_.returns
         n_assets = returns.shape[1]

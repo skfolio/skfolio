@@ -347,7 +347,7 @@ def entropic_risk_measure(
     """Compute the entropic risk measure.
 
     The entropic risk measure is a risk measure which depends on the risk aversion
-    defined by the investor (theat) through the exponential utility function at a given
+    defined by the investor (theta) through the exponential utility function at a given
     confidence level (beta).
 
     Parameters

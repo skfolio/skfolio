@@ -59,11 +59,8 @@ from skfolio.utils.tools import (
     args_names,
     cached_property_slots,
     format_measure,
+    optimal_rounding_decimals,
 )
-
-# TODO: remove and use plotly express
-pd.options.plotting.backend = "plotly"
-
 
 _ZERO_THRESHOLD = 1e-5
 _MEASURES = {
@@ -618,6 +615,13 @@ class BasePortfolio:
         """DataFrame of the Portfolio composition"""
         pass
 
+    @abstractmethod
+    def contribution(
+        self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
+    ) -> np.ndarray | pd.DataFrame:
+        """Compute the contribution of each asset to a given measure"""
+        pass
+
     # Custom attribute setter and getter
     @property
     def fitness_measures(self) -> list[skt.Measure]:
@@ -815,7 +819,7 @@ class BasePortfolio:
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
-            The window size. The default value is `30`.
+            The window size. The default value is `30` observations.
 
         Returns
         -------
@@ -929,11 +933,9 @@ class BasePortfolio:
                 key = f"{e!s} at {beta:.0%}"
             except AttributeError:
                 key = str(e)
-            if isinstance(e, RatioMeasure) or e in [
+            if e.is_ratio or e in [
                 ExtraRiskMeasure.ENTROPIC_RISK_MEASURE,
                 RiskMeasure.ULCER_INDEX,
-                ExtraRiskMeasure.SKEW,
-                ExtraRiskMeasure.KURTOSIS,
             ]:
                 percent = False
             else:
@@ -988,7 +990,7 @@ class BasePortfolio:
             yaxis_title = title
             title = f"{title} (non-compounded)"
 
-        fig = df.plot()
+        fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
@@ -1019,7 +1021,7 @@ class BasePortfolio:
         """
         if idx is None:
             idx = slice(None)
-        fig = self.returns_df.iloc[idx].plot()
+        fig = self.returns_df.iloc[idx].plot(backend="plotly")
         fig.update_layout(
             title="Returns",
             xaxis_title="Observations",
@@ -1050,26 +1052,25 @@ class BasePortfolio:
         """
         rolling = self.rolling_measure(measure=measure, window=window)
         rolling.name = f"{measure} {window} observations"
-        fig = rolling.plot()
+        fig = rolling.plot(backend="plotly")
         fig.add_hline(
             y=getattr(self, measure.value),
             line_width=1,
             line_dash="dash",
             line_color="blue",
         )
-        max_val = rolling.max()
-        min_val = rolling.min()
-        if max_val > 0:
+        max_val = np.max(rolling)
+        min_val = np.min(rolling)
+        if max_val > 0 > min_val:
             fig.add_hrect(
                 y0=0, y1=max_val * 1.3, line_width=0, fillcolor="green", opacity=0.1
             )
-        if min_val < 0:
             fig.add_hrect(
                 y0=min_val * 1.3, y1=0, line_width=0, fillcolor="red", opacity=0.1
             )
 
         fig.update_layout(
-            title=f"rolling {measure} - {window} observations window",
+            title=f"Rolling {measure} - {window} observations window",
             xaxis_title="Observations",
             yaxis_title=str(measure),
             showlegend=False,
@@ -1090,6 +1091,40 @@ class BasePortfolio:
             title="Portfolio Composition",
             xaxis_title="Portfolio",
             yaxis_title="Weight",
+            legend_title_text="Assets",
+        )
+        return fig
+
+    def plot_contribution(self, measure: skt.Measure, spacing: float | None = None):
+        r"""Plot the contribution of each asset to a given measure.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure used for the contribution computation.
+
+        spacing : float, optional
+            Spacing "h" of the finite difference:
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+
+        Returns
+        -------
+        plot : Figure
+            The plotly Figure of assets contribution to the measure.
+        """
+        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T
+        fig = px.bar(df, x=df.index, y=df.columns)
+        yaxis = {
+            "title": "Contribution",
+        }
+        if not measure.is_ratio:
+            n = optimal_rounding_decimals(df.sum(axis=1).max())
+            yaxis["tickformat"] = f",.{n}%"
+
+        fig.update_layout(
+            title=f"{measure} Contribution",
+            xaxis_title="Portfolio",
+            yaxis=yaxis,
             legend_title_text="Assets",
         )
         return fig

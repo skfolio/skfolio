@@ -5,6 +5,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
@@ -31,8 +32,8 @@ class InverseVolatility(BaseOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -53,8 +54,16 @@ class InverseVolatility(BaseOptimization):
         super().__init__(portfolio_params=portfolio_params)
         self.prior_estimator = prior_estimator
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "InverseVolatility":
         """Fit the Inverse Volatility estimator.
 
@@ -67,18 +76,27 @@ class InverseVolatility(BaseOptimization):
             Price returns of factors or a target benchmark.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : InverseVolatility
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # fitting prior estimator
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         covariance = self.prior_estimator_.prior_model_.covariance
         w = 1 / np.sqrt(np.diag(covariance))
         self.weights_ = w / sum(w)
@@ -95,8 +113,8 @@ class EqualWeighted(BaseOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -139,8 +157,8 @@ class Random(BaseOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------

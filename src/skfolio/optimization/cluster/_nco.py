@@ -15,7 +15,8 @@ import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
-import sklearn.model_selection as skm
+import sklearn.model_selection as sks
+import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
 
 import skfolio.typing as skt
@@ -174,7 +175,7 @@ class NestedClustersOptimization(BaseOptimization):
         outer_estimator: BaseOptimization | None = None,
         distance_estimator: BaseDistance | None = None,
         clustering_estimator: skb.BaseEstimator | None = None,
-        cv: skm.BaseCrossValidator | BaseCombinatorialCV | str | int | None = None,
+        cv: sks.BaseCrossValidator | BaseCombinatorialCV | str | int | None = None,
         quantile: float = 0.5,
         quantile_measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         n_jobs: int | None = None,
@@ -192,8 +193,27 @@ class NestedClustersOptimization(BaseOptimization):
         self.n_jobs = n_jobs
         self.verbose = verbose
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add(
+                distance_estimator=self.distance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                clustering_estimator=self.clustering_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                inner_estimator=self.inner_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "NestedClustersOptimization":
         """Fit the Nested Clusters Optimization estimator.
 
@@ -206,11 +226,20 @@ class NestedClustersOptimization(BaseOptimization):
             Price returns of factors or a target benchmark.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : NestedClustersOptimization
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.distance_estimator_ = check_estimator(
             self.distance_estimator,
             default=PearsonDistance(),
@@ -232,7 +261,8 @@ class NestedClustersOptimization(BaseOptimization):
             check_type=BaseOptimization,
         )
 
-        self.distance_estimator_.fit(X)
+        # noinspection PyArgumentList
+        self.distance_estimator_.fit(X, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
         n_assets = distance.shape[0]
 
@@ -241,7 +271,9 @@ class NestedClustersOptimization(BaseOptimization):
             distance = pd.DataFrame(distance, columns=X.columns)
 
         # noinspection PyUnresolvedReferences
-        self.clustering_estimator_.fit(distance)
+        self.clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.clustering_estimator.fit
+        )
         # noinspection PyUnresolvedReferences
         labels = self.clustering_estimator_.labels_
         n_clusters = max(labels) + 1
@@ -254,7 +286,12 @@ class NestedClustersOptimization(BaseOptimization):
         # noinspection PyCallingNonCallable
         fitted_inner_estimators = skp.Parallel(n_jobs=self.n_jobs)(
             skp.delayed(fit_single_estimator)(
-                sk.clone(_inner_estimator), X, y, indices=cluster_ids, axis=1
+                sk.clone(_inner_estimator),
+                X,
+                y,
+                routed_params.inner_estimator.fit,
+                indices=cluster_ids,
+                axis=1,
             )
             for cluster_ids in clusters
             if len(cluster_ids) != 1
@@ -288,7 +325,7 @@ class NestedClustersOptimization(BaseOptimization):
             cv_predictions = None
             test_indices = slice(None)
         else:
-            cv = skm.check_cv(self.cv)
+            cv = sks.check_cv(self.cv)
             if hasattr(cv, "random_state") and cv.random_state is None:
                 cv.random_state = np.random.RandomState()
             # noinspection PyCallingNonCallable
@@ -302,6 +339,7 @@ class NestedClustersOptimization(BaseOptimization):
                     verbose=self.verbose,
                     column_indices=cluster_ids,
                     method="predict",
+                    params=routed_params.inner_estimator.fit,
                 )
                 for cluster_ids in clusters
                 if len(cluster_ids) != 1
@@ -347,7 +385,7 @@ class NestedClustersOptimization(BaseOptimization):
         else:
             assert not any(cv_predictions), "cv_predictions iterator must be empty"
 
-        fit_single_estimator(self.outer_estimator_, X=X_pred, y=y_pred)
+        fit_single_estimator(self.outer_estimator_, X_pred, y_pred, fit_params={})
         outer_weights = self.outer_estimator_.weights_
         self.weights_ = outer_weights @ inner_weights
         return self

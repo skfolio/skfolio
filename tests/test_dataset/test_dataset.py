@@ -9,6 +9,7 @@ from skfolio.datasets import (
     load_ftse100_dataset,
     load_nasdaq_dataset,
     load_sp500_dataset,
+    load_sp500_implied_vol_dataset,
     load_sp500_index,
 )
 from skfolio.datasets._base import clear_data_home, get_data_home
@@ -199,7 +200,7 @@ class TestLoadFtse100Dataset:
         assert df.shape == (5960, 64)
 
 
-class TestNasdaqDataseDataset:
+class TestNasdaqDataset:
     def test_load_nasdaq_dataset_success(self):
         df = load_nasdaq_dataset()
 
@@ -216,3 +217,22 @@ class TestNasdaqDataseDataset:
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (1362, 1455)
+
+
+class TestSp500ImpliedVolDataset:
+    def test_load_sp500_implied_vol_dataset_success(self):
+        df = load_sp500_implied_vol_dataset()
+
+        # Check if the returned object is a pandas DataFrame
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
+
+        # Check if the DataFrame is not empty
+        assert not df.empty
+
+    #  Returns a pandas DataFrame with the correct shape
+    def test_load_sp500_implied_vol_dataset_shape(self):
+        df = load_sp500_implied_vol_dataset()
+
+        # Check if the shape of the DataFrame is correct
+        assert df.shape == (3270, 20)

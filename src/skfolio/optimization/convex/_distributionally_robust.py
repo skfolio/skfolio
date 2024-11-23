@@ -7,6 +7,7 @@
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -124,7 +125,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
            * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
            * "ref1 >= 2.9 * ref2"
-           * "ref1 <= ref2"
+           * "ref1 == ref2"
            * "ref1 >= ref1"
 
         With "ref1", "ref2" ... the assets names or the groups names provided
@@ -136,8 +137,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US >= 0.7" --> the sum of all US weights must be greater than 70%
-            * "Equity <= 3 * Bond" --> the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.
+            * "US == 0.7" --> the sum of all US weights must be equal to 70%
+            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
             * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
@@ -208,8 +209,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -303,7 +304,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> "DistributionallyRobustCVaR":
         """Fit the Distributionally Robust CVaR Optimization estimator.
 
@@ -316,11 +317,20 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             Price returns of factors.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : DistributionallyRobustCVaR
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self._check_feature_names(X, reset=True)
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
@@ -329,7 +339,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
 

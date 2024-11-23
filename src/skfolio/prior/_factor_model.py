@@ -9,12 +9,14 @@
 # Grisel Licensed under BSD 3 clause.
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.linear_model as skl
-import sklearn.multioutput as skm
+import sklearn.multioutput as skmo
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior._base import BasePrior, PriorModel
 from skfolio.prior._empirical import EmpiricalPrior
@@ -73,7 +75,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         Fitted `sklearn.multioutput.MultiOutputRegressor`
     """
 
-    multi_output_regressor_: skm.MultiOutputRegressor
+    multi_output_regressor_: skmo.MultiOutputRegressor
 
     def __init__(
         self,
@@ -83,7 +85,15 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.linear_regressor = linear_regressor
         self.n_jobs = n_jobs
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike):
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            linear_regressor=self.linear_regressor,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params):
         """Fit the Loading Matrix Regression Estimator.
 
         Parameters
@@ -94,21 +104,30 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         y : array-like of shape (n_observations, n_factors)
             Price returns of the factors.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : LoadingMatrixRegression
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         _linear_regressor = check_estimator(
             self.linear_regressor,
             default=skl.LassoCV(fit_intercept=False),
             check_type=skb.BaseEstimator,
         )
 
-        self.multi_output_regressor_ = skm.MultiOutputRegressor(
+        self.multi_output_regressor_ = skmo.MultiOutputRegressor(
             _linear_regressor, n_jobs=self.n_jobs
         )
-        self.multi_output_regressor_.fit(X=y, y=X)
+        self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
         # noinspection PyUnresolvedReferences
         n_assets = X.shape[1]
         self.loading_matrix_ = np.array(
@@ -195,8 +214,16 @@ class FactorModel(BasePrior):
         self.higham = higham
         self.max_iteration = max_iteration
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            factor_prior_estimator=self.factor_prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
     # noinspection PyMethodOverriding, PyPep8Naming
-    def fit(self, X: npt.ArrayLike, y: any):
+    def fit(self, X: npt.ArrayLike, y: Any, **fit_params):
         """Fit the Factor Model estimator.
 
         Parameters
@@ -207,11 +234,20 @@ class FactorModel(BasePrior):
         y : array-like of shape (n_observations, n_factors)
             Factors' returns.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : FactorModel
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.factor_prior_estimator_ = check_estimator(
             self.factor_prior_estimator,
             default=EmpiricalPrior(),
@@ -224,7 +260,9 @@ class FactorModel(BasePrior):
         )
 
         # Fitting prior estimator
-        self.factor_prior_estimator_.fit(y)
+        self.factor_prior_estimator_.fit(
+            X=y, **routed_params.factor_prior_estimator.fit
+        )
         factor_mu = self.factor_prior_estimator_.prior_model_.mu
         factor_covariance = self.factor_prior_estimator_.prior_model_.covariance
 

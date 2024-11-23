@@ -32,7 +32,7 @@ jobs:
         run: pip install ".[tests]"
 
       - name: Lint with Ruff
-        run: ruff --output-format=github
+        run: ruff check --output-format=github
 
       - name: Format with Ruff
         run: ruff format --check

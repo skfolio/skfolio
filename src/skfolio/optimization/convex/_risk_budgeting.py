@@ -9,6 +9,7 @@
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -211,12 +212,12 @@ class RiskBudgeting(ConvexOptimization):
         The default (`None`) means no previous weights.
 
     linear_constraints : array-like of shape (n_constraints,), optional
-       Linear constraints.
+        Linear constraints.
         The linear constraints must match any of following patterns:
 
            * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
            * "ref1 >= 2.9 * ref2"
-           * "ref1 <= ref2"
+           * "ref1 == ref2"
            * "ref1 >= ref1"
 
         With "ref1", "ref2" ... the assets names or the groups names provided
@@ -228,8 +229,8 @@ class RiskBudgeting(ConvexOptimization):
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US >= 0.7" --> the sum of all US weights must be greater than 70%
-            * "Equity <= 3 * Bond" --> the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.
+            * "US == 0.7" --> the sum of all US weights must be equal to 70%
+            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
             * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
@@ -340,8 +341,8 @@ class RiskBudgeting(ConvexOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the 
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -431,16 +432,7 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def _validation(self) -> None:
-        if not isinstance(self.risk_measure, RiskMeasure):
-            raise TypeError("risk_measure must be of type `RiskMeasure`")
-        if self.min_weights < 0:
-            raise ValueError(
-                "Risk Budgeting must have non negative `min_weights` constraint"
-                " otherwise the problem becomes non-convex."
-            )
-
-    def fit(self, X: npt.ArrayLike, y=None) -> "RiskBudgeting":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "RiskBudgeting":
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters
@@ -458,9 +450,13 @@ class RiskBudgeting(ConvexOptimization):
         self : RiskBudgeting
            Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self._check_feature_names(X, reset=True)
-        # Validate
-        self._validation()
+
+        if not isinstance(self.risk_measure, RiskMeasure):
+            raise TypeError("risk_measure must be of type `RiskMeasure`")
+
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(
@@ -468,7 +464,7 @@ class RiskBudgeting(ConvexOptimization):
             default=EmpiricalPrior(),
             check_type=BasePrior,
         )
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         n_observations, n_assets = prior_model.returns.shape
 
@@ -515,7 +511,7 @@ class RiskBudgeting(ConvexOptimization):
 
         # weight constraints
         constraints += self._get_weight_constraints(
-            n_assets=n_assets, w=w, factor=factor
+            n_assets=n_assets, w=w, factor=factor, allow_negative_weights=False
         )
 
         parameters_values = []

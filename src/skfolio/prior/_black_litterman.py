@@ -9,6 +9,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.metadata_routing as skm
 
 from skfolio.moments import EquilibriumMu
 from skfolio.prior._base import BasePrior, PriorModel
@@ -134,7 +135,15 @@ class BlackLitterman(BasePrior):
         self.view_confidences = view_confidences
         self.risk_free_rate = risk_free_rate
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "BlackLitterman":
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            prior_estimator=self.prior_estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "BlackLitterman":
         """Fit the Black & Litterman estimator.
 
         Parameters
@@ -145,18 +154,27 @@ class BlackLitterman(BasePrior):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : BlackLitterman
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(mu_estimator=EquilibriumMu()),
             check_type=BasePrior,
         )
         # fitting prior estimator
-        self.prior_estimator_.fit(X)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
         prior_mu = self.prior_estimator_.prior_model_.mu
         prior_covariance = self.prior_estimator_.prior_model_.covariance
@@ -190,13 +208,16 @@ class BlackLitterman(BasePrior):
                 ),
                 name="groups",
             )
-        self.picking_matrix_, self.views_ = equations_to_matrix(
+        self.picking_matrix_, self.views_, a_ineq, b_ineq = equations_to_matrix(
             groups=self.groups_,
             equations=views,
             sum_to_one=True,
             raise_if_group_missing=True,
             names=("groups", "views"),
         )
+
+        if len(a_ineq) != 0:
+            raise ValueError("Inequalities (<=, >=) are not supported in views")
 
         if self.view_confidences is None:
             omega = np.diag(

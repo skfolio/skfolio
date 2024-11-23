@@ -315,15 +315,6 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
 
                 alpha = 1 - left_variance / (left_variance + right_variance)
 
-                # Weights constraints
-                alpha = self._apply_weight_constraints_to_alpha(
-                    alpha=alpha,
-                    weights=weights,
-                    max_weights=max_weights,
-                    min_weights=min_weights,
-                    left_cluster=left_cluster,
-                    right_cluster=right_cluster,
-                )
                 weights[left_cluster] *= alpha
                 weights[right_cluster] *= 1 - alpha
 

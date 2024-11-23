@@ -3,20 +3,21 @@ r"""
 Management Fees
 ===============
 
-This tutorial shows how to incorporate management fees (MF) into the 
+This tutorial shows how to incorporate management fees (MF) into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-By using The `management_fees` parameter, you can add linear MF to the optimization 
+By using The `management_fees` parameter, you can add linear MF to the optimization
 problem:
 
 .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
 with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
+The float :math:`total\_fee` is impacting the portfolio expected return in the
+optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
-with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of 
+with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of
 assets weights.
 
 The `management_fees` parameter can be a float, a dictionary or an array-like of
@@ -27,7 +28,7 @@ columns. The default is 0.0 (no management fees).
 
 .. note::
 
-    Another approach is to direcly impact the MF to the input `X` in order to express 
+    Another approach is to direcly impact the MF to the input `X` in order to express
     the returns net of fee. However, when estimating the :math:`\mu` parameter using,
     for example, Shrinkage estimators, this approach would mix a deterministic amount
     with an uncertain one leading to unwanted bias in the management fees.

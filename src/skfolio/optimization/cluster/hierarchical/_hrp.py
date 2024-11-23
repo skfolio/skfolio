@@ -10,6 +10,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -71,8 +72,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             * ENTROPIC_RISK_MEASURE
             * FOURTH_CENTRAL_MOMENT
             * FOURTH_LOWER_PARTIAL_MOMENT
-            * SKEW
-            * KURTOSIS
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -99,9 +98,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Minimum assets weights (weights lower bounds). Negative weights are not allowed.
-        If a float is provided, it is applied to each asset. `None` is equivalent to
-        `-np.Inf` (no lower bound). If a dictionary is provided, its (key/value) pair
-        must be the (asset name/asset minium weight) and the input `X` of the `fit`
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset minium weight) and the input `X` of the `fit`
         methods must be a DataFrame with the assets names in columns. When using a
         dictionary, assets values that are not provided are assigned a minimum weight
         of `0.0`. The default is 0.0 (no short selling).
@@ -115,12 +114,12 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
         Maximum assets weights (weights upper bounds). Weights above 1.0 are not
-        allowed. If a float is provided, it is applied to each asset. `None` is
-        equivalent to `+np.Inf` (no upper bound). If a dictionary is provided, its
-        (key/value) pair must be the (asset name/asset maximum weight) and the input `X`
-        of the `fit` method must be a DataFrame with the assets names in columns. When
-        using a dictionary, assets values that are not provided are assigned a minimum
-        weight of `1.0`. The default is 1.0 (each asset is below 100%).
+        allowed. If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset maximum weight) and the input `X` of the `fit` method must
+        be a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned a
+        minimum weight of `1.0`. The default is 1.0 (each asset is below 100%).
 
         Example:
 
@@ -204,8 +203,8 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     portfolio_params :  dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
         `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees` and `previous_weights` are copied from the optimization
-        model and systematically passed to the portfolio.
+        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
+        optimization model and passed to the portfolio.
 
     Attributes
     ----------
@@ -270,7 +269,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
 
-    def fit(self, X: npt.ArrayLike, y: None = None) -> "HierarchicalRiskParity":
+    def fit(
+        self, X: npt.ArrayLike, y: None = None, **fit_params
+    ) -> "HierarchicalRiskParity":
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters
@@ -286,11 +287,20 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         self : HierarchicalRiskParity
             Fitted estimator.
         """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
         # Validate
         if not isinstance(self.risk_measure, RiskMeasure | ExtraRiskMeasure):
             raise TypeError(
                 "`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`"
             )
+
+        if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
+            # Because Skew and Kurtosis can take negative values
+            raise ValueError(
+                f"risk_measure {self.risk_measure} currently not supported" f"in HRP"
+            )
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
@@ -308,7 +318,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         )
 
         # Fit the estimators
-        self.prior_estimator_.fit(X, y)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         prior_model = self.prior_estimator_.prior_model_
         returns = prior_model.returns
 
@@ -316,14 +326,18 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        self.distance_estimator_.fit(returns)
+        # noinspection PyArgumentList
+        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        self.hierarchical_clustering_estimator_.fit(distance)
+        # noinspection PyArgumentList
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
 
         X = self._validate_data(X)
         n_assets = X.shape[1]
@@ -356,7 +370,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
                 left_cluster, right_cluster = clusters_ids
                 alpha = 1 - left_risk / (left_risk + right_risk)
                 # Weights constraints
-                alpha = self._apply_weight_constraints_to_alpha(
+                alpha = _apply_weight_constraints_to_split_factor(
                     alpha=alpha,
                     weights=weights,
                     max_weights=max_weights,
@@ -370,3 +384,54 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         self.weights_ = weights
         return self
+
+
+def _apply_weight_constraints_to_split_factor(
+    alpha: float,
+    max_weights: np.ndarray,
+    min_weights: np.ndarray,
+    weights: np.ndarray,
+    left_cluster: np.ndarray,
+    right_cluster: np.ndarray,
+) -> float:
+    """
+    Apply weight constraints to the split factor alpha of the ,Hierarchical Tree
+    Clustering algorithm.
+
+    Parameters
+    ----------
+    alpha : float
+        The split factor alpha of the Hierarchical Tree Clustering algorithm.
+
+    min_weights : ndarray of shape (n_assets,)
+        The weight lower bound 1D array.
+
+    max_weights : ndarray of shape (n_assets,)
+        The weight upper bound 1D array.
+
+    weights : np.ndarray of shape (n_assets,)
+        The assets weights.
+
+    left_cluster : ndarray of shape (n_left_cluster,)
+        Indices of the left cluster weights.
+
+    right_cluster : ndarray of shape (n_right_cluster,)
+        Indices of the right cluster weights.
+
+    Returns
+    -------
+    value : float
+        The transformed split factor alpha incorporating the weight constraints.
+    """
+    alpha = min(
+        np.sum(max_weights[left_cluster]) / weights[left_cluster[0]],
+        max(np.sum(min_weights[left_cluster]) / weights[left_cluster[0]], alpha),
+    )
+    alpha = 1 - min(
+        np.sum(max_weights[right_cluster]) / weights[right_cluster[0]],
+        max(
+            np.sum(min_weights[right_cluster]) / weights[right_cluster[0]],
+            1 - alpha,
+        ),
+    )
+    return alpha

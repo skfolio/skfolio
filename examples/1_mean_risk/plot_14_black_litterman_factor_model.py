@@ -100,3 +100,28 @@ population.plot_cumulative_returns()
 # Let's plot the portfolios compositions:
 fig = population.plot_composition()
 show(fig)
+
+
+# %%
+# Going Further
+# =============
+# The API design makes it possible to created nested models without limits.
+# In the below example, we re-apply a Black & Litterman model incorporating assets
+# views. But instead of using the empirical moments, we use the above Black & Litterman
+# factor model:
+
+assets_views = [
+    "AAPL == 0.00098",
+    "AAPL - GE == 0.00086",
+    "JPM - GE == 0.00059",
+]
+
+model = BlackLitterman(
+    views=assets_views,
+    prior_estimator=FactorModel(
+        factor_prior_estimator=BlackLitterman(views=factor_views),
+    ),
+)
+
+model.fit(X, y)
+print(model.prior_model_.covariance.shape)
