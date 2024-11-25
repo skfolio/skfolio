@@ -445,7 +445,6 @@ def _schur_augmentation(
     """
     n_a = a.shape[0]
     n_d = d.shape[0]
-
     if gamma == 0 or n_a == 1 or n_d == 1:
         return a, d
 
