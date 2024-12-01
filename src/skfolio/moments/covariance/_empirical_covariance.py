@@ -9,6 +9,7 @@
 
 import numpy as np
 import numpy.typing as npt
+from typing import Literal
 
 from skfolio.moments.covariance._base import BaseCovariance
 
@@ -62,7 +63,7 @@ class EmpiricalCovariance(BaseCovariance):
 
     def __init__(
         self,
-        window_size: int | None = None,
+        window_size: int | None | Literal["max"] = None,
         ddof: int = 1,
         nearest: bool = True,
         higham: bool = False,
@@ -92,9 +93,44 @@ class EmpiricalCovariance(BaseCovariance):
         self : EmpiricalCovariance
             Fitted estimator.
         """
-        X = self._validate_data(X)
-        if self.window_size is not None:
-            X = X[-int(self.window_size) :]
-        covariance = np.cov(X.T, ddof=self.ddof)
+        if self.window_size == "max":
+            X = np.array(X)
+            covariance = self._max_empirical_covariance(X=X)
+        else:
+            X = self._validate_data(X)
+
+            if self.window_size is not None:
+                X = X[-int(self.window_size) :]
+            covariance = np.cov(X.T, ddof=self.ddof)
         self._set_covariance(covariance)
         return self
+
+    def _max_empirical_covariance(self, X: npt.ArrayLike) -> npt.ArrayLike:
+        """Compute the empirical covariance matrix using available data points for each pair."""
+        n_assets = X.shape[1]
+        covariance_matrix = np.zeros((n_assets, n_assets))
+
+        for i in range(n_assets):
+            for j in range(i, n_assets):
+                asset_i = X[:, i]
+
+                # Get window where asset i exists
+                valid_mask = ~np.isnan(asset_i)
+                
+                if i == j:
+                    covariance_matrix[i, i] = np.var(asset_i[valid_mask], ddof=self.ddof)
+                    continue
+            
+                asset_j = X[:, j]
+
+                # Get overlapping window where both assets exist
+                valid_mask = valid_mask & ~np.isnan(asset_j)
+                overlap_data_i = asset_i[valid_mask]
+                overlap_data_j = asset_j[valid_mask]
+
+                if len(overlap_data_i) > 1:
+                    covariance = np.cov(overlap_data_i, overlap_data_j, ddof=self.ddof)[0, 1]
+                    covariance_matrix[i, j] = covariance
+                    covariance_matrix[j, i] = covariance
+        
+        return covariance_matrix
