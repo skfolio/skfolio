@@ -93,11 +93,11 @@ class EmpiricalCovariance(BaseCovariance):
         self : EmpiricalCovariance
             Fitted estimator.
         """
-        X = self._validate_data(X)
-
         if self.window_size == "max":
             covariance = self._max_empirical_covariance(X=X)
         else:
+            X = self._validate_data(X)
+
             if self.window_size is not None:
                 X = X[-int(self.window_size) :]
             covariance = np.cov(X.T, ddof=self.ddof)
@@ -121,7 +121,7 @@ class EmpiricalCovariance(BaseCovariance):
                 asset_j = X[:, j]
 
                 # Get overlapping window where both assets exist
-                valid_mask = (asset_i != 0) & (asset_j != 0)
+                valid_mask = ~np.isnan(asset_i) & ~np.isnan(asset_j)
                 overlap_data_i = asset_i[valid_mask]
                 overlap_data_j = asset_j[valid_mask]
 
