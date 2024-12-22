@@ -36,8 +36,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-python-
 
-      - name: Install uv
-        run: make uv-download
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
 
       - name: Install dependencies
         run: make install-tests
