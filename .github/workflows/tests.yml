@@ -32,19 +32,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "requirements**.txt"
 
-      - name: Create and activate virtual environment
-        run: |
-          uv venv
-          if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
-            # Windows-specific virtual environment activation
-            . .venv/Scripts/activate
-          else
-            # Unix-like systems (Linux/macOS)
-            . .venv/bin/activate
-          fi
-
       - name: Install dependencies
         run: |
+          uv venv
           . .venv/bin/activate || . .venv/Scripts/activate
           uv pip install -e .[dev]
 
