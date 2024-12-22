@@ -30,11 +30,15 @@ jobs:
           python-version: '3.10'
           cache: 'pip'
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
 
       - name: Install dependencies
-        run: pip install ".[docs]"
+        run: |
+          uv venv
+          uv pip install ".[docs]"
 
       - name: Build Sphinx Docs
         working-directory: ./docs
