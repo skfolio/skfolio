@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.6.0"
+version = "0.6.1"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" }
 ]
 authors = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
@@ -84,6 +85,12 @@ docs = [
     "jupyterlite-sphinx",
     "jupyterlite-pyodide-kernel",
     "nbformat",
+]
+dev = [
+    "pre-commit>=4.0.0,<4.2.0",
+    "isort[colors]>=5.13.2,<6.0.0",
+    "ruff>=0.8.4, < 1.0.0",
+    "pydocstyle>=6.3.0,<6.4.0",
 ]
 
 [project.urls]

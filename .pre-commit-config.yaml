@@ -1,0 +1,25 @@
+default_stages: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+        exclude: LICENSE
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.4.16
+    hooks:
+      - id: pip-compile
+        args: [requirements.in, -o, requirements.txt]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.3
+    hooks:
+      - id: ruff
+        name: ruff-lint
+        args: [check, --select, I, --fix, --exit-non-zero-on-fix, ./]
+      - id: ruff
+        name: ruff-format
+        args: [format, --diff]

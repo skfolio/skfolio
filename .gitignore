@@ -89,6 +89,7 @@ ipython_config.py
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
 #Pipfile.lock
+*.lock
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
@@ -145,5 +146,3 @@ sphinx_gallery/tests/tinybuild/auto_examples/
 sphinx_gallery/tests/tinybuild/_build/
 sphinx_gallery/tests/tinybuild/tiny_html/
 junit-results.xml
-
-

@@ -23,20 +23,20 @@ from skfolio.utils.tools import AutoEnum
 
 __all__ = [
     "NBinsMethod",
-    "n_bins_freedman",
-    "n_bins_knuth",
-    "is_cholesky_dec",
+    "assert_is_distance",
     "assert_is_square",
     "assert_is_symmetric",
-    "assert_is_distance",
-    "cov_nearest",
-    "cov_to_corr",
-    "corr_to_cov",
     "commutation_matrix",
     "compute_optimal_n_clusters",
+    "corr_to_cov",
+    "cov_nearest",
+    "cov_to_corr",
+    "is_cholesky_dec",
+    "minimize_relative_weight_deviation",
+    "n_bins_freedman",
+    "n_bins_knuth",
     "rand_weights",
     "rand_weights_dirichlet",
-    "minimize_relative_weight_deviation",
 ]
 
 

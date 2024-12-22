@@ -18,12 +18,12 @@ __version__ = importlib.metadata.version("skfolio")
 
 __all__ = [
     "BaseMeasure",
-    "PerfMeasure",
-    "RiskMeasure",
-    "ExtraRiskMeasure",
-    "RatioMeasure",
     "BasePortfolio",
-    "Portfolio",
+    "ExtraRiskMeasure",
     "MultiPeriodPortfolio",
+    "PerfMeasure",
     "Population",
+    "Portfolio",
+    "RatioMeasure",
+    "RiskMeasure",
 ]

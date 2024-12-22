@@ -7,10 +7,10 @@ from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.optimization.convex._risk_budgeting import RiskBudgeting
 
 __all__ = [
-    "ObjectiveFunction",
     "ConvexOptimization",
-    "MeanRisk",
-    "RiskBudgeting",
     "DistributionallyRobustCVaR",
     "MaximumDiversification",
+    "MeanRisk",
+    "ObjectiveFunction",
+    "RiskBudgeting",
 ]

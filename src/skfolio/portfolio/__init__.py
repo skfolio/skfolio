@@ -10,4 +10,4 @@ from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._multi_period_portfolio import MultiPeriodPortfolio
 from skfolio.portfolio._portfolio import Portfolio
 
-__all__ = ["BasePortfolio", "Portfolio", "MultiPeriodPortfolio"]
+__all__ = ["BasePortfolio", "MultiPeriodPortfolio", "Portfolio"]

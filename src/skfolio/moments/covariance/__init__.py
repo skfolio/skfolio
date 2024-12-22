@@ -15,15 +15,15 @@ from skfolio.moments.covariance._oas import OAS
 from skfolio.moments.covariance._shrunk_covariance import ShrunkCovariance
 
 __all__ = [
+    "OAS",
     "BaseCovariance",
-    "EmpiricalCovariance",
-    "EWCovariance",
-    "GerberCovariance",
     "DenoiseCovariance",
     "DetoneCovariance",
-    "LedoitWolf",
-    "OAS",
-    "ShrunkCovariance",
+    "EWCovariance",
+    "EmpiricalCovariance",
+    "GerberCovariance",
     "GraphicalLassoCV",
     "ImpliedCovariance",
+    "LedoitWolf",
+    "ShrunkCovariance",
 ]

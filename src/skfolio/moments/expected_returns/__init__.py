@@ -10,9 +10,9 @@ from skfolio.moments.expected_returns._shrunk_mu import ShrunkMu, ShrunkMuMethod
 
 __all__ = [
     "BaseMu",
-    "EmpiricalMu",
     "EWMu",
-    "ShrunkMu",
+    "EmpiricalMu",
     "EquilibriumMu",
+    "ShrunkMu",
     "ShrunkMuMethods",
 ]

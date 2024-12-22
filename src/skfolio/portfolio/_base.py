@@ -389,6 +389,7 @@ class BasePortfolio:
         "edar_beta",
     }
 
+    # ruff: noqa: RUF023
     __slots__ = {
         # public
         "tag",

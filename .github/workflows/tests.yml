@@ -28,17 +28,25 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
+      - name: Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-python-
+
+      - name: Install uv
+        run: make uv-download
+
       - name: Install dependencies
-        run: pip install ".[tests]"
+        run: make install-tests
 
-      - name: Lint with Ruff
-        run: ruff check --output-format=github
-
-      - name: Format with Ruff
-        run: ruff format --check
+      - name: Check Lint and Format with Ruff
+        run: make codestyle
 
       - name: Run and write pytest
-        run: pytest --cov=./ --cov-report=xml
+        run: make test
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
