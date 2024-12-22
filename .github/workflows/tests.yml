@@ -38,10 +38,21 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install dependencies
+      - name: Create and activate virtual environment
         run: |
           uv venv
-          . .venv/bin/activate && uv pip install -e .[dev]
+          if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+            # Windows-specific virtual environment activation
+            . .venv/Scripts/activate
+          else
+            # Unix-like systems (Linux/macOS)
+            . .venv/bin/activate
+          fi
+
+      - name: Install dependencies
+        run: |
+          . .venv/bin/activate || . .venv/Scripts/activate
+          uv pip install -e .[dev]
 
       - name: Check Lint and Format with Ruff
         run: |
