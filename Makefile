@@ -1,19 +1,35 @@
 .PHONY: uv-download
 uv-download:
+ifeq ($(OS),Windows_NT)
+	# Windows-specific uv installation
+	powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+else
+	# Unix-like systems (Linux/macOS)
 	curl -LsSf https://astral.sh/uv/install.sh | sh
-
-.PHONY: installdev
-installdev:
-	uv venv
-	. .venv/bin/activate && \
-	uv pip install -e .[dev] && \
-	uv run pre-commit install
+endif
 
 .PHONY: install-tests
 install-tests:
 	uv venv
-	. .venv/bin/activate && \
-	uv pip install -e .[tests]
+ifeq ($(OS),Windows_NT)
+	# Windows-specific virtual environment activation
+	. .venv/Scripts/activate && uv pip install -e .[tests]
+else
+	# Unix-like systems (Linux/macOS)
+	. .venv/bin/activate && uv pip install -e .[tests]
+endif
+
+.PHONY: install-dev
+install-dev:
+	uv venv
+ifeq ($(OS),Windows_NT)
+	# Windows-specific virtual environment activation
+	. .venv/Scripts/activate && uv pip install -e .[dev]
+else
+	# Unix-like systems (Linux/macOS)
+	. .venv/bin/activate && uv pip install -e .[dev]
+endif
+	uv run pre-commit install
 
 .PHONY: codestyle
 codestyle:
