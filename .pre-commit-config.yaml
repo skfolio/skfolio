@@ -11,8 +11,7 @@ repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.4.16
     hooks:
-      - id: pip-compile
-        args: [requirements.in, -o, requirements.txt]
+      - id: uv-lock
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.3
