@@ -42,8 +42,7 @@ jobs:
           uv run ruff format --check
 
       - name: Run and write pytest
-        run: |
-          uv run pytest --cov=./ --cov-report=xml
+        run: uv run pytest --cov=./ --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
