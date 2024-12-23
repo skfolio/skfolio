@@ -35,10 +35,11 @@ jobs:
           version: "latest"
           enable-cache: true
 
+      - name: Set up virtual environment
+        run: uv venv
+
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install ".[docs]"
+        run: uv pip install -r pyproject.toml --extra docs
 
       - name: Build Sphinx Docs
         working-directory: ./docs

@@ -30,10 +30,11 @@ jobs:
           version: "latest"
           enable-cache: true
 
+      - name: Set up virtual environment
+        run: uv venv
+
       - name: Install dependencies
-        run: |
-          uv venv
-          uv pip install -e ".[dev]"
+        run: uv pip install -r pyproject.toml --extra dev
 
       - name: Check Lint and Format with Ruff
         run: |
