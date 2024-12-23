@@ -1,10 +1,10 @@
-name: Tests
+name: Build
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 jobs:
   test:
@@ -29,7 +29,6 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-dependency-glob: "requirements**.txt"
 
       - name: Install dependencies
         run: |

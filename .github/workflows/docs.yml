@@ -34,7 +34,6 @@ jobs:
         with:
           version: "latest"
           enable-cache: true
-          cache-dependency-glob: "requirements**.txt"
 
       - name: Install dependencies
         run: |
