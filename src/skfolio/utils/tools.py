@@ -21,21 +21,21 @@ import sklearn.base as skb
 
 __all__ = [
     "AutoEnum",
-    "cached_property_slots",
-    "cache_method",
-    "input_to_array",
     "args_names",
-    "format_measure",
-    "optimal_rounding_decimals",
     "bisection",
-    "safe_split",
-    "fit_single_estimator",
-    "fit_and_predict",
-    "safe_indexing",
+    "cache_method",
+    "cached_property_slots",
+    "check_estimator",
     "deduplicate_names",
     "default_asset_names",
-    "check_estimator",
+    "fit_and_predict",
+    "fit_single_estimator",
+    "format_measure",
     "get_feature_names",
+    "input_to_array",
+    "optimal_rounding_decimals",
+    "safe_indexing",
+    "safe_split",
 ]
 
 GenericAlias = type(list[int])

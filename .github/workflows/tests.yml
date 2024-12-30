@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 jobs:
   test:
@@ -20,25 +20,28 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up virtual environment
+        run: uv venv
 
       - name: Install dependencies
-        run: pip install ".[tests]"
+        run: uv pip install -r pyproject.toml --extra dev
 
-      - name: Lint with Ruff
-        run: ruff check --output-format=github
-
-      - name: Format with Ruff
-        run: ruff format --check
+      - name: Check Lint and Format with Ruff
+        run: |
+          uv run ruff check --output-format=github
+          uv run ruff format --check
 
       - name: Run and write pytest
-        run: pytest --cov=./ --cov-report=xml
+        run: uv run pytest --cov=./ --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3

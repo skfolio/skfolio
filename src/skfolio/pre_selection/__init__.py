@@ -6,8 +6,8 @@ from skfolio.pre_selection._select_non_expiring import SelectNonExpiring
 
 __all__ = [
     "DropCorrelated",
+    "SelectComplete",
     "SelectKExtremes",
     "SelectNonDominated",
-    "SelectComplete",
     "SelectNonExpiring",
 ]

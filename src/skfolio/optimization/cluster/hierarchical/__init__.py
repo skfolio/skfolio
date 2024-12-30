@@ -8,6 +8,6 @@ from skfolio.optimization.cluster.hierarchical._hrp import HierarchicalRiskParit
 
 __all__ = [
     "BaseHierarchicalOptimization",
-    "HierarchicalRiskParity",
     "HierarchicalEqualRiskContribution",
+    "HierarchicalRiskParity",
 ]

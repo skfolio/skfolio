@@ -8,11 +8,11 @@ classes used across skfolio.
 # License: BSD 3 clause
 
 __all__ = [
-    "OptimizationError",
+    "DuplicateGroupsError",
     "EquationToMatrixError",
     "GroupNotFoundError",
     "NonPositiveVarianceError",
-    "DuplicateGroupsError",
+    "OptimizationError",
 ]
 
 

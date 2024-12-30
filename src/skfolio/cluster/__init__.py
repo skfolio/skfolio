@@ -5,4 +5,4 @@
 
 from skfolio.cluster._hierarchical import HierarchicalClustering, LinkageMethod
 
-__all__ = ["LinkageMethod", "HierarchicalClustering"]
+__all__ = ["HierarchicalClustering", "LinkageMethod"]
