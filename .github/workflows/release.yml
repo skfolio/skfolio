@@ -2,7 +2,7 @@ name: Semantic Release
 
 on:
   workflow_run:
-    workflows: ["Build"]
+    workflows: ["Tests"]
     types:
       - completed
     branches:
