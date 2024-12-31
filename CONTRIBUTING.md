@@ -105,9 +105,9 @@ Ready to contribute? Here's how to set yourself up for local development.
    ```
    or using **uv**:
    ```shell
-   $ uv pip install -r pyproject.toml --editable . --extra dev
+   $ uv pip install -r pyproject.toml --editable . --extra docs
    $ cd docs
-   $ sphinx-build . _build
+   $ uv run sphinx-build . _build
    ```
 
 8. Commit your changes and push your branch to GitHub:

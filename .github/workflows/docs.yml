@@ -42,11 +42,11 @@ jobs:
 
       - name: Build Sphinx Docs
         working-directory: ./docs
-        run: sphinx-build . _build
+        run: uv run sphinx-build . _build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      
+
       - name: Upload Documentation Site Artifact
         uses: actions/upload-pages-artifact@v3
         with:
