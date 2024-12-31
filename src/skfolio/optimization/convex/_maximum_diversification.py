@@ -6,6 +6,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -423,7 +424,7 @@ class MaximumDiversification(MeanRisk):
         self : MaximumDiversification
            Fitted estimator.
         """
-        self._check_feature_names(X, reset=True)
+        skv._check_feature_names(self, X, reset=True)
 
         def func(w, obj):
             """weighted volatilities"""

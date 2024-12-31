@@ -114,7 +114,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectNonExpiring
             Fitted estimator.
         """
-        _ = self._validate_data(X, force_all_finite="allow-nan")
+        _ = skv.validate_data(self, X, ensure_all_finite="allow-nan")
 
         # Validate by allowing NaNs
         if not hasattr(X, "index") or not isinstance(X.index, pd.DatetimeIndex):
@@ -140,9 +140,11 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
 
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> np.ndarray:
         skv.check_is_fitted(self)
         return self.to_keep_
 
-    def _more_tags(self):
-        return {"allow_nan": True}
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags

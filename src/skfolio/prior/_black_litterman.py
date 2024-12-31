@@ -10,6 +10,7 @@
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
 from skfolio.prior._base import BasePrior, PriorModel
@@ -182,7 +183,7 @@ class BlackLitterman(BasePrior):
 
         # we validate after all models have been fitted to keep features names
         # information.
-        self._validate_data(X)
+        skv.validate_data(self, X)
 
         n_assets = prior_returns.shape[1]
         views = np.asarray(self.views)

@@ -13,6 +13,7 @@ import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -764,7 +765,7 @@ class MeanRisk(ConvexOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        self._check_feature_names(X, reset=True)
+        skv._check_feature_names(self, X, reset=True)
         # Validate
         self._validation()
         # Used to avoid adding multiple times similar constrains linked to identical
@@ -893,7 +894,7 @@ class MeanRisk(ConvexOptimization):
                         " 1d-array, a single-column DataFrame or a Series"
                     )
                 y = y[y.columns[0]]
-            _, y = self._validate_data(X, y)
+            _, y = skv.validate_data(self, X, y)
             tracking_error = self._tracking_error(
                 prior_model=prior_model, w=w, y=y, factor=factor
             )

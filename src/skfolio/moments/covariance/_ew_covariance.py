@@ -9,6 +9,7 @@
 
 import numpy.typing as npt
 import pandas as pd
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 
@@ -94,7 +95,7 @@ class EWCovariance(BaseCovariance):
         self : EWCovariance
           Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if self.window_size is not None:
             X = X[-int(self.window_size) :]
         n_observations = X.shape[0]

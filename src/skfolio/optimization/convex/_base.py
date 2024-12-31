@@ -1685,7 +1685,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
         risk = covariance_uncertainty_set.k * cp.pnorm(
-            sc.linalg.sqrtm(covariance_uncertainty_set.sigma) @ (cp.vec(x) + cp.vec(y)),
+            sc.linalg.sqrtm(covariance_uncertainty_set.sigma)
+            @ (cp.vec(x, order="F") + cp.vec(y, order="F")),
             2,
         ) + cp.trace(prior_model.covariance @ (x + y))
         # semi-definite positive constraints

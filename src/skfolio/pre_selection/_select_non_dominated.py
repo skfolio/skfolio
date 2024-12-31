@@ -95,7 +95,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectNonDominated
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
         n_assets = X.shape[1]

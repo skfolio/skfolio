@@ -8,7 +8,6 @@ def test_drop_high_correlation(X):
     set_config(transform_output="pandas")
 
     model = DropCorrelated(threshold=0.5)
-    model._validate_data(X, force_all_finite=False)
     model.fit(X)
     assert np.all(
         model.feature_names_in_[model.to_keep_] == model.get_feature_names_out()

@@ -272,7 +272,7 @@ class ImpliedCovariance(BaseCovariance):
                 # and re-order to follow returns ordering.
                 implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         _, n_assets = X.shape
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
         implied_vol /= np.sqrt(self.annualized_factor)
