@@ -330,9 +330,9 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             # We validate and convert to numpy array only after base-estimator fitting
             # to keep the assets names in case they are used in the estimator.
             if y is not None:
-                _, y = self._validate_data(X, y, multi_output=True)
+                _, y = skv.validate_data(self, X, y, multi_output=True)
             else:
-                _ = self._validate_data(X)
+                _ = skv.validate_data(self, X)
 
             if isinstance(self.cv, BaseCombinatorialCV):
                 X_pred = np.array(

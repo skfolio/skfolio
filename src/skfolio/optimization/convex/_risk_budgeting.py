@@ -10,6 +10,7 @@ import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -452,7 +453,8 @@ class RiskBudgeting(ConvexOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        self._check_feature_names(X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
 
         if not isinstance(self.risk_measure, RiskMeasure):
             raise TypeError("risk_measure must be of type `RiskMeasure`")

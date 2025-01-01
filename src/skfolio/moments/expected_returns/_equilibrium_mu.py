@@ -10,6 +10,7 @@
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -114,7 +115,7 @@ class EquilibriumMu(BaseMu):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         if self.weights is None:
             weights = np.ones(n_assets) / n_assets

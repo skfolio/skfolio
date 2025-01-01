@@ -11,6 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.prior import BasePrior
 
@@ -113,9 +114,9 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
             Validated price returns of factors or a target benchmark if provided.
         """
         if y is None:
-            X = self._validate_data(X)
+            X = skv.validate_data(self, X)
         else:
-            X, y = self._validate_data(X, y, multi_output=True)
+            X, y = skv.validate_data(self, X, y, multi_output=True)
         return X, y
 
     def get_metadata_routing(self):

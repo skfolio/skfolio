@@ -18,7 +18,7 @@ skfolio
 It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
 and cross-validate portfolio models.
 
-It is distributed under the open source 3-Clause BSD license.
+It is distributed under the open-source 3-Clause BSD license.
 
 .. image:: _static/expo.jpg
     :target: https://skfolio.org/auto_examples/
@@ -44,7 +44,7 @@ Unfortunately, it faces a number of shortcomings, including high sensitivity to 
 input parameters (expected returns and covariance), weight concentration, high turnover,
 and poor out-of-sample performance.
 
-It is well known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
+It is well-known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
 MVO out-of-sample (DeMiguel, 2007).
 
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
@@ -53,10 +53,10 @@ approaches, coherent risk measures, left-tail risk optimization, distributionall
 optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
 pre-selection, etc.).
 
-With this large number of methods, added to the fact that they can be composed together,
-there is a need for a unified framework with a machine learning approach to perform
-model selection, validation, and parameter tuning while reducing the risk of data
-leakage and overfitting.
+Given the large number of methods, and the fact that they can be combined, there is a
+need for a unified framework with a machine-learning approach to perform model
+selection, validation, and parameter tuning while mitigating the risk of data leakage
+and overfitting.
 
 This framework is built on scikit-learn's API.
 
@@ -117,12 +117,14 @@ Available models
         * Circular Bootstrap
     * On Covariance:
         * Empirical
-        * Circular bootstrap
+        * Circular Bootstrap
 
 * Pre-Selection Transformer:
     * Non-Dominated Selection
     * Select K Extremes (Best or Worst)
     * Drop Highly Correlated Assets
+    * Select Non-Expiring Assets
+    * Select Complete Assets (handle late inception, delisting, etc.)
 
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, etc.)
@@ -167,6 +169,8 @@ Available models
     * Budget Constraints
     * Tracking Error Constraints
     * Turnover Constraints
+    * Cardinality and Group Cardinality Constraints
+    * Threshold (Long and Short) Constraints
 
 Quickstart
 **********
@@ -316,7 +320,7 @@ Risk Parity & Gerber Covariance
         prior_estimator=EmpiricalPrior(covariance_estimator=GerberCovariance())
     )
 
-Nested Cluster Optimization with cross-validation and parallelization
+Nested Cluster Optimization with Cross-Validation and Parallelization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 .. code-block:: python
 
@@ -473,9 +477,9 @@ Combinatorial Purged Cross-Validation
 Recognition
 ~~~~~~~~~~~
 
-We would like to thank all contributors behind our direct dependencies, such as
-scikit-learn and cvxpy, but also the contributors of the following resources that were a
-source of inspiration:
+We would like to thank all contributors to our direct dependencies, such as
+scikit-learn and cvxpy, as well as the contributors of the following resources that
+served as sources of inspiration::
 
     * PyPortfolioOpt
     * Riskfolio-Lib

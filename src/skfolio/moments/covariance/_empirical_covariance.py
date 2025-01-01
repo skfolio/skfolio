@@ -9,6 +9,7 @@
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 
@@ -92,7 +93,7 @@ class EmpiricalCovariance(BaseCovariance):
         self : EmpiricalCovariance
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if self.window_size is not None:
             X = X[-int(self.window_size) :]
         covariance = np.cov(X.T, ddof=self.ddof)

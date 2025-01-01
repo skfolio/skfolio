@@ -94,6 +94,19 @@ Ready to contribute? Here's how to set yourself up for local development.
    $ uv run ruff check
    $ uv run ruff format --check
    ```
+   
+   To fix linting and formatting issues, you can run:
+   
+   Using **pip**:
+   ```shell
+   $ ruff check --fix
+   $ ruff format
+   ```
+   or using **uv**:
+   ```shell
+   $ uv run ruff check --fix
+   $ uv run ruff format
+   ```
 
 7. If you added some documentation, you should test that it builds correctly:
    

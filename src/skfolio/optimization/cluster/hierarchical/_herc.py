@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -391,7 +392,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         labels = self.hierarchical_clustering_estimator_.labels_
         linkage_matrix = self.hierarchical_clustering_estimator_.linkage_matrix_
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)

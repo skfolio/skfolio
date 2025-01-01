@@ -13,6 +13,7 @@ from enum import auto
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -189,7 +190,7 @@ class ShrunkMu(BaseMu):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_observations, n_assets = X.shape
 
         covariance = self.covariance_estimator_.covariance_
