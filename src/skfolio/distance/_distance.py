@@ -215,7 +215,7 @@ class SpearmanDistance(BaseDistance):
         self.power = power
 
     def fit(self, X: npt.ArrayLike, y=None) -> "SpearmanDistance":
-        """Fit the Spearman Kendall estimator.
+        """Fit the Spearman estimator.
 
         Parameters
         ----------
