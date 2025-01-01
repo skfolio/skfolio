@@ -424,7 +424,8 @@ class MaximumDiversification(MeanRisk):
         self : MaximumDiversification
            Fitted estimator.
         """
-        skv._check_feature_names(self, X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
 
         def func(w, obj):
             """weighted volatilities"""

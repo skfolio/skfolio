@@ -332,7 +332,9 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        skv._check_feature_names(self, X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
+
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(
