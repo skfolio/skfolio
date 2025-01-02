@@ -8,11 +8,11 @@ from skfolio.prior._factor_model import (
 )
 
 __all__ = [
-    "PriorModel",
-    "BasePrior",
-    "EmpiricalPrior",
-    "BlackLitterman",
-    "FactorModel",
     "BaseLoadingMatrix",
+    "BasePrior",
+    "BlackLitterman",
+    "EmpiricalPrior",
+    "FactorModel",
     "LoadingMatrixRegression",
+    "PriorModel",
 ]

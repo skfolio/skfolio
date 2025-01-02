@@ -13,11 +13,11 @@ from skfolio.uncertainty_set._empirical import (
 )
 
 __all__ = [
-    "UncertaintySet",
-    "BaseMuUncertaintySet",
     "BaseCovarianceUncertaintySet",
-    "EmpiricalMuUncertaintySet",
-    "EmpiricalCovarianceUncertaintySet",
-    "BootstrapMuUncertaintySet",
+    "BaseMuUncertaintySet",
     "BootstrapCovarianceUncertaintySet",
+    "BootstrapMuUncertaintySet",
+    "EmpiricalCovarianceUncertaintySet",
+    "EmpiricalMuUncertaintySet",
+    "UncertaintySet",
 ]

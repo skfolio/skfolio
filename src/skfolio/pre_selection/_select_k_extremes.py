@@ -76,7 +76,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectKExtremes
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         k = int(self.k)
         if k <= 0:
             raise ValueError("`k` must be strictly positive")

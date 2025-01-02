@@ -7,7 +7,7 @@ from skfolio.optimization.cluster.hierarchical import (
 
 __all__ = [
     "BaseHierarchicalOptimization",
-    "HierarchicalRiskParity",
     "HierarchicalEqualRiskContribution",
+    "HierarchicalRiskParity",
     "NestedClustersOptimization",
 ]

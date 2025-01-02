@@ -412,6 +412,7 @@ class Portfolio(BasePortfolio):
         }
     )
 
+    # ruff: noqa: RUF023
     __slots__ = {
         # read-only
         "X",

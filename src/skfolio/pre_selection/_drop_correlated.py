@@ -74,7 +74,7 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         self : DropCorrelated
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
 

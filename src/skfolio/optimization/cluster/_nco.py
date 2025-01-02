@@ -18,6 +18,7 @@ import sklearn.base as skb
 import sklearn.model_selection as sks
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -355,10 +356,10 @@ class NestedClustersOptimization(BaseOptimization):
         # We validate and convert to numpy array only after inner-estimator fitting to
         # keep the assets names in case they are used in the estimator.
         if y is not None:
-            X, y = self._validate_data(X, y)
+            X, y = skv.validate_data(self, X, y)
             y_pred = y[test_indices]
         else:
-            X = self._validate_data(X)
+            X = skv.validate_data(self, X)
             y_pred = None
 
         X_pred = []

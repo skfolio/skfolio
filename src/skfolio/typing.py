@@ -14,20 +14,20 @@ import plotly.graph_objects as go
 from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
 
 __all__ = [
+    "CvxMeasure",
+    "ExpressionFunction",
+    "Factor",
     "Groups",
     "Inequality",
     "LinearConstraints",
+    "Measure",
     "MultiInput",
-    "Target",
+    "Names",
     "ParametersValues",
-    "Factor",
     "Result",
     "RiskResult",
-    "ExpressionFunction",
-    "Measure",
-    "CvxMeasure",
-    "Names",
     "Tags",
+    "Target",
 ]
 
 Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure

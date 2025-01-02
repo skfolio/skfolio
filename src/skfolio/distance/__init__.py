@@ -16,11 +16,11 @@ from skfolio.distance._distance import (
 
 __all__ = [
     "BaseDistance",
-    "PearsonDistance",
-    "KendallDistance",
-    "SpearmanDistance",
     "CovarianceDistance",
     "DistanceCorrelation",
+    "KendallDistance",
     "MutualInformation",
     "NBinsMethod",
+    "PearsonDistance",
+    "SpearmanDistance",
 ]
