@@ -4,13 +4,14 @@ Base Univariate Estimator
 """
 
 import numpy as np
-import scipy.stats as scs
-from sklearn.base import BaseEstimator
-from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_is_fitted, validate_data
+import numpy.typing as npt
+import scipy.stats as st
+import sklearn.base as skb
+import sklearn.utils as sku
+import sklearn.utils.validation as skv
 
 
-class BaseUnivariate(BaseEstimator):
+class BaseUnivariate(skb.BaseEstimator):
     """Base Univariate Distribution Estimator.
 
     Parameters
@@ -19,9 +20,9 @@ class BaseUnivariate(BaseEstimator):
     """
 
     params_: dict[str, float]
-    _scipy_model: scs.rv_continuous
+    _scipy_model: st.rv_continuous
 
-    def score_samples(self, X):
+    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
         """Compute the log-likelihood of each sample under the model.
 
         Parameters
@@ -37,8 +38,8 @@ class BaseUnivariate(BaseEstimator):
             probability densities, so values will be low for high-dimensional
             data.
         """
-        check_is_fitted(self)
-        X = validate_data(self, X, dtype=np.float64, reset=False)
+        skv.check_is_fitted(self)
+        X = skv.validate_data(self, X, dtype=np.float64, reset=False)
         if X.shape[1] != 1:
             raise ValueError(
                 "X should should contain a single column for Univariate Distribution"
@@ -90,9 +91,9 @@ class BaseUnivariate(BaseEstimator):
         X : array-like of shape (n_samples, n_features)
             List of samples.
         """
-        check_is_fitted(self)
+        skv.check_is_fitted(self)
 
-        rng = check_random_state(random_state)
+        rng = sku.check_random_state(random_state)
         return self._scipy_model.rvs(size=n_samples, random_state=rng, **self.params_)
 
     # Todo avoid multiple validation
@@ -102,3 +103,7 @@ class BaseUnivariate(BaseEstimator):
         k = len(self.params_)
         bic = k * np.log(n_observations) - 2 * log_likelihood
         return bic
+
+    def cdf(self, X) -> np.ndarray:
+        skv.check_is_fitted(self)
+        return self._scipy_model.cdf(X, **self.params_)

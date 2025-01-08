@@ -7,7 +7,7 @@ Univariate Student Estimation
 # SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
-import scipy.stats as scs
+import scipy.stats as st
 from sklearn.utils.validation import validate_data
 
 from skfolio.distribution.univariate._base import BaseUnivariate
@@ -21,7 +21,7 @@ class StudentT(BaseUnivariate):
     """
 
     params_: dict[str, float]
-    _scipy_model = scs.t
+    _scipy_model = st.t
 
     def __init__(self):
         pass

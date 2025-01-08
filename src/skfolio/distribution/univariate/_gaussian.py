@@ -7,7 +7,7 @@ Univariate Student Estimation
 # SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
-import scipy.stats as scs
+import scipy.stats as st
 from sklearn.utils.validation import validate_data
 
 from skfolio.distribution.univariate._base import BaseUnivariate
@@ -23,7 +23,7 @@ class Gaussian(BaseUnivariate):
     """
 
     params_: dict[str, float]
-    _scipy_model = scs.norm
+    _scipy_model = st.norm
 
     def __init__(self):
         pass
