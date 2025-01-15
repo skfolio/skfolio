@@ -6,9 +6,7 @@ Univariate Student Estimation
 # Authors: The skfolio developers
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy as np
 import scipy.stats as st
-from sklearn.utils.validation import validate_data
 
 from skfolio.distribution.univariate._base import BaseUnivariate
 
@@ -20,11 +18,19 @@ class StudentT(BaseUnivariate):
     ----------
     """
 
-    params_: dict[str, float]
+    loc_: float
+    scale_: float
+    dof_: float
+
     _scipy_model = st.t
 
-    def __init__(self):
-        pass
+    def __init__(self, loc: float | None = None, scale: float | None = None):
+        self.loc = loc
+        self.scale = scale
+
+    @property
+    def scipy_params(self) -> dict[str, float]:
+        return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
     def fit(self, X, y=None):
         """Fit the Kernel Density model on the data.
@@ -43,17 +49,14 @@ class StudentT(BaseUnivariate):
         self : object
             Returns the instance itself.
         """
-        X = validate_data(self, X, dtype=np.float64)
-        if X.shape[1] != 1:
-            raise ValueError(
-                "X should should contain a single column for Univariate Distribution"
-            )
+        X = self._validate_X(X, reset=True)
 
-        df, loc, scale = self._scipy_model.fit(X)
+        fixed_params = {}
+        if self.loc is not None:
+            fixed_params["floc"] = self.loc
+        if self.scale is not None:
+            fixed_params["fscale"] = self.scale
 
-        self.params_ = {
-            "df": df,
-            "loc": loc,
-            "scale": scale,
-        }
+        self.dof_, self.loc_, self.scale_ = self._scipy_model.fit(X, **fixed_params)
+
         return self

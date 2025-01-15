@@ -1,13 +1,15 @@
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
     CopulaRotation,
+    GaussianCopula,
+    JoeCopula,
     StudentTCopula,
 )
 from skfolio.distribution.univariate import (
     BaseUnivariate,
     Gaussian,
     StudentT,
-    optimal_univariate_dist,
+    find_best_and_fit_univariate_dist,
 )
 
 __all__ = [
@@ -15,7 +17,9 @@ __all__ = [
     "BaseUnivariate",
     "CopulaRotation",
     "Gaussian",
+    "GaussianCopula",
+    "JoeCopula",
     "StudentT",
     "StudentTCopula",
-    "optimal_univariate_dist",
+    "find_best_and_fit_univariate_dist",
 ]
