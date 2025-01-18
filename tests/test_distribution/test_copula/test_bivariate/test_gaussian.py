@@ -31,13 +31,13 @@ def fitted_model():
 def test_gaussian_copula_init():
     """Test initialization of GaussianCopula with default parameters."""
     model = GaussianCopula()
-    assert model.use_kendall_tau_inversion is True
+    assert model.use_kendall_tau_inversion is False
     assert model.kendall_tau is None
 
 
 def test_gaussian_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = GaussianCopula().fit(random_data)
+    model = GaussianCopula(use_kendall_tau_inversion=False).fit(random_data)
     # Check that rho_ has been fitted and lies within the valid range
     assert hasattr(model, "rho_")
     assert _RHO_BOUNDS[0] < model.rho_ < _RHO_BOUNDS[1]
@@ -60,19 +60,42 @@ def test_gaussian_copula_fit_mle(random_data):
     assert -1 < model.rho_ < 1
 
 
-def test_gaussian_partial_derivative_shape(random_data):
+def test_gaussian_cdf_shape(random_data):
+    """Test cdf() returns correct shape."""
+    model = GaussianCopula().fit(random_data)
+    cdf = model.cdf(random_data)
+    assert cdf.shape == (100,)
+    # All values should remain in (0,1) for a well-behaved CDF
+    assert np.all(cdf >= 0) and np.all(cdf <= 1)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_gaussian_partial_derivative_shape(random_data, first_margin):
     """Test partial_derivative() returns correct shape."""
     model = GaussianCopula().fit(random_data)
-    h = model.partial_derivative(random_data)
+    h = model.partial_derivative(random_data, first_margin=first_margin)
     assert h.shape == (100,)
     # All values should remain in (0,1) for a well-behaved CDF
     assert np.all(h >= 0) and np.all(h <= 1)
 
 
-def test_gaussian_inverse_partial_derivative_shape(random_data):
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_gaussian_inverse_partial_derivative_shape(random_data, first_margin):
     """Test inverse_partial_derivative() returns correct shape."""
     model = GaussianCopula().fit(random_data)
-    h_inv = model.inverse_partial_derivative(random_data)
+    h_inv = model.inverse_partial_derivative(random_data, first_margin=first_margin)
     assert h_inv.shape == (100,)
     # Should lie within [0,1]
     assert np.all(h_inv >= 0) and np.all(h_inv <= 1)
@@ -153,18 +176,86 @@ def test_gaussian_aic_bic_exact(X, fitted_model):
     np.isclose(fitted_model.bic(X), -4.937161694654951)
 
 
-def test_gaussian_partial_derivative_exact(X, fitted_model):
+def test_cdf_exact(
+    X,
+    fitted_model,
+):
     np.testing.assert_almost_equal(
-        fitted_model.partial_derivative(X),
-        np.array([0.15045411, 0.76650108, 0.29340619, 0.36365638, 0.23882845]),
+        fitted_model.cdf(X),
+        np.array([0.0359141, 0.18021753, 0.24926745, 0.44315041, 0.16167046]),
     )
 
 
-def test_gaussian_inverse_partial_derivative_exact(X, fitted_model):
-    np.testing.assert_almost_equal(
-        fitted_model.inverse_partial_derivative(X),
-        np.array([0.02255551, 0.20332606, 0.30390676, 0.58119914, 0.17906309]),
-    )
+@pytest.mark.parametrize(
+    "first_margin,expected",
+    [
+        (True, np.array([0.53332908, 0.1393711, 0.61438086, 0.66677303, 0.6049685])),
+        (False, np.array([0.15045411, 0.76650108, 0.29340619, 0.36365638, 0.23882845])),
+    ],
+)
+def test_gaussian_partial_derivative_exact(X, fitted_model, first_margin, expected):
+    h = fitted_model.partial_derivative(X, first_margin=first_margin)
+    np.testing.assert_almost_equal(h, expected)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_gaussian_partial_derivative_numeric(X, fitted_model, first_margin):
+    h = fitted_model.partial_derivative(X, first_margin=first_margin)
+
+    delta = 1e-6
+    i = 0 if first_margin else 1
+    X1 = X.copy()
+    X1[:, i] += delta
+    X2 = X.copy()
+    X2[:, i] -= delta
+
+    h_num = (fitted_model.cdf(X1) - fitted_model.cdf(X2)) / delta / 2
+
+    np.testing.assert_almost_equal(h, h_num)
+
+
+@pytest.mark.parametrize(
+    "first_margin,expected",
+    [
+        (True, np.array([0.01858046, 0.2420715, 0.2832673, 0.55918913, 0.16130203])),
+        (False, np.array([0.02255551, 0.20332606, 0.30390676, 0.58119914, 0.17906309])),
+    ],
+)
+def test_gaussian_inverse_partial_derivative_exact(
+    X, fitted_model, first_margin, expected
+):
+    p = fitted_model.inverse_partial_derivative(X, first_margin=first_margin)
+    np.testing.assert_almost_equal(p, expected)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_gaussian_partial_derivative_inverse_partial_derivative(
+    fitted_model, X, first_margin
+):
+    """h(u | v) = p => h^-1(p | v) = u"""
+    p = fitted_model.partial_derivative(X, first_margin=first_margin)
+    if first_margin:
+        PV = np.stack([X[:, 0], p], axis=1)
+    else:
+        PV = np.stack([p, X[:, 1]], axis=1)
+
+    u = fitted_model.inverse_partial_derivative(PV, first_margin=first_margin)
+    if first_margin:
+        np.testing.assert_almost_equal(X[:, 1], u)
+    else:
+        np.testing.assert_almost_equal(X[:, 0], u)
 
 
 def test_gaussian_sample_exact(X, fitted_model):

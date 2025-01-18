@@ -3,9 +3,10 @@ Bivariate Joe Copula Estimation
 -------------------------------
 """
 
+import warnings
+
 # Authors: The skfolio developers
 # SPDX-License-Identifier: BSD-3-Clause
-
 import numpy as np
 import numpy.typing as npt
 import scipy.optimize as so
@@ -16,6 +17,12 @@ import sklearn.utils.validation as skv
 from skfolio.distribution.copula.bivariate._base import (
     BaseBivariateCopula,
     CopulaRotation,
+)
+from skfolio.distribution.copula.bivariate._utils import (
+    _apply_copula_rotation,
+    _apply_margin_swap,
+    _apply_rotation_cdf,
+    _apply_rotation_partial_derivatives,
 )
 
 # Joe copula with a theta of 1.0 is just the independence copula, so we chose a lower
@@ -37,15 +44,8 @@ class JoeCopula(BaseBivariateCopula):
     It is defined by:
 
     .. math::
-            C_{\theta}(u, v) = 1
-            -
-            \Bigl[
-                (1 - u)^{\theta}
-                \;+\;
-                (1 - v)^{\theta}
-                \;-\;
-                (1 - u)^{\theta} (1 - v)^{\theta}
-            \Bigr]^{\frac{1}{\theta}}
+            C_{\theta}(u, v) = 1-\Bigl[(1 - u)^{\theta} + (1 - v)^{\theta} -
+                (1 - u)^{\theta} (1 - v)^{\theta}\Bigr]^{\frac{1}{\theta}}
 
     where :math:`\theta \ge 1` is the dependence parameter. When :math:`\theta = 1`,
     the Joe copula reduces to the independence copula. Larger values of :math:`\theta`
@@ -58,11 +58,14 @@ class JoeCopula(BaseBivariateCopula):
         asymmetric tail behavior. To model negative dependence, one uses rotations
         (90°, 180°, or 270°) to “flip” the copula's tail dependence.
 
-
     Parameters
     ----------
-    use_kendall_tau_inversion : bool, default=True
-        Whether to use Kendall's tau inversion for estimating :math:`\theta`.
+    use_kendall_tau_inversion : bool, default=False
+        If True, :math:`\theta` is estimated using the Kendall's tau inversion method;
+        otherwise, the Maximum Likelihood Estimation (MLE) method is used (default).
+        The MLE is slower but more accurate, especially for Archimedean copulas,
+        for which the Kendall's tau inversion method cannot capture rotations
+        (since Kendall's tau is a rank based measure of dependence).
 
     kendall_tau : float, optional
         If `use_kendall_tau_inversion` is True and `kendall_tau` is provided, this
@@ -78,17 +81,16 @@ class JoeCopula(BaseBivariateCopula):
     """
 
     theta_: float
+    rotation_: CopulaRotation
     _n_params = 1
 
     def __init__(
         self,
-        use_kendall_tau_inversion: bool = True,
+        use_kendall_tau_inversion: bool = False,
         kendall_tau: float | None = None,
-        rotation: CopulaRotation = CopulaRotation.R0,
     ):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
         self.kendall_tau = kendall_tau
-        self.rotation = rotation
 
     def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
         """Fit the Bivariate Joe Copula.
@@ -114,38 +116,65 @@ class JoeCopula(BaseBivariateCopula):
         X = self._validate_X(X, reset=True)
 
         if self.use_kendall_tau_inversion:
+            warnings.warn(
+                "For Archimedean copulas, the Kendall's tau inversion method cannot "
+                "capture rotations since Kendall's tau is a rank based measure of "
+                "dependence. The MLE method should be preferred. To silence this "
+                "warning, set `use_kendall_tau_inversion=False`",
+                UserWarning,
+                stacklevel=2,
+            )
             if self.kendall_tau is None:
                 kendall_tau = st.kendalltau(X[:, 0], X[:, 1]).statistic
             else:
                 kendall_tau = self.kendall_tau
 
+            abs_kendall_tau = abs(kendall_tau)
             # Root-finding function brentq to find the value of theta in the interval
             # noinspection PyTypeChecker
             self.theta_ = so.brentq(
-                _tau_diff, args=(kendall_tau,), a=_THETA_BOUNDS[0], b=_THETA_BOUNDS[-1]
+                _tau_diff,
+                args=(abs_kendall_tau,),
+                a=_THETA_BOUNDS[0],
+                b=_THETA_BOUNDS[-1],
             )
+            self.rotation_ = CopulaRotation.R0
 
         else:
-            result = so.minimize_scalar(
-                _neg_log_likelihood, args=(X,), bounds=_THETA_BOUNDS, method="bounded"
-            )
-            if not result.success:
-                raise RuntimeError(f"Optimization failed: {result.message}")
-            self.theta_ = result.x
+            results = []
+            for rotation in CopulaRotation:
+                X_rotated = _apply_copula_rotation(X, rotation=rotation)
+                result = so.minimize_scalar(
+                    _neg_log_likelihood,
+                    args=(X_rotated,),
+                    bounds=_THETA_BOUNDS,
+                    method="bounded",
+                )
+                if result.success:
+                    results.append(
+                        {
+                            "neg_log_likelihood": result.fun,
+                            "theta": result.x,
+                            "rotation": rotation,
+                        }
+                    )
+                else:
+                    warnings.warn(
+                        f"Optimization failed for rotation {rotation}: {result.message}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+            if len(results) == 0:
+                raise RuntimeError("Optimization failed for all rotations")
+
+            best = min(results, key=lambda d: d["neg_log_likelihood"])
+            self.theta_ = best["theta"]
+            self.rotation_ = best["rotation"]
 
         return self
 
-    def partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
-        r"""Compute the h-function (partial derivative) for the bivariate Joe copula.
-
-        The h-function represents the conditional distribution function of :math:`u`
-        given :math:`v`:
-
-        .. math::
-           h(u \mid v) = (1-u)^{\theta-1}\Bigl[1 - (1-v)^{\theta}\Bigr]
-                         \Bigl[(1-u)^{\theta} + (1-v)^{\theta} - (1-u)^{\theta}(1-v)^{\theta}\Bigr]^{\frac{1}{\theta}-1}
-                       = \left( 1 + \frac{(1-u)^{\theta}}{(1-v)^{\theta}} - (1-u)^{\theta} \right)^{-1 + \frac{1}{\theta}}
-                       \cdot \left( 1 - (1-u)^{\theta} \right)
+    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+        """Compute the CDF of the bivariate Joe copula.
 
         Parameters
         ----------
@@ -156,21 +185,72 @@ class JoeCopula(BaseBivariateCopula):
 
         Returns
         -------
-        h : ndarray of shape (n_observations, )
-            h-function values for each observation in X.
+        cdf : ndarray of shape (n_observations, )
+            CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        x = np.power(1 - X[:, 0], self.theta_)
-        y = np.power(1 - X[:, 1], self.theta_)
-        h_values = np.power(1 + y / x - y, -1 + 1 / self.theta_) * (1.0 - y)
-        return h_values
+        cdf = _apply_rotation_cdf(
+            func=_base_cdf, X=X, rotation=self.rotation_, theta=self.theta_
+        )
+        return cdf
 
-    def inverse_partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
+        r"""Compute the h-function (partial derivative) for the bivariate Joe copula
+        with respect to a specified margin.
+
+        The h-function with respect to the second margin represents the conditional
+        distribution function of :math:`u` given :math:`v`:
+
+        .. math::  \begin{aligned}
+                   h(u \mid v)
+                     &= \frac{\partial C(u,v)}{\partial v} \\[6pt]
+                     &= (1-v)^{\theta-1}\,\Bigl[1 \;-\;(1-u)^{\theta}\Bigr]\,
+                        \Bigl[(1-u)^{\theta} \;+\;(1-v)^{\theta}
+                              \;-\;(1-u)^{\theta}(1-v)^{\theta}\Bigr]^{\frac{1}{\theta}-1} \\[6pt]
+                     &= \left( 1 \;+\;\frac{(1-u)^{\theta}}{(1-v)^{\theta}}
+                              \;-\;(1-u)^{\theta} \right)^{-1 + \frac{1}{\theta}}
+                        \;\cdot\;\bigl[\,1 \;-\;(1-u)^{\theta}\bigr].
+                   \end{aligned}
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            An array of bivariate inputs `(u, v)` where each row represents a
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+            having been transformed to uniform marginals.
+
+        first_margin : bool, default False
+            If True, compute the partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            second margin `v`.
+
+        Returns
+        -------
+          : ndarray of shape (n_observations, )
+            h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False)
+        p = _apply_rotation_partial_derivatives(
+            func=_base_partial_derivative,
+            X=X,
+            rotation=self.rotation_,
+            first_margin=first_margin,
+            theta=self.theta_,
+        )
+        return p
+
+    def inverse_partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
-        Let :math:`C(u, v)` be a bivariate copula. The h-function is defined by
+        Let :math:`C(u, v)` be a bivariate copula. The h-function with respect to the
+        second margin is defined by
 
         .. math::
             h(u \mid v) \;=\; \frac{\partial\,C(u, v)}{\partial\,v},
@@ -194,6 +274,11 @@ class JoeCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
+        first_margin : bool, default False
+            If True, compute the inverse partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            to the second margin `v`.
+
         Returns
         -------
         u : ndarray of shape (n_observations, )
@@ -204,16 +289,18 @@ class JoeCopula(BaseBivariateCopula):
         ----------
         .. [1] "Multivariate Models and Dependence Concepts", Joe, H. (1997)
         .. [2] "An Introduction to Copulas", Nelsen, R. B. (2006)
+        .. [3] . "Nested Archimedean Copulas Meet ", Hofert & Mächler (2011)
         """
+        # no known closed-form solution, hence we use Newton method.
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        p = X[:, 0]
-        v = X[:, 1]
-
-        x = np.power(1 - v, self.theta_)
-        y = 1 - p * np.power(1 - v, 1 - self.theta_)
-        y += x - y * x
-        u = 1 - np.power(y, 1 / self.theta_)
+        u = _apply_rotation_partial_derivatives(
+            func=_base_inverse_partial_derivative,
+            X=X,
+            rotation=self.rotation_,
+            first_margin=first_margin,
+            theta=self.theta_,
+        )
         return u
 
     def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
@@ -233,32 +320,33 @@ class JoeCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        log_density = _sample_scores(X=X, theta=self.theta_)
+        X = _apply_copula_rotation(X, rotation=self.rotation_)
+        log_density = _base_sample_scores(X=X, theta=self.theta_)
         return log_density
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
     """Negative log-likelihood function for optimization.
 
-    Parameters
-    ----------
-    X : array-like of shape (n_observations, 2)
-        An array of bivariate inputs `(u, v)` where each row represents a
-        bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
-        having been transformed to uniform marginals.
+     Parameters
+     ----------
+     X : array-like of shape (n_observations, 2)
+         An array of bivariate inputs `(u, v)` where each row represents a
+         bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+         having been transformed to uniform marginals.
 
     theta : float
-        Dependence parameter.
+         The dependence parameter (must be greater than 1).
 
-    Returns
-    -------
-    value : float
-        The negative log-likelihood value.
+     Returns
+     -------
+     value : float
+         The negative log-likelihood value.
     """
-    return -np.sum(_sample_scores(X=X, theta=theta))
+    return -np.sum(_base_sample_scores(X=X, theta=theta))
 
 
-def _sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
+def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Joe copula model.
 
@@ -269,8 +357,8 @@ def _sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
         bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
         having been transformed to uniform marginals.
 
-      theta : float
-        Dependence parameter.
+    theta : float
+        The dependence parameter (must be greater than 1).
 
     Returns
     -------
@@ -285,12 +373,8 @@ def _sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
     if theta <= 1.0:
         raise ValueError("Theta must be greater than 1 for the Joe copula.")
 
-    u = X[:, 0]
-    v = X[:, 1]
-
-    # log-space transformation to improve stability (avoid overflow)
-    x = np.log(1.0 - u)
-    y = np.log(1.0 - v)
+    # log-space transformation to improve stability near 0  or 1
+    x, y = np.log1p(-X).T
     x_y = x + y
     d = np.exp(x * theta) + np.exp(y * theta) - np.exp(x_y * theta)
     log_density = (
@@ -330,3 +414,103 @@ def _tau_diff(theta: float, tau_empirical: float) -> float:
         gamma_const - sp.digamma(2.0 / theta + 1.0)
     )
     return tau_theoretical - tau_empirical
+
+
+def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
+    z = np.power(1 - X, theta)
+    cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
+    return cdf
+
+
+def _base_partial_derivative(
+    X: np.ndarray, first_margin: bool, theta: float
+) -> np.ndarray:
+    r"""Compute the h-function (partial derivative) for the bivariate unrotated
+    Joe copula with respect to a specified margin.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_observations, 2)
+        An array of bivariate inputs `(u, v)` where each row represents a
+        bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+        having been transformed to uniform marginals.
+
+    first_margin : bool, default False
+        If True, compute the partial derivative with respect to the first
+        margin `u`; ,otherwise, compute the partial derivative with respect to the
+        second margin `v`.
+
+    theta : float
+        The dependence parameter (must be greater than 1).
+
+    Returns
+    -------
+      : ndarray of shape (n_observations, )
+        h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
+    """
+    X = _apply_margin_swap(X, first_margin=first_margin)
+    x, y = np.power(1 - X, theta).T
+    p = np.power(1 + x / y - x, 1 / theta - 1) * (1.0 - x)
+    return p
+
+
+def _base_inverse_partial_derivative(
+    X: np.ndarray, first_margin: bool, theta: float
+) -> np.ndarray:
+    r"""Compute the inverse of the bivariate copula's partial derivative, commonly
+    known as the inverse h-function.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_observations, 2)
+        An array of bivariate inputs `(p, v)`, each in the interval `[0, 1]`.
+        - The first column `p` corresponds to the value of the h-function.
+        - The second column `v` is the conditioning variable.
+
+    first_margin : bool, default False
+        If True, compute the inverse partial derivative with respect to the first
+        margin `u`; ,otherwise, compute the inverse partial derivative with respect to
+        the second margin `v`.
+
+    theta : float
+        The dependence parameter (must be greater than 1).
+
+    Returns
+    -------
+    u : ndarray of shape (n_observations, )
+        A 1D-array of length `n_observations`, where each element is the computed
+        :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
+    """
+    X = _apply_margin_swap(X, first_margin=first_margin)
+
+    p, v = X.T
+
+    y = np.power(1 - v, theta)
+
+    # No known closed-form solution, hence we use Newton method
+    # with an early-stopping criterion
+
+    # Initial guess
+    x = np.power(
+        (1 - v) * (np.power(1.0 - p, 1.0 / theta - 1) - 1.0) / y + 1.0,
+        theta / (1.0 - theta),
+    )
+
+    max_iters = 50
+    tol = 1e-8
+    for _ in range(max_iters):
+        k = (x - 1.0) * y
+        w = np.power((1.0 / y - 1.0) * x + 1.0, 1.0 / theta)
+        x_new = (
+            x
+            - (theta * (k - x) * (p * (-k + x) + k * w))
+            / ((y - 1.0) * k - theta * y)
+            / w
+        )
+        x_new = np.clip(x_new, 0.0, 1.0)
+        if np.max(np.abs(x_new - x)) < tol:
+            break
+        x = x_new
+
+    u = 1.0 - np.power(x, 1.0 / theta)
+    return u

@@ -12,6 +12,7 @@ import scipy.stats as st
 import sklearn.utils.validation as skv
 
 from skfolio.distribution.copula.bivariate._base import _RHO_BOUNDS, BaseBivariateCopula
+from skfolio.distribution.copula.bivariate._utils import _apply_margin_swap
 
 
 class GaussianCopula(BaseBivariateCopula):
@@ -35,8 +36,10 @@ class GaussianCopula(BaseBivariateCopula):
 
     Parameters
     ----------
-    use_kendall_tau_inversion : bool, default=True
-        Whether to use Kendall's tau inversion for estimating :math:`\rho`.
+    use_kendall_tau_inversion : bool, default=False
+        If True, :math:`\rho` is estimated using the Kendall's tau inversion method;
+        otherwise, we use the MLE (Maximum Likelihood Estimation) method (default).
+        The MLE is slower but more accurate.
 
     kendall_tau : float, optional
         If `use_kendall_tau_inversion` is True and `kendall_tau` is provided, this
@@ -52,7 +55,7 @@ class GaussianCopula(BaseBivariateCopula):
     _n_params = 1
 
     def __init__(
-        self, use_kendall_tau_inversion: bool = True, kendall_tau: float | None = None
+        self, use_kendall_tau_inversion: bool = False, kendall_tau: float | None = None
     ):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
         self.kendall_tau = kendall_tau
@@ -96,12 +99,38 @@ class GaussianCopula(BaseBivariateCopula):
 
         return self
 
-    def partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+        """Compute the CDF of the bivariate Gaussian copula.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            An array of bivariate inputs `(u, v)` where each row represents a
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+            having been transformed to uniform marginals.
+
+        Returns
+        -------
+        cdf : ndarray of shape (n_observations, )
+            CDF values for each observation in X.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False)
+        cdf = st.multivariate_normal.cdf(
+            x=sp.ndtri(X),
+            mean=np.array([0, 0]),
+            cov=np.array([[1, self.rho_], [self.rho_, 1]]),
+        )
+        return cdf
+
+    def partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the h-function (partial derivative) for the bivariate Gaussian
         copula.
 
-        The h-function represents the conditional distribution function of :math:`u`
-        given :math:`v`:
+        The h-function with respect to the second margin represents the conditional
+        distribution function of :math:`u` given :math:`v`:
 
         .. math:: \begin{aligned}
                   h(u \mid v) &= \frac{\partial C(u,v)}{\partial v} \\
@@ -118,25 +147,33 @@ class GaussianCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
+        first_margin : bool, default False
+            If True, compute the partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            second margin `v`.
+
         Returns
         -------
-        h : ndarray of shape (n_observations, )
-            h-function values for each observation in X.
+        p : ndarray of shape (n_observations, )
+            h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
+        X = _apply_margin_swap(X, first_margin=first_margin)
         # Compute the inverse CDF (percent point function) using ndtri for better
         # performance
-        u_inv = sp.ndtri(X[:, 0])
-        v_inv = sp.ndtri(X[:, 1])
-        h = sp.ndtr((u_inv - self.rho_ * v_inv) / np.sqrt(1 - self.rho_**2))
-        return h
+        u_inv, v_inv = sp.ndtri(X).T
+        p = sp.ndtr((u_inv - self.rho_ * v_inv) / np.sqrt(1 - self.rho_**2))
+        return p
 
-    def inverse_partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def inverse_partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
-        Let :math:`C(u, v)` be a bivariate copula. The h-function is defined by
+        Let :math:`C(u, v)` be a bivariate copula. The h-function with respect to the
+        second margin is defined by
 
         .. math::
             h(u \mid v) \;=\; \frac{\partial\,C(u, v)}{\partial\,v},
@@ -160,6 +197,11 @@ class GaussianCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
+        first_margin : bool, default False
+            If True, compute the inverse partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            to the second margin `v`.
+
         Returns
         -------
         u : ndarray of shape (n_observations, )
@@ -173,8 +215,8 @@ class GaussianCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        p_inv = sp.ndtri(X[:, 0])
-        v_inv = sp.ndtri(X[:, 1])
+        X = _apply_margin_swap(X, first_margin=first_margin)
+        p_inv, v_inv = sp.ndtri(X).T
         u_inv = p_inv * np.sqrt(1 - self.rho_**2) + self.rho_ * v_inv
         u = sp.ndtr(u_inv)
         return u
@@ -196,7 +238,7 @@ class GaussianCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        log_density = _sample_scores(X=X, rho=self.rho_)
+        log_density = _base_sample_scores(X=X, rho=self.rho_)
         return log_density
 
 
@@ -218,10 +260,10 @@ def _neg_log_likelihood(rho: float, X: np.ndarray) -> float:
     value : float
         The negative log-likelihood value.
     """
-    return -np.sum(_sample_scores(X=X, rho=rho))
+    return -np.sum(_base_sample_scores(X=X, rho=rho))
 
 
-def _sample_scores(X: np.ndarray, rho: float) -> np.ndarray:
+def _base_sample_scores(X: np.ndarray, rho: float) -> np.ndarray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Gaussian copula model.
 
@@ -249,8 +291,7 @@ def _sample_scores(X: np.ndarray, rho: float) -> np.ndarray:
         raise ValueError("rho must be between -1 and 1.")
 
     # Inverse CDF (ppf) using stdtrit for better performance
-    u_inv = sp.ndtri(X[:, 0])
-    v_inv = sp.ndtri(X[:, 1])
+    u_inv, v_inv = sp.ndtri(X).T
 
     # Using np.log1p to avoid loss of precision
     log_density = -0.5 * np.log1p(-(rho**2)) - rho * (

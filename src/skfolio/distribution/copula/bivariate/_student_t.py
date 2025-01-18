@@ -15,6 +15,7 @@ from skfolio.distribution.copula.bivariate._base import (
     _RHO_BOUNDS,
     BaseBivariateCopula,
 )
+from skfolio.distribution.copula.bivariate._utils import _apply_margin_swap
 
 # Student's t copula with dof less than 1.0 is so extremely heavy-tailed that even the
 # mean (and many moments) of the distribution do not exist. So Impractical in practice,
@@ -47,8 +48,11 @@ class StudentTCopula(BaseBivariateCopula):
 
     Parameters
     ----------
-    use_kendall_tau_inversion : bool, default=True
-        Whether to use Kendall's tau inversion for estimating :math:`\rho`.
+    use_kendall_tau_inversion : bool, default=False
+        use_kendall_tau_inversion : bool, default=False
+        If True, :math:`\rho` is estimated using the Kendall's tau inversion method;
+        otherwise, we use the MLE (Maximum Likelihood Estimation) method (default).
+        The MLE is slower but more accurate.
 
     kendall_tau : float, optional
         If `use_kendall_tau_inversion` is True and `kendall_tau` is provided, this
@@ -68,7 +72,7 @@ class StudentTCopula(BaseBivariateCopula):
 
     def __init__(
         self,
-        use_kendall_tau_inversion: bool = True,
+        use_kendall_tau_inversion: bool = False,
         kendall_tau: float | None = None,
     ):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
@@ -146,12 +150,39 @@ class StudentTCopula(BaseBivariateCopula):
 
         return self
 
-    def partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+        """Compute the CDF of the bivariate Student-t copula.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            An array of bivariate inputs `(u, v)` where each row represents a
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+            having been transformed to uniform marginals.
+
+        Returns
+        -------
+        cdf : ndarray of shape (n_observations, )
+            CDF values for each observation in X.
+        """
+        skv.check_is_fitted(self)
+        X = self._validate_X(X, reset=False)
+        cdf = st.multivariate_t.cdf(
+            x=sp.stdtrit(self.dof_, X),
+            loc=np.array([0, 0]),
+            shape=np.array([[1, self.rho_], [self.rho_, 1]]),
+            df=self.dof_,
+        )
+        return cdf
+
+    def partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the h-function (partial derivative) for the bivariate Student's t
         copula.
 
-        The h-function represents the conditional distribution function of :math:`u`
-        given :math:`v`:
+        The h-function with respect to the second margin represents the conditional
+        distribution function of :math:`u` given :math:`v`:
 
         .. math:: \begin{aligned}
                    h(u \mid v) &= \frac{\partial C(u,v)}{\partial v} \\
@@ -172,31 +203,39 @@ class StudentTCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
+        first_margin : bool, default False
+            If True, compute the partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            second margin `v`.
+
         Returns
         -------
-        h : ndarray of shape (n_observations, )
-            h-function values for each observation in X.
+        p : ndarray of shape (n_observations, )
+            h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
+        X = _apply_margin_swap(X, first_margin=first_margin)
         # Compute the inverse CDF (percent point function) using stdtrit for better
         # performance
-        u_inv = sp.stdtrit(self.dof_, X[:, 0])
-        v_inv = sp.stdtrit(self.dof_, X[:, 1])
+        u_inv, v_inv = sp.stdtrit(self.dof_, X).T
         # Compute the denominator: sqrt((1 - rho^2) * (nu + y^2) / (nu + 1))
         z = (u_inv - self.rho_ * v_inv) / (
             np.sqrt((1 - self.rho_**2) * (self.dof_ + v_inv**2) / (self.dof_ + 1))
         )
         # Student's t CDF with (nu+1) degrees of freedom using stdtr for better
         # performance
-        h_values = sp.stdtr(self.dof_ + 1, z)
-        return h_values
+        p = sp.stdtr(self.dof_ + 1, z)
+        return p
 
-    def inverse_partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def inverse_partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
-        Let :math:`C(u, v)` be a bivariate copula. The h-function is defined by
+        Let :math:`C(u, v)` be a bivariate copula. The h-function with respect to the
+        second margin is defined by
 
         .. math::
             h(u \mid v) \;=\; \frac{\partial\,C(u, v)}{\partial\,v},
@@ -220,6 +259,11 @@ class StudentTCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
+        first_margin : bool, default False
+            If True, compute the inverse partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            to the second margin `v`.
+
         Returns
         -------
         u : ndarray of shape (n_observations, )
@@ -233,7 +277,7 @@ class StudentTCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-
+        X = _apply_margin_swap(X, first_margin=first_margin)
         p_inv = sp.stdtrit(self.dof_ + 1, X[:, 0])
         v_inv = sp.stdtrit(self.dof_, X[:, 1])
         u_inv = (
@@ -319,8 +363,7 @@ def _sample_scores(X: np.ndarray, rho: float, dof: float) -> np.ndarray:
         raise ValueError("Degrees of freedom `dof` must be between 1 and 50.")
 
     # Inverse CDF (ppf) using stdtrit for better performance
-    x = sp.stdtrit(dof, X[:, 0])
-    y = sp.stdtrit(dof, X[:, 1])
+    x, y = sp.stdtrit(dof, X).T
 
     a = 1.0 - rho**2
     log_density = (
@@ -328,7 +371,7 @@ def _sample_scores(X: np.ndarray, rho: float, dof: float) -> np.ndarray:
         + sp.gammaln(dof / 2.0)
         - 2.0 * sp.gammaln((dof + 1.0) / 2.0)
         - np.log(a) / 2
-        + (dof + 1.0) / 2.0 * (np.log(1.0 + x**2 / dof) + np.log(1.0 + y**2 / dof))
-        - (dof + 2.0) / 2.0 * np.log(1.0 + (x**2 - 2 * rho * x * y + y**2) / a / dof)
+        + (dof + 1.0) / 2.0 * (np.log1p(x**2 / dof) + np.log1p(y**2 / dof))
+        - (dof + 2.0) / 2.0 * np.log1p((x**2 - 2 * rho * x * y + y**2) / a / dof)
     )
     return log_density

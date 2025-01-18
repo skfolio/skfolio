@@ -17,7 +17,14 @@ _RHO_BOUNDS = (-0.999, 0.999)
 
 
 class CopulaRotation(Enum):
-    """Enum representing the rotation (in degrees) to apply to a bivariate copula.
+    r"""Enum representing the rotation (in degrees) to apply to a bivariate copula.
+
+    It follows the standard (clockwise) convention:
+
+    - `CopulaRotation.R0` (0°): :math:`(u, v) \mapsto (u, v)`
+    - `CopulaRotation.R90` (90°): :math:`(u, v) \mapsto (v,\, 1 - u)`
+    - `CopulaRotation.R180` (180°): :math:`(u, v) \mapsto (1 - u,\, 1 - v)`
+    - `CopulaRotation.R270` (270°): :math:`(u, v) \mapsto (1 - v,\, u)`
 
     Attributes
     ----------
@@ -48,7 +55,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
     _n_params: int
 
     def _validate_X(self, X: npt.ArrayLike, reset: bool) -> np.ndarray:
-        """Validate the input data and apply rotation if necessary.
+        """Validate the input data.
 
         Parameters
         ----------
@@ -64,7 +71,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         Returns
         -------
         validated_X: ndarray of shape (n_observations, 2)
-            The validated and rotated data array.
+            The validated data array.
 
         Raises
         ------
@@ -82,19 +89,6 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
         X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
-
-        if hasattr(self, "rotation"):
-            match self.rotation:
-                case CopulaRotation.R0:
-                    pass
-                case CopulaRotation.R90:
-                    X[:, 0] = 1 - X[:, 0]
-                case CopulaRotation.R180:
-                    X = 1 - X
-                case CopulaRotation.R270:
-                    X[:, 1] = 1 - X[:, 1]
-                case _:
-                    raise ValueError(f"Unsupported rotation: {self.rotation}")
         return X
 
     @abstractmethod
@@ -139,8 +133,8 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         Returns
         -------
-        h : ndarray of shape (n_observations, )
-            h-function values for each observation in X.
+        p : ndarray of shape (n_observations, )
+            h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
         pass
 

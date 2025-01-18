@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skfolio.distribution import CopulaRotation, StudentTCopula
+from skfolio.distribution import StudentTCopula
 from skfolio.distribution.copula.bivariate._base import _RHO_BOUNDS
 from skfolio.distribution.copula.bivariate._student_t import _DOF_BOUNDS
 
@@ -33,14 +33,13 @@ def fitted_model():
 def test_student_t_copula_init():
     """Test initialization of StudentTCopula with default parameters."""
     model = StudentTCopula()
-    assert model.use_kendall_tau_inversion is True
+    assert model.use_kendall_tau_inversion is False
     assert model.kendall_tau is None
-    assert model.rotation is CopulaRotation.R0
 
 
 def test_student_t_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = StudentTCopula().fit(random_data)
+    model = StudentTCopula(use_kendall_tau_inversion=True).fit(random_data)
     # Check that rho_ has been fitted and lies within the valid range
     assert hasattr(model, "rho_")
     assert hasattr(model, "dof_")
@@ -74,19 +73,51 @@ def test_student_t_copula_fit_mle_with_provided_kendall_tau(random_data):
     assert 1 <= model.dof_ <= 50
 
 
-def test_student_t_partial_derivative_shape(random_data):
+def test_student_t_cdf_shape(random_data):
+    """Test cdf() returns correct shape."""
+    model = StudentTCopula().fit(random_data)
+    cdf = model.cdf(random_data)
+    assert cdf.shape == (100,)
+    # All values should remain in (0,1) for a well-behaved CDF
+    assert np.all(cdf >= 0) and np.all(cdf <= 1)
+
+
+def test_student_t_shape(random_data):
+    """Test cdf() returns correct shape."""
+    model = StudentTCopula().fit(random_data)
+    cdf = model.cdf(random_data)
+    assert cdf.shape == (100,)
+    # All values should remain in (0,1) for a well-behaved CDF
+    assert np.all(cdf >= 0) and np.all(cdf <= 1)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_student_t_partial_derivative_shape(random_data, first_margin):
     """Test partial_derivative() returns correct shape."""
     model = StudentTCopula().fit(random_data)
-    h = model.partial_derivative(random_data)
+    h = model.partial_derivative(random_data, first_margin=first_margin)
     assert h.shape == (100,)
     # All values should remain in (0,1) for a well-behaved CDF
     assert np.all(h >= 0) and np.all(h <= 1)
 
 
-def test_student_t_inverse_partial_derivative_shape(random_data):
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_student_t_inverse_partial_derivative_shape(random_data, first_margin):
     """Test inverse_partial_derivative() returns correct shape."""
     model = StudentTCopula().fit(random_data)
-    h_inv = model.inverse_partial_derivative(random_data)
+    h_inv = model.inverse_partial_derivative(random_data, first_margin=first_margin)
     assert h_inv.shape == (100,)
     # Should lie within [0,1]
     assert np.all(h_inv >= 0) and np.all(h_inv <= 1)
@@ -181,18 +212,87 @@ def test_student_t_aic_bic_exact(X, fitted_model):
     np.isclose(fitted_model.bic(X), -3.6354446568845797)
 
 
-def test_student_t_partial_derivative_exact(X, fitted_model):
+def test_cdf_exact(
+    X,
+    fitted_model,
+):
     np.testing.assert_almost_equal(
-        fitted_model.partial_derivative(X),
-        np.array([0.10692092, 0.7863787, 0.26049836, 0.34268922, 0.19885133]),
+        fitted_model.cdf(X),
+        np.array([0.03933961, 0.17777323, 0.24908186, 0.44199897, 0.1629778]),
+        4,
     )
 
 
-def test_student_t_inverse_partial_derivative_exact(X, fitted_model):
-    np.testing.assert_almost_equal(
-        fitted_model.inverse_partial_derivative(X),
-        np.array([0.03369421, 0.20617276, 0.32085672, 0.58137266, 0.20057199]),
-    )
+@pytest.mark.parametrize(
+    "first_margin,expected",
+    [
+        (True, np.array([0.61622819, 0.10773059, 0.63375585, 0.6928992, 0.6302627])),
+        (False, np.array([0.10692092, 0.7863787, 0.26049836, 0.34268922, 0.19885133])),
+    ],
+)
+def test_student_t_partial_derivative_exact(X, fitted_model, first_margin, expected):
+    h = fitted_model.partial_derivative(X, first_margin=first_margin)
+    np.testing.assert_almost_equal(h, expected)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_student_t_partial_derivative_numeric(X, fitted_model, first_margin):
+    h = fitted_model.partial_derivative(X, first_margin=first_margin)
+
+    delta = 1e-2
+    i = 0 if first_margin else 1
+    X1 = X.copy()
+    X1[:, i] += delta
+    X2 = X.copy()
+    X2[:, i] -= delta
+
+    h_num = (fitted_model.cdf(X1) - fitted_model.cdf(X2)) / delta / 2
+
+    np.testing.assert_almost_equal(h, h_num, 2)
+
+
+@pytest.mark.parametrize(
+    "first_margin,expected",
+    [
+        (True, np.array([0.02441904, 0.26535277, 0.29025729, 0.55021996, 0.17163888])),
+        (False, np.array([0.03369421, 0.20617276, 0.32085672, 0.58137266, 0.20057199])),
+    ],
+)
+def test_student_t_inverse_partial_derivative_exact(
+    X, fitted_model, first_margin, expected
+):
+    p = fitted_model.inverse_partial_derivative(X, first_margin=first_margin)
+    np.testing.assert_almost_equal(p, expected)
+
+
+@pytest.mark.parametrize(
+    "first_margin",
+    [
+        True,
+        False,
+    ],
+)
+def test_student_t_partial_derivative_inverse_partial_derivative(
+    fitted_model, X, first_margin
+):
+    """h(u | v) = p => h^-1(p | v) = u"""
+    p = fitted_model.partial_derivative(X, first_margin=first_margin)
+    if first_margin:
+        PV = np.stack([X[:, 0], p], axis=1)
+    else:
+        PV = np.stack([p, X[:, 1]], axis=1)
+
+    u = fitted_model.inverse_partial_derivative(PV, first_margin=first_margin)
+    if first_margin:
+        np.testing.assert_almost_equal(X[:, 1], u)
+    else:
+        np.testing.assert_almost_equal(X[:, 0], u)
 
 
 def test_student_t_sample_exact(X, fitted_model):
