@@ -3,6 +3,10 @@ Base Bivariate Copula Estimator
 -------------------------------
 """
 
+# Copyright (c) 2025
+# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# License: BSD 3 clause
+
 from abc import ABC, abstractmethod
 from enum import Enum
 
@@ -113,10 +117,32 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
-        r"""
-        Compute the bivariate copula's partial derivative (h-function).
-        For a bivariate copula :math:`C(u,v)`, the h-function is defined as
+    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+        """Compute the CDF of the bivariate Joe copula.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, 2)
+            An array of bivariate inputs `(u, v)` where each row represents a
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
+            having been transformed to uniform marginals.
+
+        Returns
+        -------
+        cdf : ndarray of shape (n_observations, )
+            CDF values for each observation in X.
+        """
+        pass
+
+    @abstractmethod
+    def partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
+        r"""Compute the h-function (partial derivative) for the bivariate Joe copula
+        with respect to a specified margin.
+
+        The h-function with respect to the second margin represents the conditional
+        distribution function of :math:`u` given :math:`v`:
 
         .. math::
             h(u \mid v) = \frac{\partial C(u,v)}{\partial v}
@@ -131,6 +157,11 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
+        first_margin : bool, default False
+            If True, compute the partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            second margin `v`.
+
         Returns
         -------
         p : ndarray of shape (n_observations, )
@@ -139,11 +170,14 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def inverse_partial_derivative(self, X: npt.ArrayLike) -> np.ndarray:
+    def inverse_partial_derivative(
+        self, X: npt.ArrayLike, first_margin: bool = False
+    ) -> np.ndarray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
-        Let :math:`C(u, v)` be a bivariate copula. The h-function is defined by
+        Let :math:`C(u, v)` be a bivariate copula. The h-function with respect to the
+        second margin is defined by
 
         .. math::
             h(u \mid v) \;=\; \frac{\partial\,C(u, v)}{\partial\,v},
@@ -166,6 +200,11 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             An array of bivariate inputs `(p, v)`, each in the interval `[0, 1]`.
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
+
+        first_margin : bool, default False
+            If True, compute the inverse partial derivative with respect to the first
+            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            to the second margin `v`.
 
         Returns
         -------
@@ -329,6 +368,6 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         X = rng.random(size=(n_samples, 2))
 
         # Apply the inverse Rosenblatt transform on the first variable.
-        X[:, 0] = self.inverse_partial_derivative(X)
+        X[:, 1] = self.inverse_partial_derivative(X, first_margin=True)
 
         return X

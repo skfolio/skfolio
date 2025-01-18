@@ -1,6 +1,6 @@
 """
-Bivariate Joe Copula Estimation
--------------------------------
+Bivariate Clayton Copula Estimation
+------------------------------------
 """
 
 # Copyright (c) 2025
@@ -11,8 +11,6 @@ import warnings
 
 import numpy as np
 import numpy.typing as npt
-import scipy.optimize as so
-import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
@@ -29,38 +27,37 @@ from skfolio.distribution.copula.bivariate._utils import (
     _find_best_theta_and_rotation_mle,
 )
 
-# Joe copula with a theta of 1.0 is just the independence copula, so we chose a lower
-# bound of 1.005. After 20, the copula is already imposing very high tail dependence
+# Clayton copula with a theta of 0.0 is just the independence copula, so we chose a lower
+# bound of 1e-4. After 50, the copula is already imposing very high tail dependence
 # closed to comonotonic and increasing it will make it impractical.
-_THETA_BOUNDS = (1.005, 20.0)
-_EULER_GAMMA = 0.5772156649015328606
+_THETA_BOUNDS = (1e-4, 50.0)
 
 
-class JoeCopula(BaseBivariateCopula):
-    r"""Bivariate Joe Copula Estimation.
+class ClaytonCopula(BaseBivariateCopula):
+    r"""Bivariate Clayton Copula Estimation.
 
-    The Joe copula is an Archimedean copula characterized by strong upper tail
-    dependence and little to no lower tail dependence.
+    The Clayton copula is an Archimedean copula characterized by strong lower tail
+    dependence and little to no upper tail dependence.
 
-    It is used to Modeling extreme positive co-movements (simultaneous gains)
-    By applying a 180° rotation, it can also be used for capturing simultaneous losses.
+    It is used for modeling extreme co-movements in the lower tail (i.e. simultaneous
+    losses). By applying a rotation (such as 180°), it can also be used to capture
+    extreme positive co-movements.
 
     It is defined by:
 
     .. math::
-            C_{\theta}(u, v) = 1-\Bigl[(1 - u)^{\theta} + (1 - v)^{\theta} -
-                (1 - u)^{\theta} (1 - v)^{\theta}\Bigr]^{\frac{1}{\theta}}
+            C_{\theta}(u, v) = \Bigl(u^{-\theta} + v^{-\theta} - 1\Bigr)^{-1/\theta}
 
-    where :math:`\theta \ge 1` is the dependence parameter. When :math:`\theta = 1`,
-    the Joe copula reduces to the independence copula. Larger values of :math:`\theta`
-    result in stronger upper-tail dependence.
+    where :math:`\theta > 0` is the dependence parameter. As :math:`\theta \to 0`,
+    the Clayton copula converges to the independence copula. Larger values of
+    :math:`\theta` result in stronger lower-tail dependence.
 
     .. note::
 
-        Rotation are needed for archimedean copulas (e.g., Joe, Gumbel, Clayton)
+        Rotations are needed for Archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
-        (90°, 180°, or 270°) to “flip” the copula's tail dependence.
+        (90°, 180°, or 270°) to "flip" the copula's tail dependence.
 
     Parameters
     ----------
@@ -78,7 +75,7 @@ class JoeCopula(BaseBivariateCopula):
     Attributes
     ----------
     theta_ : float
-        Fitted theta coefficient :math:`\theta` > 1.
+        Fitted theta coefficient :math:`\theta` > 0.
 
     rotation_ : CopulaRotation
         Fitted rotation of the copula.
@@ -96,8 +93,8 @@ class JoeCopula(BaseBivariateCopula):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
         self.kendall_tau = kendall_tau
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
-        """Fit the Bivariate Joe Copula.
+    def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
+        """Fit the Bivariate Clayton Copula.
 
          If `use_kendall_tau_inversion` is True, estimates :math:`\theta` using
          Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
@@ -133,15 +130,9 @@ class JoeCopula(BaseBivariateCopula):
             else:
                 kendall_tau = self.kendall_tau
 
+            # For Clayton, the theoretical relationship is: tau = theta/(theta+2)
             abs_kendall_tau = abs(kendall_tau)
-            # Root-finding function brentq to find the value of theta in the interval
-            # noinspection PyTypeChecker
-            self.theta_ = so.brentq(
-                _tau_diff,
-                args=(abs_kendall_tau,),
-                a=_THETA_BOUNDS[0],
-                b=_THETA_BOUNDS[-1],
-            )
+            self.theta_ = 2 * abs_kendall_tau / (1 - abs_kendall_tau)
             self.rotation_ = _find_best_rotation_kendall_tau_inversion(
                 func=_neg_log_likelihood, X=X, theta=self.theta_
             )
@@ -154,7 +145,7 @@ class JoeCopula(BaseBivariateCopula):
         return self
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the CDF of the bivariate Joe copula.
+        """Compute the CDF of the bivariate Clayton copula.
 
         Parameters
         ----------
@@ -178,21 +169,17 @@ class JoeCopula(BaseBivariateCopula):
     def partial_derivative(
         self, X: npt.ArrayLike, first_margin: bool = False
     ) -> np.ndarray:
-        r"""Compute the h-function (partial derivative) for the bivariate Joe copula
+        r"""Compute the h-function (partial derivative) for the bivariate Clayton copula
         with respect to a specified margin.
 
         The h-function with respect to the second margin represents the conditional
         distribution function of :math:`u` given :math:`v`:
 
         .. math::  \begin{aligned}
+                   C(u,v)&=\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta},\\[6pt]
                    h(u \mid v)
-                     &= \frac{\partial C(u,v)}{\partial v} \\[6pt]
-                     &= (1-v)^{\theta-1}\,\Bigl[1 \;-\;(1-u)^{\theta}\Bigr]\,
-                        \Bigl[(1-u)^{\theta} \;+\;(1-v)^{\theta}
-                              \;-\;(1-u)^{\theta}(1-v)^{\theta}\Bigr]^{\frac{1}{\theta}-1} \\[6pt]
-                     &= \left( 1 \;+\;\frac{(1-u)^{\theta}}{(1-v)^{\theta}}
-                              \;-\;(1-u)^{\theta} \right)^{-1 + \frac{1}{\theta}}
-                        \;\cdot\;\bigl[\,1 \;-\;(1-u)^{\theta}\bigr].
+                     &= \frac{\partial C(u,v)}{\partial v}
+                     = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1}.
                    \end{aligned}
 
         Parameters
@@ -204,13 +191,13 @@ class JoeCopula(BaseBivariateCopula):
 
         first_margin : bool, default False
             If True, compute the partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            margin `u`; otherwise, compute the partial derivative with respect to the
             second margin `v`.
 
         Returns
         -------
           : ndarray of shape (n_observations, )
-            h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
+            h-function values :math:`h(u \mid v)` for each observation in X.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
@@ -227,7 +214,7 @@ class JoeCopula(BaseBivariateCopula):
         self, X: npt.ArrayLike, first_margin: bool = False
     ) -> np.ndarray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
-        known as the inverse h-function [1]_.
+        known as the inverse h-function.
 
         Let :math:`C(u, v)` be a bivariate copula. The h-function with respect to the
         second margin is defined by
@@ -256,7 +243,7 @@ class JoeCopula(BaseBivariateCopula):
 
         first_margin : bool, default False
             If True, compute the inverse partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            margin `u`; otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
 
         Returns
@@ -264,14 +251,7 @@ class JoeCopula(BaseBivariateCopula):
         u : ndarray of shape (n_observations, )
             A 1D-array of length `n_observations`, where each element is the computed
             :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
-
-        References
-        ----------
-        .. [1] "Multivariate Models and Dependence Concepts", Joe, H. (1997)
-        .. [2] "An Introduction to Copulas", Nelsen, R. B. (2006)
-        .. [3] . "Nested Archimedean Copulas Meet ", Hofert & Mächler (2011)
         """
-        # no known closed-form solution, hence we use Newton method.
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         u = _apply_rotation_partial_derivatives(
@@ -284,7 +264,13 @@ class JoeCopula(BaseBivariateCopula):
         return u
 
     def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the log-likelihood of each sample (log-pdf) under the model.
+        r"""Compute the log-likelihood of each sample (log-pdf) under the model.
+
+        For Clayton, the PDF is given by:
+
+        .. math::
+        c(u,v) = (\theta+1)\,\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-\frac{1}{\theta}-2}\,
+                (u\,v)^{-\theta-1}.
 
         Parameters
         ----------
@@ -306,29 +292,7 @@ class JoeCopula(BaseBivariateCopula):
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
-    """Negative log-likelihood function for optimization.
-
-     Parameters
-     ----------
-     X : array-like of shape (n_observations, 2)
-         An array of bivariate inputs `(u, v)` where each row represents a
-         bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
-         having been transformed to uniform marginals.
-
-    theta : float
-         The dependence parameter (must be greater than 1).
-
-     Returns
-     -------
-     value : float
-         The negative log-likelihood value.
-    """
-    return -np.sum(_base_sample_scores(X=X, theta=theta))
-
-
-def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
-    """Compute the log-likelihood of each sample (log-pdf) under the bivariate
-    Joe copula model.
+    """Negative log-likelihood function for the Clayton copula.
 
     Parameters
     ----------
@@ -338,159 +302,135 @@ def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
         having been transformed to uniform marginals.
 
     theta : float
-        The dependence parameter (must be greater than 1).
+        The dependence parameter (must be greater than 0).
 
     Returns
     -------
-    density : ndarray of shape (n_observations,)
-        The log-likelihood of each sample under the fitted copula.
+    value : float
+        The negative log-likelihood value.
+    """
+    return -np.sum(_base_sample_scores(X=X, theta=theta))
+
+
+def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
+    r"""Compute the log-likelihood of each sample (log-pdf) under the bivariate Clayton
+    copula.
+
+    Parameters
+    ----------
+    X : array-like of shape (n_observations, 2)
+        Bivariate samples `(u, v)`, with each component in [0,1].
+
+    theta : float
+        The dependence parameter (must be greater than 0).
+
+    Returns
+    -------
+    logpdf : ndarray of shape (n_observations,)
+        Log-likelihood values for each observation.
 
     Raises
     ------
     ValueError
-        If rho is not in (-1, 1) or dof is not positive.
+        If theta is not greater than 0.
     """
-    if theta <= 1.0:
-        raise ValueError("Theta must be greater than 1 for the Joe copula.")
+    if theta <= 0:
+        raise ValueError("Theta must be > 0 for the Clayton copula.")
 
-    # log-space transformation to improve stability near 0  or 1
-    x, y = np.log1p(-X).T
-    x_y = x + y
-    d = np.exp(x * theta) + np.exp(y * theta) - np.exp(x_y * theta)
+    x, y = np.log(X).T
+
     log_density = (
-        (1.0 / theta - 2.0) * np.log(d) + x_y * (theta - 1.0) + np.log(theta - 1.0 + d)
+        np.log1p(theta)
+        - (2.0 + 1.0 / theta) * np.log1p(np.expm1(-theta * x) + np.expm1(-theta * y))
+        - (1.0 + theta) * (x + y)
     )
     return log_density
 
 
-def _tau_diff(theta: float, tau_empirical: float) -> float:
-    r"""Compute the difference between the theoretical Kendall's tau for the Joe copula
-    and an empirical tau.
-
-    The theoretical relationship for the Joe copula is given by:
+def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
+    r"""
+    Bivariate Clayton CDF (unrotated):
 
     .. math::
-       \tau(\theta) = 1 + \frac{2}{2-\theta} \left[ (1-\gamma) - \psi\left(\frac{2}{\theta}+1\right) \right],
+        C(u,v) = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
 
-    where :math:`\psi` is the digamma function and :math:`\gamma` is the Euler-Mascheroni constant.
-
-    Parameters
-    ----------
-    theta : float
-        The dependence parameter (must be greater than 1).
-
-    tau_empirical : float
-        The empirical Kendall's tau.
-
-    Returns
-    -------
-    float
-        The difference :math:`\tau(\theta) - \tau_{\text{empirical}}`.
+    Negative interiors (due to small values in u or v) are clipped to 0.
     """
-    # Euler-Mascheroni constant: gamma_const = 1 - EulerGamma
-    gamma_const = 1.0 - _EULER_GAMMA
-    # Compute theoretical tau using the digamma-based expression
-    tau_theoretical = 1.0 + (2.0 / (2.0 - theta)) * (
-        gamma_const - sp.digamma(2.0 / theta + 1.0)
-    )
-    return tau_theoretical - tau_empirical
-
-
-def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
-    z = np.power(1 - X, theta)
-    cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
+    cdf = np.power(np.sum(np.power(X, -theta), axis=1) - 1, -1.0 / theta)
     return cdf
 
 
 def _base_partial_derivative(
     X: np.ndarray, first_margin: bool, theta: float
 ) -> np.ndarray:
-    r"""Compute the h-function (partial derivative) for the bivariate unrotated
-    Joe copula with respect to a specified margin.
+    r"""
+    Compute the partial derivative (h-function) for the unrotated Clayton copula.
+
+    For Clayton, the copula is defined as:
+
+    .. math::
+        C(u,v)=\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
+
+    The partial derivative with respect to v is:
+
+    .. math::
+        \frac{\partial C(u,v)}{\partial v} = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1}.
 
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
-        An array of bivariate inputs `(u, v)` where each row represents a
-        bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
-        having been transformed to uniform marginals.
-
+         An array of bivariate inputs `(u, v)` with values in [0, 1].
     first_margin : bool, default False
-        If True, compute the partial derivative with respect to the first
-        margin `u`; ,otherwise, compute the partial derivative with respect to the
-        second margin `v`.
-
+         If True, compute with respect to u (by swapping margins); otherwise
+         compute with respect to v.
     theta : float
-        The dependence parameter (must be greater than 1).
+         The dependence parameter (must be > 0).
 
     Returns
     -------
-      : ndarray of shape (n_observations, )
-        h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
+    : ndarray of shape (n_observations,)
+         The computed h-function values.
     """
     X = _apply_margin_swap(X, first_margin=first_margin)
-    x, y = np.power(1 - X, theta).T
-    p = np.power(1 + x / y - x, 1 / theta - 1) * (1.0 - x)
+    x = np.power(X[:, 0], -theta)
+    y = np.power(X[:, 1], theta)
+    p = np.power(1.0 + y * (x - 1.0), -(1.0 + 1.0 / theta))
     return p
 
 
 def _base_inverse_partial_derivative(
     X: np.ndarray, first_margin: bool, theta: float
 ) -> np.ndarray:
-    r"""Compute the inverse of the bivariate copula's partial derivative, commonly
-    known as the inverse h-function.
+    r"""
+    Compute the inverse partial derivative for the unrotated Clayton copula,
+    i.e. solve for u in h(u|v)=p.
+
+    In other words, given
+      - p, the value of the h-function, and
+      - v, the conditioning variable,
+    solve:
+
+    .. math::
+      p = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1},
+
+    for u ∈ [0,1]. Since no closed-form solution exists, we use a Newton method.
 
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
-        An array of bivariate inputs `(p, v)`, each in the interval `[0, 1]`.
-        - The first column `p` corresponds to the value of the h-function.
-        - The second column `v` is the conditioning variable.
-
+         An array with first column p (h-function values) and second column v (conditioning variable).
     first_margin : bool, default False
-        If True, compute the inverse partial derivative with respect to the first
-        margin `u`; ,otherwise, compute the inverse partial derivative with respect to
-        the second margin `v`.
-
+         If True, treat the first margin as the conditioning variable.
     theta : float
-        The dependence parameter (must be greater than 1).
+         The dependence parameter (must be > 0).
 
     Returns
     -------
-    u : ndarray of shape (n_observations, )
-        A 1D-array of length `n_observations`, where each element is the computed
-        :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
+    u : ndarray of shape (n_observations,)
+         A 1D-array where each element is the solution u ∈ [0,1] such that h(u|v)=p.
     """
     X = _apply_margin_swap(X, first_margin=first_margin)
-
-    p, v = X.T
-
-    y = np.power(1 - v, theta)
-
-    # No known closed-form solution, hence we use Newton method
-    # with an early-stopping criterion
-
-    # Initial guess
-    x = np.power(
-        (1 - v) * (np.power(1.0 - p, 1.0 / theta - 1) - 1.0) / y + 1.0,
-        theta / (1.0 - theta),
-    )
-
-    max_iters = 50
-    tol = 1e-8
-    for _ in range(max_iters):
-        k = (x - 1.0) * y
-        w = np.power((1.0 / y - 1.0) * x + 1.0, 1.0 / theta)
-        x_new = (
-            x
-            - (theta * (k - x) * (p * (-k + x) + k * w))
-            / ((y - 1.0) * k - theta * y)
-            / w
-        )
-        x_new = np.clip(x_new, 0.0, 1.0)
-        if np.max(np.abs(x_new - x)) < tol:
-            break
-        x = x_new
-
-    u = 1.0 - np.power(x, 1.0 / theta)
+    x = np.power(X[:, 0], -theta / (theta + 1.0))
+    y = np.power(X[:, 1], -theta)
+    u = np.power(1.0 + y * (x - 1.0), -1.0 / theta)
     return u

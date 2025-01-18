@@ -1,7 +1,9 @@
+import warnings
 from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
+import scipy.optimize as so
 import scipy.stats as st
 
 from skfolio.distribution.copula.bivariate._base import (
@@ -9,6 +11,47 @@ from skfolio.distribution.copula.bivariate._base import (
     CopulaRotation,
 )
 from skfolio.distribution.copula.bivariate._independent import IndependentCopula
+
+
+def _find_best_rotation_kendall_tau_inversion(
+    func: Callable, X: np.ndarray, theta: float
+) -> CopulaRotation:
+    results = {}
+    for rotation in CopulaRotation:
+        X_rotated = _apply_copula_rotation(X, rotation=rotation)
+        results[rotation] = func(X=X_rotated, theta=theta)
+    best_rotation = min(results, key=results.get)
+    return best_rotation
+
+
+def _find_best_theta_and_rotation_mle(
+    func: Callable, X: np.ndarray, bounds: tuple[float, float]
+) -> tuple[float, CopulaRotation]:
+    results = []
+    for rotation in CopulaRotation:
+        X_rotated = _apply_copula_rotation(X, rotation=rotation)
+        result = so.minimize_scalar(
+            func, args=(X_rotated,), bounds=bounds, method="bounded"
+        )
+        if result.success:
+            results.append(
+                {
+                    "neg_log_likelihood": result.fun,
+                    "theta": result.x,
+                    "rotation": rotation,
+                }
+            )
+        else:
+            warnings.warn(
+                f"Optimization failed for rotation {rotation}: {result.message}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+    if len(results) == 0:
+        raise RuntimeError("Optimization failed for all rotations")
+
+    best = min(results, key=lambda d: d["neg_log_likelihood"])
+    return best["theta"], best["rotation"]
 
 
 def _apply_copula_rotation(X: npt.ArrayLike, rotation: CopulaRotation) -> np.ndarray:

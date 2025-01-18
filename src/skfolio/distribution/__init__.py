@@ -1,5 +1,6 @@
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
+    ClaytonCopula,
     CopulaRotation,
     GaussianCopula,
     JoeCopula,
@@ -15,6 +16,7 @@ from skfolio.distribution.univariate import (
 __all__ = [
     "BaseBivariateCopula",
     "BaseUnivariate",
+    "ClaytonCopula",
     "CopulaRotation",
     "Gaussian",
     "GaussianCopula",
