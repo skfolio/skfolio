@@ -4,6 +4,7 @@ from skfolio.distribution.copula import (
     CopulaRotation,
     GaussianCopula,
     GumbelCopula,
+    IndependentCopula,
     JoeCopula,
     StudentTCopula,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "Gaussian",
     "GaussianCopula",
     "GumbelCopula",
+    "IndependentCopula",
     "JoeCopula",
     "StudentT",
     "StudentTCopula",
