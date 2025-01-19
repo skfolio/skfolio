@@ -27,10 +27,13 @@ def test_validate_X_correct_shape(random_data):
         def fit(self, X, y=None):
             return self
 
-        def partial_derivative(self, X):
+        def cdf(self, X):
             return np.zeros(X.shape[0])
 
-        def inverse_partial_derivative(self, X):
+        def partial_derivative(self, X, first_margin=False):
+            return np.zeros(X.shape[0])
+
+        def inverse_partial_derivative(self, X, first_margin=False):
             return np.zeros(X.shape[0])
 
         def score_samples(self, X):
@@ -52,10 +55,13 @@ def test_validate_X_wrong_shape():
         def fit(self, X, y=None):
             return self
 
-        def partial_derivative(self, X):
+        def cdf(self, X):
             return np.zeros(X.shape[0])
 
-        def inverse_partial_derivative(self, X):
+        def partial_derivative(self, X, first_margin=False):
+            return np.zeros(X.shape[0])
+
+        def inverse_partial_derivative(self, X, first_margin=False):
             return np.zeros(X.shape[0])
 
         def score_samples(self, X):
@@ -78,10 +84,13 @@ def test_validate_X_out_of_bounds():
         def fit(self, X, y=None):
             return self
 
-        def partial_derivative(self, X):
+        def cdf(self, X):
             return np.zeros(X.shape[0])
 
-        def inverse_partial_derivative(self, X):
+        def partial_derivative(self, X, first_margin=False):
+            return np.zeros(X.shape[0])
+
+        def inverse_partial_derivative(self, X, first_margin=False):
             return np.zeros(X.shape[0])
 
         def score_samples(self, X):

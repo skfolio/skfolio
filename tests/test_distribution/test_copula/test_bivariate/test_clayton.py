@@ -117,7 +117,7 @@ def test_clayton_theta_out_of_bounds():
     model.theta_ = 0
     model.rotation_ = CopulaRotation.R0
     with pytest.raises(
-        ValueError, match="Theta must be greater than 1 for the Joe copula."
+        ValueError, match="Theta must be greater than 1 for the Clayton copula."
     ):
         _ = model.score_samples(np.random.rand(5, 2))
 
@@ -263,13 +263,10 @@ def test_clayton_partial_derivative_inverse_partial_derivative(
         np.testing.assert_almost_equal(X[:, 0], u)
 
 
+@pytest.mark.parametrize("use_kendall_tau_inversion", [True, False])
 @pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_sample_refitting(X, fitted_model, rotation):
+def test_clayton_sample_refitting(X, fitted_model, use_kendall_tau_inversion, rotation):
     fitted_model.rotation_ = rotation
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
-
-    m1 = ClaytonCopula().fit(samples)
-    assert np.isclose(fitted_model.theta_, m1.theta_, 1e-1)
-
-    m2 = ClaytonCopula(use_kendall_tau_inversion=False).fit(samples)
-    assert np.isclose(fitted_model.theta_, m2.theta_, 1e-1)
+    m = ClaytonCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)

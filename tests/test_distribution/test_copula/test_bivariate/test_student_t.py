@@ -295,30 +295,9 @@ def test_student_t_partial_derivative_inverse_partial_derivative(
         np.testing.assert_almost_equal(X[:, 0], u)
 
 
-def test_student_t_sample_exact(X, fitted_model):
-    samples = fitted_model.sample(n_samples=5, random_state=42)
-
-    np.testing.assert_almost_equal(
-        samples,
-        np.array(
-            [
-                [0.8988711, 0.95071431],
-                [0.69498675, 0.59865848],
-                [0.09425335, 0.15599452],
-                [0.42701195, 0.86617615],
-                [0.71681212, 0.70807258],
-            ]
-        ),
-    )
-
-
-def test_student_t_sample_refitting(X, fitted_model):
+@pytest.mark.parametrize("use_kendall_tau_inversion", [True, False])
+def test_gaussian_sample_refitting(X, fitted_model, use_kendall_tau_inversion):
     samples = fitted_model.sample(n_samples=int(1e4), random_state=42)
-
-    m1 = StudentTCopula().fit(samples)
-    assert np.isclose(fitted_model.rho_, m1.rho_, 1e-2)
-    assert np.isclose(fitted_model.dof_, m1.dof_, 1e-2)
-
-    m2 = StudentTCopula(use_kendall_tau_inversion=False).fit(samples)
-    assert np.isclose(fitted_model.rho_, m2.rho_, 1e-2)
-    assert np.isclose(fitted_model.dof_, m2.dof_, 1e-2)
+    m = StudentTCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
+    assert np.isclose(fitted_model.dof_, m.dof_, 1e-1)

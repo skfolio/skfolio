@@ -7,8 +7,6 @@ Bivariate Clayton Copula Estimation
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-import warnings
-
 import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
@@ -57,16 +55,14 @@ class ClaytonCopula(BaseBivariateCopula):
         Rotations are needed for Archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
-        (90°, 180°, or 270°) to "flip" the copula's tail dependence.
+        to "flip" the copula's tail dependence.
 
     Parameters
     ----------
     use_kendall_tau_inversion : bool, default=False
         If True, :math:`\theta` is estimated using the Kendall's tau inversion method;
         otherwise, the Maximum Likelihood Estimation (MLE) method is used (default).
-        The MLE is slower but more accurate, especially for Archimedean copulas,
-        for which the Kendall's tau inversion method cannot capture rotations
-        (since Kendall's tau is a rank based measure of dependence).
+        The MLE is slower but more accurate.
 
     kendall_tau : float, optional
         If `use_kendall_tau_inversion` is True and `kendall_tau` is provided, this
@@ -117,14 +113,6 @@ class ClaytonCopula(BaseBivariateCopula):
         X = self._validate_X(X, reset=True)
 
         if self.use_kendall_tau_inversion:
-            warnings.warn(
-                "For Archimedean copulas, the Kendall's tau inversion method cannot "
-                "capture rotations since Kendall's tau is a rank based measure of "
-                "dependence. The MLE method should be preferred. To silence this "
-                "warning, set `use_kendall_tau_inversion=False`",
-                UserWarning,
-                stacklevel=2,
-            )
             if self.kendall_tau is None:
                 kendall_tau = st.kendalltau(X[:, 0], X[:, 1]).statistic
             else:
@@ -196,7 +184,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
         Returns
         -------
-          : ndarray of shape (n_observations, )
+        p  : ndarray of shape (n_observations, )
             h-function values :math:`h(u \mid v)` for each observation in X.
         """
         skv.check_is_fitted(self)
@@ -335,7 +323,7 @@ def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
         If theta is not greater than 0.
     """
     if theta <= 0:
-        raise ValueError("Theta must be > 0 for the Clayton copula.")
+        raise ValueError("Theta must be greater than 1 for the Clayton copula.")
 
     x, y = np.log(X).T
 
