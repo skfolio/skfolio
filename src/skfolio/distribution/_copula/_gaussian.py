@@ -89,8 +89,11 @@ class GaussianCopula(BaseBivariateCopula):
             else:
                 kendall_tau = self.kendall_tau
             self.rho_ = np.clip(
-                _RHO_BOUNDS[0], _RHO_BOUNDS[1], np.sin((np.pi * kendall_tau) / 2.0)
+                np.sin((np.pi * kendall_tau) / 2.0),
+                a_min=_RHO_BOUNDS[0],
+                a_max=_RHO_BOUNDS[1],
             )
+
         else:
             result = so.minimize_scalar(
                 _neg_log_likelihood, args=(X,), bounds=_RHO_BOUNDS, method="bounded"

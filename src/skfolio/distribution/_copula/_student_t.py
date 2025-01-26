@@ -114,7 +114,9 @@ class StudentTCopula(BaseBivariateCopula):
 
         # Either used directly or for initial guess
         rho_from_tau = np.clip(
-            _RHO_BOUNDS[0], _RHO_BOUNDS[1], np.sin((np.pi * kendall_tau) / 2.0)
+            np.sin((np.pi * kendall_tau) / 2.0),
+            a_min=_RHO_BOUNDS[0],
+            a_max=_RHO_BOUNDS[1],
         )
 
         if self.use_kendall_tau_inversion:

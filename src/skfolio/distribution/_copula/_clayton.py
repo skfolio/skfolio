@@ -122,9 +122,9 @@ class ClaytonCopula(BaseBivariateCopula):
             abs_kendall_tau = min(abs(kendall_tau), 0.9999)
 
             self.theta_ = np.clip(
-                _THETA_BOUNDS[0],
-                _THETA_BOUNDS[1],
                 2 * abs_kendall_tau / (1 - abs_kendall_tau),
+                a_min=_THETA_BOUNDS[0],
+                a_max=_THETA_BOUNDS[1],
             )
 
             self.rotation_ = _find_best_rotation_kendall_tau_inversion(

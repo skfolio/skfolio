@@ -133,7 +133,6 @@ class JoeCopula(BaseBivariateCopula):
                     self.theta_ = _THETA_BOUNDS[0]
                 else:
                     self.theta_ = _THETA_BOUNDS[1]
-
             else:
                 # noinspection PyTypeChecker
                 self.theta_ = so.brentq(
