@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import CopulaRotation, GumbelCopula
-from skfolio.distribution.copula.bivariate._gumbel import _THETA_BOUNDS
+from skfolio.distribution._copula._gumbel import _THETA_BOUNDS
 
 
 @pytest.fixture
@@ -270,3 +270,11 @@ def test_clayton_sample_refitting(X, fitted_model, use_kendall_tau_inversion, ro
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
     m = GumbelCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
     assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
+
+
+def test_use_kendall_tau_inversion_bounds():
+    X = np.arange(1, 5) / 5
+    X = np.stack((X, X)).T
+    m = GumbelCopula(use_kendall_tau_inversion=True).fit(X)
+    assert m.theta_ == _THETA_BOUNDS[1]
+    assert not np.isnan(m.score(X))

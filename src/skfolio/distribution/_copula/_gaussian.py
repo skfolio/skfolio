@@ -1,4 +1,4 @@
-"""Bivariate Student's t Copula Estimation"""
+"""Bivariate Gaussian Copula Estimation"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -11,33 +11,22 @@ import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula.bivariate._base import (
-    _RHO_BOUNDS,
-    BaseBivariateCopula,
-)
-from skfolio.distribution.copula.bivariate._utils import _apply_margin_swap
-
-# Student's t copula with dof less than 1.0 is so extremely heavy-tailed that even the
-# mean (and many moments) of the distribution do not exist. So Impractical in practice,
-# and dof above 50 tends to a Gaussian Copula so we limit it to the interval [1, 50] for
-# improved stability and robustness.
-_DOF_BOUNDS = (1.0001, 50.0)
+from skfolio.distribution._copula._base import _RHO_BOUNDS, BaseBivariateCopula
+from skfolio.distribution._copula._utils import _apply_margin_swap
 
 
-class StudentTCopula(BaseBivariateCopula):
-    r"""Bivariate Student's t Copula Estimation.
+class GaussianCopula(BaseBivariateCopula):
+    r"""Bivariate Gaussian Copula Estimation.
 
-    The bivariate Student's t copula density is defined as:
+    The bivariate Gaussian copula is defined as:
 
     .. math::
-         C_{\nu, \rho}(u, v) = T_{\nu, \rho} \Bigl(t_{\nu}^{-1}(u),\;t_{\nu}^{-1}(v)\Bigr)
+        C_{\rho}(u, v) = \Phi_2\left(\Phi^{-1}(u), \Phi^{-1}(v) ; \rho\right)
 
     where:
-    - :math:`\nu > 0` is the degrees of freedom.
+    - :math:`\Phi_2` is the bivariate normal CDF with correlation :math:`\rho`.
+    - :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` is its quantile function.
     - :math:`\rho \in (-1, 1)` is the correlation coefficient.
-    - :math:`T_{\nu, \rho}(x, y)` is the CDF of the bivariate \(t\)-distribution.
-    - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the univariate
-      \(t\)-distribution.
 
     .. note::
 
@@ -45,11 +34,9 @@ class StudentTCopula(BaseBivariateCopula):
         because its correlation parameter :math:`\rho \in (-1, 1)` naturally covers
         both positive and negative dependence, and they exhibit symmetric tail behavior.
 
-
     Parameters
     ----------
     use_kendall_tau_inversion : bool, default=False
-        use_kendall_tau_inversion : bool, default=False
         If True, :math:`\rho` is estimated using the Kendall's tau inversion method;
         otherwise, we use the MLE (Maximum Likelihood Estimation) method (default).
         The MLE is slower but more accurate.
@@ -61,34 +48,23 @@ class StudentTCopula(BaseBivariateCopula):
     Attributes
     ----------
     rho_ : float
-        Fitted correlation coefficient (:math:`\rho`) in [-1, 1].
-    dof_ : float
-       Fitted degrees of freedom (:math:`\nu`) > 0.
+        Fitted parameter (:math:`\rho`) in [-1, 1].
     """
 
     rho_: float
-    dof_: float
-    _n_params = 2
+    _n_params = 1
 
     def __init__(
-        self,
-        use_kendall_tau_inversion: bool = False,
-        kendall_tau: float | None = None,
+        self, use_kendall_tau_inversion: bool = False, kendall_tau: float | None = None
     ):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
         self.kendall_tau = kendall_tau
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "StudentTCopula":
-        """Fit the Bivariate Student's t Copula.
+    def fit(self, X: npt.ArrayLike, y=None) -> "GaussianCopula":
+        r"""Fit the Bivariate Gaussian Copula.
 
-        If `use_kendall_tau_inversion` is True, it uses either a Kendall-based two-step
-        method:
-
-            1. Estimates the correlation parameter (:math:`\rho`) from Kendall's tau inversion.
-            2. Optimizes the degrees of freedom (:math:`\nu`) by maximizing the log-likelihood.
-
-        Otherwise, it uses the full MLE method: optimizes both :math:`\rho` and
-        :math:`\nu` by maximizing the log-likelihood.
+        If `use_kendall_tau_inversion` is True, estimates :math:`\rho` using
+        Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
@@ -102,56 +78,31 @@ class StudentTCopula(BaseBivariateCopula):
 
         Returns
         -------
-        self : StudentTCopula
+        self : GaussianCopula
             Returns the instance itself.
         """
         X = self._validate_X(X, reset=True)
 
-        if self.kendall_tau is None:
-            kendall_tau = st.kendalltau(X[:, 0], X[:, 1]).statistic
-        else:
-            kendall_tau = self.kendall_tau
-
-        # Either used directly or for initial guess
-        rho_from_tau = np.sin((np.pi * kendall_tau) / 2.0)
-
         if self.use_kendall_tau_inversion:
-            res = so.minimize_scalar(
-                _neg_log_likelihood,
-                args=(
-                    rho_from_tau,
-                    X,
-                ),
-                bounds=_DOF_BOUNDS,
-                method="bounded",
+            if self.kendall_tau is None:
+                kendall_tau = st.kendalltau(X[:, 0], X[:, 1]).statistic
+            else:
+                kendall_tau = self.kendall_tau
+            self.rho_ = np.clip(
+                _RHO_BOUNDS[0], _RHO_BOUNDS[1], np.sin((np.pi * kendall_tau) / 2.0)
             )
-            if not res.success:
-                raise RuntimeError(f"Optimization failed: {res.message}")
-            self.dof_ = res.x
-            self.rho_ = rho_from_tau
         else:
-            # We'll use L-BFGS-B for the optimization because:
-            # 1) The bivariate Student-t copula's negative log-likelihood is smooth,
-            #    making gradient-based methods more efficient than derivative-free
-            #    methods.
-            # 2) L-BFGS-B directly supports simple box bounds (e.g., -1 < rho < 1,
-            #    0 < nu < 50).
-            # 3) It's typically faster and more stable for small-dimensional problems
-            #    than more general constraint solvers (like trust-constr or SLSQP)
-            result = so.minimize(
-                fun=lambda x: _neg_log_likelihood(dof=x[0], rho=x[1], X=X),
-                x0=np.array([3.0, rho_from_tau]),
-                bounds=(_DOF_BOUNDS, _RHO_BOUNDS),
-                method="L-BFGS-B",
+            result = so.minimize_scalar(
+                _neg_log_likelihood, args=(X,), bounds=_RHO_BOUNDS, method="bounded"
             )
             if not result.success:
                 raise RuntimeError(f"Optimization failed: {result.message}")
-            self.dof_, self.rho_ = result.x
+            self.rho_ = result.x
 
         return self
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the CDF of the bivariate Student-t copula.
+        """Compute the CDF of the bivariate Gaussian copula.
 
         Parameters
         ----------
@@ -167,34 +118,29 @@ class StudentTCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        cdf = st.multivariate_t.cdf(
-            x=sp.stdtrit(self.dof_, X),
-            loc=np.array([0, 0]),
-            shape=np.array([[1, self.rho_], [self.rho_, 1]]),
-            df=self.dof_,
+        cdf = st.multivariate_normal.cdf(
+            x=sp.ndtri(X),
+            mean=np.array([0, 0]),
+            cov=np.array([[1, self.rho_], [self.rho_, 1]]),
         )
         return cdf
 
     def partial_derivative(
         self, X: npt.ArrayLike, first_margin: bool = False
     ) -> np.ndarray:
-        r"""Compute the h-function (partial derivative) for the bivariate Student's t
+        r"""Compute the h-function (partial derivative) for the bivariate Gaussian
         copula.
 
         The h-function with respect to the second margin represents the conditional
         distribution function of :math:`u` given :math:`v`:
 
         .. math:: \begin{aligned}
-                   h(u \mid v) &= \frac{\partial C(u,v)}{\partial v} \\
-                               &= t_{\nu+1}\!\left(\frac{t_\nu^{-1}(u) - \rho\,t_\nu^{-1}(v)}
-                                  {\sqrt{\frac{(1-\rho^2)\left(\nu + \left(t_\nu^{-1}(v)\right)^2\right)}{\nu+1}}}\right).
+                  h(u \mid v) &= \frac{\partial C(u,v)}{\partial v} \\
+                  &= \Phi\Bigl(\frac{\Phi^{-1}(u)-\rho\,\Phi^{-1}(v)}{\sqrt{1-\rho^2}}\Bigr)
                   \end{aligned}
 
-        where:
-            - :math:`\nu > 0` is the degrees of freedom.
-            - :math:`\rho \in (-1, 1)` is the correlation coefficient.
-            - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the
-              univariate \(t\)-distribution.
+        where :math:\Phi is the standard normal CDF and :math:\Phi^{-1} is its inverse
+        (the quantile function).
 
         Parameters
         ----------
@@ -216,16 +162,10 @@ class StudentTCopula(BaseBivariateCopula):
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         X = _apply_margin_swap(X, first_margin=first_margin)
-        # Compute the inverse CDF (percent point function) using stdtrit for better
+        # Compute the inverse CDF (percent point function) using ndtri for better
         # performance
-        u_inv, v_inv = sp.stdtrit(self.dof_, X).T
-        # Compute the denominator: sqrt((1 - rho^2) * (nu + y^2) / (nu + 1))
-        z = (u_inv - self.rho_ * v_inv) / (
-            np.sqrt((1 - self.rho_**2) * (self.dof_ + v_inv**2) / (self.dof_ + 1))
-        )
-        # Student's t CDF with (nu+1) degrees of freedom using stdtr for better
-        # performance
-        p = sp.stdtr(self.dof_ + 1, z)
+        u_inv, v_inv = sp.ndtri(X).T
+        p = sp.ndtr((u_inv - self.rho_ * v_inv) / np.sqrt(1 - self.rho_**2))
         return p
 
     def inverse_partial_derivative(
@@ -278,14 +218,9 @@ class StudentTCopula(BaseBivariateCopula):
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         X = _apply_margin_swap(X, first_margin=first_margin)
-        p_inv = sp.stdtrit(self.dof_ + 1, X[:, 0])
-        v_inv = sp.stdtrit(self.dof_, X[:, 1])
-        u_inv = (
-            p_inv
-            * np.sqrt((self.dof_ + v_inv**2) / (self.dof_ + 1) * (1 - self.rho_**2))
-            + self.rho_ * v_inv
-        )
-        u = sp.stdtr(self.dof_, u_inv)
+        p_inv, v_inv = sp.ndtri(X).T
+        u_inv = p_inv * np.sqrt(1 - self.rho_**2) + self.rho_ * v_inv
+        u = sp.ndtr(u_inv)
         return u
 
     def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
@@ -305,11 +240,11 @@ class StudentTCopula(BaseBivariateCopula):
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
-        log_density = _sample_scores(X=X, rho=self.rho_, dof=self.dof_)
+        log_density = _base_sample_scores(X=X, rho=self.rho_)
         return log_density
 
 
-def _neg_log_likelihood(dof: float, rho: float, X: np.ndarray) -> float:
+def _neg_log_likelihood(rho: float, X: np.ndarray) -> float:
     """Negative log-likelihood function for optimization.
 
     Parameters
@@ -322,18 +257,15 @@ def _neg_log_likelihood(dof: float, rho: float, X: np.ndarray) -> float:
     rho : float
         Correlation copula parameter.
 
-    dof : float
-        Degree of freedom copula parameter.
-
     Returns
     -------
     value : float
         The negative log-likelihood value.
     """
-    return -np.sum(_sample_scores(X=X, rho=rho, dof=dof))
+    return -np.sum(_base_sample_scores(X=X, rho=rho))
 
 
-def _sample_scores(X: np.ndarray, rho: float, dof: float) -> np.ndarray:
+def _base_sample_scores(X: np.ndarray, rho: float) -> np.ndarray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Gaussian copula model.
 
@@ -355,23 +287,16 @@ def _sample_scores(X: np.ndarray, rho: float, dof: float) -> np.ndarray:
     Raises
     ------
     ValueError
-        If rho is not in (-1, 1) or dof is not positive.
+        If rho is not in (-1, 1)
     """
     if not (-1.0 <= rho <= 1.0):
         raise ValueError("rho must be between -1 and 1.")
-    if not 1.0 <= dof <= 50:
-        raise ValueError("Degrees of freedom `dof` must be between 1 and 50.")
 
     # Inverse CDF (ppf) using stdtrit for better performance
-    x, y = sp.stdtrit(dof, X).T
+    u_inv, v_inv = sp.ndtri(X).T
 
-    a = 1.0 - rho**2
-    log_density = (
-        sp.gammaln((dof + 2.0) / 2.0)
-        + sp.gammaln(dof / 2.0)
-        - 2.0 * sp.gammaln((dof + 1.0) / 2.0)
-        - np.log(a) / 2
-        + (dof + 1.0) / 2.0 * (np.log1p(x**2 / dof) + np.log1p(y**2 / dof))
-        - (dof + 2.0) / 2.0 * np.log1p((x**2 - 2 * rho * x * y + y**2) / a / dof)
-    )
+    # Using np.log1p to avoid loss of precision
+    log_density = -0.5 * np.log1p(-(rho**2)) - rho * (
+        0.5 * rho * (u_inv**2 + v_inv**2) - u_inv * v_inv
+    ) / (1 - rho**2)
     return log_density

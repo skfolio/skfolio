@@ -8,22 +8,21 @@ Univariate Student Estimation
 
 import scipy.stats as st
 
-from skfolio.distribution.univariate._base import BaseUnivariate
+from skfolio.distribution._univariate._base import BaseUnivariate
 
 
-class Gaussian(BaseUnivariate):
-    """Gaussian Distribution Estimation.
+class StudentT(BaseUnivariate):
+    """Student's t Distribution Estimation.
 
     Parameters
     ----------
-
-
     """
 
     loc_: float
     scale_: float
+    dof_: float
 
-    _scipy_model = st.norm
+    _scipy_model = st.t
 
     def __init__(self, loc: float | None = None, scale: float | None = None):
         self.loc = loc
@@ -31,7 +30,7 @@ class Gaussian(BaseUnivariate):
 
     @property
     def scipy_params(self) -> dict[str, float]:
-        return {"loc": self.loc_, "scale": self.scale_}
+        return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
     def fit(self, X, y=None):
         """Fit the Kernel Density model on the data.
@@ -52,15 +51,12 @@ class Gaussian(BaseUnivariate):
         """
         X = self._validate_X(X, reset=True)
 
-        if self.loc is not None and self.scale is not None:
-            raise ValueError("Either loc or scale must be None to be fitted")
-
         fixed_params = {}
         if self.loc is not None:
             fixed_params["floc"] = self.loc
         if self.scale is not None:
             fixed_params["fscale"] = self.scale
 
-        self.loc_, self.scale_ = self._scipy_model.fit(X, **fixed_params)
+        self.dof_, self.loc_, self.scale_ = self._scipy_model.fit(X, **fixed_params)
 
         return self

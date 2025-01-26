@@ -14,11 +14,11 @@ import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula.bivariate._base import (
+from skfolio.distribution._copula._base import (
     BaseBivariateCopula,
     CopulaRotation,
 )
-from skfolio.distribution.copula.bivariate._utils import (
+from skfolio.distribution._copula._utils import (
     _apply_copula_rotation,
     _apply_margin_swap,
     _apply_rotation_cdf,
@@ -122,14 +122,26 @@ class JoeCopula(BaseBivariateCopula):
                 kendall_tau = self.kendall_tau
 
             abs_kendall_tau = abs(kendall_tau)
+
             # Root-finding function brentq to find the value of theta in the interval
-            # noinspection PyTypeChecker
-            self.theta_ = so.brentq(
-                _tau_diff,
-                args=(abs_kendall_tau,),
-                a=_THETA_BOUNDS[0],
-                b=_THETA_BOUNDS[-1],
-            )
+            # brentq fails if _tau_diff has same sign, it happens when we are at the
+            # bounds
+            fa = _tau_diff(_THETA_BOUNDS[0], abs_kendall_tau)
+            fb = _tau_diff(_THETA_BOUNDS[1], abs_kendall_tau)
+            if fa * fb > 0:
+                if abs(fa) < abs(fb):
+                    self.theta_ = _THETA_BOUNDS[0]
+                else:
+                    self.theta_ = _THETA_BOUNDS[1]
+
+            else:
+                # noinspection PyTypeChecker
+                self.theta_ = so.brentq(
+                    _tau_diff,
+                    args=(abs_kendall_tau,),
+                    a=_THETA_BOUNDS[0],
+                    b=_THETA_BOUNDS[-1],
+                )
             self.rotation_ = _find_best_rotation_kendall_tau_inversion(
                 func=_neg_log_likelihood, X=X, theta=self.theta_
             )

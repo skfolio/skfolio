@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from skfolio.distribution import ClaytonCopula, CopulaRotation
-from skfolio.distribution.copula.bivariate._clayton import _THETA_BOUNDS
+from skfolio.distribution import CopulaRotation, JoeCopula
+from skfolio.distribution._copula._joe import _THETA_BOUNDS
 
 
 @pytest.fixture
@@ -22,73 +22,73 @@ def X():
 @pytest.fixture
 def fitted_model():
     # Using same convention as other libraries for Benchmark
-    fitted_model = ClaytonCopula()
-    fitted_model.theta_ = 2.718413896014
+    fitted_model = JoeCopula()
+    fitted_model.theta_ = 3.4781710077039865
     return fitted_model
 
 
-def test_clayton_copula_init():
-    """Test initialization of ClaytonCopula with default parameters."""
-    model = ClaytonCopula()
+def test_joe_copula_init():
+    """Test initialization of JoeCopula with default parameters."""
+    model = JoeCopula()
     assert model.use_kendall_tau_inversion is False
     assert model.kendall_tau is None
 
 
-def test_clayton_copula_fit_with_kendall_tau(random_data):
+def test_joe_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = ClaytonCopula(use_kendall_tau_inversion=True).fit(random_data)
+    model = JoeCopula(use_kendall_tau_inversion=True).fit(random_data)
     # Check that theta_ has been fitted and lies within the valid range
     assert hasattr(model, "theta_")
     assert hasattr(model, "rotation_")
     assert _THETA_BOUNDS[0] < model.theta_ < _THETA_BOUNDS[1]
 
 
-def test_clayton_copula_fit_mle(random_data):
+def test_joe_copula_fit_mle(random_data):
     """Test fit() using MLE optimization for theta_."""
-    model = ClaytonCopula(use_kendall_tau_inversion=False)
+    model = JoeCopula(use_kendall_tau_inversion=False)
     model.fit(random_data)
     assert hasattr(model, "theta_")
     assert hasattr(model, "rotation_")
     assert _THETA_BOUNDS[0] < model.theta_ < _THETA_BOUNDS[1]
 
 
-def test_clayton_partial_derivative_shape(random_data):
+def test_joe_partial_derivative_shape(random_data):
     """Test partial_derivative() returns correct shape."""
-    model = ClaytonCopula().fit(random_data)
+    model = JoeCopula().fit(random_data)
     h = model.partial_derivative(random_data)
     assert h.shape == (100,)
     # All values should remain in (0,1) for a well-behaved CDF
     assert np.all(h >= 0) and np.all(h <= 1)
 
 
-def test_clayton_inverse_partial_derivative_shape(random_data):
+def test_joe_inverse_partial_derivative_shape(random_data):
     """Test inverse_partial_derivative() returns correct shape."""
-    model = ClaytonCopula().fit(random_data)
+    model = JoeCopula().fit(random_data)
     h_inv = model.inverse_partial_derivative(random_data)
     assert h_inv.shape == (100,)
     # Should lie within [0,1]
     assert np.all(h_inv >= 0) and np.all(h_inv <= 1)
 
 
-def test_clayton_score_samples(random_data):
+def test_joe_score_samples(random_data):
     """Test score_samples() for shape and type."""
-    model = ClaytonCopula().fit(random_data)
+    model = JoeCopula().fit(random_data)
     log_pdf = model.score_samples(random_data)
     assert log_pdf.shape == (100,)
     # log-pdf can be negative or positive, so we won't do a bound check here.
 
 
-def test_clayton_score(random_data):
+def test_joe_score(random_data):
     """Test the total log-likelihood via score()."""
-    model = ClaytonCopula().fit(random_data)
+    model = JoeCopula().fit(random_data)
     total_ll = model.score(random_data)
     # It's a scalar
     assert isinstance(total_ll, float)
 
 
-def test_clayton_aic_bic(random_data):
+def test_joe_aic_bic(random_data):
     """Test AIC and BIC computation."""
-    model = ClaytonCopula().fit(random_data)
+    model = JoeCopula().fit(random_data)
     aic_val = model.aic(random_data)
     bic_val = model.bic(random_data)
 
@@ -101,23 +101,23 @@ def test_clayton_aic_bic(random_data):
     assert np.isfinite(bic_val)
 
 
-def test_clayton_sample():
+def test_joe_sample():
     """Test sample() method for shape and range."""
-    model = ClaytonCopula().fit(np.random.rand(100, 2))
+    model = JoeCopula().fit(np.random.rand(100, 2))
     samples = model.sample(n_samples=50, random_state=123)
     assert samples.shape == (50, 2)
     # Should lie strictly in (0,1).
     assert np.all(samples >= 1e-8) and np.all(samples <= 1 - 1e-8)
 
 
-def test_clayton_theta_out_of_bounds():
+def test_joe_theta_out_of_bounds():
     """Check that setting theta_ out of bounds triggers an error in score_samples()."""
-    model = ClaytonCopula(use_kendall_tau_inversion=False)
+    model = JoeCopula(use_kendall_tau_inversion=False)
     # Manually set theta_ out-of-bounds after fitting
-    model.theta_ = 0
+    model.theta_ = 0.5
     model.rotation_ = CopulaRotation.R0
     with pytest.raises(
-        ValueError, match="Theta must be greater than 1 for the Clayton copula."
+        ValueError, match="Theta must be greater than 1 for the Joe copula."
     ):
         _ = model.score_samples(np.random.rand(5, 2))
 
@@ -125,12 +125,12 @@ def test_clayton_theta_out_of_bounds():
 @pytest.mark.parametrize(
     "use_kendall_tau_inversion,expected_theta,expected_rotation",
     [
-        [True, 7.999999999999, CopulaRotation.R180],
-        [False, 2.718413896014, CopulaRotation.R0],
+        [True, 8.767706807353818, CopulaRotation.R0],
+        [False, 3.4781710077039865, CopulaRotation.R180],
     ],
 )
-def test_clayton_fit(X, use_kendall_tau_inversion, expected_theta, expected_rotation):
-    model = ClaytonCopula(use_kendall_tau_inversion=use_kendall_tau_inversion)
+def test_joe_fit(X, use_kendall_tau_inversion, expected_theta, expected_rotation):
+    model = JoeCopula(use_kendall_tau_inversion=use_kendall_tau_inversion)
     model.fit(X)
     assert np.isclose(model.theta_, expected_theta)
     assert model.rotation_ == expected_rotation
@@ -139,52 +139,88 @@ def test_clayton_fit(X, use_kendall_tau_inversion, expected_theta, expected_rota
 @pytest.mark.parametrize(
     "rotation,expected",
     [
-        (CopulaRotation.R0, [1.39729, 0.03641, 0.61795, 0.43688, 0.70493]),
-        (CopulaRotation.R90, [-4.75603, -1.25039, -0.15239, 0.43688, -4.12012]),
-        (CopulaRotation.R180, [0.96547, 0.30684, 0.44028, 0.49993, 0.70748]),
-        (CopulaRotation.R270, [-6.4388, -0.50604, -0.31586, 0.49993, -2.67991]),
+        (
+            CopulaRotation.R0,
+            np.array([0.93185286, 0.30864155, 0.43967997, 0.49862684, 0.65420809]),
+        ),
+        (
+            CopulaRotation.R90,
+            np.array([-5.90333622, -0.49019459, -0.35173268, 0.49862684, -2.47029007]),
+        ),
+        (
+            CopulaRotation.R180,
+            np.array([1.34539806, -0.01732094, 0.61611089, 0.43511225, 0.69371343]),
+        ),
+        (
+            CopulaRotation.R270,
+            np.array([-4.32949845, -1.26787994, -0.16722499, 0.43511225, -3.85282546]),
+        ),
     ],
 )
-def test_clayton_score_exact(X, fitted_model, rotation, expected):
+def test_joe_score_exact(X, fitted_model, rotation, expected):
     fitted_model.rotation_ = rotation
     assert np.isclose(fitted_model.score(X), np.sum(expected))
-    np.testing.assert_almost_equal(fitted_model.score_samples(X), expected, 5)
+    np.testing.assert_almost_equal(fitted_model.score_samples(X), expected)
 
 
 @pytest.mark.parametrize(
     "rotation,expected",
     [
-        (CopulaRotation.R0, [0.04747, 0.19063, 0.26372, 0.43532, 0.75255]),
-        (CopulaRotation.R90, [1e-05, 0.00272, 0.01828, 0.16468, 0.70006]),
-        (CopulaRotation.R180, [0.01543, 0.1597, 0.229, 0.44781, 0.79499]),
-        (CopulaRotation.R270, [0.0, 0.00971, 0.01168, 0.15219, 0.70031]),
+        (
+            CopulaRotation.R0,
+            [0.01467877, 0.15725618, 0.22640759, 0.44708776, 0.79501503],
+        ),
+        (
+            CopulaRotation.R90,
+            [
+                3.41756792e-06,
+                1.09545891e-02,
+                1.25330869e-02,
+                1.52912245e-01,
+                7.00424163e-01,
+            ],
+        ),
+        (
+            CopulaRotation.R180,
+            [0.04749933, 0.19039541, 0.26372482, 0.43359505, 0.75072786],
+        ),
+        (
+            CopulaRotation.R270,
+            [
+                1.77386069e-05,
+                3.11887404e-03,
+                1.97263140e-02,
+                1.66404953e-01,
+                7.00089707e-01,
+            ],
+        ),
     ],
 )
 def test_cdf_exact(X, fitted_model, rotation, expected):
     fitted_model.rotation_ = rotation
-    np.testing.assert_almost_equal(fitted_model.cdf(X), expected, 5)
+    np.testing.assert_almost_equal(fitted_model.cdf(X), expected)
 
 
-def test_clayton_aic_bic_exact(X, fitted_model):
+def test_joe_aic_bic_exact(X, fitted_model):
     fitted_model.rotation_ = CopulaRotation.R180
-    np.isclose(fitted_model.aic(X), -3.840007906839)
-    np.isclose(fitted_model.bic(X), -4.2305699944)
+    np.isclose(fitted_model.aic(X), -4.146027394639978)
+    np.isclose(fitted_model.bic(X), -4.536589482205877)
 
 
 @pytest.mark.parametrize(
     "first_margin,rotation,expected",
     [
-        (True, CopulaRotation.R0, [0.82437, 0.06355, 0.61925, 0.59746, 0.51411]),
-        (True, CopulaRotation.R90, [0.00023, 0.01599, 0.10489, 0.59746, 0.99782]),
-        (True, CopulaRotation.R180, [0.29298, 0.22782, 0.64707, 0.74066, 0.17404]),
-        (True, CopulaRotation.R270, [0.00013, 0.08735, 0.13733, 0.74066, 0.9963]),
-        (False, CopulaRotation.R0, [0.06263, 0.83656, 0.21247, 0.30331, 0.79665]),
-        (False, CopulaRotation.R90, [0.00039, 0.04958, 0.15965, 0.69669, 0.99956]),
-        (False, CopulaRotation.R180, [0.13555, 0.73506, 0.37393, 0.4054, 0.93725]),
-        (False, CopulaRotation.R270, [2e-05, 0.06933, 0.06554, 0.5946, 0.99432]),
+        (True, CopulaRotation.R0, [0.28028, 0.2326, 0.64851, 0.74718, 0.16822]),
+        (True, CopulaRotation.R90, [0.00024, 0.09367, 0.14166, 0.74718, 0.99513]),
+        (True, CopulaRotation.R180, [0.83124, 0.0606, 0.621, 0.59233, 0.52698]),
+        (True, CopulaRotation.R270, [0.00038, 0.01642, 0.1051, 0.59233, 0.99688]),
+        (False, CopulaRotation.R0, [0.13055, 0.73027, 0.37865, 0.40808, 0.9405]),
+        (False, CopulaRotation.R90, [4e-05, 0.07307, 0.06437, 0.59192, 0.99263]),
+        (False, CopulaRotation.R180, [0.0594, 0.83777, 0.2058, 0.29823, 0.79921]),
+        (False, CopulaRotation.R270, [0.00062, 0.05389, 0.16578, 0.70177, 0.99939]),
     ],
 )
-def test_clayton_partial_derivative_exact(
+def test_joe_partial_derivative_exact(
     X, fitted_model, first_margin, rotation, expected
 ):
     fitted_model.rotation_ = rotation
@@ -219,17 +255,17 @@ def test_student_t_partial_derivative_numeric(X, fitted_model, first_margin, rot
 @pytest.mark.parametrize(
     "first_margin,rotation,expected",
     [
-        (True, CopulaRotation.R0, [0.02903, 0.29321, 0.3009, 0.60164, 0.92503]),
-        (True, CopulaRotation.R90, [0.51606, 0.42877, 0.62973, 0.60164, 0.18826]),
-        (True, CopulaRotation.R180, [0.03187, 0.17918, 0.25099, 0.51818, 0.92574]),
-        (True, CopulaRotation.R270, [0.8736, 0.34348, 0.61017, 0.51818, 0.39878]),
-        (False, CopulaRotation.R0, [0.04667, 0.20252, 0.34507, 0.62136, 0.95084]),
-        (False, CopulaRotation.R90, [0.6736, 0.735, 0.42941, 0.37864, 0.5551]),
-        (False, CopulaRotation.R180, [0.01809, 0.19939, 0.25107, 0.55375, 0.884]),
-        (False, CopulaRotation.R270, [0.40632, 0.68929, 0.49786, 0.44625, 0.47982]),
+        (True, CopulaRotation.R0, [0.0336, 0.17561, 0.25016, 0.51483, 0.925]),
+        (True, CopulaRotation.R90, [0.87488, 0.3379, 0.61106, 0.51483, 0.40953]),
+        (True, CopulaRotation.R180, [0.02949, 0.29685, 0.30165, 0.60498, 0.92218]),
+        (True, CopulaRotation.R270, [0.49865, 0.4321, 0.63062, 0.60498, 0.18525]),
+        (False, CopulaRotation.R0, [0.01884, 0.20163, 0.24779, 0.55208, 0.88212]),
+        (False, CopulaRotation.R90, [0.39201, 0.68633, 0.50114, 0.44792, 0.48386]),
+        (False, CopulaRotation.R180, [0.04742, 0.20232, 0.34807, 0.62429, 0.95019]),
+        (False, CopulaRotation.R270, [0.66938, 0.73737, 0.42668, 0.37571, 0.56049]),
     ],
 )
-def test_clayton_inverse_partial_derivative_exact(
+def test_joe_inverse_partial_derivative_exact(
     X, fitted_model, first_margin, rotation, expected
 ):
     fitted_model.rotation_ = rotation
@@ -245,7 +281,7 @@ def test_clayton_inverse_partial_derivative_exact(
     ],
 )
 @pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_partial_derivative_inverse_partial_derivative(
+def test_joe_partial_derivative_inverse_partial_derivative(
     X, fitted_model, first_margin, rotation
 ):
     """h(u | v) = p => h^-1(p | v) = u"""
@@ -268,5 +304,13 @@ def test_clayton_partial_derivative_inverse_partial_derivative(
 def test_clayton_sample_refitting(X, fitted_model, use_kendall_tau_inversion, rotation):
     fitted_model.rotation_ = rotation
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
-    m = ClaytonCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    m = JoeCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
     assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
+
+
+def test_use_kendall_tau_inversion_bounds():
+    X = np.arange(1, 5) / 5
+    X = np.stack((X, X)).T
+    m = JoeCopula(use_kendall_tau_inversion=True).fit(X)
+    assert m.theta_ == _THETA_BOUNDS[1]
+    assert not np.isnan(m.score(X))

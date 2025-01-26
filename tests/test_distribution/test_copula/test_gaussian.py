@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import GaussianCopula
-from skfolio.distribution.copula.bivariate._base import _RHO_BOUNDS
+from skfolio.distribution._copula._base import _RHO_BOUNDS
 
 
 @pytest.fixture
@@ -263,3 +263,19 @@ def test_gaussian_sample_refitting(X, fitted_model, use_kendall_tau_inversion):
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
     m = GaussianCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
+
+
+def test_plot_pdf_2d(fitted_model):
+    assert fitted_model.plot_pdf_2d()
+
+
+def test_plot_pdf_3d(fitted_model):
+    assert fitted_model.plot_pdf_3d()
+
+
+def test_use_kendall_tau_inversion_bounds():
+    X = np.arange(1, 5) / 5
+    X = np.stack((X, X)).T
+    m = GaussianCopula(use_kendall_tau_inversion=True).fit(X)
+    assert m.rho_ == _RHO_BOUNDS[1]
+    assert not np.isnan(m.score(X))

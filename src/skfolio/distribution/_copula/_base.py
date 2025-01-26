@@ -12,6 +12,7 @@ from enum import Enum
 
 import numpy as np
 import numpy.typing as npt
+import plotly.graph_objects as go
 import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
@@ -371,3 +372,49 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         X[:, 1] = self.inverse_partial_derivative(X, first_margin=True)
 
         return X
+
+    def plot_pdf_2d(self, title: str | None = None) -> go.Figure:
+        skv.check_is_fitted(self)
+
+        if title is None:
+            title = "PDF of Bivariate GaussianCopula(rho=0.5)"
+
+        u = np.linspace(0.01, 0.99, 100)
+        U, V = np.meshgrid(u, u)
+        grid_points = np.column_stack((U.ravel(), V.ravel()))
+        pdfs = np.exp(self.score_samples(grid_points)).reshape(U.shape)
+        # After the 97th quantile, the pdf gets too dense, and it dilutes the plot.
+        end = round(np.quantile(pdfs, 0.97), 1)
+        fig = go.Figure(
+            data=go.Contour(
+                x=u,
+                y=u,
+                z=pdfs,
+                colorscale="Magma",
+                contours=dict(start=0, end=end, size=0.2),
+                line=dict(width=0),
+                colorbar=dict(title="PDF"),
+            )
+        )
+        fig.update_layout(
+            title=title,
+            xaxis_title="u",
+            yaxis_title="v",
+        )
+        return fig
+
+    def plot_pdf_3d(self, title: str | None = None) -> go.Figure:
+        skv.check_is_fitted(self)
+
+        if title is None:
+            title = "PDF of Bivariate GaussianCopula(rho=0.5)"
+
+        u = np.linspace(0.03, 0.97, 100)
+        U, V = np.meshgrid(u, u)
+        grid_points = np.column_stack((U.ravel(), V.ravel()))
+        pdfs = np.exp(self.score_samples(grid_points)).reshape(U.shape)
+        fig = go.Figure(data=[go.Surface(x=U, y=V, z=pdfs, colorscale="Magma")])
+        fig.update_layout(
+            title=title, scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="PDF")
+        )
+        return fig

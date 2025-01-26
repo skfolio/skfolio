@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula.bivariate._base import (
+from skfolio.distribution._copula._base import (
     BaseBivariateCopula,
 )
 

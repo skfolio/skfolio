@@ -1,6 +1,6 @@
 """
-Bivariate Gumbel Copula Estimation
-----------------------------------
+Bivariate Clayton Copula Estimation
+------------------------------------
 """
 
 # Copyright (c) 2025
@@ -12,11 +12,11 @@ import numpy.typing as npt
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula.bivariate._base import (
+from skfolio.distribution._copula._base import (
     BaseBivariateCopula,
     CopulaRotation,
 )
-from skfolio.distribution.copula.bivariate._utils import (
+from skfolio.distribution._copula._utils import (
     _apply_copula_rotation,
     _apply_margin_swap,
     _apply_rotation_cdf,
@@ -25,34 +25,34 @@ from skfolio.distribution.copula.bivariate._utils import (
     _find_best_theta_and_rotation_mle,
 )
 
-# Gumbel copula with a theta of 1.0 is just the independence copula, so we chose a lower
-# bound of 1.0001. After 80, the copula is already imposing extremely strong upper tail
-# dependence and increasing it will make it impractical.
-_THETA_BOUNDS = (1.0001, 80.0)
+# Clayton copula with a theta of 0.0 is just the independence copula, so we chose a lower
+# bound of 1e-4. After 50, the copula is already imposing very high tail dependence
+# closed to comonotonic and increasing it will make it impractical.
+_THETA_BOUNDS = (1e-4, 50.0)
 
 
-class GumbelCopula(BaseBivariateCopula):
-    r"""Bivariate Gumbel Copula Estimation.
+class ClaytonCopula(BaseBivariateCopula):
+    r"""Bivariate Clayton Copula Estimation.
 
-    The Gumbel copula is an Archimedean copula characterized by strong upper tail
-    dependence and little to no lower tail dependence.
+    The Clayton copula is an Archimedean copula characterized by strong lower tail
+    dependence and little to no upper tail dependence.
 
-    It is used for modeling extreme co-movements in the upper tail (i.e. simultaneous
-    gains). By applying a rotation (such as 180°), it can also be used for capturing
-    extreme losses.
+    It is used for modeling extreme co-movements in the lower tail (i.e. simultaneous
+    losses). By applying a rotation (such as 180°), it can also be used to capture
+    extreme positive co-movements.
 
     It is defined by:
 
     .. math::
-            C_{\theta}(u, v) = \exp\Bigl(-\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{1/\theta}\Bigr)
+            C_{\theta}(u, v) = \Bigl(u^{-\theta} + v^{-\theta} - 1\Bigr)^{-1/\theta}
 
-    where :math:`\theta \ge 1` is the dependence parameter. When :math:`\theta = 1`,
-    the Gumbel copula reduces to the independence copula. Larger values of :math:`\theta`
-    result in stronger upper-tail dependence.
+    where :math:`\theta > 0` is the dependence parameter. As :math:`\theta \to 0`,
+    the Clayton copula converges to the independence copula. Larger values of
+    :math:`\theta` result in stronger lower-tail dependence.
 
     .. note::
 
-        Rotations are needed for Archimedean copulas (e.g., Joe, Gumbel, Gumbel)
+        Rotations are needed for Archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
         to "flip" the copula's tail dependence.
@@ -71,7 +71,7 @@ class GumbelCopula(BaseBivariateCopula):
     Attributes
     ----------
     theta_ : float
-        Fitted theta coefficient :math:`\theta` > 1.
+        Fitted theta coefficient :math:`\theta` > 0.
 
     rotation_ : CopulaRotation
         Fitted rotation of the copula.
@@ -89,8 +89,8 @@ class GumbelCopula(BaseBivariateCopula):
         self.use_kendall_tau_inversion = use_kendall_tau_inversion
         self.kendall_tau = kendall_tau
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "GumbelCopula":
-        """Fit the Bivariate Gumbel Copula.
+    def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
+        """Fit the Bivariate Clayton Copula.
 
          If `use_kendall_tau_inversion` is True, estimates :math:`\theta` using
          Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
@@ -118,9 +118,15 @@ class GumbelCopula(BaseBivariateCopula):
             else:
                 kendall_tau = self.kendall_tau
 
-            # For Gumbel, the theoretical relationship is: tau = 1 - 1/theta.
-            abs_kendall_tau = abs(kendall_tau)
-            self.theta_ = 1.0 / (1.0 - abs_kendall_tau)
+            # For Clayton, the theoretical relationship is: tau = theta/(theta+2)
+            abs_kendall_tau = min(abs(kendall_tau), 0.9999)
+
+            self.theta_ = np.clip(
+                _THETA_BOUNDS[0],
+                _THETA_BOUNDS[1],
+                2 * abs_kendall_tau / (1 - abs_kendall_tau),
+            )
+
             self.rotation_ = _find_best_rotation_kendall_tau_inversion(
                 func=_neg_log_likelihood, X=X, theta=self.theta_
             )
@@ -133,13 +139,13 @@ class GumbelCopula(BaseBivariateCopula):
         return self
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the CDF of the bivariate Gumbel copula.
+        """Compute the CDF of the bivariate Clayton copula.
 
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
             An array of bivariate inputs `(u, v)` where each row represents a
-            bivariate observation. Both `u` and `v` must be in the interval [0, 1],
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
         Returns
@@ -157,24 +163,24 @@ class GumbelCopula(BaseBivariateCopula):
     def partial_derivative(
         self, X: npt.ArrayLike, first_margin: bool = False
     ) -> np.ndarray:
-        r"""Compute the h-function (partial derivative) for the bivariate Gumbel copula
+        r"""Compute the h-function (partial derivative) for the bivariate Clayton copula
         with respect to a specified margin.
 
         The h-function with respect to the second margin represents the conditional
         distribution function of :math:`u` given :math:`v`:
 
         .. math::  \begin{aligned}
+                   C(u,v)&=\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta},\\[6pt]
                    h(u \mid v)
-                     &= \frac{\partial C(u,v)}{\partial v}\\[6pt]
-                     &= C(u,v)\,\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{\frac{1}{\theta}-1}
-                         \,(-\ln v)^{\theta-1}\,\frac{1}{v}.
+                     &= \frac{\partial C(u,v)}{\partial v}
+                     = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1}.
                    \end{aligned}
 
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
             An array of bivariate inputs `(u, v)` where each row represents a
-            bivariate observation. Both `u` and `v` must be in the interval [0, 1],
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
         first_margin : bool, default False
@@ -190,7 +196,7 @@ class GumbelCopula(BaseBivariateCopula):
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         p = _apply_rotation_partial_derivatives(
-            func=_base_partial_derivative,  # Computation remains unchanged
+            func=_base_partial_derivative,
             X=X,
             rotation=self.rotation_,
             first_margin=first_margin,
@@ -225,7 +231,7 @@ class GumbelCopula(BaseBivariateCopula):
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
-            An array of bivariate inputs `(p, v)`, each in the interval [0, 1].
+            An array of bivariate inputs `(p, v)`, each in the interval `[0, 1]`.
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
@@ -237,13 +243,13 @@ class GumbelCopula(BaseBivariateCopula):
         Returns
         -------
         u : ndarray of shape (n_observations, )
-            A 1D-array where each element is the computed :math:`u = h^{-1}(p \mid v)`
-            for the corresponding pair in `X`.
+            A 1D-array of length `n_observations`, where each element is the computed
+            :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
         """
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         u = _apply_rotation_partial_derivatives(
-            func=_base_inverse_partial_derivative,  # Computation remains unchanged
+            func=_base_inverse_partial_derivative,
             X=X,
             rotation=self.rotation_,
             first_margin=first_margin,
@@ -254,18 +260,17 @@ class GumbelCopula(BaseBivariateCopula):
     def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
         r"""Compute the log-likelihood of each sample (log-pdf) under the model.
 
-        For Gumbel, the PDF is given by:
+        For Clayton, the PDF is given by:
 
         .. math::
-            c(u,v) = \exp\Bigl(-\Bigl((-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr)^{1/\theta}\Bigr)
-                     \cdot \left[\Bigl((-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr)^{1/\theta-1}
-                          \left\{ \frac{(-\ln u)^{\theta}}{u}+\frac{(-\ln v)^{\theta}}{v}\right\}\right].
+        c(u,v) = (\theta+1)\,\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-\frac{1}{\theta}-2}\,
+                (u\,v)^{-\theta-1}.
 
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
             An array of bivariate inputs `(u, v)` where each row represents a
-            bivariate observation. Both `u` and `v` must be in the interval [0, 1],
+            bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
         Returns
@@ -281,17 +286,17 @@ class GumbelCopula(BaseBivariateCopula):
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
-    """Negative log-likelihood function for the Gumbel copula.
+    """Negative log-likelihood function for the Clayton copula.
 
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
         An array of bivariate inputs `(u, v)` where each row represents a
-        bivariate observation. Both `u` and `v` must be in the interval [0, 1],
+        bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
         having been transformed to uniform marginals.
 
     theta : float
-        The dependence parameter (must be greater than 1).
+        The dependence parameter (must be greater than 0).
 
     Returns
     -------
@@ -302,43 +307,50 @@ def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
 
 
 def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
-    r"""Compute the log-likelihood of each sample (log-pdf) under the bivariate Gumbel
+    r"""Compute the log-likelihood of each sample (log-pdf) under the bivariate Clayton
     copula.
 
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
-         Bivariate samples `(u, v)`, with each component in [0,1].
+        Bivariate samples `(u, v)`, with each component in [0,1].
 
     theta : float
-         The dependence parameter (must be greater than 1).
+        The dependence parameter (must be greater than 0).
 
     Returns
     -------
     logpdf : ndarray of shape (n_observations,)
-         Log-likelihood values for each observation.
+        Log-likelihood values for each observation.
+
+    Raises
+    ------
+    ValueError
+        If theta is not greater than 0.
     """
-    if theta <= 1:
-        raise ValueError("Theta must be greater than 1 for the Gumbel copula.")
-    Z = -np.log(X)
-    s = np.power(np.power(Z, theta).sum(axis=1), 1 / theta)
+    if theta <= 0:
+        raise ValueError("Theta must be greater than 1 for the Clayton copula.")
+
+    x, y = np.log(X).T
+
     log_density = (
-        -s
-        + np.log(s + theta - 1)
-        + (1 - 2 * theta) * np.log(s)
-        + (theta - 1) * np.log(Z.prod(axis=1))
-        + Z.sum(axis=1)
+        np.log1p(theta)
+        - (2.0 + 1.0 / theta) * np.log1p(np.expm1(-theta * x) + np.expm1(-theta * y))
+        - (1.0 + theta) * (x + y)
     )
     return log_density
 
 
 def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
-    r"""Bivariate Gumbel CDF (unrotated):
+    r"""
+    Bivariate Clayton CDF (unrotated):
 
     .. math::
-        C(u,v) = \exp\Bigl(-\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{1/\theta}\Bigr).
+        C(u,v) = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
+
+    Negative interiors (due to small values in u or v) are clipped to 0.
     """
-    cdf = np.exp(-np.power(np.power(-np.log(X), theta).sum(axis=1), 1.0 / theta))
+    cdf = np.power(np.sum(np.power(X, -theta), axis=1) - 1, -1.0 / theta)
     return cdf
 
 
@@ -346,29 +358,27 @@ def _base_partial_derivative(
     X: np.ndarray, first_margin: bool, theta: float
 ) -> np.ndarray:
     r"""
-    Compute the partial derivative (h-function) for the unrotated Gumbel copula.
+    Compute the partial derivative (h-function) for the unrotated Clayton copula.
 
-    For Gumbel, the copula is defined as:
+    For Clayton, the copula is defined as:
 
     .. math::
-        C(u,v)=\exp\Bigl(-\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{1/\theta}\Bigr).
+        C(u,v)=\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
 
     The partial derivative with respect to v is:
 
     .. math::
-        \frac{\partial C(u,v)}{\partial v}
-          = C(u,v)\,\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{\frac{1}{\theta}-1}
-            \,(-\ln v)^{\theta-1}\,\frac{1}{v}.
+        \frac{\partial C(u,v)}{\partial v} = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1}.
 
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
          An array of bivariate inputs `(u, v)` with values in [0, 1].
     first_margin : bool, default False
-         If True, compute with respect to u (by swapping margins); otherwise,
+         If True, compute with respect to u (by swapping margins); otherwise
          compute with respect to v.
     theta : float
-         The dependence parameter (must be > 1).
+         The dependence parameter (must be > 0).
 
     Returns
     -------
@@ -376,13 +386,9 @@ def _base_partial_derivative(
          The computed h-function values.
     """
     X = _apply_margin_swap(X, first_margin=first_margin)
-    _, v = X.T
-    x, y = -np.log(X).T
-    p = (
-        np.exp(-np.power(np.power(x, theta) + np.power(y, theta), 1.0 / theta))
-        * np.power(np.power(x / y, theta) + 1.0, 1.0 / theta - 1.0)
-        / v
-    )
+    x = np.power(X[:, 0], -theta)
+    y = np.power(X[:, 1], theta)
+    p = np.power(1.0 + y * (x - 1.0), -(1.0 + 1.0 / theta))
     return p
 
 
@@ -390,7 +396,7 @@ def _base_inverse_partial_derivative(
     X: np.ndarray, first_margin: bool, theta: float
 ) -> np.ndarray:
     r"""
-    Compute the inverse partial derivative for the unrotated Gumbel copula,
+    Compute the inverse partial derivative for the unrotated Clayton copula,
     i.e. solve for u in h(u|v)=p.
 
     In other words, given
@@ -399,10 +405,9 @@ def _base_inverse_partial_derivative(
     solve:
 
     .. math::
-      p = C(u,v)\,\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{\frac{1}{\theta}-1}\,
-          (-\ln v)^{\theta-1}\,\frac{1}{v},
+      p = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta-1}\,v^{-\theta-1},
 
-    for u ∈ [0,1]. Since no closed-form solution exists, we use a numerical method.
+    for u ∈ [0,1]. Since no closed-form solution exists, we use a Newton method.
 
     Parameters
     ----------
@@ -411,7 +416,7 @@ def _base_inverse_partial_derivative(
     first_margin : bool, default False
          If True, treat the first margin as the conditioning variable.
     theta : float
-         The dependence parameter (must be > 1).
+         The dependence parameter (must be > 0).
 
     Returns
     -------
@@ -419,18 +424,7 @@ def _base_inverse_partial_derivative(
          A 1D-array where each element is the solution u ∈ [0,1] such that h(u|v)=p.
     """
     X = _apply_margin_swap(X, first_margin=first_margin)
-    p, v = -np.log(X).T
-    s = v + p + np.log(v) * (theta - 1.0)
-    # Initial guess
-    x = v.copy()
-    max_iters = 50
-    tol = 1e-8
-    for _ in range(max_iters):
-        x_new = x * (s - (theta - 1.0) * (np.log(x) - 1.0)) / (theta + x - 1.0)
-        x_new = np.clip(x_new, x, None)
-        diff = np.max(np.abs(x_new - x))
-        x = x_new
-        if diff < tol:
-            break
-    u = np.exp(-np.power(np.power(x, theta) - np.power(v, theta), 1.0 / theta))
+    x = np.power(X[:, 0], -theta / (theta + 1.0))
+    y = np.power(X[:, 1], -theta)
+    u = np.power(1.0 + y * (x - 1.0), -1.0 / theta)
     return u

@@ -6,11 +6,51 @@ import numpy.typing as npt
 import scipy.optimize as so
 import scipy.stats as st
 
-from skfolio.distribution.copula.bivariate._base import (
+from skfolio.distribution._copula._base import (
     BaseBivariateCopula,
     CopulaRotation,
 )
-from skfolio.distribution.copula.bivariate._independent import IndependentCopula
+from skfolio.distribution._copula._independent import IndependentCopula
+
+
+def best_bivariate_copula_and_fit(
+    X: np.ndarray,
+    copula_candidates: list[BaseBivariateCopula],
+    bic: bool = True,
+    use_kendall_tau_inversion: bool = False,
+    independence_significance_level: float = 0.05,
+) -> BaseBivariateCopula:
+    """Find the best bivariate copula that minimize either the AIC or BIC
+    criterion and returns the fitted model.
+
+    Parameters
+    ----------
+
+    independence_significance_level : float, default=0.05
+        Significance level of the Kendall tau independence test. A p-value below this
+        level means that the independence hypothesis is rejected and non-independent
+        copula will be search and fitted.
+    """
+
+    kendall_tau, p_value = st.kendalltau(X[:, 0], X[:, 1])
+
+    if p_value >= independence_significance_level:
+        return IndependentCopula()
+
+    results = {}
+    for copula in copula_candidates:
+        if not isinstance(copula, BaseBivariateCopula):
+            raise ValueError(
+                "The candidate copula must inherit from BaseBivariateCopula"
+            )
+        if use_kendall_tau_inversion:
+            # Faster computation by reusing kendall tau if use_kendall_tau_inversion
+            copula.kendall_tau = kendall_tau
+            copula.use_kendall_tau_inversion = True
+        copula.fit(X)
+        results[copula] = copula.bic(X) if bic else copula.aic(X)
+    best_copula = min(results, key=results.get)
+    return best_copula
 
 
 def _find_best_rotation_kendall_tau_inversion(
@@ -171,39 +211,3 @@ def _apply_rotation_partial_derivatives(
             raise ValueError(f"Unsupported rotation: {rotation}")
 
     return z
-
-
-def find_best_and_fit_bivariate_copula(
-    X: np.ndarray,
-    copula_candidates: list[BaseBivariateCopula],
-    independence_significance_level: float = 0.05,
-) -> BaseBivariateCopula:
-    """Find the best bivariate copula that minimize the BIC
-    criterion and returned the fitted model.
-
-    Parameters
-    ----------
-
-    independence_significance_level : float, default=0.05
-        Significance level of the Kendall tau independence test. A p-value below this
-        level means that the independence hypothesis is rejected and non-independent
-        copula will be search and fitted.
-    """
-
-    kendall_tau, p_value = st.kendalltau(X[:, 0], X[:, 1])
-
-    if p_value >= independence_significance_level:
-        return IndependentCopula()
-
-    results = []
-    for copula in copula_candidates:
-        if not isinstance(copula, BaseBivariateCopula):
-            raise ValueError(
-                "The candidate copula must inherit from BaseBivariateCopula"
-            )
-        copula.fit(X)
-        bic = copula.bic(X)
-        results.append((copula, bic))
-
-    best_dist = min(results, key=lambda x: x[1])[0]
-    return best_dist
