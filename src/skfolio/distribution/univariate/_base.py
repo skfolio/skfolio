@@ -139,3 +139,7 @@ class BaseUnivariate(skb.BaseEstimator, ABC):
     def cdf(self, X) -> np.ndarray:
         skv.check_is_fitted(self)
         return self._scipy_model.cdf(X, **self.scipy_params)
+
+    def ppf(self, X) -> np.ndarray:
+        skv.check_is_fitted(self)
+        return self._scipy_model.ppf(X, **self.scipy_params)

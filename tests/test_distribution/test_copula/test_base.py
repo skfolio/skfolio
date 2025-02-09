@@ -39,6 +39,9 @@ def test_validate_X_correct_shape(random_data):
         def score_samples(self, X):
             return np.zeros(X.shape[0])
 
+        def fitted_repr(self):
+            return "Copula"
+
     cop = MockCopula()
     X_validated = cop._validate_X(random_data, reset=True)
     assert X_validated.shape == (100, 2)
@@ -66,6 +69,9 @@ def test_validate_X_wrong_shape():
 
         def score_samples(self, X):
             return np.zeros(X.shape[0])
+
+        def fitted_repr(self):
+            return "Copula"
 
     cop = MockCopula()
 
@@ -95,6 +101,9 @@ def test_validate_X_out_of_bounds():
 
         def score_samples(self, X):
             return np.zeros(X.shape[0])
+
+        def fitted_repr(self):
+            return "Copula"
 
     cop = MockCopula()
     data_negative = np.array([[0.2, -0.1], [0.3, 0.4]])

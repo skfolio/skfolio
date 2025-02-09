@@ -1,4 +1,4 @@
-from skfolio.distribution._copula import (
+from skfolio.distribution.copula import (
     BaseBivariateCopula,
     ClaytonCopula,
     CopulaRotation,
@@ -8,10 +8,11 @@ from skfolio.distribution._copula import (
     JoeCopula,
     StudentTCopula,
 )
-from skfolio.distribution._multivariate import VineCopula
-from skfolio.distribution._univariate import (
+from skfolio.distribution.multivariate import VineCopula
+from skfolio.distribution.univariate import (
     BaseUnivariate,
     Gaussian,
+    NormalInverseGaussian,
     StudentT,
     find_best_and_fit_univariate_dist,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "GumbelCopula",
     "IndependentCopula",
     "JoeCopula",
+    "NormalInverseGaussian",
     "StudentT",
     "StudentTCopula",
     "VineCopula",

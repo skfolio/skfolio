@@ -37,6 +37,12 @@ def y():
 
 
 @pytest.fixture(scope="module")
+def returns(X):
+    returns = X[["AAPL"]]
+    return returns
+
+
+@pytest.fixture(scope="module")
 def implied_vol():
     implied_vol = load_sp500_implied_vol_dataset()
     implied_vol = implied_vol.loc[dt.date(2014, 1, 3) :]

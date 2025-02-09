@@ -5,20 +5,20 @@ import numpy as np
 import numpy.typing as npt
 import scipy.optimize as so
 import scipy.stats as st
+import sklearn as sk
 
-from skfolio.distribution._copula._base import (
+from skfolio.distribution.copula._base import (
     BaseBivariateCopula,
     CopulaRotation,
 )
-from skfolio.distribution._copula._independent import IndependentCopula
+from skfolio.distribution.copula._independent import IndependentCopula
 
 
 def best_bivariate_copula_and_fit(
     X: np.ndarray,
     copula_candidates: list[BaseBivariateCopula],
-    bic: bool = True,
-    use_kendall_tau_inversion: bool = False,
-    independence_significance_level: float = 0.05,
+    aic: bool = True,
+    independence_level: float = 0.05,
 ) -> BaseBivariateCopula:
     """Find the best bivariate copula that minimize either the AIC or BIC
     criterion and returns the fitted model.
@@ -26,16 +26,15 @@ def best_bivariate_copula_and_fit(
     Parameters
     ----------
 
-    independence_significance_level : float, default=0.05
+    independence_level : float, default=0.05
         Significance level of the Kendall tau independence test. A p-value below this
         level means that the independence hypothesis is rejected and non-independent
         copula will be search and fitted.
     """
 
     kendall_tau, p_value = st.kendalltau(X[:, 0], X[:, 1])
-
-    if p_value >= independence_significance_level:
-        return IndependentCopula()
+    if p_value >= independence_level:
+        return IndependentCopula().fit(X)
 
     results = {}
     for copula in copula_candidates:
@@ -43,12 +42,12 @@ def best_bivariate_copula_and_fit(
             raise ValueError(
                 "The candidate copula must inherit from BaseBivariateCopula"
             )
-        if use_kendall_tau_inversion:
-            # Faster computation by reusing kendall tau if use_kendall_tau_inversion
+        copula = sk.clone(copula)
+        if copula.itau and copula.kendall_tau is None:
+            # Faster computation by reusing kendall tau if itau
             copula.kendall_tau = kendall_tau
-            copula.use_kendall_tau_inversion = True
         copula.fit(X)
-        results[copula] = copula.bic(X) if bic else copula.aic(X)
+        results[copula] = copula.aic(X) if aic else copula.bic(X)
     best_copula = min(results, key=results.get)
     return best_copula
 
@@ -65,13 +64,17 @@ def _find_best_rotation_kendall_tau_inversion(
 
 
 def _find_best_theta_and_rotation_mle(
-    func: Callable, X: np.ndarray, bounds: tuple[float, float]
+    func: Callable, X: np.ndarray, bounds: tuple[float, float], tolerance: float = 1e-4
 ) -> tuple[float, CopulaRotation]:
     results = []
     for rotation in CopulaRotation:
         X_rotated = _apply_copula_rotation(X, rotation=rotation)
         result = so.minimize_scalar(
-            func, args=(X_rotated,), bounds=bounds, method="bounded"
+            func,
+            args=(X_rotated,),
+            bounds=bounds,
+            method="bounded",
+            options={"xatol": tolerance},
         )
         if result.success:
             results.append(

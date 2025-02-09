@@ -14,11 +14,11 @@ import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution._copula._base import (
+from skfolio.distribution.copula._base import (
     BaseBivariateCopula,
     CopulaRotation,
 )
-from skfolio.distribution._copula._utils import (
+from skfolio.distribution.copula._utils import (
     _apply_copula_rotation,
     _apply_margin_swap,
     _apply_rotation_cdf,
@@ -62,14 +62,17 @@ class JoeCopula(BaseBivariateCopula):
 
     Parameters
     ----------
-    use_kendall_tau_inversion : bool, default=False
+    itau : bool, default=True
         If True, :math:`\theta` is estimated using the Kendall's tau inversion method;
-        otherwise, the Maximum Likelihood Estimation (MLE) method is used (default).
-        The MLE is slower but more accurate.
+        otherwise, the Maximum Likelihood Estimation (MLE) method is used. The MLE is
+        slower but more accurate.
 
     kendall_tau : float, optional
-        If `use_kendall_tau_inversion` is True and `kendall_tau` is provided, this
+        If `itau` is True and `kendall_tau` is provided, this
         value is used; otherwise, it is computed.
+
+    tolerance : float, default=1e-4
+        Convergence tolerance for the MLE optimization.
 
     Attributes
     ----------
@@ -86,16 +89,18 @@ class JoeCopula(BaseBivariateCopula):
 
     def __init__(
         self,
-        use_kendall_tau_inversion: bool = False,
+        itau: bool = True,
         kendall_tau: float | None = None,
+        tolerance: float = 1e-4,
     ):
-        self.use_kendall_tau_inversion = use_kendall_tau_inversion
+        self.itau = itau
         self.kendall_tau = kendall_tau
+        self.tolerance = tolerance
 
     def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
         """Fit the Bivariate Joe Copula.
 
-         If `use_kendall_tau_inversion` is True, estimates :math:`\theta` using
+         If `itau` is True, estimates :math:`\theta` using
          Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
@@ -115,7 +120,7 @@ class JoeCopula(BaseBivariateCopula):
         """
         X = self._validate_X(X, reset=True)
 
-        if self.use_kendall_tau_inversion:
+        if self.itau:
             if self.kendall_tau is None:
                 kendall_tau = st.kendalltau(X[:, 0], X[:, 1]).statistic
             else:
@@ -147,7 +152,7 @@ class JoeCopula(BaseBivariateCopula):
 
         else:
             self.theta_, self.rotation_ = _find_best_theta_and_rotation_mle(
-                _neg_log_likelihood, X=X, bounds=_THETA_BOUNDS
+                _neg_log_likelihood, X=X, bounds=_THETA_BOUNDS, tolerance=self.tolerance
             )
 
         return self
@@ -302,6 +307,9 @@ class JoeCopula(BaseBivariateCopula):
         X = _apply_copula_rotation(X, rotation=self.rotation_)
         log_density = _base_sample_scores(X=X, theta=self.theta_)
         return log_density
+
+    def fitted_repr(self) -> str:
+        return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:

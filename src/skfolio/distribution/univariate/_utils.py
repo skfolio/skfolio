@@ -1,24 +1,22 @@
 import numpy as np
+import sklearn as sk
 
 from skfolio.distribution.univariate._base import BaseUnivariate
-from skfolio.distribution.univariate._gaussian import Gaussian
-from skfolio.distribution.univariate._student_t import StudentT
 
 
-def optimal_univariate_dist(
-    X: np.ndarray, candidate_distributions: list[BaseUnivariate] | None = None
+def find_best_and_fit_univariate_dist(
+    X: np.ndarray, distribution_candidates: list[BaseUnivariate]
 ) -> BaseUnivariate:
-    """Find the optimal marginal univariate distribution that minimize the BIC
-    criterion"""
-    if candidate_distributions is None:
-        candidate_distributions = [Gaussian(), StudentT()]
+    """Find the best marginal univariate distribution that minimize the BIC
+    criterion and returned the fitted model."""
 
     results = []
-    for dist in candidate_distributions:
+    for dist in distribution_candidates:
         if not isinstance(dist, BaseUnivariate):
             raise ValueError(
                 "The candidate distribution must inherit from BaseUnivariate"
             )
+        dist = sk.clone(dist)
         dist.fit(X)
         bic = dist.bic(X)
         results.append((dist, bic))

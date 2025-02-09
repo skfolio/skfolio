@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn.utils.validation as skv
 
-from skfolio.distribution._copula._base import (
+from skfolio.distribution.copula._base import (
     BaseBivariateCopula,
 )
 
@@ -161,3 +161,6 @@ class IndependentCopula(BaseBivariateCopula):
         skv.check_is_fitted(self)
         X = self._validate_X(X, reset=False)
         return np.zeros(X.shape[0])  # log(1.0)
+
+    def fitted_repr(self) -> str:
+        return f"{self.__class__.__name__}"

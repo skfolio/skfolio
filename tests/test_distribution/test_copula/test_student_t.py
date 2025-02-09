@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import StudentTCopula
-from skfolio.distribution._copula._base import _RHO_BOUNDS
-from skfolio.distribution._copula._student_t import _DOF_BOUNDS
+from skfolio.distribution.copula._base import _RHO_BOUNDS
+from skfolio.distribution.copula._student_t import _DOF_BOUNDS
 
 
 @pytest.fixture
@@ -33,13 +33,13 @@ def fitted_model():
 def test_student_t_copula_init():
     """Test initialization of StudentTCopula with default parameters."""
     model = StudentTCopula()
-    assert model.use_kendall_tau_inversion is False
+    assert model.itau is True
     assert model.kendall_tau is None
 
 
 def test_student_t_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = StudentTCopula(use_kendall_tau_inversion=True).fit(random_data)
+    model = StudentTCopula(itau=True).fit(random_data)
     # Check that rho_ has been fitted and lies within the valid range
     assert hasattr(model, "rho_")
     assert hasattr(model, "dof_")
@@ -49,7 +49,7 @@ def test_student_t_copula_fit_with_kendall_tau(random_data):
 
 def test_student_t_copula_fit_with_provided_kendall_tau(random_data):
     """Test fit() using a manually provided Kendall's tau."""
-    model = StudentTCopula(use_kendall_tau_inversion=True, kendall_tau=0.25)
+    model = StudentTCopula(itau=True, kendall_tau=0.25)
     model.fit(random_data)
     # Check that the resulting rho_ is sin(pi * 0.25 / 2) = sin(pi/8)
     expected_rho = np.sin(np.pi * 0.25 / 2.0)
@@ -58,7 +58,7 @@ def test_student_t_copula_fit_with_provided_kendall_tau(random_data):
 
 def test_student_t_copula_fit_mle(random_data):
     """Test fit() using MLE optimization for rho_."""
-    model = StudentTCopula(use_kendall_tau_inversion=False)
+    model = StudentTCopula(itau=False)
     model.fit(random_data)
     # Just check it's between -1 and 1
     assert -1 < model.rho_ < 1
@@ -67,7 +67,7 @@ def test_student_t_copula_fit_mle(random_data):
 
 def test_student_t_copula_fit_mle_with_provided_kendall_tau(random_data):
     """Test fit() using a manually provided Kendall's tau."""
-    model = StudentTCopula(use_kendall_tau_inversion=False, kendall_tau=0.25)
+    model = StudentTCopula(itau=False, kendall_tau=0.25)
     model.fit(random_data)
     assert -1 < model.rho_ < 1
     assert 1 <= model.dof_ <= 50
@@ -165,7 +165,7 @@ def test_student_t_sample():
 
 def test_student_t_rho_out_of_bounds():
     """Check that setting rho_ out of bounds triggers an error in score_samples()."""
-    model = StudentTCopula(use_kendall_tau_inversion=False)
+    model = StudentTCopula(itau=False)
     # Manually set rho_ out-of-bounds after fitting
     model.rho_ = 1.2
     model.dof_ = 3.0
@@ -175,7 +175,7 @@ def test_student_t_rho_out_of_bounds():
 
 def test_student_t_dof_out_of_bounds():
     """Check that setting rho_ out of bounds triggers an error in score_samples()."""
-    model = StudentTCopula(use_kendall_tau_inversion=False)
+    model = StudentTCopula(itau=False)
     # Manually set rho_ out-of-bounds after fitting
     model.rho_ = 0.5
     model.dof_ = 0.3
@@ -186,14 +186,14 @@ def test_student_t_dof_out_of_bounds():
 
 
 @pytest.mark.parametrize(
-    "use_kendall_tau_inversion,expected_rho,expected_dof",
+    "itau,expected_rho,expected_dof",
     [
         [True, 0.8090169943749475, 2.918296662088029],
         [False, 0.9254270224728093, 50.0],
     ],
 )
-def test_student_t_fit(X, use_kendall_tau_inversion, expected_rho, expected_dof):
-    model = StudentTCopula(use_kendall_tau_inversion=use_kendall_tau_inversion)
+def test_student_t_fit(X, itau, expected_rho, expected_dof):
+    model = StudentTCopula(itau=itau, tolerance=1e-5)
     model.fit(X)
     assert np.isclose(model.rho_, expected_rho)
     assert np.isclose(model.dof_, expected_dof)
@@ -295,17 +295,17 @@ def test_student_t_partial_derivative_inverse_partial_derivative(
         np.testing.assert_almost_equal(X[:, 0], u)
 
 
-@pytest.mark.parametrize("use_kendall_tau_inversion", [True, False])
-def test_gaussian_sample_refitting(X, fitted_model, use_kendall_tau_inversion):
+@pytest.mark.parametrize("itau", [True, False])
+def test_gaussian_sample_refitting(X, fitted_model, itau):
     samples = fitted_model.sample(n_samples=int(1e4), random_state=42)
-    m = StudentTCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    m = StudentTCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
     assert np.isclose(fitted_model.dof_, m.dof_, 1e-1)
 
 
-def test_use_kendall_tau_inversion_bounds():
+def test_itau_bounds():
     X = np.arange(1, 5) / 5
     X = np.stack((X, X)).T
-    m = StudentTCopula(use_kendall_tau_inversion=True).fit(X)
+    m = StudentTCopula(itau=True).fit(X)
     assert m.rho_ == _RHO_BOUNDS[1]
     assert not np.isnan(m.score(X))

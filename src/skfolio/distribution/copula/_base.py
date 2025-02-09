@@ -43,10 +43,14 @@ class CopulaRotation(Enum):
         270° rotation.
     """
 
-    R0 = 0
-    R90 = 90
-    R180 = 180
-    R270 = 270
+    R0 = "0°"
+    R90 = "90°"
+    R180 = "180°"
+    R270 = "270°"
+
+    def __str__(self) -> str:
+        """Enum representation for improved reading"""
+        return self.value
 
 
 class BaseBivariateCopula(skb.BaseEstimator, ABC):
@@ -418,3 +422,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             title=title, scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="PDF")
         )
         return fig
+
+    @abstractmethod
+    def fitted_repr(self) -> str:
+        pass

@@ -1,3 +1,3 @@
-from skfolio.distribution._multivariate._vine_copula import VineCopula
+from skfolio.distribution.multivariate._vine_copula import VineCopula
 
 __all__ = ["VineCopula"]

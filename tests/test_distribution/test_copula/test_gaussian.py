@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import GaussianCopula
-from skfolio.distribution._copula._base import _RHO_BOUNDS
+from skfolio.distribution.copula._base import _RHO_BOUNDS
 
 
 @pytest.fixture
@@ -31,13 +31,13 @@ def fitted_model():
 def test_gaussian_copula_init():
     """Test initialization of GaussianCopula with default parameters."""
     model = GaussianCopula()
-    assert model.use_kendall_tau_inversion is False
+    assert model.itau is True
     assert model.kendall_tau is None
 
 
 def test_gaussian_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = GaussianCopula(use_kendall_tau_inversion=False).fit(random_data)
+    model = GaussianCopula(itau=False).fit(random_data)
     # Check that rho_ has been fitted and lies within the valid range
     assert hasattr(model, "rho_")
     assert _RHO_BOUNDS[0] < model.rho_ < _RHO_BOUNDS[1]
@@ -45,7 +45,7 @@ def test_gaussian_copula_fit_with_kendall_tau(random_data):
 
 def test_gaussian_copula_fit_with_provided_kendall_tau(random_data):
     """Test fit() using a manually provided Kendall's tau."""
-    model = GaussianCopula(use_kendall_tau_inversion=True, kendall_tau=0.25)
+    model = GaussianCopula(itau=True, kendall_tau=0.25)
     model.fit(random_data)
     # Check that the resulting rho_ is sin(pi * 0.25 / 2) = sin(pi/8)
     expected_rho = np.sin(np.pi * 0.25 / 2.0)
@@ -54,7 +54,7 @@ def test_gaussian_copula_fit_with_provided_kendall_tau(random_data):
 
 def test_gaussian_copula_fit_mle(random_data):
     """Test fit() using MLE optimization for rho_."""
-    model = GaussianCopula(use_kendall_tau_inversion=False)
+    model = GaussianCopula(itau=False)
     model.fit(random_data)
     # Just check it's between -1 and 1
     assert -1 < model.rho_ < 1
@@ -143,7 +143,7 @@ def test_gaussian_sample():
 
 def test_gaussian_rho_out_of_bounds():
     """Check that setting rho_ out of bounds triggers an error in score_samples()."""
-    model = GaussianCopula(use_kendall_tau_inversion=False)
+    model = GaussianCopula(itau=False)
     # Manually set rho_ out-of-bounds after fitting
     model.rho_ = 1.2
     with pytest.raises(ValueError, match="rho must be between -1 and 1."):
@@ -151,14 +151,14 @@ def test_gaussian_rho_out_of_bounds():
 
 
 @pytest.mark.parametrize(
-    "use_kendall_tau_inversion,expected",
+    "itau,expected",
     [
         [True, 0.8090169943749475],
         [False, 0.9273756082619797],
     ],
 )
-def test_gaussian_fit(X, use_kendall_tau_inversion, expected):
-    model = GaussianCopula(use_kendall_tau_inversion=use_kendall_tau_inversion)
+def test_gaussian_fit(X, itau, expected):
+    model = GaussianCopula(itau=itau)
     model.fit(X)
     assert np.isclose(model.rho_, expected)
 
@@ -258,10 +258,10 @@ def test_gaussian_partial_derivative_inverse_partial_derivative(
         np.testing.assert_almost_equal(X[:, 0], u)
 
 
-@pytest.mark.parametrize("use_kendall_tau_inversion", [True, False])
-def test_gaussian_sample_refitting(X, fitted_model, use_kendall_tau_inversion):
+@pytest.mark.parametrize("itau", [True, False])
+def test_gaussian_sample_refitting(X, fitted_model, itau):
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
-    m = GaussianCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    m = GaussianCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
 
 
@@ -273,9 +273,9 @@ def test_plot_pdf_3d(fitted_model):
     assert fitted_model.plot_pdf_3d()
 
 
-def test_use_kendall_tau_inversion_bounds():
+def test_itau_bounds():
     X = np.arange(1, 5) / 5
     X = np.stack((X, X)).T
-    m = GaussianCopula(use_kendall_tau_inversion=True).fit(X)
+    m = GaussianCopula(itau=True).fit(X)
     assert m.rho_ == _RHO_BOUNDS[1]
     assert not np.isnan(m.score(X))

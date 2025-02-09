@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skfolio.distribution import CopulaRotation, GumbelCopula
-from skfolio.distribution._copula._gumbel import _THETA_BOUNDS
+from skfolio.distribution.copula._gumbel import _THETA_BOUNDS
 
 
 @pytest.fixture
@@ -30,13 +30,13 @@ def fitted_model():
 def test_gumbel_copula_init():
     """Test initialization of GumbelCopula with default parameters."""
     model = GumbelCopula()
-    assert model.use_kendall_tau_inversion is False
+    assert model.itau is True
     assert model.kendall_tau is None
 
 
 def test_gumbel_copula_fit_with_kendall_tau(random_data):
     """Test fit() using Kendall's tau inversion (default)."""
-    model = GumbelCopula(use_kendall_tau_inversion=True).fit(random_data)
+    model = GumbelCopula(itau=True).fit(random_data)
     # Check that theta_ has been fitted and lies within the valid range
     assert hasattr(model, "theta_")
     assert hasattr(model, "rotation_")
@@ -45,7 +45,7 @@ def test_gumbel_copula_fit_with_kendall_tau(random_data):
 
 def test_gumbel_copula_fit_mle(random_data):
     """Test fit() using MLE optimization for theta_."""
-    model = GumbelCopula(use_kendall_tau_inversion=False)
+    model = GumbelCopula(itau=False)
     model.fit(random_data)
     assert hasattr(model, "theta_")
     assert hasattr(model, "rotation_")
@@ -112,7 +112,7 @@ def test_gumbel_sample():
 
 def test_gumbel_theta_out_of_bounds():
     """Check that setting theta_ out of bounds triggers an error in score_samples()."""
-    model = GumbelCopula(use_kendall_tau_inversion=False)
+    model = GumbelCopula(itau=False)
     # Manually set theta_ out-of-bounds after fitting
     model.theta_ = 0
     model.rotation_ = CopulaRotation.R0
@@ -123,14 +123,14 @@ def test_gumbel_theta_out_of_bounds():
 
 
 @pytest.mark.parametrize(
-    "use_kendall_tau_inversion,expected_theta,expected_rotation",
+    "itau,expected_theta,expected_rotation",
     [
         [True, 4.9999999999, CopulaRotation.R0],
         [False, 3.40806952683, CopulaRotation.R0],
     ],
 )
-def test_gumbel_fit(X, use_kendall_tau_inversion, expected_theta, expected_rotation):
-    model = GumbelCopula(use_kendall_tau_inversion=use_kendall_tau_inversion)
+def test_gumbel_fit(X, itau, expected_theta, expected_rotation):
+    model = GumbelCopula(itau=itau)
     model.fit(X)
     assert np.isclose(model.theta_, expected_theta)
     assert model.rotation_ == expected_rotation
@@ -263,18 +263,18 @@ def test_gumbel_partial_derivative_inverse_partial_derivative(
         np.testing.assert_almost_equal(X[:, 0], u)
 
 
-@pytest.mark.parametrize("use_kendall_tau_inversion", [True, False])
+@pytest.mark.parametrize("itau", [True, False])
 @pytest.mark.parametrize("rotation", list(CopulaRotation))
-def test_clayton_sample_refitting(X, fitted_model, use_kendall_tau_inversion, rotation):
+def test_clayton_sample_refitting(X, fitted_model, itau, rotation):
     fitted_model.rotation_ = rotation
     samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
-    m = GumbelCopula(use_kendall_tau_inversion=use_kendall_tau_inversion).fit(samples)
+    m = GumbelCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
 
 
-def test_use_kendall_tau_inversion_bounds():
+def test_itau_bounds():
     X = np.arange(1, 5) / 5
     X = np.stack((X, X)).T
-    m = GumbelCopula(use_kendall_tau_inversion=True).fit(X)
+    m = GumbelCopula(itau=True).fit(X)
     assert m.theta_ == _THETA_BOUNDS[1]
     assert not np.isnan(m.score(X))
