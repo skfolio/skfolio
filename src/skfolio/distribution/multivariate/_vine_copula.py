@@ -7,6 +7,9 @@ Vine Copula Estimation
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+# This is a novel implementation of R-vine that is fully OOP with new features to also
+# capture C-like and clustered dependency structures.
+#
 # Unlike previous implementations that relied on a procedural paradigm, this version
 # adopts an object-oriented design for constructing vine copulas.
 #
@@ -39,7 +42,7 @@ from skfolio.distribution import ClaytonCopula, GaussianCopula, GumbelCopula, Jo
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
     StudentTCopula,
-    best_bivariate_copula_and_fit,
+    select_bivariate_copula,
 )
 from skfolio.distribution.copula._base import _UNIFORM_MARGINAL_EPSILON
 from skfolio.distribution.multivariate._utils import DependenceMethod, Edge, Node, Tree
@@ -294,7 +297,7 @@ class VineCopula(skb.BaseEstimator):
             # Fit bivariate copulas for each edge.
             # noinspection PyCallingNonCallable
             copulas = skp.Parallel(n_jobs=self.n_jobs)(
-                skp.delayed(best_bivariate_copula_and_fit)(
+                skp.delayed(select_bivariate_copula)(
                     X=edge.get_X(),
                     copula_candidates=copula_candidates,
                     aic=self.aic,

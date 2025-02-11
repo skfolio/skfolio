@@ -1,7 +1,4 @@
-"""
-Bivariate Clayton Copula Estimation
-------------------------------------
-"""
+"""Bivariate Clayton Copula Estimation"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -12,22 +9,20 @@ import numpy.typing as npt
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula._base import (
-    BaseBivariateCopula,
-    CopulaRotation,
-)
+from skfolio.distribution.copula._base import BaseBivariateCopula
 from skfolio.distribution.copula._utils import (
+    CopulaRotation,
     _apply_copula_rotation,
     _apply_margin_swap,
     _apply_rotation_cdf,
     _apply_rotation_partial_derivatives,
-    _find_best_rotation_kendall_tau_inversion,
-    _find_best_theta_and_rotation_mle,
+    _select_rotation_itau,
+    _select_theta_and_rotation_mle,
 )
 
-# Clayton copula with a theta of 0.0 is just the independence copula, so we chose a lower
-# bound of 1e-4. After 50, the copula is already imposing very high tail dependence
-# closed to comonotonic and increasing it will make it impractical.
+# Clayton copula with a theta of 0.0 is just the independence copula, so we chose a
+# lower bound of 1e-4. After 50, the copula is already imposing very high tail
+# dependence closed to comonotonic and increasing it will make it impractical.
 _THETA_BOUNDS = (1e-4, 50.0)
 
 
@@ -37,9 +32,19 @@ class ClaytonCopula(BaseBivariateCopula):
     The Clayton copula is an Archimedean copula characterized by strong lower tail
     dependence and little to no upper tail dependence.
 
-    It is used for modeling extreme co-movements in the lower tail (i.e. simultaneous
-    losses). By applying a rotation (such as 180°), it can also be used to capture
-    extreme positive co-movements.
+    In its unrotated form, it is used for modeling extreme co-movements in the lower
+    tail (i.e. simultaneous extreme losses).
+
+    Rotations allow the copula to be adapted for different types of tail dependence:
+
+      - A 180° rotation captures extreme co-movements in the upper tail (i.e.
+        simultaneous extreme gains).
+
+      - A 90° rotation captures scenarios where one variable exhibits extreme gains
+        while the other shows extreme losses.
+
+      - A 270° rotation captures the opposite scenario, where one variable experiences
+        extreme losses while the other suffers extreme gains.
 
     It is defined by:
 
@@ -65,8 +70,8 @@ class ClaytonCopula(BaseBivariateCopula):
         slower but more accurate.
 
     kendall_tau : float, optional
-        If `itau` is True and `kendall_tau` is provided, this
-        value is used; otherwise, it is computed.
+        If `itau` is True and `kendall_tau` is provided, this value is used;
+        otherwise, it is computed.
 
     tolerance : float, default=1e-4
         Convergence tolerance for the MLE optimization.
@@ -97,8 +102,8 @@ class ClaytonCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
         """Fit the Bivariate Clayton Copula.
 
-         If `itau` is True, estimates :math:`\theta` using
-         Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
+         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
+         Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
@@ -132,12 +137,12 @@ class ClaytonCopula(BaseBivariateCopula):
                 a_max=_THETA_BOUNDS[1],
             )
 
-            self.rotation_ = _find_best_rotation_kendall_tau_inversion(
+            self.rotation_ = _select_rotation_itau(
                 func=_neg_log_likelihood, X=X, theta=self.theta_
             )
 
         else:
-            self.theta_, self.rotation_ = _find_best_theta_and_rotation_mle(
+            self.theta_, self.rotation_ = _select_theta_and_rotation_mle(
                 _neg_log_likelihood, X=X, bounds=_THETA_BOUNDS, tolerance=self.tolerance
             )
 
@@ -188,7 +193,7 @@ class ClaytonCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
             margin `u`; otherwise, compute the partial derivative with respect to the
             second margin `v`.
@@ -240,7 +245,7 @@ class ClaytonCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -289,7 +294,19 @@ class ClaytonCopula(BaseBivariateCopula):
         log_density = _base_sample_scores(X=X, theta=self.theta_)
         return log_density
 
+    @property
+    def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
+        skv.check_is_fitted(self)
+        return np.power(2.0, -1.0 / self.theta_)
+
+    @property
+    def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
+        return 0
+
     def fitted_repr(self) -> str:
+        """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
 
 
@@ -355,8 +372,6 @@ def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
 
     .. math::
         C(u,v) = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.
-
-    Negative interiors (due to small values in u or v) are clipped to 0.
     """
     cdf = np.power(np.sum(np.power(X, -theta), axis=1) - 1, -1.0 / theta)
     return cdf
@@ -382,15 +397,17 @@ def _base_partial_derivative(
     ----------
     X : array-like of shape (n_observations, 2)
          An array of bivariate inputs `(u, v)` with values in [0, 1].
-    first_margin : bool, default False
+
+    first_margin : bool, default=False
          If True, compute with respect to u (by swapping margins); otherwise
          compute with respect to v.
+
     theta : float
          The dependence parameter (must be > 0).
 
     Returns
     -------
-    : ndarray of shape (n_observations,)
+    p : ndarray of shape (n_observations,)
          The computed h-function values.
     """
     X = _apply_margin_swap(X, first_margin=first_margin)
@@ -420,9 +437,12 @@ def _base_inverse_partial_derivative(
     Parameters
     ----------
     X : array-like of shape (n_observations, 2)
-         An array with first column p (h-function values) and second column v (conditioning variable).
-    first_margin : bool, default False
+         An array with first column p (h-function values) and second column v
+         (conditioning variable).
+
+    first_margin : bool, default=False
          If True, treat the first margin as the conditioning variable.
+
     theta : float
          The dependence parameter (must be > 0).
 

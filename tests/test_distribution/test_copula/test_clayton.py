@@ -1,4 +1,5 @@
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from skfolio.distribution import ClaytonCopula, CopulaRotation
@@ -24,6 +25,7 @@ def fitted_model():
     # Using same convention as other libraries for Benchmark
     fitted_model = ClaytonCopula()
     fitted_model.theta_ = 2.718413896014
+    fitted_model.rotation_ = CopulaRotation.R0
     return fitted_model
 
 
@@ -278,3 +280,52 @@ def test_itau_bounds():
     m = ClaytonCopula(itau=True).fit(X)
     assert m.theta_ == _THETA_BOUNDS[1]
     assert not np.isnan(m.score(X))
+
+
+def test_tail_concentration(fitted_model):
+    quantiles = np.linspace(0.01, 0.99, 50)
+    tc = fitted_model.tail_concentration(quantiles)
+    assert tc.shape == quantiles.shape, "tail_concentration output shape mismatch"
+    assert np.all(tc >= 0), "tail_concentration contains negative values"
+
+
+def test_plot_tail_concentration(fitted_model):
+    fig = fitted_model.plot_tail_concentration(title="Test Tail Concentration")
+    assert isinstance(fig, go.Figure), "plot_tail_concentration did not return a Figure"
+    # Check that the title is set
+    assert (
+        "Tail Concentration" in fig.layout.title.text
+    ), "plot_tail_concentration title missing"
+
+
+def test_plot_pdf_2d(fitted_model):
+    fig = fitted_model.plot_pdf_2d(title="Test PDF 2D")
+    assert isinstance(fig, go.Figure), "plot_pdf_2d did not return a Figure"
+
+
+# Test plot_pdf_3d
+def test_plot_pdf_3d(fitted_model):
+    fig = fitted_model.plot_pdf_3d(title="Test PDF 3D")
+    assert isinstance(fig, go.Figure), "plot_pdf_3d did not return a Figure"
+
+
+def test_lower_tail_dependence(fitted_model):
+    expected = np.power(2.0, -1.0 / fitted_model.theta_)
+    result = fitted_model.lower_tail_dependence
+    assert np.isclose(result, expected)
+
+
+def test_upper_tail_dependence(fitted_model):
+    result = fitted_model.upper_tail_dependence
+    assert result == 0.0
+
+
+def test_fitted_repr(fitted_model):
+    rep = fitted_model.fitted_repr()
+    assert "ClaytonCopula" in rep, "fitted_repr does not contain class name"
+    theta_str = f"{fitted_model.theta_:0.3f}"
+    assert (
+        theta_str in rep
+    ), f"fitted_repr does not contain formatted theta: {theta_str}"
+    rotation_str = str(fitted_model.rotation_)
+    assert rotation_str in rep, f"fitted_repr does not include rotation: {rotation_str}"

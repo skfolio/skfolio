@@ -1,4 +1,5 @@
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 from skfolio.distribution import GaussianCopula
@@ -265,17 +266,54 @@ def test_gaussian_sample_refitting(X, fitted_model, itau):
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
 
 
-def test_plot_pdf_2d(fitted_model):
-    assert fitted_model.plot_pdf_2d()
-
-
-def test_plot_pdf_3d(fitted_model):
-    assert fitted_model.plot_pdf_3d()
-
-
 def test_itau_bounds():
     X = np.arange(1, 5) / 5
     X = np.stack((X, X)).T
     m = GaussianCopula(itau=True).fit(X)
     assert m.rho_ == _RHO_BOUNDS[1]
     assert not np.isnan(m.score(X))
+
+
+def test_tail_concentration(fitted_model):
+    quantiles = np.linspace(0.01, 0.99, 50)
+    tc = fitted_model.tail_concentration(quantiles)
+    assert tc.shape == quantiles.shape, "tail_concentration output shape mismatch"
+    assert np.all(tc >= 0), "tail_concentration contains negative values"
+
+
+def test_plot_tail_concentration(fitted_model):
+    fig = fitted_model.plot_tail_concentration(title="Test Tail Concentration")
+    assert isinstance(fig, go.Figure), "plot_tail_concentration did not return a Figure"
+    # Check that the title is set
+    assert (
+        "Tail Concentration" in fig.layout.title.text
+    ), "plot_tail_concentration title missing"
+
+
+def test_plot_pdf_2d(fitted_model):
+    fig = fitted_model.plot_pdf_2d(title="Test PDF 2D")
+    assert isinstance(fig, go.Figure), "plot_pdf_2d did not return a Figure"
+
+
+def test_plot_pdf_3d(fitted_model):
+    fig = fitted_model.plot_pdf_3d(title="Test PDF 3D")
+    assert isinstance(fig, go.Figure), "plot_pdf_3d did not return a Figure"
+
+
+def test_lower_tail_dependence(fitted_model):
+    result = fitted_model.lower_tail_dependence
+    assert result == 0.0
+
+
+def test_upper_tail_dependence(fitted_model):
+    result = fitted_model.upper_tail_dependence
+    assert result == 0.0
+
+
+def test_fitted_repr(fitted_model):
+    rep = fitted_model.fitted_repr()
+    assert "GaussianCopula" in rep, "fitted_repr does not contain class name"
+    param_str = f"{fitted_model.rho_:0.3f}"
+    assert (
+        param_str in rep
+    ), f"fitted_repr does not contain formatted param: {param_str}"

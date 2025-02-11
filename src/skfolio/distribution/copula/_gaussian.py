@@ -25,7 +25,7 @@ class GaussianCopula(BaseBivariateCopula):
 
     where:
     - :math:`\Phi_2` is the bivariate normal CDF with correlation :math:`\rho`.
-    - :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` is its quantile function.
+    - :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` its quantile function.
     - :math:`\rho \in (-1, 1)` is the correlation coefficient.
 
     .. note::
@@ -70,8 +70,8 @@ class GaussianCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "GaussianCopula":
         r"""Fit the Bivariate Gaussian Copula.
 
-        If `itau` is True, estimates :math:`\rho` using
-        Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
+        If `itau` is True, estimates :math:`\rho` using Kendall's tau inversion.
+        Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
@@ -163,7 +163,7 @@ class GaussianCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
             margin `u`; ,otherwise, compute the partial derivative with respect to the
             second margin `v`.
@@ -213,7 +213,7 @@ class GaussianCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; ,otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -257,7 +257,18 @@ class GaussianCopula(BaseBivariateCopula):
         log_density = _base_sample_scores(X=X, rho=self.rho_)
         return log_density
 
+    @property
+    def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
+        return 0
+
+    @property
+    def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
+        return 0
+
     def fitted_repr(self) -> str:
+        """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.rho_:0.3f})"
 
 

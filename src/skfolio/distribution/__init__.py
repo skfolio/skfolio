@@ -7,6 +7,10 @@ from skfolio.distribution.copula import (
     IndependentCopula,
     JoeCopula,
     StudentTCopula,
+    compute_pseudo_observations,
+    empirical_tail_concentration,
+    plot_tail_concentration,
+    select_bivariate_copula,
 )
 from skfolio.distribution.multivariate import VineCopula
 from skfolio.distribution.univariate import (
@@ -31,5 +35,9 @@ __all__ = [
     "StudentT",
     "StudentTCopula",
     "VineCopula",
+    "compute_pseudo_observations",
+    "empirical_tail_concentration",
     "find_best_and_fit_univariate_dist",
+    "plot_tail_concentration",
+    "select_bivariate_copula",
 ]

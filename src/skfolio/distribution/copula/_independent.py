@@ -1,7 +1,4 @@
-"""
-Bivariate Independent Copula Estimation
----------------------------------------
-"""
+"""Bivariate Independent Copula Estimation"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -11,9 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula._base import (
-    BaseBivariateCopula,
-)
+from skfolio.distribution.copula._base import BaseBivariateCopula
 
 
 class IndependentCopula(BaseBivariateCopula):
@@ -30,7 +25,7 @@ class IndependentCopula(BaseBivariateCopula):
     def __init__(self):
         pass
 
-    def fit(self, X, y=None):
+    def fit(self, X: npt.ArrayLike, y=None) -> "IndependentCopula":
         """Fit the Bivariate Independent Copula.
 
         Provided for compatibility with the API.
@@ -47,7 +42,7 @@ class IndependentCopula(BaseBivariateCopula):
 
         Returns
         -------
-        self : object
+        self : IndependentCopula
             Returns the instance itself.
         """
         _ = self._validate_X(X, reset=True)
@@ -128,7 +123,7 @@ class IndependentCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -162,5 +157,16 @@ class IndependentCopula(BaseBivariateCopula):
         X = self._validate_X(X, reset=False)
         return np.zeros(X.shape[0])  # log(1.0)
 
+    @property
+    def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
+        return 0
+
+    @property
+    def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
+        return 0
+
     def fitted_repr(self) -> str:
-        return f"{self.__class__.__name__}"
+        """String representation of the fitted copula"""
+        return f"{self.__class__.__name__}()"

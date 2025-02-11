@@ -1,7 +1,4 @@
-"""
-Bivariate Joe Copula Estimation
--------------------------------
-"""
+"""Bivariate Joe Copula Estimation"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -14,17 +11,15 @@ import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula._base import (
-    BaseBivariateCopula,
-    CopulaRotation,
-)
+from skfolio.distribution.copula._base import BaseBivariateCopula
 from skfolio.distribution.copula._utils import (
+    CopulaRotation,
     _apply_copula_rotation,
     _apply_margin_swap,
     _apply_rotation_cdf,
     _apply_rotation_partial_derivatives,
-    _find_best_rotation_kendall_tau_inversion,
-    _find_best_theta_and_rotation_mle,
+    _select_rotation_itau,
+    _select_theta_and_rotation_mle,
 )
 
 # Joe copula with a theta of 1.0 is just the independence copula, so we chose a lower
@@ -40,8 +35,21 @@ class JoeCopula(BaseBivariateCopula):
     The Joe copula is an Archimedean copula characterized by strong upper tail
     dependence and little to no lower tail dependence.
 
-    It is used to Modeling extreme positive co-movements (simultaneous gains)
-    By applying a 180° rotation, it can also be used for capturing simultaneous losses.
+    In its unrotated form, it is used for modeling extreme co-movements in the upper
+    tail (i.e. simultaneous extreme gains).
+
+    Rotations allow the copula to be adapted for different types of tail dependence:
+
+      - A 180° rotation captures extreme co-movements in the lower tail (i.e.
+        simultaneous extreme losses).
+
+      - A 90° rotation captures scenarios where one variable exhibits extreme losses
+        while the other shows extreme gains.
+
+      - A 270° rotation captures the opposite scenario, where one variable experiences
+        extreme gains while the other suffers extreme losses.
+
+    Joe copula generally exhibits stronger upper tail dependence than the Gumbel copula.
 
     It is defined by:
 
@@ -68,8 +76,8 @@ class JoeCopula(BaseBivariateCopula):
         slower but more accurate.
 
     kendall_tau : float, optional
-        If `itau` is True and `kendall_tau` is provided, this
-        value is used; otherwise, it is computed.
+        If `itau` is True and `kendall_tau` is provided, this value is used;
+        otherwise, it is computed.
 
     tolerance : float, default=1e-4
         Convergence tolerance for the MLE optimization.
@@ -100,8 +108,8 @@ class JoeCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
         """Fit the Bivariate Joe Copula.
 
-         If `itau` is True, estimates :math:`\theta` using
-         Kendall's tau inversion. Otherwise, uses MLE by maximizing the log-likelihood.
+         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
+         Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
@@ -130,7 +138,7 @@ class JoeCopula(BaseBivariateCopula):
 
             # Root-finding function brentq to find the value of theta in the interval
             # brentq fails if _tau_diff has same sign, it happens when we are at the
-            # bounds
+            # bounds so we capture it before.
             fa = _tau_diff(_THETA_BOUNDS[0], abs_kendall_tau)
             fb = _tau_diff(_THETA_BOUNDS[1], abs_kendall_tau)
             if fa * fb > 0:
@@ -146,12 +154,12 @@ class JoeCopula(BaseBivariateCopula):
                     a=_THETA_BOUNDS[0],
                     b=_THETA_BOUNDS[-1],
                 )
-            self.rotation_ = _find_best_rotation_kendall_tau_inversion(
+            self.rotation_ = _select_rotation_itau(
                 func=_neg_log_likelihood, X=X, theta=self.theta_
             )
 
         else:
-            self.theta_, self.rotation_ = _find_best_theta_and_rotation_mle(
+            self.theta_, self.rotation_ = _select_theta_and_rotation_mle(
                 _neg_log_likelihood, X=X, bounds=_THETA_BOUNDS, tolerance=self.tolerance
             )
 
@@ -206,7 +214,7 @@ class JoeCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
             margin `u`; ,otherwise, compute the partial derivative with respect to the
             second margin `v`.
@@ -258,7 +266,7 @@ class JoeCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; ,otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -308,7 +316,19 @@ class JoeCopula(BaseBivariateCopula):
         log_density = _base_sample_scores(X=X, theta=self.theta_)
         return log_density
 
+    @property
+    def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
+        return 0
+
+    @property
+    def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
+        skv.check_is_fitted(self)
+        return 2.0 - np.power(2.0, 1.0 / self.theta_)
+
     def fitted_repr(self) -> str:
+        """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
 
 
@@ -379,7 +399,8 @@ def _tau_diff(theta: float, tau_empirical: float) -> float:
     .. math::
        \tau(\theta) = 1 + \frac{2}{2-\theta} \left[ (1-\gamma) - \psi\left(\frac{2}{\theta}+1\right) \right],
 
-    where :math:`\psi` is the digamma function and :math:`\gamma` is the Euler-Mascheroni constant.
+    where :math:`\psi` is the digamma function and :math:`\gamma` is the
+    Euler-Mascheroni constant.
 
     Parameters
     ----------
@@ -404,6 +425,7 @@ def _tau_diff(theta: float, tau_empirical: float) -> float:
 
 
 def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
+    """Bivariate Joe CDF (unrotated)"""
     z = np.power(1 - X, theta)
     cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
     return cdf
@@ -422,7 +444,7 @@ def _base_partial_derivative(
         bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
         having been transformed to uniform marginals.
 
-    first_margin : bool, default False
+    first_margin : bool, default=False
         If True, compute the partial derivative with respect to the first
         margin `u`; ,otherwise, compute the partial derivative with respect to the
         second margin `v`.
@@ -454,7 +476,7 @@ def _base_inverse_partial_derivative(
         - The first column `p` corresponds to the value of the h-function.
         - The second column `v` is the conditioning variable.
 
-    first_margin : bool, default False
+    first_margin : bool, default=False
         If True, compute the inverse partial derivative with respect to the first
         margin `u`; ,otherwise, compute the inverse partial derivative with respect to
         the second margin `v`.

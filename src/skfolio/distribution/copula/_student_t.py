@@ -11,10 +11,7 @@ import scipy.special as sp
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula._base import (
-    _RHO_BOUNDS,
-    BaseBivariateCopula,
-)
+from skfolio.distribution.copula._base import _RHO_BOUNDS, BaseBivariateCopula
 from skfolio.distribution.copula._utils import _apply_margin_swap
 
 # Student's t copula with dof less than 1.0 is so extremely heavy-tailed that even the
@@ -38,6 +35,12 @@ class StudentTCopula(BaseBivariateCopula):
     - :math:`T_{\nu, \rho}(x, y)` is the CDF of the bivariate \(t\)-distribution.
     - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the univariate
       \(t\)-distribution.
+
+    Student's t copula with degrees of freedom (dof) less than 1.0 is extremely
+    heavy-tailed, to the extent that even the mean (and many moments) do not exist,
+    rendering it impractical. Conversely, for dof above 50 the t copula behaves
+    similarly to a Gaussian copula. Thus, for improved stability and robustness,
+    the dof is limited to the interval [1, 50].
 
     .. note::
 
@@ -86,11 +89,12 @@ class StudentTCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "StudentTCopula":
         """Fit the Bivariate Student's t Copula.
 
-        If `itau` is True, it uses either a Kendall-based two-step
-        method:
+        If `itau` is True, it uses a Kendall-based two-step method:
 
-            1. Estimates the correlation parameter (:math:`\rho`) from Kendall's tau inversion.
-            2. Optimizes the degrees of freedom (:math:`\nu`) by maximizing the log-likelihood.
+            1. Estimates the correlation parameter (:math:`\rho`) from Kendall's
+               tau inversion.
+            2. Optimizes the degrees of freedom (:math:`\nu`) by maximizing the
+               log-likelihood.
 
         Otherwise, it uses the full MLE method: optimizes both :math:`\rho` and
         :math:`\nu` by maximizing the log-likelihood.
@@ -214,7 +218,7 @@ class StudentTCopula(BaseBivariateCopula):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
             margin `u`; ,otherwise, compute the partial derivative with respect to the
             second margin `v`.
@@ -270,7 +274,7 @@ class StudentTCopula(BaseBivariateCopula):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; ,otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -319,7 +323,20 @@ class StudentTCopula(BaseBivariateCopula):
         log_density = _sample_scores(X=X, rho=self.rho_, dof=self.dof_)
         return log_density
 
+    @property
+    def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
+        skv.check_is_fitted(self)
+        arg = -np.sqrt((self.dof_ + 1) * (1 - self.rho_) / (1 + self.rho_))
+        return 2 * sp.stdtr(self.dof_ + 1, arg)
+
+    @property
+    def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
+        return self.lower_tail_dependence
+
     def fitted_repr(self) -> str:
+        """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.rho_:0.3f}, {self.dof_:0.3f})"
 
 

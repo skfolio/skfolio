@@ -39,6 +39,14 @@ def test_validate_X_correct_shape(random_data):
         def score_samples(self, X):
             return np.zeros(X.shape[0])
 
+        @property
+        def lower_tail_dependence(self):
+            return 0
+
+        @property
+        def upper_tail_dependence(self):
+            return 0
+
         def fitted_repr(self):
             return "Copula"
 
@@ -69,6 +77,14 @@ def test_validate_X_wrong_shape():
 
         def score_samples(self, X):
             return np.zeros(X.shape[0])
+
+        @property
+        def lower_tail_dependence(self):
+            return 0
+
+        @property
+        def upper_tail_dependence(self):
+            return 0
 
         def fitted_repr(self):
             return "Copula"
@@ -101,6 +117,14 @@ def test_validate_X_out_of_bounds():
 
         def score_samples(self, X):
             return np.zeros(X.shape[0])
+
+        @property
+        def lower_tail_dependence(self):
+            return 0
+
+        @property
+        def upper_tail_dependence(self):
+            return 0
 
         def fitted_repr(self):
             return "Copula"

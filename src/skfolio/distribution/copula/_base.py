@@ -5,10 +5,9 @@ Base Bivariate Copula Estimator
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from abc import ABC, abstractmethod
-from enum import Enum
 
 import numpy as np
 import numpy.typing as npt
@@ -17,40 +16,10 @@ import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
+from skfolio.distribution.copula._utils import plot_tail_concentration
+
 _UNIFORM_MARGINAL_EPSILON = 1e-8
 _RHO_BOUNDS = (-0.999, 0.999)
-
-
-class CopulaRotation(Enum):
-    r"""Enum representing the rotation (in degrees) to apply to a bivariate copula.
-
-    It follows the standard (clockwise) convention:
-
-    - `CopulaRotation.R0` (0°): :math:`(u, v) \mapsto (u, v)`
-    - `CopulaRotation.R90` (90°): :math:`(u, v) \mapsto (v,\, 1 - u)`
-    - `CopulaRotation.R180` (180°): :math:`(u, v) \mapsto (1 - u,\, 1 - v)`
-    - `CopulaRotation.R270` (270°): :math:`(u, v) \mapsto (1 - v,\, u)`
-
-    Attributes
-    ----------
-    R0 : int
-        No rotation (0°).
-    R90 : int
-        90° rotation.
-    R180 : int
-        180° rotation.
-    R270 : int
-        270° rotation.
-    """
-
-    R0 = "0°"
-    R90 = "90°"
-    R180 = "180°"
-    R270 = "270°"
-
-    def __str__(self) -> str:
-        """Enum representation for improved reading"""
-        return self.value
 
 
 class BaseBivariateCopula(skb.BaseEstimator, ABC):
@@ -100,6 +69,20 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
         return X
 
+    @property
+    @abstractmethod
+    def lower_tail_dependence(self) -> float:
+        pass
+
+    @property
+    @abstractmethod
+    def upper_tail_dependence(self) -> float:
+        pass
+
+    @abstractmethod
+    def fitted_repr(self) -> str:
+        pass
+
     @abstractmethod
     def fit(self, X: npt.ArrayLike, y=None):
         """Fit the copula model.
@@ -123,7 +106,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
     @abstractmethod
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the CDF of the bivariate Joe copula.
+        """Compute the CDF of the bivariate copula.
 
         Parameters
         ----------
@@ -143,7 +126,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
     def partial_derivative(
         self, X: npt.ArrayLike, first_margin: bool = False
     ) -> np.ndarray:
-        r"""Compute the h-function (partial derivative) for the bivariate Joe copula
+        r"""Compute the h-function (partial derivative) for the bivariate copula
         with respect to a specified margin.
 
         The h-function with respect to the second margin represents the conditional
@@ -152,9 +135,6 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         .. math::
             h(u \mid v) = \frac{\partial C(u,v)}{\partial v}
 
-        which represents the conditional distribution function of :math:`u` given
-        :math:`v`.
-
         Parameters
         ----------
         X : array-like of shape (n_observations, 2)
@@ -162,7 +142,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
             having been transformed to uniform marginals.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
             margin `u`; ,otherwise, compute the partial derivative with respect to the
             second margin `v`.
@@ -206,7 +186,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             - The first column `p` corresponds to the value of the h-function.
             - The second column `v` is the conditioning variable.
 
-        first_margin : bool, default False
+        first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
             margin `u`; ,otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
@@ -347,7 +327,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         k = self._n_params
         return -2 * log_likelihood + k * np.log(n)
 
-    def sample(self, n_samples=1, random_state=None):
+    def sample(self, n_samples: int = 1, random_state: int | None = None):
         """Generate random samples from the bivariate copula using the inverse
         Rosenblatt transform.
 
@@ -374,14 +354,109 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         # Apply the inverse Rosenblatt transform on the first variable.
         X[:, 1] = self.inverse_partial_derivative(X, first_margin=True)
-
         return X
 
+    def tail_concentration(self, quantiles: np.ndarray) -> np.ndarray:
+        """
+        Compute the tail concentration function for a set of quantiles.
+
+        The tail concentration function is defined as follows:
+         - For quantiles q ≤ 0.5:
+             C(q) = P(U ≤ q, V ≤ q) / q
+         - For quantiles q > 0.5:
+             C(q) = (1 - 2q + P(U ≤ q, V ≤ q)) / (1 - q)
+        where U and V are the pseudo-observations of the first and second variables,
+        respectively. This function returns the concentration values for each q
+        provided.
+
+        Parameters
+        ----------
+        quantiles : ndarray of shape (n_quantiles,)
+           A 1D array of quantile levels (values between 0 and 1) at which to compute
+           the tail concentration.
+
+        Returns
+        -------
+        concentration : nndarray of shape (n_quantiles,)
+           The computed tail concentration values corresponding to each quantile.
+
+        Raises
+        ------
+        ValueError
+           If any value in `quantiles` is not in the interval [0, 1].
+        """
+        quantiles = np.asarray(quantiles)
+        if not np.all((quantiles >= 0) & (quantiles <= 1)):
+            raise ValueError("quantiles must be between 0.0 and 1.0.")
+        X = np.stack((quantiles, quantiles)).T
+        cdf = self.cdf(X)
+        concentration = np.where(
+            quantiles <= 0.5,
+            cdf / quantiles,
+            (1.0 - 2 * quantiles + cdf) / (1.0 - quantiles),
+        )
+        return concentration
+
+    def plot_tail_concentration(self, title: str | None = None) -> go.Figure:
+        """
+        Plot the tail concentration function.
+
+        This method computes the tail concentration function at 100 evenly spaced
+        quantile levels between 0.005 and 0.995.
+        The plot displays the concentration values on the y-axis and the quantile levels
+        on the x-axis.
+
+        The tail concentration is defined as:
+          - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
+          - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+        where U₁ and U₂ are the pseudo-observations of the first and second variables,
+        respectively.
+
+        title : str, optional
+            The title for the plot. If not provided, a default title based on the fitted
+            copula's representation is used.
+
+        Returns
+        -------
+        fig : go.Figure
+            A Plotly figure object containing the tail concentration curve.
+        """
+        if title is None:
+            title = f"Tail Concentration of Bivariate {self.fitted_repr()}"
+        quantiles = np.linspace(5e-3, 1.0 - 5e-3, num=100)
+        concentration = self.tail_concentration(quantiles)
+
+        fig = plot_tail_concentration(
+            tail_concentration_dict={self.fitted_repr(): concentration},
+            quantiles=quantiles,
+            title=title,
+            smoothing=1.3,
+        )
+        return fig
+
     def plot_pdf_2d(self, title: str | None = None) -> go.Figure:
+        """
+        Plot a 2D contour of the estimated probability density function (PDF).
+
+        This method generates a grid over [0, 1]^2, computes the PDF, and displays a
+        contour plot of the PDF.
+        Contour levels are limited to the 97th quantile to avoid extreme densities.
+
+        Parameters
+        ----------
+        title : str, optional
+           The title for the plot. If not provided, a default title based on the fitted
+           copula's representation is used.
+
+        Returns
+        -------
+        fig : go.Figure
+           A Plotly figure object containing the 2D contour plot of the PDF.
+        """
         skv.check_is_fitted(self)
 
         if title is None:
-            title = "PDF of Bivariate GaussianCopula(rho=0.5)"
+            title = f"PDF of Bivariate Bivariate {self.fitted_repr()}"
 
         u = np.linspace(0.01, 0.99, 100)
         U, V = np.meshgrid(u, u)
@@ -408,10 +483,27 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         return fig
 
     def plot_pdf_3d(self, title: str | None = None) -> go.Figure:
+        """
+        Plot a 3D surface of the estimated probability density function (PDF).
+
+        This method generates a grid over [0, 1]^2, computes the PDF, and displays a
+        3D surface plot of the PDF using Plotly.
+
+        Parameters
+        ----------
+        title : str, optional
+           The title for the plot. If not provided, a default title based on the fitted
+           copula's representation is used.
+
+        Returns
+        -------
+        fig : go.Figure
+           A Plotly figure object containing a 3D surface plot of the PDF.
+        """
         skv.check_is_fitted(self)
 
         if title is None:
-            title = "PDF of Bivariate GaussianCopula(rho=0.5)"
+            title = f"PDF of Bivariate Bivariate {self.fitted_repr()}"
 
         u = np.linspace(0.03, 0.97, 100)
         U, V = np.meshgrid(u, u)
@@ -422,7 +514,3 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             title=title, scene=dict(xaxis_title="u", yaxis_title="v", zaxis_title="PDF")
         )
         return fig
-
-    @abstractmethod
-    def fitted_repr(self) -> str:
-        pass
