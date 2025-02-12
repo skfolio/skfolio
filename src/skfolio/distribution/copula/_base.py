@@ -1,7 +1,4 @@
-"""
-Base Bivariate Copula Estimator
--------------------------------
-"""
+"""Base Bivariate Copula Estimator"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -72,15 +69,19 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
     @property
     @abstractmethod
     def lower_tail_dependence(self) -> float:
+        """Theoretical lower tail dependence coefficient"""
         pass
 
     @property
     @abstractmethod
     def upper_tail_dependence(self) -> float:
+        """Theoretical upper tail dependence coefficient"""
         pass
 
+    @property
     @abstractmethod
     def fitted_repr(self) -> str:
+        """String representation of the fitted copula"""
         pass
 
     @abstractmethod
@@ -279,9 +280,9 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         ----------
         .. [1] "A new look at the statistical model identification", Akaike (1974).
         """
-        # Example implementation pattern (pseudo-code):
         log_likelihood = self.score(X)
-        return 2 * (self._n_params - log_likelihood)
+        k = self._n_params
+        return 2 * (k - log_likelihood)
 
     def bic(self, X: npt.ArrayLike) -> float:
         r"""Compute the Bayesian Information Criterion (BIC) for the model given data X.
@@ -422,12 +423,12 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             A Plotly figure object containing the tail concentration curve.
         """
         if title is None:
-            title = f"Tail Concentration of Bivariate {self.fitted_repr()}"
+            title = f"Tail Concentration of Bivariate {self.fitted_repr}"
         quantiles = np.linspace(5e-3, 1.0 - 5e-3, num=100)
         concentration = self.tail_concentration(quantiles)
 
         fig = plot_tail_concentration(
-            tail_concentration_dict={self.fitted_repr(): concentration},
+            tail_concentration_dict={self.fitted_repr: concentration},
             quantiles=quantiles,
             title=title,
             smoothing=1.3,
@@ -456,7 +457,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of Bivariate Bivariate {self.fitted_repr()}"
+            title = f"PDF of Bivariate Bivariate {self.fitted_repr}"
 
         u = np.linspace(0.01, 0.99, 100)
         U, V = np.meshgrid(u, u)
@@ -503,7 +504,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of Bivariate Bivariate {self.fitted_repr()}"
+            title = f"PDF of Bivariate Bivariate {self.fitted_repr}"
 
         u = np.linspace(0.03, 0.97, 100)
         U, V = np.meshgrid(u, u)

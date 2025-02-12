@@ -307,6 +307,7 @@ class GumbelCopula(BaseBivariateCopula):
         skv.check_is_fitted(self)
         return 2.0 - np.power(2.0, 1.0 / self.theta_)
 
+    @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"

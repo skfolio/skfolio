@@ -311,7 +311,7 @@ def test_upper_tail_dependence(fitted_model):
 
 
 def test_fitted_repr(fitted_model):
-    rep = fitted_model.fitted_repr()
+    rep = fitted_model.fitted_repr
     assert "GaussianCopula" in rep, "fitted_repr does not contain class name"
     param_str = f"{fitted_model.rho_:0.3f}"
     assert (

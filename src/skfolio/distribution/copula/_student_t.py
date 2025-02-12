@@ -335,6 +335,7 @@ class StudentTCopula(BaseBivariateCopula):
         """Theoretical upper tail dependence coefficient"""
         return self.lower_tail_dependence
 
+    @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.rho_:0.3f}, {self.dof_:0.3f})"

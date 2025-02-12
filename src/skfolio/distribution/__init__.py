@@ -14,16 +14,16 @@ from skfolio.distribution.copula import (
 )
 from skfolio.distribution.multivariate import VineCopula
 from skfolio.distribution.univariate import (
-    BaseUnivariate,
+    BaseUnivariateDist,
     Gaussian,
     NormalInverseGaussian,
     StudentT,
-    find_best_and_fit_univariate_dist,
+    select_univariate_dist,
 )
 
 __all__ = [
     "BaseBivariateCopula",
-    "BaseUnivariate",
+    "BaseUnivariateDist",
     "ClaytonCopula",
     "CopulaRotation",
     "Gaussian",
@@ -37,7 +37,7 @@ __all__ = [
     "VineCopula",
     "compute_pseudo_observations",
     "empirical_tail_concentration",
-    "find_best_and_fit_univariate_dist",
     "plot_tail_concentration",
     "select_bivariate_copula",
+    "select_univariate_dist",
 ]

@@ -350,7 +350,7 @@ def test_upper_tail_dependence(fitted_model):
 
 
 def test_fitted_repr(fitted_model):
-    rep = fitted_model.fitted_repr()
+    rep = fitted_model.fitted_repr
     assert "StudentTCopula" in rep, "fitted_repr does not contain class name"
     rho_str = f"{fitted_model.rho_:0.3f}"
     assert rho_str in rep, f"fitted_repr does not contain formatted rho: {rho_str}"

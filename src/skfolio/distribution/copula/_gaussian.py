@@ -267,6 +267,7 @@ class GaussianCopula(BaseBivariateCopula):
         """Theoretical upper tail dependence coefficient"""
         return 0
 
+    @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula"""
         return f"{self.__class__.__name__}({self.rho_:0.3f})"

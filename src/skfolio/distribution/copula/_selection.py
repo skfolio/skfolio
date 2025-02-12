@@ -1,3 +1,9 @@
+"""Bivariate Copula Selection"""
+
+# Copyright (c) 2025
+# Authors: The skfolio developers
+# SPDX-License-Identifier: BSD-3-Clause
+
 import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
@@ -67,7 +73,7 @@ def select_bivariate_copula(
     for copula in copula_candidates:
         if not isinstance(copula, BaseBivariateCopula):
             raise ValueError(
-                "The candidate copula must inherit from BaseBivariateCopula"
+                "The candidate copula must inherit from `BaseBivariateCopula`"
             )
         copula = sk.clone(copula)
         if copula.itau and copula.kendall_tau is None:

@@ -45,7 +45,9 @@ def test_edge_get_X():
 def test_tree_set_edges_from_mst():
     # Create a simple tree with 3 nodes (root nodes with integer refs).
     nodes = [
-        Node(ref=i, pseudo_values=np.array([0.1 * i, 0.1 * i]), central=True)
+        Node(
+            ref=i, pseudo_values=np.array([0.1 * (i + 1), 0.2 * (i + 1)]), central=True
+        )
         for i in range(3)
     ]
     tree = Tree(level=0, nodes=nodes)

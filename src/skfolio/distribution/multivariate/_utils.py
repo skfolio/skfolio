@@ -407,7 +407,7 @@ class Edge:
         """String representation of the edge"""
         if self.copula is None:
             return f"Edge({self.cond_sets})"
-        return f"Edge({self.cond_sets}, {self.copula.fitted_repr()})"
+        return f"Edge({self.cond_sets}, {self.copula.fitted_repr})"
 
 
 class Tree:
@@ -485,6 +485,9 @@ class Tree:
                 dep = abs(edge.dependence)
                 dependence_matrix[i, j], dependence_matrix[j, i] = dep, dep
                 eligible_edges[(i, j)] = edge
+
+        if np.any(np.isnan(dependence_matrix)):
+            raise RuntimeError("dependence_matrix contains NaNs")
 
         if central:
             max_dep = np.max(dependence_matrix)

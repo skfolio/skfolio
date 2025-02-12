@@ -111,16 +111,16 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
         count = np.count_nonzero(cond, axis=0)
-        return np.where(
-            count == 0,
-            0,
-            np.count_nonzero(cond & op(X[:, 1, np.newaxis], q), axis=0) / count,
+        mask = count != 0
+        count[mask] = (
+            np.count_nonzero(cond & op(X[:, 1, np.newaxis], q), axis=0)[mask]
+            / count[mask]
         )
+        return count
 
     concentration = np.where(
         quantiles <= 0.5, func(quantiles, True), func(quantiles, False)
     )
-
     return concentration
 
 
@@ -193,7 +193,6 @@ def plot_tail_concentration(
         title=title,
         xaxis_title="Quantile",
         yaxis_title="Tail Dependency",
-        template="plotly_white",
     )
     # Update both axes to show percentages with an enhanced grid.
     fig.update_xaxes(

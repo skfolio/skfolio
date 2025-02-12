@@ -47,11 +47,11 @@ from skfolio.distribution.copula import (
 from skfolio.distribution.copula._base import _UNIFORM_MARGINAL_EPSILON
 from skfolio.distribution.multivariate._utils import DependenceMethod, Edge, Node, Tree
 from skfolio.distribution.univariate import (
-    BaseUnivariate,
+    BaseUnivariateDist,
     Gaussian,
     NormalInverseGaussian,
     StudentT,
-    find_best_and_fit_univariate_dist,
+    select_univariate_dist,
 )
 
 
@@ -83,7 +83,7 @@ class VineCopula(skb.BaseEstimator):
         vine. If True, the data will be transformed to uniform marginals using the
         fitted CDFs.
 
-    marginal_candidates : list[BaseUnivariate], optional
+    marginal_candidates : list[BaseUnivariateDist], optional
         Candidate univariate distribution estimators to fit the marginals.
         If None, defaults to `[Gaussian(), StudentT(), NormalInverseGaussian()]`.
 
@@ -137,7 +137,7 @@ class VineCopula(skb.BaseEstimator):
     trees_ : list[Tree]
         List of constructed vine trees.
 
-    marginal_distributions_ : list[BaseUnivariate]
+    marginal_distributions_ : list[BaseUnivariateDist]
         List of fitted marginal distributions (if fit_marginals is True).
 
     n_features_in_ : int
@@ -160,14 +160,14 @@ class VineCopula(skb.BaseEstimator):
     """
 
     trees_: list[Tree]
-    marginal_distributions_: list[BaseUnivariate]
+    marginal_distributions_: list[BaseUnivariateDist]
     n_features_in_: int
     feature_names_in_: np.ndarray
 
     def __init__(
         self,
         fit_marginals: bool = True,
-        marginal_candidates: list[BaseUnivariate] | None = None,
+        marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
         max_depth: int = 5,
         central_assets: list[bool] | None = None,
@@ -252,8 +252,10 @@ class VineCopula(skb.BaseEstimator):
             # Fit marginal distributions
             # noinspection PyCallingNonCallable
             self.marginal_distributions_ = skp.Parallel(n_jobs=self.n_jobs)(
-                skp.delayed(find_best_and_fit_univariate_dist)(
-                    X=X[:, [i]], distribution_candidates=marginal_candidates
+                skp.delayed(select_univariate_dist)(
+                    X=X[:, [i]],
+                    distribution_candidates=marginal_candidates,
+                    aic=self.aic,
                 )
                 for i in range(n_assets)
             )

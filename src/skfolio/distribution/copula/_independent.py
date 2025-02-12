@@ -167,6 +167,7 @@ class IndependentCopula(BaseBivariateCopula):
         """Theoretical upper tail dependence coefficient"""
         return 0
 
+    @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula"""
         return f"{self.__class__.__name__}()"

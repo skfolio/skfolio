@@ -43,6 +43,8 @@ def test_select_bivariate_copula_invalid_X():
 def test_select_bivariate_copula_invalid_candidate():
     # Test that an error is raised if a candidate does not inherit from BaseBivariateCopula.
     X = np.random.rand(100, 2)
+    # Disturb X slightly to ensure dependence.
+    X[:, 1] = 0.5 * X[:, 0] + 0.5 * np.random.rand(100)
     copula_candidates = [GaussianCopula(), "not a copula"]
     with pytest.raises(ValueError):
         _ = select_bivariate_copula(X, copula_candidates)
