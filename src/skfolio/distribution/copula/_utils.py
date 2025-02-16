@@ -177,7 +177,6 @@ def plot_tail_concentration(
     # Iterate over each dataset name and its corresponding data array.
     for name, concentration in tail_concentration_dict.items():
         concentration = np.asarray(concentration)
-        # Create a scatter trace for the tail dependency curve.
         trace = go.Scatter(
             x=quantiles,
             y=np.asarray(concentration),
@@ -192,7 +191,7 @@ def plot_tail_concentration(
     fig.update_layout(
         title=title,
         xaxis_title="Quantile",
-        yaxis_title="Tail Dependency",
+        yaxis_title="Tail Concentration",
     )
     # Update both axes to show percentages with an enhanced grid.
     fig.update_xaxes(

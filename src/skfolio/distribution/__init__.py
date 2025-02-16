@@ -16,6 +16,7 @@ from skfolio.distribution.multivariate import VineCopula
 from skfolio.distribution.univariate import (
     BaseUnivariateDist,
     Gaussian,
+    JohnsonSU,
     NormalInverseGaussian,
     StudentT,
     select_univariate_dist,
@@ -31,6 +32,7 @@ __all__ = [
     "GumbelCopula",
     "IndependentCopula",
     "JoeCopula",
+    "JohnsonSU",
     "NormalInverseGaussian",
     "StudentT",
     "StudentTCopula",

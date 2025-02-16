@@ -11,7 +11,7 @@ from skfolio.distribution import (
 
 def test_select_bivariate_copula_independence():
     # Create data with very weak dependence.
-    X = np.random.rand(100, 2)
+    X = np.random.RandomState(42).random((100, 2))
     copula_candidates = [GaussianCopula(), ClaytonCopula()]
     best = select_bivariate_copula(
         X, copula_candidates, aic=True, independence_level=0.05
@@ -22,9 +22,9 @@ def test_select_bivariate_copula_independence():
 
 def test_select_bivariate_copula_aic_selection():
     # Create data with some dependence.
-    X = np.random.rand(100, 2)
+    X = np.random.RandomState(42).random((100, 2))
     # Disturb X slightly to ensure dependence.
-    X[:, 1] = 0.5 * X[:, 0] + 0.5 * np.random.rand(100)
+    X[:, 1] = 0.5 * X[:, 0] + 0.5 * np.random.RandomState(42).random(100)
     copula_candidates = [GaussianCopula(), ClaytonCopula()]
     best = select_bivariate_copula(
         X, copula_candidates, aic=True, independence_level=0.01

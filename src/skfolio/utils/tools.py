@@ -36,6 +36,7 @@ __all__ = [
     "optimal_rounding_decimals",
     "safe_indexing",
     "safe_split",
+    "validate_input_list",
 ]
 
 GenericAlias = type(list[int])
@@ -437,6 +438,54 @@ def input_to_array(
             f"got {arr.shape[0]}"
         )
     return arr
+
+
+def validate_input_list(
+    items: list[int | str],
+    n_assets: int,
+    assets_names: np.ndarray[str] | None,
+    name: str,
+) -> list[int]:
+    """Convert a list of items (asset indices or asset names) into a list of
+    validated asset indices.
+
+    Parameters
+    ----------
+    items : list[int | str]
+       List of asset indices or asset names.
+
+    n_assets : int
+       Expected number of assets.
+       Used for verification.
+
+    assets_names : ndarray, optional
+       Asset names used when `items` contain strings.
+
+    name : str
+       Name of the items used for error messages.
+
+    Returns
+    -------
+    values : list[int]
+       Converted and validated list.
+    """
+    res = []
+    asset_indices = set(range(n_assets))
+    for asset in items:
+        if isinstance(asset, str):
+            if assets_names is None:
+                raise ValueError(
+                    f"If `{name}` is provided as a list of string, you must input `X` "
+                    f"as a DataFrame with assets names in columns."
+                )
+            mask = assets_names == asset
+            if np.any(mask):
+                res.append(int(np.where(mask)[0][0]))
+        else:
+            if asset not in asset_indices:
+                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+            res.append(int(asset))
+    return res
 
 
 def format_measure(x: float, percent: bool = False) -> str:

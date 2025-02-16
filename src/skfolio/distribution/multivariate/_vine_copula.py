@@ -1,7 +1,4 @@
-"""
-Vine Copula Estimation
-----------------------
-"""
+"""Vine Copula Estimation"""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -27,6 +24,7 @@ Vine Copula Estimation
 #  representation of hierarchical relationships among assets and improving conditional
 #  sampling.
 
+import warnings
 from collections import deque
 
 import numpy as np
@@ -49,10 +47,11 @@ from skfolio.distribution.multivariate._utils import DependenceMethod, Edge, Nod
 from skfolio.distribution.univariate import (
     BaseUnivariateDist,
     Gaussian,
-    NormalInverseGaussian,
+    JohnsonSU,
     StudentT,
     select_univariate_dist,
 )
+from skfolio.utils.tools import validate_input_list
 
 
 class VineCopula(skb.BaseEstimator):
@@ -85,7 +84,7 @@ class VineCopula(skb.BaseEstimator):
 
     marginal_candidates : list[BaseUnivariateDist], optional
         Candidate univariate distribution estimators to fit the marginals.
-        If None, defaults to `[Gaussian(), StudentT(), NormalInverseGaussian()]`.
+        If None, defaults to `[Gaussian(), StudentT(), JohnsonSU()]`.
 
     copula_candidates : list[BaseBivariateCopula], optional
         Candidate bivariate copula estimators. If None, defaults to
@@ -94,12 +93,22 @@ class VineCopula(skb.BaseEstimator):
     max_depth : int, default=5
         Maximum vine tree depth to build. Must be greater than 1.
 
-    central_assets : list[bool], optional
-        A list indicating which assets should be centrally placed during vine
-        construction. If None, no asset is forced to the center. Assets marked as
-        central are forced to occupy central positions in the vine, leading to C-like
-        or clustered structure. This is especially useful for conditional sampling,
-        where the conditioning variables should be central nodes.
+    log_transform : bool, default=False
+        If True, the simple returns provided as input will be transformed to log returns
+        before fitting the vine copula. That is, each return R is transformed via
+        r = log(1+R). After sampling, the generated log returns are converted back to
+        simple returns using R = exp(r) - 1.
+
+    central_assets : array-like of asset names or asset positions, optional
+        Assets that should be centrally placed during vine construction.
+        If None, no asset is forced to the center.
+        If an array-like of integer is provided, its values must be asset positions in
+        the input `X` of the `fit` method.
+        If an array-like of string is provided, its values must be asset names and
+        the input `X` of the `fit` method must be a DataFrame with the assets names in
+        columns. Assets marked as central are forced to occupy central positions in the
+        vine, leading to C-like or clustered structure. This is needed for conditional
+        sampling, where the conditioning assets should be central nodes.
 
         For example:
           1) If only asset 1 is marked as central, it will be connected to all other
@@ -163,6 +172,7 @@ class VineCopula(skb.BaseEstimator):
     marginal_distributions_: list[BaseUnivariateDist]
     n_features_in_: int
     feature_names_in_: np.ndarray
+    central_assets_: set[int | str]
 
     def __init__(
         self,
@@ -170,7 +180,8 @@ class VineCopula(skb.BaseEstimator):
         marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
         max_depth: int = 5,
-        central_assets: list[bool] | None = None,
+        log_transform: bool = False,
+        central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
         aic: bool = True,
         independence_level: float = 0.05,
@@ -180,6 +191,7 @@ class VineCopula(skb.BaseEstimator):
         self.marginal_candidates = marginal_candidates
         self.copula_candidates = copula_candidates
         self.max_depth = max_depth
+        self.log_transform = log_transform
         self.central_assets = central_assets
         self.dependence_method = dependence_method
         self.aic = aic
@@ -218,13 +230,25 @@ class VineCopula(skb.BaseEstimator):
         if self.max_depth <= 1:
             raise ValueError(f"`max_depth` must be higher than 1, got {self.max_depth}")
 
+        if self.log_transform:
+            X = np.log(1 + X)
+
         depth = min(self.max_depth, n_assets - 1)
 
-        central_assets = (
-            self.central_assets
-            if self.central_assets is not None
-            else [False] * n_assets
-        )
+        self.central_assets_ = set()
+        if self.central_assets is not None:
+            self.central_assets_ = set(
+                validate_input_list(
+                    items=self.central_assets,
+                    n_assets=n_assets,
+                    assets_names=(
+                        self.feature_names_in_
+                        if hasattr(self, "feature_names_in_")
+                        else None
+                    ),
+                    name="central_assets",
+                )
+            )
 
         marginal_candidates = (
             self.marginal_candidates
@@ -232,7 +256,7 @@ class VineCopula(skb.BaseEstimator):
             else [
                 Gaussian(),
                 StudentT(),
-                NormalInverseGaussian(),
+                JohnsonSU(),
             ]
         )
 
@@ -283,7 +307,11 @@ class VineCopula(skb.BaseEstimator):
                 tree = Tree(
                     level=level,
                     nodes=[
-                        Node(ref=i, pseudo_values=X[:, i], central=central_assets[i])
+                        Node(
+                            ref=i,
+                            pseudo_values=X[:, i],
+                            central=i in self.central_assets_,
+                        )
                         for i in range(n_assets)
                     ],
                 )
@@ -339,9 +367,11 @@ class VineCopula(skb.BaseEstimator):
         random_state : int, RandomState instance or None, default=None
             Controls the randomness of the sample generation.
 
-        conditioning_samples : dict, optional
+        conditioning_samples : dict[str|int, array-like of shape (n_samples,)], optional
             Dictionary mapping asset indices or names to 1D arrays of length n_samples
-            to condition on specific values.
+            to condition on specific values. When performing conditional sampling, it
+            is recommended to set conditioning assets as central during Vine Copula
+            construction. This can be achieved by using the `central_assets` parameter.
 
         Returns
         -------
@@ -358,12 +388,25 @@ class VineCopula(skb.BaseEstimator):
         self.clear_cache()
         n_assets = self.n_features_in_
 
+        validated_cond_samples = {}
         if conditioning_samples is None:
             conditioning_vars = set()
         else:
-            conditioning_samples = conditioning_samples.copy()
-            conditioning_vars = set(conditioning_samples.keys())
-            if not conditioning_vars.issubset(set(range(n_assets))):
+            conditioning_vars = validate_input_list(
+                items=list(conditioning_samples.keys()),
+                n_assets=n_assets,
+                assets_names=(
+                    self.feature_names_in_
+                    if hasattr(self, "feature_names_in_")
+                    else None
+                ),
+                name="conditioning_samples",
+            )
+            missing_central_vars = set(conditioning_vars).difference(
+                self.central_assets_
+            )
+
+            if not set(conditioning_vars).issubset(set(range(n_assets))):
                 raise ValueError(
                     "The keys of `conditioning_samples` must be asset indices or names "
                     "from the input X."
@@ -374,7 +417,19 @@ class VineCopula(skb.BaseEstimator):
                     "than the total."
                 )
 
-            for var, sample in conditioning_samples.items():
+            if missing_central_vars:
+                warnings.warn(
+                    "When performing conditional sampling, it is recommended to set "
+                    "conditioning assets as central during Vine Copula construction. "
+                    "The following conditioning assets were not set as central: "
+                    f"{missing_central_vars}. "
+                    "This can be achieved by using the `central_assets` parameter.",
+                    stacklevel=2,
+                )
+
+            for var, sample in zip(
+                conditioning_vars, conditioning_samples.values(), strict=True
+            ):
                 sample = np.asarray(sample)
                 if sample.ndim != 1:
                     raise ValueError("Each conditioning_samples should be a 1D array")
@@ -386,7 +441,7 @@ class VineCopula(skb.BaseEstimator):
                 if self.fit_marginals:
                     # Transform conditioning samples using the fitted marginal CDF.
                     sample = self.marginal_distributions_[var].cdf(sample)
-                conditioning_samples[var] = sample
+                validated_cond_samples[var] = sample
 
         # Determine sampling order based on vine structure.
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
@@ -400,7 +455,7 @@ class VineCopula(skb.BaseEstimator):
         for node, is_left in sampling_order:
             node_var = node.get_var(is_left)
             if node_var in conditioning_vars:
-                init_samples = conditioning_samples[node_var]
+                init_samples = validated_cond_samples[node_var]
             else:
                 init_samples = next(X_rand)
 
@@ -457,6 +512,10 @@ class VineCopula(skb.BaseEstimator):
                     for i, dist in enumerate(self.marginal_distributions_)
                 ]
             )
+
+        # Reverse the log-return transformation if log_transform is True.
+        if self.log_transform:
+            samples = np.exp(samples) - 1
 
         return samples
 
@@ -606,17 +665,33 @@ class VineCopula(skb.BaseEstimator):
             )
         return sampling_order
 
-    def display_vine_structure(self):
+    @property
+    def fitted_repr(self) -> str:
+        """String representation of the fitted Vine Copula."""
+        skv.check_is_fitted(self)
+        lines = []
+        if self.fit_marginals:
+            lines.append("Root Nodes")
+            for node, dist in zip(
+                self.trees_[0].nodes, self.marginal_distributions_, strict=True
+            ):
+                lines.append(f"{node}: {dist.fitted_repr}")
+            lines.append("")
+
+        for tree in self.trees_:
+            lines.append(str(tree))
+            for edge in tree.edges:
+                lines.append(str(edge))
+            lines.append("")
+
+        result_string = "\n".join(lines)
+        return result_string
+
+    def display_vine(self):
         """Display the vine trees and fitted copulas.
         Prints the structure of each tree and the details of each edge.
         """
-        skv.check_is_fitted(self)
-
-        for tree in self.trees_:
-            print(tree)
-            for edge in tree.edges:
-                print(edge)
-            print()
+        print(self.fitted_repr)
 
     def plot_scatter_matrix(
         self,
@@ -719,7 +794,8 @@ class VineCopula(skb.BaseEstimator):
             Conditioning samples as in `sample`.
 
         subset : list[int | str], optional
-            Indices or names of assets to include in the plot. If None, all assets are used.
+            Indices or names of assets to include in the plot. If None, all assets are
+            used.
 
         Returns
         -------
