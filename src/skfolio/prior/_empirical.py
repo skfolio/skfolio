@@ -75,6 +75,8 @@ class EmpiricalPrior(BasePrior):
 
     mu_estimator_: BaseMu
     covariance_estimator_: BaseCovariance
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     def __init__(
         self,

@@ -32,6 +32,42 @@ class Gaussian(BaseUnivariateDist):
 
     scale_ : float
         The fitted scale (standard deviation) of the distribution.
+
+    Examples
+    --------
+
+    >>> from skfolio.datasets import load_sp500_index
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution.univariate import Gaussian
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_index()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Initialize the Gaussian estimator.
+    >>> model = Gaussian()
+    >>>
+    >>> # Fit the Gaussian model to the data.
+    >>> model.fit(X)
+    >>>
+    >>> # Display the fitted parameters.
+    >>> print(model.fitted_repr)
+    Gaussian(0.00035, 0.0115)
+    >>>
+    >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
+    >>> log_likelihood = model.score_samples(X)
+    >>> score = model.score(X)
+    >>> cdf = model.cdf(X)
+    >>> ppf = model.ppf(X)
+    >>> aic = model.aic(X)
+    >>> bic = model.bic(X)
+
+    >>> # Generate 5 new samples from the fitted Gaussian distribution.
+    >>> samples = model.sample(n_samples=5)
+    >>>
+    >>> # Plot the estimated probability density function (PDF).
+    >>> fig = model.plot_pdf()
+    >>> fig.show()
     """
 
     loc_: float

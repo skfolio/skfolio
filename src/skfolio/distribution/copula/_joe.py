@@ -89,6 +89,60 @@ class JoeCopula(BaseBivariateCopula):
 
     rotation_ : CopulaRotation
         Fitted rotation of the copula.
+
+    Examples
+    --------
+
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution import JoeCopula, compute_pseudo_observations
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>> X = X[["AAPL", "JPM"]]
+    >>>
+    >>> # Convert returns to pseudo observation in the interval [0,1]
+    >>> X = compute_pseudo_observations(X)
+    >>>
+    >>> # Initialize the Copula estimator
+    >>> model = JoeCopula()
+    >>>
+    >>> # Fit the model to the data.
+    >>> model.fit(X)
+    >>>
+    >>> # Display the fitted parameter and tail dependence coefficients
+    >>> print(model.fitted_repr)
+    JoeCopula(1.479, 180°)
+    >>> print(model.lower_tail_dependence)
+    0.4021
+    >>> print(model.upper_tail_dependence)
+    0.0
+    >>>
+    >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
+    >>> # Inverse Partial Derivative, AIC, and BIC
+    >>> log_likelihood = model.score_samples(X)
+    >>> score = model.score(X)
+    >>> cdf = model.cdf(X)
+    >>> p = model.partial_derivative(X)
+    >>> u = model.inverse_partial_derivative(X)
+    >>> aic = model.aic(X)
+    >>> bic = model.bic(X)
+    >>>
+    >>> # Generate 5 new samples
+    >>> samples = model.sample(n_samples=5)
+    >>>
+    >>> # Plot the tail concentration function.
+    >>> fig = model.plot_tail_concentration()
+    >>> fig.show()
+    >>>
+    >>> # Plot a 2D contour of the estimated PDF.
+    >>> fig = model.plot_pdf_2d()
+    >>> fig.show()
+    >>>
+    >>> # Plot a 3D surface of the estimated PDF.
+    >>> fig = model.plot_pdf_3d()
+    >>> fig.show()
     """
 
     theta_: float
@@ -319,13 +373,18 @@ class JoeCopula(BaseBivariateCopula):
     @property
     def lower_tail_dependence(self) -> float:
         """Theoretical lower tail dependence coefficient"""
+        skv.check_is_fitted(self)
+        if self.rotation_ == CopulaRotation.R180:
+            return 2.0 - np.power(2.0, 1.0 / self.theta_)
         return 0
 
     @property
     def upper_tail_dependence(self) -> float:
         """Theoretical upper tail dependence coefficient"""
         skv.check_is_fitted(self)
-        return 2.0 - np.power(2.0, 1.0 / self.theta_)
+        if self.rotation_ == CopulaRotation.R0:
+            return 2.0 - np.power(2.0, 1.0 / self.theta_)
+        return 0
 
     @property
     def fitted_repr(self) -> str:

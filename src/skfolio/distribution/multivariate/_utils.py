@@ -482,7 +482,8 @@ class Tree:
                 if not central and edge.weakly_central:
                     central = True
                 # Negate the matrix to use minimum_spanning_tree for maximum spanning
-                dep = abs(edge.dependence)
+                # Add a cst to ensure that even if dep is 0, we still build a valid MST
+                dep = abs(edge.dependence) + 1e-5
                 dependence_matrix[i, j], dependence_matrix[j, i] = dep, dep
                 eligible_edges[(i, j)] = edge
 

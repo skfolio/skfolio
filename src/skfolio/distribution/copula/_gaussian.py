@@ -52,6 +52,60 @@ class GaussianCopula(BaseBivariateCopula):
     ----------
     rho_ : float
         Fitted parameter (:math:`\rho`) in [-1, 1].
+
+    Examples
+    --------
+
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution import GaussianCopula, compute_pseudo_observations
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>> X = X[["AAPL", "JPM"]]
+    >>>
+    >>> # Convert returns to pseudo observation in the interval [0,1]
+    >>> X = compute_pseudo_observations(X)
+    >>>
+    >>> # Initialize the Copula estimator
+    >>> model = GaussianCopula()
+    >>>
+    >>> # Fit the model to the data.
+    >>> model.fit(X)
+    >>>
+    >>> # Display the fitted parameter and tail dependence coefficients
+    >>> print(model.fitted_repr)
+    GaussianCopula(0.327)
+    >>> print(model.lower_tail_dependence)
+    0.0
+    >>> print(model.upper_tail_dependence)
+    0.0
+    >>>
+    >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
+    >>> # Inverse Partial Derivative, AIC, and BIC
+    >>> log_likelihood = model.score_samples(X)
+    >>> score = model.score(X)
+    >>> cdf = model.cdf(X)
+    >>> p = model.partial_derivative(X)
+    >>> u = model.inverse_partial_derivative(X)
+    >>> aic = model.aic(X)
+    >>> bic = model.bic(X)
+    >>>
+    >>> # Generate 5 new samples
+    >>> samples = model.sample(n_samples=5)
+    >>>
+    >>> # Plot the tail concentration function.
+    >>> fig = model.plot_tail_concentration()
+    >>> fig.show()
+    >>>
+    >>> # Plot a 2D contour of the estimated PDF.
+    >>> fig = model.plot_pdf_2d()
+    >>> fig.show()
+    >>>
+    >>> # Plot a 3D surface of the estimated PDF.
+    >>> fig = model.plot_pdf_3d()
+    >>> fig.show()
     """
 
     rho_: float

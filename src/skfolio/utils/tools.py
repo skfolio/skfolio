@@ -7,6 +7,7 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+import warnings
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
@@ -445,6 +446,7 @@ def validate_input_list(
     n_assets: int,
     assets_names: np.ndarray[str] | None,
     name: str,
+    raise_if_string_missing: bool = True,
 ) -> list[int]:
     """Convert a list of items (asset indices or asset names) into a list of
     validated asset indices.
@@ -464,13 +466,20 @@ def validate_input_list(
     name : str
        Name of the items used for error messages.
 
+    raise_if_string_missing : bool, default=True
+        If set to True, raises an error if an item string is missing from assets_names;
+        otherwise, issue a User Warning.
+
     Returns
     -------
     values : list[int]
        Converted and validated list.
     """
-    res = []
+    if len(set(items)) != len(items):
+        raise ValueError(f"Duplicates found in {items}")
+
     asset_indices = set(range(n_assets))
+    res = []
     for asset in items:
         if isinstance(asset, str):
             if assets_names is None:
@@ -481,6 +490,11 @@ def validate_input_list(
             mask = assets_names == asset
             if np.any(mask):
                 res.append(int(np.where(mask)[0][0]))
+            else:
+                if raise_if_string_missing:
+                    raise ValueError(f"{asset} not found in {assets_names}")
+                else:
+                    warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
         else:
             if asset not in asset_indices:
                 raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")

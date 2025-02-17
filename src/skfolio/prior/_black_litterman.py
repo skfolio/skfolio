@@ -119,6 +119,8 @@ class BlackLitterman(BasePrior):
     views_: np.ndarray
     picking_matrix_: np.ndarray
     prior_estimator_: BasePrior
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     def __init__(
         self,

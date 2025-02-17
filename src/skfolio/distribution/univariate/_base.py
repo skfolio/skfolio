@@ -4,6 +4,7 @@
 # Authors: The skfolio developers
 # SPDX-License-Identifier: BSD-3-Clause
 
+import warnings
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -283,7 +284,9 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
 
         # Generate x values across this range
         x = np.linspace(lower_bound, upper_bound, 1000)
-        pdfs = np.exp(self.score_samples(x.reshape(-1, 1)))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            pdfs = np.exp(self.score_samples(x.reshape(-1, 1)))
 
         fig = go.Figure(
             go.Scatter(

@@ -197,11 +197,10 @@ def test_duplicate_entries():
     # Both integer and string (that converts to the same index) are provided.
     items = [1, "Y", 1, "Y"]
     n_assets = len(assets_names)
-    result = validate_input_list(
-        items, n_assets, assets_names=assets_names, name="test_assets"
-    )
-    # The string "Y" converts to index 1. Order is preserved.
-    assert result == [1, 1, 1, 1]
+    with pytest.raises(ValueError, match="Duplicates found"):
+        _ = validate_input_list(
+            items, n_assets, assets_names=assets_names, name="test_assets"
+        )
 
 
 # Test with a mix of valid integers and valid strings.

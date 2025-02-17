@@ -35,6 +35,42 @@ class StudentT(BaseUnivariateDist):
 
     scale_ : float
         The fitted scale parameter.
+
+    Examples
+    --------
+
+    >>> from skfolio.datasets import load_sp500_index
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution.univariate import StudentT
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_index()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Initialize the estimator.
+    >>> model = StudentT()
+    >>>
+    >>> # Fit the model to the data.
+    >>> model.fit(X)
+    >>>
+    >>> # Display the fitted parameters.
+    >>> print(model.fitted_repr)
+    StudentT(2.75, 0.000618, 0.00681)
+    >>>
+    >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
+    >>> log_likelihood = model.score_samples(X)
+    >>> score = model.score(X)
+    >>> cdf = model.cdf(X)
+    >>> ppf = model.ppf(X)
+    >>> aic = model.aic(X)
+    >>> bic = model.bic(X)
+    >>>
+    >>> # Generate 5 new samples from the fitted distribution.
+    >>> samples = model.sample(n_samples=5)
+    >>>
+    >>> # Plot the estimated probability density function (PDF).
+    >>> fig = model.plot_pdf()
+    >>> fig.show()
     """
 
     dof_: float

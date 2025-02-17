@@ -156,6 +156,37 @@ class VineCopula(skb.BaseEstimator):
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
 
+    Examples
+    --------
+    >>> from skfolio.datasets import load_factors_dataset
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution import VineCopula
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_factors_dataset()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Initialize the VineCopula model
+    >>> vine = VineCopula()
+    >>> # Fit the model
+    >>> vine.fit(X)
+    >>> # Display the vine trees and fitted copulas
+    >>> vine.display_vine()
+    >>> # Generate 10 samples from the fitted vine copula
+    >>> samples = vine.sample(n_samples=10)
+    >>>
+    >>> # Set QUAL and SIZE as central
+    >>> vine = VineCopula(central_assets=["QUAL", "SIZE"])
+    >>> vine.fit(X)
+    >>> # Sample by conditioning on QUAL and SIZE returns
+    >>> samples = vine.sample(
+    ...    n_samples=4,
+    ...    conditioning_samples={
+    ...        "QUAL": [-0.1, -0.2, -0.3, -0.4],
+    ...        "SIZE": [-0.2, -0.3, -0.4, -0.5],
+    ...    },
+    ...)
+
     References
     ----------
     .. [1] "Selecting and estimating regular vine copulae and application to financial
@@ -247,6 +278,7 @@ class VineCopula(skb.BaseEstimator):
                         else None
                     ),
                     name="central_assets",
+                    raise_if_string_missing=False,
                 )
             )
 
@@ -402,6 +434,7 @@ class VineCopula(skb.BaseEstimator):
                 ),
                 name="conditioning_samples",
             )
+
             missing_central_vars = set(conditioning_vars).difference(
                 self.central_assets_
             )

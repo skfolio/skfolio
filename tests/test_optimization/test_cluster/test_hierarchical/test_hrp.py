@@ -154,6 +154,7 @@ def test_transaction_costs(X, previous_weights, transaction_costs):
     assert np.sum(np.abs(model.weights_ - model_tc.weights_)) > 0.1
 
 
+# TODO investigate
 def test_hrp_small_X(small_X):
     model = HierarchicalRiskParity()
     model.fit(small_X)
