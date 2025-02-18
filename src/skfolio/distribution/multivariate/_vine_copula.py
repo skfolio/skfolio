@@ -73,7 +73,7 @@ class VineCopula(skb.BaseEstimator):
     Moreover, by marking some assets as central, this novel implementation is able to
     capture clustered or C-like dependency structures, allowing for more nuanced
     representation of hierarchical relationships among assets and improving conditional
-    sampling.
+    sampling and stress testing.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ class VineCopula(skb.BaseEstimator):
         `[GaussianCopula(), StudentTCopula(), ClaytonCopula(), GumbelCopula(), JoeCopula()]`.
 
     max_depth : int, default=5
-        Maximum vine tree depth to build. Must be greater than 1.
+        Maximum vine tree depth (truncated level). Must be greater than 1.
 
     log_transform : bool, default=False
         If True, the simple returns provided as input will be transformed to log returns
@@ -102,15 +102,15 @@ class VineCopula(skb.BaseEstimator):
     central_assets : array-like of asset names or asset positions, optional
         Assets that should be centrally placed during vine construction.
         If None, no asset is forced to the center.
-        If an array-like of integer is provided, its values must be asset positions in
-        the input `X` of the `fit` method.
-        If an array-like of string is provided, its values must be asset names and
+        If an array-like of **integer** is provided, its values must be asset positions.
+        If an array-like of **string** is provided, its values must be asset names and
         the input `X` of the `fit` method must be a DataFrame with the assets names in
         columns. Assets marked as central are forced to occupy central positions in the
         vine, leading to C-like or clustered structure. This is needed for conditional
         sampling, where the conditioning assets should be central nodes.
 
         For example:
+
           1) If only asset 1 is marked as central, it will be connected to all other
              assets in the first tree (yielding a C-like structure for the initial
              tree), with subsequent trees following the standard R-vine pattern.
@@ -120,9 +120,6 @@ class VineCopula(skb.BaseEstimator):
              the edge between asset 1 and asset 2 becomes the central node, with
              subsequent trees following the standard R-vine structure.
           3) This logic extends naturally to more than two central assets.
-
-       Marking conditioning assets as central during vine construction ensures that they
-       are placed centrally, which is critical for effective conditional sampling.
 
     dependence_method : DependenceMethod, default=DependenceMethod.KENDALL_TAU
         The dependence measure used to compute edge weights for the MST.
@@ -158,6 +155,7 @@ class VineCopula(skb.BaseEstimator):
 
     Examples
     --------
+
     >>> from skfolio.datasets import load_factors_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import VineCopula
@@ -166,7 +164,7 @@ class VineCopula(skb.BaseEstimator):
     >>> prices = load_factors_dataset()
     >>> X = prices_to_returns(prices)
     >>>
-    >>> # Initialize the VineCopula model
+    >>> # Instanciate the VineCopula model
     >>> vine = VineCopula()
     >>> # Fit the model
     >>> vine.fit(X)

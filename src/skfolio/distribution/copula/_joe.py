@@ -39,7 +39,6 @@ class JoeCopula(BaseBivariateCopula):
     tail (i.e. simultaneous extreme gains).
 
     Rotations allow the copula to be adapted for different types of tail dependence:
-
       - A 180° rotation captures extreme co-movements in the lower tail (i.e.
         simultaneous extreme losses).
 
@@ -162,8 +161,8 @@ class JoeCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
         """Fit the Bivariate Joe Copula.
 
-         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
-         Otherwise, uses MLE by maximizing the log-likelihood.
+        If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
+        Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------

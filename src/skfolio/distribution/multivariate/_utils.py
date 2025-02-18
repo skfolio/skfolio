@@ -307,13 +307,7 @@ class Edge:
         method.
         """
         X = self.get_X()
-        match self.dependence_method:
-            case DependenceMethod.KENDALL_TAU:
-                dep = st.kendalltau(X[:, 0], X[:, 1]).statistic
-            case _:
-                raise ValueError(
-                    f"Dependence method {self.dependence_method} not valid"
-                )
+        dep = _dependence(X, dependence_method=self.dependence_method)
         return dep
 
     @cached_property
@@ -521,8 +515,7 @@ class Tree:
 
 
 def _dependence(X, dependence_method: DependenceMethod) -> float:
-    """
-    Compute the dependence between two variables in X using the specified method.
+    """Compute the dependence between two variables in X using the specified method.
 
     Parameters
     ----------

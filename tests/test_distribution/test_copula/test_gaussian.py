@@ -285,9 +285,9 @@ def test_plot_tail_concentration(fitted_model):
     fig = fitted_model.plot_tail_concentration(title="Test Tail Concentration")
     assert isinstance(fig, go.Figure), "plot_tail_concentration did not return a Figure"
     # Check that the title is set
-    assert (
-        "Tail Concentration" in fig.layout.title.text
-    ), "plot_tail_concentration title missing"
+    assert "Tail Concentration" in fig.layout.title.text, (
+        "plot_tail_concentration title missing"
+    )
 
 
 def test_plot_pdf_2d(fitted_model):
@@ -314,6 +314,6 @@ def test_fitted_repr(fitted_model):
     rep = fitted_model.fitted_repr
     assert "GaussianCopula" in rep, "fitted_repr does not contain class name"
     param_str = f"{fitted_model.rho_:0.3f}"
-    assert (
-        param_str in rep
-    ), f"fitted_repr does not contain formatted param: {param_str}"
+    assert param_str in rep, (
+        f"fitted_repr does not contain formatted param: {param_str}"
+    )

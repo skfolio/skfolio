@@ -24,9 +24,9 @@ class GaussianCopula(BaseBivariateCopula):
         C_{\rho}(u, v) = \Phi_2\left(\Phi^{-1}(u), \Phi^{-1}(v) ; \rho\right)
 
     where:
-    - :math:`\Phi_2` is the bivariate normal CDF with correlation :math:`\rho`.
-    - :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` its quantile function.
-    - :math:`\rho \in (-1, 1)` is the correlation coefficient.
+        - :math:`\Phi_2` is the bivariate normal CDF with correlation :math:`\rho`.
+        - :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` its quantile function.
+        - :math:`\rho \in (-1, 1)` is the correlation coefficient.
 
     .. note::
 

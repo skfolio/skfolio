@@ -16,8 +16,9 @@ class IndependentCopula(BaseBivariateCopula):
 
     It is defined by:
 
-     .. math::
-            C(u, v) = u \cdot v.
+    .. math::
+        C(u, v) = u \cdot v
+
     """
 
     _n_params = 0

@@ -323,9 +323,9 @@ def test_plot_tail_concentration(fitted_model):
     fig = fitted_model.plot_tail_concentration(title="Test Tail Concentration")
     assert isinstance(fig, go.Figure), "plot_tail_concentration did not return a Figure"
     # Check that the title is set
-    assert (
-        "Tail Concentration" in fig.layout.title.text
-    ), "plot_tail_concentration title missing"
+    assert "Tail Concentration" in fig.layout.title.text, (
+        "plot_tail_concentration title missing"
+    )
 
 
 def test_plot_pdf_2d(fitted_model):

@@ -364,8 +364,10 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         The tail concentration function is defined as follows:
          - For quantiles q ≤ 0.5:
              C(q) = P(U ≤ q, V ≤ q) / q
+
          - For quantiles q > 0.5:
              C(q) = (1 - 2q + P(U ≤ q, V ≤ q)) / (1 - q)
+
         where U and V are the pseudo-observations of the first and second variables,
         respectively. This function returns the concentration values for each q
         provided.
@@ -410,6 +412,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         The tail concentration is defined as:
           - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
           - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+
         where U₁ and U₂ are the pseudo-observations of the first and second variables,
         respectively.
 

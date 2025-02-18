@@ -36,7 +36,6 @@ class ClaytonCopula(BaseBivariateCopula):
     tail (i.e. simultaneous extreme losses).
 
     Rotations allow the copula to be adapted for different types of tail dependence:
-
       - A 180° rotation captures extreme co-movements in the upper tail (i.e.
         simultaneous extreme gains).
 
@@ -156,8 +155,8 @@ class ClaytonCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
         """Fit the Bivariate Clayton Copula.
 
-         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
-         Otherwise, uses MLE by maximizing the log-likelihood.
+        If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
+        Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
@@ -326,9 +325,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
         For Clayton, the PDF is given by:
 
-        .. math::
-        c(u,v) = (\theta+1)\,\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-\frac{1}{\theta}-2}\,
-                (u\,v)^{-\theta-1}.
+        .. math:: c(u,v) = (\theta+1)\,\Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-\frac{1}{\theta}-2}\,(u\,v)^{-\theta-1}
 
         Parameters
         ----------

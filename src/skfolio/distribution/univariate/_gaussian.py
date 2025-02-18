@@ -61,7 +61,7 @@ class Gaussian(BaseUnivariateDist):
     >>> ppf = model.ppf(X)
     >>> aic = model.aic(X)
     >>> bic = model.bic(X)
-
+    >>>
     >>> # Generate 5 new samples from the fitted Gaussian distribution.
     >>> samples = model.sample(n_samples=5)
     >>>

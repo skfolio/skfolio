@@ -33,9 +33,9 @@ def test_select_univariate_aic(gaussian_data):
 
     selected = select_univariate_dist(gaussian_data, candidates, aic=True)
     # Expect the selected candidate to be an instance of Gaussian.
-    assert isinstance(
-        selected, Gaussian
-    ), "Expected Gaussian estimator to be selected using AIC on Gaussian data."
+    assert isinstance(selected, Gaussian), (
+        "Expected Gaussian estimator to be selected using AIC on Gaussian data."
+    )
 
 
 def test_select_univariate_bic(gaussian_data):
@@ -50,9 +50,9 @@ def test_select_univariate_bic(gaussian_data):
     candidates = [candidate_gaussian, candidate_student_t]
 
     selected = select_univariate_dist(gaussian_data, candidates, aic=False)
-    assert isinstance(
-        selected, Gaussian
-    ), "Expected Gaussian estimator to be selected using BIC on Gaussian data."
+    assert isinstance(selected, Gaussian), (
+        "Expected Gaussian estimator to be selected using BIC on Gaussian data."
+    )
 
 
 def test_invalid_X_shape():

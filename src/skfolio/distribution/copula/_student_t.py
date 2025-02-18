@@ -27,14 +27,14 @@ class StudentTCopula(BaseBivariateCopula):
     The bivariate Student's t copula density is defined as:
 
     .. math::
-         C_{\nu, \rho}(u, v) = T_{\nu, \rho} \Bigl(t_{\nu}^{-1}(u),\;t_{\nu}^{-1}(v)\Bigr)
+        C_{\nu, \rho}(u, v) = T_{\nu, \rho} \Bigl(t_{\nu}^{-1}(u),\;t_{\nu}^{-1}(v)\Bigr)
 
     where:
-    - :math:`\nu > 0` is the degrees of freedom.
-    - :math:`\rho \in (-1, 1)` is the correlation coefficient.
-    - :math:`T_{\nu, \rho}(x, y)` is the CDF of the bivariate \(t\)-distribution.
-    - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the univariate
-      \(t\)-distribution.
+        - :math:`\nu > 0` is the degrees of freedom.
+        - :math:`\rho \in (-1, 1)` is the correlation coefficient.
+        - :math:`T_{\nu, \rho}(x, y)` is the CDF of the bivariate t-distribution.
+        - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the
+          univariate t-distribution.
 
     Student's t copula with degrees of freedom (dof) less than 1.0 is extremely
     heavy-tailed, to the extent that even the mean (and many moments) do not exist,
@@ -141,14 +141,14 @@ class StudentTCopula(BaseBivariateCopula):
         self.tolerance = tolerance
 
     def fit(self, X: npt.ArrayLike, y=None) -> "StudentTCopula":
-        """Fit the Bivariate Student's t Copula.
+        r"""Fit the Bivariate Student's t Copula.
 
         If `itau` is True, it uses a Kendall-based two-step method:
+            - Estimates the correlation parameter (:math:`\rho`) from Kendall's
+              tau inversion.
 
-            1. Estimates the correlation parameter (:math:`\rho`) from Kendall's
-               tau inversion.
-            2. Optimizes the degrees of freedom (:math:`\nu`) by maximizing the
-               log-likelihood.
+            - Optimizes the degrees of freedom (:math:`\nu`) by maximizing the
+              log-likelihood.
 
         Otherwise, it uses the full MLE method: optimizes both :math:`\rho` and
         :math:`\nu` by maximizing the log-likelihood.
@@ -167,6 +167,7 @@ class StudentTCopula(BaseBivariateCopula):
         -------
         self : StudentTCopula
             Returns the instance itself.
+
         """
         X = self._validate_X(X, reset=True)
 

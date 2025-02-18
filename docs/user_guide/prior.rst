@@ -130,6 +130,82 @@ The loading matrix (betas) of the factors is estimated using a
 which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
 separately.
 
+
+Synthetic Returns
+*****************
+
+The :class:`SyntheticReturns` model estimates the :class:`PriorModel` by fitting a 
+`distribution_estimator` and sampling new returns data from it.
+
+The default `distribution_estimator` is a Regular :class:`VineCopula` estimator.
+Other common choices are GAN or VAE.
+
+It is particularly useful when the historical distribution tail dependencies are
+sparse and need extrapolation for tail optimizations or when optimizing under
+conditional or stressed scenarios.
+
+By combining :class:`SyntheticReturns` with :class:`FactorModel` you can generate
+synthetic data of your factors then projecting them to your assets.
+This is often used for factor stress test.
+
+**Example:**
+
+.. code-block:: python
+
+    import numpy as np
+    from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    from skfolio.preprocessing import prices_to_returns
+    from skfolio.distribution import VineCopula
+    from skfolio.optimization import MeanRisk
+    from skfolio.prior import FactorModel, SyntheticReturns
+    from skfolio import RiskMeasure
+   
+    # Load historical prices and convert them to returns
+    prices = load_sp500_dataset()
+    factors = load_factors_dataset()
+    X, y = prices_to_returns(prices, factors)
+   
+    # Instanciate the SyntheticReturns model and fit it
+    model = SyntheticReturns()
+    model.fit(X)
+    print(model.prior_model_)
+   
+    # Minimum CVaR optimization on synthetic returns
+    model = MeanRisk(
+        risk_measure=RiskMeasure.CVAR,
+        prior_estimator=SyntheticReturns(
+            distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
+            n_samples=2000,
+        )
+     )
+    model.fit(X)
+    print(model.weights_)
+   
+    # Minimum CVaR optimization on Stressed Factors
+     factor_model = FactorModel(
+        factor_prior_estimator=SyntheticReturns(
+            distribution_estimator=VineCopula(
+                central_assets=["QUAL"],
+                log_transform=True,
+                n_jobs=-1,
+            ),
+            n_samples=5000,
+            sample_args=dict(conditioning_samples={"QUAL": -0.2 * np.ones(5000)}),
+        )
+     )
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
+    model.fit(X, y)
+    print(model.weights_)
+   
+    # Stress Test the Portfolio
+    factor_model.set_params(factor_prior_estimator__sample_args=dict(
+         conditioning_samples={"QUAL": -0.5 * np.ones(5000)}
+     ))
+    factor_model.fit(X,y)
+    stressed_X = factor_model.prior_model_.returns
+    stressed_ptf = model.predict(stressed_X)
+
+
 Combining Multiple Prior Estimators
 ***********************************
 Prior estimators can be combined. For example, it is possible to create a Black &

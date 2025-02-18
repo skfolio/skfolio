@@ -1,11 +1,11 @@
-import time
-
 import numpy as np
 import pytest
 import sklearn as sk
 
 from skfolio.distribution import (
+    ClaytonCopula,
     CopulaRotation,
+    DependenceMethod,
     Gaussian,
     GaussianCopula,
     IndependentCopula,
@@ -641,11 +641,11 @@ def _check_vine_output(model, expected_marginals, expected_trees):
 
 
 def test_vine_copula(X, expected_marginals, expected_trees):
-    s = time.time()
+    # s = time.time()
     model = VineCopula(n_jobs=-1, max_depth=100)
     model.fit(X)
-    e = time.time()
-    assert (e - s) < 20
+    # e = time.time()
+    # assert (e - s) < 20 # For local sanity check
     # 10s
     _check_vine_output(model, expected_marginals, expected_trees)
     sample = model.sample(n_samples=1000)
@@ -1142,6 +1142,17 @@ def test_vine_sample_truncated_consistency(X):
     samples = model.sample(n_samples=4, random_state=42)
 
     np.testing.assert_almost_equal(samples, ref_samples)
+
+
+@pytest.mark.parametrize("dependence_method", list(DependenceMethod))
+def test_vine_dependence_method(X, dependence_method):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula(), ClaytonCopula()],
+        dependence_method=dependence_method,
+        n_jobs=-1,
+    )
+    model.fit(X)
 
 
 def _test_fit_re_fit(X):

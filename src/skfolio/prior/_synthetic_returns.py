@@ -39,7 +39,8 @@ class SyntheticReturns(BasePrior):
         `VineCopula()` model is used.
 
     n_samples : int, default=1000
-        Number of samples to generate from the distribution_estimator, default is 1000.
+        Number of samples to generate from the `distribution_estimator`, default is
+        1000.
 
     sample_args : dict, optional
         Additional keyword arguments to pass to the `sample` method of the
@@ -47,7 +48,7 @@ class SyntheticReturns(BasePrior):
 
     Attributes
     ----------
-    prior_model_ : object
+    prior_model_ : PriorModel
         The assets :class:`~skfolio.prior.PriorModel`.
 
     distribution_estimator_ : BaseEstimator
@@ -59,6 +60,62 @@ class SyntheticReturns(BasePrior):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
        Names of features seen during `fit`. Defined only when `X`
        has feature names that are all strings.
+
+    Examples
+    --------
+
+    >>> import numpy as np
+    >>> from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.distribution import VineCopula
+    >>> from skfolio.optimization import MeanRisk
+    >>> from skfolio.prior import FactorModel, SyntheticReturns
+    >>> from skfolio import RiskMeasure
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()
+    >>> factors = load_factors_dataset()
+    >>> X, y = prices_to_returns(prices, factors)
+    >>>
+    >>> # Instanciate the SyntheticReturns model and fit it
+    >>> model = SyntheticReturns()
+    >>> model.fit(X)
+    >>> print(model.prior_model_)
+    >>>
+    >>> # Minimum CVaR optimization on synthetic returns
+    >>> model = MeanRisk(
+    ...    risk_measure=RiskMeasure.CVAR,
+    ...    prior_estimator=SyntheticReturns(
+    ...        distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
+    ...        n_samples=2000,
+    ...    )
+    ... )
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> # Minimum CVaR optimization on Stressed Factors
+    >>>  factor_model = FactorModel(
+    ...    factor_prior_estimator=SyntheticReturns(
+    ...        distribution_estimator=VineCopula(
+    ...            central_assets=["QUAL"],
+    ...            log_transform=True,
+    ...            n_jobs=-1,
+    ...        ),
+    ...        n_samples=5000,
+    ...        sample_args=dict(conditioning_samples={"QUAL": -0.2 * np.ones(5000)}),
+    ...    )
+    ... )
+    >>> model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
+    >>> model.fit(X, y)
+    >>> print(model.weights_)
+    >>>
+    >>> # Stress Test the Portfolio
+    >>> factor_model.set_params(factor_prior_estimator__sample_args=dict(
+    ...     conditioning_samples={"QUAL": -0.5 * np.ones(5000)}
+    ... ))
+    >>> factor_model.fit(X,y)
+    >>> stressed_X = factor_model.prior_model_.returns
+    >>> stressed_ptf = model.predict(stressed_X)
     """
 
     distribution_estimator_: skb.BaseEstimator

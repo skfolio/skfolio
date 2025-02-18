@@ -36,7 +36,6 @@ class GumbelCopula(BaseBivariateCopula):
     tail (i.e. simultaneous extreme gains).
 
     Rotations allow the copula to be adapted for different types of tail dependence:
-
       - A 180° rotation captures extreme co-movements in the lower tail (i.e.
         simultaneous extreme losses).
 
@@ -158,8 +157,8 @@ class GumbelCopula(BaseBivariateCopula):
     def fit(self, X: npt.ArrayLike, y=None) -> "GumbelCopula":
         """Fit the Bivariate Gumbel Copula.
 
-         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
-         Otherwise, uses MLE by maximizing the log-likelihood.
+        If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
+        Otherwise, uses MLE by maximizing the log-likelihood.
 
         Parameters
         ----------
