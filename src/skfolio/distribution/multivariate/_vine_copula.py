@@ -4,8 +4,8 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-# This is a novel implementation of R-vine that is fully OOP with new features to also
-# capture C-like and clustered dependency structures.
+# This is a novel implementation of R-vine that is fully OOP based on graph theory with
+# new features to also capture C-like and clustered dependency structures.
 #
 # Unlike previous implementations that relied on a procedural paradigm, this version
 # adopts an object-oriented design for constructing vine copulas.

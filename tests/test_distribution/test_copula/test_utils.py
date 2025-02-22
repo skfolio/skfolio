@@ -1,5 +1,6 @@
 import numpy as np
 import plotly.graph_objects as go
+import pytest
 
 from skfolio.distribution.copula._utils import (
     CopulaRotation,
@@ -54,6 +55,25 @@ def test_empirical_tail_concentration():
     # Concentration values should be non-negative.
     assert np.all(concentration >= 0)
 
+def test_empirical_tail_concentration_raise():
+    with pytest.raises(ValueError,
+                       match="X must be a 2D array with exactly 2 columns."):
+        X = np.array([[0.1, 0.2,0.2], [0.2, 0.25,0.2], [0.3, 0.35,0.2], [0.4, 1.5,0.2]])
+        quantiles = np.linspace(0.0, 1.0, 5)
+        _ = empirical_tail_concentration(X, quantiles)
+
+    with pytest.raises(ValueError,
+                       match="X must be pseudo-observation in the interval"):
+        X = np.array([[0.1, 0.2], [0.2, 0.25], [0.3, 0.35], [0.4, 1.5]])
+        quantiles = np.linspace(0.0, 1.0, 5)
+        _ = empirical_tail_concentration(X, quantiles)
+
+    with pytest.raises(ValueError,
+                       match="quantiles must be between 0.0 and 1.0."):
+        X = np.array([[0.1, 0.2], [0.2, 0.25], [0.3, 0.35], [0.4, 0.5]])
+        quantiles = np.linspace(0.0, 1.5, 5)
+        _ = empirical_tail_concentration(X, quantiles)
+
 
 def test_plot_tail_concentration():
     # Create a dummy tail concentration dict.
@@ -69,6 +89,22 @@ def test_plot_tail_concentration():
     assert isinstance(fig, go.Figure)
     # Check that x-axis ticks are formatted as percentages
     assert fig.layout.xaxis.tickformat == ".0%"
+    fig = plot_tail_concentration(
+        tail_concentration_dict,
+        quantiles,
+        title="Test Tail Concentration",
+        smoothing=None,
+    )
+    assert isinstance(fig, go.Figure)
+
+    with pytest.raises(ValueError,
+                       match="The smoothing parameter must be between 0 and 1.3."):
+        _ = plot_tail_concentration(
+            tail_concentration_dict,
+            quantiles,
+            title="Test Tail Concentration",
+            smoothing=5,
+        )
 
 
 def test_select_rotation_itau():

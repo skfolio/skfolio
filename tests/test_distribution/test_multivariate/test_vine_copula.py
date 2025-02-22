@@ -1155,67 +1155,143 @@ def test_vine_dependence_method(X, dependence_method):
     model.fit(X)
 
 
-def _test_fit_re_fit(X):
+def test_vine_fit_raise():
+    with pytest.raises(ValueError,
+                       match="The number of assets must be higher than 2"):
+        X = np.array([[0.1, 0.2], [0.2, 0.25], [0.3, 0.35]])
+        model = VineCopula(
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+            n_jobs=-1,
+        )
+        model.fit(X)
+
+    with pytest.raises(ValueError,
+                       match="`max_depth` must be higher than 1"):
+        X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 0.7]])
+        model = VineCopula(
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+            n_jobs=-1,
+            max_depth=1
+        )
+        model.fit(X)
+
+    with pytest.raises(ValueError,
+                       match="X must be in the interval"):
+        X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 1.7]])
+        model = VineCopula(
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+            n_jobs=-1,
+            fit_marginals=False
+        )
+        model.fit(X)
+
+@pytest.mark.filterwarnings("ignore: When performing conditional sampling")
+def test_vine_sample_raise(X):
     model = VineCopula(
-        max_depth=100,
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
-        n_jobs=-1,
-        independence_level=1.5,
     )
     model.fit(X)
-    sample = model.sample(n_samples=int(5e5), random_state=42)
-    model.fit(sample)
-    sample = model.sample(n_samples=int(5e5), random_state=42)
-    model3 = sk.clone(model)
-    model3.fit(sample)
-    np.testing.assert_array_almost_equal(
-        model.sample(n_samples=5, random_state=42),
-        model3.sample(n_samples=5, random_state=42),
+
+    with pytest.raises(ValueError,
+                       match="Conditioning samples must be provided for strictly"):
+        _ = model.sample(conditioning_samples={name: [0.5] for name in  X.columns})
+    with pytest.raises(ValueError,
+                       match="Each conditioning_samples should be a 1D array"):
+        _ = model.sample(conditioning_samples={"AAPL": [[0.5],[0.5]] })
+
+
+def test_vine_plot_raise(X):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
     )
+    model.fit(X)
+
+    with pytest.raises(ValueError,
+                       match="X should be an 2D array"):
+        X = np.array([[[0.1, 0.2, 0.5], [0.2, 0.25, 0.6]]])
+        _ = model.plot_scatter_matrix(X=X)
+    with pytest.raises(ValueError,
+                       match="X should have"):
+        X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 1.7]])
+        _ = model.plot_univariate_distributions(X=X)
+
+    with pytest.raises(ValueError,
+                       match="X should be an 2D array"):
+        X = np.array([[[0.1, 0.2, 0.5], [0.2, 0.25, 0.6]]])
+        _ = model.plot_scatter_matrix(X=X)
+    with pytest.raises(ValueError,
+                       match="X should have"):
+        X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 1.7]])
+        _ = model.plot_univariate_distributions(X=X)
 
 
-def _generate_checks_marginals(model):
-    params = ["scale_", "loc_", "dof_", "a_", "b_"]
-    res = []
-    for dist in model.marginal_distributions_:
-        res.append(
-            {
-                "name": type(dist).__name__,
-                "params": {
-                    param: round(float(getattr(dist, param)), 5)
-                    for param in params
-                    if hasattr(dist, param)
-                },
-            }
-        )
-    return res
+#
+# def _test_fit_re_fit(X):
+#     model = VineCopula(
+#         max_depth=100,
+#         marginal_candidates=[Gaussian()],
+#         copula_candidates=[GaussianCopula()],
+#         n_jobs=-1,
+#         independence_level=1.5,
+#     )
+#     model.fit(X)
+#     sample = model.sample(n_samples=int(5e5), random_state=42)
+#     model.fit(sample)
+#     sample = model.sample(n_samples=int(5e5), random_state=42)
+#     model3 = sk.clone(model)
+#     model3.fit(sample)
+#     np.testing.assert_array_almost_equal(
+#         model.sample(n_samples=5, random_state=42),
+#         model3.sample(n_samples=5, random_state=42),
+#     )
 
-
-def _generate_checks(model):
-    trees = []
-    for tree in model.trees_:
-        edges = []
-        for edge in tree.edges:
-            if type(edge.copula).__name__ == "StudentTCopula":
-                params = (
-                    round(float(edge.copula.rho_), 3),
-                    round(float(edge.copula.dof_), 3),
-                )
-            elif type(edge.copula).__name__ == "GaussianCopula":
-                params = round(float(edge.copula.rho_), 3)
-            elif type(edge.copula).__name__ == "IndependentCopula":
-                params = None
-            else:
-                params = round(float(edge.copula.theta_), 3), edge.copula.rotation_
-            edges.append(
-                (
-                    edge.cond_sets.conditioned[0],
-                    edge.cond_sets.conditioned[1],
-                    edge.cond_sets.conditioning,
-                    type(edge.copula).__name__,
-                    params,
-                )
-            )
-        trees.append(edges)
-    return trees
+#
+# def _generate_checks_marginals(model):
+#     params = ["scale_", "loc_", "dof_", "a_", "b_"]
+#     res = []
+#     for dist in model.marginal_distributions_:
+#         res.append(
+#             {
+#                 "name": type(dist).__name__,
+#                 "params": {
+#                     param: round(float(getattr(dist, param)), 5)
+#                     for param in params
+#                     if hasattr(dist, param)
+#                 },
+#             }
+#         )
+#     return res
+#
+#
+# def _generate_checks(model):
+#     trees = []
+#     for tree in model.trees_:
+#         edges = []
+#         for edge in tree.edges:
+#             if type(edge.copula).__name__ == "StudentTCopula":
+#                 params = (
+#                     round(float(edge.copula.rho_), 3),
+#                     round(float(edge.copula.dof_), 3),
+#                 )
+#             elif type(edge.copula).__name__ == "GaussianCopula":
+#                 params = round(float(edge.copula.rho_), 3)
+#             elif type(edge.copula).__name__ == "IndependentCopula":
+#                 params = None
+#             else:
+#                 params = round(float(edge.copula.theta_), 3), edge.copula.rotation_
+#             edges.append(
+#                 (
+#                     edge.cond_sets.conditioned[0],
+#                     edge.cond_sets.conditioned[1],
+#                     edge.cond_sets.conditioning,
+#                     type(edge.copula).__name__,
+#                     params,
+#                 )
+#             )
+#         trees.append(edges)
+#     return trees
