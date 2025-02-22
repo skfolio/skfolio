@@ -214,13 +214,13 @@ def test_mixed_inputs():
     )
     assert result == [0, 2]
 
+
 def test_validate_input_list_raise():
     assets_names = np.array(["Asset1", "Asset2", "Asset3", "Asset4"])
     # "Asset3" corresponds to index 2 and integer 0 is valid.
     items = ["Asset3", "wrong name"]
     n_assets = len(assets_names)
-    with  pytest.raises(ValueError):
+    with pytest.raises(ValueError):
         _ = validate_input_list(
             items, n_assets, assets_names=assets_names, name="test_assets"
         )
-
