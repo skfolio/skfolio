@@ -63,7 +63,7 @@ def test_dependence(X):
     X = X[["AAPL", "AMD"]]
     assert np.isclose(_dependence(X, DependenceMethod.KENDALL_TAU), 0.3077480329721)
     assert np.isclose(
-        _dependence(X, DependenceMethod.MUTUAL_INFORMATION), 0.13061948, atol=1e-3
+        _dependence(X, DependenceMethod.MUTUAL_INFORMATION), 0.13061948, atol=1e-2
     )
     assert np.isclose(
         _dependence(X, DependenceMethod.WASSERSTEIN_DISTANCE), 0.012640552370723

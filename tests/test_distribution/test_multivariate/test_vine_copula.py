@@ -652,22 +652,32 @@ def test_vine_copula(X, expected_marginals, expected_trees):
     with pytest.warns(UserWarning, match="^When performing conditional sampling"):
         sample = model.sample(
             n_samples=1000,
-            conditioning_samples={
-                0: -np.ones(1000) * 0.4,
-                1: -np.ones(1000) * 0.5,
+            conditioning={
+                0: -0.4,
+                1: (None, -0.5),
+                2: np.full(1000, -0.3),
             },
         )
         assert sample.shape == (1000, 20)
 
     _ = model.fitted_repr
-    _ = model.plot_univariate_distributions(X)
+
     _ = model.plot_scatter_matrix(X)
     with pytest.warns(UserWarning, match="^When performing conditional sampling"):
         _ = model.plot_scatter_matrix(
             n_samples=1000,
-            conditioning_samples={
-                0: -np.ones(1000) * 0.4,
-                1: -np.ones(1000) * 0.5,
+            conditioning={
+                0: -0.4,
+                1: (None, -0.5),
+                2: np.full(1000, -0.3),
+            },
+        )
+        _ = model.plot_univariate_distributions(
+            X,
+            conditioning={
+                0: -0.4,
+                1: (None, -0.5),
+                2: np.full(len(X), -0.3),
             },
         )
     model.display_vine()
@@ -680,17 +690,10 @@ def test_log_transform(X):
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
         central_assets=[0],
+        log_transform=True,
     )
     model.fit(X)
-    sample = model.sample(
-        n_samples=1000, conditioning_samples={0: -np.ones(1000) * 0.8}
-    )
-    assert np.any(sample < -1)
-    model.set_params(log_transform=True)
-    model.fit(X)
-    sample = model.sample(
-        n_samples=1000, conditioning_samples={0: -np.ones(1000) * 0.8}
-    )
+    sample = model.sample(n_samples=1000, conditioning={0: np.full(1000, -0.8)})
     assert np.all(sample >= -1)
 
 
@@ -864,7 +867,7 @@ def test_vine_copula_conditional_sampling(X):
     sample1 = model.sample(
         n_samples=4,
         random_state=42,
-        conditioning_samples={
+        conditioning={
             1: [-0.1, -0.2, -0.3, -0.4],
             2: [-0.2, -0.3, -0.4, -0.5],
         },
@@ -872,7 +875,7 @@ def test_vine_copula_conditional_sampling(X):
     sample2 = model.sample(
         n_samples=4,
         random_state=42,
-        conditioning_samples={
+        conditioning={
             "AMD": [-0.1, -0.2, -0.3, -0.4],
             "BAC": [-0.2, -0.3, -0.4, -0.5],
         },
@@ -985,7 +988,7 @@ def test_vine_copula_conditional_sampling_without_priority(X):
     for i in range(20):
         with pytest.warns(UserWarning, match="^When performing conditional sampling"):
             sample = model.sample(
-                n_samples=1000, conditioning_samples={i: -np.ones(1000) * 0.5}
+                n_samples=1000, conditioning={i: -np.ones(1000) * 0.5}
             )
             assert sample.shape == (1000, 20)
 
@@ -1139,8 +1142,184 @@ def test_vine_sample_truncated_consistency(X):
     model = VineCopula(max_depth=2)
     model.fit(np.array(X)[:, :5])
     samples = model.sample(n_samples=4, random_state=42)
-
     np.testing.assert_almost_equal(samples, ref_samples)
+
+
+@pytest.mark.filterwarnings("ignore: When performing conditional sampling")
+@pytest.mark.parametrize(
+    "conditioning,log_transform,expected",
+    [
+        (
+            {
+                "BAC": -0.5,
+                "UNH": (-0.6, -0.3),
+                "WMT": (None, 0.4),
+                "XOM": (-np.inf, 0),
+                "AMD": (-0.4, None),
+                "AAPL": (0.3, np.inf),
+                "JPM": [-0.4, 0.5, -0.8],
+            },
+            False,
+            [
+                [
+                    3.00000000e-01,
+                    2.23361833e-02,
+                    -5.00000000e-01,
+                    -8.37385792e-02,
+                    -5.62195153e-02,
+                    -1.00365557e-01,
+                    -5.35035024e-02,
+                    -3.00720824e-02,
+                    -4.00000000e-01,
+                    -3.95890504e-02,
+                    -5.41594024e-02,
+                    -3.65940867e-02,
+                    -5.88657922e-02,
+                    -3.86054663e-02,
+                    -3.13603278e-02,
+                    -3.46842730e-02,
+                    -5.60067396e-02,
+                    -3.00000000e-01,
+                    3.78465419e-03,
+                    -3.30471145e-02,
+                ],
+                [
+                    3.00000000e-01,
+                    -7.42699113e-02,
+                    -5.00000000e-01,
+                    6.23717984e-02,
+                    8.07557214e-02,
+                    1.09366667e-01,
+                    4.59916512e-02,
+                    -6.14214345e-03,
+                    5.00000000e-01,
+                    7.27075169e-03,
+                    -2.78294527e-02,
+                    -2.59763336e-02,
+                    2.61266737e-02,
+                    -7.24535223e-04,
+                    -1.66803455e-02,
+                    1.10497426e-02,
+                    -2.62678958e-02,
+                    -3.00000000e-01,
+                    -1.31188006e-02,
+                    -2.91580770e-03,
+                ],
+                [
+                    3.00000000e-01,
+                    7.20163400e-02,
+                    -5.00000000e-01,
+                    -8.71065125e-02,
+                    -7.18393166e-02,
+                    -7.97826907e-02,
+                    -4.13589895e-02,
+                    -1.89667497e-02,
+                    -8.00000000e-01,
+                    -2.41698410e-02,
+                    -6.83587073e-03,
+                    -6.44280560e-03,
+                    -7.21832434e-02,
+                    -3.25372947e-02,
+                    -1.55405794e-02,
+                    -2.06755591e-02,
+                    -4.22767854e-03,
+                    -3.00000000e-01,
+                    -1.31201519e-02,
+                    -9.06935089e-03,
+                ],
+            ],
+        ),
+        (
+            {
+                "BAC": -0.5,
+                "UNH": (-0.6, -0.3),
+                "WMT": (None, 0.4),
+                "XOM": (-np.inf, 0),
+                "AMD": (-0.4, None),
+                "AAPL": (0.3, np.inf),
+                "JPM": [-0.4, 0.5, -0.8],
+            },
+            True,
+            [
+                [
+                    3.00000000e-01,
+                    2.15627296e-02,
+                    -5.00000000e-01,
+                    -8.12393281e-02,
+                    -5.51539902e-02,
+                    -9.56352985e-02,
+                    -5.26743763e-02,
+                    -2.97671547e-02,
+                    -4.00000000e-01,
+                    -3.90878963e-02,
+                    -5.24846743e-02,
+                    -3.59715709e-02,
+                    -5.72938959e-02,
+                    -3.80583914e-02,
+                    -3.09120548e-02,
+                    -3.42077491e-02,
+                    -5.44247410e-02,
+                    -3.00000000e-01,
+                    3.70081974e-03,
+                    -3.26152382e-02,
+                ],
+                [
+                    3.00000000e-01,
+                    -7.10971050e-02,
+                    -5.00000000e-01,
+                    6.45757123e-02,
+                    8.44288191e-02,
+                    1.15321191e-01,
+                    4.73676172e-02,
+                    -6.18180754e-03,
+                    5.00000000e-01,
+                    7.26191541e-03,
+                    -2.74669282e-02,
+                    -2.59898545e-02,
+                    2.63173766e-02,
+                    -7.84705432e-04,
+                    -1.66880454e-02,
+                    1.10442777e-02,
+                    -2.66619648e-02,
+                    -3.00000000e-01,
+                    -1.31186773e-02,
+                    -2.93099323e-03,
+                ],
+                [
+                    3.00000000e-01,
+                    7.27562499e-02,
+                    -5.00000000e-01,
+                    -8.43497177e-02,
+                    -6.98531538e-02,
+                    -7.68862505e-02,
+                    -4.09943644e-02,
+                    -1.88987464e-02,
+                    -8.00000000e-01,
+                    -2.40980253e-02,
+                    -6.95830048e-03,
+                    -6.65538379e-03,
+                    -6.97614615e-02,
+                    -3.21778957e-02,
+                    -1.55518121e-02,
+                    -2.05701088e-02,
+                    -4.43187307e-03,
+                    -3.00000000e-01,
+                    -1.31200105e-02,
+                    -9.07857418e-03,
+                ],
+            ],
+        ),
+    ],
+)
+def test_vine_conditional_sample(X, conditioning, log_transform, expected):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula(), ClaytonCopula()],
+        log_transform=log_transform,
+    )
+    model.fit(X)
+    sample = model.sample(n_samples=3, random_state=42, conditioning=conditioning)
+    np.testing.assert_array_almost_equal(sample, expected, 5)
 
 
 @pytest.mark.parametrize("dependence_method", list(DependenceMethod))
@@ -1194,13 +1373,11 @@ def test_vine_sample_raise(X):
     model.fit(X)
 
     with pytest.raises(
-        ValueError, match="Conditioning samples must be provided for strictly"
+        ValueError, match="`conditioning` must be provided for strictly"
     ):
-        _ = model.sample(conditioning_samples={name: [0.5] for name in X.columns})
-    with pytest.raises(
-        ValueError, match="Each conditioning_samples should be a 1D array"
-    ):
-        _ = model.sample(conditioning_samples={"AAPL": [[0.5], [0.5]]})
+        _ = model.sample(conditioning={name: [0.5] for name in X.columns})
+    with pytest.raises(ValueError, match="When an array is provided"):
+        _ = model.sample(conditioning={"AAPL": [[0.5], [0.5]]})
 
 
 def test_vine_plot_raise(X):

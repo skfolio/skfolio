@@ -15,7 +15,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.distribution.copula._utils import plot_tail_concentration
 
-_UNIFORM_MARGINAL_EPSILON = 1e-8
+_UNIFORM_MARGINAL_EPSILON = 1e-9
 _RHO_BOUNDS = (-0.999, 0.999)
 
 

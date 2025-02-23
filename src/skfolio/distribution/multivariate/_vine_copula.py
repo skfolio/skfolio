@@ -53,6 +53,8 @@ from skfolio.distribution.univariate import (
 )
 from skfolio.utils.tools import validate_input_list
 
+_UNIFORM_SAMPLE_EPSILON = 1e-14
+
 
 class VineCopula(skb.BaseEstimator):
     """
@@ -173,17 +175,25 @@ class VineCopula(skb.BaseEstimator):
     >>> # Generate 10 samples from the fitted vine copula
     >>> samples = vine.sample(n_samples=10)
     >>>
-    >>> # Set QUAL and SIZE as central
-    >>> vine = VineCopula(central_assets=["QUAL", "SIZE"])
+    >>> # Set QUAL, SIZE and MTUM as central
+    >>> vine = VineCopula(central_assets=["QUAL", "SIZE", "MTUM"])
     >>> vine.fit(X)
     >>> # Sample by conditioning on QUAL and SIZE returns
     >>> samples = vine.sample(
     ...    n_samples=4,
-    ...    conditioning_samples={
+    ...    conditioning={
     ...        "QUAL": [-0.1, -0.2, -0.3, -0.4],
-    ...        "SIZE": [-0.2, -0.3, -0.4, -0.5],
+    ...        "SIZE": -0.2,
+    ...        "MTUM": (None, -0.3) # MTUM sampled between -Inf and -30%
     ...    },
     ...)
+    >>> # Plots Scatter matrix of sampled returns vs historical X
+    >>> fig = vine.plot_scatter_matrix(X=X)
+    >>> fig.show()
+    >>>
+    >>> # Plots univariate distributions of sampled returns vs historical X
+    >>> fig = vine.plot_univariate_distributions(X=X)
+    >>> fig.show()
 
     References
     ----------
@@ -193,8 +203,14 @@ class VineCopula(skb.BaseEstimator):
     .. [2] "Growing simplified vine copula trees: improving Dißmann's algorithm"
         Krausa and Czado (2017).
 
-    .. [3] "Pair-Copula Constructions for Financial Applications: A Review"
+    .. [3] "Pair-copula constructions of multiple dependence" Aas, Czado, Frigessi,
+        Bakken (2009).
+
+    .. [4] "Pair-Copula Constructions for Financial Applications: A Review"
         Aas and Czado (2016).
+
+    .. [5] "Conditional copula simulation for systemic risk stress testing"
+        Brechmann, Hendrich, Czado (2013)
     """
 
     trees_: list[Tree]
@@ -385,9 +401,14 @@ class VineCopula(skb.BaseEstimator):
         self,
         n_samples: int = 1,
         random_state: int | None = None,
-        conditioning_samples: dict[int | str : npt.ArrayLike] | None = None,
+        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        | None = None,
     ):
         """Generate random samples from the vine copula.
+
+        This method generates `n_samples` from the fitted vine copula model. The
+        resulting samples represent multivariate observations drawn according to the
+        dependence structure captured by the vine copula.
 
         Parameters
         ----------
@@ -397,40 +418,55 @@ class VineCopula(skb.BaseEstimator):
         random_state : int, RandomState instance or None, default=None
             Controls the randomness of the sample generation.
 
-        conditioning_samples : dict[str|int, array-like of shape (n_samples,)], optional
-            Dictionary mapping asset indices or names to 1D arrays of length n_samples
-            to condition on specific values. When performing conditional sampling, it
-            is recommended to set conditioning assets as central during Vine Copula
-            construction. This can be achieved by using the `central_assets` parameter.
+        conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
+            A dictionary specifying conditioning information for one or more assets.
+            The dictionary keys are asset indices or names, and the values define how
+            the samples are conditioned for that asset. Three types of conditioning
+            values are supported:
+
+            1. **Fixed value (float):**
+               If a float is provided, all samples are generated under the condition
+               that the asset takes exactly that value.
+
+            2. **Bounds (tuple of two floats):**
+               If a tuple `(min_value, max_value)` is provided, samples are generated
+               under the condition that the asset's value falls within the specified
+               bounds. Use `-np.Inf` for no lower bound or `np.Inf` for no upper bound.
+
+            3. **Array-like (1D array):**
+               If an array-like of length `n_samples` is provided, each sample is
+               conditioned on the corresponding value in the array for that asset.
+
+            **Important:** When using conditional sampling, it is recommended that the
+            assets you condition on are set as central during the vine copula
+            construction. This can be specified via the `central_assets` parameter in
+            the vine copula instantiation.
 
         Returns
         -------
         X : array-like of shape (n_samples, n_assets)
-            An array where each row represents a multivariate observation.
-
-        Raises
-        ------
-        ValueError
-            If conditioning_samples contains invalid keys or arrays with improper
-            dimensions.
+            A two-dimensional array where each row is a multivariate observation sampled
+            from the vine copula.
         """
         skv.check_is_fitted(self)
         self.clear_cache()
         n_assets = self.n_features_in_
+        rng = sku.check_random_state(random_state)
 
-        validated_cond_samples = {}
-        if conditioning_samples is None:
+        uniform_cond_samples = {}
+        initial_cond = {}
+        if conditioning is None:
             conditioning_vars = set()
         else:
             conditioning_vars = validate_input_list(
-                items=list(conditioning_samples.keys()),
+                items=list(conditioning.keys()),
                 n_assets=n_assets,
                 assets_names=(
                     self.feature_names_in_
                     if hasattr(self, "feature_names_in_")
                     else None
                 ),
-                name="conditioning_samples",
+                name="conditioning",
             )
 
             missing_central_vars = set(conditioning_vars).difference(
@@ -439,12 +475,12 @@ class VineCopula(skb.BaseEstimator):
 
             if not set(conditioning_vars).issubset(set(range(n_assets))):
                 raise ValueError(
-                    "The keys of `conditioning_samples` must be asset indices or names "
+                    "The keys of `conditioning` must be asset indices or names "
                     "from the input X."
                 )
             if len(conditioning_vars) >= n_assets:
                 raise ValueError(
-                    "Conditioning samples must be provided for strictly fewer assets "
+                    "`conditioning` must be provided for strictly fewer assets "
                     "than the total."
                 )
 
@@ -458,27 +494,73 @@ class VineCopula(skb.BaseEstimator):
                     stacklevel=2,
                 )
 
-            for var, sample in zip(
-                conditioning_vars, conditioning_samples.values(), strict=True
+            for var, value in zip(
+                conditioning_vars, conditioning.values(), strict=True
             ):
-                sample = np.asarray(sample)
-                if sample.ndim != 1:
-                    raise ValueError("Each conditioning_samples should be a 1D array")
-                if sample.shape[0] != n_samples:
-                    raise ValueError(
-                        f"Each conditioning_samples should be of length "
-                        f"n_samples={n_samples}"
-                    )
-                if self.fit_marginals:
-                    # Transform conditioning samples using the fitted marginal CDF.
-                    sample = self.marginal_distributions_[var].cdf(sample)
-                validated_cond_samples[var] = sample
+                if isinstance(value, tuple):
+                    if len(value) != 2:
+                        raise ValueError(
+                            "When a tuple is provided in `conditioning`, it must be"
+                            "of length 2, representing the conditioning bounds: "
+                            "(min_value, max_value)"
+                        )
+                    min_value, max_value = value
+                    if min_value is None:
+                        min_value = -np.inf
+                    if max_value is None:
+                        max_value = np.inf
+
+                    if min_value >= max_value:
+                        raise ValueError(
+                            "The conditioning tuple lower bound must be lower than "
+                            "its upper bound."
+                        )
+                    initial_cond[var] = (min_value, max_value)
+
+                    if self.log_transform:
+                        if not np.isneginf(min_value):
+                            min_value = np.log(1 + min_value)
+                        if not np.isposinf(max_value):
+                            max_value = np.log(1 + max_value)
+                    if self.fit_marginals:
+                        # Transform the bounds using the marginal CDF
+                        dist = self.marginal_distributions_[var]
+                        u_min = 0.0 if np.isneginf(min_value) else dist.cdf(min_value)
+                        u_max = 1.0 if np.isposinf(max_value) else dist.cdf(max_value)
+                    else:
+                        u_min, u_max = min_value, max_value
+
+                    # Sample uniformly in the transformed interval.
+                    samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
+
+                elif np.isscalar(value):
+                    initial_cond[var] = value
+                    if self.log_transform:
+                        value = np.log(1 + value)
+                    if self.fit_marginals:
+                        # Transform conditioning value using the fitted marginal CDF.
+                        value = self.marginal_distributions_[var].cdf(value)
+                    samples = np.full(n_samples, value)
+                else:
+                    samples = np.asarray(value)
+                    initial_cond[var] = samples
+                    if samples.ndim != 1 or samples.shape[0] != n_samples:
+                        raise ValueError(
+                            "When an array is provided in `conditioning`, it must be a "
+                            f"1D array of length n_samples={n_samples}, got {samples.ndim}D of "
+                            f"length {samples.shape[0]}"
+                        )
+                    if self.log_transform:
+                        samples = np.log(1 + samples)
+                    if self.fit_marginals:
+                        # Transform conditioning samples using the fitted marginal CDF.
+                        samples = self.marginal_distributions_[var].cdf(samples)
+                uniform_cond_samples[var] = samples
 
         # Determine sampling order based on vine structure.
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
 
         # Generate independent Uniform(0,1) samples for non-conditioned nodes.
-        rng = sku.check_random_state(random_state)
         X_rand = iter(rng.random(size=(n_samples, n_assets - len(conditioning_vars))).T)
 
         # Initialize samples for each node according to the sampling order.
@@ -486,9 +568,16 @@ class VineCopula(skb.BaseEstimator):
         for node, is_left in sampling_order:
             node_var = node.get_var(is_left)
             if node_var in conditioning_vars:
-                init_samples = validated_cond_samples[node_var]
+                init_samples = uniform_cond_samples[node_var]
             else:
                 init_samples = next(X_rand)
+
+            # Avoid Inf
+            init_samples = np.clip(
+                init_samples,
+                a_min=_UNIFORM_SAMPLE_EPSILON,
+                a_max=1 - _UNIFORM_SAMPLE_EPSILON,
+            )
 
             # For the root node, is_left is None.
             if is_left is None:
@@ -547,6 +636,17 @@ class VineCopula(skb.BaseEstimator):
         # Reverse the log-return transformation if log_transform is True.
         if self.log_transform:
             samples = np.exp(samples) - 1
+
+        # To avoid Inf values and numerical instability, conditional values converted to
+        # uniforms are clipped to [1e-14 , 1-1e-14]. This means that if the conditional
+        # value has an extremely low probability, its final value will be bounded by
+        # [ppf(1e-14) , ppf(1-1e-14)]. To keep conditional values accurate even for
+        # extremely low probability, we force them back in the final samples.
+        for var, cond in initial_cond.items():
+            if isinstance(cond, tuple):
+                samples[:, var] = np.clip(samples[:, var], a_min=cond[0], a_max=cond[1])
+            else:
+                samples[:, var] = cond
 
         return samples
 
@@ -728,7 +828,8 @@ class VineCopula(skb.BaseEstimator):
         self,
         X: npt.ArrayLike | None = None,
         n_samples: int | None = None,
-        conditioning_samples=None,
+        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        | None = None,
     ) -> go.Figure:
         """
         Plot a scatter matrix comparing historical and generated samples.
@@ -741,8 +842,29 @@ class VineCopula(skb.BaseEstimator):
         n_samples : int, optional
             Number of samples to generate if historical data is not provided.
 
-        conditioning_samples : dict, optional
-            Conditioning samples as provided in the `sample` method.
+        conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
+            A dictionary specifying conditioning information for one or more assets.
+            The dictionary keys are asset indices or names, and the values define how
+            the samples are conditioned for that asset. Three types of conditioning
+            values are supported:
+
+            1. **Fixed value (float):**
+               If a float is provided, all samples are generated under the condition
+               that the asset takes exactly that value.
+
+            2. **Bounds (tuple of two floats):**
+               If a tuple `(min_value, max_value)` is provided, samples are generated
+               under the condition that the asset's value falls within the specified
+               bounds. Use `-np.Inf` for no lower bound or `np.Inf` for no upper bound.
+
+            3. **Array-like (1D array):**
+               If an array-like of length `n_samples` is provided, each sample is
+               conditioned on the corresponding value in the array for that asset.
+
+            **Important:** When using conditional sampling, it is recommended that the
+            assets you condition on are set as central during the vine copula
+            construction. This can be specified via the `central_assets` parameter in
+            the vine copula instantiation.
 
         Returns
         -------
@@ -779,9 +901,7 @@ class VineCopula(skb.BaseEstimator):
         if n_samples is None:
             n_samples = 5000 if X is None else X.shape[0]
 
-        sample = self.sample(
-            n_samples=n_samples, conditioning_samples=conditioning_samples
-        )
+        sample = self.sample(n_samples=n_samples, conditioning=conditioning)
 
         # noinspection PyTypeChecker
         traces.append(
@@ -807,7 +927,8 @@ class VineCopula(skb.BaseEstimator):
         self,
         X: npt.ArrayLike | None = None,
         n_samples: int | None = None,
-        conditioning_samples=None,
+        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        | None = None,
         subset: list[int | str] | None = None,
     ) -> go.Figure:
         """
@@ -821,8 +942,29 @@ class VineCopula(skb.BaseEstimator):
         n_samples : int, optional
             Number of samples to generate if historical data is not provided.
 
-        conditioning_samples : dict, optional
-            Conditioning samples as in `sample`.
+        conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
+            A dictionary specifying conditioning information for one or more assets.
+            The dictionary keys are asset indices or names, and the values define how
+            the samples are conditioned for that asset. Three types of conditioning
+            values are supported:
+
+            1. **Fixed value (float):**
+               If a float is provided, all samples are generated under the condition
+               that the asset takes exactly that value.
+
+            2. **Bounds (tuple of two floats):**
+               If a tuple `(min_value, max_value)` is provided, samples are generated
+               under the condition that the asset's value falls within the specified
+               bounds. Use `-np.Inf` for no lower bound or `np.Inf` for no upper bound.
+
+            3. **Array-like (1D array):**
+               If an array-like of length `n_samples` is provided, each sample is
+               conditioned on the corresponding value in the array for that asset.
+
+            **Important:** When using conditional sampling, it is recommended that the
+            assets you condition on are set as central during the vine copula
+            construction. This can be specified via the `central_assets` parameter in
+            the vine copula instantiation.
 
         subset : list[int | str], optional
             Indices or names of assets to include in the plot. If None, all assets are
@@ -848,9 +990,7 @@ class VineCopula(skb.BaseEstimator):
         if n_samples is None:
             n_samples = X.shape[0] if X is not None else 5000
 
-        samples = self.sample(
-            n_samples=n_samples, conditioning_samples=conditioning_samples
-        )
+        samples = self.sample(n_samples=n_samples, conditioning=conditioning)
 
         # Prepare lists to hold data arrays and labels.
         dist_data = []
