@@ -2,6 +2,7 @@
 
 # Copyright (c) 2025
 # Authors: The skfolio developers
+# Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
 import warnings

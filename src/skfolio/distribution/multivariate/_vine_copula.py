@@ -2,6 +2,7 @@
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
 # This is a novel implementation of R-vine that is fully OOP based on graph theory with

@@ -1,3 +1,10 @@
+"""Bivariate Copula Utils"""
+
+# Copyright (c) 2025
+# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
+# SPDX-License-Identifier: BSD-3-Clause
+
 import operator
 import warnings
 from collections.abc import Callable
