@@ -79,7 +79,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         X = skv.validate_data(self, X, dtype=np.float64, reset=reset)
         if X.shape[1] != 1:
             raise ValueError(
-                "X should should contain a single column for Univariate Distribution"
+                "X should contain a single column for Univariate Distribution"
             )
 
         return X

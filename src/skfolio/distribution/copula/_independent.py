@@ -62,7 +62,7 @@ class IndependentCopula(BaseBivariateCopula):
 
         Returns
         -------
-        cdf : ndarray of shape (n_observations, )
+        cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
         """
         skv.check_is_fitted(self)
@@ -132,7 +132,7 @@ class IndependentCopula(BaseBivariateCopula):
 
         Returns
         -------
-        u : ndarray of shape (n_observations, )
+        u : ndarray of shape (n_observations,)
             A 1D-array of length `n_observations`, where each element is the computed
             :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
         """

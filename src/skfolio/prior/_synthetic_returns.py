@@ -25,7 +25,7 @@ class SyntheticReturns(BasePrior):
     fitting a `distribution_estimator` and sampling new returns data from it.
 
     The default `distribution_estimator` is a Regular Vine Copula model. Other common
-    choices are GAN or VAE.
+    choices are Generative Adversarial Networks (GANs) or Variational Autoencoders (VAEs).
 
     It is particularly useful when the historical distribution tail dependencies are
     sparse and need extrapolation for tail optimizations or when optimizing under
@@ -94,7 +94,7 @@ class SyntheticReturns(BasePrior):
     >>> print(model.weights_)
     >>>
     >>> # Minimum CVaR optimization on Stressed Factors
-    >>>  factor_model = FactorModel(
+    >>> factor_model = FactorModel(
     ...    factor_prior_estimator=SyntheticReturns(
     ...        distribution_estimator=VineCopula(
     ...            central_assets=["QUAL"],
@@ -161,7 +161,7 @@ class SyntheticReturns(BasePrior):
 
         Returns
         -------
-        self : BlackLitterman
+        self : SyntheticReturns
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -179,7 +179,7 @@ class SyntheticReturns(BasePrior):
             X, y, **routed_params.distribution_estimator.fit
         )
 
-        # we validate after all models have been fitted to keep features names
+        # We validate after all models have been fitted to keep feature names 
         # information.
         skv.validate_data(self, X)
 
@@ -226,7 +226,7 @@ def _check_sample_method(distribution_estimator: skb.BaseEstimator) -> None:
     if sample_method is None or not callable(sample_method):
         raise ValueError(
             f"The distribution_estimator {distribution_estimator} must implement a "
-            f"`sample` method"
+            "`sample` method"
         )
 
     sig = inspect.signature(sample_method)
@@ -234,6 +234,6 @@ def _check_sample_method(distribution_estimator: skb.BaseEstimator) -> None:
     # Check if the parameter 'n_samples' is in the method's parameters.
     if "n_samples" not in sig.parameters:
         raise ValueError(
-            f"The `sample` method of the distribution_estimator "
+            "The `sample` method of the distribution_estimator "
             f"{distribution_estimator} must have `n_samples` as parameter"
         )

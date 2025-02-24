@@ -138,14 +138,14 @@ The :class:`SyntheticReturns` model estimates the :class:`PriorModel` by fitting
 `distribution_estimator` and sampling new returns data from it.
 
 The default `distribution_estimator` is a Regular :class:`VineCopula` estimator.
-Other common choices are GAN or VAE.
+Other common choices are Generative Adversarial Networks (GANs) or Variational Autoencoders (VAEs).
 
 It is particularly useful when the historical distribution tail dependencies are
 sparse and need extrapolation for tail optimizations or when optimizing under
 conditional or stressed scenarios.
 
 By combining :class:`SyntheticReturns` with :class:`FactorModel` you can generate
-synthetic data of your factors then projecting them to your assets.
+synthetic data of your factors then project them to your assets.
 This is often used for factor stress test.
 
 **Example:**
@@ -169,7 +169,7 @@ This is often used for factor stress test.
     model = SyntheticReturns()
     model.fit(X)
     print(model.prior_model_)
-   
+
     # Minimum CVaR optimization on synthetic returns
     model = MeanRisk(
         risk_measure=RiskMeasure.CVAR,
@@ -177,12 +177,12 @@ This is often used for factor stress test.
             distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
             n_samples=2000,
         )
-     )
+    )
     model.fit(X)
     print(model.weights_)
    
     # Minimum CVaR optimization on Stressed Factors
-     factor_model = FactorModel(
+    factor_model = FactorModel(
         factor_prior_estimator=SyntheticReturns(
             distribution_estimator=VineCopula(
                 central_assets=["QUAL"],
@@ -192,15 +192,15 @@ This is often used for factor stress test.
             n_samples=5000,
             sample_args=dict(conditioning_samples={"QUAL": -0.2 * np.ones(5000)}),
         )
-     )
+    )
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
     model.fit(X, y)
     print(model.weights_)
    
     # Stress Test the Portfolio
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
-         conditioning_samples={"QUAL": -0.5 * np.ones(5000)}
-     ))
+        conditioning_samples={"QUAL": -0.5 * np.ones(5000)}
+    ))
     factor_model.fit(X,y)
     stressed_X = factor_model.prior_model_.returns
     stressed_ptf = model.predict(stressed_X)

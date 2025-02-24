@@ -299,7 +299,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supportedin HRP"
+                f"risk_measure {self.risk_measure} currently not supported in HRP"
             )
 
         self.prior_estimator_ = check_estimator(

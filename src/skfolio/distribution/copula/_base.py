@@ -86,7 +86,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: npt.ArrayLike, y=None)  -> "BaseBivariateCopula":
         """Fit the copula model.
 
         Parameters
@@ -119,7 +119,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         Returns
         -------
-        cdf : ndarray of shape (n_observations, )
+        cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
         """
         pass
@@ -151,7 +151,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         Returns
         -------
-        p : ndarray of shape (n_observations, )
+        p : ndarray of shape (n_observations,)
             h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
         pass
@@ -195,7 +195,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         Returns
         -------
-        u : ndarray of shape (n_observations, )
+        u : ndarray of shape (n_observations,)
             A 1D-array of length `n_observations`, where each element is the computed
             :math:`u = h^{-1}(p \mid v)` for the corresponding pair in `X`.
 
@@ -224,7 +224,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         """
         pass
 
-    def score(self, X, y=None):
+    def score(self, X, y=None) -> float:
         """Compute the total log-likelihood under the model.
 
         Parameters
@@ -381,7 +381,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
         Returns
         -------
-        concentration : nndarray of shape (n_quantiles,)
+        concentration : ndarray of shape (n_quantiles,)
            The computed tail concentration values corresponding to each quantile.
 
         Raises
