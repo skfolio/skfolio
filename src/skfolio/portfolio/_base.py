@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 # The Portfolio class contains more than 40 measures than can be computationally
 # expensive. The use of __slots__ instead of __dict__ is based on the following
