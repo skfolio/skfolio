@@ -347,7 +347,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supportedin HERC"
+                f"risk_measure {self.risk_measure} currently not supported in HERC"
             )
 
         self.prior_estimator_ = check_estimator(
