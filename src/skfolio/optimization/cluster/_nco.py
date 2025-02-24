@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -312,9 +312,9 @@ class NestedClustersOptimization(BaseOptimization):
                 w[cluster_ids] = fitted_inner_estimator.weights_
             inner_weights.append(w)
         inner_weights = np.array(inner_weights)
-        assert not any(
-            fitted_inner_estimators
-        ), "fitted_inner_estimator iterator must be empty"
+        assert not any(fitted_inner_estimators), (
+            "fitted_inner_estimator iterator must be empty"
+        )
 
         # Outer cluster weights
         # To train the outer-estimator using the most data as possible, we use
@@ -380,9 +380,9 @@ class NestedClustersOptimization(BaseOptimization):
             X_pred.append(np.asarray(pred))
         X_pred = np.array(X_pred).T
         if cv_predictions is None:
-            assert not any(
-                fitted_inner_estimators
-            ), "fitted_inner_estimator iterator must be empty"
+            assert not any(fitted_inner_estimators), (
+                "fitted_inner_estimator iterator must be empty"
+            )
         else:
             assert not any(cv_predictions), "cv_predictions iterator must be empty"
 

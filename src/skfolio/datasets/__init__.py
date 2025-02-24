@@ -1,7 +1,7 @@
 """Datasets module."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.datasets._base import (
     load_factors_dataset,

@@ -4,7 +4,7 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # Implementation derived from:
 # Conway-Yu https://github.com/skfolio/skfolio/discussions/60
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import datetime as dt
 

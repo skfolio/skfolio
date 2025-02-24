@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Weight constraints is a novel implementation, see docstring for more details.
 
 import numpy as np
@@ -347,7 +347,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supported" f"in HERC"
+                f"risk_measure {self.risk_measure} currently not supported in HERC"
             )
 
         self.prior_estimator_ = check_estimator(

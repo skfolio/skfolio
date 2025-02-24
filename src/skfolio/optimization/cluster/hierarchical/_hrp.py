@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # The risk measure generalization and constraint features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -299,7 +299,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supported" f"in HRP"
+                f"risk_measure {self.risk_measure} currently not supported in HRP"
             )
 
         self.prior_estimator_ = check_estimator(
