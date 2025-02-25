@@ -145,7 +145,7 @@ def group_cardinalities_to_matrix(
     Parameters
     ----------
     groups : array-like of shape (n_groups, n_assets)
-       2D array of assets groups.
+        2D array of assets groups.
 
         For example:
 
@@ -157,8 +157,8 @@ def group_cardinalities_to_matrix(
             )
 
     group_cardinalities : dict[str, int]
-       Dictionary of cardinality constraint per group.
-       For example: {"Equity": 1, "US": 3}
+        Dictionary of cardinality constraint per group.
+        For example: {"Equity": 1, "US": 3}
 
     raise_if_group_missing : bool, default=False
         If this is set to True, an error is raised when a group is not found in the
