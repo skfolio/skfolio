@@ -1,3 +1,5 @@
+"""Uncertainty Set module."""
+
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,

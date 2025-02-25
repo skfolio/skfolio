@@ -1,4 +1,4 @@
-"""Walk Forward cross-validator"""
+"""Walk Forward cross-validator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -273,7 +273,7 @@ class WalkForward(sks.BaseCrossValidator):
         )
 
     def get_n_splits(self, X=None, y=None, groups=None) -> int:
-        """Returns the number of splitting iterations in the cross-validator
+        """Return the number of splitting iterations in the cross-validator.
 
         Parameters
         ----------

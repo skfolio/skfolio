@@ -39,7 +39,7 @@ class BlackLitterman(BasePrior):
         about the assets expected returns expressed in the same frequency as the
         returns `X`.
 
-        Examples:
+        For example:
 
             * "SPX = 0.00015" --> the SPX will have a daily expected return of 0.015%
             * "SX5E - TLT = 0.00039" --> the SX5E will outperform the TLT by a daily expected return of 0.039%
@@ -53,7 +53,7 @@ class BlackLitterman(BasePrior):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]

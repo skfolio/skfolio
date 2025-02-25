@@ -1,4 +1,4 @@
-"""Base Distance Estimators"""
+"""Base Distance Estimators."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

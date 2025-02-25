@@ -26,7 +26,7 @@ from skfolio.utils.tools import fit_and_predict, safe_split
 
 def _routing_enabled():
     """Return whether metadata routing is enabled.
-    Returns
+    Returns.
     -------
     enabled : bool
         Whether metadata routing is enabled. If the config is not set, it

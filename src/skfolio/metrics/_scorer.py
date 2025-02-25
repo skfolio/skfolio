@@ -1,4 +1,4 @@
-"""Scorer module"""
+"""Scorer module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -18,7 +18,7 @@ from skfolio.portfolio import Portfolio
 
 
 class _PortfolioScorer:
-    """Portfolio Scorer wrapper"""
+    """Portfolio Scorer wrapper."""
 
     def __init__(self, score_func: Callable, sign: int, kwargs: dict):
         self._score_func = score_func
@@ -119,7 +119,7 @@ def make_scorer(
                 greater_is_better = False
 
         def score_func(pred: Portfolio) -> float:
-            """Score function"""
+            """Score function."""
             return getattr(pred, measure.value)
 
     sign = 1 if greater_is_better else -1

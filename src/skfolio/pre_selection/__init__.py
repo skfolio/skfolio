@@ -1,3 +1,5 @@
+"""Pre Selection module."""
+
 from skfolio.pre_selection._drop_correlated import DropCorrelated
 from skfolio.pre_selection._select_complete import SelectComplete
 from skfolio.pre_selection._select_k_extremes import SelectKExtremes

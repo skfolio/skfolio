@@ -1,4 +1,4 @@
-"""Distance Estimators"""
+"""Distance Estimators."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -384,7 +384,7 @@ class DistanceCorrelation(BaseDistance):
 
     @staticmethod
     def _dcorr(x: np.ndarray, y: np.ndarray):
-        """Calculate the distance correlation between two variables"""
+        """Calculate the distance correlation between two variables."""
         x = scd.squareform(scd.pdist(x.reshape(-1, 1)))
         y = scd.squareform(scd.pdist(y.reshape(-1, 1)))
         x = x - x.mean(axis=0)[np.newaxis, :] - x.mean(axis=1)[:, np.newaxis] + x.mean()

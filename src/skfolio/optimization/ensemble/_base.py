@@ -1,5 +1,5 @@
 """Base Composition estimator.
-Follow same implementation as Base composition from sklearn
+Follow same implementation as Base composition from sklearn.
 """
 
 # Copyright (c) 2023

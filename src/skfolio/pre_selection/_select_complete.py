@@ -1,4 +1,4 @@
-"""pre-selection SelectComplete module"""
+"""pre-selection SelectComplete module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -49,7 +49,6 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
 
     Examples
     --------
-
         >>> import numpy as np
         >>> import pandas as pd
         >>> from skfolio.pre_selection import SelectComplete

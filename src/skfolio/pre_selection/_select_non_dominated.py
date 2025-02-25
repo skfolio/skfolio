@@ -1,4 +1,4 @@
-"""Pre-selection SelectNonDominated module"""
+"""Pre-selection SelectNonDominated module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

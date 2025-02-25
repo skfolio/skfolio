@@ -538,7 +538,8 @@ class MultiPeriodPortfolio(BasePortfolio):
     @portfolios.setter
     def portfolios(self, value: list[Portfolio] | None = None):
         """Set the list of Portfolios and clear the attributes cache linked to the
-        list of portfolios."""
+        list of portfolios.
+        """
         self._set_portfolios(portfolios=value)
         self.clear()
 

@@ -1,4 +1,4 @@
-"""Pre-selection SelectKExtremes module"""
+"""Pre-selection SelectKExtremes module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

@@ -417,7 +417,6 @@ def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarra
 def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike) -> np.ndarray:
     """Validate implied volatilities.
 
-
     Parameters
     ----------
     implied_vol : array-like of shape (n_observations, n_assets)
