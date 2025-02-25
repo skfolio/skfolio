@@ -144,7 +144,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
