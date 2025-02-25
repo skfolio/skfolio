@@ -295,7 +295,6 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
                 y=pdfs.flatten(),
                 mode="lines",
                 fill="tozeroy",
-                name="Student T PDF",
             )
         )
         fig.update_layout(

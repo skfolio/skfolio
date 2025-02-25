@@ -86,7 +86,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None)  -> "BaseBivariateCopula":
+    def fit(self, X: npt.ArrayLike, y=None) -> "BaseBivariateCopula":
         """Fit the copula model.
 
         Parameters

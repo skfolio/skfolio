@@ -37,9 +37,12 @@ import sklearn.utils as sku
 import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
-from skfolio.distribution import ClaytonCopula, GaussianCopula, GumbelCopula, JoeCopula
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
+    ClaytonCopula,
+    GaussianCopula,
+    GumbelCopula,
+    JoeCopula,
     StudentTCopula,
     select_bivariate_copula,
 )

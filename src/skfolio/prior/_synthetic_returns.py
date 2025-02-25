@@ -179,7 +179,7 @@ class SyntheticReturns(BasePrior):
             X, y, **routed_params.distribution_estimator.fit
         )
 
-        # We validate after all models have been fitted to keep feature names 
+        # We validate after all models have been fitted to keep feature names
         # information.
         skv.validate_data(self, X)
 
