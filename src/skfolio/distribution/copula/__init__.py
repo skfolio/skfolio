@@ -1,3 +1,5 @@
+"""Copula module."""
+
 from skfolio.distribution.copula._base import (
     BaseBivariateCopula,
 )

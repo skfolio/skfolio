@@ -1,4 +1,4 @@
-"""Univariate Student's t Estimation"""
+"""Univariate Student's t Estimation."""
 
 # Copyright (c) 2025
 # Authors: The skfolio developers
@@ -39,7 +39,6 @@ class StudentT(BaseUnivariateDist):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_index
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution.univariate import StudentT
@@ -85,12 +84,12 @@ class StudentT(BaseUnivariateDist):
 
     @property
     def scipy_params(self) -> dict[str, float]:
-        """Dictionary of parameters to pass to the underlying SciPy distribution"""
+        """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted univariate distribution"""
+        """String representation of the fitted univariate distribution."""
         return f"{self.__class__.__name__}({self.dof_:0.3g}, {self.loc_:0.3g}, {self.scale_:0.3g})"
 
     def fit(self, X: npt.ArrayLike, y=None) -> "StudentT":

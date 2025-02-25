@@ -1,3 +1,5 @@
+"""Distribution module."""
+
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
     ClaytonCopula,

@@ -1,3 +1,5 @@
+"""Univariate Distribution module."""
+
 from skfolio.distribution.univariate._base import BaseUnivariateDist
 from skfolio.distribution.univariate._gaussian import Gaussian
 from skfolio.distribution.univariate._johnson_su import JohnsonSU

@@ -1,3 +1,5 @@
+"""Hierarchical Optimization module."""
+
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )

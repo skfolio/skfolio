@@ -1,4 +1,4 @@
-"""Johnson SU Estimator"""
+"""Johnson SU Estimator."""
 
 # Copyright (c) 2025
 # Authors: The skfolio developers
@@ -44,7 +44,6 @@ class JohnsonSU(BaseUnivariateDist):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_index
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution.univariate import JohnsonSU

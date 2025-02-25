@@ -1,4 +1,4 @@
-"""Base Bivariate Copula Estimator"""
+"""Base Bivariate Copula Estimator."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -70,19 +70,19 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
     @property
     @abstractmethod
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         pass
 
     @property
     @abstractmethod
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         pass
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         pass
 
     @abstractmethod

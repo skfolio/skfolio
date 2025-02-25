@@ -1,4 +1,4 @@
-"""Base Univariate Estimator"""
+"""Base Univariate Estimator."""
 
 # Copyright (c) 2025
 # Authors: The skfolio developers
@@ -29,13 +29,13 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
     @property
     @abstractmethod
     def scipy_params(self) -> dict[str, float]:
-        """Dictionary of parameters to pass to the underlying SciPy distribution"""
+        """Dictionary of parameters to pass to the underlying SciPy distribution."""
         pass
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
-        """String representation of the fitted univariate distribution"""
+        """String representation of the fitted univariate distribution."""
         pass
 
     @abstractmethod

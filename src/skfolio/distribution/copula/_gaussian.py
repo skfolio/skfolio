@@ -1,4 +1,4 @@
-"""Bivariate Gaussian Copula Estimation"""
+"""Bivariate Gaussian Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -56,7 +56,6 @@ class GaussianCopula(BaseBivariateCopula):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import GaussianCopula, compute_pseudo_observations
@@ -314,17 +313,17 @@ class GaussianCopula(BaseBivariateCopula):
 
     @property
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         return 0
 
     @property
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         return 0
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         return f"{self.__class__.__name__}({self.rho_:0.3f})"
 
 

@@ -1,3 +1,5 @@
+"""Test Scorer module."""
+
 import numpy as np
 import sklearn.model_selection as sks
 

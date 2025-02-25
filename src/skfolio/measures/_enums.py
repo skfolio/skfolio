@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from abc import abstractmethod
 from enum import auto
@@ -11,10 +11,10 @@ from skfolio.utils.tools import AutoEnum
 
 
 class BaseMeasure(AutoEnum):
-    """Base Enum of measures"""
+    """Base Enum of measures."""
 
     def __repr__(self) -> str:
-        """Enum representation for improved reading"""
+        """Enum representation for improved reading."""
         words = [
             (
                 word.capitalize()
@@ -73,7 +73,7 @@ class BaseMeasure(AutoEnum):
 
 
 class PerfMeasure(BaseMeasure):
-    """Enumeration of performance measures
+    """Enumeration of performance measures.
 
     Attributes
     ----------
@@ -103,7 +103,7 @@ class PerfMeasure(BaseMeasure):
 
 
 class RiskMeasure(BaseMeasure):
-    """Enumeration of risk measures
+    """Enumeration of risk measures.
 
     Attributes
     ----------
@@ -199,7 +199,7 @@ class RiskMeasure(BaseMeasure):
 
 
 class ExtraRiskMeasure(BaseMeasure):
-    """Enumeration of other risk measures not used in convex optimization
+    """Enumeration of other risk measures not used in convex optimization.
 
     Attributes
     ----------
@@ -247,7 +247,7 @@ class ExtraRiskMeasure(BaseMeasure):
 
 
 class RatioMeasure(BaseMeasure):
-    """Enumeration of ratio measures
+    """Enumeration of ratio measures.
 
     Attributes
     ----------

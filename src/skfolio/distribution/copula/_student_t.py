@@ -1,4 +1,4 @@
-"""Bivariate Student's t Copula Estimation"""
+"""Bivariate Student's t Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -74,7 +74,6 @@ class StudentTCopula(BaseBivariateCopula):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import StudentTCopula, compute_pseudo_observations
@@ -381,19 +380,19 @@ class StudentTCopula(BaseBivariateCopula):
 
     @property
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         skv.check_is_fitted(self)
         arg = -np.sqrt((self.dof_ + 1) * (1 - self.rho_) / (1 + self.rho_))
         return 2 * sp.stdtr(self.dof_ + 1, arg)
 
     @property
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         return self.lower_tail_dependence
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         return f"{self.__class__.__name__}({self.rho_:0.3f}, {self.dof_:0.3f})"
 
 

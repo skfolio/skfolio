@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -21,7 +21,7 @@ from skfolio.utils.tools import AutoEnum, check_estimator
 
 
 class ShrunkMuMethods(AutoEnum):
-    """Shrinkage methods for the ShrunkMu estimator
+    """Shrinkage methods for the ShrunkMu estimator.
 
     Parameters
     ----------

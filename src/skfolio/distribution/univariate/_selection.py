@@ -1,4 +1,4 @@
-"""Univariate Distribution Selection"""
+"""Univariate Distribution Selection."""
 
 # Copyright (c) 2025
 # Authors: The skfolio developers

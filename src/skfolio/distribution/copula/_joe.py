@@ -1,4 +1,4 @@
-"""Bivariate Joe Copula Estimation"""
+"""Bivariate Joe Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -92,7 +92,6 @@ class JoeCopula(BaseBivariateCopula):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import JoeCopula, compute_pseudo_observations
@@ -160,7 +159,7 @@ class JoeCopula(BaseBivariateCopula):
         self.tolerance = tolerance
 
     def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
-        """Fit the Bivariate Joe Copula.
+        r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
         Otherwise, uses MLE by maximizing the log-likelihood.
@@ -372,7 +371,7 @@ class JoeCopula(BaseBivariateCopula):
 
     @property
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         skv.check_is_fitted(self)
         if self.rotation_ == CopulaRotation.R180:
             return 2.0 - np.power(2.0, 1.0 / self.theta_)
@@ -380,7 +379,7 @@ class JoeCopula(BaseBivariateCopula):
 
     @property
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         skv.check_is_fitted(self)
         if self.rotation_ == CopulaRotation.R0:
             return 2.0 - np.power(2.0, 1.0 / self.theta_)
@@ -388,15 +387,15 @@ class JoeCopula(BaseBivariateCopula):
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
     """Negative log-likelihood function for optimization.
 
-     Parameters
-     ----------
+    Parameters
+    ----------
      X : array-like of shape (n_observations, 2)
          An array of bivariate inputs `(u, v)` where each row represents a
          bivariate observation. Both `u` and `v` must be in the interval `[0, 1]`,
@@ -405,8 +404,8 @@ def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
     theta : float
          The dependence parameter (must be greater than 1).
 
-     Returns
-     -------
+    Returns
+    -------
      value : float
          The negative log-likelihood value.
     """
@@ -485,7 +484,7 @@ def _tau_diff(theta: float, tau_empirical: float) -> float:
 
 
 def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
-    """Bivariate Joe CDF (unrotated)"""
+    """Bivariate Joe CDF (unrotated)."""
     z = np.power(1 - X, theta)
     cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
     return cdf

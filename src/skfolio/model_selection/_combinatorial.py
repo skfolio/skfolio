@@ -1,8 +1,8 @@
-"""Combinatorial module"""
+"""Combinatorial module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -36,7 +36,7 @@ class BaseCombinatorialCV(ABC):
 
     @abstractmethod
     def get_path_ids(self) -> np.ndarray:
-        """Return the path id of each test sets in each split"""
+        """Return the path id of each test sets in each split."""
         pass
 
     __repr__ = sks.BaseCrossValidator.__repr__
@@ -196,18 +196,19 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     @property
     def n_splits(self) -> int:
-        """Number of splits"""
+        """Number of splits."""
         return _n_splits(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def n_test_paths(self) -> int:
         """Number of test paths that can be reconstructed from the train/test
-        combinations"""
+        combinations.
+        """
         return _n_test_paths(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
     def test_set_index(self) -> np.ndarray:
-        """Location of each test set"""
+        """Location of each test set."""
         return np.array(
             list(itertools.combinations(np.arange(self.n_folds), self.n_test_folds))
         ).reshape(-1, self.n_test_folds)
@@ -215,7 +216,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     @property
     def binary_train_test_sets(self) -> np.ndarray:
         """Identify training and test folds for each combinations by assigning `0` to
-        training folds and `1` to test folds"""
+        training folds and `1` to test folds.
+        """
         folds_train_test = np.zeros((self.n_folds, self.n_splits))
         folds_train_test[
             self.test_set_index, np.arange(self.n_splits)[:, np.newaxis]
@@ -230,7 +232,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         )
 
     def get_path_ids(self) -> np.ndarray:
-        """Return the path id of each test sets in each split"""
+        """Return the path id of each test sets in each split."""
         recombine_paths = self.recombined_paths
         path_ids = np.zeros((self.n_splits, self.n_test_folds), dtype=int)
         for i in range(self.n_splits):
@@ -334,7 +336,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         )
 
     def plot_train_test_folds(self) -> skt.Figure:
-        """Plot the train/test fold locations"""
+        """Plot the train/test fold locations."""
         values = self.binary_train_test_sets
         fill_color = np.where(values == 0, "blue", "red")
         fill_color = fill_color.astype(object)
@@ -367,7 +369,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     def plot_train_test_index(self, X) -> skt.Figure:
         """Plot the training and test indices for each combinations by assigning `0` to
-        training, `1` to test and `-1` to both purge and embargo indices."""
+        training, `1` to test and `-1` to both purge and embargo indices.
+        """
         next(self.split(X))
         n_samples = X.shape[0]
         cond = [
@@ -430,7 +433,7 @@ def _n_splits(n_folds: int, n_test_folds: int) -> int:
 
 def _n_test_paths(n_folds: int, n_test_folds: int) -> int:
     """Number of test paths that can be reconstructed from the train/test
-    combinations
+    combinations.
 
     Parameters
     ----------

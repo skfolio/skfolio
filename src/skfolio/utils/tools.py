@@ -1,8 +1,8 @@
-"""Tools module"""
+"""Tools module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
@@ -44,13 +44,13 @@ GenericAlias = type(list[int])
 
 
 class AutoEnum(str, Enum):
-    """Base Enum class used in `skfolio`"""
+    """Base Enum class used in `skfolio`."""
 
     @staticmethod
     def _generate_next_value_(
         name: str, start: int, count: int, last_values: Any
     ) -> str:
-        """Overriding `auto()`"""
+        """Overriding `auto()`."""
         return name.lower()
 
     @classmethod
@@ -70,13 +70,13 @@ class AutoEnum(str, Enum):
         return value in cls._value2member_map_
 
     def __repr__(self) -> str:
-        """Representation of the Enum"""
+        """Representation of the Enum."""
         return self.name
 
 
 # noinspection PyPep8Naming
 class cached_property_slots:
-    """Cached property decorator for slots"""
+    """Cached property decorator for slots."""
 
     def __init__(self, func):
         self.func = func
@@ -85,10 +85,12 @@ class cached_property_slots:
         self.__doc__ = func.__doc__
 
     def __set_name__(self, owner, name):
+        """Set Name."""
         self.public_name = name
         self.private_name = f"_{name}"
 
     def __get__(self, instance, owner=None):
+        """Getter."""
         if instance is None:
             return self
         if self.private_name is None:
@@ -104,6 +106,7 @@ class cached_property_slots:
         return value
 
     def __set__(self, instance, owner=None):
+        """Setter."""
         raise AttributeError(
             f"'{type(instance).__name__}' object attribute '{self.public_name}' is"
             " read-only"
@@ -113,7 +116,7 @@ class cached_property_slots:
 
 
 def _make_key(args, kwds) -> int:
-    """Make a cache key from optionally typed positional and keyword arguments"""
+    """Make a cache key from optionally typed positional and keyword arguments."""
     key = args
     if kwds:
         for item in kwds.items():
@@ -250,7 +253,6 @@ def safe_split(
     y_subset : array-like
         Indexed targets.
     """
-
     X_subset = safe_indexing(X, indices=indices, axis=axis)
     if y is not None:
         y_subset = safe_indexing(y, indices=indices, axis=axis)
@@ -342,10 +344,9 @@ def check_estimator(
 
     Returns
     -------
-    estimator: Estimator
+    estimator : Estimator
         The checked estimator or the default.
     """
-
     if estimator is None:
         return default
     if not isinstance(estimator, check_type):
@@ -577,7 +578,7 @@ def fit_single_estimator(
     indices: np.ndarray | None = None,
     axis: int = 0,
 ):
-    """function used to fit an estimator within a job.
+    """Function used to fit an estimator within a job.
 
     Parameters
     ----------
@@ -685,7 +686,7 @@ def fit_and_predict(
 
 
 def default_asset_names(n_assets: int) -> np.ndarray:
-    """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`
+    """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`.
 
     Parameters
     ----------

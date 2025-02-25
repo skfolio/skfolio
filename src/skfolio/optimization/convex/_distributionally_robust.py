@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import cvxpy as cp
 import numpy as np
@@ -94,7 +94,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
@@ -134,7 +134,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
@@ -148,7 +148,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]

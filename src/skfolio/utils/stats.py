@@ -1,10 +1,10 @@
-"""Tools module"""
+"""Tools module."""
 
 import warnings
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
@@ -41,7 +41,7 @@ __all__ = [
 
 
 class NBinsMethod(AutoEnum):
-    """Enumeration of the Number of Bins Methods
+    """Enumeration of the Number of Bins Methods.
 
     Parameters
     ----------
@@ -127,7 +127,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
 
 def rand_weights_dirichlet(n: int) -> np.array:
     """Produces n random weights that sum to one from a dirichlet distribution
-    (uniform distribution over a simplex)
+    (uniform distribution over a simplex).
 
     Parameters
     ----------
@@ -144,7 +144,7 @@ def rand_weights_dirichlet(n: int) -> np.array:
 
 def rand_weights(n: int, zeros: int = 0) -> np.array:
     """Produces n random weights that sum to one from an uniform distribution
-    (non-uniform distribution over a simplex)
+    (non-uniform distribution over a simplex).
 
     Parameters
     ----------

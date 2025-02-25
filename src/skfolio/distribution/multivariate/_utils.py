@@ -1,4 +1,4 @@
-"""Utils module for multivariate distribution"""
+"""Utils module for multivariate distribution."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -58,11 +58,11 @@ class EdgeCondSets:
     conditioning: set[int]
 
     def to_set(self) -> set[int]:
-        """Union of conditioned and conditioning sets"""
+        """Union of conditioned and conditioning sets."""
         return set(self.conditioned) | self.conditioning
 
     def __add__(self, other: "EdgeCondSets") -> "EdgeCondSets":
-        """Combine two EdgeCondSets, merging conditioned and conditioning sets"""
+        """Combine two EdgeCondSets, merging conditioned and conditioning sets."""
         if not isinstance(other, self.__class__):
             raise TypeError(
                 f"Cannot add a EdgeCondSets with an object of type {type(other)}"
@@ -78,7 +78,7 @@ class EdgeCondSets:
         return self.__class__(conditioned=conditioned, conditioning=conditioning)
 
     def __repr__(self) -> str:
-        """string representation of the EdgeCondSets"""
+        """String representation of the EdgeCondSets."""
         if self.conditioning:
             return f"{self.conditioned} | {self.conditioning}"
         return str(self.conditioned)
@@ -114,7 +114,7 @@ class Node:
 
     @property
     def is_root_node(self) -> bool:
-        """Determine if this node is a root node"""
+        """Determine if this node is a root node."""
         return not isinstance(self.ref, Edge)
 
     @property
@@ -246,7 +246,7 @@ class Node:
         self._v = None
 
     def __repr__(self) -> str:
-        """String representation of the node"""
+        """String representation of the node."""
         return f"Node({self.ref})"
 
 
@@ -325,7 +325,7 @@ class Edge:
         return self.node1.ref.cond_sets + self.node2.ref.cond_sets
 
     def ref_to_nodes(self):
-        """Connect this edge to its two nodes"""
+        """Connect this edge to its two nodes."""
         self.node1.edges.add(self)
         self.node2.edges.add(self)
 
@@ -399,7 +399,7 @@ class Edge:
         return len({self.node1, self.node2} & {other.node1, other.node2}) == 1
 
     def __repr__(self) -> str:
-        """String representation of the edge"""
+        """String representation of the edge."""
         if self.copula is None:
             return f"Edge({self.cond_sets})"
         return f"Edge({self.cond_sets}, {self.copula.fitted_repr})"
@@ -432,7 +432,7 @@ class Tree:
 
     @edges.setter
     def edges(self, values: list[Edge]) -> None:
-        """List of edges in the tree"""
+        """List of edges in the tree."""
         if values is not None:
             if (
                 not isinstance(values, list)
@@ -506,12 +506,12 @@ class Tree:
         self.edges = selected_edges
 
     def clear_cache(self):
-        """Clear cached values for all nodes in the tree"""
+        """Clear cached values for all nodes in the tree."""
         for node in self.nodes:
             node.clear_cache()
 
     def __repr__(self):
-        """String representation of the tree"""
+        """String representation of the tree."""
         return f"Tree(level {self.level}): {len(self.nodes)} nodes"
 
 

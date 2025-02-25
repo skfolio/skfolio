@@ -1,4 +1,4 @@
-"""Vine Copula Estimation"""
+"""Vine Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -161,7 +161,6 @@ class VineCopula(skb.BaseEstimator):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_factors_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import VineCopula

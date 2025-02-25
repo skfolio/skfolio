@@ -1,4 +1,4 @@
-"""Bivariate Copula Utils"""
+"""Bivariate Copula Utils."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -45,7 +45,7 @@ class CopulaRotation(Enum):
     R270 = "270°"
 
     def __str__(self) -> str:
-        """String representation"""
+        """String representation."""
         return self.value
 
 

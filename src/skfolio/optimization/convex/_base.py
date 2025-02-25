@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -144,7 +144,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
@@ -329,7 +329,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
@@ -343,7 +343,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
@@ -657,7 +657,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         )
 
     def _clear_models_cache(self):
-        """CLear the cache of CVX models"""
+        """CLear the cache of CVX models."""
         self._cvx_cache = {}
 
     def _get_weight_constraints(
@@ -989,7 +989,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self._scale_constraints = cp.Constant(self.scale_constraints)
 
     def _get_custom_objective(self, w: cp.Variable) -> cp.Expression:
-        """Returns the CVXPY expression evaluated by calling the `add_objective`
+        """Return the CVXPY expression evaluated by calling the `add_objective`
         function if provided, otherwise returns the CVXPY constant `0`.
 
         Parameters
@@ -1010,7 +1010,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         )
 
     def _get_custom_constraints(self, w: cp.Variable) -> list[cp.Expression]:
-        """Returns the list of CVXPY expressions evaluated by calling the
+        """Return the list of CVXPY expressions evaluated by calling the
         `add_constraint`s function if provided, otherwise returns an empty list.
 
         Parameters
@@ -1037,7 +1037,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _cvx_expected_return(
         self, prior_model: PriorModel, w: cp.Variable
     ) -> cp.Expression:
-        """Expected Return expression"""
+        """Expected Return expression."""
         if self.overwrite_expected_return is None:
             expected_return = prior_model.mu @ w
         else:

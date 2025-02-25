@@ -1,7 +1,7 @@
 """Module that includes all Measures functions used across `skfolio`."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.measures._enums import (
     BaseMeasure,

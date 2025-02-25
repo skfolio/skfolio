@@ -1,7 +1,7 @@
-"""skfolio package"""
+"""skfolio package."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 import importlib.metadata
 
 from skfolio.measures import (

@@ -1,3 +1,5 @@
+"""Convex Optimization module."""
+
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.optimization.convex._distributionally_robust import (
     DistributionallyRobustCVaR,

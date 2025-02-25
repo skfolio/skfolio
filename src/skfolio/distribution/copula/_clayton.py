@@ -1,4 +1,4 @@
-"""Bivariate Clayton Copula Estimation"""
+"""Bivariate Clayton Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -86,7 +86,6 @@ class ClaytonCopula(BaseBivariateCopula):
 
     Examples
     --------
-
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import ClaytonCopula, compute_pseudo_observations
@@ -154,7 +153,7 @@ class ClaytonCopula(BaseBivariateCopula):
         self.tolerance = tolerance
 
     def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
-        """Fit the Bivariate Clayton Copula.
+        r"""Fit the Bivariate Clayton Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
         Otherwise, uses MLE by maximizing the log-likelihood.
@@ -348,7 +347,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
     @property
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         skv.check_is_fitted(self)
         if self.rotation_ == CopulaRotation.R0:
             return np.power(2.0, -1.0 / self.theta_)
@@ -356,7 +355,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
     @property
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         skv.check_is_fitted(self)
         if self.rotation_ == CopulaRotation.R180:
             return np.power(2.0, -1.0 / self.theta_)
@@ -364,7 +363,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
 
 
@@ -425,8 +424,7 @@ def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
 
 
 def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
-    r"""
-    Bivariate Clayton CDF (unrotated):
+    r"""Bivariate Clayton CDF (unrotated).
 
     .. math::
         C(u,v) = \Bigl(u^{-\theta}+v^{-\theta}-1\Bigr)^{-1/\theta}.

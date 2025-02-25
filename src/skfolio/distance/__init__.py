@@ -1,7 +1,7 @@
 """Distance Estimators."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.distance._base import BaseDistance
 from skfolio.distance._distance import (

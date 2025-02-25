@@ -1,3 +1,5 @@
+"""Test Distance module."""
+
 import numpy as np
 import pytest
 from sklearn import config_context

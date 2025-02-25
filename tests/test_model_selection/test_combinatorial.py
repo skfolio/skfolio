@@ -1,3 +1,5 @@
+"""Test Combinatorial module."""
+
 import math
 
 import numpy as np

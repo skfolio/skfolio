@@ -1,8 +1,8 @@
-"""Pre-selection SelectKExtremes module"""
+"""Pre-selection SelectKExtremes module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt

@@ -1,4 +1,4 @@
-"""Bivariate Independent Copula Estimation"""
+"""Bivariate Independent Copula Estimation."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -161,15 +161,15 @@ class IndependentCopula(BaseBivariateCopula):
 
     @property
     def lower_tail_dependence(self) -> float:
-        """Theoretical lower tail dependence coefficient"""
+        """Theoretical lower tail dependence coefficient."""
         return 0
 
     @property
     def upper_tail_dependence(self) -> float:
-        """Theoretical upper tail dependence coefficient"""
+        """Theoretical upper tail dependence coefficient."""
         return 0
 
     @property
     def fitted_repr(self) -> str:
-        """String representation of the fitted copula"""
+        """String representation of the fitted copula."""
         return f"{self.__class__.__name__}()"

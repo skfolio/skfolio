@@ -1,4 +1,4 @@
-"""Bivariate Copula Selection"""
+"""Bivariate Copula Selection."""
 
 # Copyright (c) 2025
 # Authors: The skfolio developers
