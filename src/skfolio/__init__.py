@@ -1,4 +1,4 @@
-"""skfolio package"""
+"""skfolio package."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause

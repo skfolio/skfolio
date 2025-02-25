@@ -1,4 +1,4 @@
-"""Pre-selection DropCorrelated module"""
+"""Pre-selection DropCorrelated module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

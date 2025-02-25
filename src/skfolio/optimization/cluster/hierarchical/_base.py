@@ -349,7 +349,6 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         max_weights : ndarray of shape (n_assets,)
             The weight upper bound 1D array.
         """
-
         if self.min_weights is None:
             min_weights = np.zeros(n_assets)
         else:

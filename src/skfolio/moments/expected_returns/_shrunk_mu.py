@@ -21,7 +21,7 @@ from skfolio.utils.tools import AutoEnum, check_estimator
 
 
 class ShrunkMuMethods(AutoEnum):
-    """Shrinkage methods for the ShrunkMu estimator
+    """Shrinkage methods for the ShrunkMu estimator.
 
     Parameters
     ----------

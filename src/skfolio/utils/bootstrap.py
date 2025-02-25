@@ -71,7 +71,7 @@ def stationary_bootstrap(
     block_size: float | None = None,
     seed: int | None = None,
 ) -> np.ndarray:
-    """Creates `n_bootstrap_samples` samples from a multivariate return series via
+    """Create `n_bootstrap_samples` samples from a multivariate return series via
     stationary bootstrapping.
 
     Parameters

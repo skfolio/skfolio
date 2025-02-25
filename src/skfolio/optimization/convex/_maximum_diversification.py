@@ -77,7 +77,7 @@ class MaximumDiversification(MeanRisk):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
@@ -210,7 +210,7 @@ class MaximumDiversification(MeanRisk):
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
@@ -224,7 +224,7 @@ class MaximumDiversification(MeanRisk):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
@@ -428,7 +428,7 @@ class MaximumDiversification(MeanRisk):
         _ = skv.validate_data(self, X, skip_check_array=True)
 
         def func(w, obj):
-            """weighted volatilities"""
+            """Weighted volatilities."""
             covariance = obj.prior_estimator_.prior_model_.covariance
             return np.sqrt(np.diag(covariance)) @ w
 

@@ -1,4 +1,4 @@
-"""Factor Model estimator"""
+"""Factor Model estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

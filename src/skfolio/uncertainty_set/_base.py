@@ -1,4 +1,4 @@
-"""Base Uncertainty estimator"""
+"""Base Uncertainty estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>

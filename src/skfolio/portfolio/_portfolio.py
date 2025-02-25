@@ -649,12 +649,12 @@ class Portfolio(BasePortfolio):
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
     def nonzero_assets(self) -> np.ndarray:
-        """Invested asset :math:`abs(weights) > 0.001%`"""
+        """Invested asset :math:`abs(weights) > 0.001%`."""
         return self.assets[self.nonzero_assets_index]
 
     @cached_property_slots
     def nonzero_assets_index(self) -> np.ndarray:
-        """Indices of invested asset :math:`abs(weights) > 0.001%`"""
+        """Indices of invested asset :math:`abs(weights) > 0.001%`."""
         return np.flatnonzero(abs(self.weights) > _ZERO_THRESHOLD)
 
     @property
@@ -706,7 +706,7 @@ class Portfolio(BasePortfolio):
     @property
     def effective_number_assets(self) -> float:
         r"""Computes the effective number of assets, defined as the inverse of the
-        Herfindahl index [1]_:
+        Herfindahl index.
 
         .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
 

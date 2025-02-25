@@ -19,7 +19,7 @@ def prices_to_returns(
     drop_inceptions_nan: bool = True,
     fill_nan: bool = True,
 ) -> pd.DataFrame | tuple[pd.DataFrame, pd.DataFrame]:
-    r"""Transforms a DataFrame of prices to linear or logarithmic returns.
+    r"""Transform a DataFrame of prices to linear or logarithmic returns.
 
     Linear returns (also called simple returns) are defined as:
         .. math:: \frac{S_{t}}{S_{t-1}} - 1
