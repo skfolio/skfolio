@@ -106,10 +106,27 @@ Available models
     * Distance Correlation
     * Variation of Information
 
+* Distribution Estimator:
+    * Univariate:
+        * Gaussian
+        * Student's t
+        * Johnson Su
+        * Normal Inverse Gaussian
+    * Bivariate Copula
+        * Gaussian Copula
+        * Student's t Copula
+        * Clayton Copula
+        * Gumbel Copula
+        * Joe Copula
+        * Independent Copula
+    * Multivariate
+        * Vine Copula (Regular, Centered, Clustered, Conditional Sampling)
+
 * Prior Estimator:
     * Empirical
     * Black & Litterman
     * Factor Model
+    * Synthetic Returns (Stress Test, Factor Stress Test)
 
 * Uncertainty Set Estimator:
     * On Expected Returns:

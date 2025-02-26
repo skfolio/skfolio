@@ -15,6 +15,13 @@ from skfolio.datasets import (
 from skfolio.preprocessing import prices_to_returns
 
 
+@pytest.fixture
+def random_data():
+    """Fixture that returns a random numpy array in [0,1] of shape (100, 2)."""
+    rng = np.random.default_rng(seed=42)
+    return rng.random((100, 2))
+
+
 @pytest.fixture(scope="module")
 def X():
     prices = load_sp500_dataset()
@@ -29,6 +36,12 @@ def y():
     factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
     y = prices_to_returns(factor_prices)
     return y
+
+
+@pytest.fixture(scope="module")
+def returns(X):
+    returns = X[["AAPL"]]
+    return returns
 
 
 @pytest.fixture(scope="module")
