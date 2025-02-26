@@ -14,7 +14,10 @@ import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
-from skfolio.distribution.copula._utils import plot_tail_concentration
+from skfolio.distribution.copula._utils import (
+    empirical_tail_concentration,
+    plot_tail_concentration,
+)
 
 _UNIFORM_MARGINAL_EPSILON = 1e-9
 _RHO_BOUNDS = (-0.999, 0.999)
@@ -401,7 +404,9 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         )
         return concentration
 
-    def plot_tail_concentration(self, title: str | None = None) -> go.Figure:
+    def plot_tail_concentration(
+        self, X: npt.ArrayLike | None = None, title: str | None = None
+    ) -> go.Figure:
         """
         Plot the tail concentration function.
 
@@ -417,6 +422,12 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         where U₁ and U₂ are the pseudo-observations of the first and second variables,
         respectively.
 
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, 2), optional
+            If provided, it is used to plot the empirical tail concentration for
+            comparison versus the model tail concentration.
+
         title : str, optional
             The title for the plot. If not provided, a default title based on the fitted
             copula's representation is used.
@@ -428,11 +439,20 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         """
         if title is None:
             title = f"Tail Concentration of Bivariate {self.fitted_repr}"
+            if X is not None:
+                title += " vs Empirical"
+
         quantiles = np.linspace(5e-3, 1.0 - 5e-3, num=100)
         concentration = self.tail_concentration(quantiles)
 
+        tail_concentration_dict = {self.fitted_repr: concentration}
+        if X is not None:
+            tail_concentration_dict["Empirical"] = empirical_tail_concentration(
+                X, quantiles=quantiles
+            )
+
         fig = plot_tail_concentration(
-            tail_concentration_dict={self.fitted_repr: concentration},
+            tail_concentration_dict=tail_concentration_dict,
             quantiles=quantiles,
             title=title,
             smoothing=1.3,
@@ -461,7 +481,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of Bivariate Bivariate {self.fitted_repr}"
+            title = f"PDF of the Bivariate {self.fitted_repr}"
 
         u = np.linspace(0.01, 0.99, 100)
         U, V = np.meshgrid(u, u)
@@ -508,7 +528,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of Bivariate Bivariate {self.fitted_repr}"
+            title = f"PDF of the Bivariate {self.fitted_repr}"
 
         u = np.linspace(0.03, 0.97, 100)
         U, V = np.meshgrid(u, u)

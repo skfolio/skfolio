@@ -260,11 +260,17 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
         return self._scipy_model.ppf(X, **self.scipy_params)
 
-    def plot_pdf(self, title: str | None = None) -> go.Figure:
+    def plot_pdf(
+        self, X: npt.ArrayLike | None = None, title: str | None = None
+    ) -> go.Figure:
         """Plot the probability density function (PDF).
 
         Parameters
         ----------
+        X : array-like of shape (n_samples, 1), optional
+            If provided, it is used to plot the empirical data KDE for comparison
+            versus the model PDF.
+
         title : str, optional
            The title for the plot. If not provided, a default title based on the fitted
            model's representation is used.
@@ -275,28 +281,53 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
            A Plotly figure object containing the PDF plot.
         """
         skv.check_is_fitted(self)
-
         if title is None:
             title = f"PDF of {self.fitted_repr}"
+            if X is not None:
+                title += " vs Empirical KDE"
 
         # Compute the quantile-based range
-        lower_bound = self.ppf(1e-3)
-        upper_bound = self.ppf(1 - 1e-3)
-
+        lower_bound = self.ppf(1e-4)
+        upper_bound = self.ppf(1 - 1e-4)
         # Generate x values across this range
         x = np.linspace(lower_bound, upper_bound, 1000)
+
+        traces = []
+        if X is not None:
+            X = np.asarray(X)
+            if X.ndim != 2:
+                raise ValueError("X should be a 2D array")
+            if X.shape[1] != 1:
+                raise ValueError("X should have 1 columns")
+
+            kde = st.gaussian_kde(X[:, 0])
+            y_kde = kde(x)
+            traces.append(
+                go.Scatter(
+                    x=x,
+                    y=y_kde,
+                    mode="lines",
+                    name="Empirical KDE",
+                    line=dict(color="rgb(85,168,104)"),
+                    fill="tozeroy",
+                )
+            )
+
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
             pdfs = np.exp(self.score_samples(x.reshape(-1, 1)))
-
-        fig = go.Figure(
+        traces.append(
             go.Scatter(
                 x=x,
                 y=pdfs.flatten(),
                 mode="lines",
+                name=self.fitted_repr,
+                line=dict(color="rgb(31, 119, 180)"),
                 fill="tozeroy",
             )
         )
+
+        fig = go.Figure(data=traces)
         fig.update_layout(
             title=title,
             xaxis_title="x",

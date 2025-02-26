@@ -117,7 +117,7 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
     def func(q: np.ndarray, is_lower: bool) -> np.ndarray:
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
-        count = np.count_nonzero(cond, axis=0)
+        count = np.count_nonzero(cond, axis=0).astype(float)
         mask = count != 0
         count[mask] = (
             np.count_nonzero(cond & op(X[:, 1, np.newaxis], q), axis=0)[mask]

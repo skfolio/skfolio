@@ -302,14 +302,14 @@ def test_plot_pdf_2d(fitted_model):
     fig = fitted_model.plot_pdf_2d(title="Test PDF 2D")
     assert isinstance(fig, go.Figure), "plot_pdf_2d did not return a Figure"
     fig = fitted_model.plot_pdf_2d()
-    assert "PDF of Bivariate Bivariate" in fig.layout.title.text
+    assert "PDF of the Bivariate" in fig.layout.title.text
 
 
 def test_plot_pdf_3d(fitted_model):
     fig = fitted_model.plot_pdf_3d(title="Test PDF 3D")
     assert isinstance(fig, go.Figure), "plot_pdf_3d did not return a Figure"
     fig = fitted_model.plot_pdf_3d()
-    assert "PDF of Bivariate Bivariate" in fig.layout.title.text
+    assert "PDF of the Bivariate" in fig.layout.title.text
 
 
 def test_lower_tail_dependence(fitted_model):
