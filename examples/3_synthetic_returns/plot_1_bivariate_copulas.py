@@ -155,7 +155,8 @@ print(f"AIC: {copula.aic(X):,.2f}")
 
 # %%
 # Let's plot the 2D PDF of the copula:
-copula.plot_pdf_2d()
+fig = copula.plot_pdf_2d()
+fig.update_layout(height=700)
 
 # %%
 # Now, let's plot the 3D PDF:
@@ -211,7 +212,8 @@ print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
 
 # %%
 # Let's plot the 2D PDF:
-copula.plot_pdf_2d()
+fig = copula.plot_pdf_2d()
+fig.update_layout(height=700)
 
 # %%
 # Let's plot the tail concentration of the copula model versus the historical data:
@@ -237,6 +239,7 @@ print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
 # %%
 # Let's plot the 2D PDF:
 fig = copula.plot_pdf_2d()
+fig.update_layout(height=700)
 show(fig)
 
 # %%
