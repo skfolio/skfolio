@@ -512,7 +512,7 @@ class Tree:
 
     def __repr__(self):
         """String representation of the tree."""
-        return f"Tree(level {self.level}): {len(self.nodes)} nodes"
+        return f"Tree(level {self.level})"
 
 
 def _dependence(X, dependence_method: DependenceMethod) -> float:

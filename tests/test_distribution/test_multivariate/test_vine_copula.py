@@ -672,7 +672,7 @@ def test_vine_copula(X, expected_marginals, expected_trees):
                 2: np.full(1000, -0.3),
             },
         )
-        _ = model.plot_univariate_distributions(
+        _ = model.plot_marginal_distributions(
             X,
             conditioning={
                 0: -0.4,
@@ -1392,14 +1392,14 @@ def test_vine_plot_raise(X):
         _ = model.plot_scatter_matrix(X=X)
     with pytest.raises(ValueError, match="X should have"):
         X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 1.7]])
-        _ = model.plot_univariate_distributions(X=X)
+        _ = model.plot_marginal_distributions(X=X)
 
     with pytest.raises(ValueError, match="X should be an 2D array"):
         X = np.array([[[0.1, 0.2, 0.5], [0.2, 0.25, 0.6]]])
         _ = model.plot_scatter_matrix(X=X)
     with pytest.raises(ValueError, match="X should have"):
         X = np.array([[0.1, 0.2, 0.5], [0.2, 0.25, 0.6], [0.3, 0.35, 1.7]])
-        _ = model.plot_univariate_distributions(X=X)
+        _ = model.plot_marginal_distributions(X=X)
 
 
 #

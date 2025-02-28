@@ -30,8 +30,9 @@ from collections import deque
 
 import numpy as np
 import numpy.typing as npt
-import plotly.figure_factory as ff
+import plotly.express as px
 import plotly.graph_objects as go
+import scipy.stats as st
 import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.parallel as skp
@@ -129,6 +130,10 @@ class VineCopula(skb.BaseEstimator):
 
     dependence_method : DependenceMethod, default=DependenceMethod.KENDALL_TAU
         The dependence measure used to compute edge weights for the MST.
+        Possible values are:
+            - KENDALL_TAU
+            - MUTUAL_INFORMATION
+            - WASSERSTEIN_DISTANCE
 
     aic : bool, default=True
         If True, use AIC for univariate and copula selection; otherwise, use BIC.
@@ -195,7 +200,7 @@ class VineCopula(skb.BaseEstimator):
     >>> fig.show()
     >>>
     >>> # Plots univariate distributions of sampled returns vs historical X
-    >>> fig = vine.plot_univariate_distributions(X=X)
+    >>> fig = vine.plot_marginal_distributions(X=X)
     >>> fig.show()
 
     References
@@ -403,9 +408,9 @@ class VineCopula(skb.BaseEstimator):
     def sample(
         self,
         n_samples: int = 1,
-        random_state: int | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
+        random_state: int | None = None,
     ):
         """Generate random samples from the vine copula.
 
@@ -417,9 +422,6 @@ class VineCopula(skb.BaseEstimator):
         ----------
         n_samples : int, default=1
             Number of samples to generate.
-
-        random_state : int, RandomState instance or None, default=None
-            Controls the randomness of the sample generation.
 
         conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
             A dictionary specifying conditioning information for one or more assets.
@@ -444,6 +446,10 @@ class VineCopula(skb.BaseEstimator):
             assets you condition on are set as central during the vine copula
             construction. This can be specified via the `central_assets` parameter in
             the vine copula instantiation.
+
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the sample generation.
 
         Returns
         -------
@@ -806,6 +812,7 @@ class VineCopula(skb.BaseEstimator):
         lines = []
         if self.fit_marginals:
             lines.append("Root Nodes")
+            lines.append("-" * 10)
             for node, dist in zip(
                 self.trees_[0].nodes, self.marginal_distributions_, strict=True
             ):
@@ -814,6 +821,7 @@ class VineCopula(skb.BaseEstimator):
 
         for tree in self.trees_:
             lines.append(str(tree))
+            lines.append("-" * len(str(tree)))
             for edge in tree.edges:
                 lines.append(str(edge))
             lines.append("")
@@ -833,14 +841,18 @@ class VineCopula(skb.BaseEstimator):
         n_samples: int | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
+        random_state: int | None = None,
+        title: str = "Vine Copula Scatter Matrix",
     ) -> go.Figure:
         """
-        Plot a scatter matrix comparing historical and generated samples.
+        Plot the vine copula scatter matrix by generating samples from the vine copula
+        and comparing it versus the empirical distribution of `X` if provided.
 
         Parameters
         ----------
         X : array-like of shape (n_samples, n_assets), optional
-            Historical data for assets; each column corresponds to an asset.
+            If provided, it is used to plot the empirical scatter matrix for
+            comparison versus the vine copula scatter matrix.
 
         n_samples : int, optional
             Number of samples to generate if historical data is not provided.
@@ -868,6 +880,12 @@ class VineCopula(skb.BaseEstimator):
             assets you condition on are set as central during the vine copula
             construction. This can be specified via the `central_assets` parameter in
             the vine copula instantiation.
+
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the sample generation.
+
+        title : str, default="Vine Copula Scatter Matrix"
+            The title for the plot.
 
         Returns
         -------
@@ -904,7 +922,9 @@ class VineCopula(skb.BaseEstimator):
         if n_samples is None:
             n_samples = 5000 if X is None else X.shape[0]
 
-        sample = self.sample(n_samples=n_samples, conditioning=conditioning)
+        sample = self.sample(
+            n_samples=n_samples, conditioning=conditioning, random_state=random_state
+        )
 
         # noinspection PyTypeChecker
         traces.append(
@@ -923,19 +943,21 @@ class VineCopula(skb.BaseEstimator):
             )
         )
         fig = go.Figure(data=traces)
-        fig.update_layout(title="Scatter Matrix")
+        fig.update_layout(title=title)
         return fig
 
-    def plot_univariate_distributions(
+    def plot_marginal_distributions(
         self,
         X: npt.ArrayLike | None = None,
         n_samples: int | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
         subset: list[int | str] | None = None,
+        random_state: int | None = None,
+        title: str = "Vine Copula Marginal Distributions",
     ) -> go.Figure:
         """
-        Plot overlaid univariate distributions for all assets.
+        Plot overlaid marginal distributions.
 
         Parameters
         ----------
@@ -973,6 +995,12 @@ class VineCopula(skb.BaseEstimator):
             Indices or names of assets to include in the plot. If None, all assets are
             used.
 
+        random_state : int, RandomState instance or None, default=None
+            Controls the randomness of the sample generation.
+
+        title : str, default="Vine Copula Marginal Distributions"
+            The title for the plot.
+
         Returns
         -------
         fig : plotly.graph_objects.Figure
@@ -980,48 +1008,63 @@ class VineCopula(skb.BaseEstimator):
         """
         n_assets = self.n_features_in_
         subset = subset or list(range(n_assets))
+        colors = px.colors.qualitative.Plotly
 
-        # Process Historical data if provided.
+        def _kde_trace(
+            x: np.ndarray, opacity: float, color: str, name: str
+        ) -> go.Scatter:
+            kde = st.gaussian_kde(x)
+            x = np.linspace(min(x), max(x), 500)
+            return go.Scatter(
+                x=x,
+                y=kde(x),
+                mode="lines",
+                name=name,
+                line=dict(color=color),
+                fill="tozeroy",
+                opacity=opacity,
+                visible=True if i == 0 else "legendonly",
+            )
+
+        traces = []
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
                 raise ValueError("X should be a 2D array")
             if X.shape[1] != n_assets:
                 raise ValueError(f"X should have {n_assets} columns")
-
-        # Determine n_samples for Generated data.
+            for i, s in enumerate(subset):
+                traces.append(
+                    _kde_trace(
+                        x=X[:, s],
+                        opacity=0.6,
+                        color=colors[i % len(colors)],
+                        name=f"{self.feature_names_in_[s]} Empirical",
+                    )
+                )
         if n_samples is None:
             n_samples = X.shape[0] if X is not None else 5000
 
-        samples = self.sample(n_samples=n_samples, conditioning=conditioning)
-
-        # Prepare lists to hold data arrays and labels.
-        dist_data = []
-        group_labels = []
-
-        # If Historical data exists, add one distribution per asset.
-        if X is not None:
-            for i in subset:
-                dist_data.append(X[:, i])
-                group_labels.append(f"{self.feature_names_in_[i]} Historical")
-
-        # Add the Generated data for each asset.
-        for i in subset:
-            dist_data.append(samples[:, i])
-            group_labels.append(f"{self.feature_names_in_[i]} Generated")
-
-        # Create the distplot. All distributions will be plotted on the same axes.
-        fig = ff.create_distplot(
-            dist_data, group_labels, show_hist=False, show_curve=True, show_rug=True
+        samples = self.sample(
+            n_samples=n_samples, conditioning=conditioning, random_state=random_state
         )
-
-        # Update layout.
+        for i, s in enumerate(subset):
+            traces.append(
+                _kde_trace(
+                    x=samples[:, s],
+                    opacity=1.0,
+                    color=colors[i % len(colors)],
+                    name=f"{self.feature_names_in_[s]} Generated",
+                )
+            )
+        fig = go.Figure(data=traces)
         fig.update_layout(
-            title={
-                "text": "Univariate Distributions (All Assets)",
-                "x": 0.5,
-                "xanchor": "center",
-            },
+            title=title,
+            xaxis_title="x",
+            yaxis_title="Probability Density",
+        )
+        fig.update_xaxes(
+            tickformat=".0%",
         )
         return fig
 
