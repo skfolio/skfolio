@@ -233,10 +233,14 @@ class FileNameNumberSortKey(FileNameSortKey):
         The source directory.
     """
 
-    def __call__(self, filename):
+    def __call__(self, filename) -> float:
         # filename="plot_10_tracking_error.py"
         return float(filename.split("_")[1])
 
+
+def custom_section_order(section_name) -> float:
+    # section_name = "..\\examples\\10_data_preparation"
+    return float(section_name.split("_")[0].split("\\")[-1])
 
 sphinx_gallery_conf = {
     "doc_module": "skfolio",
@@ -247,6 +251,7 @@ sphinx_gallery_conf = {
     },
     "examples_dirs": ["../examples"],
     "gallery_dirs": ["auto_examples"],
+    "subsection_order": custom_section_order,
     "within_subsection_order": FileNameNumberSortKey,
     "image_scrapers": image_scrapers,
     # avoid generating too many cross links
