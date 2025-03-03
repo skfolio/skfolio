@@ -152,7 +152,6 @@ This is often used for factor stress test.
 
 .. code-block:: python
 
-    import numpy as np
     from skfolio.datasets import load_sp500_dataset, load_factors_dataset
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
@@ -190,7 +189,7 @@ This is often used for factor stress test.
                 n_jobs=-1,
             ),
             n_samples=5000,
-            sample_args=dict(conditioning_samples={"QUAL": -0.2}),
+            sample_args=dict(conditioning={"QUAL": -0.2}),
         )
     )
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
@@ -199,7 +198,7 @@ This is often used for factor stress test.
    
     # Stress Test the Portfolio
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
-        conditioning_samples={"QUAL": -0.5}
+        conditioning={"QUAL": -0.5}
     ))
     factor_model.fit(X,y)
     stressed_X = factor_model.prior_model_.returns
