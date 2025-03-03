@@ -1,8 +1,8 @@
 .. _synthetic_returns_examples:
 
-Synthetic Returns & Stress Test
+Synthetic Data & Stress Test
 -------------------------------
 
-Examples about :class:`~skfolio.prior.SyntheticReturns` and
+Examples about :class:`~skfolio.prior.SyntheticData` and
 :class:`~skfolio.distribution.VineCopula`.
 

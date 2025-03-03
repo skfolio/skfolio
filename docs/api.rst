@@ -278,7 +278,7 @@ Classes
     prior.EmpiricalPrior
     prior.BlackLitterman
     prior.FactorModel
-    prior.SyntheticReturns
+    prior.SyntheticData
 
 Loading Matrix Classes for Factor Models
 ----------------------------------------

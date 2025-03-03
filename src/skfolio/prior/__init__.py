@@ -8,7 +8,7 @@ from skfolio.prior._factor_model import (
     FactorModel,
     LoadingMatrixRegression,
 )
-from skfolio.prior._synthetic_returns import SyntheticReturns
+from skfolio.prior._synthetic_data import SyntheticData
 
 __all__ = [
     "BaseLoadingMatrix",
@@ -18,5 +18,5 @@ __all__ = [
     "FactorModel",
     "LoadingMatrixRegression",
     "PriorModel",
-    "SyntheticReturns",
+    "SyntheticData",
 ]

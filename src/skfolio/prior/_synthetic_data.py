@@ -1,4 +1,4 @@
-"""Synthetic Returns Prior Model estimator."""
+"""Synthetic Data Prior Model estimator."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -18,10 +18,10 @@ from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.utils.tools import check_estimator
 
 
-class SyntheticReturns(BasePrior):
-    """Synthetic Returns Estimator.
+class SyntheticData(BasePrior):
+    """Synthetic Data Estimator.
 
-    The Synthetic Returns model estimates a :class:`~skfolio.prior.PriorModel` by
+    The Synthetic Data model estimates a :class:`~skfolio.prior.PriorModel` by
     fitting a `distribution_estimator` and sampling new returns data from it.
 
     The default `distribution_estimator` is a Regular Vine Copula model. Other common
@@ -68,7 +68,7 @@ class SyntheticReturns(BasePrior):
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import VineCopula
     >>> from skfolio.optimization import MeanRisk
-    >>> from skfolio.prior import FactorModel, SyntheticReturns
+    >>> from skfolio.prior import FactorModel, SyntheticData
     >>> from skfolio import RiskMeasure
     >>>
     >>> # Load historical prices and convert them to returns
@@ -76,15 +76,15 @@ class SyntheticReturns(BasePrior):
     >>> factors = load_factors_dataset()
     >>> X, y = prices_to_returns(prices, factors)
     >>>
-    >>> # Instanciate the SyntheticReturns model and fit it
-    >>> model = SyntheticReturns()
+    >>> # Instanciate the SyntheticData model and fit it
+    >>> model = SyntheticData()
     >>> model.fit(X)
     >>> print(model.prior_model_)
     >>>
     >>> # Minimum CVaR optimization on synthetic returns
     >>> model = MeanRisk(
     ...    risk_measure=RiskMeasure.CVAR,
-    ...    prior_estimator=SyntheticReturns(
+    ...    prior_estimator=SyntheticData(
     ...        distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
     ...        n_samples=2000,
     ...    )
@@ -94,7 +94,7 @@ class SyntheticReturns(BasePrior):
     >>>
     >>> # Minimum CVaR optimization on Stressed Factors
     >>> factor_model = FactorModel(
-    ...    factor_prior_estimator=SyntheticReturns(
+    ...    factor_prior_estimator=SyntheticData(
     ...        distribution_estimator=VineCopula(
     ...            central_assets=["QUAL"],
     ...            log_transform=True,
@@ -140,8 +140,8 @@ class SyntheticReturns(BasePrior):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "SyntheticReturns":
-        """Fit the Synthetic Returns estimator.
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "SyntheticData":
+        """Fit the Synthetic Data estimator.
 
         Parameters
         ----------
@@ -160,7 +160,7 @@ class SyntheticReturns(BasePrior):
 
         Returns
         -------
-        self : SyntheticReturns
+        self : SyntheticData
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -185,20 +185,20 @@ class SyntheticReturns(BasePrior):
         # sample from the distribution estimator
         sample_args = self.sample_args if self.sample_args is not None else {}
         # noinspection PyUnresolvedReferences
-        synthetic_returns = self.distribution_estimator_.sample(
+        synthetic_data = self.distribution_estimator_.sample(
             n_samples=self.n_samples, **sample_args
         )
 
         # When performing conditional sampling, the conditioning samples are often
         # constant. To avoid null variance, we add a small white noise.
-        constant_returns = np.var(synthetic_returns, axis=0) < 1e-14
+        constant_returns = np.var(synthetic_data, axis=0) < 1e-14
         if np.any(constant_returns):
-            noise = 1e-6 * np.random.randn(len(synthetic_returns), 1)
-            synthetic_returns[:, constant_returns] += noise
+            noise = 1e-6 * np.random.randn(len(synthetic_data), 1)
+            synthetic_data[:, constant_returns] += noise
 
         # Fit empirical posterior estimator
         posterior_estimator = EmpiricalPrior()
-        posterior_estimator.fit(synthetic_returns)
+        posterior_estimator.fit(synthetic_data)
         self.prior_model_ = posterior_estimator.prior_model_
 
         return self

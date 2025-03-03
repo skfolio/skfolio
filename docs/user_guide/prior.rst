@@ -131,11 +131,11 @@ which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asse
 separately.
 
 
-Synthetic Returns
-*****************
+Synthetic Data
+**************
 
-The :class:`SyntheticReturns` model estimates the :class:`PriorModel` by fitting a 
-`distribution_estimator` and sampling new returns data from it.
+The :class:`SyntheticData` model estimates the :class:`PriorModel` by fitting a
+`distribution_estimator` and sampling new data from it.
 
 The default `distribution_estimator` is a Regular :class:`VineCopula` estimator.
 Other common choices are Generative Adversarial Networks (GANs) or Variational Autoencoders (VAEs).
@@ -144,7 +144,7 @@ It is particularly useful when the historical distribution tail dependencies are
 sparse and need extrapolation for tail optimizations or when optimizing under
 conditional or stressed scenarios.
 
-By combining :class:`SyntheticReturns` with :class:`FactorModel` you can generate
+By combining :class:`SyntheticData` with :class:`FactorModel` you can generate
 synthetic data of your factors then project them to your assets.
 This is often used for factor stress test.
 
@@ -157,7 +157,7 @@ This is often used for factor stress test.
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import FactorModel, SyntheticReturns
+    from skfolio.prior import FactorModel, SyntheticData
     from skfolio import RiskMeasure
    
     # Load historical prices and convert them to returns
@@ -165,15 +165,15 @@ This is often used for factor stress test.
     factors = load_factors_dataset()
     X, y = prices_to_returns(prices, factors)
    
-    # Instanciate the SyntheticReturns model and fit it
-    model = SyntheticReturns()
+    # Instanciate the SyntheticData model and fit it
+    model = SyntheticData()
     model.fit(X)
     print(model.prior_model_)
 
     # Minimum CVaR optimization on synthetic returns
     model = MeanRisk(
         risk_measure=RiskMeasure.CVAR,
-        prior_estimator=SyntheticReturns(
+        prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
             n_samples=2000,
         )
@@ -183,7 +183,7 @@ This is often used for factor stress test.
    
     # Minimum CVaR optimization on Stressed Factors
     factor_model = FactorModel(
-        factor_prior_estimator=SyntheticReturns(
+        factor_prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(
                 central_assets=["QUAL"],
                 log_transform=True,

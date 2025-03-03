@@ -4,11 +4,11 @@ from skfolio import RiskMeasure
 from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import MeanRisk
-from skfolio.prior import FactorModel, SyntheticReturns
+from skfolio.prior import FactorModel, SyntheticData
 
 
 def test_synthetic_returns(X):
-    model = SyntheticReturns()
+    model = SyntheticData()
     model.fit(X)
     res = model.prior_model_
     assert hash(res)
@@ -20,7 +20,7 @@ def test_synthetic_returns(X):
 
 def test_factor_synthetic_returns(X, y):
     model = FactorModel(
-        factor_prior_estimator=SyntheticReturns(),
+        factor_prior_estimator=SyntheticData(),
     )
     model.fit(X, y)
     res = model.prior_model_
@@ -33,7 +33,7 @@ def test_factor_synthetic_returns(X, y):
 
 def test_factor_stress_test(X, y):
     model = FactorModel(
-        factor_prior_estimator=SyntheticReturns(
+        factor_prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(
                 central_assets=["QUAL"],
                 log_transform=True,
@@ -66,7 +66,7 @@ def test_factor_stress_test(X, y):
 def test_optimization_synthetic_returns(X):
     model = MeanRisk(
         risk_measure=RiskMeasure.CVAR,
-        prior_estimator=SyntheticReturns(
+        prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
             n_samples=2000,
         ),

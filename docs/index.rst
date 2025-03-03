@@ -126,7 +126,7 @@ Available models
     * Empirical
     * Black & Litterman
     * Factor Model
-    * Synthetic Returns (Stress Test, Factor Stress Test)
+    * Synthetic Data (Stress Test, Factor Stress Test)
 
 * Uncertainty Set Estimator:
     * On Expected Returns:

@@ -1,1 +1,1 @@
-"""Synthetic Returns module."""
+"""Synthetic Data module."""
