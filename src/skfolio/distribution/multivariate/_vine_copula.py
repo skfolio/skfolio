@@ -632,6 +632,13 @@ class VineCopula(skb.BaseEstimator):
         samples = np.stack([node.u for node in self.trees_[0].nodes]).T
         self.clear_cache()
 
+        # Avoid Inf
+        samples = np.clip(
+            samples,
+            a_min=_UNIFORM_SAMPLE_EPSILON,
+            a_max=1 - _UNIFORM_SAMPLE_EPSILON,
+        )
+
         # Transform samples back to the original scale using inverse CDF
         # (if marginals were fitted).
         if self.fit_marginals:
@@ -644,7 +651,18 @@ class VineCopula(skb.BaseEstimator):
 
         # Reverse the log-return transformation if log_transform is True.
         if self.log_transform:
-            samples = np.exp(samples) - 1
+            # A known effect when sampling with log transform is that large sampling
+            # log returns explode after applying the reverse log transform into
+            # unrealistic simple returns.
+            # A common approach is to apply Box-Cox transform above some threshold.
+            # For financial returns, log returns above 200% are transformed linearly
+            # instead of exponentially.
+            box_cox_threshold = np.log(3)
+            samples = np.where(
+                samples <= box_cox_threshold,
+                np.exp(samples) - 1,
+                np.exp(box_cox_threshold) + (samples - box_cox_threshold) - 1,
+            )
 
         # To avoid Inf values and numerical instability, conditional values converted to
         # uniforms are clipped to [1e-14 , 1-1e-14]. This means that if the conditional
@@ -894,6 +912,30 @@ class VineCopula(skb.BaseEstimator):
         """
         n_assets = self.n_features_in_
         traces = []
+
+        if n_samples is None:
+            n_samples = 5000 if X is None else X.shape[0]
+
+        sample = self.sample(
+            n_samples=n_samples, conditioning=conditioning, random_state=random_state
+        )
+
+        # noinspection PyTypeChecker
+        traces.append(
+            go.Splom(
+                dimensions=[
+                    {"label": self.feature_names_in_[i], "values": sample[:, i]}
+                    for i in range(n_assets)
+                ],
+                showupperhalf=False,
+                diagonal_visible=False,
+                marker=dict(
+                    size=5, color="rgb(221,132,82)", line=dict(width=0.2, color="white")
+                ),
+                name="Generated",
+                showlegend=True,
+            )
+        )
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
@@ -919,29 +961,6 @@ class VineCopula(skb.BaseEstimator):
                 )
             )
 
-        if n_samples is None:
-            n_samples = 5000 if X is None else X.shape[0]
-
-        sample = self.sample(
-            n_samples=n_samples, conditioning=conditioning, random_state=random_state
-        )
-
-        # noinspection PyTypeChecker
-        traces.append(
-            go.Splom(
-                dimensions=[
-                    {"label": self.feature_names_in_[i], "values": sample[:, i]}
-                    for i in range(n_assets)
-                ],
-                showupperhalf=False,
-                diagonal_visible=False,
-                marker=dict(
-                    size=5, color="rgb(221,132,82)", line=dict(width=0.2, color="white")
-                ),
-                name="Generated",
-                showlegend=True,
-            )
-        )
         fig = go.Figure(data=traces)
         fig.update_layout(title=title)
         return fig
