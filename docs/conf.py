@@ -240,7 +240,9 @@ class FileNameNumberSortKey(FileNameSortKey):
 
 def custom_section_order(section_name) -> float:
     # section_name = "..\\examples\\10_data_preparation"
-    return float(section_name.split("_")[0].split("\\")[-1])
+    return int(
+        Path(section_name).name.partition("_")[0]
+    )
 
 sphinx_gallery_conf = {
     "doc_module": "skfolio",
