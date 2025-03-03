@@ -242,8 +242,7 @@ vine.display_vine()
 # %%
 # As expected, we notice that the variable 0 (AMD) is the central node in Tree 0 and
 # the common conditioning variable in subsequent trees.
-conditioning = {"AMD": -0.2}
-cond_samples = vine.sample(n_samples=1000, conditioning=conditioning)
+cond_samples = vine.sample(n_samples=1000, conditioning={"AMD": -0.2})
 print(cond_samples.shape)
 
 # %%
@@ -258,9 +257,9 @@ print(cond_samples.shape)
 # * JPM below -5%
 vine = VineCopula(n_jobs=-1, log_transform=True, central_assets=["HD", "JPM"])
 vine.fit(X)
-cond_samples = vine.sample(
-    n_samples=1000, conditioning={"HD": (-0.15, -0.10), "JPM": (None, -0.05)}
-)
+
+conditioning = {"HD": (-0.15, -0.10), "JPM": (None, -0.05)}
+cond_samples = vine.sample(n_samples=1000, conditioning=conditioning)
 print(cond_samples.shape)
 
 # %%
