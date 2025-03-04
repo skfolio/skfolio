@@ -45,6 +45,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio import measures as mt
@@ -1028,6 +1029,37 @@ class BasePortfolio:
             xaxis_title="Observations",
             yaxis_title="Returns",
             showlegend=False,
+        )
+        return fig
+
+    def plot_returns_distribution(self) -> go.Figure:
+        """Plot the Portfolio returns distribution using Gaussian KDE.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object
+        """
+        x = np.linspace(min(self.returns), max(self.returns), 500)
+        y = st.gaussian_kde(self.returns)(x)
+
+        fig = go.Figure(
+            go.Scatter(
+                x=x,
+                y=y,
+                mode="lines",
+                fill="tozeroy",
+            )
+        )
+
+        fig.update_layout(
+            title="Returns Distribution",
+            xaxis_title="Returns",
+            yaxis_title="Probability Density",
+            showlegend=False,
+        )
+        fig.update_xaxes(
+            tickformat=".0%",
         )
         return fig
 

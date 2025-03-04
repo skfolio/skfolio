@@ -229,6 +229,7 @@ def test_portfolio_methods(X, weights):
     assert np.array_equal(names_1, names_2)
     portfolio.clear()
     assert portfolio.plot_returns()
+    assert portfolio.plot_returns_distribution()
     assert portfolio.plot_cumulative_returns()
     assert portfolio.plot_rolling_measure(measure=RatioMeasure.SHARPE_RATIO, window=20)
     assert isinstance(portfolio.composition, pd.DataFrame)
