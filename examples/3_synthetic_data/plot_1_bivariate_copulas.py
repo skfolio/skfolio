@@ -154,11 +154,28 @@ print(copula.fitted_repr)
 print(f"AIC: {copula.aic(X):,.2f}")
 
 # %%
-# Let's plot the 2D PDF of the copula:
+# Let's plot the 2D probability density function (PDF) of the Student t copula.
+# The x-axis and y-axis represent the uniform variates (u and v) obtained by applying
+# the marginal cumulative distribution functions (CDFs) to the returns of BAC and JPM,
+# respectively.
 fig = copula.plot_pdf_2d()
 fig.update_layout(height=700)
 
 # %%
+# Each contour line connects points of equal copula density, effectively delineating
+# regions with the same level of joint dependence between the two assets. Areas where
+# the contours are closely spaced indicate a rapid change in density, reflecting regions
+# with higher concentrations of joint probability.
+#
+# The Student t copula captures tail dependence: extreme positive or negative returns
+# in one asset tend to occur simultaneously with extreme returns in the other. This is
+# visualized as pronounced "bulges" in the tail regions of the contour plot.
+#
+# Note: The copula density is defined on the scale of the transformed uniform marginals.
+# To recover the joint density of the original asset returns, the copula density must
+# be multiplied by the marginal probability density functions, which take on lower
+# values in the tails.
+#
 # Now, let's plot the 3D PDF:
 fig = copula.plot_pdf_3d()
 fig.update_layout(scene_camera=dict(eye=dict(x=-1.2, y=1.4, z=0.8)))
@@ -186,7 +203,11 @@ fig
 # (or low) values of :math:`X` and :math:`Y` occur together more frequently than if
 # the variables were independent.
 #
-# Let's print the Student's t Copula tail dependence:
+# Let's print the Student's t Copula tail dependence. The fitted Student's Copula
+# The model indicates a tail dependence coefficient of approximately 51%, suggesting
+# a relatively high likelihood that extreme returns (both negative and positive) occur
+# simultaneously for the assets. Since the Student's t copula is symmetric, the tail
+# dependence is the same for both the lower and upper tails.
 print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
 print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
 

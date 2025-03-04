@@ -1,4 +1,4 @@
-.. _synthetic_returns_examples:
+.. _synthetic_data_examples:
 
 Synthetic Data & Stress Test
 -------------------------------

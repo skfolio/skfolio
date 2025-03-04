@@ -100,6 +100,11 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
     concentration : ndarray of shape (n_quantiles,)
         An array of empirical tail concentration values for the given quantiles.
 
+    References
+    ----------
+    .. [1] "Quantitative Risk Management: Concepts, Techniques, and Tools",
+        McNeil, Frey, Embrechts (2005)
+
     Raises
     ------
     ValueError

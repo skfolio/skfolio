@@ -387,6 +387,11 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         concentration : ndarray of shape (n_quantiles,)
            The computed tail concentration values corresponding to each quantile.
 
+        References
+        ----------
+        .. [1] "Quantitative Risk Management: Concepts, Techniques, and Tools",
+            McNeil, Frey, Embrechts (2005)
+
         Raises
         ------
         ValueError
@@ -436,6 +441,11 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         -------
         fig : go.Figure
             A Plotly figure object containing the tail concentration curve.
+
+        References
+        ----------
+        .. [1] "Quantitative Risk Management: Concepts, Techniques, and Tools",
+            McNeil, Frey, Embrechts (2005)
         """
         if title is None:
             title = f"Tail Concentration of Bivariate {self.fitted_repr}"

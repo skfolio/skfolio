@@ -5,7 +5,7 @@ Vine Copula
 
 This tutorial presents the :class:`~skfolio.distribution.VineCopula` estimator.
 An introduction to Bivariate Copulas can be found in
-:ref:`this previous tutorial <sphx_glr_auto_examples_3_synthetic_returns_plot_1_bivariate_copulas.py>`.
+:ref:`this previous tutorial <sphx_glr_auto_examples_3_synthetic_data_plot_1_bivariate_copulas.py>`.
 
 Introduction
 ============
@@ -215,12 +215,17 @@ print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
 print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
 
 # %%
-# We notice that the model properly captured the fat tail dependencies.
-
-# %%
+# The model indicates a tail dependence coefficient of approximately 11%, suggesting
+# a positive likelihood that extreme returns (both negative and positive) occur
+# simultaneously for the assets.
+#
 # Let's plot the tail concentration of the copula model versus the historical data:
 U = compute_pseudo_observations(X[["AMD", "HD"]])
 copula.plot_tail_concentration(U)
+
+# %%
+# We notice that the model properly captured the fat tail dependencies.
+
 
 # %%
 # Conditional Sampling & Stress Testing
