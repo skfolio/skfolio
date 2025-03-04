@@ -194,7 +194,7 @@ print(samples.shape)
 # %%
 # Let's plot the Scatter Plots of the generated returns from the Vine model and compare
 # them with the historical returns `X`.
-fig = vine.plot_scatter_matrix(X=X, random_state=2)
+fig = vine.plot_scatter_matrix(X=X, random_state=1)
 fig.update_layout(height=600)
 show(fig)
 

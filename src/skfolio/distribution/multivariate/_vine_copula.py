@@ -856,7 +856,6 @@ class VineCopula(skb.BaseEstimator):
     def plot_scatter_matrix(
         self,
         X: npt.ArrayLike | None = None,
-        n_samples: int | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
         random_state: int | None = None,
@@ -871,9 +870,6 @@ class VineCopula(skb.BaseEstimator):
         X : array-like of shape (n_samples, n_assets), optional
             If provided, it is used to plot the empirical scatter matrix for
             comparison versus the vine copula scatter matrix.
-
-        n_samples : int, optional
-            Number of samples to generate if historical data is not provided.
 
         conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
             A dictionary specifying conditioning information for one or more assets.
@@ -910,41 +906,25 @@ class VineCopula(skb.BaseEstimator):
         fig : plotly.graph_objects.Figure
             A figure object containing the scatter matrix.
         """
-        n_assets = self.n_features_in_
         traces = []
-
-        if n_samples is None:
-            n_samples = 5000 if X is None else X.shape[0]
-
-        sample = self.sample(
-            n_samples=n_samples, conditioning=conditioning, random_state=random_state
-        )
-
-        # noinspection PyTypeChecker
-        traces.append(
-            go.Splom(
-                dimensions=[
-                    {"label": self.feature_names_in_[i], "values": sample[:, i]}
-                    for i in range(n_assets)
-                ],
-                showupperhalf=False,
-                diagonal_visible=False,
-                marker=dict(
-                    size=5,
-                    color="rgb(221,132,82)",
-                    line=dict(width=0.2, color="white"),
-                    opacity=0.7,
-                ),
-                name="Generated",
-                showlegend=True,
-            )
-        )
+        n_assets = self.n_features_in_
+        n_samples = 1000  # More sample will make the scatter plots unreadable
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
                 raise ValueError("X should be an 2D array")
             if X.shape[1] != n_assets:
                 raise ValueError(f"X should have {n_assets} columns")
+            if X.shape[0] > n_samples:
+                # We subsample for improved graph readability
+                rng = sku.check_random_state(random_state)
+                indices = rng.choice(
+                    np.arange(X.shape[0]), size=n_samples, replace=False
+                )
+                X = X[indices, :]
+            else:
+                # We want same proportion as X to have a balanced graph
+                n_samples = X.shape[0]
             # noinspection PyTypeChecker
             traces.append(
                 go.Splom(
@@ -965,6 +945,34 @@ class VineCopula(skb.BaseEstimator):
                 )
             )
 
+        sample = self.sample(
+            n_samples=n_samples, conditioning=conditioning, random_state=random_state
+        )
+
+        # noinspection PyTypeChecker
+        traces.append(
+            go.Splom(
+                dimensions=[
+                    {"label": self.feature_names_in_[i], "values": sample[:, i]}
+                    for i in range(n_assets)
+                ],
+                showupperhalf=False,
+                diagonal_visible=False,
+                marker=dict(
+                    size=5,
+                    color="rgb(221,132,82)",
+                    line=dict(width=0.2, color="white"),
+                    opacity=0.6,
+                ),
+                name="Generated",
+                showlegend=True,
+            )
+        )
+
+        if conditioning is not None:
+            # Improve readability
+            traces = traces[::-1]
+
         fig = go.Figure(data=traces)
         fig.update_layout(title=title)
         return fig
@@ -972,7 +980,6 @@ class VineCopula(skb.BaseEstimator):
     def plot_marginal_distributions(
         self,
         X: npt.ArrayLike | None = None,
-        n_samples: int | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
         subset: list[int | str] | None = None,
@@ -986,9 +993,6 @@ class VineCopula(skb.BaseEstimator):
         ----------
         X : array-like of shape (n_samples, n_assets), optional
             Historical data where each column corresponds to an asset.
-
-        n_samples : int, optional
-            Number of samples to generate if historical data is not provided.
 
         conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
             A dictionary specifying conditioning information for one or more assets.
@@ -1032,45 +1036,29 @@ class VineCopula(skb.BaseEstimator):
         n_assets = self.n_features_in_
         subset = subset or list(range(n_assets))
         colors = px.colors.qualitative.Plotly
-
-        def _kde_trace(
-            x: np.ndarray, opacity: float, color: str, name: str
-        ) -> go.Scatter:
-            kde = st.gaussian_kde(x)
-            x = np.linspace(min(x), max(x), 500)
-            return go.Scatter(
-                x=x,
-                y=kde(x),
-                mode="lines",
-                name=name,
-                line=dict(color=color),
-                fill="tozeroy",
-                opacity=opacity,
-                visible=True if i == 0 else "legendonly",
-            )
-
-        traces = []
+        n_samples = 5000  # Good ratio for accuracy/speed
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
-                raise ValueError("X should be a 2D array")
+                raise ValueError("X should be an 2D array")
             if X.shape[1] != n_assets:
                 raise ValueError(f"X should have {n_assets} columns")
-            for i, s in enumerate(subset):
-                traces.append(
-                    _kde_trace(
-                        x=X[:, s],
-                        opacity=0.6,
-                        color=colors[i % len(colors)],
-                        name=f"{self.feature_names_in_[s]} Empirical",
-                    )
+            if X.shape[0] > n_samples:
+                # We subsample for improved graph readability
+                rng = sku.check_random_state(random_state)
+                indices = rng.choice(
+                    np.arange(X.shape[0]), size=n_samples, replace=False
                 )
-        if n_samples is None:
-            n_samples = X.shape[0] if X is not None else 5000
+                X = X[indices, :]
+            else:
+                # We want same proportion as X to have a balanced graph
+                n_samples = X.shape[0]
 
         samples = self.sample(
             n_samples=n_samples, conditioning=conditioning, random_state=random_state
         )
+
+        traces = []
         for i, s in enumerate(subset):
             traces.append(
                 _kde_trace(
@@ -1078,8 +1066,21 @@ class VineCopula(skb.BaseEstimator):
                     opacity=1.0,
                     color=colors[i % len(colors)],
                     name=f"{self.feature_names_in_[s]} Generated",
+                    visible=True if i == 0 else "legendonly",
                 )
             )
+
+        if X is not None:
+            for i, s in enumerate(subset):
+                traces.append(
+                    _kde_trace(
+                        x=X[:, s],
+                        opacity=0.6,
+                        color=colors[i % len(colors)],
+                        name=f"{self.feature_names_in_[s]} Empirical",
+                        visible=True if i == 0 else "legendonly",
+                    )
+                )
         fig = go.Figure(data=traces)
         fig.update_layout(
             title=title,
@@ -1121,3 +1122,21 @@ def _is_left(
         return True
     # noinspection PyTypeChecker
     return conditioning_counts[v1] <= conditioning_counts[v2]
+
+
+def _kde_trace(
+    x: np.ndarray, opacity: float, color: str, name: str, visible: bool
+) -> go.Scatter:
+    """Gaussian KDE line plot."""
+    kde = st.gaussian_kde(x)
+    x = np.linspace(min(x), max(x), 500)
+    return go.Scatter(
+        x=x,
+        y=kde(x),
+        mode="lines",
+        name=name,
+        line=dict(color=color),
+        fill="tozeroy",
+        opacity=opacity,
+        visible=visible,
+    )
