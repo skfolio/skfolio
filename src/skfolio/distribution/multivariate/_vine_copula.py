@@ -930,7 +930,10 @@ class VineCopula(skb.BaseEstimator):
                 showupperhalf=False,
                 diagonal_visible=False,
                 marker=dict(
-                    size=5, color="rgb(221,132,82)", line=dict(width=0.2, color="white")
+                    size=5,
+                    color="rgb(221,132,82)",
+                    line=dict(width=0.2, color="white"),
+                    opacity=0.7,
                 ),
                 name="Generated",
                 showlegend=True,
@@ -955,6 +958,7 @@ class VineCopula(skb.BaseEstimator):
                         size=5,
                         color="rgb(85,168,104)",
                         line=dict(width=0.2, color="white"),
+                        opacity=0.6,
                     ),
                     name="Historical",
                     showlegend=True,
