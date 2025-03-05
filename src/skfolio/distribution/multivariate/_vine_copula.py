@@ -97,7 +97,7 @@ class VineCopula(skb.BaseEstimator):
         Candidate bivariate copula estimators. If None, defaults to
         `[GaussianCopula(), StudentTCopula(), ClaytonCopula(), GumbelCopula(), JoeCopula()]`.
 
-    max_depth : int, default=5
+    max_depth : int, default=4
         Maximum vine tree depth (truncated level). Must be greater than 1.
 
     log_transform : bool, default=False
@@ -232,7 +232,7 @@ class VineCopula(skb.BaseEstimator):
         fit_marginals: bool = True,
         marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
-        max_depth: int = 5,
+        max_depth: int = 4,
         log_transform: bool = False,
         central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,

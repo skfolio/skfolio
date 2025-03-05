@@ -665,7 +665,6 @@ def test_vine_copula(X, expected_marginals, expected_trees):
     _ = model.plot_scatter_matrix(X)
     with pytest.warns(UserWarning, match="^When performing conditional sampling"):
         _ = model.plot_scatter_matrix(
-            n_samples=1000,
             conditioning={
                 0: -0.4,
                 1: (None, -0.5),
@@ -1316,6 +1315,7 @@ def test_vine_conditional_sample(X, conditioning, log_transform, expected):
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula(), ClaytonCopula()],
         log_transform=log_transform,
+        max_depth=5,
     )
     model.fit(X)
     sample = model.sample(n_samples=3, random_state=42, conditioning=conditioning)
