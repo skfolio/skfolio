@@ -78,3 +78,11 @@ def test_plot_pdf(gaussian_model):
     # Verify that at least one trace is present and the title is set correctly.
     assert len(fig.data) >= 1
     assert "Gaussian PDF" in fig.layout.title.text
+
+
+def test_qq_plot(gaussian_model):
+    samples = gaussian_model.sample(n_samples=20, random_state=123)
+    fig = gaussian_model.qq_plot(samples, title="Gaussian QQ")
+    # Verify that at least one trace is present and the title is set correctly.
+    assert len(fig.data) >= 1
+    assert "Gaussian QQ" in fig.layout.title.text

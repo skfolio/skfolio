@@ -81,7 +81,6 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             raise ValueError(
                 "X should contain a single column for Univariate Distribution"
             )
-
         return X
 
     def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
@@ -294,12 +293,11 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
 
         traces = []
         if X is not None:
-            X = np.asarray(X)
-            if X.ndim != 2:
-                raise ValueError("X should be a 2D array")
-            if X.shape[1] != 1:
-                raise ValueError("X should have 1 columns")
-
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message="^X has feature names", category=UserWarning
+                )
+                X = self._validate_X(X, reset=False)
             kde = st.gaussian_kde(X[:, 0])
             y_kde = kde(x)
             traces.append(
@@ -335,5 +333,66 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         )
         fig.update_xaxes(
             tickformat=".0%",
+        )
+        return fig
+
+    def qq_plot(self, X: npt.ArrayLike, title: str | None = None) -> go.Figure:
+        """Plot the empirical quantiles of the sample X versus the quantiles of the
+        fitted model.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, 1), optional
+            Used to plot the empirical quantiles for comparison versus the model
+            quantiles.
+
+        title : str, optional
+           The title for the plot. If not provided, a default title based on the fitted
+           model's representation is used.
+
+        Returns
+        -------
+        fig : go.Figure
+           A Plotly figure object containing the PDF plot.
+        """
+        skv.check_is_fitted(self)
+        if title is None:
+            title = f"Q-Q Plot of {self.fitted_repr} vs Sample Data"
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="^X has feature names", category=UserWarning
+            )
+            X = self._validate_X(X, reset=False)
+
+        X_sorted = np.sort(X[:, 0])
+        n = len(X)
+
+        # Compute theoretical quantiles from the model
+        theoretical_quantiles = self.ppf((np.arange(1, n + 1) - 0.5) / n)
+
+        # Create the Q-Q plot using Plotly
+        fig = go.Figure(
+            go.Scatter(
+                x=theoretical_quantiles,
+                y=X_sorted,
+                mode="markers",
+            )
+        )
+        # Add a reference line (45° line)
+        min_val = min(float(theoretical_quantiles[0]), float(X_sorted[0]))
+        max_val = max(float(theoretical_quantiles[-1]), float(X_sorted[-1]))
+        fig.add_trace(
+            go.Scatter(
+                x=[min_val, max_val],
+                y=[min_val, max_val],
+                mode="lines",
+            )
+        )
+        fig.update_layout(
+            title=title,
+            xaxis_title="Theoretical Quantiles",
+            yaxis_title="Sample Quantiles",
+            showlegend=False,
         )
         return fig

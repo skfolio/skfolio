@@ -96,7 +96,7 @@ class JohnsonSU(BaseUnivariateDist):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        return f"{self.__class__.__name__}({self.a_:0.3g}, {self.b_:0.3g}, {self.loc_:0.3g}, {self.scale_:0.3g})"
+        return f"{self.__class__.__name__}({self.a_:0.2g}, {self.b_:0.2g}, {self.loc_:0.2g}, {self.scale_:0.2g})"
 
     def fit(self, X: npt.ArrayLike, y=None) -> "JohnsonSU":
         """Fit the univariate Johnson SU distribution model.

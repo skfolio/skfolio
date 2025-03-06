@@ -79,3 +79,14 @@ def test_plot_pdf(dummy_model):
     assert len(fig.data) >= 1
     # Check that layout title matches
     assert "Test PDF" in fig.layout.title.text
+
+
+def test_qq_plot(dummy_model):
+    """Test that plot_pdf_2d returns a Plotly Figure with expected data."""
+    fig = dummy_model.qq_plot(
+        X=np.array([1, 2, 3, 4]).reshape(-1, 1), title="Test Q-Q Plot"
+    )
+    # Check that figure has at least one trace
+    assert len(fig.data) >= 1
+    # Check that layout title matches
+    assert "Test Q-Q Plot" in fig.layout.title.text

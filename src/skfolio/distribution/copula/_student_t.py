@@ -15,11 +15,11 @@ import sklearn.utils.validation as skv
 from skfolio.distribution.copula._base import _RHO_BOUNDS, BaseBivariateCopula
 from skfolio.distribution.copula._utils import _apply_margin_swap
 
-# Student's t copula with dof less than 1.0 is so extremely heavy-tailed that even the
+# Student's t copula with dof less than 2.0 is so extremely heavy-tailed that even the
 # mean (and many moments) of the distribution do not exist. So Impractical in practice,
-# and dof above 50 tends to a Gaussian Copula so we limit it to the interval [1, 50] for
+# and dof above 50 tends to a Gaussian Copula so we limit it to the interval [2, 50] for
 # improved stability and robustness.
-_DOF_BOUNDS = (1.0001, 50.0)
+_DOF_BOUNDS = (2.0, 50.0)
 
 
 class StudentTCopula(BaseBivariateCopula):
@@ -37,11 +37,11 @@ class StudentTCopula(BaseBivariateCopula):
         - :math:`t_{\nu}^{-1}(p)` is the quantile function (inverse CDF) of the
           univariate t-distribution.
 
-    Student's t copula with degrees of freedom (dof) less than 1.0 is extremely
+    Student's t copula with degrees of freedom (dof) less than 2.0 is extremely
     heavy-tailed, to the extent that even the mean (and many moments) do not exist,
     rendering it impractical. Conversely, for dof above 50 the t copula behaves
     similarly to a Gaussian copula. Thus, for improved stability and robustness,
-    the dof is limited to the interval [1, 50].
+    the dof is limited to the interval [2, 50].
 
     .. note::
 
@@ -70,7 +70,7 @@ class StudentTCopula(BaseBivariateCopula):
     rho_ : float
         Fitted correlation coefficient (:math:`\rho`) in [-1, 1].
     dof_ : float
-       Fitted degrees of freedom (:math:`\nu`) > 0.
+       Fitted degrees of freedom (:math:`\nu`) > 2.
 
     Examples
     --------
