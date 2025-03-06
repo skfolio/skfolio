@@ -118,19 +118,20 @@ class VineCopula(skb.BaseEstimator):
 
         For example:
 
-          1) If only asset 1 is marked as central, it will be connected to all other
-             assets in the first tree (yielding a C-like structure for the initial
-             tree), with subsequent trees following the standard R-vine pattern.
-          2) If asset 1 and asset 2 are marked as central, they will be connected
-             together and the remaining assets will connect to either asset 1 or asset 2
-             (forming a clustered structure in the initial trees). In the next tree,
-             the edge between asset 1 and asset 2 becomes the central node, with
-             subsequent trees following the standard R-vine structure.
-          3) This logic extends naturally to more than two central assets.
+            1) If only asset 1 is marked as central, it will be connected to all other
+               assets in the first tree (yielding a C-like structure for the initial
+               tree), with subsequent trees following the standard R-vine pattern.
+            2) If asset 1 and asset 2 are marked as central, they will be connected
+               together and the remaining assets will connect to either asset 1 or asset
+               2 (forming a clustered structure in the initial trees). In the next tree,
+               the edge between asset 1 and asset 2 becomes the central node, with
+               subsequent trees following the standard R-vine structure.
+            3) This logic extends naturally to more than two central assets.
 
     dependence_method : DependenceMethod, default=DependenceMethod.KENDALL_TAU
         The dependence measure used to compute edge weights for the MST.
         Possible values are:
+
             - KENDALL_TAU
             - MUTUAL_INFORMATION
             - WASSERSTEIN_DISTANCE
