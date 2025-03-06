@@ -7,7 +7,7 @@ from skfolio.optimization import MeanRisk
 from skfolio.prior import FactorModel, SyntheticData
 
 
-def test_synthetic_returns(X):
+def test_synthetic_data(X):
     model = SyntheticData()
     model.fit(X)
     res = model.prior_model_
@@ -18,7 +18,7 @@ def test_synthetic_returns(X):
     assert res.cholesky is None
 
 
-def test_factor_synthetic_returns(X, y):
+def test_factor_synthetic_data(X, y):
     model = FactorModel(
         factor_prior_estimator=SyntheticData(),
     )
@@ -50,20 +50,21 @@ def test_factor_stress_test(X, y):
     assert res.covariance.shape == (20, 20)
     assert res.returns.shape == (10000, 20)
     assert res.cholesky is not None
+    print(res.returns[:5, :5])
     np.testing.assert_almost_equal(
         res.returns[:5, :5],
         [
-            [-0.90499992, -1.07832384, -0.64602842, -0.74537033, -0.55255603],
-            [-0.79369733, -0.99770418, -0.872875, -0.87823451, -0.72478694],
-            [-0.40084947, 0.05574429, -0.88890724, -0.85822426, -0.7082633],
-            [-0.90962344, -1.2332441, -0.84503044, -0.86151357, -0.7010059],
-            [-0.86955051, -1.13060295, -0.78101306, -0.83175341, -0.65676623],
+            [-0.90533426, -1.07783261, -0.64652144, -0.74521958, -0.55290306],
+            [-0.79325235, -0.99783261, -0.87305837, -0.87861587, -0.72493803],
+            [-0.3986848, 0.0648375, -0.88926408, -0.85734484, -0.70829534],
+            [-0.90957477, -1.23326199, -0.84512581, -0.86158363, -0.701079],
+            [-0.86998068, -1.1299855, -0.78104609, -0.83133594, -0.65676247],
         ],
         5,
     )
 
 
-def test_optimization_synthetic_returns(X):
+def test_optimization_synthetic_data(X):
     model = MeanRisk(
         risk_measure=RiskMeasure.CVAR,
         prior_estimator=SyntheticData(

@@ -131,7 +131,6 @@ Key features include:
 - **Sampling Capabilities:**
   The model supports both unconditional sampling and complex conditional sampling for
   stress testing.
-
 """
 
 # %%
@@ -192,9 +191,9 @@ samples = vine.sample(n_samples=10000)
 print(samples.shape)
 
 # %%
-# Let's plot the Scatter Plots of the generated returns from the Vine model and compare
+# Let's plot the scatter matrix of the generated returns from the Vine model and compare
 # them with the historical returns `X`.
-fig = vine.plot_scatter_matrix(X=X, random_state=1)
+fig = vine.plot_scatter_matrix(X=X, random_state=0)
 fig.update_layout(height=600)
 show(fig)
 
@@ -202,20 +201,24 @@ show(fig)
 # Tractability & Interpretability
 # ===============================
 # As mentioned above, one of the advantages of Vine Copula is its tractability.
-# First, let's plot the marginal distribution of AMD and compare it versus the
+# First, let's plot the marginal distribution of AMD and compare it with the
 # historical data:
-vine.marginal_distributions_[0].plot_pdf(X[["AMD"]])
+amd_dist = vine.marginal_distributions_[0]
+amd_dist.plot_pdf(X[["AMD"]])
+
+# %%
+amd_dist.qq_plot(X[["AMD"]])
 
 # %%
 # Now, let's investigate the bivariate copula between variables 0 (AMD) and 2 (HD):
 edge = vine.trees_[0].edges[0]
 copula = edge.copula
 print(edge)
-print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
-print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
+print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2%}")
+print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2%}")
 
 # %%
-# The model indicates a tail dependence coefficient of approximately 11%, suggesting
+# The model indicates a tail dependence coefficient of 10.7%, suggesting
 # a positive likelihood that extreme returns (both negative and positive) occur
 # simultaneously for the assets.
 #
@@ -255,7 +258,7 @@ print(cond_samples.shape)
 # (e.g. `[-0.2,-0.21,-0.22,...]`).
 
 # %%
-# Let's now see a more complex example by generating samples conditional to the
+# Let's now see a more complex example by generating samples conditioned on the
 # following:
 #
 # * HD between -10% and -15%

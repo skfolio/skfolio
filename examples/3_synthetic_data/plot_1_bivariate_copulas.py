@@ -57,7 +57,6 @@ There are two primary families of copulas used in finance:
 
 Rotation of Archimedean Copulas
 ===============================
-
 Standard Archimedean copulas are inherently designed to capture dependence in one
 specific tail:
 
@@ -121,14 +120,21 @@ print(f"JPM: {jpm_dist.fitted_repr}")
 jpm_dist.plot_pdf(X2)
 
 # %%
+# Let's analyse the Q-Q plot:
+jpm_dist.qq_plot(X2)
+
+# %%
 # Let's explore the difference versus the Gaussian distribution:
 gaussian = Gaussian()
 gaussian.fit(X2)
 gaussian.plot_pdf(X2)
 
 # %%
-# Zooming in on the tail of the Johnson SU distribution shows that its fat tails
-# are well captured, which is not the case for the Gaussian distribution.
+gaussian.qq_plot(X2)
+
+# %%
+# The Q-Q plot and zooming in on the tail of the Johnson Su distribution shows that its
+# fat tails are well captured, which is not the case for the Gaussian distribution.
 
 # %%
 # Uniform Marginals
@@ -154,7 +160,7 @@ print(copula.fitted_repr)
 print(f"AIC: {copula.aic(X):,.2f}")
 
 # %%
-# Let's plot the 2D probability density function (PDF) of the Student t copula.
+# Let's plot the 2D probability density function (PDF) of the Student-t copula.
 # The x-axis and y-axis represent the uniform variates (u and v) obtained by applying
 # the marginal cumulative distribution functions (CDFs) to the returns of BAC and JPM,
 # respectively.
@@ -167,7 +173,7 @@ fig.update_layout(height=700)
 # the contours are closely spaced indicate a rapid change in density, reflecting regions
 # with higher concentrations of joint probability.
 #
-# The Student t copula captures tail dependence: extreme positive or negative returns
+# The Student-t copula captures tail dependence: extreme positive or negative returns
 # in one asset tend to occur simultaneously with extreme returns in the other. This is
 # visualized as pronounced "bulges" in the tail regions of the contour plot.
 #
@@ -203,13 +209,13 @@ fig
 # (or low) values of :math:`X` and :math:`Y` occur together more frequently than if
 # the variables were independent.
 #
-# Let's print the Student's t Copula tail dependence. The fitted Student's Copula
+# Let's print the Student's t Copula tail dependence.
 # The model indicates a tail dependence coefficient of approximately 51%, suggesting
 # a relatively high likelihood that extreme returns (both negative and positive) occur
 # simultaneously for the assets. Since the Student's t copula is symmetric, the tail
 # dependence is the same for both the lower and upper tails.
-print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
-print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
+print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2%}")
+print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2%}")
 
 # %%
 # Tail Concentration
@@ -228,8 +234,8 @@ copula.fit(X)
 print(copula.fitted_repr)
 print(f"Rho: {copula.rho_:0.2f}")
 print(f"AIC: {copula.aic(X):,.2f}")
-print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
-print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
+print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2%}")
+print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2%}")
 
 # %%
 # Let's plot the 2D PDF:
@@ -254,8 +260,8 @@ print(copula.fitted_repr)
 print(f"Rotation: {copula.rotation_}")
 print(f"Rho: {copula.theta_:0.2f}")
 print(f"AIC: {copula.aic(X):,.2f}")
-print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2f}")
-print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2f}")
+print(f"Lower Tail Dependence: {copula.lower_tail_dependence:.2%}")
+print(f"Upper Tail Dependence: {copula.upper_tail_dependence:.2%}")
 
 # %%
 # Let's plot the 2D PDF:
