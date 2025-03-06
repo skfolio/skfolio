@@ -84,6 +84,7 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
     The tail concentration are estimated as:
       - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
       - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+
     where U₁ and U₂ are the pseudo-observations.
 
     Parameters

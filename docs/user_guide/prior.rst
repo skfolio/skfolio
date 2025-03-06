@@ -134,7 +134,8 @@ separately.
 Synthetic Data
 **************
 
-The :class:`SyntheticData` model estimates the :class:`PriorModel` by fitting a
+The :class:`SyntheticData` estimator bridges scenario generation and portfolio
+optimization. It estimates the :class:`PriorModel` by fitting a
 `distribution_estimator` and sampling new data from it.
 
 The default `distribution_estimator` is a Regular :class:`VineCopula` estimator.
@@ -145,9 +146,10 @@ sparse and need extrapolation for tail optimizations or when optimizing under
 conditional or stressed scenarios.
 
 Detailed tutorials:
-    * :ref:`Vine Copula <sphx_glr_auto_examples_3_synthetic_data_plot_1_bivariate_copulas.py>`
+    * :ref:`Bivariate Copulas <sphx_glr_auto_examples_3_synthetic_data_plot_1_bivariate_copulas.py>`
     * :ref:`Vine Copula <sphx_glr_auto_examples_3_synthetic_data_plot_2_vine_copula.py>`
-    * :ref:`Min CVaR on Synthetic Data & Stress Test <sphx_glr_auto_examples_3_synthetic_data_plot_3_min_CVaR_synthetic_data.py>`
+    * :ref:`Stress Test with Vine Copula <sphx_glr_auto_examples_3_synthetic_data_plot_3_vine_copula_stress.py>`
+    * :ref:`Minimize CVaR on Stressed Factors <sphx_glr_auto_examples_3_synthetic_data_plot_4_min_CVaR_stressed_factors.py>`
 
 
 **Example:**
