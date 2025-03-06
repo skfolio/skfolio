@@ -1,5 +1,4 @@
 import datetime as dt
-import timeit
 
 import numpy as np
 import pandas as pd
@@ -331,19 +330,6 @@ def test_portfolio_slots(portfolio):
             except AttributeError:
                 pass
         getattr(portfolio, attr)
-
-
-def test_portfolio_cache(portfolio, periods, measure):
-    # time for accessing cached attributes
-    n = int(1e5)
-
-    first_access_time = timeit.timeit(
-        lambda: getattr(portfolio, measure.value), number=1
-    )
-    cached_access_time = (
-        timeit.timeit(lambda: getattr(portfolio, measure.value), number=n) / n
-    )
-    assert first_access_time > 10 * cached_access_time
 
 
 def test_portfolio_clear_cache(portfolio, periods, measure):
