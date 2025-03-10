@@ -68,14 +68,14 @@ Repository = "https://github.com/skfolio/skfolio"
 
 [project.optional-dependencies]
 dev = [
-    "cvxpy[SCIP]>=1.6.0,<2.0.0",
-    "pytest>=8.3.4,<9.0.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "ruff>=0.8.4,<1.0.0",
-    "pre-commit>=4.0.0,<4.2.0",
+    "PySCIPOpt",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "pre-commit",
 ]
 docs = [
-    "cvxpy[SCIP]",
+    "PySCIPOpt",
     "Sphinx",
     "sphinx-gallery",
     "sphinx-design",
