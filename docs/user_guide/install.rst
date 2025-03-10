@@ -22,7 +22,7 @@ Install Additional Solvers
 
 By default, the solver `Clarabel`  is installed.
 To install additional solvers (`SCIP`, `GUROBI`, `MOSEK`), please refer to
-`the cvxpy documentation <https://www.cvxpy.org/install/index.html#install-with-additional-solver-support>`_
+`the cvxpy documentation <https://www.cvxpy.org/install/index.html>`_
 
 
 Dependencies
