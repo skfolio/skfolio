@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Then, add the rest of the project source code and install it
 # Installing separately from its dependencies allows optimal layer caching
-ADD . /app
+COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
@@ -44,4 +44,4 @@ CMD ["jupyter","lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-ro
 
 # How to build and run the image
 # docker build -t skfolio-jupyterlab .
-# docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio
+# docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
