@@ -1,8 +1,8 @@
-"""Equation module"""
+"""Equation module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import re
 import warnings
@@ -10,9 +10,23 @@ import warnings
 import numpy as np
 import numpy.typing as npt
 
-from skfolio.exceptions import EquationToMatrixError, GroupNotFoundError
+from skfolio.exceptions import (
+    DuplicateGroupsError,
+    EquationToMatrixError,
+    GroupNotFoundError,
+)
 
-__all__ = ["equations_to_matrix"]
+__all__ = ["equations_to_matrix", "group_cardinalities_to_matrix"]
+
+_EQUALITY_OPERATORS = {"==", "="}
+_INEQUALITY_OPERATORS = {">=", "<="}
+_COMPARISON_OPERATORS = _EQUALITY_OPERATORS.union(_INEQUALITY_OPERATORS)
+_SUB_ADD_OPERATORS = {"-", "+"}
+_MUL_OPERATORS = {"*"}
+_NON_MUL_OPERATORS = _COMPARISON_OPERATORS.union(_SUB_ADD_OPERATORS)
+_OPERATORS = _NON_MUL_OPERATORS.union(_MUL_OPERATORS)
+_COMPARISON_OPERATOR_SIGNS = {">=": -1, "<=": 1, "==": 1, "=": 1}
+_SUB_ADD_OPERATOR_SIGNS = {"+": 1, "-": -1}
 
 
 def equations_to_matrix(
@@ -21,16 +35,17 @@ def equations_to_matrix(
     sum_to_one: bool = False,
     raise_if_group_missing: bool = False,
     names: tuple[str, str] = ("groups", "equations"),
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Convert a list of linear equations into the left and right matrices of the
-    inequality A <= B.
+    inequality A <= B and equality A == B.
 
     Parameters
     ----------
     groups : array-like of shape (n_groups, n_assets)
         2D array of assets groups.
 
-        Examples:
+        For example:
+
              groups = np.array(
                 [
                     ["SPX", "SX5E", "NKY", "TLT"],
@@ -44,21 +59,22 @@ def equations_to_matrix(
 
          Example of valid equation patterns:
             * "number_1 * group_1 + number_3 <= number_4 * group_3 + number_5"
-            * "group_1 >= number * group_2"
+            * "group_1 == number * group_2"
             * "group_1 <= number"
-            * "group_1 >= number"
+            * "group_1 == number"
 
         "group_1" and "group_2" are the group names defined in `groups`.
         The second expression means that the sum of all assets in "group_1" should be
         less or equal to "number" times the sum of all assets in "group_2".
 
-        Examples:
+        For example:
+
              equations = [
                 "Equity <= 3 * Bond",
                 "US >= 1.5",
                 "Europe >= 0.5 * Japan",
-                "Japan <= 1",
-                "3*SPX + 5*SX5E <= 2*TLT + 3",
+                "Japan == 1",
+                "3*SPX + 5*SX5E == 2*TLT + 3",
             ]
 
     sum_to_one : bool
@@ -76,41 +92,162 @@ def equations_to_matrix(
 
     Returns
     -------
-    left: ndarray of shape (n_equations, n_assets)
-    right: ndarray of shape (n_equations,)
+    left_equality: ndarray of shape (n_equations_equality, n_assets)
+    right_equality: ndarray of shape (n_equations_equality,)
         The left and right matrices of the inequality A <= B.
-        If none of the group inside the equations are part of the groups, `None` is
-        returned.
-    """
-    groups = np.asarray(groups)
-    equations = np.asarray(equations)
-    if groups.ndim != 2:
-        raise ValueError(
-            f"`{names[0]}` must be a 2D array, got {groups.ndim}D array instead."
-        )
-    if equations.ndim != 1:
-        raise ValueError(
-            f"`{names[1]}` must be a 1D array, got {equations.ndim}D array instead."
-        )
 
-    n_equations = len(equations)
-    n_assets = groups.shape[1]
-    a = np.zeros((n_equations, n_assets))
-    b = np.zeros(n_equations)
-    for i, string in enumerate(equations):
+    left_inequality: ndarray of shape (n_equations_inequality, n_assets)
+    right_inequality: ndarray of shape (n_equations_inequality,)
+        The left and right matrices of the equality A == B.
+    """
+    groups = _validate_groups(groups, name=names[0])
+    equations = _validate_equations(equations, name=names[1])
+
+    a_equality = []
+    b_equality = []
+
+    a_inequality = []
+    b_inequality = []
+
+    for string in equations:
         try:
-            left, right = _string_to_equation(
+            left, right, is_inequality = _string_to_equation(
                 groups=groups,
                 string=string,
                 sum_to_one=sum_to_one,
             )
-            a[i] = left
-            b[i] = right
+            if is_inequality:
+                a_inequality.append(left)
+                b_inequality.append(right)
+            else:
+                a_equality.append(left)
+                b_equality.append(right)
         except GroupNotFoundError as e:
             if raise_if_group_missing:
                 raise
             warnings.warn(str(e), stacklevel=2)
-    return a, b
+    return (
+        np.array(a_equality),
+        np.array(b_equality),
+        np.array(a_inequality),
+        np.array(b_inequality),
+    )
+
+
+def group_cardinalities_to_matrix(
+    groups: npt.ArrayLike,
+    group_cardinalities: dict[str, int],
+    raise_if_group_missing: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Convert a list of linear equations into the left and right matrices of the
+    inequality A <= B and equality A == B.
+
+    Parameters
+    ----------
+    groups : array-like of shape (n_groups, n_assets)
+        2D array of assets groups.
+
+        For example:
+
+             groups = np.array(
+                [
+                    ["Equity", "Equity", "Equity", "Bond"],
+                    ["US", "Europe", "Japan", "US"],
+                ]
+            )
+
+    group_cardinalities : dict[str, int]
+        Dictionary of cardinality constraint per group.
+        For example: {"Equity": 1, "US": 3}
+
+    raise_if_group_missing : bool, default=False
+        If this is set to True, an error is raised when a group is not found in the
+        groups, otherwise only a warning is shown.
+        The default is False.
+
+    Returns
+    -------
+    left_inequality: ndarray of shape (n_constraints, n_assets)
+    right_inequality: ndarray of shape (n_constraints,)
+        The left and right matrices of the cardinality inequality.
+    """
+    groups = _validate_groups(groups, name="group")
+
+    a_inequality = []
+    b_inequality = []
+
+    for group, card in group_cardinalities.items():
+        try:
+            arr = _matching_array(values=groups, key=group, sum_to_one=False)
+            a_inequality.append(arr)
+            b_inequality.append(card)
+
+        except GroupNotFoundError as e:
+            if raise_if_group_missing:
+                raise
+            warnings.warn(str(e), stacklevel=2)
+    return (
+        np.array(a_inequality),
+        np.array(b_inequality),
+    )
+
+
+def _validate_groups(groups: npt.ArrayLike, name: str = "groups") -> np.ndarray:
+    """Validate groups by checking its dim and if group names don't appear in multiple
+    levels and convert to numpy array.
+
+    Parameters
+    ----------
+    groups : array-like of shape (n_groups, n_assets)
+        2D-array of strings.
+
+    Returns
+    -------
+    groups : ndarray of shape (n_groups, n_assets)
+        2D-array of strings.
+    """
+    groups = np.asarray(groups)
+    if groups.ndim != 2:
+        raise ValueError(
+            f"`{name} must be a 2D array, got {groups.ndim}D array instead."
+        )
+    n = len(groups)
+    group_sets = [set(groups[i]) for i in range(n)]
+    for i in range(n - 1):
+        for e in group_sets[i]:
+            for j in range(i + 1, n):
+                if e in group_sets[j]:
+                    raise DuplicateGroupsError(
+                        f"'{e}' appear in two levels: {list(groups[i])} "
+                        f"and {list(groups[i])}. "
+                        f"{name} must be in only one level."
+                    )
+
+    return groups
+
+
+def _validate_equations(
+    equations: npt.ArrayLike, name: str = "equations"
+) -> np.ndarray:
+    """Validate equations by checking its dim and convert to numpy array.
+
+    Parameters
+    ----------
+    equations : array-like of shape (n_equations,)
+        1D array of equations.
+
+    Returns
+    -------
+    equations : ndarray of shape (n_equations,)
+        1D array of equations.
+    """
+    equations = np.asarray(equations)
+
+    if equations.ndim != 1:
+        raise ValueError(
+            f"`{name}` must be a 1D array, got {equations.ndim}D array instead."
+        )
+    return equations
 
 
 def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarray:
@@ -145,11 +282,7 @@ def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarra
     return arr / s
 
 
-_operator_mapping = {">=": -1, "<=": 1, "==": 1, "=": 1}
-_operator_signs = {"+": 1, "-": -1}
-
-
-def _inequality_operator_sign(operator: str) -> int:
+def _comparison_operator_sign(operator: str) -> int:
     """Convert the operators '>=', "==" and '<=' into the corresponding integer
     values -1, 1 and 1, respectively.
 
@@ -164,15 +297,15 @@ def _inequality_operator_sign(operator: str) -> int:
         Operator sign: 1 or -1.
     """
     try:
-        return _operator_mapping[operator]
+        return _COMPARISON_OPERATOR_SIGNS[operator]
     except KeyError:
         raise EquationToMatrixError(
             f"operator '{operator}' is not valid. It should be '<=' or '>='"
         ) from None
 
 
-def _operator_sign(operator: str) -> int:
-    """Convert the operators '+' and '-' into 1 or -1
+def _sub_add_operator_sign(operator: str) -> int:
+    """Convert the operators '+' and '-' into 1 or -1.
 
     Parameters
     ----------
@@ -185,7 +318,7 @@ def _operator_sign(operator: str) -> int:
        Operator sign: 1 or -1.
     """
     try:
-        return _operator_signs[operator]
+        return _SUB_ADD_OPERATOR_SIGNS[operator]
     except KeyError:
         raise EquationToMatrixError(
             f"operator '{operator}' is not valid. It should be be '+' or '-'"
@@ -211,13 +344,41 @@ def _string_to_float(string: str) -> float:
         raise EquationToMatrixError(f"Unable to convert {string} into float") from None
 
 
+def _split_equation_string(string: str) -> list[str]:
+    """Split an equation strings by operators."""
+    comp_pattern = "(?=" + "|".join([".+\\" + e for e in _COMPARISON_OPERATORS]) + ")"
+    if not bool(re.match(comp_pattern, string)):
+        raise EquationToMatrixError(
+            f"The string must contains a comparison operator: "
+            f"{list(_COMPARISON_OPERATORS)}"
+        )
+
+    # Regex to match only '>' and '<' but not '<=' or '>='
+    invalid_pattern = r"(?<!<)(?<!<=)>(?!=)|(?<!>)<(?!=)"
+    invalid_matches = re.findall(invalid_pattern, string)
+
+    if len(invalid_matches) > 0:
+        raise EquationToMatrixError(
+            f"{invalid_matches[0]} is an invalid comparison operator. "
+            f"Valid comparison operators are: {list(_COMPARISON_OPERATORS)}"
+        )
+
+    # '==' needs to be before '='
+    operators = sorted(_OPERATORS, reverse=True)
+    pattern = "((?:" + "|".join(["\\" + e for e in operators]) + "))"
+    res = [x.strip() for x in re.split(pattern, string)]
+    res = [x for x in res if x != ""]
+    return res
+
+
 def _string_to_equation(
     groups: np.ndarray,
     string: str,
     sum_to_one: bool,
-) -> tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float, bool]:
     """Convert a string to a left 1D-array and right float of the form:
-    `groups @ left <= right`.
+    `groups @ left <= right` or `groups @ left == right` and return whether it's an
+    equality or inequality.
 
     Parameters
     ----------
@@ -232,20 +393,14 @@ def _string_to_equation(
 
     Returns
     -------
-    left: 1D-array of shape (n_assets,)
-    right: float
+    left : 1D-array of shape (n_assets,)
+    right : float
+    is_inequality : bool
     """
     n = groups.shape[1]
-    operators = ["-", "+", "*", ">=", "<=", "==", "="]
-    invalid_operators = [">", "<"]
-    pattern = re.compile(r"((?:" + "|\\".join(operators) + r"))")
-    invalid_pattern = re.compile(r"((?:" + "|\\".join(invalid_operators) + r"))")
     err_msg = f"Wrong pattern encountered while converting the string '{string}'"
 
-    res = re.split(pattern, string)
-    res = [x.strip() for x in res]
-    res = [x for x in res if x != ""]
-    iterator = iter(res)
+    iterator = iter(_split_equation_string(string))
     group_names = set(groups.flatten())
 
     def is_group(name: str) -> bool:
@@ -254,7 +409,8 @@ def _string_to_equation(
     left = np.zeros(n)
     right = 0
     main_sign = 1
-    inequality_sign = None
+    comparison_sign = None
+    is_inequality = None
     e = next(iterator, None)
     i = 0
     while True:
@@ -264,23 +420,27 @@ def _string_to_equation(
         if e is None:
             break
         sign = 1
-        if e in [">=", "<=", "==", "="]:
+        if e in _COMPARISON_OPERATORS:
+            if e in _INEQUALITY_OPERATORS:
+                is_inequality = True
+            else:
+                is_inequality = False
             main_sign = -1
-            inequality_sign = _inequality_operator_sign(e)
+            comparison_sign = _comparison_operator_sign(e)
             e = next(iterator, None)
-            if e in ["-", "+"]:
-                sign *= _operator_sign(e)
+            if e in _SUB_ADD_OPERATORS:
+                sign *= _sub_add_operator_sign(e)
                 e = next(iterator, None)
-        elif e in ["-", "+"]:
-            sign *= _operator_sign(e)
+        elif e in _SUB_ADD_OPERATORS:
+            sign *= _sub_add_operator_sign(e)
             e = next(iterator, None)
-        elif e == "*":
+        elif e in _MUL_OPERATORS:
             raise EquationToMatrixError(
                 f"{err_msg}: the character '{e}' is wrongly positioned"
             )
         sign *= main_sign
         # next can only be a number or a group
-        if e is None or e in operators:
+        if e is None or e in _OPERATORS:
             raise EquationToMatrixError(
                 f"{err_msg}: the character '{e}' is wrongly positioned"
             )
@@ -288,20 +448,14 @@ def _string_to_equation(
             arr = _matching_array(values=groups, key=e, sum_to_one=sum_to_one)
             # next can only be a '*' or an ['-', '+', '>=', '<=', '==', '='] or None
             e = next(iterator, None)
-            if e is None or e in ["-", "+", ">=", "<=", "==", "="]:
+            if e is None or e in _NON_MUL_OPERATORS:
                 left += sign * arr
-            elif e == "*":
+            elif e in _MUL_OPERATORS:
                 # next can only a number
                 e = next(iterator, None)
                 try:
                     number = float(e)
                 except ValueError:
-                    invalid_ops = invalid_pattern.findall(e)
-                    if len(invalid_ops) > 0:
-                        raise EquationToMatrixError(
-                            f"{invalid_ops[0]} is an invalid operator. Valid operators"
-                            f" are: {operators}"
-                        ) from None
                     raise GroupNotFoundError(
                         f"{err_msg}: the group '{e}' is missing from the groups"
                         f" {groups}"
@@ -317,18 +471,12 @@ def _string_to_equation(
             try:
                 number = float(e)
             except ValueError:
-                invalid_ops = invalid_pattern.findall(e)
-                if len(invalid_ops) > 0:
-                    raise EquationToMatrixError(
-                        f"{invalid_ops[0]} is an invalid operator. Valid operators are:"
-                        f" {operators}"
-                    ) from None
                 raise GroupNotFoundError(
                     f"{err_msg}: the group '{e}' is missing from the groups {groups}"
                 ) from None
             # next can only be a '*' or an operator or None
             e = next(iterator, None)
-            if e == "*":
+            if e in _MUL_OPERATORS:
                 # next can only a group
                 e = next(iterator, None)
                 if not is_group(e):
@@ -338,14 +486,14 @@ def _string_to_equation(
                 arr = _matching_array(values=groups, key=e, sum_to_one=sum_to_one)
                 left += number * sign * arr
                 e = next(iterator, None)
-            elif e is None or e in ["-", "+", ">=", "<=", "==", "="]:
+            elif e is None or e in _NON_MUL_OPERATORS:
                 right += number * sign
             else:
                 raise EquationToMatrixError(
                     f"{err_msg}: the character '{e}' is wrongly positioned"
                 )
 
-    left *= inequality_sign
-    right *= -inequality_sign
+    left *= comparison_sign
+    right *= -comparison_sign
 
-    return left, right
+    return left, right, is_inequality

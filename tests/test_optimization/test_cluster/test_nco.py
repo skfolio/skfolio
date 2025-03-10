@@ -21,6 +21,7 @@ def test_nco_hierarchical_clustering(X_medium, linkage_method):
     model.fit(X_medium)
 
 
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_nco_kmeans(X_medium):
     model = NestedClustersOptimization(
         clustering_estimator=skc.KMeans(n_init="auto"),

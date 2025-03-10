@@ -1,3 +1,5 @@
+"""Test Measure module."""
+
 import numpy as np
 import pytest
 

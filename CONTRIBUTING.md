@@ -46,10 +46,16 @@ Ready to contribute? Here's how to set yourself up for local development.
    $ git clone git@github.com:your_name_here/skfolio.git
    ```
 
-3. Install the project in development mode with the tests and linting dependencies:
+3. Install the project in development mode with the development dependencies:
 
+   Using **pip**:
    ```shell
-   $ pip install --editable ".[tests]"
+   $ pip install --editable ".[dev]"
+   ```
+
+   or using **uv**:
+   ```shell
+   $ uv pip install -r pyproject.toml --editable . --extra dev
    ```
 
 4. Create a branch for local development:
@@ -67,23 +73,54 @@ Ready to contribute? Here's how to set yourself up for local development.
 
 5. Add unit tests for your implementation and check that your changes pass all tests:
 
+   Using **pip**:
    ```shell
    $ pytest
    ```
+   or using **uv**:
+   ```shell
+   $ uv run pytest
+   ```
 
-6. Then run linting and formatting checks with :
+6. Then run linting and formatting checks with:
 
+   Using **pip**:
    ```shell
    $ ruff check
    $ ruff format --check
    ```
-
-7. If you added some documentation, you should test that it builds correctly :
+   or using **uv**:
+   ```shell
+   $ uv run ruff check
+   $ uv run ruff format --check
+   ```
    
+   To fix linting and formatting issues, you can run:
+   
+   Using **pip**:
+   ```shell
+   $ ruff check --fix
+   $ ruff format
+   ```
+   or using **uv**:
+   ```shell
+   $ uv run ruff check --fix
+   $ uv run ruff format
+   ```
+
+7. If you added some documentation, you should test that it builds correctly:
+   
+   Using **pip**:
    ```shell
    $ pip install --editable ".[docs]"
    $ cd docs
-   $ make html
+   $ sphinx-build . _build
+   ```
+   or using **uv**:
+   ```shell
+   $ uv pip install -r pyproject.toml --editable . --extra docs
+   $ cd docs
+   $ uv run sphinx-build . _build
    ```
 
 8. Commit your changes and push your branch to GitHub:

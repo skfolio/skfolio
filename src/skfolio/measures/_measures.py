@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Gini mean difference and OWA GMD weights features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -179,7 +179,6 @@ def third_central_moment(returns: np.ndarray) -> float:
     value : float
         Third central moment.
     """
-
     return np.sum(np.power(returns - np.mean(returns, axis=0), 3)) / len(returns)
 
 
@@ -200,7 +199,6 @@ def skew(returns: np.ndarray) -> float:
     value : float
         Skew.
     """
-
     return third_central_moment(returns) / standard_deviation(returns) ** 3
 
 
@@ -236,7 +234,6 @@ def kurtosis(returns: np.ndarray) -> float:
     value : float
         Kurtosis.
     """
-
     return fourth_central_moment(returns) / standard_deviation(returns) ** 4
 
 
@@ -347,7 +344,7 @@ def entropic_risk_measure(
     """Compute the entropic risk measure.
 
     The entropic risk measure is a risk measure which depends on the risk aversion
-    defined by the investor (theat) through the exponential utility function at a given
+    defined by the investor (theta) through the exponential utility function at a given
     confidence level (beta).
 
     Parameters
@@ -571,7 +568,7 @@ def ulcer_index(drawdowns: np.ndarray) -> float:
 def owa_gmd_weights(n_observations: int) -> np.ndarray:
     """Compute the OWA weights used for the Gini mean difference (GMD) computation.
 
-     Parameters
+    Parameters
     ----------
     n_observations : int
         Number of observations.
@@ -610,8 +607,8 @@ def gini_mean_difference(returns: np.ndarray) -> float:
 
 
 def effective_number_assets(weights: np.ndarray) -> float:
-    r"""Computes the effective number of assets, defined as the inverse of the
-    Herfindahl index [1]_:
+    r"""Compute the effective number of assets, defined as the inverse of the
+    Herfindahl index.
 
     .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
 

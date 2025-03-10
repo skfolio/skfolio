@@ -2,13 +2,14 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 
@@ -92,7 +93,7 @@ class EmpiricalCovariance(BaseCovariance):
         self : EmpiricalCovariance
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if self.window_size is not None:
             X = X[-int(self.window_size) :]
         covariance = np.cov(X.T, ddof=self.ddof)

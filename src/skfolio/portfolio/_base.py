@@ -1,8 +1,8 @@
-"""Base Portfolio module"""
+"""Base Portfolio module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 # The Portfolio class contains more than 40 measures than can be computationally
 # expensive. The use of __slots__ instead of __dict__ is based on the following
@@ -389,6 +389,7 @@ class BasePortfolio:
         "edar_beta",
     }
 
+    # ruff: noqa: RUF023
     __slots__ = {
         # public
         "tag",
@@ -612,14 +613,14 @@ class BasePortfolio:
     @property
     @abstractmethod
     def composition(self) -> pd.DataFrame:
-        """DataFrame of the Portfolio composition"""
+        """DataFrame of the Portfolio composition."""
         pass
 
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
     ) -> np.ndarray | pd.DataFrame:
-        """Compute the contribution of each asset to a given measure"""
+        """Compute the contribution of each asset to a given measure."""
         pass
 
     # Custom attribute setter and getter
@@ -653,7 +654,7 @@ class BasePortfolio:
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
     def fitness(self) -> np.ndarray:
-        """The Portfolio fitness."""
+        """Portfolio fitness."""
         res = []
         for measure in self.fitness_measures:
             if isinstance(measure, PerfMeasure | RatioMeasure):
@@ -678,7 +679,7 @@ class BasePortfolio:
     # Classic property
     @property
     def n_observations(self) -> int:
-        """Number of observations"""
+        """Number of observations."""
         return len(self.observations)
 
     @property
@@ -708,7 +709,7 @@ class BasePortfolio:
         return self.__copy__()
 
     def clear(self) -> None:
-        """Clear all measures, fitness, cumulative returns and drawdowns in slots"""
+        """Clear all measures, fitness, cumulative returns and drawdowns in slots."""
         attrs = ["_fitness", "_cumulative_returns", "_drawdowns"]
         for attr in attrs + list(_MEASURES_VALUES):
             delattr(self, attr)
@@ -1006,7 +1007,7 @@ class BasePortfolio:
         return fig
 
     def plot_returns(self, idx: slice | np.ndarray | None = None) -> go.Figure:
-        """Plot the Portfolio returns
+        """Plot the Portfolio returns.
 
         Parameters
         ----------

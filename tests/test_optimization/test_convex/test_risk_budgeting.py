@@ -167,3 +167,62 @@ def test_metadata_routing(X_small, implied_vol_small):
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+@pytest.mark.parametrize("weights", [0.05, np.ones(20) / 20, list(np.ones(20) / 20)])
+def test_risk_budgeting_equal_weight_constraints(X_small, weights):
+    model = RiskBudgeting(min_weights=weights)
+    model.fit(X_small)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) / 20)
+
+    model = RiskBudgeting(max_weights=weights)
+    model.fit(X_small)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) / 20)
+
+
+def test_risk_budgeting_weight_constraints_dict(X_small):
+    model = RiskBudgeting(
+        min_weights={"AAPL": 0.5, "UNH": 0.3}, max_weights={"BAC": 0.01}
+    )
+    model.fit(X_small)
+    np.testing.assert_almost_equal(
+        model.weights_,
+        np.array(
+            [
+                0.5,
+                0.00903176,
+                0.01,
+                0.01046216,
+                0.01166263,
+                0.01081226,
+                0.01087975,
+                0.01202612,
+                0.01099958,
+                0.01162496,
+                0.01148655,
+                0.01207474,
+                0.01011174,
+                0.01159145,
+                0.01162177,
+                0.01161292,
+                0.01056359,
+                0.3,
+                0.01177834,
+                0.01165966,
+            ]
+        ),
+        3,
+    )
+
+
+def test_risk_budgeting_negative_weight_constraints(X_small):
+    model = RiskBudgeting(
+        min_weights={"AAPL": -0.5, "UNH": 0.3}, max_weights={"BAC": 0.01}
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="RiskBudgeting must have non negative `min_weights` "
+        "constraint otherwise the problem becomes non-convex.",
+    ):
+        model.fit(X_small)

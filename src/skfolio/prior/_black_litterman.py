@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # PyPortfolioOpt, Copyright (c) 2018 Robert Andrew Martin, Licensed under MIT Licence.
@@ -10,6 +10,7 @@
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
 from skfolio.prior._base import BasePrior, PriorModel
@@ -38,7 +39,7 @@ class BlackLitterman(BasePrior):
         about the assets expected returns expressed in the same frequency as the
         returns `X`.
 
-        Examples:
+        For example:
 
             * "SPX = 0.00015" --> the SPX will have a daily expected return of 0.015%
             * "SX5E - TLT = 0.00039" --> the SX5E will outperform the TLT by a daily expected return of 0.039%
@@ -52,7 +53,7 @@ class BlackLitterman(BasePrior):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
@@ -182,7 +183,7 @@ class BlackLitterman(BasePrior):
 
         # we validate after all models have been fitted to keep features names
         # information.
-        self._validate_data(X)
+        skv.validate_data(self, X)
 
         n_assets = prior_returns.shape[1]
         views = np.asarray(self.views)
@@ -208,13 +209,16 @@ class BlackLitterman(BasePrior):
                 ),
                 name="groups",
             )
-        self.picking_matrix_, self.views_ = equations_to_matrix(
+        self.picking_matrix_, self.views_, a_ineq, b_ineq = equations_to_matrix(
             groups=self.groups_,
             equations=views,
             sum_to_one=True,
             raise_if_group_missing=True,
             names=("groups", "views"),
         )
+
+        if len(a_ineq) != 0:
+            raise ValueError("Inequalities (<=, >=) are not supported in views")
 
         if self.view_confidences is None:
             omega = np.diag(

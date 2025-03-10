@@ -1,7 +1,7 @@
 """Distance Estimators."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.distance._base import BaseDistance
 from skfolio.distance._distance import (
@@ -16,11 +16,11 @@ from skfolio.distance._distance import (
 
 __all__ = [
     "BaseDistance",
-    "PearsonDistance",
-    "KendallDistance",
-    "SpearmanDistance",
     "CovarianceDistance",
     "DistanceCorrelation",
+    "KendallDistance",
     "MutualInformation",
     "NBinsMethod",
+    "PearsonDistance",
+    "SpearmanDistance",
 ]

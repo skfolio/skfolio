@@ -4,7 +4,7 @@ A population is a collection of portfolios.
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import inspect
 from typing import Any
@@ -285,7 +285,7 @@ class Population(list):
         measure: skt.Measure,
         q: float,
     ) -> BasePortfolio:
-        """Returns the portfolio corresponding to the `q` quantile for a given portfolio
+        """Return the portfolio corresponding to the `q` quantile for a given portfolio
         measure.
 
         Parameters
@@ -311,7 +311,7 @@ class Population(list):
         self,
         measure: skt.Measure,
     ) -> BasePortfolio:
-        """Returns the portfolio with the minimum measure.
+        """Return the portfolio with the minimum measure.
 
         Parameters
         ----------
@@ -329,7 +329,7 @@ class Population(list):
         self,
         measure: skt.Measure,
     ) -> BasePortfolio:
-        """Returns the portfolio with the maximum measure.
+        """Return the portfolio with the maximum measure.
 
         Parameters
         ----------
@@ -347,7 +347,7 @@ class Population(list):
         self,
         formatted: bool = True,
     ) -> pd.DataFrame:
-        """Summary of the portfolios in the population
+        """Summary of the portfolios in the population.
 
         Parameters
         ----------
@@ -361,7 +361,6 @@ class Population(list):
         summary : pandas DataFrame
             The population's portfolios summary
         """
-
         df = pd.concat(
             [p.summary(formatted=formatted) for p in self],
             keys=[p.name for p in self],
@@ -410,7 +409,7 @@ class Population(list):
         spacing: float | None = None,
         display_sub_ptf_name: bool = True,
     ) -> pd.DataFrame:
-        """Contribution of each asset to a given measure of each portfolio in the
+        r"""Contribution of each asset to a given measure of each portfolio in the
         population.
 
         Parameters
@@ -420,7 +419,7 @@ class Population(list):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`.
 
         display_sub_ptf_name : bool, default=True
             If this is set to True, each sub-portfolio name composing a multi-period
@@ -473,7 +472,6 @@ class Population(list):
         dataframe : pandas DataFrame
             The rolling measures.
         """
-
         rolling_measures = []
         names = []
         for ptf in self:
@@ -653,7 +651,7 @@ class Population(list):
         spacing: float | None = None,
         display_sub_ptf_name: bool = True,
     ) -> go.Figure:
-        """Plot the contribution of each asset to a given measure of the portfolios
+        r"""Plot the contribution of each asset to a given measure of the portfolios
         in the population.
 
         Parameters

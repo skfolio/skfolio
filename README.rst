@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website|
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -32,14 +32,17 @@
 .. |Website| image:: https://img.shields.io/website.svg?down_color=red&down_message=down&up_color=53cc0d&up_message=up&url=https://skfolio.org
    :target: https://skfolio.org
 
+.. |JupyterLite| image:: https://jupyterlite.rtfd.io/en/latest/_static/badge.svg
+   :target: https://skfolio.org/lite
+
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
 .. |ScipyMinVersion| replace:: 1.8.0
 .. |PandasMinVersion| replace:: 1.4.1
 .. |CvxpyMinVersion| replace:: 1.4.1
-.. |SklearnMinVersion| replace:: 1.3.2
+.. |SklearnMinVersion| replace:: 1.6.0
 .. |JoblibMinVersion| replace:: 1.3.2
-.. |PlotlyMinVersion| replace:: 5.15.0
+.. |PlotlyMinVersion| replace:: 5.22.0
 
 
 ===============
@@ -55,7 +58,7 @@
 It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
 and cross-validate portfolio models.
 
-It is distributed under the open source 3-Clause BSD license.
+It is distributed under the open-source 3-Clause BSD license.
 
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
     :target: https://skfolio.org/auto_examples/
@@ -101,7 +104,7 @@ Unfortunately, it faces a number of shortcomings, including high sensitivity to 
 input parameters (expected returns and covariance), weight concentration, high turnover,
 and poor out-of-sample performance.
 
-It is well known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
+It is well-known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
 MVO out-of-sample (DeMiguel, 2007).
 
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
@@ -110,10 +113,10 @@ approaches, coherent risk measures, left-tail risk optimization, distributionall
 optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
 pre-selection, etc.).
 
-With this large number of methods, added to the fact that they can be composed together,
-there is a need for a unified framework with a machine learning approach to perform
-model selection, validation, and parameter tuning while reducing the risk of data
-leakage and overfitting.
+Given the large number of methods, and the fact that they can be combined, there is a
+need for a unified framework with a machine-learning approach to perform model
+selection, validation, and parameter tuning while mitigating the risk of data leakage
+and overfitting.
 
 This framework is built on scikit-learn's API.
 
@@ -174,12 +177,14 @@ Available models
         * Circular Bootstrap
     * On Covariance:
         * Empirical
-        * Circular bootstrap
+        * Circular Bootstrap
 
 * Pre-Selection Transformer:
     * Non-Dominated Selection
     * Select K Extremes (Best or Worst)
     * Drop Highly Correlated Assets
+    * Select Non-Expiring Assets
+    * Select Complete Assets (handle late inception, delisting, etc.)
 
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, etc.)
@@ -224,6 +229,8 @@ Available models
     * Budget Constraints
     * Tracking Error Constraints
     * Turnover Constraints
+    * Cardinality and Group Cardinality Constraints
+    * Threshold (Long and Short) Constraints
 
 Quickstart
 ~~~~~~~~~~
@@ -515,7 +522,7 @@ K-fold Cross-Validation
     # mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
 
     mmp.plot_cumulative_returns()
-    print(mmp.summary()
+    print(mmp.summary())
 
 
 Combinatorial Purged Cross-Validation
@@ -540,9 +547,9 @@ Combinatorial Purged Cross-Validation
 Recognition
 ~~~~~~~~~~~
 
-We would like to thank all contributors behind our direct dependencies, such as
-scikit-learn and cvxpy, but also the contributors of the following resources that were a
-source of inspiration:
+We would like to thank all contributors to our direct dependencies, such as
+scikit-learn and cvxpy, as well as the contributors of the following resources that
+served as sources of inspiration:
 
     * PyPortfolioOpt
     * Riskfolio-Lib

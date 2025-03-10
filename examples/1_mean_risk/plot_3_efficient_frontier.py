@@ -61,7 +61,7 @@ population_test.set_portfolio_params(tag="Test")
 population = population_train + population_test
 
 fig = population.plot_measures(
-    x=RiskMeasure.ANNUALIZED_VARIANCE,
+    x=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     y=PerfMeasure.ANNUALIZED_MEAN,
     color_scale=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
     hover_measures=[RiskMeasure.MAX_DRAWDOWN, RatioMeasure.ANNUALIZED_SORTINO_RATIO],
@@ -96,7 +96,7 @@ model = MeanRisk(
 population = model.fit_predict(X_train)
 
 population.plot_measures(
-    x=RiskMeasure.ANNUALIZED_VARIANCE,
+    x=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     y=PerfMeasure.ANNUALIZED_MEAN,
     color_scale=RatioMeasure.ANNUALIZED_SHARPE_RATIO,
     hover_measures=[RiskMeasure.MAX_DRAWDOWN, RatioMeasure.ANNUALIZED_SORTINO_RATIO],

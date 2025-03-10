@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
@@ -259,7 +259,7 @@ class ImpliedCovariance(BaseCovariance):
         if assets_names is not None:
             vol_assets_names = get_feature_names(implied_vol)
             if vol_assets_names is not None:
-                missing_assets = assets_names[~np.in1d(assets_names, vol_assets_names)]
+                missing_assets = assets_names[~np.isin(assets_names, vol_assets_names)]
                 if len(missing_assets) > 0:
                     raise ValueError(
                         f"The following assets are missing from "
@@ -272,7 +272,7 @@ class ImpliedCovariance(BaseCovariance):
                 # and re-order to follow returns ordering.
                 implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         _, n_assets = X.shape
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
         implied_vol /= np.sqrt(self.annualized_factor)
@@ -416,7 +416,6 @@ def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarra
 
 def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike) -> np.ndarray:
     """Validate implied volatilities.
-
 
     Parameters
     ----------

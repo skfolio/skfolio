@@ -88,7 +88,7 @@ def annualized_factor(request):
 
 def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array:
     r"""
-    Compute the portfolio returns from its assets returns and weights
+    Compute the portfolio returns from its assets returns and weights.
     """
     n, m = asset_returns.shape
     returns = np.zeros(n)
@@ -335,11 +335,8 @@ def test_portfolio_slots(X, weights):
 
 def test_copy(X, weights):
     portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
-    try:
+    with pytest.raises(AttributeError):
         _ = portfolio._assets_names
-        raise
-    except AttributeError:
-        pass
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
 

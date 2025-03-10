@@ -1,7 +1,7 @@
 """Datasets module."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.datasets._base import (
     load_factors_dataset,
@@ -13,10 +13,10 @@ from skfolio.datasets._base import (
 )
 
 __all__ = [
-    "load_nasdaq_dataset",
     "load_factors_dataset",
     "load_ftse100_dataset",
+    "load_nasdaq_dataset",
     "load_sp500_dataset",
-    "load_sp500_index",
     "load_sp500_implied_vol_dataset",
+    "load_sp500_index",
 ]

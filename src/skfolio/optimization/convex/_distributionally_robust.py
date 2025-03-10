@@ -2,12 +2,13 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -93,7 +94,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
@@ -125,7 +126,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
            * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
            * "ref1 >= 2.9 * ref2"
-           * "ref1 <= ref2"
+           * "ref1 == ref2"
            * "ref1 >= ref1"
 
         With "ref1", "ref2" ... the assets names or the groups names provided
@@ -133,12 +134,12 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
             * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
             * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US >= 0.7" --> the sum of all US weights must be greater than 70%
-            * "Equity <= 3 * Bond" --> the sum of all Equity weights must be less or equal to 3 times the sum of all Bond weights.
+            * "US == 0.7" --> the sum of all US weights must be equal to 70%
+            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
             * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
@@ -147,7 +148,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
             * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
@@ -331,7 +332,9 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        self._check_feature_names(X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
+
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(

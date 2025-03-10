@@ -2,13 +2,14 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
 import numpy.typing as npt
 import pandas as pd
+import sklearn.utils.validation as skv
 
 from skfolio.moments.expected_returns._base import BaseMu
 
@@ -62,7 +63,7 @@ class EWMu(BaseMu):
         self : EWMu
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if self.window_size is not None:
             X = X[-self.window_size :]
         self.mu_ = pd.DataFrame(X).ewm(alpha=self.alpha).mean().iloc[-1, :].to_numpy()

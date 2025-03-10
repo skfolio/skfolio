@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -13,6 +13,7 @@ from enum import auto
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
@@ -20,7 +21,7 @@ from skfolio.utils.tools import AutoEnum, check_estimator
 
 
 class ShrunkMuMethods(AutoEnum):
-    """Shrinkage methods for the ShrunkMu estimator
+    """Shrinkage methods for the ShrunkMu estimator.
 
     Parameters
     ----------
@@ -189,7 +190,7 @@ class ShrunkMu(BaseMu):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_observations, n_assets = X.shape
 
         covariance = self.covariance_estimator_.covariance_

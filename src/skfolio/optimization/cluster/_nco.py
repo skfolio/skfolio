@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -18,6 +18,7 @@ import sklearn.base as skb
 import sklearn.model_selection as sks
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -311,9 +312,9 @@ class NestedClustersOptimization(BaseOptimization):
                 w[cluster_ids] = fitted_inner_estimator.weights_
             inner_weights.append(w)
         inner_weights = np.array(inner_weights)
-        assert not any(
-            fitted_inner_estimators
-        ), "fitted_inner_estimator iterator must be empty"
+        assert not any(fitted_inner_estimators), (
+            "fitted_inner_estimator iterator must be empty"
+        )
 
         # Outer cluster weights
         # To train the outer-estimator using the most data as possible, we use
@@ -355,10 +356,10 @@ class NestedClustersOptimization(BaseOptimization):
         # We validate and convert to numpy array only after inner-estimator fitting to
         # keep the assets names in case they are used in the estimator.
         if y is not None:
-            X, y = self._validate_data(X, y)
+            X, y = skv.validate_data(self, X, y)
             y_pred = y[test_indices]
         else:
-            X = self._validate_data(X)
+            X = skv.validate_data(self, X)
             y_pred = None
 
         X_pred = []
@@ -379,9 +380,9 @@ class NestedClustersOptimization(BaseOptimization):
             X_pred.append(np.asarray(pred))
         X_pred = np.array(X_pred).T
         if cv_predictions is None:
-            assert not any(
-                fitted_inner_estimators
-            ), "fitted_inner_estimator iterator must be empty"
+            assert not any(fitted_inner_estimators), (
+                "fitted_inner_estimator iterator must be empty"
+            )
         else:
             assert not any(cv_predictions), "cv_predictions iterator must be empty"
 

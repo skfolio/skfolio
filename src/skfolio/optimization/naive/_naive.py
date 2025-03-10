@@ -1,11 +1,12 @@
 """Naive estimators."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
@@ -141,7 +142,7 @@ class EqualWeighted(BaseOptimization):
         self : EqualWeighted
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         self.weights_ = np.ones(n_assets) / n_assets
         return self
@@ -185,7 +186,7 @@ class Random(BaseOptimization):
         self : EqualWeighted
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         self.weights_ = rand_weights_dirichlet(n=n_assets)
         return self

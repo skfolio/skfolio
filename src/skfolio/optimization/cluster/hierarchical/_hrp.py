@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # The risk measure generalization and constraint features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -11,6 +11,7 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -72,8 +73,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             * ENTROPIC_RISK_MEASURE
             * FOURTH_CENTRAL_MOMENT
             * FOURTH_LOWER_PARTIAL_MOMENT
-            * SKEW
-            * KURTOSIS
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -100,9 +99,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Minimum assets weights (weights lower bounds). Negative weights are not allowed.
-        If a float is provided, it is applied to each asset. `None` is equivalent to
-        `-np.Inf` (no lower bound). If a dictionary is provided, its (key/value) pair
-        must be the (asset name/asset minium weight) and the input `X` of the `fit`
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset minium weight) and the input `X` of the `fit`
         methods must be a DataFrame with the assets names in columns. When using a
         dictionary, assets values that are not provided are assigned a minimum weight
         of `0.0`. The default is 0.0 (no short selling).
@@ -116,12 +115,12 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
         Maximum assets weights (weights upper bounds). Weights above 1.0 are not
-        allowed. If a float is provided, it is applied to each asset. `None` is
-        equivalent to `+np.Inf` (no upper bound). If a dictionary is provided, its
-        (key/value) pair must be the (asset name/asset maximum weight) and the input `X`
-        of the `fit` method must be a DataFrame with the assets names in columns. When
-        using a dictionary, assets values that are not provided are assigned a minimum
-        weight of `1.0`. The default is 1.0 (each asset is below 100%).
+        allowed. If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset maximum weight) and the input `X` of the `fit` method must
+        be a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned a
+        minimum weight of `1.0`. The default is 1.0 (each asset is below 100%).
 
         Example:
 
@@ -296,6 +295,13 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             raise TypeError(
                 "`risk_measure` must be of type `RiskMeasure` or `ExtraRiskMeasure`"
             )
+
+        if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
+            # Because Skew and Kurtosis can take negative values
+            raise ValueError(
+                f"risk_measure {self.risk_measure} currently not supported in HRP"
+            )
+
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
@@ -334,7 +340,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
@@ -365,7 +371,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
                 left_cluster, right_cluster = clusters_ids
                 alpha = 1 - left_risk / (left_risk + right_risk)
                 # Weights constraints
-                alpha = self._apply_weight_constraints_to_alpha(
+                alpha = _apply_weight_constraints_to_split_factor(
                     alpha=alpha,
                     weights=weights,
                     max_weights=max_weights,
@@ -379,3 +385,54 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         self.weights_ = weights
         return self
+
+
+def _apply_weight_constraints_to_split_factor(
+    alpha: float,
+    max_weights: np.ndarray,
+    min_weights: np.ndarray,
+    weights: np.ndarray,
+    left_cluster: np.ndarray,
+    right_cluster: np.ndarray,
+) -> float:
+    """
+    Apply weight constraints to the split factor alpha of the ,Hierarchical Tree
+    Clustering algorithm.
+
+    Parameters
+    ----------
+    alpha : float
+        The split factor alpha of the Hierarchical Tree Clustering algorithm.
+
+    min_weights : ndarray of shape (n_assets,)
+        The weight lower bound 1D array.
+
+    max_weights : ndarray of shape (n_assets,)
+        The weight upper bound 1D array.
+
+    weights : np.ndarray of shape (n_assets,)
+        The assets weights.
+
+    left_cluster : ndarray of shape (n_left_cluster,)
+        Indices of the left cluster weights.
+
+    right_cluster : ndarray of shape (n_right_cluster,)
+        Indices of the right cluster weights.
+
+    Returns
+    -------
+    value : float
+        The transformed split factor alpha incorporating the weight constraints.
+    """
+    alpha = min(
+        np.sum(max_weights[left_cluster]) / weights[left_cluster[0]],
+        max(np.sum(min_weights[left_cluster]) / weights[left_cluster[0]], alpha),
+    )
+    alpha = 1 - min(
+        np.sum(max_weights[right_cluster]) / weights[right_cluster[0]],
+        max(
+            np.sum(min_weights[right_cluster]) / weights[right_cluster[0]],
+            1 - alpha,
+        ),
+    )
+    return alpha

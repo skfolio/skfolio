@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -26,7 +26,7 @@ from skfolio.utils.tools import fit_and_predict, safe_split
 
 def _routing_enabled():
     """Return whether metadata routing is enabled.
-    Returns
+    Returns.
     -------
     enabled : bool
         Whether metadata routing is enabled. If the config is not set, it

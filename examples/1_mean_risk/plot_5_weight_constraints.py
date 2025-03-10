@@ -180,7 +180,7 @@ model.weights_
 #
 #   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
 #   * "ref1 >= 2.9 * ref2"
-#   * "ref1 <= ref2"
+#   * "ref1 == ref2"
 #   * "ref1 >= ref1"
 #
 # Let's create a model with groups constraints on "industry sector" and

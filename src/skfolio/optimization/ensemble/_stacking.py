@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
@@ -330,9 +330,9 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             # We validate and convert to numpy array only after base-estimator fitting
             # to keep the assets names in case they are used in the estimator.
             if y is not None:
-                _, y = self._validate_data(X, y, multi_output=True)
+                _, y = skv.validate_data(self, X, y, multi_output=True)
             else:
-                _ = self._validate_data(X)
+                _ = skv.validate_data(self, X)
 
             if isinstance(self.cv, BaseCombinatorialCV):
                 X_pred = np.array(

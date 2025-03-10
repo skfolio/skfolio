@@ -16,7 +16,11 @@ def small_X(X):
 
 @pytest.fixture(
     scope="module",
-    params=list(RiskMeasure) + list(ExtraRiskMeasure),
+    params=[
+        x
+        for x in [*RiskMeasure, *ExtraRiskMeasure]
+        if x not in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
+    ],
 )
 def risk_measure(request):
     return request.param
@@ -153,7 +157,7 @@ def test_transaction_costs(X, previous_weights, transaction_costs):
 def test_hrp_small_X(small_X):
     model = HierarchicalRiskParity()
     model.fit(small_X)
-    assert model.hierarchical_clustering_estimator_.n_clusters_ == 1
+    assert model.hierarchical_clustering_estimator_.n_clusters_ == 2
 
 
 def test_metadata_routing(X_medium, implied_vol_medium):
@@ -173,3 +177,76 @@ def test_metadata_routing(X_medium, implied_vol_medium):
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_hrp_weight_constraints(X):
+    model = HierarchicalRiskParity(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+    )
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.030624328591088226)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.05811358822991056)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Min Weights
+    model.set_params(min_weights={"AAPL": 0.05, "XOM": 0.08})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.05)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.08)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(min_weights=0.05)
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) * 0.05)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Max Weights
+    model.set_params(min_weights=0)
+    model.set_params(max_weights={"AAPL": 0.01, "XOM": 0.03})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.01)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.03)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(max_weights=0.05)
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) * 0.05)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Both
+    model.set_params(min_weights={"AAPL": 0.05}, max_weights={"XOM": 0.03})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.05)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.03)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(min_weights=0.03, max_weights=0.06)
+    model.fit(X)
+    np.testing.assert_almost_equal(
+        model.weights_,
+        np.array(
+            [
+                0.03,
+                0.03,
+                0.03,
+                0.04712633,
+                0.05191067,
+                0.06,
+                0.06,
+                0.06,
+                0.03,
+                0.06,
+                0.06,
+                0.06,
+                0.04068081,
+                0.06,
+                0.05825588,
+                0.06,
+                0.03115588,
+                0.05087043,
+                0.06,
+                0.06,
+            ]
+        ),
+    )
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)

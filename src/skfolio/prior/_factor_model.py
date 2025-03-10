@@ -1,8 +1,8 @@
-"""Factor Model estimator"""
+"""Factor Model estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -17,6 +17,7 @@ import sklearn.base as skb
 import sklearn.linear_model as skl
 import sklearn.multioutput as skmo
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.prior._base import BasePrior, PriorModel
 from skfolio.prior._empirical import EmpiricalPrior
@@ -273,7 +274,7 @@ class FactorModel(BasePrior):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X, y = self._validate_data(X, y, multi_output=True)
+        X, y = skv.validate_data(self, X, y, multi_output=True)
         n_assets = X.shape[1]
         n_factors = y.shape[1]
 

@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -71,7 +71,7 @@ def stationary_bootstrap(
     block_size: float | None = None,
     seed: int | None = None,
 ) -> np.ndarray:
-    """Creates `n_bootstrap_samples` samples from a multivariate return series via
+    """Create `n_bootstrap_samples` samples from a multivariate return series via
     stationary bootstrapping.
 
     Parameters

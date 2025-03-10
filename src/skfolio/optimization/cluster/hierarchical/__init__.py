@@ -1,3 +1,5 @@
+"""Hierarchical Optimization module."""
+
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
@@ -8,6 +10,6 @@ from skfolio.optimization.cluster.hierarchical._hrp import HierarchicalRiskParit
 
 __all__ = [
     "BaseHierarchicalOptimization",
-    "HierarchicalRiskParity",
     "HierarchicalEqualRiskContribution",
+    "HierarchicalRiskParity",
 ]

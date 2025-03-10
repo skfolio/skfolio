@@ -12,7 +12,8 @@ problem:
 .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
 with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
+The float :math:`total\_fee` is impacting the portfolio expected return in the
+optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
