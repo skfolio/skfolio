@@ -859,6 +859,7 @@ class VineCopula(skb.BaseEstimator):
         X: npt.ArrayLike | None = None,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
+        n_samples: int = 1000,
         random_state: int | None = None,
         title: str = "Vine Copula Scatter Matrix",
     ) -> go.Figure:
@@ -896,6 +897,13 @@ class VineCopula(skb.BaseEstimator):
             construction. This can be specified via the `central_assets` parameter in
             the vine copula instantiation.
 
+        n_samples : int, default=1000
+            Number of samples used to control the density and readability of the plot.
+            If `X` is provided and contains more than `n_samples` rows, a random
+            subsample of size `n_samples` is selected. Conversely, if `X` has fewer
+            rows than `n_samples`, the value is adjusted to match the number of rows in
+            `X` to ensure balanced visualization.
+
         random_state : int, RandomState instance or None, default=None
             Controls the randomness of the sample generation.
 
@@ -909,7 +917,6 @@ class VineCopula(skb.BaseEstimator):
         """
         traces = []
         n_assets = self.n_features_in_
-        n_samples = 1000  # More sample will make the scatter plots unreadable
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
@@ -984,6 +991,7 @@ class VineCopula(skb.BaseEstimator):
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
         subset: list[int | str] | None = None,
+        n_samples: int = 500,
         random_state: int | None = None,
         title: str = "Vine Copula Marginal Distributions",
     ) -> go.Figure:
@@ -1023,6 +1031,13 @@ class VineCopula(skb.BaseEstimator):
             Indices or names of assets to include in the plot. If None, all assets are
             used.
 
+        n_samples : int, default=500
+            Number of samples used to control the density and readability of the plot.
+            If `X` is provided and contains more than `n_samples` rows, a random
+            subsample of size `n_samples` is selected. Conversely, if `X` has fewer
+            rows than `n_samples`, the value is adjusted to match the number of rows in
+            `X` to ensure balanced visualization.
+
         random_state : int, RandomState instance or None, default=None
             Controls the randomness of the sample generation.
 
@@ -1037,7 +1052,6 @@ class VineCopula(skb.BaseEstimator):
         n_assets = self.n_features_in_
         subset = subset or list(range(n_assets))
         colors = px.colors.qualitative.Plotly
-        n_samples = 5000  # Good ratio for accuracy/speed
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
