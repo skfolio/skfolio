@@ -34,7 +34,7 @@ X = prices_to_returns(prices)
 # %%
 # Portfolio
 # =========
-# We create a Minimum CVaR portfolio and fit it on the historical retruns.
+# We create a Minimum CVaR portfolio and fit it on the historical returns.
 model = MeanRisk(risk_measure=RiskMeasure.CVAR)
 model.fit(X)
 model.weights_
@@ -42,7 +42,7 @@ model.weights_
 # %%
 # Vine Copula
 # ===========
-# Next, we create a Vine Copula and fit it on the historical retruns.
+# Next, we create a Vine Copula and fit it on the historical returns.
 # By specifying "BAC" as a central asset, we ensure it occupies a central position in
 # the vine, thereby promoting a C-like structure that enhances conditional sampling.
 vine = VineCopula(log_transform=True, central_assets=["BAC"], n_jobs=-1)
