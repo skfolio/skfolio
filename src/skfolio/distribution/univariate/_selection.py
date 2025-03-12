@@ -61,5 +61,4 @@ def select_univariate_dist(
         dist.fit(X)
         results[dist] = dist.aic(X) if aic else dist.bic(X)
     selected_dist = min(results, key=results.get)
-    # noinspection PyTypeChecker
     return selected_dist
