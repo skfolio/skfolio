@@ -28,7 +28,7 @@ data rather than (factor) historical data:
   By generating a larger sample of returns from Vine Copulas, you improve the accuracy
   of capturing tail co-dependencies during the optimization process.
 
-* Enables you to build portfolios optimized for specific stressed scenarios.
+* Building portfolios optimized for specific stressed scenarios.
 """
 
 # %%
@@ -40,7 +40,7 @@ data rather than (factor) historical data:
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
-from skfolio import RiskMeasure
+from skfolio import Population, RiskMeasure
 from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
@@ -51,8 +51,18 @@ from skfolio.prior import FactorModel, SyntheticData
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
+print(factors_train.tail())
+
+# %%
+print("Shapes:")
+print(f"X_train: {X_train.shape}")
+print(f"X_test: {X_test.shape}")
+print(f"factors_train: {factors_train.shape}")
+print(f"factors_test: {factors_test.shape}")
 
 
 # %%
@@ -100,18 +110,21 @@ factor_prior = SyntheticData(
 factor_model = FactorModel(factor_prior_estimator=factor_prior)
 
 model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-model.fit(X_train, y_train)
+model.fit(X_train, factors_train)
 print(model.weights_)
 
 ptf = model.predict(X_test)
 
-
 # %%
-# Let's show how to drill down into the model to retrieve the fitted Vine Copula to
-# plot the marginal distribution of the stressed factors, and compare them with the
-# historical data.
+# Let's show how to drill down into the model to retrieve the fitted Vine Copula and
+# plot the marginal distributions of the stressed factors alongside the historical data.
+# The stressed Momentum (MTUM), Size (SIZE), Low Volatility (USMV), and Value (VLUE)
+# factors deviate significantly from their unstressed distributions, reflecting the
+# impact of stressing the Quality (QUAL) factor.
+# Note that the stressed distribution of the Quality factor is a Dirac, since only -20%
+# was sampled.
 fitted_vine = model.prior_estimator_.factor_prior_estimator_.distribution_estimator_
-fig = fitted_vine.plot_marginal_distributions(y, conditioning={"QUAL": -0.2})
+fig = fitted_vine.plot_marginal_distributions(factors, conditioning={"QUAL": -0.2})
 show(fig)
 
 # %%
@@ -125,17 +138,21 @@ factor_model.set_params(
     )
 )
 # Refit the factor model on the full dataset to update the stressed scenarios
-factor_model.fit(X, y)
+factor_model.fit(X, factors)
 stressed_X = factor_model.prior_model_.returns
 
 stressed_ptf = model.predict(stressed_X)
 
-print(f"CVaR at 95%: {ptf.cvar:.2%}")
-print(f"EVaR at 95%: {ptf.evar:.2%}")
-print(f"Worst Realization: {ptf.worst_realization:.2%}")
-print(f"Mean: {ptf.mean:.2%}")
-print(f"Standard Deviation: {ptf.standard_deviation:.2%}")
-ptf.plot_returns_distribution()
+ptf.name = "Unstressed Ptf"
+stressed_ptf.name = "Stressed Ptf"
+population = Population([ptf, stressed_ptf])
+summary = population.summary()
+summary.loc[
+    ["Mean", "Standard Deviation", "CVaR at 95%", "EVaR at 95%", "Worst Realization"]
+]
+
+# %%
+population.plot_returns_distribution()
 
 # %%
 # Conclusion

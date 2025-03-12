@@ -92,7 +92,7 @@ show(fig)
 # We now sample 50,000 new returns from the Vine Copula, conditioning on a one-day loss
 # of 10% for BAC.
 conditioning = {"BAC": -0.10}
-X_stressed = vine.sample(n_samples=50000, conditioning=conditioning, random_state=0)
+X_stressed = vine.sample(n_samples=50_000, conditioning=conditioning, random_state=0)
 
 # %%
 # Let's plot the marginal distribution of the stressed assets and compare them with the
