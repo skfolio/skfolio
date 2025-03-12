@@ -12,9 +12,29 @@ from skfolio.distribution.univariate._base import BaseUnivariateDist
 
 
 class StudentT(BaseUnivariateDist):
-    """Student's t Distribution Estimation.
+    r"""Student's t Distribution Estimation.
 
     This estimator fits a univariate Student's t distribution to the input data.
+
+    The probability density function is:
+
+    .. math::
+
+        f(x, \nu) = \frac{\Gamma((\nu+1)/2)}
+                        {\sqrt{\pi \nu} \Gamma(\nu/2)}
+                    (1+x^2/\nu)^{-(\nu+1)/2}
+
+    where :math:`x` is a real number and the degrees of freedom parameter :math:`\nu`
+    (denoted `dof` in the implementation) satisfies :math:`\nu > 0`. :math:`\Gamma` is
+    the gamma function (`scipy.special.gamma`).
+
+    The probability density above is defined in the "standardized" form. To shift
+    and/or scale the distribution use the loc and scale parameters. Specifically,
+    `pdf(x, df, loc, scale)` is equivalent to `pdf(y, df) / scale` with
+    `y = (x - loc) / scale`.
+
+    For more information, you can refer to the `scipy documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.t.html#scipy.stats.t>`_
+
 
     Parameters
     ----------
@@ -90,7 +110,13 @@ class StudentT(BaseUnivariateDist):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        return f"{self.__class__.__name__}({self.dof_:0.3g}, {self.loc_:0.3g}, {self.scale_:0.3g})"
+        return (
+            f"{self.__class__.__name__}("
+            f"dof={self.dof_:0.2g}, "
+            f"loc={self.loc_:0.2g}, "
+            f"scale={self.scale_:0.2g}"
+            f")"
+        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "StudentT":
         """Fit the univariate Student's t distribution model.

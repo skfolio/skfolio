@@ -12,10 +12,29 @@ from skfolio.distribution.univariate._base import BaseUnivariateDist
 
 
 class NormalInverseGaussian(BaseUnivariateDist):
-    """Normal Inverse Gaussian Distribution Estimation.
+    r"""Normal Inverse Gaussian Distribution Estimation.
 
     This estimator fits a univariate Normal Inverse Gaussian (NIG) distribution
     to the input data.
+
+    The probability density function is:
+
+    .. math::
+
+        f(x, a, b) = \frac{a \, K_1(a \sqrt{1 + x^2})}{\pi \sqrt{1 + x^2}} \,
+                     \exp(\sqrt{a^2 - b^2} + b x)
+
+    where :math:`x` is a real number, the parameter :math:`a` is the tail
+    heaviness and :math:`b` is the asymmetry parameter satisfying :math:`a > 0`
+    and :math:`|b| <= a`. :math:`K_1` is the modified Bessel function of second kind
+    (`scipy.special.k1`).
+
+    The probability density above is defined in the "standardized" form. To shift
+    and/or scale the distribution use the loc and scale parameters. Specifically,
+    `pdf(x, a, b, loc, scale)` is equivalent to `pdf(y, a, b) / scale` with
+    `y = (x - loc) / scale`.
+
+    For more information, you can refer to the `scipy documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.norminvgauss.html#scipy.stats.norminvgauss>`_
 
     Parameters
     ----------
@@ -95,7 +114,14 @@ class NormalInverseGaussian(BaseUnivariateDist):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        return f"{self.__class__.__name__}({self.a_:0.3g}, {self.b_:0.3g}, {self.loc_:0.3g}, {self.scale_:0.3g})"
+        return (
+            f"{self.__class__.__name__}("
+            f"a={self.a_:0.2g}, "
+            f"b={self.b_:0.2g}, "
+            f"loc={self.loc_:0.2g}, "
+            f"scale={self.scale_:0.2g}"
+            ")"
+        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "NormalInverseGaussian":
         """Fit the univariate Normal Inverse Gaussian distribution model.

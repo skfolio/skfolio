@@ -12,11 +12,28 @@ from skfolio.distribution.univariate._base import BaseUnivariateDist
 
 
 class JohnsonSU(BaseUnivariateDist):
-    """Johnson SU Distribution Estimation.
+    r"""Johnson SU Distribution Estimation.
 
     This estimator fits a univariate Johnson SU distribution to the input data.
     The Johnson SU distribution is flexible and can capture both skewness and fat tails,
     making it appropriate for financial time series modeling.
+
+    The probability density function is:
+
+    .. math::
+
+        f(x, a, b) = \frac{b}{\sqrt{x^2 + 1}}
+                     \phi(a + b \log(x + \sqrt{x^2 + 1}))
+
+    where :math:`x`, :math:`a`, and :math:`b` are real scalars; :math:`b > 0`.
+    :math:`\phi` is the pdf of the normal distribution.
+
+    The probability density above is defined in the "standardized" form. To shift
+    and/or scale the distribution use the loc and scale parameters. Specifically,
+    `pdf(x, a, b, loc, scale)` is equivalent to `pdf(y, a, b) / scale` with
+    `y = (x - loc) / scale`.
+
+    For more information, you can refer to the `scipy documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.johnsonsu.html#scipy.stats.johnsonsu>`_
 
     Parameters
     ----------
@@ -96,7 +113,14 @@ class JohnsonSU(BaseUnivariateDist):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        return f"{self.__class__.__name__}({self.a_:0.2g}, {self.b_:0.2g}, {self.loc_:0.2g}, {self.scale_:0.2g})"
+        return (
+            f"{self.__class__.__name__}("
+            f"a={self.a_:0.2g}, "
+            f"b={self.b_:0.2g}, "
+            f"loc={self.loc_:0.2g}, "
+            f"scale={self.scale_:0.2g}"
+            ")"
+        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "JohnsonSU":
         """Fit the univariate Johnson SU distribution model.

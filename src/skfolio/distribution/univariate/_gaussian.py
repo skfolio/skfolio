@@ -12,9 +12,21 @@ from skfolio.distribution.univariate._base import BaseUnivariateDist
 
 
 class Gaussian(BaseUnivariateDist):
-    """Gaussian Distribution Estimation.
+    r"""Gaussian Distribution Estimation.
 
     This estimator fits a univariate normal (Gaussian) distribution to the input data.
+
+    The probability density function is:
+
+    .. math::
+
+        f(x) = \frac{\exp(-x^2/2)}{\sqrt{2\pi}}
+
+    The probability density above is defined in the "standardized" form. To shift
+    and/or scale the distribution use the loc and scale parameters. Specifically,
+    `pdf(x, loc, scale)` is equivalent to `pdf(y) / scale` with `y = (x - loc) / scale`.
+
+    For more information, you can refer to the `scipy documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.norm.html#scipy.stats.norm>`_
 
     Parameters
     ----------
@@ -86,7 +98,9 @@ class Gaussian(BaseUnivariateDist):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        return f"{self.__class__.__name__}({self.loc_:0.3g}, {self.scale_:0.3g})"
+        return (
+            f"{self.__class__.__name__}(loc={self.loc_:0.2g}, scale={self.scale_:0.2g})"
+        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "Gaussian":
         """Fit the univariate Gaussian distribution model.
