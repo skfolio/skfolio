@@ -24,11 +24,12 @@ class SyntheticData(BasePrior):
     The Synthetic Data model estimates a :class:`~skfolio.prior.PriorModel` by
     fitting a `distribution_estimator` and sampling new returns data from it.
 
-    The default `distribution_estimator` is a Regular Vine Copula model. Other common
-    choices are Generative Adversarial Networks (GANs) or Variational Autoencoders (VAEs).
+    The default ``distribution_estimator`` is a Regular Vine Copula model. Other common
+    choices are Generative Adversarial Networks (GANs) or Variational Autoencoders
+    (VAEs).
 
-    It is particularly useful when the historical distribution tail dependencies are
-    sparse and need extrapolation for tail optimizations or when optimizing under
+    This class is particularly useful when the historical distribution tail dependencies
+    are sparse and need extrapolation for tail optimizations or when optimizing under
     conditional or stressed scenarios.
 
     Parameters
