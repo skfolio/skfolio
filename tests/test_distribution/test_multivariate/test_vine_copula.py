@@ -673,6 +673,7 @@ def test_vine_copula(X, expected_marginals, expected_trees):
         )
         _ = model.plot_marginal_distributions(
             X,
+            n_samples=len(X),
             conditioning={
                 0: -0.4,
                 1: (None, -0.5),
