@@ -1040,7 +1040,9 @@ class BasePortfolio:
         plot : Figure
             Returns the plot Figure object
         """
-        x = np.linspace(min(self.returns), max(self.returns), 500)
+        lower = np.percentile(self.returns, 1e-1)
+        upper = np.percentile(self.returns, 100 - 1e-1)
+        x = np.linspace(lower, upper, 500)
         y = st.gaussian_kde(self.returns)(x)
 
         fig = go.Figure(

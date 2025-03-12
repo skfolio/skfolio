@@ -160,6 +160,7 @@ def test_population_multi_period_portfolio(population, multi_period_portfolio):
     # composition
     assert isinstance(population.composition(), pd.DataFrame)
     assert population.plot_composition()
+    assert population.plot_returns_distribution()
 
 
 def test_slicing(population, multi_period_portfolio):
