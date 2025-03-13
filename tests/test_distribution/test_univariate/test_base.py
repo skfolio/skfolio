@@ -11,7 +11,7 @@ class DummyUnivariate(BaseUnivariateDist):
     _scipy_model = norm
 
     @property
-    def scipy_params(self) -> dict[str, float]:
+    def _scipy_params(self) -> dict[str, float]:
         # Standard normal: mean 0, std 1.
         return {"loc": self.loc_, "scale": self.scale_}
 

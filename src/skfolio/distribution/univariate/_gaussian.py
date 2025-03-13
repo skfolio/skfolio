@@ -91,16 +91,9 @@ class Gaussian(BaseUnivariateDist):
         self.scale = scale
 
     @property
-    def scipy_params(self) -> dict[str, float]:
+    def _scipy_params(self) -> dict[str, float]:
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_}
-
-    @property
-    def fitted_repr(self) -> str:
-        """String representation of the fitted univariate distribution."""
-        return (
-            f"{self.__class__.__name__}(loc={self.loc_:0.2g}, scale={self.scale_:0.2g})"
-        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "Gaussian":
         """Fit the univariate Gaussian distribution model.

@@ -44,7 +44,7 @@ def test_scipy_params(student_t_model):
     """
     Test that scipy_params returns the correct dictionary of fitted parameters.
     """
-    params = student_t_model.scipy_params
+    params = student_t_model._scipy_params
     np.testing.assert_allclose(params["loc"], student_t_model.loc_)
     np.testing.assert_allclose(params["scale"], student_t_model.scale_)
     np.testing.assert_allclose(params["df"], student_t_model.dof_)
@@ -65,7 +65,7 @@ def test_score_samples(student_t_model):
     """
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = student_t_model.score_samples(X_test)
-    expected = t.logpdf(X_test, **student_t_model.scipy_params)
+    expected = t.logpdf(X_test, **student_t_model._scipy_params)
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 

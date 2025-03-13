@@ -107,21 +107,9 @@ class NormalInverseGaussian(BaseUnivariateDist):
         self.scale = scale
 
     @property
-    def scipy_params(self) -> dict[str, float]:
+    def _scipy_params(self) -> dict[str, float]:
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"a": self.a_, "b": self.b_, "loc": self.loc_, "scale": self.scale_}
-
-    @property
-    def fitted_repr(self) -> str:
-        """String representation of the fitted univariate distribution."""
-        return (
-            f"{self.__class__.__name__}("
-            f"a={self.a_:0.2g}, "
-            f"b={self.b_:0.2g}, "
-            f"loc={self.loc_:0.2g}, "
-            f"scale={self.scale_:0.2g}"
-            ")"
-        )
 
     def fit(self, X: npt.ArrayLike, y=None) -> "NormalInverseGaussian":
         """Fit the univariate Normal Inverse Gaussian distribution model.

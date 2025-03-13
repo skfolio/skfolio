@@ -28,15 +28,16 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
 
     @property
     @abstractmethod
-    def scipy_params(self) -> dict[str, float]:
+    def _scipy_params(self) -> dict[str, float]:
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         pass
 
     @property
-    @abstractmethod
     def fitted_repr(self) -> str:
         """String representation of the fitted univariate distribution."""
-        pass
+        skv.check_is_fitted(self)
+        params = ", ".join([f"{k}={v:0.2g}" for k, v in self._scipy_params.items()])
+        return f"{self.__class__.__name__}({params})"
 
     @abstractmethod
     def fit(self, X: npt.ArrayLike, y=None) -> "BaseUnivariateDist":
@@ -98,7 +99,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             Log-likelihood values for each observation in X.
         """
         X = self._validate_X(X, reset=False)
-        log_density = self._scipy_model.logpdf(X, **self.scipy_params)
+        log_density = self._scipy_model.logpdf(X, **self._scipy_params)
         return log_density
 
     def score(self, X: npt.ArrayLike, y=None):
@@ -140,7 +141,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
         rng = sku.check_random_state(random_state)
         sample = self._scipy_model.rvs(
-            size=(n_samples, 1), random_state=rng, **self.scipy_params
+            size=(n_samples, 1), random_state=rng, **self._scipy_params
         )
         return sample
 
@@ -181,7 +182,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         .. [1] "A new look at the statistical model identification", Akaike (1974).
         """
         log_likelihood = self.score(X)
-        k = len(self.scipy_params)
+        k = len(self._scipy_params)
         return 2 * (k - log_likelihood)
 
     def bic(self, X: npt.ArrayLike) -> float:
@@ -223,7 +224,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         """
         log_likelihood = self.score(X)
         n = X.shape[0]
-        k = len(self.scipy_params)
+        k = len(self._scipy_params)
         return -2 * log_likelihood + k * np.log(n)
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
@@ -240,7 +241,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             The CDF evaluated at each data point.
         """
         skv.check_is_fitted(self)
-        return self._scipy_model.cdf(X, **self.scipy_params)
+        return self._scipy_model.cdf(X, **self._scipy_params)
 
     def ppf(self, X: npt.ArrayLike) -> np.ndarray:
         """Compute the percent point function (inverse of the CDF) for the given
@@ -257,7 +258,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             The quantiles corresponding to the given probabilities.
         """
         skv.check_is_fitted(self)
-        return self._scipy_model.ppf(X, **self.scipy_params)
+        return self._scipy_model.ppf(X, **self._scipy_params)
 
     def plot_pdf(
         self, X: npt.ArrayLike | None = None, title: str | None = None

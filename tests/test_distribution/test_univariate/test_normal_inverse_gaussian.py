@@ -59,7 +59,7 @@ def test_scipy_params(nig_model):
     """
     Test that scipy_params returns the correct dictionary of fitted parameters.
     """
-    params = nig_model.scipy_params
+    params = nig_model._scipy_params
     np.testing.assert_allclose(params["loc"], nig_model.loc_)
     np.testing.assert_allclose(params["scale"], nig_model.scale_)
     np.testing.assert_allclose(params["a"], nig_model.a_)
@@ -81,7 +81,7 @@ def test_score_samples(nig_model):
     """
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = nig_model.score_samples(X_test)
-    expected = norminvgauss.logpdf(X_test, **nig_model.scipy_params)
+    expected = norminvgauss.logpdf(X_test, **nig_model._scipy_params)
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 

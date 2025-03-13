@@ -26,7 +26,7 @@ def test_fit_estimates_parameters(gaussian_model):
 
 def test_scipy_params(gaussian_model):
     """Test that scipy_params returns the correct fitted parameter dictionary."""
-    params = gaussian_model.scipy_params
+    params = gaussian_model._scipy_params
     np.testing.assert_allclose(params["loc"], gaussian_model.loc_)
     np.testing.assert_allclose(params["scale"], gaussian_model.scale_)
 

@@ -51,7 +51,7 @@ def test_scipy_params(johnsonsu_model):
     """
     Test that scipy_params returns the correct dictionary of fitted parameters.
     """
-    params = johnsonsu_model.scipy_params
+    params = johnsonsu_model._scipy_params
     np.testing.assert_allclose(params["loc"], johnsonsu_model.loc_)
     np.testing.assert_allclose(params["scale"], johnsonsu_model.scale_)
     np.testing.assert_allclose(params["a"], johnsonsu_model.a_)
@@ -73,7 +73,7 @@ def test_score_samples(johnsonsu_model):
     """
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = johnsonsu_model.score_samples(X_test)
-    expected = johnsonsu.logpdf(X_test, **johnsonsu_model.scipy_params)
+    expected = johnsonsu.logpdf(X_test, **johnsonsu_model._scipy_params)
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 
