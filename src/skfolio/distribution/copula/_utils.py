@@ -402,7 +402,7 @@ def _apply_margin_swap(X: np.ndarray, first_margin: bool) -> np.ndarray:
     assert X.ndim == 2
     assert X.shape[1] == 2
     if first_margin:
-        return np.hstack((X[:, [1]], X[:, [0]]))
+        return X[:, [1, 0]]
     return X
 
 
