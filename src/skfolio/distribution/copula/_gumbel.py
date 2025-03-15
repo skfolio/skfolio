@@ -225,7 +225,10 @@ class GumbelCopula(BaseBivariateCopula):
         return self
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
-        """Compute the CDF of the bivariate Gumbel copula.
+        r"""Compute the CDF of the bivariate Gumbel copula.
+
+        .. math::
+            C(u,v) = \exp\Bigl(-\Bigl[(-\ln u)^{\theta}+(-\ln v)^{\theta}\Bigr]^{1/\theta}\Bigr).
 
         Parameters
         ----------
