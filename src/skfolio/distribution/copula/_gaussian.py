@@ -76,7 +76,7 @@ class GaussianCopula(BaseBivariateCopula):
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
-    GaussianCopula(0.327)
+    GaussianCopula(rho=0.327)
     >>> print(model.lower_tail_dependence)
     0.0
     >>> print(model.upper_tail_dependence)
@@ -324,7 +324,7 @@ class GaussianCopula(BaseBivariateCopula):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        return f"{self.__class__.__name__}({self.rho_:0.3f})"
+        return f"{self.__class__.__name__}(rho={self.rho_:0.3f})"
 
 
 def _neg_log_likelihood(rho: float, X: np.ndarray) -> float:

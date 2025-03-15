@@ -94,7 +94,7 @@ class StudentTCopula(BaseBivariateCopula):
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
-    StudentTCopula(0.327, 5.137)
+    StudentTCopula(rho=0.327, dof=5.14)
     >>> print(model.lower_tail_dependence)
     0.1270
     >>> print(model.upper_tail_dependence)
@@ -393,7 +393,7 @@ class StudentTCopula(BaseBivariateCopula):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        return f"{self.__class__.__name__}({self.rho_:0.3f}, {self.dof_:0.3f})"
+        return f"{self.__class__.__name__}(rho={self.rho_:0.3f}, dof={self.dof_:0.2f})"
 
 
 def _neg_log_likelihood(dof: float, rho: float, X: np.ndarray) -> float:

@@ -106,7 +106,7 @@ class ClaytonCopula(BaseBivariateCopula):
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
-    ClaytonCopula(0.539, 0°)
+    ClaytonCopula(theta=0.54, rot=0°)
     >>> print(model.lower_tail_dependence)
     0.2761
     >>> print(model.upper_tail_dependence)
@@ -364,7 +364,9 @@ class ClaytonCopula(BaseBivariateCopula):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
+        return (
+            f"{self.__class__.__name__}(theta={self.theta_:0.2f}, rot={self.rotation_})"
+        )
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:

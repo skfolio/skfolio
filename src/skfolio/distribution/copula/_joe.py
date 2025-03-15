@@ -112,7 +112,7 @@ class JoeCopula(BaseBivariateCopula):
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
-    JoeCopula(1.479, 180°)
+    JoeCopula(theta=1.48, rot=180°)
     >>> print(model.lower_tail_dependence)
     0.4021
     >>> print(model.upper_tail_dependence)
@@ -388,7 +388,9 @@ class JoeCopula(BaseBivariateCopula):
     @property
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        return f"{self.__class__.__name__}({self.theta_:0.3f}, {self.rotation_})"
+        return (
+            f"{self.__class__.__name__}(theta={self.theta_:0.2f}, rot={self.rotation_})"
+        )
 
 
 def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
