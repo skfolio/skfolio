@@ -274,7 +274,7 @@ class JoeCopula(BaseBivariateCopula):
 
         first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            margin `u`; otherwise, compute the partial derivative with respect to the
             second margin `v`.
 
         Returns
@@ -326,7 +326,7 @@ class JoeCopula(BaseBivariateCopula):
 
         first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            margin `u`; otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
 
         Returns
@@ -512,7 +512,7 @@ def _base_partial_derivative(
 
     first_margin : bool, default=False
         If True, compute the partial derivative with respect to the first
-        margin `u`; ,otherwise, compute the partial derivative with respect to the
+        margin `u`; otherwise, compute the partial derivative with respect to the
         second margin `v`.
 
     theta : float
@@ -544,7 +544,7 @@ def _base_inverse_partial_derivative(
 
     first_margin : bool, default=False
         If True, compute the inverse partial derivative with respect to the first
-        margin `u`; ,otherwise, compute the inverse partial derivative with respect to
+        margin `u`; otherwise, compute the inverse partial derivative with respect to
         the second margin `v`.
 
     theta : float

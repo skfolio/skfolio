@@ -280,7 +280,7 @@ class StudentTCopula(BaseBivariateCopula):
 
         first_margin : bool, default=False
             If True, compute the partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the partial derivative with respect to the
+            margin `u`; otherwise, compute the partial derivative with respect to the
             second margin `v`.
 
         Returns
@@ -336,7 +336,7 @@ class StudentTCopula(BaseBivariateCopula):
 
         first_margin : bool, default=False
             If True, compute the inverse partial derivative with respect to the first
-            margin `u`; ,otherwise, compute the inverse partial derivative with respect
+            margin `u`; otherwise, compute the inverse partial derivative with respect
             to the second margin `v`.
 
         Returns
