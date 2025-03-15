@@ -145,6 +145,23 @@ class JoeCopula(BaseBivariateCopula):
     >>> # Plot a 3D surface of the estimated PDF.
     >>> fig = model.plot_pdf_3d()
     >>> fig.show()
+
+    References
+    ----------
+    .. [1] "An Introduction to Copulas (2nd ed.)",
+       Nelsen, R. B., Springer (2006)
+
+    .. [2] "Multivariate Models and Dependence Concepts",
+        Joe, H., Chapman & Hall/CRC (1997)
+
+    .. [3] "Quantitative Risk Management: Concepts, Techniques and Tools",
+        McNeil, A. J., Frey, R., & Embrechts, P., Princeton University Press (2005)
+
+    .. [4] "The t Copula and Related Copulas",
+        Demarta, S. & McNeil, A. J., International Statistical Review, 73(1), 111–129 (2005)
+
+    .. [5] "Copula Methods in Finance",
+        Cherubini, U., Luciano, E., & Vecchiato, W., John Wiley & Sons (2004)
     """
 
     theta_: float
