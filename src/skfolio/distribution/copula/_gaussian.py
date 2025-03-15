@@ -207,8 +207,8 @@ class GaussianCopula(BaseBivariateCopula):
                   &= \Phi\Bigl(\frac{\Phi^{-1}(u)-\rho\,\Phi^{-1}(v)}{\sqrt{1-\rho^2}}\Bigr)
                   \end{aligned}
 
-        where :math:\Phi is the standard normal CDF and :math:\Phi^{-1} is its inverse
-        (the quantile function).
+        where :math:`\Phi` is the standard normal CDF and :math:`\Phi^{-1}` is its
+        inverse (the quantile function).
 
         Parameters
         ----------
