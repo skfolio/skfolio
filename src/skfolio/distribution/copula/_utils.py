@@ -51,7 +51,14 @@ class CopulaRotation(Enum):
 
 def compute_pseudo_observations(X: npt.ArrayLike) -> np.ndarray:
     """
-    Compute pseudo-observations by ranking each column of the data and scaling the ranks.
+    Compute pseudo-observations by ranking each column of the data and scaling the
+    ranks.
+
+    The goal of computing pseudo-observations is to transform your raw data into a
+    form that has uniform marginal distributions on the open interval (0, 1). This is
+    particularly useful in copula modeling and other statistical methods where the
+    dependence structure is of primary interest, independent of the marginal
+    distributions.
 
     This function transforms each column of the input data into pseudo-observations
     on the (0, 1) interval. For each column, the ranks (starting at 1) are divided by
