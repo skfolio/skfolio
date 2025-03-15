@@ -453,7 +453,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             McNeil, Frey, Embrechts (2005)
         """
         if title is None:
-            title = f"Tail Concentration of Bivariate {self.fitted_repr}"
+            title = f"Tail Concentration of Bivariate {self.__class__.__name__}"
             if X is not None:
                 title += " vs Empirical"
 
@@ -496,7 +496,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of the Bivariate {self.fitted_repr}"
+            title = f"PDF of the Bivariate {self.__class__.__name__}"
 
         u = np.linspace(0.01, 0.99, 100)
         U, V = np.meshgrid(u, u)
@@ -543,7 +543,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         skv.check_is_fitted(self)
 
         if title is None:
-            title = f"PDF of the Bivariate {self.fitted_repr}"
+            title = f"PDF of the Bivariate {self.__class__.__name__}"
 
         u = np.linspace(0.03, 0.97, 100)
         U, V = np.meshgrid(u, u)

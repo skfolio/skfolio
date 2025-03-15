@@ -35,10 +35,7 @@ def test_factor_stress_test(X, y):
     model = FactorModel(
         factor_prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(
-                central_assets=["QUAL"],
-                log_transform=True,
-                n_jobs=-1,
-                random_state=42
+                central_assets=["QUAL"], log_transform=True, n_jobs=-1, random_state=42
             ),
             n_samples=10000,
             sample_args=dict(conditioning={"QUAL": -0.8}),

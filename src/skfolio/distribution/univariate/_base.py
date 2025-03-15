@@ -285,7 +285,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         """
         skv.check_is_fitted(self)
         if title is None:
-            title = f"PDF of {self.fitted_repr}"
+            title = f"PDF of {self.__class__.__name__}"
             if X is not None:
                 title += " vs Empirical KDE"
 
@@ -361,7 +361,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         """
         skv.check_is_fitted(self)
         if title is None:
-            title = f"Q-Q Plot of {self.fitted_repr} vs Sample Data"
+            title = f"Q-Q Plot of {self.__class__.__name__} vs Sample Data"
 
         with warnings.catch_warnings():
             warnings.filterwarnings(
