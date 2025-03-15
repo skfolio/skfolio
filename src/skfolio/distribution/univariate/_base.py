@@ -323,7 +323,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
                 x=x,
                 y=pdfs.flatten(),
                 mode="lines",
-                name=self.fitted_repr,
+                name=self.__class__.__name__,
                 line=dict(color="rgb(31, 119, 180)"),
                 fill="tozeroy",
             )

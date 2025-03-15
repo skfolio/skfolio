@@ -460,7 +460,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         quantiles = np.linspace(5e-3, 1.0 - 5e-3, num=100)
         concentration = self.tail_concentration(quantiles)
 
-        tail_concentration_dict = {self.fitted_repr: concentration}
+        tail_concentration_dict = {self.__class__.__name__: concentration}
         if X is not None:
             tail_concentration_dict["Empirical"] = empirical_tail_concentration(
                 X, quantiles=quantiles
