@@ -27,7 +27,7 @@ def johnsonsu_model():
     X = X.reshape(-1, 1)
 
     # Create an estimator (with both loc and scale free for fitting)
-    model = JohnsonSU()
+    model = JohnsonSU(random_state=123)
     model.fit(X)
     return model
 
@@ -93,7 +93,7 @@ def test_sample(johnsonsu_model):
     """
     Test that sample generates an array of the correct shape and reasonable values.
     """
-    samples = johnsonsu_model.sample(n_samples=20, random_state=123)
+    samples = johnsonsu_model.sample(n_samples=20)
     assert samples.shape == (20, 1)
     # For a reasonable range check, ensure samples are finite.
     assert np.all(np.isfinite(samples))

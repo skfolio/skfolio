@@ -25,7 +25,7 @@ def X():
 @pytest.fixture
 def fitted_model():
     # Using same convention as other libraries for Benchmark
-    fitted_model = StudentTCopula()
+    fitted_model = StudentTCopula(random_state=42)
     fitted_model.rho_ = 0.8090169943749475
     fitted_model.dof_ = 2.918296662088029
     return fitted_model
@@ -157,8 +157,10 @@ def test_student_t_aic_bic(random_data):
 
 def test_student_t_sample():
     """Test sample() method for shape and range."""
-    model = StudentTCopula().fit(np.random.rand(100, 2))
-    samples = model.sample(n_samples=50, random_state=123)
+    model = StudentTCopula(random_state=123).fit(np.random.rand(100, 2))
+    samples = model.sample(
+        n_samples=50,
+    )
     assert samples.shape == (50, 2)
     # Should lie strictly in (0,1).
     assert np.all(samples >= 1e-8) and np.all(samples <= 1 - 1e-8)
@@ -298,7 +300,7 @@ def test_student_t_partial_derivative_inverse_partial_derivative(
 
 @pytest.mark.parametrize("itau", [True, False])
 def test_gaussian_sample_refitting(X, fitted_model, itau):
-    samples = fitted_model.sample(n_samples=int(1e4), random_state=42)
+    samples = fitted_model.sample(n_samples=int(1e4))
     m = StudentTCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
     assert np.isclose(fitted_model.dof_, m.dof_, 1e-1)
@@ -352,7 +354,7 @@ def test_upper_tail_dependence(fitted_model):
 def test_fitted_repr(fitted_model):
     rep = fitted_model.fitted_repr
     assert "StudentTCopula" in rep, "fitted_repr does not contain class name"
-    rho_str = f"{fitted_model.rho_:0.3f}"
+    rho_str = f"rho={fitted_model.rho_:0.3f}"
     assert rho_str in rep, f"fitted_repr does not contain formatted rho: {rho_str}"
-    dof_str = f"{fitted_model.dof_:0.3f}"
+    dof_str = f"dof={fitted_model.dof_:0.2f}"
     assert dof_str in rep, f"fitted_repr does not contain formatted dof: {dof_str}"

@@ -156,7 +156,7 @@ print(X.tail())
 # Let's fit a Regular :class:`~skfolio.distribution.VineCopula` in parallel using all
 # processors (`n_jobs=-1`) and applying a log transform for improved statistical
 # properties:
-vine = VineCopula(n_jobs=-1, log_transform=True)
+vine = VineCopula(n_jobs=-1, log_transform=True, random_state=0)
 vine.fit(X)
 vine.display_vine()
 
@@ -193,7 +193,7 @@ print(samples.shape)
 # %%
 # Let's plot the scatter matrix of the generated returns from the Vine model and compare
 # them with the historical returns `X`.
-fig = vine.plot_scatter_matrix(X=X, random_state=0)
+fig = vine.plot_scatter_matrix(X=X)
 fig.update_layout(height=600)
 show(fig)
 
@@ -273,7 +273,7 @@ print(cond_samples.shape)
 # %%
 # Let's plot the marginals conditional returns and compare them with the
 # historical returns `X`.
-vine.plot_marginal_distributions(X=X, conditioning=conditioning, random_state=0)
+vine.plot_marginal_distributions(X=X, conditioning=conditioning)
 
 # %%
 # In the graph, by selecting HD and JPM, you can see that the conditioning has been

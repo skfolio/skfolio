@@ -22,9 +22,15 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
 
     This abstract class serves as a foundation for univariate distribution models
     based on scipy.
+
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
     """
 
     _scipy_model: st.rv_continuous
+
+    def __init__(self, random_state: int | None = None):
+        self.random_state = random_state
 
     @property
     @abstractmethod
@@ -120,7 +126,7 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         """
         return np.sum(self.score_samples(X))
 
-    def sample(self, n_samples: int = 1, random_state: int | None = None):
+    def sample(self, n_samples: int = 1):
         """Generate random samples from the fitted distribution.
 
         Currently, this is implemented only for gaussian and tophat kernels.
@@ -130,16 +136,13 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
         n_samples : int, default=1
             Number of samples to generate.
 
-        random_state : int, RandomState instance or None, default=None
-            Seed or random state to ensure reproducibility.
-
         Returns
         -------
         X : array-like of shape (n_samples, 1)
             List of samples.
         """
         skv.check_is_fitted(self)
-        rng = sku.check_random_state(random_state)
+        rng = sku.check_random_state(self.random_state)
         sample = self._scipy_model.rvs(
             size=(n_samples, 1), random_state=rng, **self._scipy_params
         )

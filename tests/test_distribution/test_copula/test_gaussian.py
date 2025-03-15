@@ -24,7 +24,7 @@ def X():
 @pytest.fixture
 def fitted_model():
     # Using same convention as other libraries for Benchmark
-    fitted_model = GaussianCopula()
+    fitted_model = GaussianCopula(random_state=42)
     fitted_model.rho_ = 0.8090169943749475
     return fitted_model
 
@@ -135,8 +135,8 @@ def test_gaussian_aic_bic(random_data):
 
 def test_gaussian_sample():
     """Test sample() method for shape and range."""
-    model = GaussianCopula().fit(np.random.rand(100, 2))
-    samples = model.sample(n_samples=50, random_state=123)
+    model = GaussianCopula(random_state=123).fit(np.random.rand(100, 2))
+    samples = model.sample(n_samples=50)
     assert samples.shape == (50, 2)
     # Should lie strictly in (0,1).
     assert np.all(samples >= 1e-8) and np.all(samples <= 1 - 1e-8)
@@ -261,7 +261,7 @@ def test_gaussian_partial_derivative_inverse_partial_derivative(
 
 @pytest.mark.parametrize("itau", [True, False])
 def test_gaussian_sample_refitting(X, fitted_model, itau):
-    samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
+    samples = fitted_model.sample(n_samples=int(1e5))
     m = GaussianCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.rho_, m.rho_, 1e-2)
 

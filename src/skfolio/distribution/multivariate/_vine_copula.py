@@ -150,6 +150,9 @@ class VineCopula(skb.BaseEstimator):
         The value `-1` means using all processors.
         The default (`None`) means 1 unless in a `joblib.parallel_backend` context.
 
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
+
     Attributes
     ----------
     trees_ : list[Tree]
@@ -240,6 +243,7 @@ class VineCopula(skb.BaseEstimator):
         aic: bool = True,
         independence_level: float = 0.05,
         n_jobs: int | None = None,
+        random_state: int | None = None,
     ):
         self.fit_marginals = fit_marginals
         self.marginal_candidates = marginal_candidates
@@ -251,6 +255,7 @@ class VineCopula(skb.BaseEstimator):
         self.aic = aic
         self.independence_level = independence_level
         self.n_jobs = n_jobs
+        self.random_state = random_state
 
     def fit(self, X: npt.ArrayLike, y=None) -> "VineCopula":
         """
@@ -411,7 +416,6 @@ class VineCopula(skb.BaseEstimator):
         n_samples: int = 1,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
-        random_state: int | None = None,
     ):
         """Generate random samples from the vine copula.
 
@@ -448,10 +452,6 @@ class VineCopula(skb.BaseEstimator):
             construction. This can be specified via the `central_assets` parameter in
             the vine copula instantiation.
 
-
-        random_state : int, RandomState instance or None, default=None
-            Controls the randomness of the sample generation.
-
         Returns
         -------
         X : array-like of shape (n_samples, n_assets)
@@ -461,7 +461,7 @@ class VineCopula(skb.BaseEstimator):
         skv.check_is_fitted(self)
         self.clear_cache()
         n_assets = self.n_features_in_
-        rng = sku.check_random_state(random_state)
+        rng = sku.check_random_state(self.random_state)
 
         uniform_cond_samples = {}
         initial_cond = {}
@@ -860,7 +860,6 @@ class VineCopula(skb.BaseEstimator):
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
         n_samples: int = 1000,
-        random_state: int | None = None,
         title: str = "Vine Copula Scatter Matrix",
     ) -> go.Figure:
         """
@@ -904,9 +903,6 @@ class VineCopula(skb.BaseEstimator):
             rows than `n_samples`, the value is adjusted to match the number of rows in
             `X` to ensure balanced visualization.
 
-        random_state : int, RandomState instance or None, default=None
-            Controls the randomness of the sample generation.
-
         title : str, default="Vine Copula Scatter Matrix"
             The title for the plot.
 
@@ -925,7 +921,7 @@ class VineCopula(skb.BaseEstimator):
                 raise ValueError(f"X should have {n_assets} columns")
             if X.shape[0] > n_samples:
                 # We subsample for improved graph readability
-                rng = sku.check_random_state(random_state)
+                rng = sku.check_random_state(self.random_state)
                 indices = rng.choice(
                     np.arange(X.shape[0]), size=n_samples, replace=False
                 )
@@ -953,9 +949,7 @@ class VineCopula(skb.BaseEstimator):
                 )
             )
 
-        sample = self.sample(
-            n_samples=n_samples, conditioning=conditioning, random_state=random_state
-        )
+        sample = self.sample(n_samples=n_samples, conditioning=conditioning)
 
         # noinspection PyTypeChecker
         traces.append(
@@ -992,7 +986,6 @@ class VineCopula(skb.BaseEstimator):
         | None = None,
         subset: list[int | str] | None = None,
         n_samples: int = 500,
-        random_state: int | None = None,
         title: str = "Vine Copula Marginal Distributions",
     ) -> go.Figure:
         """
@@ -1038,9 +1031,6 @@ class VineCopula(skb.BaseEstimator):
             rows than `n_samples`, the value is adjusted to match the number of rows in
             `X` to ensure balanced visualization.
 
-        random_state : int, RandomState instance or None, default=None
-            Controls the randomness of the sample generation.
-
         title : str, default="Vine Copula Marginal Distributions"
             The title for the plot.
 
@@ -1060,7 +1050,7 @@ class VineCopula(skb.BaseEstimator):
                 raise ValueError(f"X should have {n_assets} columns")
             if X.shape[0] > n_samples:
                 # We subsample for improved graph readability
-                rng = sku.check_random_state(random_state)
+                rng = sku.check_random_state(self.random_state)
                 indices = rng.choice(
                     np.arange(X.shape[0]), size=n_samples, replace=False
                 )
@@ -1069,9 +1059,7 @@ class VineCopula(skb.BaseEstimator):
                 # We want same proportion as X to have a balanced graph
                 n_samples = X.shape[0]
 
-        samples = self.sample(
-            n_samples=n_samples, conditioning=conditioning, random_state=random_state
-        )
+        samples = self.sample(n_samples=n_samples, conditioning=conditioning)
 
         traces = []
         for i, s in enumerate(subset):

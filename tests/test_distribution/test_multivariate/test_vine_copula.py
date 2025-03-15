@@ -862,11 +862,12 @@ def test_vine_copula_truncated_central_assets_output(
 
 
 def test_vine_copula_conditional_sampling(X):
-    model = VineCopula(n_jobs=-1, max_depth=3, central_assets=["AMD", "BAC"])
+    model = VineCopula(
+        n_jobs=-1, max_depth=3, central_assets=["AMD", "BAC"], random_state=42
+    )
     model.fit(X)
     sample1 = model.sample(
         n_samples=4,
-        random_state=42,
         conditioning={
             1: [-0.1, -0.2, -0.3, -0.4],
             2: [-0.2, -0.3, -0.4, -0.5],
@@ -874,7 +875,6 @@ def test_vine_copula_conditional_sampling(X):
     )
     sample2 = model.sample(
         n_samples=4,
-        random_state=42,
         conditioning={
             "AMD": [-0.1, -0.2, -0.3, -0.4],
             "BAC": [-0.2, -0.3, -0.4, -0.5],
@@ -1000,9 +1000,10 @@ def test_vine_truncated_sampling_order(X, max_depth):
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
         n_jobs=-1,
+        random_state=42,
     )
     model.fit(X)
-    samples = model.sample(n_samples=4, random_state=42)
+    samples = model.sample(n_samples=4)
     assert samples.shape == (4, 20)
 
     sampling_order = model._sampling_order()
@@ -1124,24 +1125,26 @@ def test_vine_truncated_sampling_order(X, max_depth):
     ],
 )
 def test_vine_sample(X, max_depth, expected):
-    model = VineCopula(max_depth=max_depth, n_jobs=-1)
+    model = VineCopula(max_depth=max_depth, n_jobs=-1, random_state=42)
     model.fit(X)
-    sample = model.sample(n_samples=2, random_state=42)
+    sample = model.sample(
+        n_samples=2,
+    )
     np.testing.assert_array_almost_equal(sample, expected, 5)
 
 
 def test_vine_sample_truncated_consistency(X):
-    ref_model = VineCopula(max_depth=10)
+    ref_model = VineCopula(max_depth=10, random_state=42)
     ref_model.fit(np.array(X)[:, :5])
     dummy_X = np.ones((len(X), 2)) / 2
     for i in [1, 2]:
         for edge in ref_model.trees_[-i].edges:
             edge.copula = IndependentCopula().fit(dummy_X)
-    ref_samples = ref_model.sample(n_samples=4, random_state=42)
+    ref_samples = ref_model.sample(n_samples=4)
 
-    model = VineCopula(max_depth=2)
+    model = VineCopula(max_depth=2, random_state=42)
     model.fit(np.array(X)[:, :5])
-    samples = model.sample(n_samples=4, random_state=42)
+    samples = model.sample(n_samples=4)
     np.testing.assert_almost_equal(samples, ref_samples)
 
 
@@ -1317,9 +1320,10 @@ def test_vine_conditional_sample(X, conditioning, log_transform, expected):
         copula_candidates=[GaussianCopula(), ClaytonCopula()],
         log_transform=log_transform,
         max_depth=5,
+        random_state=42,
     )
     model.fit(X)
-    sample = model.sample(n_samples=3, random_state=42, conditioning=conditioning)
+    sample = model.sample(n_samples=3, conditioning=conditioning)
     np.testing.assert_array_almost_equal(sample, expected, 5)
 
 
@@ -1411,16 +1415,17 @@ def test_vine_plot_raise(X):
 #         copula_candidates=[GaussianCopula()],
 #         n_jobs=-1,
 #         independence_level=1.5,
+#         random_state=42
 #     )
 #     model.fit(X)
-#     sample = model.sample(n_samples=int(5e5), random_state=42)
+#     sample = model.sample(n_samples=int(5e5))
 #     model.fit(sample)
-#     sample = model.sample(n_samples=int(5e5), random_state=42)
+#     sample = model.sample(n_samples=int(5e5))
 #     model3 = sk.clone(model)
 #     model3.fit(sample)
 #     np.testing.assert_array_almost_equal(
-#         model.sample(n_samples=5, random_state=42),
-#         model3.sample(n_samples=5, random_state=42),
+#         model.sample(n_samples=5),
+#         model3.sample(n_samples=5),
 #     )
 
 #

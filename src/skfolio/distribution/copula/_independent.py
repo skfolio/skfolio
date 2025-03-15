@@ -20,12 +20,16 @@ class IndependentCopula(BaseBivariateCopula):
     .. math::
         C(u, v) = u \cdot v
 
+    Parameters
+    ----------
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
     """
 
     _n_params = 0
 
-    def __init__(self):
-        pass
+    def __init__(self, random_state: int | None = None):
+        super().__init__(random_state=random_state)
 
     def fit(self, X: npt.ArrayLike, y=None) -> "IndependentCopula":
         """Fit the Bivariate Independent Copula.

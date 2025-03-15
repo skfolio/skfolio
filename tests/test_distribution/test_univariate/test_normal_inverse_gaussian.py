@@ -35,7 +35,7 @@ def nig_model():
     X = X.reshape(-1, 1)
 
     # Create an estimator with one fixed parameter (for instance, fix loc to None so both are estimated)
-    model = NormalInverseGaussian()
+    model = NormalInverseGaussian(random_state=123)
     model.fit(X)
     return model
 
@@ -101,7 +101,7 @@ def test_sample(nig_model):
     """
     Test that sample generates an array of the correct shape and reasonable values.
     """
-    samples = nig_model.sample(n_samples=20, random_state=123)
+    samples = nig_model.sample(n_samples=20)
     assert samples.shape == (20, 1)
     # For a reasonable range check, ensure samples are finite.
     assert np.all(np.isfinite(samples))

@@ -22,7 +22,7 @@ def student_t_model():
     X = t.rvs(df_true, loc=loc_true, scale=scale_true, size=1000).reshape(-1, 1)
 
     # Create the estimator with both parameters free (they will be estimated).
-    model = StudentT()
+    model = StudentT(random_state=123)
     model.fit(X)
     return model
 
@@ -85,7 +85,7 @@ def test_sample(student_t_model):
     """
     Test that sample generates an array with the correct shape and finite values.
     """
-    samples = student_t_model.sample(n_samples=20, random_state=123)
+    samples = student_t_model.sample(n_samples=20)
     assert samples.shape == (20, 1)
     # Ensure samples are finite
     assert np.all(np.isfinite(samples))

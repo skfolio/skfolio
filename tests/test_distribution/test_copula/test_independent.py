@@ -23,7 +23,7 @@ def X():
 @pytest.fixture
 def fitted_model(X):
     # Using same convention as other libraries for Benchmark
-    fitted_model = IndependentCopula().fit(X)
+    fitted_model = IndependentCopula(random_state=42).fit(X)
     return fitted_model
 
 
@@ -106,8 +106,8 @@ def test_independent_aic_bic(random_data):
 
 def test_independent_sample():
     """Test sample() method for shape and range."""
-    model = IndependentCopula().fit(np.random.rand(100, 2))
-    samples = model.sample(n_samples=50, random_state=123)
+    model = IndependentCopula(random_state=123).fit(np.random.rand(100, 2))
+    samples = model.sample(n_samples=50)
     assert samples.shape == (50, 2)
     # Should lie strictly in (0,1).
     assert np.all(samples >= 1e-8) and np.all(samples <= 1 - 1e-8)

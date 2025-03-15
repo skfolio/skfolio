@@ -71,10 +71,8 @@ print(f"factors_test: {factors_test.shape}")
 # Let's find the minimum CVaR portfolio on 10,000 synthetic data generated from a Vine
 # Copula fitted on the historical training set and evaluate it on the historical test
 # set.
-vine = VineCopula(log_transform=True, n_jobs=-1)
-prior = SyntheticData(
-    distribution_estimator=vine, n_samples=10000, sample_args=dict(random_state=0)
-)
+vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)
+prior = SyntheticData(distribution_estimator=vine, n_samples=10000)
 model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
 
 model.fit(X_train)
@@ -101,11 +99,13 @@ ptf.summary()
 # The model fits a Factor Model on historical data, then fits a Vine Copula on the
 # factor data, samples 10,000 stressed scenarios from the Vine, and finally projects
 # these scenarios back to the asset universe using the Factor Model.
-vine = VineCopula(log_transform=True, central_assets=["QUAL"], n_jobs=-1)
+vine = VineCopula(
+    log_transform=True, central_assets=["QUAL"], n_jobs=-1, random_state=0
+)
 factor_prior = SyntheticData(
     distribution_estimator=vine,
     n_samples=10000,
-    sample_args=dict(conditioning={"QUAL": -0.2}, random_state=0),
+    sample_args=dict(conditioning={"QUAL": -0.2}),
 )
 factor_model = FactorModel(factor_prior_estimator=factor_prior)
 
@@ -133,9 +133,7 @@ show(fig)
 # Finally, let's Stress Test the portfolio by further stressing the quality factor by
 # -50%.
 factor_model.set_params(
-    factor_prior_estimator__sample_args=dict(
-        conditioning={"QUAL": -0.5}, random_state=0
-    )
+    factor_prior_estimator__sample_args=dict(conditioning={"QUAL": -0.5})
 )
 # Refit the factor model on the full dataset to update the stressed scenarios
 factor_model.fit(X, factors)

@@ -12,7 +12,7 @@ def gaussian_model():
     np.random.seed(42)
     X = np.random.normal(loc=0.0, scale=1.0, size=500).reshape(-1, 1)
     # Instantiate Gaussian estimator with both parameters free.
-    model = Gaussian()
+    model = Gaussian(random_state=123)
     model.fit(X)
     return model
 
@@ -58,7 +58,7 @@ def test_score(gaussian_model):
 
 def test_sample(gaussian_model):
     """Test that sample generates an array with the correct shape and reasonable values."""
-    samples = gaussian_model.sample(n_samples=20, random_state=123)
+    samples = gaussian_model.sample(n_samples=20)
     assert samples.shape == (20, 1)
     # Check that the samples roughly lie within a reasonable range for a normal distribution.
     assert np.all(samples > -5) and np.all(samples < 5)
@@ -81,7 +81,7 @@ def test_plot_pdf(gaussian_model):
 
 
 def test_qq_plot(gaussian_model):
-    samples = gaussian_model.sample(n_samples=20, random_state=123)
+    samples = gaussian_model.sample(n_samples=20)
     fig = gaussian_model.qq_plot(samples, title="Gaussian QQ")
     # Verify that at least one trace is present and the title is set correctly.
     assert len(fig.data) >= 1

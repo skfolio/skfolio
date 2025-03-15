@@ -23,7 +23,7 @@ def X():
 @pytest.fixture
 def fitted_model():
     # Using same convention as other libraries for Benchmark
-    fitted_model = ClaytonCopula()
+    fitted_model = ClaytonCopula(random_state=42)
     fitted_model.theta_ = 2.718413896014
     fitted_model.rotation_ = CopulaRotation.R0
     return fitted_model
@@ -105,8 +105,8 @@ def test_clayton_aic_bic(random_data):
 
 def test_clayton_sample():
     """Test sample() method for shape and range."""
-    model = ClaytonCopula().fit(np.random.rand(100, 2))
-    samples = model.sample(n_samples=50, random_state=123)
+    model = ClaytonCopula(random_state=123).fit(np.random.rand(100, 2))
+    samples = model.sample(n_samples=50)
     assert samples.shape == (50, 2)
     # Should lie strictly in (0,1).
     assert np.all(samples >= 1e-8) and np.all(samples <= 1 - 1e-8)
@@ -269,7 +269,7 @@ def test_clayton_partial_derivative_inverse_partial_derivative(
 @pytest.mark.parametrize("rotation", list(CopulaRotation))
 def test_clayton_sample_refitting(X, fitted_model, itau, rotation):
     fitted_model.rotation_ = rotation
-    samples = fitted_model.sample(n_samples=int(1e5), random_state=42)
+    samples = fitted_model.sample(n_samples=int(1e5))
     m = ClaytonCopula(itau=itau).fit(samples)
     assert np.isclose(fitted_model.theta_, m.theta_, 1e-2)
 
@@ -323,7 +323,7 @@ def test_upper_tail_dependence(fitted_model):
 def test_fitted_repr(fitted_model):
     rep = fitted_model.fitted_repr
     assert "ClaytonCopula" in rep, "fitted_repr does not contain class name"
-    theta_str = f"{fitted_model.theta_:0.3f}"
+    theta_str = f"theta={fitted_model.theta_:0.2f}"
     assert theta_str in rep, (
         f"fitted_repr does not contain formatted theta: {theta_str}"
     )

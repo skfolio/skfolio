@@ -10,6 +10,9 @@ class DummyUnivariate(BaseUnivariateDist):
 
     _scipy_model = norm
 
+    def __init__(self, random_state):
+        super().__init__(random_state=random_state)
+
     @property
     def _scipy_params(self) -> dict[str, float]:
         # Standard normal: mean 0, std 1.
@@ -28,7 +31,7 @@ class DummyUnivariate(BaseUnivariateDist):
 @pytest.fixture
 def dummy_model():
     """Fixture for creating a fitted DummyUnivariate instance."""
-    model = DummyUnivariate().fit()
+    model = DummyUnivariate(random_state=42).fit()
     # "Fitting" in our context just means that scikit-learn's check_is_fitted will pass.
     # We simulate fitting by calling _validate_X once.
     X = np.linspace(-3, 3, 100).reshape(-1, 1)
@@ -56,7 +59,7 @@ def test_score(dummy_model):
 
 def test_sample(dummy_model):
     """Test that sample returns an array of the correct shape."""
-    samples = dummy_model.sample(n_samples=10, random_state=42)
+    samples = dummy_model.sample(n_samples=10)
     assert samples.shape == (10, 1)
     # Check that samples are roughly in the range for a standard normal
     assert np.all(samples > -5) and np.all(samples < 5)

@@ -28,10 +28,18 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
 
     This abstract class defines the interface for bivariate copula models, including
     methods for fitting, sampling, scoring, and computing partial derivatives.
+
+    Parameters
+    ----------
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
     """
 
     # Used for AIC and BIC
     _n_params: int
+
+    def __init__(self, random_state: int | None = None):
+        self.random_state = random_state
 
     def _validate_X(self, X: npt.ArrayLike, reset: bool) -> np.ndarray:
         """Validate the input data.
@@ -332,7 +340,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         k = self._n_params
         return -2 * log_likelihood + k * np.log(n)
 
-    def sample(self, n_samples: int = 1, random_state: int | None = None):
+    def sample(self, n_samples: int = 1):
         """Generate random samples from the bivariate copula using the inverse
         Rosenblatt transform.
 
@@ -340,9 +348,6 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
         ----------
         n_samples : int, default=1
             Number of samples to generate.
-
-        random_state : int, RandomState instance or None, default=None
-            Controls the randomness of the sample generation.
 
         Returns
         -------
@@ -352,7 +357,7 @@ class BaseBivariateCopula(skb.BaseEstimator, ABC):
             interval `[0, 1]`.
         """
         skv.check_is_fitted(self)
-        rng = sku.check_random_state(random_state)
+        rng = sku.check_random_state(self.random_state)
 
         # Generate independent Uniform(0, 1) samples
         X = rng.random(size=(n_samples, 2))

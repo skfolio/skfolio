@@ -45,6 +45,9 @@ class JohnsonSU(BaseUnivariateDist):
         If provided, the scale parameter is fixed to this value during fitting.
         Otherwise, it is estimated from the data.
 
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
+
     Attributes
     ----------
     a_ : float
@@ -101,7 +104,13 @@ class JohnsonSU(BaseUnivariateDist):
     scale_: float
     _scipy_model = st.johnsonsu
 
-    def __init__(self, loc: float | None = None, scale: float | None = None):
+    def __init__(
+        self,
+        loc: float | None = None,
+        scale: float | None = None,
+        random_state: int | None = None,
+    ):
+        super().__init__(random_state=random_state)
         self.loc = loc
         self.scale = scale
 

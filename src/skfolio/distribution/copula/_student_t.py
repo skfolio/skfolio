@@ -65,6 +65,9 @@ class StudentTCopula(BaseBivariateCopula):
     tolerance : float, default=1e-4
         Convergence tolerance for the MLE optimization.
 
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
+
     Attributes
     ----------
     rho_ : float
@@ -135,7 +138,9 @@ class StudentTCopula(BaseBivariateCopula):
         itau: bool = True,
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
+        random_state: int | None = None,
     ):
+        super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance

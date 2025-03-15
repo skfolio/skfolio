@@ -38,9 +38,10 @@ def test_factor_stress_test(X, y):
                 central_assets=["QUAL"],
                 log_transform=True,
                 n_jobs=-1,
+                random_state=42
             ),
             n_samples=10000,
-            sample_args=dict(random_state=42, conditioning={"QUAL": -0.8}),
+            sample_args=dict(conditioning={"QUAL": -0.8}),
         )
     )
     model.fit(X, y)
