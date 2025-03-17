@@ -81,7 +81,7 @@ def test_score_samples(nig_model):
     """
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = nig_model.score_samples(X_test)
-    expected = norminvgauss.logpdf(X_test, **nig_model._scipy_params)
+    expected = norminvgauss.logpdf(X_test, **nig_model._scipy_params).ravel()
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 

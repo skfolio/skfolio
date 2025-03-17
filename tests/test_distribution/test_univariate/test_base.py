@@ -39,6 +39,10 @@ def dummy_model():
     return model
 
 
+def test_n_params(dummy_model):
+    assert dummy_model.n_params == 2
+
+
 def test_score_samples(dummy_model):
     """Test that score_samples returns log-density values."""
     X = np.array([[-1.0], [0.0], [1.0]])

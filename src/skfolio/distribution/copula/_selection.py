@@ -10,6 +10,7 @@ import numpy.typing as npt
 import scipy.stats as st
 import sklearn as sk
 
+from skfolio.distribution._base import SelectionCriterion
 from skfolio.distribution.copula._base import BaseBivariateCopula
 from skfolio.distribution.copula._independent import IndependentCopula
 
@@ -17,7 +18,7 @@ from skfolio.distribution.copula._independent import IndependentCopula
 def select_bivariate_copula(
     X: npt.ArrayLike,
     copula_candidates: list[BaseBivariateCopula],
-    aic: bool = True,
+    selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
     independence_level: float = 0.05,
 ) -> BaseBivariateCopula:
     """
@@ -41,9 +42,10 @@ def select_bivariate_copula(
         A list of candidate copula models. Each candidate must inherit from
         `BaseBivariateCopula`.
 
-    aic : bool, default=True
-        If True, the Akaike Information Criterion (AIC) is used for model selection;
-        otherwise, the Bayesian Information Criterion (BIC) is used.
+    selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
+        The criterion used for model selection. Possible values are:
+            - SelectionCriterion.AIC : Akaike Information Criterion
+            - SelectionCriterion.BIC : Bayesian Information Criterion
 
     independence_level : float, default=0.05
         The significance level for the Kendall tau independence test. If the p-value is
@@ -81,7 +83,14 @@ def select_bivariate_copula(
             # Faster computation by reusing kendall tau if itau
             copula.kendall_tau = kendall_tau
         copula.fit(X)
-        results[copula] = copula.aic(X) if aic else copula.bic(X)
+
+        match selection_criterion:
+            case selection_criterion.AIC:
+                results[copula] = copula.aic(X)
+            case selection_criterion.BIC:
+                results[copula] = copula.bic(X)
+            case _:
+                raise ValueError(f"{selection_criterion} not implemented")
+
     selected_copula = min(results, key=results.get)
-    # noinspection PyTypeChecker
     return selected_copula

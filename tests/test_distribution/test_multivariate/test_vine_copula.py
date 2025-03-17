@@ -683,6 +683,22 @@ def test_vine_copula(X, expected_marginals, expected_trees):
     model.display_vine()
 
 
+def test_vine_copula_score_samples(X):
+    model = VineCopula(n_jobs=-1, max_depth=100)
+    model.fit(X)
+
+    assert model.n_params == 280
+    res = model.score_samples(X)
+    assert res.shape == (2263,)
+    score = model.score(X)
+    aic = model.aic(X)
+    bic = model.bic(X)
+
+    np.testing.assert_almost_equal(score, 139658.03, 1)
+    np.testing.assert_almost_equal(aic, -278756.07, 1)
+    np.testing.assert_almost_equal(bic, -277153.23, 1)
+
+
 def test_log_transform(X):
     model = VineCopula(
         n_jobs=-1,

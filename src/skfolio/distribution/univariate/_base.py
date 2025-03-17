@@ -12,12 +12,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.stats as st
-import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
+from skfolio.distribution._base import BaseDistribution
 
-class BaseUnivariateDist(skb.BaseEstimator, ABC):
+
+class BaseUnivariateDist(BaseDistribution, ABC):
     """Base Univariate Distribution Estimator.
 
     This abstract class serves as a foundation for univariate distribution models
@@ -37,6 +38,11 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
     def _scipy_params(self) -> dict[str, float]:
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         pass
+
+    @property
+    def n_params(self) -> int:
+        """Number of model parameters."""
+        return len(self._scipy_params)
 
     @property
     def fitted_repr(self) -> str:
@@ -105,26 +111,8 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             Log-likelihood values for each observation in X.
         """
         X = self._validate_X(X, reset=False)
-        log_density = self._scipy_model.logpdf(X, **self._scipy_params)
+        log_density = self._scipy_model.logpdf(X, **self._scipy_params).ravel()
         return log_density
-
-    def score(self, X: npt.ArrayLike, y=None):
-        """Compute the total log-likelihood under the model.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, 1)
-            An array of data points for which the total log-likelihood is computed.
-
-        y : None
-            Ignored. Provided for compatibility with scikit-learn's API.
-
-        Returns
-        -------
-        logprob : float
-            The total log-likelihood (sum of log-pdf values).
-        """
-        return np.sum(self.score_samples(X))
 
     def sample(self, n_samples: int = 1):
         """Generate random samples from the fitted distribution.
@@ -147,88 +135,6 @@ class BaseUnivariateDist(skb.BaseEstimator, ABC):
             size=(n_samples, 1), random_state=rng, **self._scipy_params
         )
         return sample
-
-    def aic(self, X: npt.ArrayLike) -> float:
-        r"""Compute the Akaike Information Criterion (AIC) for the model given data X.
-
-        The AIC is defined as:
-
-        .. math::
-            \mathrm{AIC} = -2 \, \log L \;+\; 2 k,
-
-        where
-
-        - :math:`\log L` is the (maximized) total log-likelihood
-        - :math:`k` is the number of parameters in the model
-
-        A lower AIC value indicates a better trade-off between model fit and complexity.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, 1)
-            The input data on which to compute the AIC.
-
-
-        Notes
-        -----
-        In practice, both AIC and BIC measure the trade-off between model fit and
-        complexity, but BIC tends to prefer simpler models for large :math:`n`
-        because of the :math:`\ln(n)` term.
-
-        Returns
-        -------
-        aic : float
-            The AIC of the fitted model on the given data.
-
-        References
-        ----------
-        .. [1] "A new look at the statistical model identification", Akaike (1974).
-        """
-        log_likelihood = self.score(X)
-        k = len(self._scipy_params)
-        return 2 * (k - log_likelihood)
-
-    def bic(self, X: npt.ArrayLike) -> float:
-        r"""Compute the Bayesian Information Criterion (BIC) for the model given data X.
-
-        The BIC is defined as:
-
-        .. math::
-           \mathrm{BIC} = -2 \, \log L \;+\; k \,\ln(n),
-
-        where
-
-        - :math:`\log L` is the (maximized) total log-likelihood
-        - :math:`k` is the number of parameters in the model
-        - :math:`n` is the number of observations
-
-        A lower BIC value suggests a better fit while imposing a stronger penalty
-        for model complexity than the AIC.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, 1)
-            The input data on which to compute the BIC.
-
-        Returns
-        -------
-        bic : float
-           The BIC of the fitted model on the given data.
-
-        Notes
-        -----
-        In practice, both AIC and BIC measure the trade-off between model fit and
-        complexity, but BIC tends to prefer simpler models for large :math:`n`
-        because of the :math:`\ln(n)` term.
-
-        References
-        ----------
-        .. [1]  "Estimating the dimension of a model", Schwarz, G. (1978).
-        """
-        log_likelihood = self.score(X)
-        n = X.shape[0]
-        k = len(self._scipy_params)
-        return -2 * log_likelihood + k * np.log(n)
 
     def cdf(self, X: npt.ArrayLike) -> np.ndarray:
         """Compute the cumulative distribution function (CDF) for the given data.

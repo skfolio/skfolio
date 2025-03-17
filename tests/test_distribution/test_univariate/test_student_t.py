@@ -65,7 +65,7 @@ def test_score_samples(student_t_model):
     """
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = student_t_model.score_samples(X_test)
-    expected = t.logpdf(X_test, **student_t_model._scipy_params)
+    expected = t.logpdf(X_test, **student_t_model._scipy_params).ravel()
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 

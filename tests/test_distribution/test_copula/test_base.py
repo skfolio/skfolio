@@ -44,3 +44,9 @@ def test_validate_X_out_of_bounds():
     data_negative = np.array([[0.2, -0.1], [0.3, 0.4]])
     with pytest.raises(ValueError, match="X must be in the interval"):
         cop._validate_X(data_negative, reset=True)
+
+
+def test_n_params():
+    """Check _validate_X raises error if values are out of [0,1]."""
+    cop = GaussianCopula()
+    assert cop.n_params == 1

@@ -13,9 +13,7 @@ def test_select_bivariate_copula_independence():
     # Create data with very weak dependence.
     X = np.random.RandomState(42).random((100, 2))
     copula_candidates = [GaussianCopula(), ClaytonCopula()]
-    best = select_bivariate_copula(
-        X, copula_candidates, aic=True, independence_level=0.05
-    )
+    best = select_bivariate_copula(X, copula_candidates, independence_level=0.05)
     # When independence holds, we expect IndependentCopula to be returned.
     assert isinstance(best, IndependentCopula)
 
@@ -26,9 +24,7 @@ def test_select_bivariate_copula_aic_selection():
     # Disturb X slightly to ensure dependence.
     X[:, 1] = 0.5 * X[:, 0] + 0.5 * np.random.RandomState(42).random(100)
     copula_candidates = [GaussianCopula(), ClaytonCopula()]
-    best = select_bivariate_copula(
-        X, copula_candidates, aic=True, independence_level=0.01
-    )
+    best = select_bivariate_copula(X, copula_candidates, independence_level=0.01)
     assert isinstance(best, GaussianCopula)
 
 

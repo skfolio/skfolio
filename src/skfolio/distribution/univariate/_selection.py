@@ -9,13 +9,14 @@ import numpy as np
 import numpy.typing as npt
 import sklearn as sk
 
+from skfolio.distribution._base import SelectionCriterion
 from skfolio.distribution.univariate._base import BaseUnivariateDist
 
 
 def select_univariate_dist(
     X: npt.ArrayLike,
     distribution_candidates: list[BaseUnivariateDist],
-    aic: bool = True,
+    selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
 ) -> BaseUnivariateDist:
     """Select the optimal univariate distribution estimator based on an information
     criterion.
@@ -33,9 +34,10 @@ def select_univariate_dist(
         A list of candidate distribution estimators. Each candidate must be an instance
         of a class that inherits from `BaseUnivariateDist`.
 
-    aic : bool, default=True
-        If True, the Akaike Information Criterion (AIC) is used for model selection;
-        otherwise, the Bayesian Information Criterion (BIC) is used.
+    selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
+        The criterion used for model selection. Possible values are:
+            - SelectionCriterion.AIC : Akaike Information Criterion
+            - SelectionCriterion.BIC : Bayesian Information Criterion
 
     Returns
     -------
@@ -59,6 +61,14 @@ def select_univariate_dist(
             raise ValueError("Each candidate must inherit from `BaseUnivariateDist`")
         dist = sk.clone(dist)
         dist.fit(X)
-        results[dist] = dist.aic(X) if aic else dist.bic(X)
+
+        match selection_criterion:
+            case selection_criterion.AIC:
+                results[dist] = dist.aic(X)
+            case selection_criterion.BIC:
+                results[dist] = dist.bic(X)
+            case _:
+                raise ValueError(f"{selection_criterion} not implemented")
+
     selected_dist = min(results, key=results.get)
     return selected_dist

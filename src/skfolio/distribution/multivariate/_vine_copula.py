@@ -33,11 +33,11 @@ import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as st
-import sklearn.base as skb
 import sklearn.utils as sku
 import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
+from skfolio.distribution._base import BaseDistribution, SelectionCriterion
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
     ClaytonCopula,
@@ -61,7 +61,7 @@ from skfolio.utils.tools import validate_input_list
 _UNIFORM_SAMPLE_EPSILON = 1e-14
 
 
-class VineCopula(skb.BaseEstimator):
+class VineCopula(BaseDistribution):
     """
     Regular Vine Copula Estimator.
 
@@ -136,8 +136,10 @@ class VineCopula(skb.BaseEstimator):
             - MUTUAL_INFORMATION
             - WASSERSTEIN_DISTANCE
 
-    aic : bool, default=True
-        If True, use AIC for univariate and copula selection; otherwise, use BIC.
+    selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
+        The criterion used for univariate and copula selection. Possible values are:
+            - SelectionCriterion.AIC : Akaike Information Criterion
+            - SelectionCriterion.BIC : Bayesian Information Criterion
 
     independence_level : float, default=0.05
         Significance level used for the Kendall tau independence test during copula
@@ -184,6 +186,11 @@ class VineCopula(skb.BaseEstimator):
     >>> vine.fit(X)
     >>> # Display the vine trees and fitted copulas
     >>> vine.display_vine()
+    >>> # Log-likelihood, AIC and BIC
+    >>> vine.score(X)
+    >>> vine.aic(X)
+    >>> vine.bic(X)
+    >>>
     >>> # Generate 10 samples from the fitted vine copula
     >>> samples = vine.sample(n_samples=10)
     >>>
@@ -240,7 +247,7 @@ class VineCopula(skb.BaseEstimator):
         log_transform: bool = False,
         central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
-        aic: bool = True,
+        selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
         independence_level: float = 0.05,
         n_jobs: int | None = None,
         random_state: int | None = None,
@@ -252,10 +259,24 @@ class VineCopula(skb.BaseEstimator):
         self.log_transform = log_transform
         self.central_assets = central_assets
         self.dependence_method = dependence_method
-        self.aic = aic
+        self.selection_criterion = selection_criterion
         self.independence_level = independence_level
         self.n_jobs = n_jobs
         self.random_state = random_state
+
+    @property
+    def n_params(self) -> int:
+        """Number of model parameters."""
+        skv.check_is_fitted(self)
+        k = 0
+        if self.fit_marginals:
+            k = sum([dist.n_params for dist in self.marginal_distributions_])
+
+        for tree in self.trees_:
+            for edge in tree.edges:
+                k += edge.copula.n_params
+
+        return k
 
     def fit(self, X: npt.ArrayLike, y=None) -> "VineCopula":
         """
@@ -334,12 +355,11 @@ class VineCopula(skb.BaseEstimator):
 
         if self.fit_marginals:
             # Fit marginal distributions
-            # noinspection PyCallingNonCallable
             self.marginal_distributions_ = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(select_univariate_dist)(
                     X=X[:, [i]],
                     distribution_candidates=marginal_candidates,
-                    aic=self.aic,
+                    selection_criterion=self.selection_criterion,
                 )
                 for i in range(n_assets)
             )
@@ -385,12 +405,11 @@ class VineCopula(skb.BaseEstimator):
             assert len(tree.edges) == n_assets - level - 1
 
             # Fit bivariate copulas for each edge.
-            # noinspection PyCallingNonCallable
             copulas = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(select_bivariate_copula)(
                     X=edge.get_X(),
                     copula_candidates=copula_candidates,
-                    aic=self.aic,
+                    selection_criterion=self.selection_criterion,
                     independence_level=self.independence_level,
                 )
                 for edge in tree.edges
@@ -410,6 +429,56 @@ class VineCopula(skb.BaseEstimator):
 
         self.trees_ = trees
         return self
+
+    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+        r"""Compute the log-likelihood of each sample (log-pdf) under the model.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        Returns
+        -------
+        density : ndarray of shape (n_observations,)
+            The log-likelihood of each sample under the fitted vine copula.
+        """
+        skv.check_is_fitted(self)
+        X = skv.validate_data(self, X, dtype=np.float64, reset=False)
+
+        if self.log_transform:
+            X = np.log(1 + X)
+
+        if not self.fit_marginals:
+            score_samples = np.zeros(len(X))
+        else:
+            score_samples = np.sum(
+                [
+                    dist.score_samples(X[:, [i]])
+                    for i, dist in enumerate(self.marginal_distributions_)
+                ],
+                axis=0,
+            )
+            X = np.hstack(
+                [
+                    dist.cdf(X[:, [i]])
+                    for i, dist in enumerate(self.marginal_distributions_)
+                ]
+            )
+
+        # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
+        X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
+
+        for i, node in enumerate(self.trees_[0].nodes):
+            node.u = X[:, i]
+
+        for tree in self.trees_:
+            for edge in tree.edges:
+                score_samples += edge.copula.score_samples(X=edge.get_X())
+
+        self.clear_cache()
+
+        return score_samples
 
     def sample(
         self,
@@ -929,7 +998,6 @@ class VineCopula(skb.BaseEstimator):
             else:
                 # We want same proportion as X to have a balanced graph
                 n_samples = X.shape[0]
-            # noinspection PyTypeChecker
             traces.append(
                 go.Splom(
                     dimensions=[
@@ -951,7 +1019,6 @@ class VineCopula(skb.BaseEstimator):
 
         sample = self.sample(n_samples=n_samples, conditioning=conditioning)
 
-        # noinspection PyTypeChecker
         traces.append(
             go.Splom(
                 dimensions=[
@@ -1123,7 +1190,6 @@ def _is_left(
         return False
     if v1 not in conditioning_vars and v2 in conditioning_vars:
         return True
-    # noinspection PyTypeChecker
     return conditioning_counts[v1] <= conditioning_counts[v2]
 
 

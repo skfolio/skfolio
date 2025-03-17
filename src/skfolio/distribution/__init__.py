@@ -1,5 +1,6 @@
 """Distribution module."""
 
+from skfolio.distribution._base import BaseDistribution, SelectionCriterion
 from skfolio.distribution.copula import (
     BaseBivariateCopula,
     ClaytonCopula,
@@ -26,6 +27,7 @@ from skfolio.distribution.univariate import (
 
 __all__ = [
     "BaseBivariateCopula",
+    "BaseDistribution",
     "BaseUnivariateDist",
     "ClaytonCopula",
     "CopulaRotation",
@@ -37,6 +39,7 @@ __all__ = [
     "JoeCopula",
     "JohnsonSU",
     "NormalInverseGaussian",
+    "SelectionCriterion",
     "StudentT",
     "StudentTCopula",
     "VineCopula",

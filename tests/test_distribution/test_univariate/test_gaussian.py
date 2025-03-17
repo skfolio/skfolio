@@ -42,7 +42,9 @@ def test_score_samples(gaussian_model):
     """Test that score_samples returns log-density values close to SciPy's norm.logpdf."""
     X_test = np.array([[-1.0], [0.0], [1.0]])
     log_densities = gaussian_model.score_samples(X_test)
-    expected = norm.logpdf(X_test, loc=gaussian_model.loc_, scale=gaussian_model.scale_)
+    expected = norm.logpdf(
+        X_test, loc=gaussian_model.loc_, scale=gaussian_model.scale_
+    ).ravel()
     np.testing.assert_allclose(log_densities, expected, rtol=1e-5)
     assert log_densities.shape[0] == X_test.shape[0]
 
