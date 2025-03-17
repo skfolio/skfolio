@@ -1,7 +1,7 @@
 r"""
-===========
-Vine Copula
-===========
+=========================
+Vine Copula & Stress Test
+=========================
 
 This tutorial presents the :class:`~skfolio.distribution.VineCopula` estimator.
 An introduction to Bivariate Copulas can be found in
@@ -140,8 +140,10 @@ Key features include:
 # purposes) starting from 1990-01-02 up to 2022-12-28:
 from plotly.io import show
 
+from skfolio import Population, RiskMeasure
 from skfolio.datasets import load_sp500_dataset
 from skfolio.distribution import StudentTCopula, VineCopula, compute_pseudo_observations
+from skfolio.optimization import MeanRisk
 from skfolio.preprocessing import prices_to_returns
 
 prices = load_sp500_dataset()
@@ -177,6 +179,17 @@ vine.display_vine()
 #   conditional bivariate copula between variables 1 (BAC) and 2 (HD) given variables
 #   3 (JPM) and 5 (CVX) modeled by a Student's t Copula with :math:`\rho=12.3\%` and
 #   :math:`\nu=7.7`.
+
+# %%
+# Let's print the total log-likelihood and AIC of the vine copula:
+score = vine.score(X)
+aic = vine.aic(X)
+print(f"Total Log-likelihood: {score:,.02f}")
+print(f"AIC:{aic: ,.02f}")
+
+# %%
+# Note that the :class:`~skfolio.distribution.VineCopula` estimator is compatible
+# with all scikit-learn tools for cross-validation and parameter tuning.
 
 # %%
 # Sampling from the Vine
@@ -231,8 +244,8 @@ copula.plot_tail_concentration(U)
 
 
 # %%
-# Conditional Sampling & Stress Testing
-# =====================================
+# Conditional Sampling
+# ====================
 # One of the main advantages of Vine Copula is its ability to produce accurate
 # conditional sampling in extreme scenarios by leveraging the accurate computation of
 # inverse CFD of the marginal distributions as well as the partial derivatives and
@@ -271,14 +284,48 @@ cond_samples = vine.sample(n_samples=1000, conditioning=conditioning)
 print(cond_samples.shape)
 
 # %%
-# Let's plot the marginals conditional returns and compare them with the
-# historical returns `X`.
+# Let's plot the marginal distribution of the stressed assets and compare them with the
+# historical data:
 vine.plot_marginal_distributions(X=X, conditioning=conditioning)
+
+# %%
+# Let's plot the scatter matrix of the stressed assets and compare them with the
+# historical data:
+fig = vine.plot_scatter_matrix(X, conditioning=conditioning)
+fig.update_layout(height=600)
 
 # %%
 # In the graph, by selecting HD and JPM, you can see that the conditioning has been
 # respected and has impacted the other assets following the vine structure. This allows
 # the creation of Stress Tests that are both **extreme** and **plausible**.
+
+# %%
+# Portfolio Stress Test
+# =====================
+# We create a Minimum CVaR portfolio and fit it on the historical returns.
+model = MeanRisk(risk_measure=RiskMeasure.CVAR)
+model.fit(X)
+print(model.weights_)
+
+ptf = model.predict(X)
+
+# %%
+# We sample 50,000 new returns from the Vine Copula, conditioning on a one-day loss
+# of 10% for JPM and use these stressed samples to conduct a stress test on our
+# portfolio.
+stressed_X = vine.sample(n_samples=50_000, conditioning={"JPM": -0.10})
+stressed_ptf = model.predict(stressed_X)
+
+ptf.name = "Unstressed Ptf"
+stressed_ptf.name = "Stressed Ptf"
+population = Population([ptf, stressed_ptf])
+summary = population.summary()
+summary.loc[
+    ["Mean", "Standard Deviation", "CVaR at 95%", "EVaR at 95%", "Worst Realization"]
+]
+
+# %%
+population.plot_returns_distribution()
 
 
 # %%
