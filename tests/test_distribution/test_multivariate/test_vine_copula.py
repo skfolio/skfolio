@@ -1,3 +1,5 @@
+import tracemalloc
+
 import numpy as np
 import pytest
 
@@ -711,6 +713,67 @@ def test_log_transform(X):
     model.fit(X)
     sample = model.sample(n_samples=1000, conditioning={0: np.full(1000, -0.8)})
     assert np.all(sample >= -1)
+
+
+@pytest.mark.parametrize("max_depth", [2, 10, 100])
+def test_clear_cache(X, max_depth):
+    model = VineCopula(
+        max_depth=max_depth,
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+    )
+    for tree in model.trees_:
+        for node in tree.nodes:
+            assert node._u is None
+            assert node._v is None
+    _ = model.sample(1000)
+    for tree in model.trees_:
+        for node in tree.nodes:
+            assert node._u is None
+            assert node._v is None
+
+
+def test_memory_fit(X):
+    model = VineCopula(
+        max_depth=100,
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+    )
+
+    tracemalloc.start()
+    tracemalloc.clear_traces()
+    start = tracemalloc.get_traced_memory()
+    model.fit(X)
+    end = tracemalloc.get_traced_memory()
+    current = end[0] - start[0]
+    peak = end[1] - start[1]
+    assert current < 500_000
+    expected_peak = 18_000 * 2 * (20 + 19)  # 18_000 is the memory of a numpy of len(X)
+    assert peak < expected_peak * 1.5
+
+
+def test_memory_sample(X):
+    model = VineCopula(
+        max_depth=100,
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+    )
+    model.fit(X)
+
+    tracemalloc.start()
+    tracemalloc.clear_traces()
+    start = tracemalloc.get_traced_memory()
+    _ = model.sample(100_000)
+    end = tracemalloc.get_traced_memory()
+    current = end[0] - start[0]
+    # peak = end[1] - start[1]
+
+    # 800_000 is the memory of a numpy of len 100_000
+    expected_current = 800_000 * 20
+    # expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
+
+    assert current < expected_current * 1.5
+    # assert peak < expected_peak_without_optim*0.8
 
 
 @pytest.mark.parametrize(
