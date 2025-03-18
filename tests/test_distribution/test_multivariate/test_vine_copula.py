@@ -722,6 +722,7 @@ def test_clear_cache(X, max_depth):
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
     )
+    model.fit(X)
     for tree in model.trees_:
         for node in tree.nodes:
             assert node._u is None

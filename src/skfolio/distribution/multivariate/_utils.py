@@ -478,7 +478,7 @@ class Tree:
                 # Negate the matrix to use minimum_spanning_tree for maximum spanning
                 # Add a cst to ensure that even if dep is 0, we still build a valid MST
                 dep = abs(edge.dependence) + 1e-5
-                dependence_matrix[i, j], dependence_matrix[j, i] = dep, dep
+                dependence_matrix[i, j] = dep
                 eligible_edges[(i, j)] = edge
 
         if np.any(np.isnan(dependence_matrix)):
@@ -493,16 +493,14 @@ class Tree:
                     else:
                         central_factor = 2 * max_dep
                     dep = dependence_matrix[i, j] + central_factor
-                    dependence_matrix[i, j], dependence_matrix[j, i] = dep, dep
+                    dependence_matrix[i, j] = dep
 
         # Compute the minimum spanning tree
-        mst = ssc.minimum_spanning_tree(-dependence_matrix).toarray()
+        mst = ssc.minimum_spanning_tree(-dependence_matrix, overwrite=True)
         # Extract the indices of the non-zero entries (edges)
-        rows, cols = np.where(mst != 0)
-        selected_edges = [
-            eligible_edges[(i, j)] for i, j in zip(rows, cols, strict=True)
+        self.edges = [
+            eligible_edges[(i, j)] for i, j in zip(*mst.nonzero(), strict=True)
         ]
-        self.edges = selected_edges
 
     def clear_cache(self):
         """Clear cached values for all nodes in the tree."""
