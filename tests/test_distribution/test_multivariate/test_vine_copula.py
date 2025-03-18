@@ -643,7 +643,7 @@ def _check_vine_output(model, expected_marginals, expected_trees):
 
 def test_vine_copula(X, expected_marginals, expected_trees):
     # s = time.time()
-    model = VineCopula(n_jobs=-1, max_depth=100)
+    model = VineCopula(n_jobs=-1, max_depth=None)
     model.fit(X)
     # e = time.time()
     # assert (e - s) < 20 # For local sanity check
@@ -754,7 +754,7 @@ def test_memory_fit(X):
 
 def test_memory_sample(X):
     model = VineCopula(
-        max_depth=100,
+        max_depth=None,
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
     )
@@ -1072,7 +1072,7 @@ def test_vine_copula_conditional_sampling_without_priority(X):
             assert sample.shape == (1000, 20)
 
 
-@pytest.mark.parametrize("max_depth", list(range(2, 22)))
+@pytest.mark.parametrize("max_depth", [*list(range(2, 22)), None])
 def test_vine_truncated_sampling_order(X, max_depth):
     model = VineCopula(
         max_depth=max_depth,

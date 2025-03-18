@@ -74,7 +74,6 @@ class EdgeCondSets:
         # maintain order
         if conditioned[0] in other.conditioned:
             conditioned = conditioned[::-1]
-        # noinspection PyArgumentList
         return self.__class__(conditioned=conditioned, conditioning=conditioning)
 
     def __repr__(self) -> str:
@@ -550,7 +549,6 @@ def _dependence(X, dependence_method: DependenceMethod) -> float:
         case DependenceMethod.MUTUAL_INFORMATION:
             dep = sf.mutual_info_regression(X[:, 0].reshape(-1, 1), X[:, 1])[0]
         case DependenceMethod.WASSERSTEIN_DISTANCE:
-            # noinspection PyTypeChecker
             dep = st.wasserstein_distance(X[:, 0], X[:, 1])
         case _:
             raise ValueError(f"Dependence method {dependence_method} not valid")

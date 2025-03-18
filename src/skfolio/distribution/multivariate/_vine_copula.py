@@ -97,8 +97,9 @@ class VineCopula(BaseDistribution):
         Candidate bivariate copula estimators. If None, defaults to
         `[GaussianCopula(), StudentTCopula(), ClaytonCopula(), GumbelCopula(), JoeCopula()]`.
 
-    max_depth : int, default=4
-        Maximum vine tree depth (truncated level). Must be greater than 1.
+    max_depth : int or None, default=4
+        Maximum vine depth (truncated level). Must be greater than 1.
+        `None` means that no truncation is applied. The default is 4.
 
     log_transform : bool, default=False
         If True, the simple returns provided as input will be transformed to log returns
@@ -244,7 +245,7 @@ class VineCopula(BaseDistribution):
         fit_marginals: bool = True,
         marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
-        max_depth: int = 4,
+        max_depth: int | None = 4,
         log_transform: bool = False,
         central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
@@ -308,13 +309,15 @@ class VineCopula(BaseDistribution):
             raise ValueError(
                 f"The number of assets must be higher than 2, got {n_assets}"
             )
-        if self.max_depth <= 1:
+        if self.max_depth is not None and self.max_depth <= 1:
             raise ValueError(f"`max_depth` must be higher than 1, got {self.max_depth}")
 
         if self.log_transform:
             X = np.log(1 + X)
 
-        depth = min(self.max_depth, n_assets - 1)
+        depth = n_assets - 1
+        if self.max_depth is not None:
+            depth = min(self.max_depth, depth)
 
         self.central_assets_ = set()
         if self.central_assets is not None:
@@ -322,11 +325,7 @@ class VineCopula(BaseDistribution):
                 validate_input_list(
                     items=self.central_assets,
                     n_assets=n_assets,
-                    assets_names=(
-                        self.feature_names_in_
-                        if hasattr(self, "feature_names_in_")
-                        else None
-                    ),
+                    assets_names=getattr(self, "feature_names_in_", None),
                     name="central_assets",
                     raise_if_string_missing=False,
                 )
@@ -375,8 +374,8 @@ class VineCopula(BaseDistribution):
         # Ensure values are within [0, 1].
         if not np.all((X >= 0) & (X <= 1)):
             raise ValueError(
-                "X must be in the interval `[0, 1]`, typically obtained via marginal "
-                "CDF transformation."
+                "If `fit_marginals` is set to False, X must be in the interval "
+                "`[0, 1]`, typically obtained via marginal CDF transformation."
             )
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
         X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
