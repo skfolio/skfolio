@@ -118,28 +118,29 @@ class VineCopula(BaseDistribution):
 
         For example:
 
-            1) If only asset 1 is marked as central, it will be connected to all other
-               assets in the first tree (yielding a C-like structure for the initial
-               tree), with subsequent trees following the standard R-vine pattern.
-            2) If asset 1 and asset 2 are marked as central, they will be connected
-               together and the remaining assets will connect to either asset 1 or asset
-               2 (forming a clustered structure in the initial trees). In the next tree,
-               the edge between asset 1 and asset 2 becomes the central node, with
-               subsequent trees following the standard R-vine structure.
-            3) This logic extends naturally to more than two central assets.
+        1) If only asset 1 is marked as central, it will be connected to all other
+           assets in the first tree (yielding a C-like structure for the initial
+           tree), with subsequent trees following the standard R-vine pattern.
+        2) If asset 1 and asset 2 are marked as central, they will be connected
+           together and the remaining assets will connect to either asset 1 or asset
+           2 (forming a clustered structure in the initial trees). In the next tree,
+           the edge between asset 1 and asset 2 becomes the central node, with
+           subsequent trees following the standard R-vine structure.
+        3) This logic extends naturally to more than two central assets.
 
     dependence_method : DependenceMethod, default=DependenceMethod.KENDALL_TAU
         The dependence measure used to compute edge weights for the MST.
         Possible values are:
 
-            - KENDALL_TAU
-            - MUTUAL_INFORMATION
-            - WASSERSTEIN_DISTANCE
+        - KENDALL_TAU
+        - MUTUAL_INFORMATION
+        - WASSERSTEIN_DISTANCE
 
     selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
         The criterion used for univariate and copula selection. Possible values are:
-            - SelectionCriterion.AIC : Akaike Information Criterion
-            - SelectionCriterion.BIC : Bayesian Information Criterion
+
+        - SelectionCriterion.AIC : Akaike Information Criterion
+        - SelectionCriterion.BIC : Bayesian Information Criterion
 
     independence_level : float, default=0.05
         Significance level used for the Kendall tau independence test during copula
@@ -422,6 +423,9 @@ class VineCopula(BaseDistribution):
                 trees[-1].clear_cache()
 
             trees.append(tree)
+
+        # Clear last tree
+        trees[-1].clear_cache()
 
         # Attach a node to each terminal edge (used for sampling).
         for edge in trees[-1].edges:
