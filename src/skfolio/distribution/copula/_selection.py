@@ -12,12 +12,17 @@ import sklearn as sk
 
 from skfolio.distribution._base import SelectionCriterion
 from skfolio.distribution.copula._base import BaseBivariateCopula
+from skfolio.distribution.copula._clayton import ClaytonCopula
+from skfolio.distribution.copula._gaussian import GaussianCopula
+from skfolio.distribution.copula._gumbel import GumbelCopula
 from skfolio.distribution.copula._independent import IndependentCopula
+from skfolio.distribution.copula._joe import JoeCopula
+from skfolio.distribution.copula._student_t import StudentTCopula
 
 
 def select_bivariate_copula(
     X: npt.ArrayLike,
-    copula_candidates: list[BaseBivariateCopula],
+    copula_candidates: list[BaseBivariateCopula] | None = None,
     selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
     independence_level: float = 0.05,
 ) -> BaseBivariateCopula:
@@ -40,7 +45,8 @@ def select_bivariate_copula(
 
     copula_candidates : list[BaseBivariateCopula]
         A list of candidate copula models. Each candidate must inherit from
-        `BaseBivariateCopula`.
+        `BaseBivariateCopula`. If None, defaults to
+        `[GaussianCopula(), StudentTCopula(), ClaytonCopula(), GumbelCopula(), JoeCopula()]`.
 
     selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
         The criterion used for model selection. Possible values are:
@@ -64,6 +70,15 @@ def select_bivariate_copula(
         If X is not a 2D array with exactly two columns, or if any candidate in
         `copula_candidates` does not inherit from `BaseBivariateCopula`.
     """
+    if copula_candidates is None:
+        copula_candidates = [
+            GaussianCopula(),
+            StudentTCopula(),
+            ClaytonCopula(),
+            GumbelCopula(),
+            JoeCopula(),
+        ]
+
     X = np.asarray(X)
     if X.ndim != 2 or X.shape[1] != 2:
         raise ValueError("X must contains two columns for Bivariate Copula")
