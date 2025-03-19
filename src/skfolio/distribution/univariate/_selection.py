@@ -55,7 +55,7 @@ def select_univariate_dist(
         If X does not have exactly one column or if any candidate in the list does not
         inherit from BaseUnivariateDist.
     """
-    if distribution_candidates is not None:
+    if distribution_candidates is None:
         distribution_candidates = [
             Gaussian(),
             StudentT(),
