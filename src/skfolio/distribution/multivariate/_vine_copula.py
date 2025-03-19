@@ -38,8 +38,9 @@ import sklearn.utils as sku
 import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
-from skfolio.distribution._base import BaseDistribution, SelectionCriterion
+from skfolio.distribution._base import SelectionCriterion
 from skfolio.distribution.copula import (
+    UNIFORM_MARGINAL_EPSILON,
     BaseBivariateCopula,
     ClaytonCopula,
     GaussianCopula,
@@ -48,7 +49,7 @@ from skfolio.distribution.copula import (
     StudentTCopula,
     select_bivariate_copula,
 )
-from skfolio.distribution.copula._base import _UNIFORM_MARGINAL_EPSILON
+from skfolio.distribution.multivariate._base import BaseMultivariateDist
 from skfolio.distribution.multivariate._utils import DependenceMethod, Edge, Node, Tree
 from skfolio.distribution.univariate import (
     BaseUnivariateDist,
@@ -62,7 +63,7 @@ from skfolio.utils.tools import validate_input_list
 _UNIFORM_SAMPLE_EPSILON = 1e-14
 
 
-class VineCopula(BaseDistribution):
+class VineCopula(BaseMultivariateDist):
     """
     Regular Vine Copula Estimator.
 
@@ -379,7 +380,7 @@ class VineCopula(BaseDistribution):
                 "`[0, 1]`, typically obtained via marginal CDF transformation."
             )
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
-        X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
+        X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
 
         trees: list[Tree] = []
         for level in range(depth):
@@ -471,7 +472,7 @@ class VineCopula(BaseDistribution):
             )
 
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
-        X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
+        X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
 
         for i, node in enumerate(self.trees_[0].nodes):
             node.u = X[:, i]
@@ -489,7 +490,7 @@ class VineCopula(BaseDistribution):
         n_samples: int = 1,
         conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
         | None = None,
-    ):
+    ) -> np.ndarray:
         """Generate random samples from the vine copula.
 
         This method generates `n_samples` from the fitted vine copula model. The
@@ -536,7 +537,7 @@ class VineCopula(BaseDistribution):
         n_assets = self.n_features_in_
 
         rng, conditioning_vars, conditioning_clean, uniform_cond_samples = (
-            self._init_conditioning(conditioning, n_samples)
+            self._init_conditioning(n_samples=n_samples, conditioning=conditioning)
         )
 
         # Determine sampling order based on vine structure.
@@ -737,7 +738,8 @@ class VineCopula(BaseDistribution):
         if not isinstance(conditioning, dict):
             raise ValueError(
                 "When provided, `conditioning` must be a dictionary mapping each asset "
-                "to its corresponding conditioning value."
+                "to its corresponding conditioning value, "
+                f"received {type(conditioning)}"
             )
 
         n_assets = self.n_features_in_
@@ -990,129 +992,6 @@ class VineCopula(BaseDistribution):
         Prints the structure of each tree and the details of each edge.
         """
         print(self.fitted_repr)
-
-    def plot_scatter_matrix(
-        self,
-        X: npt.ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
-        | None = None,
-        n_samples: int = 1000,
-        title: str = "Vine Copula Scatter Matrix",
-    ) -> go.Figure:
-        """
-        Plot the vine copula scatter matrix by generating samples from the vine copula
-        and comparing it versus the empirical distribution of `X` if provided.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_assets), optional
-            If provided, it is used to plot the empirical scatter matrix for
-            comparison versus the vine copula scatter matrix.
-
-        conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
-            A dictionary specifying conditioning information for one or more assets.
-            The dictionary keys are asset indices or names, and the values define how
-            the samples are conditioned for that asset. Three types of conditioning
-            values are supported:
-
-            1. **Fixed value (float):**
-               If a float is provided, all samples are generated under the condition
-               that the asset takes exactly that value.
-
-            2. **Bounds (tuple of two floats):**
-               If a tuple `(min_value, max_value)` is provided, samples are generated
-               under the condition that the asset's value falls within the specified
-               bounds. Use `-np.Inf` for no lower bound or `np.Inf` for no upper bound.
-
-            3. **Array-like (1D array):**
-               If an array-like of length `n_samples` is provided, each sample is
-               conditioned on the corresponding value in the array for that asset.
-
-            **Important:** When using conditional sampling, it is recommended that the
-            assets you condition on are set as central during the vine copula
-            construction. This can be specified via the `central_assets` parameter in
-            the vine copula instantiation.
-
-        n_samples : int, default=1000
-            Number of samples used to control the density and readability of the plot.
-            If `X` is provided and contains more than `n_samples` rows, a random
-            subsample of size `n_samples` is selected. Conversely, if `X` has fewer
-            rows than `n_samples`, the value is adjusted to match the number of rows in
-            `X` to ensure balanced visualization.
-
-        title : str, default="Vine Copula Scatter Matrix"
-            The title for the plot.
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-            A figure object containing the scatter matrix.
-        """
-        traces = []
-        n_assets = self.n_features_in_
-        if X is not None:
-            X = np.asarray(X)
-            if X.ndim != 2:
-                raise ValueError("X should be an 2D array")
-            if X.shape[1] != n_assets:
-                raise ValueError(f"X should have {n_assets} columns")
-            if X.shape[0] > n_samples:
-                # We subsample for improved graph readability
-                rng = sku.check_random_state(self.random_state)
-                indices = rng.choice(
-                    np.arange(X.shape[0]), size=n_samples, replace=False
-                )
-                X = X[indices, :]
-            else:
-                # We want same proportion as X to have a balanced graph
-                n_samples = X.shape[0]
-            traces.append(
-                go.Splom(
-                    dimensions=[
-                        {"label": self.feature_names_in_[i], "values": X[:, i]}
-                        for i in range(n_assets)
-                    ],
-                    showupperhalf=False,
-                    diagonal_visible=False,
-                    marker=dict(
-                        size=5,
-                        color="rgb(85,168,104)",
-                        line=dict(width=0.2, color="white"),
-                        opacity=0.6,
-                    ),
-                    name="Historical",
-                    showlegend=True,
-                )
-            )
-
-        sample = self.sample(n_samples=n_samples, conditioning=conditioning)
-
-        traces.append(
-            go.Splom(
-                dimensions=[
-                    {"label": self.feature_names_in_[i], "values": sample[:, i]}
-                    for i in range(n_assets)
-                ],
-                showupperhalf=False,
-                diagonal_visible=False,
-                marker=dict(
-                    size=5,
-                    color="rgb(221,132,82)",
-                    line=dict(width=0.2, color="white"),
-                    opacity=0.6,
-                ),
-                name="Generated",
-                showlegend=True,
-            )
-        )
-
-        if conditioning is not None:
-            # Improve readability
-            traces = traces[::-1]
-
-        fig = go.Figure(data=traces)
-        fig.update_layout(title=title)
-        return fig
 
     def plot_marginal_distributions(
         self,

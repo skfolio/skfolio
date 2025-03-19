@@ -31,7 +31,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
     _scipy_model: st.rv_continuous
 
     def __init__(self, random_state: int | None = None):
-        self.random_state = random_state
+        super().__init__(random_state=random_state)
 
     @property
     @abstractmethod

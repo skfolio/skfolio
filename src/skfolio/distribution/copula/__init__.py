@@ -1,6 +1,7 @@
 """Copula module."""
 
 from skfolio.distribution.copula._base import (
+    UNIFORM_MARGINAL_EPSILON,
     BaseBivariateCopula,
 )
 from skfolio.distribution.copula._clayton import ClaytonCopula
@@ -18,6 +19,7 @@ from skfolio.distribution.copula._utils import (
 )
 
 __all__ = [
+    "UNIFORM_MARGINAL_EPSILON",
     "BaseBivariateCopula",
     "ClaytonCopula",
     "CopulaRotation",

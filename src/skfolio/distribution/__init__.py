@@ -15,7 +15,11 @@ from skfolio.distribution.copula import (
     plot_tail_concentration,
     select_bivariate_copula,
 )
-from skfolio.distribution.multivariate import DependenceMethod, VineCopula
+from skfolio.distribution.multivariate import (
+    BaseMultivariateDist,
+    DependenceMethod,
+    VineCopula,
+)
 from skfolio.distribution.univariate import (
     BaseUnivariateDist,
     Gaussian,
@@ -28,6 +32,7 @@ from skfolio.distribution.univariate import (
 __all__ = [
     "BaseBivariateCopula",
     "BaseDistribution",
+    "BaseMultivariateDist",
     "BaseUnivariateDist",
     "ClaytonCopula",
     "CopulaRotation",

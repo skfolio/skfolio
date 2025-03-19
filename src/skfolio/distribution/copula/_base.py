@@ -19,7 +19,7 @@ from skfolio.distribution.copula._utils import (
     plot_tail_concentration,
 )
 
-_UNIFORM_MARGINAL_EPSILON = 1e-9
+UNIFORM_MARGINAL_EPSILON = 1e-9
 _RHO_BOUNDS = (-0.999, 0.999)
 
 
@@ -39,7 +39,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     _n_params: int
 
     def __init__(self, random_state: int | None = None):
-        self.random_state = random_state
+        super().__init__(random_state=random_state)
 
     def _validate_X(self, X: npt.ArrayLike, reset: bool) -> np.ndarray:
         """Validate the input data.
@@ -75,7 +75,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
             )
 
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
-        X = np.clip(X, _UNIFORM_MARGINAL_EPSILON, 1 - _UNIFORM_MARGINAL_EPSILON)
+        X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
         return X
 
     @property
