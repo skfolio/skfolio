@@ -791,7 +791,7 @@ def test_transaction_costs(X, risk_measure):
     assert abs(p.get_weight(asset=asset_2)) < abs(p_ref.get_weight(asset=asset_2))
     assert abs(p_ref.weights - p.weights).sum() > above
 
-
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_mean_risk_methods(X, risk_measure, precisions):
     n_assets = X.shape[1]
     target_risk_arg = f"max_{risk_measure.value}"

@@ -25,9 +25,10 @@
 #  representation of hierarchical relationships among assets and improving conditional
 #  sampling.
 
+import numbers
 import warnings
 from collections import deque
-import numbers
+
 import numpy as np
 import numpy.typing as npt
 import plotly.express as px
@@ -542,7 +543,7 @@ class VineCopula(BaseDistribution):
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
 
         # Generate independent Uniform(0,1) samples for non-conditioned nodes.
-        X_rand = iter(rng.random(size=(n_samples, n_assets - len(conditioning_vars))).T)
+        X_rand = iter(rng.random(size=(n_assets - len(conditioning_vars), n_samples)))
 
         # Initialize samples for each node according to the sampling order.
         queue: deque[tuple[Node, bool]] = deque()
@@ -570,7 +571,7 @@ class VineCopula(BaseDistribution):
                 else:
                     node.v = init_samples
 
-        # Propagate samples through the vine structure.
+        # Propagate samples through the vine structure bottom-up.
         while queue:
             node, is_left = queue.popleft()
             edge = node.ref
@@ -810,6 +811,12 @@ class VineCopula(BaseDistribution):
         if conditioning is None:
             return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
 
+        if not isinstance(conditioning, dict):
+            raise ValueError(
+                "When provided, `conditioning` must be a dictionary mapping each asset "
+                "to its corresponding conditioning value."
+            )
+
         n_assets = self.n_features_in_
 
         conditioning_vars = validate_input_list(
@@ -882,7 +889,8 @@ class VineCopula(BaseDistribution):
             elif np.isscalar(value):
                 if not isinstance(value, numbers.Number):
                     raise ValueError(
-                        f"Conditioning values should be numbers, got {value}")
+                        f"Conditioning values should be numbers, got {value}"
+                    )
                 conditioning_clean[var] = value
                 if self.log_transform:
                     value = np.log(1 + value)
