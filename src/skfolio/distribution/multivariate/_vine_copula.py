@@ -668,13 +668,17 @@ class VineCopula(BaseMultivariateDist):
             Array of cumulative conditioning counts.
         """
         n_assets = self.n_features_in_
-        conditioning_counts = [
-            [s for edge in tree.edges for s in edge.cond_sets.conditioning]
-            for tree in self.trees_
-        ]
-        conditioning_counts = np.stack(
-            [np.bincount(cond, minlength=n_assets) for cond in conditioning_counts]
-        ).cumsum(axis=0)
+
+        conditioning_counts = np.cumsum(
+            [
+                np.bincount(
+                    [s for edge in tree.edges for s in edge.cond_sets.conditioning],
+                    minlength=n_assets,
+                )
+                for tree in self.trees_
+            ],
+            axis=0,
+        )
 
         return conditioning_counts
 
