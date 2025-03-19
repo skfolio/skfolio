@@ -105,7 +105,11 @@ class Node:
         pseudo_values: np.ndarray | None = None,
         central: bool | None = None,
     ):
-        self.ref = ref  # variable index OR a reference to an edge in the previous tree
+        self._ref = ref  # variable index OR a reference to an edge in the previous tree
+        if isinstance(ref, Edge):
+            # pointer from Edge to Node
+            ref.ref_node = self
+
         self.edges = set()
         self._central = central
         self._u = pseudo_values
@@ -120,13 +124,6 @@ class Node:
     def ref(self) -> Union[int, "Edge"]:
         """Return the reference of this node."""
         return self._ref
-
-    @ref.setter
-    def ref(self, value: Union[int, "Edge"]) -> None:
-        if isinstance(value, Edge):
-            # pointer from Edge to Node
-            value.ref_node = self
-        self._ref = value
 
     @property
     def u(self) -> np.ndarray:
