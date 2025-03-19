@@ -27,7 +27,7 @@
 
 import warnings
 from collections import deque
-
+import numbers
 import numpy as np
 import numpy.typing as npt
 import plotly.express as px
@@ -880,6 +880,9 @@ class VineCopula(BaseDistribution):
                 samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
 
             elif np.isscalar(value):
+                if not isinstance(value, numbers.Number):
+                    raise ValueError(
+                        f"Conditioning values should be numbers, got {value}")
                 conditioning_clean[var] = value
                 if self.log_transform:
                     value = np.log(1 + value)
