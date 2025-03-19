@@ -423,26 +423,7 @@ class Tree:
     def __init__(self, level: int, nodes: list[Node]):
         self.level = level
         self.nodes = nodes
-        self._edges = None
-
-    @property
-    def edges(self) -> list[Edge] | None:
-        return self._edges
-
-    @edges.setter
-    def edges(self, values: list[Edge]) -> None:
-        """List of edges in the tree."""
-        if values is not None:
-            if (
-                not isinstance(values, list)
-                or not values
-                or not isinstance(values[0], Edge)
-            ):
-                raise ValueError("edges must be a non-empty list of Edges.")
-            # connect Nodes to Edges
-            for edge in values:
-                edge.ref_to_nodes()
-        self._edges = values
+        self.edges = None
 
     def set_edges_from_mst(self, dependence_method: DependenceMethod) -> None:
         """Construct the Maximum Spanning Tree (MST) from the current nodes using
@@ -497,10 +478,16 @@ class Tree:
 
         # Compute the minimum spanning tree
         mst = ssc.minimum_spanning_tree(-dependence_matrix, overwrite=True)
+
+        edges = []
         # Extract the indices of the non-zero entries (edges)
-        self.edges = [
-            eligible_edges[(i, j)] for i, j in zip(*mst.nonzero(), strict=True)
-        ]
+        for i, j in zip(*mst.nonzero(), strict=True):
+            edge = eligible_edges[(i, j)]
+            # connect Nodes to Edges
+            edge.ref_to_nodes()
+            edges.append(edge)
+
+        self.edges = edges
 
     def clear_cache(self):
         """Clear cached values for all nodes in the tree."""
