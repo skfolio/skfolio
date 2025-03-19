@@ -533,111 +533,10 @@ class VineCopula(BaseDistribution):
         skv.check_is_fitted(self)
         self.clear_cache()
         n_assets = self.n_features_in_
-        rng = sku.check_random_state(self.random_state)
 
-        uniform_cond_samples = {}
-        initial_cond = {}
-        if conditioning is None:
-            conditioning_vars = set()
-        else:
-            conditioning_vars = validate_input_list(
-                items=list(conditioning.keys()),
-                n_assets=n_assets,
-                assets_names=(
-                    self.feature_names_in_
-                    if hasattr(self, "feature_names_in_")
-                    else None
-                ),
-                name="conditioning",
-            )
-
-            missing_central_vars = set(conditioning_vars).difference(
-                self.central_assets_
-            )
-
-            if not set(conditioning_vars).issubset(set(range(n_assets))):
-                raise ValueError(
-                    "The keys of `conditioning` must be asset indices or names "
-                    "from the input X."
-                )
-            if len(conditioning_vars) >= n_assets:
-                raise ValueError(
-                    "`conditioning` must be provided for strictly fewer assets "
-                    "than the total."
-                )
-
-            if missing_central_vars:
-                warnings.warn(
-                    "When performing conditional sampling, it is recommended to set "
-                    "conditioning assets as central during Vine Copula construction. "
-                    "The following conditioning assets were not set as central: "
-                    f"{missing_central_vars}. "
-                    "This can be achieved by using the `central_assets` parameter.",
-                    stacklevel=2,
-                )
-
-            for var, value in zip(
-                conditioning_vars, conditioning.values(), strict=True
-            ):
-                if isinstance(value, tuple):
-                    if len(value) != 2:
-                        raise ValueError(
-                            "When a tuple is provided in `conditioning`, it must be"
-                            "of length 2, representing the conditioning bounds: "
-                            "(min_value, max_value)"
-                        )
-                    min_value, max_value = value
-                    if min_value is None:
-                        min_value = -np.inf
-                    if max_value is None:
-                        max_value = np.inf
-
-                    if min_value >= max_value:
-                        raise ValueError(
-                            "The conditioning tuple lower bound must be lower than "
-                            "its upper bound."
-                        )
-                    initial_cond[var] = (min_value, max_value)
-
-                    if self.log_transform:
-                        if not np.isneginf(min_value):
-                            min_value = np.log(1 + min_value)
-                        if not np.isposinf(max_value):
-                            max_value = np.log(1 + max_value)
-                    if self.fit_marginals:
-                        # Transform the bounds using the marginal CDF
-                        dist = self.marginal_distributions_[var]
-                        u_min = 0.0 if np.isneginf(min_value) else dist.cdf(min_value)
-                        u_max = 1.0 if np.isposinf(max_value) else dist.cdf(max_value)
-                    else:
-                        u_min, u_max = min_value, max_value
-
-                    # Sample uniformly in the transformed interval.
-                    samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
-
-                elif np.isscalar(value):
-                    initial_cond[var] = value
-                    if self.log_transform:
-                        value = np.log(1 + value)
-                    if self.fit_marginals:
-                        # Transform conditioning value using the fitted marginal CDF.
-                        value = self.marginal_distributions_[var].cdf(value)
-                    samples = np.full(n_samples, value)
-                else:
-                    samples = np.asarray(value)
-                    initial_cond[var] = samples
-                    if samples.ndim != 1 or samples.shape[0] != n_samples:
-                        raise ValueError(
-                            "When an array is provided in `conditioning`, it must be a "
-                            f"1D array of length n_samples={n_samples}, got {samples.ndim}D of "
-                            f"length {samples.shape[0]}"
-                        )
-                    if self.log_transform:
-                        samples = np.log(1 + samples)
-                    if self.fit_marginals:
-                        # Transform conditioning samples using the fitted marginal CDF.
-                        samples = self.marginal_distributions_[var].cdf(samples)
-                uniform_cond_samples[var] = samples
+        rng, conditioning_vars, conditioning_clean, uniform_cond_samples = (
+            self._init_conditional_sampling(conditioning, n_samples)
+        )
 
         # Determine sampling order based on vine structure.
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
@@ -742,7 +641,7 @@ class VineCopula(BaseDistribution):
         # value has an extremely low probability, its final value will be bounded by
         # [ppf(1e-14) , ppf(1-1e-14)]. To keep conditional values accurate even for
         # extremely low probability, we force them back in the final samples.
-        for var, cond in initial_cond.items():
+        for var, cond in conditioning_clean.items():
             if isinstance(cond, tuple):
                 samples[:, var] = np.clip(samples[:, var], a_min=cond[0], a_max=cond[1])
             else:
@@ -773,6 +672,7 @@ class VineCopula(BaseDistribution):
         conditioning_counts = np.stack(
             [np.bincount(cond, minlength=n_assets) for cond in conditioning_counts]
         ).cumsum(axis=0)
+
         return conditioning_counts
 
     def _sampling_order(
@@ -895,6 +795,116 @@ class VineCopula(BaseDistribution):
                 "Sampling order computation failed: ordering is not unique or complete."
             )
         return sampling_order
+
+    def _init_conditional_sampling(
+        self, conditioning, n_samples
+    ) -> tuple[
+        np.random.RandomState, set[int], dict[int, float], dict[int, np.ndarray]
+    ]:
+        rng = sku.check_random_state(self.random_state)
+
+        conditioning_vars = set()
+        conditioning_clean = dict()
+        uniform_cond_samples = dict()
+
+        if conditioning is None:
+            return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
+
+        n_assets = self.n_features_in_
+
+        conditioning_vars = validate_input_list(
+            items=list(conditioning.keys()),
+            n_assets=n_assets,
+            assets_names=getattr(self, "feature_names_in_", None),
+            name="conditioning",
+        )
+
+        missing_central_vars = set(conditioning_vars).difference(self.central_assets_)
+
+        if not set(conditioning_vars).issubset(set(range(n_assets))):
+            raise ValueError(
+                "The keys of `conditioning` must be asset indices or names "
+                "from the input X."
+            )
+        if len(conditioning_vars) >= n_assets:
+            raise ValueError(
+                "`conditioning` must be provided for strictly fewer assets "
+                "than the total."
+            )
+
+        if missing_central_vars:
+            warnings.warn(
+                "When performing conditional sampling, it is recommended to set "
+                "conditioning assets as central during Vine Copula construction. "
+                "The following conditioning assets were not set as central: "
+                f"{missing_central_vars}. "
+                "This can be achieved by using the `central_assets` parameter.",
+                stacklevel=2,
+            )
+
+        for var, value in zip(conditioning_vars, conditioning.values(), strict=True):
+            if isinstance(value, tuple):
+                if len(value) != 2:
+                    raise ValueError(
+                        "When a tuple is provided in `conditioning`, it must be"
+                        "of length 2, representing the conditioning bounds: "
+                        "(min_value, max_value)"
+                    )
+                min_value, max_value = value
+                if min_value is None:
+                    min_value = -np.inf
+                if max_value is None:
+                    max_value = np.inf
+
+                if min_value >= max_value:
+                    raise ValueError(
+                        "The conditioning tuple lower bound must be lower than "
+                        "its upper bound."
+                    )
+                conditioning_clean[var] = (min_value, max_value)
+
+                if self.log_transform:
+                    if not np.isneginf(min_value):
+                        min_value = np.log(1 + min_value)
+                    if not np.isposinf(max_value):
+                        max_value = np.log(1 + max_value)
+                if self.fit_marginals:
+                    # Transform the bounds using the marginal CDF
+                    dist = self.marginal_distributions_[var]
+                    u_min = 0.0 if np.isneginf(min_value) else dist.cdf(min_value)
+                    u_max = 1.0 if np.isposinf(max_value) else dist.cdf(max_value)
+                else:
+                    u_min, u_max = min_value, max_value
+
+                # Sample uniformly in the transformed interval.
+                samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
+
+            elif np.isscalar(value):
+                conditioning_clean[var] = value
+                if self.log_transform:
+                    value = np.log(1 + value)
+                if self.fit_marginals:
+                    # Transform conditioning value using the fitted marginal CDF.
+                    value = self.marginal_distributions_[var].cdf(value)
+                samples = np.full(n_samples, value)
+            else:
+                samples = np.asarray(value)
+                conditioning_clean[var] = samples
+                if samples.ndim != 1 or samples.shape[0] != n_samples:
+                    raise ValueError(
+                        "When an array is provided in `conditioning`, it must be a "
+                        f"1D array of length n_samples={n_samples}, got {samples.ndim}D of "
+                        f"length {samples.shape[0]}"
+                    )
+                if self.log_transform:
+                    samples = np.log(1 + samples)
+                if self.fit_marginals:
+                    # Transform conditioning samples using the fitted marginal CDF.
+                    samples = self.marginal_distributions_[var].cdf(samples)
+            uniform_cond_samples[var] = samples
+            conditioning_vars = set(conditioning_vars)
+
+        return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
 
     @property
     def fitted_repr(self) -> str:
