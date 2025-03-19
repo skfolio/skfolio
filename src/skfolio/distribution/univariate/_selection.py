@@ -11,11 +11,14 @@ import sklearn as sk
 
 from skfolio.distribution._base import SelectionCriterion
 from skfolio.distribution.univariate._base import BaseUnivariateDist
+from skfolio.distribution.univariate._gaussian import Gaussian
+from skfolio.distribution.univariate._johnson_su import JohnsonSU
+from skfolio.distribution.univariate._student_t import StudentT
 
 
 def select_univariate_dist(
     X: npt.ArrayLike,
-    distribution_candidates: list[BaseUnivariateDist],
+    distribution_candidates: list[BaseUnivariateDist] | None = None,
     selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
 ) -> BaseUnivariateDist:
     """Select the optimal univariate distribution estimator based on an information
@@ -33,6 +36,7 @@ def select_univariate_dist(
     distribution_candidates : list of BaseUnivariateDist
         A list of candidate distribution estimators. Each candidate must be an instance
         of a class that inherits from `BaseUnivariateDist`.
+        If None, defaults to `[Gaussian(), StudentT(), JohnsonSU()]`.
 
     selection_criterion : SelectionCriterion, default=SelectionCriterion.AIC
         The criterion used for model selection. Possible values are:
@@ -51,6 +55,13 @@ def select_univariate_dist(
         If X does not have exactly one column or if any candidate in the list does not
         inherit from BaseUnivariateDist.
     """
+    if distribution_candidates is not None:
+        distribution_candidates = [
+            Gaussian(),
+            StudentT(),
+            JohnsonSU(),
+        ]
+
     X = np.asarray(X)
     if X.ndim != 2 or X.shape[1] != 1:
         raise ValueError("X must contains one column for Univariate Distribution")
