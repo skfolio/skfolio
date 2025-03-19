@@ -536,7 +536,7 @@ class VineCopula(BaseDistribution):
         n_assets = self.n_features_in_
 
         rng, conditioning_vars, conditioning_clean, uniform_cond_samples = (
-            self._init_conditional_sampling(conditioning, n_samples)
+            self._init_conditioning(conditioning, n_samples)
         )
 
         # Determine sampling order based on vine structure.
@@ -561,8 +561,7 @@ class VineCopula(BaseDistribution):
                 a_max=1 - _UNIFORM_SAMPLE_EPSILON,
             )
 
-            # For the root node, is_left is None.
-            if is_left is None:
+            if node.is_root_node:
                 node.u = init_samples
             else:
                 queue.append((node, is_left))
@@ -571,7 +570,9 @@ class VineCopula(BaseDistribution):
                 else:
                     node.v = init_samples
 
-        # Propagate samples through the vine structure bottom-up.
+        # Propagate samples through the vine structure bottom-up following the
+        # elimination strategy (tree peeling) given by the Node orders and
+        # whether the next Node will on the right or left branch.
         while queue:
             node, is_left = queue.popleft()
             edge = node.ref
@@ -676,132 +677,54 @@ class VineCopula(BaseDistribution):
 
         return conditioning_counts
 
-    def _sampling_order(
-        self, conditioning_vars: set[int] | None = None
-    ) -> list[tuple[Node, bool]]:
-        """
-        Determine the optimal sampling order for the vine copula.
-
-        The sampling order is derived using a top-down elimination strategy that is
-        analogous to finding a perfect elimination ordering for chordal graphs. In our
-        vine copula, each conditional density is expressed as a product of bivariate
-        copula densities and univariate margins. The algorithm starts with the deepest
-        tree (i.e., the tree with the largest conditioning sets) and selects a variable
-        from its conditioned set. This variable is then marginalized out, effectively
-        generating a new sub-vine with a new deepest node. This process is repeated
-        until the first tree level is reached and all n variables have been ordered.
-
-        Choosing the optimal sampling order in this manner simplifies the inversion of
-        conditional CDFs, thereby improving numerical stability. At each elimination
-        step, among the candidate variables, the one that appears least frequently in
-        the conditioning sets of shallower trees is chosen, ensuring that variables
-        critical for conditional sampling occupy central roles.
-
-        Parameters
-        ----------
-        conditioning_vars : set[int], optional
-            A set of asset indices for which conditioning samples are provided.
-            If specified, these assets will be prioritized during the sampling order
-            determination.
-
-        Returns
-        -------
-        sampling_order : list[tuple(Node, bool | None)]
-            A list of tuples representing the optimal sampling order. Each tuple
-            contains:
-              - A Node object corresponding to an asset or an edge in the vine.
-              - A boolean flag indicating whether the left branch is used for sampling
-               at that node, or None if the node is the root.
-        """
-        conditioning_vars = conditioning_vars or set()
-        sampling_order: list[tuple[Node, bool | None]] = []
-        n_assets = self.n_features_in_
-        conditioning_counts = self._conditioning_count()
-
-        edges = self.trees_[-1].edges
-        if len(edges) == 1:
-            edge = edges[0]
-            is_left = _is_left(
-                edge=edge,
-                conditioning_vars=conditioning_vars,
-                conditioning_counts=conditioning_counts[-1],
-            )
-            sampling_order.append((edge.ref_node, is_left))
-        else:
-            # For truncated trees, select edges minimizing conditioning counts.
-            remaining = edges
-            visited: set[Edge] = set()
-            prev_visited: set[Edge] = set()
-            edge, is_left = None, None
-            while remaining:
-                selected = []
-                costs = []
-                for edge in remaining:
-                    c1 = len(edge.node1.edges - prev_visited) == 1
-                    c2 = len(edge.node2.edges - prev_visited) == 1
-                    if c1 or c2:
-                        if c1 and c2:
-                            # Last node
-                            is_left = _is_left(
-                                edge=edge,
-                                conditioning_vars=conditioning_vars,
-                                conditioning_counts=conditioning_counts[-1],
-                            )
-                        else:
-                            is_left = c1
-                        costs.append(
-                            conditioning_counts[
-                                -1, edge.cond_sets.conditioned[0 if is_left else 1]
-                            ]
-                        )
-                        selected.append((edge.ref_node, is_left))
-                        visited.add(edge)
-                remaining = [x for x in remaining if x not in visited]
-                # Sort selected nodes by cost and add to sampling order.
-                ordered_selected = sorted(
-                    zip(costs, selected, strict=True), key=lambda pair: pair[0]
-                )
-                sampling_order.extend(node for _, node in ordered_selected)
-                prev_visited = visited.copy()
-
-        # Marginalization: Peeling off the tree level by level.
-        # We have two valid choices (two conditioned vars: left or right),
-        # we chose the conditioned var with the less conditioning cost
-        i = 2
-        while True:
-            node = edge.node2 if is_left else edge.node1
-            if node.is_root_node:
-                sampling_order.append((node, None))
-                break
-            else:
-                edge = node.ref
-                is_left = _is_left(
-                    edge=edge,
-                    conditioning_vars=conditioning_vars,
-                    conditioning_counts=conditioning_counts[-i],
-                )
-                sampling_order.append((node, is_left))
-            i += 1
-
-        # Replace nodes with conditioning samples where applicable.
-        if conditioning_vars:
-            for i, (node, is_left) in enumerate(sampling_order):
-                node_var = node.get_var(is_left)
-                if node_var in conditioning_vars:
-                    sampling_order[i] = (self.trees_[0].nodes[node_var], None)
-
-        sampling_order = sampling_order[::-1]
-        if not (len(set(sampling_order)) == len(sampling_order) == n_assets):
-            raise ValueError(
-                "Sampling order computation failed: ordering is not unique or complete."
-            )
-        return sampling_order
-
-    def _init_conditional_sampling(
-        self, conditioning, n_samples
+    def _init_conditioning(
+        self,
+        n_samples: int,
+        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike],
     ) -> tuple[
         np.random.RandomState, set[int], dict[int, float], dict[int, np.ndarray]
     ]:
+        """
+        Initialised conditioning variables used in the conditioning sampling.
+
+        Parameters
+        ----------
+        n_samples : int, default=1
+            Number of samples to generate.
+
+        conditioning : dict[int | str, float | tuple[float, float] | array-like], optional
+            A dictionary specifying conditioning information for one or more assets.
+            The dictionary keys are asset indices or names, and the values define how
+            the samples are conditioned for that asset. Three types of conditioning
+            values are supported:
+
+            1. **Fixed value (float):**
+               If a float is provided, all samples are generated under the condition
+               that the asset takes exactly that value.
+
+            2. **Bounds (tuple of two floats):**
+               If a tuple `(min_value, max_value)` is provided, samples are generated
+               under the condition that the asset's value falls within the specified
+               bounds. Use `-np.Inf` for no lower bound or `np.Inf` for no upper bound.
+
+            3. **Array-like (1D array):**
+               If an array-like of length `n_samples` is provided, each sample is
+               conditioned on the corresponding value in the array for that asset.
+
+        Returns
+        -------
+        random_sate : RandomState
+            Numpy Random State.
+
+        conditioning_vars : set[int]
+            The conditioning variables.
+
+        conditioning_clean : dict[int, float]
+            The cleaned conditioning dictionary.
+
+        uniform_cond_samples : dict[int, np.ndarray]
+            The uniform conditioning samples corresponding to the `conditioning`.
+        """
         rng = sku.check_random_state(self.random_state)
 
         conditioning_vars = set()
@@ -916,6 +839,127 @@ class VineCopula(BaseDistribution):
             conditioning_vars = set(conditioning_vars)
 
         return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
+
+    def _sampling_order(
+        self, conditioning_vars: set[int] | None = None
+    ) -> list[tuple[Node, bool]]:
+        """
+        Determine the optimal sampling order for the vine copula.
+
+        The sampling order is derived using a top-down elimination strategy that is
+        analogous to finding a perfect elimination ordering for chordal graphs. In our
+        vine copula, each conditional density is expressed as a product of bivariate
+        copula densities and univariate margins. The algorithm starts with the deepest
+        tree (i.e., the tree with the largest conditioning sets) and selects a variable
+        from its conditioned set. This variable is then marginalized out, effectively
+        generating a new sub-vine with a new deepest node. This process is repeated
+        until the first tree level is reached and all n variables have been ordered.
+
+        Choosing the optimal sampling order in this manner simplifies the inversion of
+        conditional CDFs, thereby improving numerical stability. At each elimination
+        step, among the candidate variables, the one that appears least frequently in
+        the conditioning sets of shallower trees is chosen, ensuring that variables
+        critical for conditional sampling occupy central roles.
+
+        Parameters
+        ----------
+        conditioning_vars : set[int], optional
+            A set of asset indices for which conditioning samples are provided.
+            If specified, these assets will be prioritized during the sampling order
+            determination.
+
+        Returns
+        -------
+        sampling_order : list[tuple(Node, bool | None)]
+            A list of tuples representing the optimal sampling order. Each tuple
+            contains:
+              - A Node object corresponding to an asset or an edge in the vine.
+              - A boolean flag indicating whether the left branch is used for sampling
+               at that node, or None if the node is the root.
+        """
+        conditioning_vars = conditioning_vars or set()
+        sampling_order: list[tuple[Node, bool | None]] = []
+        n_assets = self.n_features_in_
+        conditioning_counts = self._conditioning_count()
+
+        edges = self.trees_[-1].edges
+        if len(edges) == 1:
+            edge = edges[0]
+            is_left = _is_left_branch(
+                edge=edge,
+                conditioning_vars=conditioning_vars,
+                conditioning_counts=conditioning_counts[-1],
+            )
+            sampling_order.append((edge.ref_node, is_left))
+        else:
+            # For truncated trees, select edges minimizing conditioning counts.
+            remaining = edges
+            visited: set[Edge] = set()
+            prev_visited: set[Edge] = set()
+            edge, is_left = None, None
+            while remaining:
+                selected = []
+                costs = []
+                for edge in remaining:
+                    c1 = len(edge.node1.edges - prev_visited) == 1
+                    c2 = len(edge.node2.edges - prev_visited) == 1
+                    if c1 or c2:
+                        if c1 and c2:
+                            # Last node
+                            is_left = _is_left_branch(
+                                edge=edge,
+                                conditioning_vars=conditioning_vars,
+                                conditioning_counts=conditioning_counts[-1],
+                            )
+                        else:
+                            is_left = c1
+                        costs.append(
+                            conditioning_counts[
+                                -1, edge.cond_sets.conditioned[0 if is_left else 1]
+                            ]
+                        )
+                        selected.append((edge.ref_node, is_left))
+                        visited.add(edge)
+                remaining = [x for x in remaining if x not in visited]
+                # Sort selected nodes by cost and add to sampling order.
+                ordered_selected = sorted(
+                    zip(costs, selected, strict=True), key=lambda pair: pair[0]
+                )
+                sampling_order.extend(node for _, node in ordered_selected)
+                prev_visited = visited.copy()
+
+        # Marginalization: Peeling off the tree level by level.
+        # We have two valid choices (two conditioned vars: left or right),
+        # we chose the conditioned var with the less conditioning cost
+        i = 2
+        while True:
+            node = edge.node2 if is_left else edge.node1
+            if node.is_root_node:
+                sampling_order.append((node, None))
+                break
+            else:
+                edge = node.ref
+                is_left = _is_left_branch(
+                    edge=edge,
+                    conditioning_vars=conditioning_vars,
+                    conditioning_counts=conditioning_counts[-i],
+                )
+                sampling_order.append((node, is_left))
+            i += 1
+
+        # Replace nodes with conditioning samples where applicable.
+        if conditioning_vars:
+            for i, (node, is_left) in enumerate(sampling_order):
+                node_var = node.get_var(is_left)
+                if node_var in conditioning_vars:
+                    sampling_order[i] = (self.trees_[0].nodes[node_var], None)
+
+        sampling_order = sampling_order[::-1]
+        if not (len(set(sampling_order)) == len(sampling_order) == n_assets):
+            raise ValueError(
+                "Sampling order computation failed: ordering is not unique or complete."
+            )
+        return sampling_order
 
     @property
     def fitted_repr(self) -> str:
@@ -1187,11 +1231,12 @@ class VineCopula(BaseDistribution):
         return fig
 
 
-def _is_left(
+def _is_left_branch(
     edge: Edge, conditioning_vars: set[int], conditioning_counts: np.ndarray
 ) -> bool:
     """
-    Determine whether the left branch should be used for an edge based on conditioning.
+    Determine whether the left branch should be followed during the elimination ordering
+    (tree peeling).
 
     Parameters
     ----------
