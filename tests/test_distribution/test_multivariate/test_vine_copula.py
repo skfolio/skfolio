@@ -767,14 +767,14 @@ def test_memory_sample(X):
     _ = model.sample(100_000)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
-    # peak = end[1] - start[1]
+    peak = end[1] - start[1]
 
     # 800_000 is the memory of a numpy of len 100_000
     expected_current = 800_000 * 20
-    # expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
+    expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
 
     assert current < expected_current * 1.5
-    # assert peak < expected_peak_without_optim*0.8
+    assert peak < expected_peak_without_optim*0.5
 
 
 @pytest.mark.parametrize(

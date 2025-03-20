@@ -25,6 +25,7 @@
 #  representation of hierarchical relationships among assets and improving conditional
 #  sampling.
 
+import contextlib
 import numbers
 import warnings
 from collections import deque
@@ -450,6 +451,7 @@ class VineCopula(BaseMultivariateDist):
         """
         skv.check_is_fitted(self)
         X = skv.validate_data(self, X, dtype=np.float64, reset=False)
+        self.clear_cache()
 
         if self.log_transform:
             X = np.log(1 + X)
@@ -480,7 +482,6 @@ class VineCopula(BaseMultivariateDist):
         for tree in self.trees_:
             for edge in tree.edges:
                 score_samples += edge.copula.score_samples(X=edge.get_X())
-
         self.clear_cache()
 
         return score_samples
@@ -543,65 +544,24 @@ class VineCopula(BaseMultivariateDist):
         # Determine sampling order based on vine structure.
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
 
-        # Generate independent Uniform(0,1) samples for non-conditioned nodes.
-        X_rand = iter(rng.random(size=(n_assets - len(conditioning_vars), n_samples)))
+        X_rand = rng.random(size=(n_assets - len(conditioning_vars), n_samples))
 
-        # Initialize samples for each node according to the sampling order.
-        queue: deque[tuple[Node, bool]] = deque()
-        for node, is_left in sampling_order:
-            node_var = node.get_var(is_left)
-            if node_var in conditioning_vars:
-                init_samples = uniform_cond_samples[node_var]
-            else:
-                init_samples = next(X_rand)
-
-            # Avoid Inf
-            init_samples = np.clip(
-                init_samples,
-                a_min=_UNIFORM_SAMPLE_EPSILON,
-                a_max=1 - _UNIFORM_SAMPLE_EPSILON,
+        # Propagate samples through the vine structure bottom-up
+        with self.count_node_visits():
+            _propagate_samples(
+                X_rand,
+                sampling_order,
+                conditioning_vars,
+                uniform_cond_samples,
+                is_count=True,
             )
-
-            if node.is_root_node:
-                node.u = init_samples
-            else:
-                queue.append((node, is_left))
-                if is_left:
-                    node.u = init_samples
-                else:
-                    node.v = init_samples
-
-        # Propagate samples through the vine structure bottom-up following the
-        # elimination strategy (tree peeling) given by the Node orders and
-        # whether the next Node will on the right or left branch.
-        while queue:
-            node, is_left = queue.popleft()
-            edge = node.ref
-            if edge.node1.is_root_node:
-                if is_left:
-                    x = np.stack([node.u, edge.node2.u]).T
-                    edge.node1.u = edge.copula.inverse_partial_derivative(x)
-                else:
-                    x = np.stack([node.v, edge.node1.u]).T
-                    edge.node2.u = edge.copula.inverse_partial_derivative(x)
-            else:
-                is_left1, is_left2 = edge.node1.ref.shared_node_is_left(edge.node2.ref)
-                if is_left:
-                    x = np.stack([node.u, edge.node2.v if is_left2 else edge.node2.u]).T
-                    u = edge.copula.inverse_partial_derivative(x)
-                    if is_left1:
-                        edge.node1.v = u
-                    else:
-                        edge.node1.u = u
-                    queue.appendleft((edge.node1, not is_left1))
-                else:
-                    x = np.stack([node.v, edge.node1.v if is_left1 else edge.node1.u]).T
-                    u = edge.copula.inverse_partial_derivative(x)
-                    if is_left2:
-                        edge.node2.v = u
-                    else:
-                        edge.node2.u = u
-                    queue.appendleft((edge.node2, not is_left2))
+        _propagate_samples(
+            X_rand,
+            sampling_order,
+            conditioning_vars,
+            uniform_cond_samples,
+            is_count=False,
+        )
 
         # Collect samples from the root tree.
         samples = np.stack([node.u for node in self.trees_[0].nodes]).T
@@ -652,12 +612,12 @@ class VineCopula(BaseMultivariateDist):
 
         return samples
 
-    def clear_cache(self):
+    def clear_cache(self, clear_count: bool = True):
         """Clear cached intermediate results in the vine trees."""
         for tree in self.trees_:
-            tree.clear_cache()
+            tree.clear_cache(clear_count=clear_count)
         for edge in self.trees_[-1].edges:
-            edge.ref_node.clear_cache()
+            edge.ref_node.clear_cache(clear_count=clear_count)
 
     def _conditioning_count(self) -> np.ndarray:
         """Compute cumulative counts of conditioning set occurrences in the vine.
@@ -1113,6 +1073,21 @@ class VineCopula(BaseMultivariateDist):
         )
         return fig
 
+    @contextlib.contextmanager
+    def count_node_visits(self):
+        """A context manager to enable counting node visits within the tree.
+        Temporarily enables node visit counting for the duration of the context.
+        After the block is executed, the original state is restored.
+        """
+        for tree in self.trees_:  # First tree contains the sampling data
+            tree._is_count_node_visits = True
+        try:
+            yield
+        finally:
+            for tree in self.trees_:
+                tree._is_count_node_visits = False
+            self.clear_cache(clear_count=False)
+
 
 def _is_left_branch(
     edge: Edge, conditioning_vars: set[int], conditioning_counts: np.ndarray
@@ -1143,6 +1118,83 @@ def _is_left_branch(
     if v1 not in conditioning_vars and v2 in conditioning_vars:
         return True
     return conditioning_counts[v1] <= conditioning_counts[v2]
+
+
+def _propagate_samples(
+    X_rand, sampling_order, conditioning_vars, uniform_cond_samples, is_count
+):
+    # Propagate samples through the vine structure bottom-up following the
+    # elimination strategy (tree peeling) given by the Node orders and
+    # whether the next Node will on the right or left branch.
+    # Initialize samples for each node according to the sampling order.
+    # Generate independent Uniform(0,1) samples for non-conditioned nodes.
+
+    if not is_count:
+        X_rand = iter(X_rand)
+
+    queue: deque[tuple[Node, bool]] = deque()
+    for node, is_left in sampling_order:
+        node_var = node.get_var(is_left)
+        if is_count:
+            init_samples = np.array([np.nan])
+        else:
+            if node_var in conditioning_vars:
+                init_samples = uniform_cond_samples[node_var]
+            else:
+                init_samples = next(X_rand)
+
+        # Avoid Inf
+        init_samples = np.clip(
+            init_samples,
+            a_min=_UNIFORM_SAMPLE_EPSILON,
+            a_max=1 - _UNIFORM_SAMPLE_EPSILON,
+        )
+
+        if node.is_root_node:
+            node.u = init_samples
+        else:
+            queue.append((node, is_left))
+            if is_left:
+                node.u = init_samples
+            else:
+                node.v = init_samples
+
+    while queue:
+        node, is_left = queue.popleft()
+        edge = node.ref
+        if edge.node1.is_root_node:
+            if is_left:
+                x = np.stack([node.u, edge.node2.u]).T
+                edge.node1.u = _inverse_partial_derivative(edge, x, is_count)
+            else:
+                x = np.stack([node.v, edge.node1.u]).T
+                edge.node2.u = _inverse_partial_derivative(edge, x, is_count)
+        else:
+            is_left1, is_left2 = edge.node1.ref.shared_node_is_left(edge.node2.ref)
+            if is_left:
+                x = np.stack([node.u, edge.node2.v if is_left2 else edge.node2.u]).T
+                u = _inverse_partial_derivative(edge, x, is_count)
+                if is_left1:
+                    edge.node1.v = u
+                else:
+                    edge.node1.u = u
+                queue.appendleft((edge.node1, not is_left1))
+            else:
+                x = np.stack([node.v, edge.node1.v if is_left1 else edge.node1.u]).T
+                u = _inverse_partial_derivative(edge, x, is_count)
+                if is_left2:
+                    edge.node2.v = u
+                else:
+                    edge.node2.u = u
+                queue.appendleft((edge.node2, not is_left2))
+
+
+def _inverse_partial_derivative(
+    edge: Edge, X: np.ndarray, is_count: bool
+) -> np.ndarray:
+    if is_count:
+        return np.array([np.nan])
+    return edge.copula.inverse_partial_derivative(X)
 
 
 def _kde_trace(

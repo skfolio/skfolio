@@ -110,10 +110,15 @@ class Node:
             # pointer from Edge to Node
             ref.ref_node = self
 
-        self.edges = set()
-        self._central = central
-        self._u = pseudo_values
-        self._v = None
+        self.edges: set[Edge] = set()
+        self.tree: Tree | None = None  # Reference to the Tree containing this Node
+        self._central: bool = central
+        self._u: np.ndarray | None = pseudo_values
+        self._v: np.ndarray | None = None
+        self._u_count: int = 0
+        self._v_count: int = 0
+        self._u_count_total: int = 0
+        self._v_count_total: int = 0
 
     @property
     def is_root_node(self) -> bool:
@@ -122,7 +127,7 @@ class Node:
 
     @property
     def ref(self) -> Union[int, "Edge"]:
-        """Return the reference of this node."""
+        """Return the reference of this node (read-only)."""
         return self._ref
 
     @property
@@ -142,12 +147,34 @@ class Node:
         ValueError
             If u is requested for a root node but is not provided.
         """
+        is_count = self.tree is not None and self.tree.is_count_node_visits
+
+        if is_count:
+            self._u_count_total += 1
+        else:
+            self._u_count += 1
+
         if self._u is None:
             if self.is_root_node:
                 raise ValueError("u must be provided for root Nodes")
             X = self.ref.get_X()
-            self._u = self.ref.copula.partial_derivative(X, first_margin=False)
-        return self._u
+            if is_count:
+                self._u = np.array([np.nan])
+            else:
+                self._u = self.ref.copula.partial_derivative(X, first_margin=False)
+
+        value = self._u
+
+        # Clear cache
+        if (
+            not is_count
+            and self._u_count_total != 0
+            and self._u_count == self._u_count_total
+            and not self.is_root_node
+        ):
+            self._u = None
+
+        return value
 
     @u.setter
     def u(self, value: np.ndarray) -> None:
@@ -170,12 +197,34 @@ class Node:
         ValueError
            If v is requested for a root node.
         """
+        is_count = self.tree is not None and self.tree.is_count_node_visits
+
+        if is_count:
+            self._v_count_total += 1
+        else:
+            self._v_count += 1
+
         if self._v is None:
             if self.is_root_node:
                 raise ValueError("v doesn't exist for root Nodes")
             X = self.ref.get_X()
-            self._v = self.ref.copula.partial_derivative(X, first_margin=True)
-        return self._v
+            if is_count:
+                self._v = np.array([np.nan])
+            else:
+                self._v = self.ref.copula.partial_derivative(X, first_margin=True)
+
+        value = self._v
+
+        # Clear cache
+        if (
+            not is_count
+            and self._v_count_total != 0
+            and self._v_count == self._v_count_total
+            and not self.is_root_node
+        ):
+            self._v = None
+
+        return value
 
     @v.setter
     def v(self, value: np.ndarray):
@@ -236,10 +285,15 @@ class Node:
             var = self.ref.cond_sets.conditioned[0 if is_left else 1]
         return var
 
-    def clear_cache(self):
+    def clear_cache(self, clear_count: bool):
         """Clear the cached margin values (u and v)."""
         self._u = None
         self._v = None
+        if clear_count:
+            self._u_count = 0
+            self._v_count = 0
+            self._u_count_total = 0
+            self._v_count_total = 0
 
     def __repr__(self) -> str:
         """String representation of the node."""
@@ -419,8 +473,22 @@ class Tree:
 
     def __init__(self, level: int, nodes: list[Node]):
         self.level = level
-        self.nodes = nodes
+        self._nodes = nodes
+        for node in nodes:
+            # pointer from Node to Tree
+            node.tree = self
         self.edges = None
+        self._is_count_node_visits: bool = False
+
+    @property
+    def nodes(self) -> list[Node]:
+        """Return the tree nodes (read-only)."""
+        return self._nodes
+
+    @property
+    def is_count_node_visits(self) -> bool:
+        """Return whether we should count the Node visits (read-only)."""
+        return self._is_count_node_visits
 
     def set_edges_from_mst(self, dependence_method: DependenceMethod) -> None:
         """Construct the Maximum Spanning Tree (MST) from the current nodes using
@@ -486,10 +554,10 @@ class Tree:
 
         self.edges = edges
 
-    def clear_cache(self):
+    def clear_cache(self, clear_count: bool = True):
         """Clear cached values for all nodes in the tree."""
         for node in self.nodes:
-            node.clear_cache()
+            node.clear_cache(clear_count=clear_count)
 
     def __repr__(self):
         """String representation of the tree."""
