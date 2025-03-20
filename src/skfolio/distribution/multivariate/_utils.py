@@ -5,6 +5,7 @@
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import auto
 from functools import cached_property
@@ -83,37 +84,103 @@ class EdgeCondSets:
         return str(self.conditioned)
 
 
-class Node:
-    """
-    Represents a node in an R-vine tree.
+class BaseNode(ABC):
+    """Base class for Nodes of the R-vine tree.
 
-    For k=1 (first tree), `ref` is an integer representing a variable index.
-    For k > 1, `ref` is a reference to an Edge from the previous tree.
+    Parameters
+    ----------
+    ref : int or Edge
+        For RootNode: reference of the variable index.
+        For ChildNode: reference of the edge in the previous tree.
 
     Attributes
     ----------
-    ref : int or Edge
-        The reference to either a variable index or an edge in the previous tree.
-
     edges : set[Edge]
         The set of edges attached to this node.
+
+    tree : Tree
+        The Tree containing this Node.
+    """
+
+    def __init__(self, ref: Union[int, "Edge"]):
+        self._ref = ref
+        self.edges: set[Edge] = set()
+        self.tree: Tree | None = None  # Reference to the Tree containing this Node
+
+    @property
+    def ref(self) -> Union[int, "Edge"]:
+        """Return the reference of this node (read-only)."""
+        return self._ref
+
+    @abstractmethod
+    def clear_cache(self, **kwargs):
+        """Clear the cached pseudo-values and margin values (u and v)."""
+        pass
+
+    def __repr__(self) -> str:
+        """String representation of the node."""
+        return f"Node({self.ref})"
+
+
+class RootNode(BaseNode):
+    """Root Node of the R-vine tree.
+
+    Parameters
+    ----------
+    ref : int
+        The reference variable index.
+
+    central : bool
+        True if the node is central; otherwise, False.
+
+    pseudo_values : ndarray, optional
+        The pseudo-values of the Root Node.
+
+    Attributes
+    ----------
+    edges : set[Edge]
+        The set of edges attached to this node.
+
+    tree : Tree
+        The Tree containing this Node.
     """
 
     def __init__(
-        self,
-        ref: Union[int, "Edge"],
-        pseudo_values: np.ndarray | None = None,
-        central: bool | None = None,
+        self, ref: int, central: bool, pseudo_values: np.ndarray | None = None
     ):
-        self._ref = ref  # variable index OR a reference to an edge in the previous tree
-        if isinstance(ref, Edge):
-            # pointer from Edge to Node
-            ref.ref_node = self
+        super().__init__(ref=ref)
+        self.central = central
+        self.pseudo_values = pseudo_values
 
-        self.edges: set[Edge] = set()
-        self.tree: Tree | None = None  # Reference to the Tree containing this Node
-        self._central: bool = central
-        self._u: np.ndarray | None = pseudo_values
+    def clear_cache(self, **kwargs):
+        """Clear the cached margin values (u and v)."""
+        self.pseudo_values = None
+
+
+class ChildNode(BaseNode):
+    """Child Node of the R-vine tree.
+    A child node is an edge from the previous tree.
+
+    Parameters
+    ----------
+    ref : Edge
+        The reference edge in the previous tree.
+
+    Attributes
+    ----------
+    edges : set[Edge]
+        The set of edges attached to this node.
+
+    tree : Tree
+        The Tree containing this Node.
+    """
+
+    def __init__(self, ref: "Edge"):
+        super().__init__(ref=ref)
+        # pointer from Edge to Node
+        ref.ref_node = self
+        self._central: bool | None = None
+        self._u: np.ndarray | None = None
         self._v: np.ndarray | None = None
         self._u_count: int = 0
         self._v_count: int = 0
@@ -121,33 +188,32 @@ class Node:
         self._v_count_total: int = 0
 
     @property
-    def is_root_node(self) -> bool:
-        """Determine if this node is a root node."""
-        return not isinstance(self.ref, Edge)
+    def central(self) -> bool:
+        """Determine whether this node is considered central.
+        It is inherited from the associated edge's centrality.
 
-    @property
-    def ref(self) -> Union[int, "Edge"]:
-        """Return the reference of this node (read-only)."""
-        return self._ref
+        Returns
+        -------
+        central: bool
+           True if the node is central; otherwise, False.
+        """
+        if self._central is None:
+            self._central = self.ref.strongly_central
+        return self._central
 
     @property
     def u(self) -> np.ndarray:
         """Get the first margin value (u) for the node.
 
-        For non-root nodes, if u is not already computed, it is obtained by computing
-        the partial derivative of the copula with respect to v.
+        It is obtained by computing the partial derivative of the copula with respect
+        to v.
 
         Returns
         -------
         u : ndarray
             The u values for this node.
-
-        Raises
-        ------
-        ValueError
-            If u is requested for a root node but is not provided.
         """
-        is_count = self.tree is not None and self.tree.is_count_node_visits
+        is_count = self.tree is not None and self.tree.is_count_visits
 
         if is_count:
             self._u_count_total += 1
@@ -155,8 +221,6 @@ class Node:
             self._u_count += 1
 
         if self._u is None:
-            if self.is_root_node:
-                raise ValueError("u must be provided for root Nodes")
             X = self.ref.get_X()
             if is_count:
                 self._u = np.array([np.nan])
@@ -170,9 +234,9 @@ class Node:
             not is_count
             and self._u_count_total != 0
             and self._u_count == self._u_count_total
-            and not self.is_root_node
         ):
             self._u = None
+            self._u_count = 0
 
         return value
 
@@ -184,20 +248,15 @@ class Node:
     def v(self) -> np.ndarray:
         """Get the second margin value (v) for the node.
 
-        For non-root nodes, if v is not already computed, it is obtained by computing
-        the partial derivative of the copula with respect to u.
+        It is obtained by computing the partial derivative of the copula with respect
+        to u.
 
         Returns
         -------
-        ndarray
+        v : ndarray
            The v values for this node.
-
-        Raises
-        ------
-        ValueError
-           If v is requested for a root node.
         """
-        is_count = self.tree is not None and self.tree.is_count_node_visits
+        is_count = self.tree is not None and self.tree.is_count_visits
 
         if is_count:
             self._v_count_total += 1
@@ -205,8 +264,6 @@ class Node:
             self._v_count += 1
 
         if self._v is None:
-            if self.is_root_node:
-                raise ValueError("v doesn't exist for root Nodes")
             X = self.ref.get_X()
             if is_count:
                 self._v = np.array([np.nan])
@@ -220,9 +277,9 @@ class Node:
             not is_count
             and self._v_count_total != 0
             and self._v_count == self._v_count_total
-            and not self.is_root_node
         ):
             self._v = None
+            self._v_count = 0
 
         return value
 
@@ -230,63 +287,34 @@ class Node:
     def v(self, value: np.ndarray):
         self._v = value
 
-    @property
-    def central(self) -> bool:
-        """Determine whether this node is considered central.
-
-        For root nodes, it uses the central flag explicitly set.
-        For non-root nodes, it is inherited from the associated edge's centrality.
-
-        Returns
-        -------
-        central: bool
-           True if the node is central; otherwise, False.
-
-        Raises
-        ------
-        ValueError
-           If centrality is not provided for a root node.
-        """
-        if self._central is None:
-            if self.is_root_node:
-                raise ValueError("central must be provided for root Nodes")
-            self._central = self.ref.strongly_central
-        return self._central
-
-    def get_var(self, is_left: bool | None) -> int:
+    def get_var(self, is_left: bool) -> int:
         """Return the variable index associated with this node.
 
-        For a root node, the variable is given directly by ref.
-        For non-root nodes, the variable is determined by the conditioned set of the
-        edge.
+        The variable is determined by the conditioned set of the edge.
 
         Parameters
         ----------
-        is_left : bool or None
-            For non-root nodes, indicates whether to select the left or right node.
+        is_left : bool
+            Indicates whether to select the left or right node.
 
         Returns
         -------
         var : int
             The variable index corresponding to this node.
-
-        Raises
-        ------
-        ValueError
-            If the input `is_left` is inconsistent with the node type.
         """
-        if self.is_root_node:
-            if is_left is not None:
-                raise ValueError("is_left must be None for root Nodes")
-            var = self.ref
-        else:
-            if is_left is None:
-                raise ValueError("is_left cannot be None for non-starting Nodes")
-            var = self.ref.cond_sets.conditioned[0 if is_left else 1]
+        if is_left is None:
+            raise ValueError("is_left cannot be None for Child Nodes")
+        var = self.ref.cond_sets.conditioned[0 if is_left else 1]
         return var
 
     def clear_cache(self, clear_count: bool):
-        """Clear the cached margin values (u and v)."""
+        """Clear the cached margin values (u and v) and counts.
+
+        Parameters
+        ----------
+        clear_count : bool
+            If True, the visit counts are also reset.
+        """
         self._u = None
         self._v = None
         if clear_count:
@@ -294,10 +322,6 @@ class Node:
             self._v_count = 0
             self._u_count_total = 0
             self._v_count_total = 0
-
-    def __repr__(self) -> str:
-        """String representation of the node."""
-        return f"Node({self.ref})"
 
 
 class Edge:
@@ -309,10 +333,10 @@ class Edge:
 
     Attributes
     ----------
-    node1 : Node
+    node1 : RootNode | ChildNode
        The first node in the edge.
 
-    node2 : Node
+    node2 : RootNode | ChildNode
        The second node in the edge.
 
     dependence_method : DependenceMethod
@@ -327,8 +351,8 @@ class Edge:
 
     def __init__(
         self,
-        node1: Node,
-        node2: Node,
+        node1: RootNode | ChildNode,
+        node2: RootNode | ChildNode,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
     ):
         self.node1 = node1
@@ -368,7 +392,7 @@ class Edge:
         For non-root nodes, the conditioning sets are obtained by combining the
         conditioning sets of the two edges from the previous tree.
         """
-        if self.node1.is_root_node:
+        if isinstance(self.node1, RootNode):
             return EdgeCondSets(
                 conditioned=(self.node1.ref, self.node2.ref), conditioning=set()
             )
@@ -391,9 +415,9 @@ class Edge:
         X : ndarray of shape (n_observations, 2)
             The bivariate pseudo-observation data corresponding to this edge.
         """
-        if self.node1.is_root_node:
-            u = self.node1.u
-            v = self.node2.u
+        if isinstance(self.node1, RootNode):
+            u = self.node1.pseudo_values
+            v = self.node2.pseudo_values
         else:
             is_left1, is_left2 = self.node1.ref.shared_node_is_left(self.node2.ref)
             u = self.node1.v if is_left1 else self.node1.u
@@ -469,26 +493,29 @@ class Tree:
 
     nodes : list[Node]
         A list of Node objects representing the nodes in this tree.
+
+    Attributes
+    ----------
+    edges : list[Edge]
+        The list of edges in the Tree.
+
+    is_count_visits : bool
+        Whether to count the number of visit of each Node during sampling.
     """
 
-    def __init__(self, level: int, nodes: list[Node]):
+    def __init__(self, level: int, nodes: list[RootNode | ChildNode]):
         self.level = level
         self._nodes = nodes
         for node in nodes:
             # pointer from Node to Tree
             node.tree = self
         self.edges = None
-        self._is_count_node_visits: bool = False
+        self.is_count_visits: bool = False
 
     @property
-    def nodes(self) -> list[Node]:
+    def nodes(self) -> list[RootNode | ChildNode]:
         """Return the tree nodes (read-only)."""
         return self._nodes
-
-    @property
-    def is_count_node_visits(self) -> bool:
-        """Return whether we should count the Node visits (read-only)."""
-        return self._is_count_node_visits
 
     def set_edges_from_mst(self, dependence_method: DependenceMethod) -> None:
         """Construct the Maximum Spanning Tree (MST) from the current nodes using

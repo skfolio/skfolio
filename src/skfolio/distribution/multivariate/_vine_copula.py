@@ -51,7 +51,13 @@ from skfolio.distribution.copula import (
     select_bivariate_copula,
 )
 from skfolio.distribution.multivariate._base import BaseMultivariateDist
-from skfolio.distribution.multivariate._utils import DependenceMethod, Edge, Node, Tree
+from skfolio.distribution.multivariate._utils import (
+    ChildNode,
+    DependenceMethod,
+    Edge,
+    RootNode,
+    Tree,
+)
 from skfolio.distribution.univariate import (
     BaseUnivariateDist,
     Gaussian,
@@ -257,6 +263,7 @@ class VineCopula(BaseMultivariateDist):
         n_jobs: int | None = None,
         random_state: int | None = None,
     ):
+        super().__init__(random_state=random_state)
         self.fit_marginals = fit_marginals
         self.marginal_candidates = marginal_candidates
         self.copula_candidates = copula_candidates
@@ -267,7 +274,6 @@ class VineCopula(BaseMultivariateDist):
         self.selection_criterion = selection_criterion
         self.independence_level = independence_level
         self.n_jobs = n_jobs
-        self.random_state = random_state
 
     @property
     def n_params(self) -> int:
@@ -390,7 +396,7 @@ class VineCopula(BaseMultivariateDist):
                 tree = Tree(
                     level=level,
                     nodes=[
-                        Node(
+                        RootNode(
                             ref=i,
                             pseudo_values=X[:, i],
                             central=i in self.central_assets_,
@@ -401,7 +407,7 @@ class VineCopula(BaseMultivariateDist):
             else:
                 # Subsequent trees: nodes represent edges from the previous tree.
                 tree = Tree(
-                    level=level, nodes=[Node(ref=edge) for edge in trees[-1].edges]
+                    level=level, nodes=[ChildNode(ref=edge) for edge in trees[-1].edges]
                 )
             # Set edges via Maximum Spanning Tree using the specified dependence method.
             tree.set_edges_from_mst(dependence_method=self.dependence_method)
@@ -431,7 +437,7 @@ class VineCopula(BaseMultivariateDist):
 
         # Attach a node to each terminal edge (used for sampling).
         for edge in trees[-1].edges:
-            Node(ref=edge)
+            ChildNode(ref=edge)
 
         self.trees_ = trees
         return self
@@ -477,7 +483,7 @@ class VineCopula(BaseMultivariateDist):
         X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
 
         for i, node in enumerate(self.trees_[0].nodes):
-            node.u = X[:, i]
+            node.pseudo_values = X[:, i]
 
         for tree in self.trees_:
             for edge in tree.edges:
@@ -544,27 +550,31 @@ class VineCopula(BaseMultivariateDist):
         # Determine sampling order based on vine structure.
         sampling_order = self._sampling_order(conditioning_vars=conditioning_vars)
 
+        # Generate independent Uniform(0,1) samples for non-conditioned nodes.
         X_rand = rng.random(size=(n_assets - len(conditioning_vars), n_samples))
 
-        # Propagate samples through the vine structure bottom-up
+        # Propagate samples through the vine structure bottom-up.
+
+        # We perform a first pass by only recording the number of Node visits in
+        # each Node without propagating any data. This count is used for optimally
+        # clearing cache during sampling.
         with self.count_node_visits():
             _propagate_samples(
                 X_rand,
                 sampling_order,
                 conditioning_vars,
                 uniform_cond_samples,
-                is_count=True,
             )
+        # We now perform the second pass with full data propagation.
         _propagate_samples(
             X_rand,
             sampling_order,
             conditioning_vars,
             uniform_cond_samples,
-            is_count=False,
         )
 
         # Collect samples from the root tree.
-        samples = np.stack([node.u for node in self.trees_[0].nodes]).T
+        samples = np.stack([node.pseudo_values for node in self.trees_[0].nodes]).T
         self.clear_cache()
 
         # Avoid Inf
@@ -808,7 +818,7 @@ class VineCopula(BaseMultivariateDist):
 
     def _sampling_order(
         self, conditioning_vars: set[int] | None = None
-    ) -> list[tuple[Node, bool]]:
+    ) -> list[tuple[RootNode | ChildNode, bool]]:
         """
         Determine the optimal sampling order for the vine copula.
 
@@ -844,7 +854,7 @@ class VineCopula(BaseMultivariateDist):
                at that node, or None if the node is the root.
         """
         conditioning_vars = conditioning_vars or set()
-        sampling_order: list[tuple[Node, bool | None]] = []
+        sampling_order: list[tuple[RootNode | ChildNode, bool | None]] = []
         n_assets = self.n_features_in_
         conditioning_counts = self._conditioning_count()
 
@@ -900,7 +910,7 @@ class VineCopula(BaseMultivariateDist):
         i = 2
         while True:
             node = edge.node2 if is_left else edge.node1
-            if node.is_root_node:
+            if isinstance(node, RootNode):
                 sampling_order.append((node, None))
                 break
             else:
@@ -916,7 +926,7 @@ class VineCopula(BaseMultivariateDist):
         # Replace nodes with conditioning samples where applicable.
         if conditioning_vars:
             for i, (node, is_left) in enumerate(sampling_order):
-                node_var = node.get_var(is_left)
+                node_var = node.get_var(is_left) if is_left is not None else node.ref
                 if node_var in conditioning_vars:
                     sampling_order[i] = (self.trees_[0].nodes[node_var], None)
 
@@ -1079,13 +1089,13 @@ class VineCopula(BaseMultivariateDist):
         Temporarily enables node visit counting for the duration of the context.
         After the block is executed, the original state is restored.
         """
-        for tree in self.trees_:  # First tree contains the sampling data
-            tree._is_count_node_visits = True
+        for tree in self.trees_:
+            tree.is_count_visits = True
         try:
             yield
         finally:
             for tree in self.trees_:
-                tree._is_count_node_visits = False
+                tree.is_count_visits = False
             self.clear_cache(clear_count=False)
 
 
@@ -1120,21 +1130,23 @@ def _is_left_branch(
     return conditioning_counts[v1] <= conditioning_counts[v2]
 
 
-def _propagate_samples(
-    X_rand, sampling_order, conditioning_vars, uniform_cond_samples, is_count
-):
-    # Propagate samples through the vine structure bottom-up following the
-    # elimination strategy (tree peeling) given by the Node orders and
-    # whether the next Node will on the right or left branch.
-    # Initialize samples for each node according to the sampling order.
-    # Generate independent Uniform(0,1) samples for non-conditioned nodes.
+def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_samples):
+    """Propagate samples through the vine structure bottom-up following the
+    elimination strategy (tree peeling) given by the Node orders and whether the next
+    Node will on the right or left branch.
+
+    If `is_count_visits` is activated, we only record the number of Node visits in
+    each Node. This count is used for optimally clearing cache during sampling.
+    """
+    is_count = sampling_order[0][0].tree.is_count_visits
 
     if not is_count:
         X_rand = iter(X_rand)
 
-    queue: deque[tuple[Node, bool]] = deque()
+    # Initialize samples for each node according to the sampling order.
+    queue: deque[tuple[RootNode | ChildNode, bool]] = deque()
     for node, is_left in sampling_order:
-        node_var = node.get_var(is_left)
+        node_var = node.get_var(is_left) if is_left is not None else node.ref
         if is_count:
             init_samples = np.array([np.nan])
         else:
@@ -1150,8 +1162,8 @@ def _propagate_samples(
             a_max=1 - _UNIFORM_SAMPLE_EPSILON,
         )
 
-        if node.is_root_node:
-            node.u = init_samples
+        if isinstance(node, RootNode):
+            node.pseudo_values = init_samples
         else:
             queue.append((node, is_left))
             if is_left:
@@ -1162,13 +1174,17 @@ def _propagate_samples(
     while queue:
         node, is_left = queue.popleft()
         edge = node.ref
-        if edge.node1.is_root_node:
+        if isinstance(edge.node1, RootNode):
             if is_left:
-                x = np.stack([node.u, edge.node2.u]).T
-                edge.node1.u = _inverse_partial_derivative(edge, x, is_count)
+                x = np.stack([node.u, edge.node2.pseudo_values]).T
+                edge.node1.pseudo_values = _inverse_partial_derivative(
+                    edge, x, is_count
+                )
             else:
-                x = np.stack([node.v, edge.node1.u]).T
-                edge.node2.u = _inverse_partial_derivative(edge, x, is_count)
+                x = np.stack([node.v, edge.node1.pseudo_values]).T
+                edge.node2.pseudo_values = _inverse_partial_derivative(
+                    edge, x, is_count
+                )
         else:
             is_left1, is_left2 = edge.node1.ref.shared_node_is_left(edge.node2.ref)
             if is_left:
@@ -1192,6 +1208,7 @@ def _propagate_samples(
 def _inverse_partial_derivative(
     edge: Edge, X: np.ndarray, is_count: bool
 ) -> np.ndarray:
+    """Inverse partial derivative of an Edge copula."""
     if is_count:
         return np.array([np.nan])
     return edge.copula.inverse_partial_derivative(X)

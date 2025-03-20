@@ -13,6 +13,7 @@ from skfolio.distribution import (
     StudentTCopula,
     VineCopula,
 )
+from skfolio.distribution.multivariate._utils import RootNode
 
 
 @pytest.fixture
@@ -725,13 +726,19 @@ def test_clear_cache(X, max_depth):
     model.fit(X)
     for tree in model.trees_:
         for node in tree.nodes:
-            assert node._u is None
-            assert node._v is None
+            if isinstance(node, RootNode):
+                assert node.pseudo_values is None
+            else:
+                assert node._u is None
+                assert node._v is None
     _ = model.sample(1000)
     for tree in model.trees_:
         for node in tree.nodes:
-            assert node._u is None
-            assert node._v is None
+            if isinstance(node, RootNode):
+                assert node.pseudo_values is None
+            else:
+                assert node._u is None
+                assert node._v is None
 
 
 def test_memory_fit(X):
@@ -774,7 +781,7 @@ def test_memory_sample(X):
     expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
 
     assert current < expected_current * 1.5
-    assert peak < expected_peak_without_optim*0.5
+    assert peak < expected_peak_without_optim * 0.5
 
 
 @pytest.mark.parametrize(
