@@ -243,7 +243,7 @@ This is often used for factor stress test.
     X, y = prices_to_returns(prices, factors)
 
 
-     # Minimum CVaR optimization on Stressed Factors
+    # Minimum CVaR optimization on Stressed Factors
     vine = VineCopula(central_assets=["QUAL"], log_transform=True, n_jobs=-1)
     factor_prior = SyntheticData(
         distribution_estimator=vine,

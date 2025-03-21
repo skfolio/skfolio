@@ -213,6 +213,7 @@ Imports
 
     from skfolio import RatioMeasure, RiskMeasure
     from skfolio.datasets import load_factors_dataset, load_sp500_dataset
+    from skfolio.distribution import VineCopula
     from skfolio.model_selection import (
         CombinatorialPurgedCV,
         WalkForward,
@@ -233,7 +234,7 @@ Imports
     )
     from skfolio.pre_selection import SelectKExtremes
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel, SyntheticData
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
 
@@ -490,6 +491,52 @@ Combinatorial Purged Cross-Validation
     )
     population.plot_cumulative_returns()
     print(population.summary())
+
+Minimum CVaR Optimization on Synthetic Returns
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    vine = VineCopula(log_transform=True, n_jobs=-1)
+    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
+    model.fit(X)
+    print(model.weights_)
+
+Stress Test
+~~~~~~~~~~~~
+.. code-block:: python
+
+    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine.fit(X)
+    X_stressed = vine.sample(n_samples=10_000, conditioning = {"BAC": -0.2})
+    ptf_stressed = model.predict(X_stressed)
+
+Minimum CVaR Optimization on Synthetic Factors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    vine = VineCopula(central_assets=["QUAL"], log_transform=True, n_jobs=-1)
+    factor_prior = SyntheticData(
+        distribution_estimator=vine,
+        n_samples=10_000,
+        sample_args=dict(conditioning={"QUAL": -0.2}),
+    )
+    factor_model = FactorModel(factor_prior_estimator=factor_prior)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
+    model.fit(X, y)
+    print(model.weights_)
+
+Factor Stress Test
+~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    factor_model.set_params(factor_prior_estimator__sample_args=dict(
+        conditioning={"QUAL": -0.5}
+    ))
+    factor_model.fit(X,y)
+    stressed_X = factor_model.prior_model_.returns
+    stressed_ptf = model.predict(stressed_X)
+
 
 Recognition
 ~~~~~~~~~~~
