@@ -710,10 +710,19 @@ def test_log_transform(X):
         copula_candidates=[GaussianCopula()],
         central_assets=[0],
         log_transform=True,
+        random_state=42,
     )
     model.fit(X)
     sample = model.sample(n_samples=1000, conditioning={0: np.full(1000, -0.8)})
     assert np.all(sample >= -1)
+    model.set_params(log_transform=[True] * 20)
+    model.fit(X)
+    sample2 = model.sample(n_samples=1000, conditioning={0: np.full(1000, -0.8)})
+    np.testing.assert_almost_equal(sample, sample2)
+    model.set_params(log_transform={name: True for name in X.columns})
+    model.fit(X)
+    sample3 = model.sample(n_samples=1000, conditioning={0: np.full(1000, -0.8)})
+    np.testing.assert_almost_equal(sample, sample3)
 
 
 @pytest.mark.parametrize("max_depth", [2, 10, 100])

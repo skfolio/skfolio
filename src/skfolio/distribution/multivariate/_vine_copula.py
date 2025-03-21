@@ -65,7 +65,7 @@ from skfolio.distribution.univariate import (
     StudentT,
     select_univariate_dist,
 )
-from skfolio.utils.tools import validate_input_list
+from skfolio.utils.tools import input_to_array, validate_input_list
 
 _UNIFORM_SAMPLE_EPSILON = 1e-14
 
@@ -110,11 +110,16 @@ class VineCopula(BaseMultivariateDist):
         Maximum vine depth (truncated level). Must be greater than 1.
         `None` means that no truncation is applied. The default is 4.
 
-    log_transform : bool, default=False
+    log_transform : bool | dict[str, bool] | array-like of shape (n_assets, ), default=False
         If True, the simple returns provided as input will be transformed to log returns
         before fitting the vine copula. That is, each return R is transformed via
         r = log(1+R). After sampling, the generated log returns are converted back to
         simple returns using R = exp(r) - 1.
+
+        If a bool is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/bool) and the input `X` of the `fit` method must be a
+        DataFrame with the assets names in columns.
 
     central_assets : array-like of asset names or asset positions, optional
         Assets that should be centrally placed during vine construction.
@@ -249,13 +254,15 @@ class VineCopula(BaseMultivariateDist):
     feature_names_in_: np.ndarray
     central_assets_: set[int | str]
 
+    _log_transform: np.ndarray
+
     def __init__(
         self,
         fit_marginals: bool = True,
         marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
         max_depth: int | None = 4,
-        log_transform: bool = False,
+        log_transform: bool | dict[str, bool] | npt.ArrayLike = False,
         central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
         selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
@@ -321,8 +328,20 @@ class VineCopula(BaseMultivariateDist):
         if self.max_depth is not None and self.max_depth <= 1:
             raise ValueError(f"`max_depth` must be higher than 1, got {self.max_depth}")
 
-        if self.log_transform:
-            X = np.log(1 + X)
+        if np.isscalar(self.log_transform):
+            self._log_transform = np.array([self.log_transform] * n_assets, dtype=bool)
+        else:
+            self._log_transform = input_to_array(
+                items=self.log_transform,
+                n_assets=n_assets,
+                fill_value=False,
+                dim=1,
+                assets_names=getattr(self, "feature_names_in_", None),
+                name="log_transform",
+            )
+
+        if np.any(self._log_transform):
+            X = np.where(self._log_transform, np.log1p(X), X)
 
         depth = n_assets - 1
         if self.max_depth is not None:
@@ -459,8 +478,8 @@ class VineCopula(BaseMultivariateDist):
         X = skv.validate_data(self, X, dtype=np.float64, reset=False)
         self.clear_cache()
 
-        if self.log_transform:
-            X = np.log(1 + X)
+        if np.any(self._log_transform):
+            X = np.where(self._log_transform, np.log1p(X), X)
 
         if not self.fit_marginals:
             score_samples = np.zeros(len(X))
@@ -595,7 +614,7 @@ class VineCopula(BaseMultivariateDist):
             )
 
         # Reverse the log-return transformation if log_transform is True.
-        if self.log_transform:
+        if np.any(self._log_transform):
             # A known effect when sampling with log transform is that large sampling
             # log returns explode after applying the reverse log transform into
             # unrealistic simple returns.
@@ -603,10 +622,12 @@ class VineCopula(BaseMultivariateDist):
             # For financial returns, log returns above 200% are transformed linearly
             # instead of exponentially.
             box_cox_threshold = np.log(3)
-            samples = np.where(
-                samples <= box_cox_threshold,
-                np.exp(samples) - 1,
-                np.exp(box_cox_threshold) + (samples - box_cox_threshold) - 1,
+            samples[:, self._log_transform] = np.where(
+                samples[:, self._log_transform] <= box_cox_threshold,
+                np.exp(samples[:, self._log_transform]) - 1,
+                np.exp(box_cox_threshold)
+                + (samples[:, self._log_transform] - box_cox_threshold)
+                - 1,
             )
 
         # To avoid Inf values and numerical instability, conditional values converted to
@@ -769,11 +790,12 @@ class VineCopula(BaseMultivariateDist):
                     )
                 conditioning_clean[var] = (min_value, max_value)
 
-                if self.log_transform:
+                if self._log_transform[var]:
                     if not np.isneginf(min_value):
-                        min_value = np.log(1 + min_value)
+                        min_value = np.log1p(min_value)
                     if not np.isposinf(max_value):
-                        max_value = np.log(1 + max_value)
+                        max_value = np.log1p(max_value)
+
                 if self.fit_marginals:
                     # Transform the bounds using the marginal CDF
                     dist = self.marginal_distributions_[var]
@@ -791,8 +813,8 @@ class VineCopula(BaseMultivariateDist):
                         f"Conditioning values should be numbers, got {value}"
                     )
                 conditioning_clean[var] = value
-                if self.log_transform:
-                    value = np.log(1 + value)
+                if self._log_transform[var]:
+                    value = np.log1p(value)
                 if self.fit_marginals:
                     # Transform conditioning value using the fitted marginal CDF.
                     value = self.marginal_distributions_[var].cdf(value)
@@ -806,8 +828,8 @@ class VineCopula(BaseMultivariateDist):
                         f"1D array of length n_samples={n_samples}, got {samples.ndim}D of "
                         f"length {samples.shape[0]}"
                     )
-                if self.log_transform:
-                    samples = np.log(1 + samples)
+                if self._log_transform[var]:
+                    samples = np.log1p(samples)
                 if self.fit_marginals:
                     # Transform conditioning samples using the fitted marginal CDF.
                     samples = self.marginal_distributions_[var].cdf(samples)
