@@ -130,11 +130,13 @@ def test_non_dominated_sorting(population):
         assert dominates
 
 
-def test_population_plot(population):
+@pytest.mark.parametrize("to_surface", [False, True])
+def test_population_plot_measures(population, to_surface):
     assert population.plot_measures(
         x=RiskMeasure.SEMI_DEVIATION,
         y=PerfMeasure.MEAN,
         z=RiskMeasure.MAX_DRAWDOWN,
+        to_surface=to_surface,
         show_fronts=True,
     )
 

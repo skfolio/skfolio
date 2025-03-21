@@ -813,8 +813,7 @@ class Population(list):
                         )
                         + "<extra></extra>",
                         colorbar=dict(
-                            title=str(z),
-                            titleside="top",
+                            title=dict(text=str(z), side="top"),
                             tickformat=",.2%" if not z.is_ratio else None,
                         ),
                     )

@@ -88,7 +88,7 @@ population.plot_measures(
 # mean-Variance-CDaR pareto optimal surface:
 variance_upper = population_train.max_measure(PerfMeasure.MEAN).variance
 x = np.linspace(start=0.00012, stop=variance_upper, num=10)
-y = np.linspace(start=0.10, stop=0.17, num=10)
+y = np.linspace(start=0.11, stop=0.17, num=10)
 x, y = map(np.ravel, np.meshgrid(x, y))
 
 model = MeanRisk(
