@@ -558,7 +558,7 @@ class VineCopula(BaseMultivariateDist):
         # We perform a first pass by only recording the number of Node visits in
         # each Node without propagating any data. This count is used for optimally
         # clearing cache during sampling.
-        with self.count_node_visits():
+        with self._count_node_visits():
             _propagate_samples(
                 X_rand,
                 sampling_order,
@@ -1084,7 +1084,7 @@ class VineCopula(BaseMultivariateDist):
         return fig
 
     @contextlib.contextmanager
-    def count_node_visits(self):
+    def _count_node_visits(self):
         """A context manager to enable counting node visits within the tree.
         Temporarily enables node visit counting for the duration of the context.
         After the block is executed, the original state is restored.
