@@ -29,23 +29,25 @@ multivariate cumulative distribution function :math:`F(x_1, \dots, x_d)` with ma
 .. math::
     F(x_1, \dots, x_d) = C\left(F_1(x_1), \dots, F_d(x_d)\right).
 
-A Regular Vine copula leverages Sklar's Theorem by expressing the joint density function
-:math:`f(x_1, \dots, x_d)` as a product of the marginal densities and a series of
-bivariate copula densities arranged in a vine structure. Mathematically, this
-decomposition is given by:
+A **Regular Vine copula** applies Sklar’s Theorem **recursively**
+to factorize the joint density of :math:`(x_1,\dots,x_d)` into marginal densities and
+bivariate copula densities arranged in a vine (tree) structure. Formally:
 
 .. math::
-    f(x_1, \dots, x_d) = \prod_{i=1}^{d} f_i(x_i) \times
-    \prod_{k=1}^{d-1} \prod_{j=1}^{d-k}
-    c_{j, j+k \mid 1, \dots, j-1}\Bigl(F\bigl(x_j \mid x_1, \dots, x_{j-1}\bigr),
-    F\bigl(x_{j+k} \mid x_1, \dots, x_{j-1}\bigr)\Bigr),
+    f(x_1, \dots, x_d) = \prod_{i=1}^d f_i(x_i)
+      \times \prod_{\ell=1}^{d-1} \prod_{j=1}^{d-\ell}
+      c_{j,\,j+\ell \mid D_{j,\ell}}\!\Bigl(
+         F(x_j \mid D_{j,\ell}),\,
+         F(x_{j+\ell} \mid D_{j,\ell})
+      \Bigr),
 
 where:
 
-- :math:`f_i(x_i)` denotes the marginal density of :math:`x_i`.
-- :math:`c_{j, j+k \mid 1, \dots, j-1}` represents the density of the bivariate copula
-  linking the conditional distributions of :math:`x_j` and :math:`x_{j+k}` given the
-  variables :math:`x_1, \dots, x_{j-1}`.
+- :math:`f_i(x_i)` is the marginal density of :math:`x_i`.
+- :math:`D_{j,\ell} = \{x_1, \dots, x_{j-1}\}` is the conditioning set.
+- :math:`c_{j,\,j+\ell \mid D_{j,\ell}}` is the **bivariate copula density** linking
+  the conditional distributions of :math:`x_j` and :math:`x_{j+\ell}` given the
+  variables in :math:`D_{j,\ell}`.
 
 Advantages of Vine Copulas
 ==========================
@@ -169,7 +171,7 @@ vine.display_vine()
 # Let's break it down:
 #
 # * `Node(0): JohnsonSU(-0.0462, 1.24, -0.00123, 0.0332)`: This represents the marginal
-#   distribution of variable 1 (BAC).
+#   distribution of variable 0 (AMD).
 #
 # * `Edge((0, 2), StudentTCopula(0.316, 5.671))`: This represents the unconditional
 #   bivariate copula between variables 0 (AMD) and 2 (HD) modeled by a Student's t Copula
@@ -185,7 +187,7 @@ vine.display_vine()
 score = vine.score(X)
 aic = vine.aic(X)
 print(f"Total Log-likelihood: {score:,.02f}")
-print(f"AIC:{aic: ,.02f}")
+print(f"AIC: {aic:,.02f}")
 
 # %%
 # Note that the :class:`~skfolio.distribution.VineCopula` estimator is compatible
@@ -248,7 +250,7 @@ copula.plot_tail_concentration(U)
 # ====================
 # One of the main advantages of Vine Copula is its ability to produce accurate
 # conditional sampling in extreme scenarios by leveraging the accurate computation of
-# inverse CFD of the marginal distributions as well as the partial derivatives and
+# inverse CDF of the marginal distributions as well as the partial derivatives and
 # inverse partial derivatives of the bivariate copulas.
 #
 # Let's generate 1000 samples conditioned on AMD returns being at -20%.
@@ -361,16 +363,16 @@ samples = vine.sample(n_samples=1000)
 # References
 # ==========
 # [1] Selecting and estimating regular vine copulae and application to financial returns
-#     Dißmann, Brechmann, Czado, and Kurowicka (2013).
+#     Dissmann, Brechmann, Czado, and Kurowicka (2013).
 #
 # [2] Growing simplified vine copula trees: improving Dißmann's algorithm
-#     Krausa and Czado(2017).
+#     Krausa and Czado (2017).
 #
 # [3] Pair-copula constructions of multiple dependence"
-#     Aas, Czado, Frigessi, Bakken(2009).
+#     Aas, Czado, Frigessi, Bakken (2009).
 #
 # [4] Pair-Copula Constructions for Financial Applications: A Review
 #     Aas and Czado(2016).
 #
 # [5] Conditional copula simulation for systemic risk stress testing
-#     Brechmann, Hendrich, Czado(2013)
+#     Brechmann, Hendrich, Czado (2013)

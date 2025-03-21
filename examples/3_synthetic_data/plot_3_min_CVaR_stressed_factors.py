@@ -28,7 +28,7 @@ data rather than (factor) historical data:
   By generating a larger sample of returns from Vine Copulas, you improve the accuracy
   of capturing tail co-dependencies during the optimization process.
 
-* Building portfolios optimized for specific stressed scenarios.
+* Build portfolios optimized for specific stressed scenarios.
 """
 
 # %%
@@ -36,7 +36,7 @@ data rather than (factor) historical data:
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors.
+# prices of 5 ETFs representing common factors.
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
@@ -68,11 +68,11 @@ print(f"factors_test: {factors_test.shape}")
 # %%
 # Minimize CVaR on Synthetic Data
 # ===============================
-# Let's find the minimum CVaR portfolio on 10,000 synthetic data generated from a Vine
-# Copula fitted on the historical training set and evaluate it on the historical test
-# set.
+# Let's find the minimum CVaR portfolio on 10,000 synthetic retruns generated from
+# Vine Copula fitted on the historical training set and evaluate it on the historical
+# test set.
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)
-prior = SyntheticData(distribution_estimator=vine, n_samples=10000)
+prior = SyntheticData(distribution_estimator=vine, n_samples=10_000)
 model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
 
 model.fit(X_train)
@@ -95,7 +95,7 @@ ptf.summary()
 # Combining Synthetic Data with Factor Model
 # ==========================================
 # Now, let's add another layer of complexity by incorporating a Factor Model while
-# stressing the quality factor ("QUAL") by -20%.
+# stressing the quality factor (QUAL) by -20%.
 # The model fits a Factor Model on historical data, then fits a Vine Copula on the
 # factor data, samples 10,000 stressed scenarios from the Vine, and finally projects
 # these scenarios back to the asset universe using the Factor Model.
@@ -104,7 +104,7 @@ vine = VineCopula(
 )
 factor_prior = SyntheticData(
     distribution_estimator=vine,
-    n_samples=10000,
+    n_samples=10_000,
     sample_args=dict(conditioning={"QUAL": -0.2}),
 )
 factor_model = FactorModel(factor_prior_estimator=factor_prior)
@@ -130,7 +130,7 @@ show(fig)
 # %%
 # Factor Stress Test
 # ==================
-# Finally, let's Stress Test the portfolio by further stressing the quality factor by
+# Finally, let's stress-test the portfolio by further stressing the quality factor by
 # -50%.
 factor_model.set_params(
     factor_prior_estimator__sample_args=dict(conditioning={"QUAL": -0.5})

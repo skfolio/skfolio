@@ -116,9 +116,9 @@ class VineCopula(BaseMultivariateDist):
         r = log(1+R). After sampling, the generated log returns are converted back to
         simple returns using R = exp(r) - 1.
 
-        If a bool is provided, it is applied to each asset.
+        If a boolean is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/bool) and the input `X` of the `fit` method must be a
+        (asset name/boolean) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
     central_assets : array-like of asset names or asset positions, optional
@@ -133,15 +133,15 @@ class VineCopula(BaseMultivariateDist):
 
         For example:
 
-        1) If only asset 1 is marked as central, it will be connected to all other
+        - If only asset 1 is marked as central, it will be connected to all other
            assets in the first tree (yielding a C-like structure for the initial
            tree), with subsequent trees following the standard R-vine pattern.
-        2) If asset 1 and asset 2 are marked as central, they will be connected
+        - If asset 1 and asset 2 are marked as central, they will be connected
            together and the remaining assets will connect to either asset 1 or asset
            2 (forming a clustered structure in the initial trees). In the next tree,
            the edge between asset 1 and asset 2 becomes the central node, with
            subsequent trees following the standard R-vine structure.
-        3) This logic extends naturally to more than two central assets.
+        - This logic extends naturally to more than two central assets.
 
     dependence_method : DependenceMethod, default=DependenceMethod.KENDALL_TAU
         The dependence measure used to compute edge weights for the MST.

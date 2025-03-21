@@ -35,11 +35,10 @@ There are two primary families of copulas used in finance:
      dependence.
 
    - **Clayton Copula:**
-     Uses a parameter :math:`\theta \in (0, \infty)` (with :math:`\theta > 0` for positive
-     dependence) to capture lower tail dependence.
+     Uses a parameter :math:`\theta \in (0, \infty)` and capture lower tail dependence.
 
    - **Joe Copula:**
-     Defined with :math:`\theta \in [1, \infty)` and emphasizes upper tail dependence.
+     Defined with :math:`\theta \in [1, \infty)` and models upper tail dependence.
 
 +-----------------+----------------+-------------------------------------------+---------------------------------------------+---------------+
 | **Copula**      | **Family**     | **Parameters**                            | **Tail Dependence**                         | **Symmetry**  |
