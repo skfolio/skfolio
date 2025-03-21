@@ -54,9 +54,6 @@ from skfolio.prior import EmpiricalPrior, FactorModel, LoadingMatrixRegression
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
-prices = prices["2014":]
-factor_prices = factor_prices["2014":]
-
 X, y = prices_to_returns(prices, factor_prices)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
 

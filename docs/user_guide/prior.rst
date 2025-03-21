@@ -130,6 +130,62 @@ The loading matrix (betas) of the factors is estimated using a
 which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
 separately.
 
+
+Synthetic Data
+**************
+
+The :class:`SyntheticData` estimator bridges scenario generation and portfolio
+optimization. It estimates the :class:`PriorModel` by fitting a
+`distribution_estimator` and sampling new data from it.
+
+The default `distribution_estimator` is a Regular :class:`VineCopula` estimator.
+Other common choices are Generative Adversarial Networks (GANs) or Variational Autoencoders (VAEs).
+
+It is particularly useful when the historical distribution tail dependencies are
+sparse and need extrapolation for tail optimizations or when optimizing under
+conditional or stressed scenarios.
+
+Detailed tutorials:
+    * :ref:`Bivariate Copulas <sphx_glr_auto_examples_3_synthetic_data_plot_1_bivariate_copulas.py>`
+    * :ref:`Vine Copula <sphx_glr_auto_examples_3_synthetic_data_plot_2_vine_copula.py>`
+    * :ref:`Stress Test with Vine Copula <sphx_glr_auto_examples_3_synthetic_data_plot_3_vine_copula_stress.py>`
+    * :ref:`Minimize CVaR on Stressed Factors <sphx_glr_auto_examples_3_synthetic_data_plot_4_min_CVaR_stressed_factors.py>`
+
+
+**Example:**
+
+.. code-block:: python
+
+    from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    from skfolio.preprocessing import prices_to_returns
+    from skfolio.distribution import VineCopula
+    from skfolio.optimization import MeanRisk
+    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio import RiskMeasure
+   
+    # Load historical prices and convert them to returns
+    prices = load_sp500_dataset()
+    X = prices_to_returns(prices, factors)
+   
+    # Instanciate the SyntheticData model and fit it
+    model = SyntheticData()
+    model.fit(X)
+    print(model.prior_model_)
+
+    # Minimum CVaR optimization on synthetic returns
+    vine = VineCopula(log_transform=True, n_jobs=-1)
+    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
+    model.fit(X)
+    print(model.weights_)
+
+    # Stress Test
+    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine.fit(X)
+    X_stressed = vine.sample(n_samples=10000, conditioning = {"BAC": -0.2})
+    ptf_stressed = model.predict(X_stressed)
+
+
 Combining Multiple Prior Estimators
 ***********************************
 Prior estimators can be combined. For example, it is possible to create a Black &
@@ -164,3 +220,45 @@ covariance matrix, incorporating the analyst views on the **factors**.
     model.fit(X, y)
     print(model.prior_model_)
 
+
+
+**Example:**
+
+By combining :class:`SyntheticData` with :class:`FactorModel` you can generate
+synthetic data of your factors then project them to your assets.
+This is often used for factor stress test.
+
+.. code-block:: python
+
+    from skfolio.datasets import load_sp500_dataset, load_factors_dataset
+    from skfolio.preprocessing import prices_to_returns
+    from skfolio.distribution import VineCopula
+    from skfolio.optimization import MeanRisk
+    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio import RiskMeasure
+
+    # Load historical prices and convert them to returns
+    prices = load_sp500_dataset()
+    factors = load_factors_dataset()
+    X, y = prices_to_returns(prices, factors)
+
+
+    # Minimum CVaR optimization on Stressed Factors
+    vine = VineCopula(central_assets=["QUAL"], log_transform=True, n_jobs=-1)
+    factor_prior = SyntheticData(
+        distribution_estimator=vine,
+        n_samples=10000,
+        sample_args=dict(conditioning={"QUAL": -0.2}),
+    )
+    factor_model = FactorModel(factor_prior_estimator=factor_prior)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
+    model.fit(X, y)
+    print(model.weights_)
+
+    # Stress Test the Portfolio
+    factor_model.set_params(factor_prior_estimator__sample_args=dict(
+        conditioning={"QUAL": -0.5}
+    ))
+    factor_model.fit(X,y)
+    stressed_X = factor_model.prior_model_.returns
+    stressed_ptf = model.predict(stressed_X)

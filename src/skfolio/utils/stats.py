@@ -82,7 +82,7 @@ def n_bins_freedman(x: np.ndarray) -> int:
     if d == 0:
         return 5
     n_bins = max(1, np.ceil((np.max(x) - np.min(x)) / d))
-    return int(round(n_bins))
+    return round(n_bins)
 
 
 def n_bins_knuth(x: np.ndarray) -> int:
@@ -122,7 +122,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
 
     n_bins_init = n_bins_freedman(x)
     n_bins = sco.fmin(func, n_bins_init, disp=0)[0]
-    return int(round(n_bins))
+    return round(n_bins)
 
 
 def rand_weights_dirichlet(n: int) -> np.array:

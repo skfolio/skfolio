@@ -200,6 +200,8 @@ class FactorModel(BasePrior):
 
     factor_prior_estimator_: BasePrior
     loading_matrix_estimator_: BaseLoadingMatrix
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     def __init__(
         self,
@@ -266,6 +268,7 @@ class FactorModel(BasePrior):
         )
         factor_mu = self.factor_prior_estimator_.prior_model_.mu
         factor_covariance = self.factor_prior_estimator_.prior_model_.covariance
+        factor_returns = self.factor_prior_estimator_.prior_model_.returns
 
         # Fitting loading matrix estimator
         self.loading_matrix_estimator_.fit(X, y)
@@ -293,11 +296,12 @@ class FactorModel(BasePrior):
 
         mu = loading_matrix @ factor_mu + intercepts
         covariance = loading_matrix @ factor_covariance @ loading_matrix.T
-        returns = y @ loading_matrix.T + intercepts
+        returns = factor_returns @ loading_matrix.T + intercepts
         cholesky = loading_matrix @ np.linalg.cholesky(factor_covariance)
 
         if self.residual_variance:
-            err = X - returns
+            y_pred = y @ loading_matrix.T + intercepts
+            err = X - y_pred
             err_cov = np.diag(np.var(err, ddof=1, axis=0))
             covariance += err_cov
             cholesky = np.hstack((cholesky, np.sqrt(err_cov)))

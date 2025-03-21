@@ -428,7 +428,7 @@ def _n_splits(n_folds: int, n_test_folds: int) -> int:
     n_splits : int
         Number of splits
     """
-    return int(math.comb(n_folds, n_test_folds))
+    return math.comb(n_folds, n_test_folds)
 
 
 def _n_test_paths(n_folds: int, n_test_folds: int) -> int:

@@ -12,6 +12,7 @@ from skfolio.utils.tools import (
     input_to_array,
     safe_indexing,
     safe_split,
+    validate_input_list,
 )
 
 
@@ -151,3 +152,75 @@ def test_deduplicate_names():
     names = ["blah", "blah2", "blah3", "blah", "blah"]
     names = deduplicate_names(names)
     assert names == ["blah", "blah2", "blah3", "blah_1", "blah_2"]
+
+
+# Test with valid integer inputs.
+def test_int_inputs_valid():
+    items = [0, 2, 4]
+    n_assets = 5
+    # For integer inputs, assets_names is not used.
+    result = validate_input_list(items, n_assets, assets_names=None, name="test_assets")
+    assert result == [0, 2, 4]
+
+
+# Test with an invalid integer (out of range).
+def test_int_input_invalid_index():
+    items = [0, 5]  # 5 is out of range for n_assets=5 (valid indices are 0-4)
+    n_assets = 5
+    with pytest.raises(ValueError, match="is not in"):
+        validate_input_list(items, n_assets, assets_names=None, name="test_assets")
+
+
+# Test with valid string inputs.
+def test_string_inputs_valid():
+    assets_names = np.array(["A", "B", "C", "D", "E"])
+    items = ["A", "D"]
+    n_assets = len(assets_names)
+    result = validate_input_list(
+        items, n_assets, assets_names=assets_names, name="test_assets"
+    )
+    # "A" corresponds to index 0, "D" corresponds to index 3.
+    assert result == [0, 3]
+
+
+# Test with strings when assets_names is None.
+def test_string_inputs_no_assets_names():
+    items = ["A", "B"]
+    n_assets = 2
+    with pytest.raises(ValueError, match="must input `X`"):
+        validate_input_list(items, n_assets, assets_names=None, name="test_assets")
+
+
+# Test with duplicate entries (order is preserved).
+def test_duplicate_entries():
+    assets_names = np.array(["X", "Y", "Z"])
+    # Both integer and string (that converts to the same index) are provided.
+    items = [1, "Y", 1, "Y"]
+    n_assets = len(assets_names)
+    with pytest.raises(ValueError, match="Duplicates found"):
+        _ = validate_input_list(
+            items, n_assets, assets_names=assets_names, name="test_assets"
+        )
+
+
+# Test with a mix of valid integers and valid strings.
+def test_mixed_inputs():
+    assets_names = np.array(["Asset1", "Asset2", "Asset3", "Asset4"])
+    # "Asset3" corresponds to index 2 and integer 0 is valid.
+    items = [0, "Asset3"]
+    n_assets = len(assets_names)
+    result = validate_input_list(
+        items, n_assets, assets_names=assets_names, name="test_assets"
+    )
+    assert result == [0, 2]
+
+
+def test_validate_input_list_raise():
+    assets_names = np.array(["Asset1", "Asset2", "Asset3", "Asset4"])
+    # "Asset3" corresponds to index 2 and integer 0 is valid.
+    items = ["Asset3", "wrong name"]
+    n_assets = len(assets_names)
+    with pytest.raises(ValueError):
+        _ = validate_input_list(
+            items, n_assets, assets_names=assets_names, name="test_assets"
+        )

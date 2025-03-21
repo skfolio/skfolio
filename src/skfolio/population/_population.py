@@ -14,6 +14,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate as sci
+import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
@@ -937,6 +938,34 @@ class Population(list):
             xaxis_title="Observations",
             yaxis=yaxis,
             showlegend=False,
+        )
+        return fig
+
+    def plot_returns_distribution(self) -> go.Figure:
+        """Plot the Portfolios returns distribution using Gaussian KDE.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object
+        """
+        traces = []
+        for ptf in self:
+            lower = np.percentile(ptf.returns, 1e-1)
+            upper = np.percentile(ptf.returns, 100 - 1e-1)
+            x = np.linspace(lower, upper, 500)
+            y = st.gaussian_kde(ptf.returns)(x)
+            traces.append(
+                go.Scatter(x=x, y=y, mode="lines", fill="tozeroy", name=ptf.name)
+            )
+        fig = go.Figure(traces)
+        fig.update_layout(
+            title="Returns Distribution",
+            xaxis_title="Returns",
+            yaxis_title="Probability Density",
+        )
+        fig.update_xaxes(
+            tickformat=".0%",
         )
         return fig
 

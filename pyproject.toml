@@ -51,7 +51,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.23.4",
-    "scipy>=1.8.0",
+    "scipy>=1.15.2",
     "pandas>=1.4.1",
     "cvxpy-base>=1.5.0",
     "clarabel>=0.9.0",
@@ -130,8 +130,7 @@ select = [
     "ISC", # implicit string concatenation
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
-    "D"
-
+    "D",
 ]
 ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
 

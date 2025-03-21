@@ -7,6 +7,7 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+import warnings
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
@@ -36,6 +37,7 @@ __all__ = [
     "optimal_rounding_decimals",
     "safe_indexing",
     "safe_split",
+    "validate_input_list",
 ]
 
 GenericAlias = type(list[int])
@@ -438,6 +440,67 @@ def input_to_array(
             f"got {arr.shape[0]}"
         )
     return arr
+
+
+def validate_input_list(
+    items: list[int | str],
+    n_assets: int,
+    assets_names: np.ndarray[str] | None,
+    name: str,
+    raise_if_string_missing: bool = True,
+) -> list[int]:
+    """Convert a list of items (asset indices or asset names) into a list of
+    validated asset indices.
+
+    Parameters
+    ----------
+    items : list[int | str]
+       List of asset indices or asset names.
+
+    n_assets : int
+       Expected number of assets.
+       Used for verification.
+
+    assets_names : ndarray, optional
+       Asset names used when `items` contain strings.
+
+    name : str
+       Name of the items used for error messages.
+
+    raise_if_string_missing : bool, default=True
+        If set to True, raises an error if an item string is missing from assets_names;
+        otherwise, issue a User Warning.
+
+    Returns
+    -------
+    values : list[int]
+       Converted and validated list.
+    """
+    if len(set(items)) != len(items):
+        raise ValueError(f"Duplicates found in {items}")
+
+    asset_indices = set(range(n_assets))
+    res = []
+    for asset in items:
+        if isinstance(asset, str):
+            if assets_names is None:
+                raise ValueError(
+                    f"If `{name}` is provided as a list of string, you must input `X` "
+                    f"as a DataFrame with assets names in columns."
+                )
+            mask = assets_names == asset
+            if np.any(mask):
+                res.append(int(np.where(mask)[0][0]))
+            else:
+                if raise_if_string_missing:
+                    raise ValueError(f"{asset} not found in {assets_names}")
+                else:
+                    warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
+        else:
+            if asset not in asset_indices:
+                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+            res.append(int(asset))
+    return res
 
 
 def format_measure(x: float, percent: bool = False) -> str:

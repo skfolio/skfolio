@@ -286,11 +286,7 @@ class ImpliedCovariance(BaseCovariance):
                     n_assets=n_assets,
                     fill_value=np.nan,
                     dim=1,
-                    assets_names=(
-                        self.feature_names_in_
-                        if hasattr(self, "feature_names_in_")
-                        else None
-                    ),
+                    assets_names=getattr(self, "feature_names_in_", None),
                     name="volatility_risk_premium_adj",
                 )
 
