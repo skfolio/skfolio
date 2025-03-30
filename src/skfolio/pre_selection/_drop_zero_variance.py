@@ -17,7 +17,7 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
     Parameters
     ----------
     threshold : float, default=1e-6
-        Correlation threshold. The default value is `1e-6`.
+        Minimum variance threshold. The default value is `1e-6`.
 
     Attributes
     ----------
