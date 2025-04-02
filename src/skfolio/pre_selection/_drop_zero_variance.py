@@ -1,5 +1,9 @@
 """Pre-selection DropZeroVariance module."""
 
+# Copyright (c) 2025
+# Author: Vincent Maladiere <maladiere.vincent@gmail.com>
+# SPDX-License-Identifier: BSD-3-Clause
+
 import numpy as np
 import numpy.typing as npt
 import sklearn.base as skb
@@ -16,8 +20,11 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
 
     Parameters
     ----------
-    threshold : float, default=1e-6
-        Minimum variance threshold. The default value is `1e-6`.
+    threshold : float, default=1e-8
+        Minimum variance threshold. The default value is 1e-8. For daily asset returns,
+        this value filters out assets whose daily standard deviation is below 1e-4
+        (0.01%), which corresponds to an annual standard deviation of approximately
+        0.16%, assuming 252 trading days.
 
     Attributes
     ----------
@@ -34,7 +41,7 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
 
     to_keep_: np.ndarray
 
-    def __init__(self, threshold: float = 1e-6):
+    def __init__(self, threshold: float = 1e-8):
         self.threshold = threshold
 
     def fit(self, X: npt.ArrayLike, y=None):

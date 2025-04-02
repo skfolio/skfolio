@@ -6,10 +6,6 @@
 
 * fix(population): surface plot compatible with plotly v6.0 ([`c053625`](https://github.com/skfolio/skfolio/commit/c053625d641eda1deee480aafd8d10cd0e6b3c56))
 
-### Feature
-
-* feat: DropZeroVariance estimator
-
 ## v0.8.0 (2025-03-21)
 
 ### Breaking
