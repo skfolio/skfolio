@@ -491,6 +491,7 @@ Classes
     :template: class.rst
 
     pre_selection.DropCorrelated
+    pre_selection.DropZeroVariance
     pre_selection.SelectKExtremes
     pre_selection.SelectNonDominated
     pre_selection.SelectComplete

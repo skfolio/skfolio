@@ -16,6 +16,7 @@ It follows the same API as scikit-learn's `estimator`: the `fit_transform` metho
 
 
 Available transformers are:
+    * :class:`DropZeroVariance`
     * :class:`DropCorrelated`
     * :class:`SelectKExtremes`
     * :class:`SelectNonDominated`
