@@ -14,6 +14,5 @@ repos:
       - id: ruff
         name: ruff-lint
         args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff
+      - id: ruff-format
         name: ruff-format
-        args: [format, --diff]
