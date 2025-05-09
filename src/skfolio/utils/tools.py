@@ -326,7 +326,9 @@ def args_names(func: object) -> list[str]:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None, default: skb.BaseEstimator, check_type: Any
+    estimator: skb.BaseEstimator | None,
+    default: skb.BaseEstimator | None,
+    check_type: Any,
 ):
     """Check the estimator type and returns its cloned version it provided, otherwise
      return the default estimator.
@@ -336,7 +338,7 @@ def check_estimator(
     estimator : BaseEstimator, optional
         Estimator.
 
-    default : BaseEstimator
+    default : BaseEstimator, optional
         Default estimator to return when `estimator` is `None`.
 
     check_type : Any

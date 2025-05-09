@@ -162,6 +162,32 @@ def groups():
 
 
 @pytest.fixture(scope="module")
+def groups_dict():
+    return {
+        "AAPL": ["Equity", "US"],
+        "AMD": ["Equity", "US"],
+        "BAC": ["Equity", "Europe"],
+        "BBY": ["Fund", "Europe"],
+        "CVX": ["Fund", "Europe"],
+        "GE": ["Fund", "Europe"],
+        "HD": ["Bond", "Europe"],
+        "JNJ": ["Bond", "Europe"],
+        "JPM": ["Bond", "Europe"],
+        "KO": ["Bond", "Europe"],
+        "LLY": ["Bond", "Japan"],
+        "MRK": ["Bond", "Japan"],
+        "MSFT": ["Bond", "Japan"],
+        "PEP": ["Bond", "Japan"],
+        "PFE": ["Bond", "Japan"],
+        "PG": ["Bond", "Japan"],
+        "RRC": ["Bond", "Japan"],
+        "UNH": ["Bond", "Japan"],
+        "WMT": ["Bond", "Japan"],
+        "XOM": ["Bond", "Japan"],
+    }
+
+
+@pytest.fixture(scope="module")
 def linear_constraints():
     return [
         "Equity <= 0.5 * Bond",

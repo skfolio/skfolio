@@ -2,7 +2,7 @@ import cvxpy as cp
 import numpy as np
 import pytest
 import sklearn.model_selection as sks
-from sklearn import config_context
+from sklearn import clone, config_context
 
 from skfolio import (
     MultiPeriodPortfolio,
@@ -15,7 +15,12 @@ from skfolio.model_selection import cross_val_predict
 from skfolio.moments import EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import _optimal_homogenization_factor
-from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+from skfolio.prior import (
+    BlackLitterman,
+    EmpiricalPrior,
+    EntropyPooling,
+    FactorModel,
+)
 from skfolio.uncertainty_set import (
     EmpiricalCovarianceUncertaintySet,
     EmpiricalMuUncertaintySet,
@@ -175,12 +180,16 @@ def test_cvx_cache(X):
     factor = cp.Constant(1)
     model._clear_models_cache()
     res = model._cvx_drawdown(
-        prior_model=model.prior_estimator_.prior_model_, w=w, factor=factor
+        return_distribution=model.prior_estimator_.return_distribution_,
+        w=w,
+        factor=factor,
     )
     a = res[0]
     assert len(res[1]) != 0
     res = model._cvx_drawdown(
-        prior_model=model.prior_estimator_.prior_model_, w=w, factor=factor
+        return_distribution=model.prior_estimator_.return_distribution_,
+        w=w,
+        factor=factor,
     )
     b = res[0]
     assert len(res[1]) == 0
@@ -188,12 +197,18 @@ def test_cvx_cache(X):
     assert hash(a) == hash(b)
     model._clear_models_cache()
     assert len(model._cvx_cache) == 0
-    res = model._cvx_returns(prior_model=model.prior_estimator_.prior_model_, w=w)
+    res = model._cvx_returns(
+        return_distribution=model.prior_estimator_.return_distribution_, w=w
+    )
     assert "_cvx_returns" in model._cvx_cache
-    res2 = model._cvx_returns(prior_model=model.prior_estimator_.prior_model_, w=w)
+    res2 = model._cvx_returns(
+        return_distribution=model.prior_estimator_.return_distribution_, w=w
+    )
     assert hash(res) == hash(res2)
     model._clear_models_cache()
-    res3 = model._cvx_returns(prior_model=model.prior_estimator_.prior_model_, w=w)
+    res3 = model._cvx_returns(
+        return_distribution=model.prior_estimator_.return_distribution_, w=w
+    )
     assert hash(res) != hash(res3)
 
 
@@ -936,7 +951,7 @@ def test_optimization_factor_black_litterman(X, y):
     model.fit(X, y)
 
     np.testing.assert_almost_equal(
-        model.prior_estimator_.prior_model_.mu,
+        model.prior_estimator_.return_distribution_.mu,
         np.array(
             [
                 0.04573766,
@@ -963,9 +978,12 @@ def test_optimization_factor_black_litterman(X, y):
         ),
     )
 
-    assert model.prior_estimator_.prior_model_.covariance.shape == (n_assets, n_assets)
+    assert model.prior_estimator_.return_distribution_.covariance.shape == (
+        n_assets,
+        n_assets,
+    )
     np.testing.assert_almost_equal(
-        model.prior_estimator_.prior_model_.covariance[:5, 15:],
+        model.prior_estimator_.return_distribution_.covariance[:5, 15:],
         np.array(
             [
                 [
@@ -1354,3 +1372,226 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
     np.testing.assert_almost_equal(np.sum(w), 0.5)
     assert np.max(w) - 0.8 <= 1e-8
     assert np.min(w) + 0.8 >= -1e-8
+
+
+def test_optim_with_equal_weighted_sample_weight(X, risk_measure):
+    """No sample weight and equal-weighted sample weight should give the same result"""
+    ref = MeanRisk(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = MeanRisk(risk_measure=risk_measure, prior_estimator=EntropyPooling())
+    model.fit(X)
+
+    np.testing.assert_almost_equal(model.weights_, ref.weights_, 6)
+
+
+@pytest.mark.parametrize(
+    "risk_measure,view_params,expected_weights",
+    [
+        (
+            RiskMeasure.CVAR,
+            dict(cvar_views=["PG == 0.05"]),
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.12992,
+                0.0,
+                0.0,
+                0.0,
+                0.43883,
+                0.0,
+                0.0,
+                0.09788,
+                0.0,
+                0.06918,
+                0.01264,
+                0.25155,
+                0.0,
+            ],
+        ),
+        (
+            RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0035,
+                0.0,
+                0.00019,
+                0.0,
+                0.0,
+                0.0414,
+                0.18666,
+                0.0,
+                0.23537,
+                0.0,
+                0.21898,
+                0.0,
+                0.0,
+                0.00728,
+                0.0,
+                0.0,
+                0.00247,
+                0.23798,
+                0.06616,
+            ],
+        ),
+        (
+            RiskMeasure.VARIANCE,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.18293,
+                0.0,
+                0.26654,
+                0.0,
+                0.40648,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.09778,
+                0.04628,
+            ],
+        ),
+        (
+            RiskMeasure.STANDARD_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.18297,
+                0.0,
+                0.26666,
+                0.0,
+                0.4065,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.09772,
+                0.04614,
+            ],
+        ),
+        (
+            RiskMeasure.SEMI_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.27054,
+                0.0,
+                0.04966,
+                0.0,
+                0.38977,
+                0.0,
+                0.0,
+                0.02559,
+                0.0,
+                0.04024,
+                0.0,
+                0.2242,
+                0.0,
+            ],
+        ),
+        (
+            RiskMeasure.SEMI_VARIANCE,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.27054,
+                0.0,
+                0.04966,
+                0.0,
+                0.38977,
+                0.0,
+                0.0,
+                0.02559,
+                0.0,
+                0.04024,
+                0.0,
+                0.2242,
+                0.0,
+            ],
+        ),
+        (
+            RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.0,
+                0.0035,
+                0.0,
+                0.00019,
+                0.0,
+                0.0,
+                0.0414,
+                0.18666,
+                0.0,
+                0.23537,
+                0.0,
+                0.21898,
+                0.0,
+                0.0,
+                0.00728,
+                0.0,
+                0.0,
+                0.00247,
+                0.23798,
+                0.06616,
+            ],
+        ),
+    ],
+)
+def test_sample_weight(X, risk_measure, view_params, expected_weights):
+    ref = MeanRisk(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = clone(ref)
+    model = model.set_params(prior_estimator=EntropyPooling(**view_params))
+    model.fit(X)
+
+    assert model.weights_[15] < ref.weights_[15]
+
+    np.testing.assert_almost_equal(model.weights_, expected_weights, 4)
+
+    ref_ptf = ref.predict(X)
+    ptf = model.predict(X)
+
+    assert getattr(ref_ptf, risk_measure.value) < getattr(ptf, risk_measure.value)
+
+    sample_weight = model.prior_estimator_.return_distribution_.sample_weight
+
+    ref_ptf.sample_weight = sample_weight
+    ptf.sample_weight = sample_weight
+
+    assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)

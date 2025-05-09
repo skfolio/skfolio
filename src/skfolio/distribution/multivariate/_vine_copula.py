@@ -34,7 +34,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
-import scipy.stats as st
 import sklearn.utils as sku
 import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
@@ -65,6 +64,7 @@ from skfolio.distribution.univariate import (
     StudentT,
     select_univariate_dist,
 )
+from skfolio.utils.figure import kde_trace
 from skfolio.utils.tools import input_to_array, validate_input_list
 
 _UNIFORM_SAMPLE_EPSILON = 1e-14
@@ -996,6 +996,7 @@ class VineCopula(BaseMultivariateDist):
         | None = None,
         subset: list[int | str] | None = None,
         n_samples: int = 500,
+        percentile_cutoff: float | None = None,
         title: str = "Vine Copula Marginal Distributions",
     ) -> go.Figure:
         """
@@ -1025,7 +1026,7 @@ class VineCopula(BaseMultivariateDist):
                If an array-like of length `n_samples` is provided, each sample is
                conditioned on the corresponding value in the array for that asset.
 
-            **Important:** When using conditional sampling, it is recommended that the
+            When using conditional sampling, it is recommended that the
             assets you condition on are set as central during the vine copula
             construction. This can be specified via the `central_assets` parameter in
             the vine copula instantiation.
@@ -1041,6 +1042,12 @@ class VineCopula(BaseMultivariateDist):
             rows than `n_samples`, the value is adjusted to match the number of rows in
             `X` to ensure balanced visualization.
 
+        percentile_cutoff : float, default=None
+            Percentile cutoff for tail truncation (percentile), in percent.
+            If a float p is provided, the distribution support is truncated at
+            the p-th and (100 - p)-th percentiles.
+            If None, no truncation is applied (uses full min/max of returns).
+
         title : str, default="Vine Copula Marginal Distributions"
             The title for the plot.
 
@@ -1051,7 +1058,6 @@ class VineCopula(BaseMultivariateDist):
         """
         n_assets = self.n_features_in_
         subset = subset or list(range(n_assets))
-        colors = px.colors.qualitative.Plotly
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
@@ -1070,30 +1076,43 @@ class VineCopula(BaseMultivariateDist):
                 n_samples = X.shape[0]
 
         samples = self.sample(n_samples=n_samples, conditioning=conditioning)
+        colors = px.colors.qualitative.Plotly
 
-        traces = []
+        traces: list[go.Scatter] = []
         for i, s in enumerate(subset):
+            visible = True if i == 0 else "legendonly"
+            color = colors[i % len(colors)]
+            asset = self.feature_names_in_[s]
+
             traces.append(
-                _kde_trace(
+                kde_trace(
                     x=samples[:, s],
-                    opacity=1.0,
-                    color=colors[i % len(colors)],
-                    name=f"{self.feature_names_in_[s]} Generated",
-                    visible=True if i == 0 else "legendonly",
+                    sample_weight=None,
+                    percentile_cutoff=percentile_cutoff,
+                    name=f"{asset} Generated",
+                    line_color=color,
+                    fill_opacity=0.17,
+                    line_dash="solid",
+                    line_width=1,
+                    visible=visible,
                 )
             )
 
-        if X is not None:
-            for i, s in enumerate(subset):
+            if X is not None:
                 traces.append(
-                    _kde_trace(
+                    kde_trace(
                         x=X[:, s],
-                        opacity=0.6,
-                        color=colors[i % len(colors)],
-                        name=f"{self.feature_names_in_[s]} Empirical",
-                        visible=True if i == 0 else "legendonly",
+                        sample_weight=None,
+                        percentile_cutoff=percentile_cutoff,
+                        name=f"{asset} Empirical",
+                        line_color=color,
+                        fill_opacity=0.17,
+                        line_dash="dash",
+                        line_width=1.5,
+                        visible=visible,
                     )
                 )
+
         fig = go.Figure(data=traces)
         fig.update_layout(
             title=title,
@@ -1234,21 +1253,3 @@ def _inverse_partial_derivative(
     if is_count:
         return np.array([np.nan])
     return edge.copula.inverse_partial_derivative(X)
-
-
-def _kde_trace(
-    x: np.ndarray, opacity: float, color: str, name: str, visible: bool
-) -> go.Scatter:
-    """Gaussian KDE line plot."""
-    kde = st.gaussian_kde(x)
-    x = np.linspace(min(x), max(x), 500)
-    return go.Scatter(
-        x=x,
-        y=kde(x),
-        mode="lines",
-        name=name,
-        line=dict(color=color),
-        fill="tozeroy",
-        opacity=opacity,
-        visible=visible,
-    )

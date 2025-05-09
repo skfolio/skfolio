@@ -5,7 +5,7 @@ Vine Copula & Stress Test
 
 This tutorial presents the :class:`~skfolio.distribution.VineCopula` estimator.
 An introduction to Bivariate Copulas can be found in
-:ref:`this previous tutorial <sphx_glr_auto_examples_3_synthetic_data_plot_1_bivariate_copulas.py>`.
+:ref:`this previous tutorial <sphx_glr_auto_examples_synthetic_data_plot_1_bivariate_copulas.py>`.
 
 Introduction
 ============
@@ -278,7 +278,9 @@ print(cond_samples.shape)
 #
 # * HD between -10% and -15%
 # * JPM below -5%
-vine = VineCopula(n_jobs=-1, log_transform=True, central_assets=["HD", "JPM"])
+vine = VineCopula(
+    n_jobs=-1, log_transform=True, central_assets=["HD", "JPM"], random_state=0
+)
 vine.fit(X)
 
 conditioning = {"HD": (-0.15, -0.10), "JPM": (None, -0.05)}
@@ -327,7 +329,7 @@ summary.loc[
 ]
 
 # %%
-population.plot_returns_distribution()
+population.plot_returns_distribution(percentile_cutoff=0.1)
 
 
 # %%

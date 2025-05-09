@@ -77,6 +77,7 @@ Functions
     measures.gini_mean_difference
     measures.owa_gmd_weights
     measures.effective_number_assets
+    measures.correlation
 
 .. _portfolio_ref:
 
@@ -253,7 +254,7 @@ Model Dataclass
     :toctree: generated/
     :template: class.rst
 
-    prior.PriorModel
+    prior.ReturnDistribution
 
 Base Class
 ----------
@@ -279,6 +280,8 @@ Classes
     prior.BlackLitterman
     prior.FactorModel
     prior.SyntheticData
+    prior.EntropyPooling
+    prior.OpinionPooling
 
 Loading Matrix Classes for Factor Models
 ----------------------------------------
