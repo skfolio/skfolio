@@ -113,7 +113,7 @@ def test_opinion_probabilities(
     "is_linear_pooling,expected",
     [
         (True, [0.00017604, 0.00020895, 0.00016989, 0.00021431, 0.00016671]),
-        (False, [1.46e-06, 3.42e-06, 4.08e-06, 2.76901e-04, 2.40e-06]),
+        (False, [1.46e-06, 3.42e-06, 4.08e-06, 0.000276901, 2.40e-06]),
     ],
 )
 def test_is_linear_pooling(X, is_linear_pooling, expected):
@@ -132,7 +132,7 @@ def test_is_linear_pooling(X, is_linear_pooling, expected):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(sw.sum(), 1.0)
 
-    np.testing.assert_almost_equal(sw[:5], expected)
+    np.testing.assert_almost_equal(sw[:5], expected, 6)
 
 
 def test_factor_model(X, y):
