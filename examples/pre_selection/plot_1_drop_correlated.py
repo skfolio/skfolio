@@ -31,7 +31,7 @@ from skfolio.model_selection import (
     optimal_folds_number,
 )
 from skfolio.optimization import MeanRisk, ObjectiveFunction
-from skfolio.pre_selection import DropCorrelated
+from skfolio.pre_selection import DropCorrelated, DropZeroVariance
 from skfolio.preprocessing import prices_to_returns
 
 prices = load_ftse100_dataset()
@@ -57,7 +57,8 @@ set_config(transform_output="pandas")
 
 model2 = Pipeline(
     [
-        ("pre_selection", DropCorrelated(threshold=0.5)),
+        ("drop_zero_variance", DropZeroVariance(threshold=1e-6)),
+        ("drop_correlated", DropCorrelated(threshold=0.5)),
         ("optimization", MeanRisk(objective_function=ObjectiveFunction.MAXIMIZE_RATIO)),
     ]
 )

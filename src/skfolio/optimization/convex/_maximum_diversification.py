@@ -256,9 +256,6 @@ class MaximumDiversification(MeanRisk):
     min_return : float | array-like of shape (n_optimization), optional
         Lower bound constraint on the expected return.
 
-    min_return : float | array-like of shape (n_optimization), optional
-        Lower bound constraint on the expected return.
-
     add_objective : Callable[[cp.Variable], cp.Expression], optional
         Add a custom objective to the existing objective expression.
         It is a function that must take as argument the weights `w` and returns a

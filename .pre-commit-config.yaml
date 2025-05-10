@@ -13,7 +13,6 @@ repos:
     hooks:
       - id: ruff
         name: ruff-lint
-        args: [check, --fix, --exit-non-zero-on-fix]
-      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
         name: ruff-format
-        args: [format, --diff]
