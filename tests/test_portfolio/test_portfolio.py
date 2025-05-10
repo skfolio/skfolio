@@ -97,6 +97,14 @@ def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array
     return returns
 
 
+@pytest.fixture(scope="module")
+def sample_weight(X):
+    rng = np.random.default_rng(42)
+    sample_weight = rng.random(len(X))
+    sample_weight /= sample_weight.sum()
+    return sample_weight
+
+
 def test_pickle(portfolio):
     portfolio.sharpe_ratio = 5
     pickled = pickle.dumps(portfolio)
@@ -370,6 +378,7 @@ def test_portfolio_clear_cache(X, weights, measure):
     args = [
         arg if arg in Portfolio._measure_global_args else f"{r.value}_{arg}"
         for arg in args_names(func)
+        if arg not in ["biased", "sample_weight"]
     ]
     args = [arg for arg in args if arg not in Portfolio._read_only_attrs]
     # default
@@ -476,3 +485,28 @@ def test_weights_per_observation(portfolio):
     np.testing.assert_array_equal(
         df.values[0], portfolio.weights[portfolio.nonzero_assets_index]
     )
+
+
+def test_sample_weight(portfolio, sample_weight):
+    ref = portfolio.cvar
+    portfolio.sample_weight = np.ones(len(sample_weight)) / len(sample_weight)
+    v1 = portfolio.cvar
+    np.testing.assert_almost_equal(ref, v1)
+    portfolio.sample_weight = sample_weight
+    v2 = portfolio.cvar
+    _ = portfolio.summary()
+    assert abs(v1 - v2) > 0.001
+    portfolio.sample_weight = None
+    v3 = portfolio.cvar
+    np.testing.assert_almost_equal(ref, v3)
+
+
+def test_sample_weight_error(portfolio, sample_weight):
+    with pytest.raises(ValueError, match="sample_weight must have the same length as"):
+        portfolio.sample_weight = np.ones(5)
+
+    with pytest.raises(ValueError, match="sample_weight must sum to one"):
+        portfolio.sample_weight = np.ones(len(sample_weight))
+
+    with pytest.raises(ValueError, match="sample_weight must be a 1D array"):
+        portfolio.sample_weight = [[1]]

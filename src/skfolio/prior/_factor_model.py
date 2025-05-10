@@ -19,7 +19,8 @@ import sklearn.multioutput as skmo
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
-from skfolio.prior._base import BasePrior, PriorModel
+import skfolio.measures as sm
+from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.utils.stats import cov_nearest
 from skfolio.utils.tools import check_estimator
@@ -39,7 +40,7 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: np.ndarray
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike):
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params):
         pass
 
 
@@ -128,7 +129,9 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.multi_output_regressor_ = skmo.MultiOutputRegressor(
             _linear_regressor, n_jobs=self.n_jobs
         )
-        self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
+        self.multi_output_regressor_.fit(
+            X=y, y=X, **routed_params.factor_prior_estimator.fit
+        )
         # noinspection PyUnresolvedReferences
         n_assets = X.shape[1]
         self.loading_matrix_ = np.array(
@@ -161,8 +164,8 @@ class FactorModel(BasePrior):
 
     factor_prior_estimator : BasePrior, optional
         The factors :ref:`prior estimator <prior>`.
-        It is used to estimate the :class:`~skfolio.prior.PriorModel` containing the
-        factors expected returns and covariance matrix.
+        It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing
+        the estimation of factors expected returns and covariance matrix.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
     residual_variance : bool, default=True
@@ -181,8 +184,10 @@ class FactorModel(BasePrior):
 
     Attributes
     ----------
-    prior_model_ : PriorModel
-        The :class:`~skfolio.prior.PriorModel`.
+    return_distribution_ : ReturnDistribution
+        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
+        estimators, containing the assets distribution, moments estimation and cholesky
+        decomposition based on the factor model.
 
     factor_prior_estimator_ : BasePrior
         Fitted `factor_prior_estimator`.
@@ -218,10 +223,18 @@ class FactorModel(BasePrior):
         self.max_iteration = max_iteration
 
     def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            factor_prior_estimator=self.factor_prior_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        # route to factor_prior_estimator.fit
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add(
+                factor_prior_estimator=self.factor_prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            # route to loading_matrix_estimator.fit
+            .add(
+                loading_matrix_estimator=self.loading_matrix_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
         )
         return router
 
@@ -266,12 +279,12 @@ class FactorModel(BasePrior):
         self.factor_prior_estimator_.fit(
             X=y, **routed_params.factor_prior_estimator.fit
         )
-        factor_mu = self.factor_prior_estimator_.prior_model_.mu
-        factor_covariance = self.factor_prior_estimator_.prior_model_.covariance
-        factor_returns = self.factor_prior_estimator_.prior_model_.returns
+        factor_return_dist = self.factor_prior_estimator_.return_distribution_
 
         # Fitting loading matrix estimator
-        self.loading_matrix_estimator_.fit(X, y)
+        self.loading_matrix_estimator_.fit(
+            X, y, **routed_params.loading_matrix_estimator.fit
+        )
         loading_matrix = self.loading_matrix_estimator_.loading_matrix_
         intercepts = self.loading_matrix_estimator_.intercepts_
 
@@ -294,15 +307,15 @@ class FactorModel(BasePrior):
                 f"shape {(n_assets,)}, got {intercepts.shape} instead."
             )
 
-        mu = loading_matrix @ factor_mu + intercepts
-        covariance = loading_matrix @ factor_covariance @ loading_matrix.T
-        returns = factor_returns @ loading_matrix.T + intercepts
-        cholesky = loading_matrix @ np.linalg.cholesky(factor_covariance)
+        mu = loading_matrix @ factor_return_dist.mu + intercepts
+        covariance = loading_matrix @ factor_return_dist.covariance @ loading_matrix.T
+        returns = factor_return_dist.returns @ loading_matrix.T + intercepts
+        cholesky = loading_matrix @ np.linalg.cholesky(factor_return_dist.covariance)
 
         if self.residual_variance:
             y_pred = y @ loading_matrix.T + intercepts
             err = X - y_pred
-            err_cov = np.diag(np.var(err, ddof=1, axis=0))
+            err_cov = np.diag(sm.variance(err))
             covariance += err_cov
             cholesky = np.hstack((cholesky, np.sqrt(err_cov)))
 
@@ -310,7 +323,11 @@ class FactorModel(BasePrior):
             covariance, higham=self.higham, higham_max_iteration=self.max_iteration
         )
 
-        self.prior_model_ = PriorModel(
-            mu=mu, covariance=covariance, returns=returns, cholesky=cholesky
+        self.return_distribution_ = ReturnDistribution(
+            mu=mu,
+            covariance=covariance,
+            returns=returns,
+            cholesky=cholesky,
+            sample_weight=factor_return_dist.sample_weight,
         )
         return self

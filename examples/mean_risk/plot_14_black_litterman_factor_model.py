@@ -124,4 +124,4 @@ model = BlackLitterman(
 )
 
 model.fit(X, y)
-print(model.prior_model_.covariance.shape)
+print(model.return_distribution_.covariance.shape)

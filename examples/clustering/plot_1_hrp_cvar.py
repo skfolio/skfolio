@@ -146,9 +146,8 @@ model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 # Prior Estimator
 # ===============
 # Finally, HRP like the other portfolio optimization, uses a
-# :ref:`prior estimator <prior>` that fits a :class:`~skfolio.prior.PriorModel`
-# containing the distribution estimate of asset returns. It represents the investor's
-# prior beliefs about the model used to estimate such distribution.
+# :ref:`prior estimator <prior>` that fits a :class:`~skfolio.prior.ReturnDistribution`
+# containing the distribution estimate of asset returns.
 # The default is the :class:`~skfolio.prior.EmpiricalPrior` estimator.
 #
 # Let's create new model with the :class:`~skfolio.prior.FactorModel` estimator:

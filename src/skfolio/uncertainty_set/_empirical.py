@@ -124,11 +124,11 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         # fitting estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
-        prior_model = self.prior_estimator_.prior_model_
-        n_observations, n_assets = prior_model.returns.shape
+        return_distribution = self.prior_estimator_.return_distribution_
+        n_observations, n_assets = return_distribution.returns.shape
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
 
-        sigma = prior_model.covariance / n_observations
+        sigma = return_distribution.covariance / n_observations
         if self.diagonal:
             sigma = np.diag(np.diag(sigma))
 
@@ -239,11 +239,11 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         # fitting estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
-        prior_model = self.prior_estimator_.prior_model_
-        n_observations, n_assets = prior_model.returns.shape
+        return_distribution = self.prior_estimator_.return_distribution_
+        n_observations, n_assets = return_distribution.returns.shape
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 
-        sigma = prior_model.covariance / n_observations
+        sigma = return_distribution.covariance / n_observations
         if self.diagonal:
             sigma = np.diag(np.diag(sigma))
 

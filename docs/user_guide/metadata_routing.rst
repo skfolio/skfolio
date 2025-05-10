@@ -10,7 +10,7 @@ to the estimators consuming them.
 For a complete explanation, you can refer to the `scikit-learn documentation <https://scikit-learn.org/stable/auto_examples/miscellaneous/plot_metadata_routing.html#sphx-glr-auto-examples-miscellaneous-plot-metadata-routing-py>`_
 
 
-A full example is available here: :ref:`sphx_glr_auto_examples_8_metadata_routing_plot_1_implied_volatility.py`
+A full example is available here: :ref:`sphx_glr_auto_examples_metadata_routing_plot_1_implied_volatility.py`
 
 Let's suppose you use the :class:`~skfolio.moments.ImpliedCovariance` estimator
 inside a :class:`~skfolio.optimization.MeanRisk` estimator.

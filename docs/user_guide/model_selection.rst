@@ -110,7 +110,7 @@ The default parameters of the `CombinatorialPurgedCV` are `n_folds=10` and
 `n_test_folds=8`. You may want to choose these parameters to target a number of test
 paths and an average training size. The later depends on the number of observations.
 For that, you can use the function :func:`optimal_folds_number` as shown in the example
-:ref:`sphx_glr_auto_examples_5_clustering_plot_3_hrp_vs_herc.py`.
+:ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`.
 
 .. code-block:: python
 

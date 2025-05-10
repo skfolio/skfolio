@@ -6,29 +6,54 @@ Factor Model
 This tutorial shows how to use the :class:`~skfolio.prior.FactorModel` estimator in
 the :class:`~skfolio.optimization.MeanRisk` optimization.
 
-A :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the distribution estimate of asset returns. It represents the investor's prior beliefs
-about the model used to estimate such distribution.
+A :ref:`Prior Estimator <prior>` in `skfolio` fits a :class:`ReturnDistribution`
+containing your pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample
+weight, Cholesky decomposition).
 
-The `PriorModel` is a dataclass containing:
+The term "prior" is used in a general optimization sense, not confined to Bayesian
+priors. It denotes any **a priori** assumption or estimation method for the return
+distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+**Information-theoretic** approaches into a single cohesive framework:
 
-    * `mu`: Expected returns estimation
-    * `covariance`: Covariance matrix estimation
-    * `returns`: assets returns estimation
-    * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
+1. Frequentist:
+    * :class:`~skfolio.prior.EmpiricalPrior`
+    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.SyntheticData`
 
-The `FactorModel` estimator estimates the :class:`PriorModel` using a factor model and a
-:ref:`prior estimator <prior>` of the factor's returns. The purpose of factor models is
-to impose a structure on financial variables and their covariance matrix by explaining
-them through a small number of common factors. This can help overcome estimation
-error by reducing the number of parameters, i.e., the dimensionality of the estimation
-problem, making portfolio optimization more robust against noise in the data. Factor
-models also provide a decomposition of financial risk to systematic and security
-specific components.
+2. Bayesian:
+    * :class:`~skfolio.prior.BlackLitterman`
 
-To be compatible with `scikit-learn`, the `fit` method takes `X` as the assets returns
-and `y` as the factors returns. Note that `y` is in lowercase even for a 2D array
-(more than one factor). This is for consistency with the scikit-learn API.
+3. Information-theoretic:
+    * :class:`~skfolio.prior.EntropyPooling`
+    * :class:`~skfolio.prior.OpinionPooling`
+
+In skfolio's API, all such methods share the same interface and adhere to scikit-learn's
+estimator API: the `fit` method accepts `X` (the asset returns) and stores the
+resulting :class:`~skfolio.prior.ReturnDistribution` in its `return_distribution_`
+attribute.
+
+The :class:`~skfolio.prior.ReturnDistribution` is a dataclass containing:
+
+    * `mu`: Estimated expected returns of shape (n_assets,)
+    * `covariance`: Estimated covariance matrix of shape (n_assets, n_assets)
+    * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
+    * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
+    * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+The `FactorModel` estimator estimates the `ReturnDistribution` by fitting
+a factor model on asset returns alongside a specified :ref:`prior estimator <prior>`
+for the factor returns.
+
+The purpose of factor models is to impose a structure on financial variables and
+their covariance matrix by explaining them through a small number of common factors.
+This can help overcome estimation error by reducing the number of parameters,
+i.e., the dimensionality of the estimation problem, making portfolio optimization
+more robust against noise in the data. Factor models also provide a decomposition of
+financial risk into systematic and security-specific components.
+
+To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
+returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
+array (more than one factor). This is for consistency with the scikit-learn API.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `FactorModel`
 estimator.
@@ -95,8 +120,8 @@ model_factor_2.weights_
 
 # %%
 # We can also change the :ref:`prior estimator <prior>` of the factors.
-# It is used to estimate the :class:`~skfolio.prior.PriorModel` containing the factors
-# expected returns and covariance matrix.
+# It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing the
+# factors expected returns and covariance matrix.
 #
 # For example, let's estimate the factors expected returns with James-Stein shrinkage
 # and the factors covariance matrix with the Gerber covariance estimator:
@@ -121,8 +146,8 @@ model_factor_3.weights_
 prior_estimator = model_factor_3.prior_estimator_
 
 # %%
-# We can access the prior model with:
-prior_model = prior_estimator.prior_model_
+# We can access the return distribution with:
+return_distribution = prior_estimator.return_distribution_
 
 # %%
 # We can access the loading matrix with:

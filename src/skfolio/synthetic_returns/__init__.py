@@ -1,1 +1,0 @@
-"""Synthetic Data module."""

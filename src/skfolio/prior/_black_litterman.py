@@ -1,4 +1,4 @@
-"""Black & Litterman Prior Model estimator."""
+"""Black & Litterman estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -13,14 +13,14 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
-from skfolio.prior._base import BasePrior, PriorModel
+from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array
 
 
 class BlackLitterman(BasePrior):
-    """Black & Litterman Prior Model estimator.
+    """Black & Litterman estimator.
 
     The Black & Litterman model [1]_ takes a Bayesian approach by using a prior estimate
     of the assets expected returns and covariance matrix, which are updated using the
@@ -59,9 +59,9 @@ class BlackLitterman(BasePrior):
             * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
 
     prior_estimator : BasePrior, optional
-        The assets' :ref:`prior model estimator <prior>`. It is used to estimate
-        the :class:`~skfolio.prior.PriorModel` containing the estimation of the assets
-        expected returns, covariance matrix, returns and Cholesky decomposition.
+        The assets' :ref:`prior estimator <prior>`. It is used to estimate
+        the :class:`~skfolio.prior.ReturnDistribution` containing the estimation of the
+        assets expected returns, covariance matrix, returns and Cholesky decomposition.
         The default (`None`) is to use `EmpiricalPrior(mu_estimator=EquilibriumMu())`.
 
     tau : float, default=0.05
@@ -81,8 +81,10 @@ class BlackLitterman(BasePrior):
 
     Attributes
     ----------
-    prior_model_ : PriorModel
-        The :class:`~skfolio.prior.PriorModel`.
+    return_distribution_ : ReturnDistribution
+        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
+        estimators, containing the asset returns distribution and posterior Black &
+        Litterman moments estimation.
 
     groups_ : ndarray of shape(n_groups, n_assets)
         Assets names and groups converted to an 2D array.
@@ -179,9 +181,9 @@ class BlackLitterman(BasePrior):
         # fitting prior estimator
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
 
-        prior_mu = self.prior_estimator_.prior_model_.mu
-        prior_covariance = self.prior_estimator_.prior_model_.covariance
-        prior_returns = self.prior_estimator_.prior_model_.returns
+        prior_mu = self.prior_estimator_.return_distribution_.mu
+        prior_covariance = self.prior_estimator_.return_distribution_.covariance
+        prior_returns = self.prior_estimator_.return_distribution_.returns
 
         # we validate after all models have been fitted to keep features names
         # information.
@@ -260,7 +262,7 @@ class BlackLitterman(BasePrior):
             + self.tau * prior_covariance
             - _v @ np.linalg.solve(_a, _v.T)
         )
-        self.prior_model_ = PriorModel(
+        self.return_distribution_ = ReturnDistribution(
             mu=posterior_mu, covariance=posterior_covariance, returns=prior_returns
         )
         return self

@@ -10,7 +10,7 @@ from skfolio.prior import FactorModel, SyntheticData
 def test_synthetic_data(X):
     model = SyntheticData()
     model.fit(X)
-    res = model.prior_model_
+    res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
@@ -23,7 +23,7 @@ def test_factor_synthetic_data(X, y):
         factor_prior_estimator=SyntheticData(),
     )
     model.fit(X, y)
-    res = model.prior_model_
+    res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
@@ -42,7 +42,7 @@ def test_factor_stress_test(X, y):
         )
     )
     model.fit(X, y)
-    res = model.prior_model_
+    res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)

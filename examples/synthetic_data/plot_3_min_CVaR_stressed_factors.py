@@ -6,7 +6,7 @@ Minimize CVaR on Stressed Factors
 This tutorial shows how to bridge scenario generation, factor models and portfolio
 optimization.
 
-In :ref:`the previous tutorial <sphx_glr_auto_examples_3_synthetic_data_plot_3_vine_copula_stress.py>`,
+In :ref:`the previous tutorial <sphx_glr_auto_examples_synthetic_data_plot_2_vine_copula.py>`,
 we demonstrated how to generate conditional (stressed) synthetic returns using the
 :class:`~skfolio.distribution.VineCopula` estimator.
 
@@ -68,7 +68,7 @@ print(f"factors_test: {factors_test.shape}")
 # %%
 # Minimize CVaR on Synthetic Data
 # ===============================
-# Let's find the minimum CVaR portfolio on 10,000 synthetic retruns generated from
+# Let's find the minimum CVaR portfolio on 10,000 synthetic returns generated from
 # Vine Copula fitted on the historical training set and evaluate it on the historical
 # test set.
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)
@@ -137,7 +137,7 @@ factor_model.set_params(
 )
 # Refit the factor model on the full dataset to update the stressed scenarios
 factor_model.fit(X, factors)
-stressed_X = factor_model.prior_model_.returns
+stressed_X = factor_model.return_distribution_.returns
 
 stressed_ptf = model.predict(stressed_X)
 
@@ -150,7 +150,7 @@ summary.loc[
 ]
 
 # %%
-population.plot_returns_distribution()
+population.plot_returns_distribution(percentile_cutoff=0.1)
 
 # %%
 # Conclusion

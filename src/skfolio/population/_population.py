@@ -14,11 +14,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.interpolate as sci
-import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
 from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
+from skfolio.utils.figure import kde_trace
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
 
@@ -940,23 +940,44 @@ class Population(list):
         )
         return fig
 
-    def plot_returns_distribution(self) -> go.Figure:
+    def plot_returns_distribution(
+        self, percentile_cutoff: float | None = None
+    ) -> go.Figure:
         """Plot the Portfolios returns distribution using Gaussian KDE.
+
+        Parameters
+        ----------
+        percentile_cutoff : float, default=None
+            Percentile cutoff for tail truncation (percentile), in percent.
+            If a float p is provided, the distribution support is truncated at the p-th
+            and (100 - p)-th percentiles.
+            If None, no truncation is applied (uses full min/max of returns).
 
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        traces = []
-        for ptf in self:
-            lower = np.percentile(ptf.returns, 1e-1)
-            upper = np.percentile(ptf.returns, 100 - 1e-1)
-            x = np.linspace(lower, upper, 500)
-            y = st.gaussian_kde(ptf.returns)(x)
+        traces: list[go.Scatter] = []
+        colors = px.colors.qualitative.Plotly
+
+        for i, ptf in enumerate(self):
+            color = colors[i % len(colors)]
+            returns = ptf.returns
             traces.append(
-                go.Scatter(x=x, y=y, mode="lines", fill="tozeroy", name=ptf.name)
+                kde_trace(
+                    x=returns,
+                    sample_weight=ptf.sample_weight,
+                    percentile_cutoff=percentile_cutoff,
+                    name=ptf.name,
+                    line_color=color,
+                    fill_opacity=0.3,
+                    line_dash="solid",
+                    line_width=1,
+                    visible=True,
+                )
             )
+
         fig = go.Figure(traces)
         fig.update_layout(
             title="Returns Distribution",

@@ -107,7 +107,7 @@ In `skfolio`, the above can be achieved using :class:`~skfolio.prior.EmpiricalPr
 by setting `is_log_normal` to `True` and providing `investment_horizon`. The input `X`
 must be linear returns. The conversion to logarithmic returns is performed inside the estimator.
 
-However, as seen in the example :ref:`sphx_glr_auto_examples_9_data_preparation_plot_1_investment_horizon.py`,
+However, as seen in the example :ref:`sphx_glr_auto_examples_data_preparation_plot_1_investment_horizon.py`,
 for frequently rebalanced portfolios (investment horizon less than a year), the general procedure and the
 below simplified one will give very close results:
 

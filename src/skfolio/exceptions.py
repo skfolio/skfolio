@@ -13,11 +13,16 @@ __all__ = [
     "GroupNotFoundError",
     "NonPositiveVarianceError",
     "OptimizationError",
+    "SolverError",
 ]
 
 
 class OptimizationError(Exception):
     """Optimization Did not converge."""
+
+
+class SolverError(Exception):
+    """Solver error."""
 
 
 class EquationToMatrixError(Exception):

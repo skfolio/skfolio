@@ -23,7 +23,7 @@ from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex import MeanRisk
-from skfolio.optimization.ensemble._base import BaseComposition
+from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 

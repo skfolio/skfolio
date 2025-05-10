@@ -1,4 +1,4 @@
-"""Empirical Prior Model estimator."""
+"""Empirical Prior estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -10,15 +10,15 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
-from skfolio.prior._base import BasePrior, PriorModel
+from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.utils.tools import check_estimator
 
 
 class EmpiricalPrior(BasePrior):
     """Empirical Prior estimator.
 
-    The Empirical Prior estimates the :class:`~skfolio.prior.PriorModel` by fitting a
-    `mu_estimator` and a `covariance_estimator` separately.
+    The Empirical Prior estimates the :class:`~skfolio.prior.ReturnDistribution` by
+    fitting a `mu_estimator` and a `covariance_estimator` separately.
 
     Parameters
     ----------
@@ -50,8 +50,9 @@ class EmpiricalPrior(BasePrior):
 
     Attributes
     ----------
-    prior_model_ : PriorModel
-        The assets :class:`~skfolio.prior.PriorModel`.
+    return_distribution_ : ReturnDistribution
+        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
+        estimators, containing the asset returns distribution and moments estimation.
 
     mu_estimator_ : BaseMu
         Fitted `mu_estimator`.
@@ -194,7 +195,7 @@ class EmpiricalPrior(BasePrior):
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
         X = skv.validate_data(self, X)
-        self.prior_model_ = PriorModel(
+        self.return_distribution_ = ReturnDistribution(
             mu=mu,
             covariance=covariance,
             returns=X,
