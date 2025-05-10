@@ -144,6 +144,7 @@ Available models
     * Drop Highly Correlated Assets
     * Select Non-Expiring Assets
     * Select Complete Assets (handle late inception, delisting, etc.)
+    * Drop Zero Variance
 
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, etc.)
