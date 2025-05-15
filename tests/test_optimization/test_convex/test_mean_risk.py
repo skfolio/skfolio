@@ -896,14 +896,16 @@ def test_groups(X, groups, linear_constraints):
     np.testing.assert_almost_equal(p1.returns, p3.returns)
 
 
-def test_tracking_error(X, y):
-    model = MeanRisk(max_tracking_error=0.005)
+@pytest.mark.parametrize(
+    "objective_function",
+    list(ObjectiveFunction),
+)
+def test_tracking_error(X, y, objective_function):
+    model = MeanRisk(max_tracking_error=0.005, objective_function=objective_function)
     bench = y["SIZE"]
     p = model.fit(X, bench).predict(X)
-    tracking_error = np.sqrt(
-        np.sum((p.returns - np.asarray(bench)) ** 2) / (len(p.returns) - 1)
-    )
-    np.testing.assert_almost_equal(tracking_error, 0.005)
+    tracking_error = np.std(p.returns - np.asarray(bench), ddof=1)
+    np.testing.assert_almost_equal(tracking_error, 0.005, 4)
 
 
 def test_turnover(X, y):

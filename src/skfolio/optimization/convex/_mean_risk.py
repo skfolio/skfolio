@@ -902,7 +902,7 @@ class MeanRisk(ConvexOptimization):
             )
             constraints += [
                 tracking_error * self._scale_constraints
-                <= self.max_tracking_error * self._scale_constraints
+                <= self.max_tracking_error * factor * self._scale_constraints
             ]
 
         # Turnover
