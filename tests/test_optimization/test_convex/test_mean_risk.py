@@ -1356,3 +1356,18 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
     np.testing.assert_almost_equal(np.sum(w), 0.5)
     assert np.max(w) - 0.8 <= 1e-8
     assert np.min(w) + 0.8 >= -1e-8
+
+
+def test_max_ratio_with_neg_f1(X):
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_free_rate=0.002
+    )
+    model.fit(X)
+
+    with pytest.raises(
+        ValueError, match="Cannot optimize for Maximum Ratio with your current"
+    ):
+        model = MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_free_rate=0.0025
+        )
+        model.fit(X)
