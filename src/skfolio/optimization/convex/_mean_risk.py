@@ -904,7 +904,7 @@ class MeanRisk(ConvexOptimization):
             )
             constraints += [
                 tracking_error * self._scale_constraints
-                <= self.max_tracking_error * self._scale_constraints
+                <= self.max_tracking_error * factor * self._scale_constraints
             ]
 
         # Turnover
@@ -1038,6 +1038,15 @@ class MeanRisk(ConvexOptimization):
                     + custom_objective * self._scale_objective
                 )
             case ObjectiveFunction.MAXIMIZE_RATIO:
+                # Capture common obvious mistake before solver failure to help user
+                if np.isscalar(self.min_weights) and self.min_weights >= 0:
+                    if np.max(prior_model.mu) - self.risk_free_rate <= 0:
+                        raise ValueError(
+                            "Cannot optimize for Maximum Ratio with your current "
+                            "constraints and input. This is because your assets' "
+                            "expected returns are all under-performing your risk-free "
+                            f"rate {self.risk_free_rate:.2%}."
+                        )
                 homogenization_factor = _optimal_homogenization_factor(
                     mu=return_distribution.mu
                 )
@@ -1062,7 +1071,6 @@ class MeanRisk(ConvexOptimization):
                     # Fractional Programming Problems".
                     # The condition to work is f1 >= 0, so we need to raise an user
                     # warning when it's not the case.
-                    # TODO: raise user warning when f1<0
 
                     constraints += [
                         expected_return * self._scale_constraints

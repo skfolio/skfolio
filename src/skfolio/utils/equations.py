@@ -282,7 +282,7 @@ def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarra
     if not arr.any():
         raise EquationToMatrixError(f"Unable to find '{key}' in '{values}'")
     if sum_to_one:
-        s = np.sum(arr)
+        s = arr.sum()
     else:
         s = 1
     return arr / s

@@ -911,14 +911,16 @@ def test_groups(X, groups, linear_constraints):
     np.testing.assert_almost_equal(p1.returns, p3.returns)
 
 
-def test_tracking_error(X, y):
-    model = MeanRisk(max_tracking_error=0.005)
+@pytest.mark.parametrize(
+    "objective_function",
+    list(ObjectiveFunction),
+)
+def test_tracking_error(X, y, objective_function):
+    model = MeanRisk(max_tracking_error=0.005, objective_function=objective_function)
     bench = y["SIZE"]
     p = model.fit(X, bench).predict(X)
-    tracking_error = np.sqrt(
-        np.sum((p.returns - np.asarray(bench)) ** 2) / (len(p.returns) - 1)
-    )
-    np.testing.assert_almost_equal(tracking_error, 0.005)
+    tracking_error = np.std(p.returns - np.asarray(bench), ddof=1)
+    np.testing.assert_almost_equal(tracking_error, 0.005, 4)
 
 
 def test_turnover(X, y):
@@ -1595,3 +1597,18 @@ def test_sample_weight(X, risk_measure, view_params, expected_weights):
     ptf.sample_weight = sample_weight
 
     assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)
+
+
+def test_max_ratio_with_neg_f1(X):
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_free_rate=0.002
+    )
+    model.fit(X)
+
+    with pytest.raises(
+        ValueError, match="Cannot optimize for Maximum Ratio with your current"
+    ):
+        model = MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_free_rate=0.0025
+        )
+        model.fit(X)
