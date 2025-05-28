@@ -151,9 +151,9 @@ class EntropyPooling(BasePrior):
     prior_estimator : BasePrior, optional
         Estimator of the asset's prior distribution, fitted from a
         :ref:`prior estimator <prior>`. The default (`None`) is to use the
-        empirical prior `EmpiricalPrior()`. To perform Entropy Pooling on synthetic
-        data, you can use :class:`~skfolio.prior.SyntheticData` by setting
-        `prior_estimator = SyntheticData()`.
+        empirical prior :class:`~skfolio.prior.EmpiricalPrior()`. To perform Entropy
+        Pooling on synthetic data, you can use :class:`~skfolio.prior.SyntheticData`
+        by setting `prior_estimator = SyntheticData()`.
 
     mean_views : list[str], optional
         Views on asset means.
@@ -385,10 +385,14 @@ class EntropyPooling(BasePrior):
     ... )
     >>>
     >>> entropy_pooling.fit(X)
+    EntropyPooling(correlation_views=...
     >>>
     >>> print(entropy_pooling.relative_entropy_)
+    0.18...
     >>> print(entropy_pooling.effective_number_of_scenarios_)
+    6876.67...
     >>> print(entropy_pooling.return_distribution_.sample_weight)
+    [0.000103...  0.000093... ... 0.000103...  0.000108...]
     >>>
     >>> # CVaR Hierarchical Risk Parity optimization on Entropy Pooling
     >>> model = HierarchicalRiskParity(
@@ -396,11 +400,14 @@ class EntropyPooling(BasePrior):
     ...     prior_estimator=entropy_pooling
     ... )
     >>> model.fit(X)
+    HierarchicalRiskParity(prior_estimator=...
     >>> print(model.weights_)
+    [0.073... 0.0541... ... 0.200...]
     >>>
     >>> # Stress Test the Portfolio
     >>> entropy_pooling = EntropyPooling(cvar_views=["AMD == 0.10"])
     >>> entropy_pooling.fit(X)
+    EntropyPooling(cvar_views=['AMD == 0.10'])
     >>>
     >>> stressed_X = entropy_pooling.return_distribution_.returns
     >>> stressed_sample_weight = entropy_pooling.return_distribution_.sample_weight

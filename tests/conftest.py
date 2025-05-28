@@ -15,6 +15,11 @@ from skfolio.datasets import (
 from skfolio.preprocessing import prices_to_returns
 
 
+def pytest_configure(config):
+    # globally turn off scientific notation in every test session
+    np.set_printoptions(suppress=True, precision=6)
+
+
 @pytest.fixture
 def random_data():
     """Fixture that returns a random numpy array in [0,1] of shape (100, 2)."""
