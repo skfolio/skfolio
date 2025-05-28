@@ -1109,3 +1109,43 @@ def test_prior_error(X, solver):
 def test_single_view(X):
     model = EntropyPooling(mean_views=["AMD <= BAC"])
     model.fit(X)
+
+
+def test_complex_views(X, solver):
+    X = X[["AMD", "BAC", "GE", "JNJ", "JPM", "LLY", "PG"]]
+    groups = {
+        "AMD": ["Technology", "Growth"],
+        "BAC": ["Financials", "Value"],
+        "GE": ["Industrials", "Value"],
+        "JNJ": ["Healthcare", "Defensive"],
+        "JPM": ["Financials", "Income"],
+        "LLY": ["Healthcare", "Defensive"],
+        "PG": ["Consumer", "Defensive"],
+    }
+
+    entropy_pooling = EntropyPooling(
+        mean_views=[
+            "JPM == -0.002",
+            "PG >= LLY",
+            "BAC >= prior(BAC) * 1.2",
+            "Financials == 2 * Growth",
+        ],
+        variance_views=[
+            "BAC == prior(BAC) * 4",
+        ],
+        correlation_views=[
+            "(BAC,JPM) == 0.80",
+            "(BAC,JNJ) <= prior(BAC,JNJ) * 0.5",
+        ],
+        skew_views=[
+            "BAC == -0.05",
+        ],
+        cvar_views=[
+            "GE == 0.08",
+        ],
+        cvar_beta=0.90,
+        groups=groups,
+        solver=solver,
+    )
+    entropy_pooling.fit(X)
+    np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.70692, 5)
