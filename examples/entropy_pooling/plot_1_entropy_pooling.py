@@ -224,7 +224,7 @@ print(
 
 # %%
 # The Effective Number of Scenarios quantifies how concentrated or diverse the
-# posterior distribution is after imposing views.
+# posterior distribution (`sample_weight`) is after imposing views.
 # It reflects how many scenarios are meaningfully contributing to the distribution
 # and is defined as the exponential of the Shannon entropy of the posterior
 # probabilities. As opposed to the relative entropy which measures

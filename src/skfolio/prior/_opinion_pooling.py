@@ -32,8 +32,8 @@ class OpinionPooling(BasePrior, BaseComposition):
     **elicited** from domain experts or **derived** from quantitative analyses.
 
     The `OpinionPooling` estimator takes a list of prior estimators, each of which
-    produces scenario probabilities (`sample_weight`), and pools them into a single
-    consensus probability .
+    produces scenario probabilities (which we use as `sample_weight`), and pools them
+    into a single consensus probability .
 
     You can choose between linear (arithmetic) pooling or logarithmic (geometric)
     pooling, and optionally apply robust pooling using a Kullback-Leibler divergence
@@ -55,10 +55,13 @@ class OpinionPooling(BasePrior, BaseComposition):
         The default (None), is to assign the same probability to each opinion.
 
     prior_estimator : BasePrior, optional
-        If provided, each estimator from `estimators` will be fitted using this common
-        prior before pooling. For example, using `prior_estimator = SyntheticData(n_samples=10_000)`
-        will generate 10,000 synthetic data from a Vine Copula before fitting
-        the estimators on this common distribution.
+        Common prior for all `estimators`. If provided, each estimator from `estimators`
+        will be fitted using this common prior before pooling. Setting `prior_estimator`
+        inside individual `estimators` is disabled to avoid mixing different prior
+        scenarios (each estimator must have the same underlying distribution).
+        For example, using `prior_estimator = SyntheticData(n_samples=10_000)` will
+        generate 10,000 synthetic data points from a Vine Copula before fitting the
+        estimators on this common distribution.
 
     is_linear_pooling : bool, default=True
         If True, combine each opinion via Linear Opinion Pooling
@@ -85,26 +88,32 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         .. math::
             \tilde{p}_i = \frac{p_i \exp\bigl(-\alpha D_i\bigr)}
-            {\sum_k p_k \exp\bigl(-\alpha D_k\bigr)}
+            {\displaystyle \sum_{k=1}^N p_k \exp\bigl(-\alpha D_k\bigr)}
+            \quad\text{for }i = 1,\dots,N
 
         where
+
+        * :math:`N` is the number of experts `len(estimators)`
+
+        * :math:`M` is the number of scenarios `len(observations)`
 
         * :math:`D_i` is the KL-divergence of expert *i*'s distribution from consensus:
 
           .. math::
              D_i = \mathrm{KL}\bigl(w_i \,\|\, c\bigr)
-                 = \sum_j w_{ij}\,\ln\!\frac{w_{ij}}{c_j}.
+                 = \sum_{j=1}^M w_{ij}\,\ln\!\frac{w_{ij}}{c_j}
+             \quad\text{for }i = 1,\dots,N.
 
         * :math:`w_i` is the sample-weight vector (scenario probabilities) from expert
-          *i*, with :math:`\sum_j w_{ij} = 1`.
+          *i*,  with :math:`\sum_{j=1}^M w_{ij} = 1`.
 
         * :math:`p_i` is the initial opinion probability of expert *i*, with
-          :math:`\sum_i p_i \le 1` (any leftover mass goes to a uniform prior).
+          :math:`\sum_{i=1}^N p_i \le 1` (any leftover mass goes to a uniform prior).
 
-        * :math:`c` is the consensus distribution over scenarios:
+        * :math:`c_j` is the consensus of scenario :math:`j`:
 
           .. math::
-             c = \sum_i p_i \, w_i.
+             c_j = \sum_{i=1}^N p_i \, w_{ij} \quad\text{for }j = 1,\dots,M.
 
     n_jobs : int, optional
         The number of jobs to run in parallel for `fit` of all `estimators`.
