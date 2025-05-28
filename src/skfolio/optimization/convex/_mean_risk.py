@@ -1040,7 +1040,7 @@ class MeanRisk(ConvexOptimization):
             case ObjectiveFunction.MAXIMIZE_RATIO:
                 # Capture common obvious mistake before solver failure to help user
                 if np.isscalar(self.min_weights) and self.min_weights >= 0:
-                    if np.max(prior_model.mu) - self.risk_free_rate <= 0:
+                    if np.max(return_distribution.mu) - self.risk_free_rate <= 0:
                         raise ValueError(
                             "Cannot optimize for Maximum Ratio with your current "
                             "constraints and input. This is because your assets' "
