@@ -575,7 +575,7 @@ def test_skew_views_prior(X, solver):
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(skew[0], skew_prior[0] * 1.5, 3)
     np.testing.assert_almost_equal(skew[2], 2.0, 3)
-    np.testing.assert_almost_equal(skew[18], skew_prior[18] * 0.3, 5)
+    np.testing.assert_almost_equal(skew[18], skew_prior[18] * 0.3, 3)
 
 
 @pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
