@@ -1084,9 +1084,9 @@ class EntropyPooling(BasePrior):
             if self.solver_params is not None
             else {
                 "maxfun": 5000,
-                "ftol": 1e-12,
-                "xtol": 1e-9,
-                "gtol": 1e-9,
+                "ftol": 1e-11,
+                "xtol": 1e-8,
+                "gtol": 1e-8,
                 "stepmx": 1,
             }
         )
@@ -1105,7 +1105,7 @@ class EntropyPooling(BasePrior):
                 "specified views conflict or are overly extreme. Consider using a "
                 "prior that generates more synthetic data for extreme views. You can "
                 "also change `solver_params` or try another `solver` such as "
-                "'CLARABEL'."
+                f"'CLARABEL'. Solver error: {sol.message}"
             )
         sample_weight = self._prior_sample_weight * np.exp(-1 - a @ sol.x)
         # Handles numerical precision errors
@@ -1368,7 +1368,7 @@ def _replace_prior_views(
                 f"Asset '{missing_asset}' is not available in prior_values."
             )
 
-    return [re.sub(pattern, repl, view) for view in views]
+    return new_views
 
 
 def _parse_correlation_view(view: str, assets: Sequence[str]) -> dict:

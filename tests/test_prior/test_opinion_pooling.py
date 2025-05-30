@@ -132,7 +132,7 @@ def test_is_linear_pooling(X, is_linear_pooling, expected):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(sw.sum(), 1.0)
 
-    np.testing.assert_almost_equal(sw[:5], expected, 6)
+    np.testing.assert_almost_equal(sw[:5], expected, 5)
 
 
 def test_factor_model(X, y):
