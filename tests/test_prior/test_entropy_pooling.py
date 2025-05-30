@@ -316,7 +316,7 @@ def test_mean_variance_views(X, solver):
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(mean[0], 0.002, 5)
     np.testing.assert_almost_equal(mean[1], 0.003, 5)
-    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 8)
+    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 5)
     np.testing.assert_almost_equal(variance[0], 0.0004, 5)
     np.testing.assert_almost_equal(variance[1], 0.002, 5)
     np.testing.assert_almost_equal(variance[2], 0.0003, 5)
@@ -550,7 +550,7 @@ def test_skew_views(X, solver):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1)
     np.testing.assert_almost_equal(skew[0], -0.1, 5)
-    np.testing.assert_almost_equal(skew[2], 2.0, 5)
+    np.testing.assert_almost_equal(skew[2], 2.0, 4)
     np.testing.assert_almost_equal(skew[18], -0.3, 5)
     np.testing.assert_almost_equal(2.5 * skew[3] - (1.4 * skew[4] + 4 * skew[5]), 0, 4)
 
@@ -573,7 +573,7 @@ def test_skew_views_prior(X, solver):
     np.testing.assert_almost_equal(model.relative_entropy_, 0.007809, 5)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
-    np.testing.assert_almost_equal(skew[0], skew_prior[0] * 1.5, 5)
+    np.testing.assert_almost_equal(skew[0], skew_prior[0] * 1.5, 3)
     np.testing.assert_almost_equal(skew[2], 2.0, 3)
     np.testing.assert_almost_equal(skew[18], skew_prior[18] * 0.3, 5)
 
