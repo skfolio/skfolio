@@ -1,8 +1,8 @@
-"""pre-selection SelectComplete module"""
+"""pre-selection SelectComplete module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
@@ -49,30 +49,29 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
 
     Examples
     --------
-
-        >>> import numpy as np
-        >>> import pandas as pd
-        >>> from skfolio.pre_selection import SelectComplete
-        >>> X = pd.DataFrame({
-        ...     'asset1': [np.nan, np.nan, 2, 3, 4],    # Starts late (inception)
-        ...     'asset2': [1, 2, 3, 4, 5],         # Complete data
-        ...     'asset3': [1, 2, 3, np.nan, 5], # Missing values within data
-        ...     'asset4': [1, 2, 3, 4, np.nan]      # Ends early (expiration)
-        ... })
-        >>> selector = SelectComplete()
-        >>> selector.fit_transform(X)
-         array([[ 1.,  1.],
-                [ 2.,  2.],
-                [ 3.,  3.],
-                [ 4., nan],
-                [ 5.,  5.]])
-        >>> selector = SelectComplete(drop_assets_with_internal_nan=True)
-        >>> selector.fit_transform(X)
-         array([[1.],
-               [2.],
-               [3.],
-               [4.],
-               [5.]])
+    >>> import numpy as np
+    >>> import pandas as pd
+    >>> from skfolio.pre_selection import SelectComplete
+    >>> X = pd.DataFrame({
+    ...     'asset1': [np.nan, np.nan, 2, 3, 4],    # Starts late (inception)
+    ...     'asset2': [1, 2, 3, 4, 5],         # Complete data
+    ...     'asset3': [1, 2, 3, np.nan, 5], # Missing values within data
+    ...     'asset4': [1, 2, 3, 4, np.nan]      # Ends early (expiration)
+    ... })
+    >>> selector = SelectComplete()
+    >>> selector.fit_transform(X)
+     array([[ 1.,  1.],
+            [ 2.,  2.],
+            [ 3.,  3.],
+            [ 4., nan],
+            [ 5.,  5.]])
+    >>> selector = SelectComplete(drop_assets_with_internal_nan=True)
+    >>> selector.fit_transform(X)
+     array([[1.],
+           [2.],
+           [3.],
+           [4.],
+           [5.]])
     """
 
     to_keep_: np.ndarray
@@ -97,7 +96,7 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
             Fitted estimator.
         """
         # Validate by allowing NaNs
-        X = self._validate_data(X, force_all_finite="allow-nan")
+        X = skv.validate_data(self, X, ensure_all_finite="allow-nan")
 
         if self.drop_assets_with_internal_nan:
             # Identify columns with any NaNs
@@ -108,9 +107,11 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
 
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> np.ndarray:
         skv.check_is_fitted(self)
         return self.to_keep_
 
-    def _more_tags(self):
-        return {"allow_nan": True}
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags

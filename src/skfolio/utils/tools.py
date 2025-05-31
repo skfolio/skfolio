@@ -1,12 +1,13 @@
-"""Tools module"""
+"""Tools module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+import warnings
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
@@ -21,34 +22,35 @@ import sklearn.base as skb
 
 __all__ = [
     "AutoEnum",
-    "cached_property_slots",
-    "cache_method",
-    "input_to_array",
     "args_names",
-    "format_measure",
-    "optimal_rounding_decimals",
     "bisection",
-    "safe_split",
-    "fit_single_estimator",
-    "fit_and_predict",
-    "safe_indexing",
+    "cache_method",
+    "cached_property_slots",
+    "check_estimator",
     "deduplicate_names",
     "default_asset_names",
-    "check_estimator",
+    "fit_and_predict",
+    "fit_single_estimator",
+    "format_measure",
     "get_feature_names",
+    "input_to_array",
+    "optimal_rounding_decimals",
+    "safe_indexing",
+    "safe_split",
+    "validate_input_list",
 ]
 
 GenericAlias = type(list[int])
 
 
 class AutoEnum(str, Enum):
-    """Base Enum class used in `skfolio`"""
+    """Base Enum class used in `skfolio`."""
 
     @staticmethod
     def _generate_next_value_(
         name: str, start: int, count: int, last_values: Any
     ) -> str:
-        """Overriding `auto()`"""
+        """Overriding `auto()`."""
         return name.lower()
 
     @classmethod
@@ -68,13 +70,13 @@ class AutoEnum(str, Enum):
         return value in cls._value2member_map_
 
     def __repr__(self) -> str:
-        """Representation of the Enum"""
+        """Representation of the Enum."""
         return self.name
 
 
 # noinspection PyPep8Naming
 class cached_property_slots:
-    """Cached property decorator for slots"""
+    """Cached property decorator for slots."""
 
     def __init__(self, func):
         self.func = func
@@ -83,10 +85,12 @@ class cached_property_slots:
         self.__doc__ = func.__doc__
 
     def __set_name__(self, owner, name):
+        """Set Name."""
         self.public_name = name
         self.private_name = f"_{name}"
 
     def __get__(self, instance, owner=None):
+        """Getter."""
         if instance is None:
             return self
         if self.private_name is None:
@@ -102,6 +106,7 @@ class cached_property_slots:
         return value
 
     def __set__(self, instance, owner=None):
+        """Setter."""
         raise AttributeError(
             f"'{type(instance).__name__}' object attribute '{self.public_name}' is"
             " read-only"
@@ -111,7 +116,7 @@ class cached_property_slots:
 
 
 def _make_key(args, kwds) -> int:
-    """Make a cache key from optionally typed positional and keyword arguments"""
+    """Make a cache key from optionally typed positional and keyword arguments."""
     key = args
     if kwds:
         for item in kwds.items():
@@ -248,7 +253,6 @@ def safe_split(
     y_subset : array-like
         Indexed targets.
     """
-
     X_subset = safe_indexing(X, indices=indices, axis=axis)
     if y is not None:
         y_subset = safe_indexing(y, indices=indices, axis=axis)
@@ -322,7 +326,9 @@ def args_names(func: object) -> list[str]:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None, default: skb.BaseEstimator, check_type: Any
+    estimator: skb.BaseEstimator | None,
+    default: skb.BaseEstimator | None,
+    check_type: Any,
 ):
     """Check the estimator type and returns its cloned version it provided, otherwise
      return the default estimator.
@@ -332,7 +338,7 @@ def check_estimator(
     estimator : BaseEstimator, optional
         Estimator.
 
-    default : BaseEstimator
+    default : BaseEstimator, optional
         Default estimator to return when `estimator` is `None`.
 
     check_type : Any
@@ -340,10 +346,9 @@ def check_estimator(
 
     Returns
     -------
-    estimator: Estimator
+    estimator : Estimator
         The checked estimator or the default.
     """
-
     if estimator is None:
         return default
     if not isinstance(estimator, check_type):
@@ -439,6 +444,67 @@ def input_to_array(
     return arr
 
 
+def validate_input_list(
+    items: list[int | str],
+    n_assets: int,
+    assets_names: np.ndarray[str] | None,
+    name: str,
+    raise_if_string_missing: bool = True,
+) -> list[int]:
+    """Convert a list of items (asset indices or asset names) into a list of
+    validated asset indices.
+
+    Parameters
+    ----------
+    items : list[int | str]
+       List of asset indices or asset names.
+
+    n_assets : int
+       Expected number of assets.
+       Used for verification.
+
+    assets_names : ndarray, optional
+       Asset names used when `items` contain strings.
+
+    name : str
+       Name of the items used for error messages.
+
+    raise_if_string_missing : bool, default=True
+        If set to True, raises an error if an item string is missing from assets_names;
+        otherwise, issue a User Warning.
+
+    Returns
+    -------
+    values : list[int]
+       Converted and validated list.
+    """
+    if len(set(items)) != len(items):
+        raise ValueError(f"Duplicates found in {items}")
+
+    asset_indices = set(range(n_assets))
+    res = []
+    for asset in items:
+        if isinstance(asset, str):
+            if assets_names is None:
+                raise ValueError(
+                    f"If `{name}` is provided as a list of string, you must input `X` "
+                    f"as a DataFrame with assets names in columns."
+                )
+            mask = assets_names == asset
+            if np.any(mask):
+                res.append(int(np.where(mask)[0][0]))
+            else:
+                if raise_if_string_missing:
+                    raise ValueError(f"{asset} not found in {assets_names}")
+                else:
+                    warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
+        else:
+            if asset not in asset_indices:
+                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+            res.append(int(asset))
+    return res
+
+
 def format_measure(x: float, percent: bool = False) -> str:
     """Format a measure number into a user-friendly string.
 
@@ -514,7 +580,7 @@ def fit_single_estimator(
     indices: np.ndarray | None = None,
     axis: int = 0,
 ):
-    """function used to fit an estimator within a job.
+    """Function used to fit an estimator within a job.
 
     Parameters
     ----------
@@ -622,7 +688,7 @@ def fit_and_predict(
 
 
 def default_asset_names(n_assets: int) -> np.ndarray:
-    """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`
+    """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`.
 
     Parameters
     ----------

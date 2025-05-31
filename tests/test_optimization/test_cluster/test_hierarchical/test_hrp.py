@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
-from sklearn import config_context
+from sklearn import clone, config_context
 
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalRiskParity
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel
 
 
 @pytest.fixture(scope="module")
@@ -157,7 +157,7 @@ def test_transaction_costs(X, previous_weights, transaction_costs):
 def test_hrp_small_X(small_X):
     model = HierarchicalRiskParity()
     model.fit(small_X)
-    assert model.hierarchical_clustering_estimator_.n_clusters_ == 1
+    assert model.hierarchical_clustering_estimator_.n_clusters_ == 2
 
 
 def test_metadata_routing(X_medium, implied_vol_medium):
@@ -250,3 +250,261 @@ def test_hrp_weight_constraints(X):
         ),
     )
     np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+
+def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
+    model = HierarchicalRiskParity(
+        risk_measure=risk_measure,
+        hierarchical_clustering_estimator=HierarchicalClustering(
+            linkage_method=linkage_method
+        ),
+    )
+    np.random.seed(42)
+    for _ in range(5):
+        min_weights, max_weights = _random_weights_bounds(n_assets=X.shape[1])
+        print(min_weights)
+        model.set_params(min_weights=min_weights, max_weights=max_weights)
+        model.fit(X)
+        assert np.all(model.weights_ - min_weights >= -1e-8)
+        assert np.all(model.weights_ - max_weights <= 1e-8)
+
+
+def _random_weights_bounds(n_assets: int) -> tuple[np.ndarray, np.ndarray]:
+    raw_min = np.random.rand(n_assets)
+    min_total_target = np.random.rand()
+    min_weights = raw_min / raw_min.sum() * min_total_target
+    required_diff = max(0.0, 1.0 - min_weights.sum())
+    raw_diff = np.random.rand(n_assets)
+    extra_factor = 1 + np.random.rand()
+    diff_total_target = required_diff * extra_factor
+    diff_weights = raw_diff / raw_diff.sum() * diff_total_target
+    max_weights = min_weights + diff_weights
+
+    assert min_weights.sum() <= 1.0 <= max_weights.sum()
+    assert np.all(min_weights >= 0) and np.all(max_weights >= min_weights)
+    return min_weights, max_weights
+
+
+def test_optim_with_equal_weighted_sample_weight(X, risk_measure):
+    """No sample weight and equal-weighted sample weight should give the same result"""
+    ref = HierarchicalRiskParity(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = HierarchicalRiskParity(
+        risk_measure=risk_measure, prior_estimator=EntropyPooling()
+    )
+    model.fit(X)
+
+    np.testing.assert_almost_equal(model.weights_, ref.weights_, 6)
+
+
+@pytest.mark.parametrize(
+    "risk_measure,view_params,expected_weights",
+    [
+        (
+            RiskMeasure.CVAR,
+            dict(cvar_views=["PG == 0.07"]),
+            [
+                0.03027,
+                0.02001,
+                0.02843,
+                0.0395,
+                0.06506,
+                0.05026,
+                0.05525,
+                0.07618,
+                0.03398,
+                0.02855,
+                0.06198,
+                0.09286,
+                0.05971,
+                0.02579,
+                0.03679,
+                0.05522,
+                0.06274,
+                0.03062,
+                0.06962,
+                0.07718,
+            ],
+        ),
+        (
+            RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.0277,
+                0.02219,
+                0.02003,
+                0.04551,
+                0.06187,
+                0.05937,
+                0.06236,
+                0.08268,
+                0.02079,
+                0.04072,
+                0.05868,
+                0.11017,
+                0.05035,
+                0.02928,
+                0.03423,
+                0.05856,
+                0.03092,
+                0.03031,
+                0.06729,
+                0.08699,
+            ],
+        ),
+        (
+            RiskMeasure.VARIANCE,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.02842,
+                0.01042,
+                0.01369,
+                0.03213,
+                0.04311,
+                0.0486,
+                0.06607,
+                0.10018,
+                0.01568,
+                0.06346,
+                0.05743,
+                0.12451,
+                0.04033,
+                0.03559,
+                0.0416,
+                0.06218,
+                0.01176,
+                0.0317,
+                0.08565,
+                0.0875,
+            ],
+        ),
+        (
+            RiskMeasure.STANDARD_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.03053,
+                0.01848,
+                0.02181,
+                0.0464,
+                0.05477,
+                0.05728,
+                0.06654,
+                0.08196,
+                0.02334,
+                0.04593,
+                0.06176,
+                0.09094,
+                0.05255,
+                0.0344,
+                0.03727,
+                0.06489,
+                0.02751,
+                0.03254,
+                0.07604,
+                0.07504,
+            ],
+        ),
+        (
+            RiskMeasure.SEMI_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.02992,
+                0.01764,
+                0.0279,
+                0.04134,
+                0.05931,
+                0.05331,
+                0.05867,
+                0.08101,
+                0.03238,
+                0.03444,
+                0.06378,
+                0.08392,
+                0.05647,
+                0.03145,
+                0.03931,
+                0.06651,
+                0.04251,
+                0.03228,
+                0.07883,
+                0.06902,
+            ],
+        ),
+        (
+            RiskMeasure.SEMI_VARIANCE,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.02941,
+                0.01023,
+                0.02244,
+                0.02688,
+                0.05044,
+                0.04322,
+                0.05412,
+                0.10359,
+                0.03022,
+                0.03536,
+                0.06411,
+                0.11101,
+                0.05001,
+                0.0295,
+                0.04916,
+                0.06584,
+                0.02664,
+                0.03314,
+                0.09449,
+                0.07021,
+            ],
+        ),
+        (
+            RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.0277,
+                0.02219,
+                0.02003,
+                0.04551,
+                0.06187,
+                0.05937,
+                0.06236,
+                0.08268,
+                0.02079,
+                0.04072,
+                0.05868,
+                0.11017,
+                0.05035,
+                0.02928,
+                0.03423,
+                0.05856,
+                0.03092,
+                0.03031,
+                0.06729,
+                0.08699,
+            ],
+        ),
+    ],
+)
+def test_sample_weight(X, risk_measure, view_params, expected_weights):
+    ref = HierarchicalRiskParity(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = clone(ref)
+    model = model.set_params(prior_estimator=EntropyPooling(**view_params))
+    model.fit(X)
+
+    assert model.weights_[15] < ref.weights_[15]
+
+    np.testing.assert_almost_equal(model.weights_, expected_weights, 5)
+
+    ref_ptf = ref.predict(X)
+    ptf = model.predict(X)
+
+    assert getattr(ref_ptf, risk_measure.value) < getattr(ptf, risk_measure.value)
+
+    sample_weight = model.prior_estimator_.return_distribution_.sample_weight
+
+    ref_ptf.sample_weight = sample_weight
+    ptf.sample_weight = sample_weight
+
+    assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)

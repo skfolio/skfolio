@@ -1,11 +1,12 @@
 """Naive estimators."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
@@ -24,7 +25,7 @@ class InverseVolatility(BaseOptimization):
     ----------
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
         containing the estimation of assets expected returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -97,7 +98,7 @@ class InverseVolatility(BaseOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        covariance = self.prior_estimator_.prior_model_.covariance
+        covariance = self.prior_estimator_.return_distribution_.covariance
         w = 1 / np.sqrt(np.diag(covariance))
         self.weights_ = w / sum(w)
         return self
@@ -141,7 +142,7 @@ class EqualWeighted(BaseOptimization):
         self : EqualWeighted
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         self.weights_ = np.ones(n_assets) / n_assets
         return self
@@ -185,7 +186,7 @@ class Random(BaseOptimization):
         self : EqualWeighted
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         self.weights_ = rand_weights_dirichlet(n=n_assets)
         return self

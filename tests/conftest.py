@@ -1,3 +1,5 @@
+"""conftest module."""
+
 import datetime as dt
 
 import numpy as np
@@ -11,6 +13,18 @@ from skfolio.datasets import (
     load_sp500_implied_vol_dataset,
 )
 from skfolio.preprocessing import prices_to_returns
+
+
+def pytest_configure(config):
+    # globally turn off scientific notation in every test session
+    np.set_printoptions(suppress=True, precision=6)
+
+
+@pytest.fixture
+def random_data():
+    """Fixture that returns a random numpy array in [0,1] of shape (100, 2)."""
+    rng = np.random.default_rng(seed=42)
+    return rng.random((100, 2))
 
 
 @pytest.fixture(scope="module")
@@ -27,6 +41,12 @@ def y():
     factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
     y = prices_to_returns(factor_prices)
     return y
+
+
+@pytest.fixture(scope="module")
+def returns(X):
+    returns = X[["AAPL"]]
+    return returns
 
 
 @pytest.fixture(scope="module")
@@ -144,6 +164,32 @@ def groups():
         ["Equity"] * 3 + ["Fund"] * 5 + ["Bond"] * 12,
         ["US"] * 2 + ["Europe"] * 8 + ["Japan"] * 10,
     ]
+
+
+@pytest.fixture(scope="module")
+def groups_dict():
+    return {
+        "AAPL": ["Equity", "US"],
+        "AMD": ["Equity", "US"],
+        "BAC": ["Equity", "Europe"],
+        "BBY": ["Fund", "Europe"],
+        "CVX": ["Fund", "Europe"],
+        "GE": ["Fund", "Europe"],
+        "HD": ["Bond", "Europe"],
+        "JNJ": ["Bond", "Europe"],
+        "JPM": ["Bond", "Europe"],
+        "KO": ["Bond", "Europe"],
+        "LLY": ["Bond", "Japan"],
+        "MRK": ["Bond", "Japan"],
+        "MSFT": ["Bond", "Japan"],
+        "PEP": ["Bond", "Japan"],
+        "PFE": ["Bond", "Japan"],
+        "PG": ["Bond", "Japan"],
+        "RRC": ["Bond", "Japan"],
+        "UNH": ["Bond", "Japan"],
+        "WMT": ["Bond", "Japan"],
+        "XOM": ["Bond", "Japan"],
+    }
 
 
 @pytest.fixture(scope="module")

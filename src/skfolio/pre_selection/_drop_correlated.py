@@ -1,8 +1,8 @@
-"""Pre-selection DropCorrelated module"""
+"""Pre-selection DropCorrelated module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
@@ -74,7 +74,7 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         self : DropCorrelated
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
 

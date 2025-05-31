@@ -9,7 +9,7 @@ from skfolio.prior import EmpiricalPrior
 def test_empirical_prior(X):
     model = EmpiricalPrior()
     model.fit(X)
-    res = model.prior_model_
+    res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
@@ -59,7 +59,7 @@ def test_empirical_prior(X):
 def test_empirical_prior_log_normal(X):
     model = EmpiricalPrior(is_log_normal=True, investment_horizon=252)
     model.fit(X)
-    res = model.prior_model_
+    res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)

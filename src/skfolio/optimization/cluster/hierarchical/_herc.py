@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Weight constraints is a novel implementation, see docstring for more details.
 
 import numpy as np
@@ -10,6 +10,7 @@ import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -101,7 +102,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
         containing the estimation of assets expected returns, covariance matrix and
         returns. The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
@@ -180,7 +181,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
             to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
+            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -346,7 +347,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supported" f"in HERC"
+                f"risk_measure {self.risk_measure} currently not supported in HERC"
             )
 
         self.prior_estimator_ = check_estimator(
@@ -367,8 +368,8 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
         # Fit the estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        prior_model = self.prior_estimator_.prior_model_
-        returns = prior_model.returns
+        return_distribution = self.prior_estimator_.return_distribution_
+        returns = return_distribution.returns
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
@@ -391,12 +392,12 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         labels = self.hierarchical_clustering_estimator_.labels_
         linkage_matrix = self.hierarchical_clustering_estimator_.linkage_matrix_
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
 
-        assets_risks = self._unitary_risks(prior_model=prior_model)
+        assets_risks = self._unitary_risks(return_distribution=return_distribution)
         weights = np.ones(n_assets)
         clusters_weights = np.ones(n_clusters)
 
@@ -410,7 +411,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             inv_risk_w[cluster_ids] = 1 / assets_risks[cluster_ids]
             inv_risk_w /= inv_risk_w.sum()
             cluster_risks.append(
-                self._risk(weights=inv_risk_w, prior_model=prior_model)
+                self._risk(weights=inv_risk_w, return_distribution=return_distribution)
             )
             weights[cluster_ids] = inv_risk_w[cluster_ids]
         cluster_risks = np.array(cluster_risks)

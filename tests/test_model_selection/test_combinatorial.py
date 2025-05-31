@@ -1,3 +1,5 @@
+"""Test Combinatorial module."""
+
 import math
 
 import numpy as np
@@ -239,7 +241,7 @@ def test_optimal_folds_number_weight():
         target_n_test_paths=target_n_test_paths,
     )
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
-    n_test_paths = int(math.comb(n_folds, n_test_folds)) * n_test_folds // n_folds
+    n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
     assert n_folds == 51
     assert n_test_folds == 50
@@ -253,7 +255,7 @@ def test_optimal_folds_number_weight():
         weight_train_size=2,
     )
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
-    n_test_paths = int(math.comb(n_folds, n_test_folds)) * n_test_folds // n_folds
+    n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
     assert n_folds == 20
     assert n_test_folds == 19

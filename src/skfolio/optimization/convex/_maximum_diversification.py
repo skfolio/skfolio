@@ -2,10 +2,11 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -28,7 +29,7 @@ class MaximumDiversification(MeanRisk):
     ----------
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
         containing the estimation of assets expected returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -76,7 +77,7 @@ class MaximumDiversification(MeanRisk):
         all weights). `None` means no budget constraints.
         The default value is `1.0` (fully invested portfolio).
 
-        Examples:
+        For example:
 
              * `budget = 1` --> fully invested portfolio.
              * `budget = 0` --> market neutral portfolio.
@@ -129,7 +130,7 @@ class MaximumDiversification(MeanRisk):
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
             to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
+            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -199,23 +200,23 @@ class MaximumDiversification(MeanRisk):
         Linear constraints.
         The linear constraints must match any of following patterns:
 
-           * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
-           * "ref1 >= 2.9 * ref2"
-           * "ref1 == ref2"
-           * "ref1 >= ref1"
+           * `"2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"`
+           * `"ref1 >= 2.9 * ref2"`
+           * `"ref1 == ref2"`
+           * `"ref1 >= ref1"`
 
-        With "ref1", "ref2" ... the assets names or the groups names provided
+        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
         in the parameter `groups`. Assets names can be referenced without the need of
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
-            * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US == 0.7" --> the sum of all US weights must be equal to 70%
-            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
+            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
+            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
+            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
+            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -223,10 +224,10 @@ class MaximumDiversification(MeanRisk):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
-            * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
-            * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
+            * `groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}`
+            * `groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]`
 
     left_inequality : array-like of shape (n_constraints, n_assets), optional
         Left inequality matrix :math:`A` of the linear
@@ -251,9 +252,6 @@ class MaximumDiversification(MeanRisk):
         The turnover is defined as the absolute difference between the portfolio weights
         and the `previous_weights`. Note that another way to control for turnover is by
         using the `transaction_costs` parameter.
-
-    min_return : float | array-like of shape (n_optimization), optional
-        Lower bound constraint on the expected return.
 
     min_return : float | array-like of shape (n_optimization), optional
         Lower bound constraint on the expected return.
@@ -423,11 +421,12 @@ class MaximumDiversification(MeanRisk):
         self : MaximumDiversification
            Fitted estimator.
         """
-        self._check_feature_names(X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
 
         def func(w, obj):
-            """weighted volatilities"""
-            covariance = obj.prior_estimator_.prior_model_.covariance
+            """Weighted volatilities."""
+            covariance = obj.prior_estimator_.return_distribution_.covariance
             return np.sqrt(np.diag(covariance)) @ w
 
         self.overwrite_expected_return = func

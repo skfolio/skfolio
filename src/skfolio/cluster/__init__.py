@@ -1,8 +1,8 @@
 """Hierarchical Clustering estimators."""
 
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from skfolio.cluster._hierarchical import HierarchicalClustering, LinkageMethod
 
-__all__ = ["LinkageMethod", "HierarchicalClustering"]
+__all__ = ["HierarchicalClustering", "LinkageMethod"]

@@ -1,8 +1,8 @@
-"""Distance Estimators"""
+"""Distance Estimators."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +11,7 @@ import scipy.spatial.distance as scd
 import scipy.stats as sct
 import sklearn.metrics as skmc
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 from skfolio.distance._base import BaseDistance
 from skfolio.moments import BaseCovariance, GerberCovariance
@@ -85,7 +86,7 @@ class PearsonDistance(BaseDistance):
         self : PearsonDistance
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         corr = np.corrcoef(X.T)
         self.codependence_, self.distance_ = _corr_to_distance(
             corr, absolute=self.absolute, power=self.power
@@ -157,7 +158,7 @@ class KendallDistance(BaseDistance):
         self : KendallDistance
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         corr = pd.DataFrame(X).corr(method="kendall").to_numpy()
         self.codependence_, self.distance_ = _corr_to_distance(
             corr, absolute=self.absolute, power=self.power
@@ -214,7 +215,7 @@ class SpearmanDistance(BaseDistance):
         self.power = power
 
     def fit(self, X: npt.ArrayLike, y=None) -> "SpearmanDistance":
-        """Fit the Spearman Kendall estimator.
+        """Fit the Spearman estimator.
 
         Parameters
         ----------
@@ -229,7 +230,7 @@ class SpearmanDistance(BaseDistance):
         self : SpearmanDistance
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         corr = pd.DataFrame(X).corr(method="spearman").to_numpy()
         self.codependence_, self.distance_ = _corr_to_distance(
             corr, absolute=self.absolute, power=self.power
@@ -337,7 +338,7 @@ class CovarianceDistance(BaseDistance):
 
         # we validate and convert to numpy after all models have been fitted to keep the
         # features names information.
-        _ = self._validate_data(X)
+        _ = skv.validate_data(self, X)
 
         corr, _ = cov_to_corr(self.covariance_estimator_.covariance_)
         self.codependence_, self.distance_ = _corr_to_distance(
@@ -383,7 +384,7 @@ class DistanceCorrelation(BaseDistance):
 
     @staticmethod
     def _dcorr(x: np.ndarray, y: np.ndarray):
-        """Calculate the distance correlation between two variables"""
+        """Calculate the distance correlation between two variables."""
         x = scd.squareform(scd.pdist(x.reshape(-1, 1)))
         y = scd.squareform(scd.pdist(y.reshape(-1, 1)))
         x = x - x.mean(axis=0)[np.newaxis, :] - x.mean(axis=1)[:, np.newaxis] + x.mean()
@@ -409,7 +410,7 @@ class DistanceCorrelation(BaseDistance):
         self : DistanceCorrelation
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         corr = np.ones((n_assets, n_assets))
         # TODO: parallelize
@@ -502,7 +503,7 @@ class MutualInformation(BaseDistance):
         self : MutualInformation
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
         if self.n_bins is None:
             match self.n_bins_method:

@@ -6,7 +6,7 @@
 Hyper-Parameters Tuning
 ***********************
 
-Hyper-parameters tuning ìn `skfolio` follows the same API as `scikit-learn`.
+Hyper-parameters tuning in `skfolio` follows the same API as `scikit-learn`.
 
 Hyper-parameters are parameters that are not directly learnt within estimators.
 They are passed as arguments to the constructor of the estimator classes.

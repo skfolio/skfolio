@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -74,7 +74,7 @@ def load_gzip_compressed_csv_data(
     encoding="utf-8",
     datetime_index: bool = True,
 ) -> pd.DataFrame:
-    """Loads gzip-compressed csv files with `importlib.resources`.
+    """Load gzip-compressed csv files with `importlib.resources`.
 
     1) Open resource file with `importlib.resources.open_binary`
     2) Decompress csv file with `gzip.open`

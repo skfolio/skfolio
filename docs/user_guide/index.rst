@@ -7,7 +7,7 @@ User Guide
 .. danger::
 
     This package is still under active development. We plan to release the first stable
-    version (1.0.0) mid 2024. Until then, we advise you to pin versions if you're
+    version (1.0.0) in early 2025. Until then, we recommend pinning versions if you are
     concerned about breaking changes.
 
 `skfolio` is a portfolio optimization framework build on top of scikit-learn to perform

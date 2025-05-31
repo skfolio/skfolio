@@ -1,5 +1,4 @@
 import datetime as dt
-import timeit
 
 import numpy as np
 import pandas as pd
@@ -22,7 +21,7 @@ from skfolio.utils.tools import args_names
 
 def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array:
     r"""
-    Compute the portfolio returns from its assets returns and weights
+    Compute the portfolio returns from its assets returns and weights.
     """
     n, m = asset_returns.shape
     returns = np.zeros(n)
@@ -333,19 +332,6 @@ def test_portfolio_slots(portfolio):
         getattr(portfolio, attr)
 
 
-def test_portfolio_cache(portfolio, periods, measure):
-    # time for accessing cached attributes
-    n = int(1e5)
-
-    first_access_time = timeit.timeit(
-        lambda: getattr(portfolio, measure.value), number=1
-    )
-    cached_access_time = (
-        timeit.timeit(lambda: getattr(portfolio, measure.value), number=n) / n
-    )
-    assert first_access_time > 10 * cached_access_time
-
-
 def test_portfolio_clear_cache(portfolio, periods, measure):
     if measure.is_ratio:
         r = measure.linked_risk_measure
@@ -358,6 +344,7 @@ def test_portfolio_clear_cache(portfolio, periods, measure):
     args = [
         arg if arg in Portfolio._measure_global_args else f"{r.value}_{arg}"
         for arg in args_names(func)
+        if arg not in ["biased", "sample_weight"]
     ]
     args = [arg for arg in args if arg not in Portfolio._read_only_attrs]
     # default

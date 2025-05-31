@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -138,8 +138,8 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         )
         # fitting estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        mu = self.prior_estimator_.prior_model_.mu
-        returns = self.prior_estimator_.prior_model_.returns
+        mu = self.prior_estimator_.return_distribution_.mu
+        returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
         samples = stationary_bootstrap(
@@ -276,8 +276,8 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         )
         # fitting estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        covariance = self.prior_estimator_.prior_model_.covariance
-        returns = self.prior_estimator_.prior_model_.returns
+        covariance = self.prior_estimator_.return_distribution_.covariance
+        returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 

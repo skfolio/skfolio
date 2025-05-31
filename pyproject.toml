@@ -4,25 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.6.0"
+version = "0.9.1"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" }
 ]
 authors = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
 ]
 description = "Portfolio optimization built on top of scikit-learn"
 readme = "README.rst"
-requires-python = ">=3.10"
-dependencies = [
-    "numpy>=1.23.4",
-    "scipy>=1.8.0",
-    "pandas>=1.4.1",
-    "cvxpy>=1.4.1",
-    "scikit-learn>=1.5.0",
-    "joblib>=1.3.2",
-    "plotly>=5.22.0"
-]
 keywords = [
     "portfolio",
     "optimization",
@@ -57,16 +48,34 @@ classifiers = [
     'Topic :: Office/Business :: Financial :: Investment',
     "Topic :: Software Development",
 ]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.23.4",
+    "scipy>=1.15.2",
+    "pandas>=1.4.1",
+    "cvxpy-base>=1.5.0",
+    "clarabel>=0.9.0",
+    "scikit-learn>=1.6.0",
+    "joblib>=1.3.2",
+    "plotly>=5.22.0"
+]
+
+[project.urls]
+"API Reference" = "https://www.skfolio.org/api_reference.html"
+Documentation = "https://www.skfolio.org"
+Tutorials = "https://www.skfolio.org"
+Repository = "https://github.com/skfolio/skfolio"
 
 [project.optional-dependencies]
-tests = [
-    "cvxpy[SCIP]",
+dev = [
+    "PySCIPOpt",
     "pytest",
     "pytest-cov",
-    "ruff"
+    "ruff",
+    "pre-commit",
 ]
 docs = [
-    "cvxpy[SCIP]",
+    "PySCIPOpt",
     "Sphinx",
     "sphinx-gallery",
     "sphinx-design",
@@ -80,17 +89,10 @@ docs = [
     "sphinx-prompt",
     "sphinxext.opengraph",
     "sphinx-sitemap",
-    "sphinx-favicon",
     "jupyterlite-sphinx",
     "jupyterlite-pyodide-kernel",
     "nbformat",
 ]
-
-[project.urls]
-"API Reference" = "https://www.skfolio.org/api_reference.html"
-Documentation = "https://www.skfolio.org"
-Tutorials = "https://www.skfolio.org"
-Repository = "https://github.com/skfolio/skfolio"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -128,14 +130,21 @@ select = [
     "ISC", # implicit string concatenation
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
+    "D",
 ]
-ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117"] # rules redundant with the formatter.
+ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]
 
 [tool.ruff.lint.isort]
 case-sensitive = true
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 320
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.pytest.ini_options]
 addopts = [

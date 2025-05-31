@@ -6,7 +6,7 @@ is the dot product of the assets weights with the assets returns.
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numbers
 from typing import ClassVar
@@ -146,6 +146,9 @@ class Portfolio(BasePortfolio):
     compounded : bool, default=False
         If this is set to True, cumulative returns are compounded.
         The default is `False`.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Sample weights for each observation. If None, equal weights are assumed.
 
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
@@ -412,6 +415,7 @@ class Portfolio(BasePortfolio):
         }
     )
 
+    # ruff: noqa: RUF023
     __slots__ = {
         # read-only
         "X",
@@ -441,6 +445,7 @@ class Portfolio(BasePortfolio):
         annualized_factor: float = 252,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
+        sample_weight: np.ndarray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1,
@@ -540,6 +545,7 @@ class Portfolio(BasePortfolio):
             tag=tag,
             fitness_measures=fitness_measures,
             compounded=compounded,
+            sample_weight=sample_weight,
             risk_free_rate=risk_free_rate,
             annualized_factor=annualized_factor,
             min_acceptable_return=min_acceptable_return,
@@ -648,12 +654,12 @@ class Portfolio(BasePortfolio):
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
     def nonzero_assets(self) -> np.ndarray:
-        """Invested asset :math:`abs(weights) > 0.001%`"""
+        """Invested asset :math:`abs(weights) > 0.001%`."""
         return self.assets[self.nonzero_assets_index]
 
     @cached_property_slots
     def nonzero_assets_index(self) -> np.ndarray:
-        """Indices of invested asset :math:`abs(weights) > 0.001%`"""
+        """Indices of invested asset :math:`abs(weights) > 0.001%`."""
         return np.flatnonzero(abs(self.weights) > _ZERO_THRESHOLD)
 
     @property
@@ -705,7 +711,7 @@ class Portfolio(BasePortfolio):
     @property
     def effective_number_assets(self) -> float:
         r"""Computes the effective number of assets, defined as the inverse of the
-        Herfindahl index [1]_:
+        Herfindahl index.
 
         .. math:: N_{eff} = \frac{1}{\Vert w \Vert_{2}^{2}}
 

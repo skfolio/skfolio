@@ -39,8 +39,9 @@
 .. |NumpyMinVersion| replace:: 1.23.4
 .. |ScipyMinVersion| replace:: 1.8.0
 .. |PandasMinVersion| replace:: 1.4.1
-.. |CvxpyMinVersion| replace:: 1.4.1
-.. |SklearnMinVersion| replace:: 1.5.0
+.. |CvxpyBaseMinVersion| replace:: 1.5.0
+.. |ClarabelMinVersion| replace:: 0.9.0
+.. |SklearnMinVersion| replace:: 1.6.0
 .. |JoblibMinVersion| replace:: 1.3.2
 .. |PlotlyMinVersion| replace:: 5.22.0
 
@@ -58,7 +59,7 @@
 It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
 and cross-validate portfolio models.
 
-It is distributed under the open source 3-Clause BSD license.
+It is distributed under the open-source 3-Clause BSD license.
 
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
     :target: https://skfolio.org/auto_examples/
@@ -90,7 +91,8 @@ Dependencies
 - numpy (>= |NumpyMinVersion|)
 - scipy (>= |ScipyMinVersion|)
 - pandas (>= |PandasMinVersion|)
-- cvxpy (>= |CvxpyMinVersion|)
+- cvxpy-base (>= |CvxpyBaseMinVersion|)
+- clarabel (>= |ClarabelMinVersion|)
 - scikit-learn (>= |SklearnMinVersion|)
 - joblib (>= |JoblibMinVersion|)
 - plotly (>= |PlotlyMinVersion|)
@@ -104,7 +106,7 @@ Unfortunately, it faces a number of shortcomings, including high sensitivity to 
 input parameters (expected returns and covariance), weight concentration, high turnover,
 and poor out-of-sample performance.
 
-It is well known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
+It is well-known that naive allocation (1/N, inverse-vol, etc.) tends to outperform
 MVO out-of-sample (DeMiguel, 2007).
 
 Numerous approaches have been developed to alleviate these shortcomings (shrinkage,
@@ -113,10 +115,10 @@ approaches, coherent risk measures, left-tail risk optimization, distributionall
 optimization, factor model, risk-parity, hierarchical clustering, ensemble methods,
 pre-selection, etc.).
 
-With this large number of methods, added to the fact that they can be composed together,
-there is a need for a unified framework with a machine learning approach to perform
-model selection, validation, and parameter tuning while reducing the risk of data
-leakage and overfitting.
+Given the large number of methods, and the fact that they can be combined, there is a
+need for a unified framework with a machine-learning approach to perform model
+selection, validation, and parameter tuning while mitigating the risk of data leakage
+and overfitting.
 
 This framework is built on scikit-learn's API.
 
@@ -166,10 +168,29 @@ Available models
     * Distance Correlation
     * Variation of Information
 
+* Distribution Estimator:
+    * Univariate:
+        * Gaussian
+        * Student's t
+        * Johnson Su
+        * Normal Inverse Gaussian
+    * Bivariate Copula
+        * Gaussian Copula
+        * Student's t Copula
+        * Clayton Copula
+        * Gumbel Copula
+        * Joe Copula
+        * Independent Copula
+    * Multivariate
+        * Vine Copula (Regular, Centered, Clustered, Conditional Sampling)
+
 * Prior Estimator:
     * Empirical
     * Black & Litterman
     * Factor Model
+    * Synthetic Data (Stress Test, Factor Stress Test)
+    * Entropy Pooling
+    * Opinion Pooling
 
 * Uncertainty Set Estimator:
     * On Expected Returns:
@@ -177,12 +198,15 @@ Available models
         * Circular Bootstrap
     * On Covariance:
         * Empirical
-        * Circular bootstrap
+        * Circular Bootstrap
 
 * Pre-Selection Transformer:
     * Non-Dominated Selection
     * Select K Extremes (Best or Worst)
     * Drop Highly Correlated Assets
+    * Select Non-Expiring Assets
+    * Select Complete Assets (handle late inception, delisting, etc.)
+    * Drop Zero Variance
 
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, etc.)
@@ -227,6 +251,8 @@ Available models
     * Budget Constraints
     * Tracking Error Constraints
     * Turnover Constraints
+    * Cardinality and Group Cardinality Constraints
+    * Threshold (Long and Short) Constraints
 
 Quickstart
 ~~~~~~~~~~
@@ -249,6 +275,7 @@ Imports
 
     from skfolio import RatioMeasure, RiskMeasure
     from skfolio.datasets import load_factors_dataset, load_sp500_dataset
+    from skfolio.distribution import VineCopula
     from skfolio.model_selection import (
         CombinatorialPurgedCV,
         WalkForward,
@@ -269,7 +296,14 @@ Imports
     )
     from skfolio.pre_selection import SelectKExtremes
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+    from skfolio.prior import (
+        BlackLitterman,
+        EmpiricalPrior,
+        EntropyPooling,
+        FactorModel,
+        OpinionPooling,
+        SyntheticData,
+     )
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
 Load Dataset
@@ -540,12 +574,139 @@ Combinatorial Purged Cross-Validation
     print(population.summary())
 
 
+Minimum CVaR Optimization on Synthetic Returns
+----------------------------------------------
+.. code-block:: python
+
+    vine = VineCopula(log_transform=True, n_jobs=-1)
+    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
+    model.fit(X)
+    print(model.weights_)
+
+
+Stress Test
+-----------
+.. code-block:: python
+
+    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine.fit(X)
+    X_stressed = vine.sample(n_samples=10_000, conditioning = {"BAC": -0.2})
+    ptf_stressed = model.predict(X_stressed)
+
+
+Minimum CVaR Optimization on Synthetic Factors
+----------------------------------------------
+.. code-block:: python
+
+    vine = VineCopula(central_assets=["QUAL"], log_transform=True, n_jobs=-1)
+    factor_prior = SyntheticData(
+        distribution_estimator=vine,
+        n_samples=10_000,
+        sample_args=dict(conditioning={"QUAL": -0.2}),
+    )
+    factor_model = FactorModel(factor_prior_estimator=factor_prior)
+    model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
+    model.fit(X, y)
+    print(model.weights_)
+
+
+Factor Stress Test
+------------------
+.. code-block:: python
+
+    factor_model.set_params(factor_prior_estimator__sample_args=dict(
+        conditioning={"QUAL": -0.5}
+    ))
+    factor_model.fit(X,y)
+    stressed_X = factor_model.return_distribution_.returns
+    stressed_ptf = model.predict(stressed_X)
+
+Entropy Pooling
+---------------
+.. code-block:: python
+
+    entropy_pooling = EntropyPooling(
+        mean_views=[
+            "JPM == -0.002",
+            "PG >= LLY",
+            "BAC >= prior(BAC) * 1.2",
+        ],
+        cvar_views=[
+            "GE == 0.08",
+        ],
+    )
+    entropy_pooling.fit(X)
+    print(entropy_pooling.relative_entropy_)
+    print(entropy_pooling.effective_number_of_scenarios_)
+    print(entropy_pooling.return_distribution_.sample_weight)
+
+CVaR Hierarchical Risk Parity optimization on Entropy Pooling
+-------------------------------------------------------------
+.. code-block:: python
+
+    entropy_pooling = EntropyPooling(cvar_views=["GE == 0.08"])
+    model = HierarchicalRiskParity(
+        risk_measure=RiskMeasure.CVAR,
+        prior_estimator=entropy_pooling
+    )
+    model.fit(X)
+    print(model.weights_)
+
+Stress Test with Entropy Pooling on Factor Synthetic Data
+---------------------------------------------------------
+.. code-block:: python
+
+    # Regular Vine Copula and sampling of 100,000 synthetic factor returns
+    factor_synth = SyntheticData(
+        n_samples=100_000,
+        distribution_estimator=VineCopula(log_transform=True, n_jobs=-1, random_state=0)
+    )
+
+    # Entropy Pooling by imposing a CVaR-95% of 10% on the Quality factor
+    factor_entropy_pooling = EntropyPooling(
+        prior_estimator=factor_synth,
+        cvar_views=["QUAL == 0.10"],
+    )
+
+    factor_entropy_pooling.fit(X, factors)
+
+    # We retrieve the stressed distribution:
+    stressed_X = factor_model.return_distribution_.returns
+    stressed_sample_weight = factor_model.return_distribution_.sample_weight
+
+    # We stress-test our portfolio:
+    stressed_ptf = model.predict(stressed_X)
+    stressed_ptf.sample_weight = stressed_sample_weight
+
+Opinion Pooling
+---------------
+.. code-block:: python
+
+ # We consider two expert opinions, each generated via Entropy Pooling with
+    # user-defined views.
+    # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
+    # the remaining 10% is allocated to the prior distribution:
+    opinion_1 = EntropyPooling(cvar_views=["AMD == 0.10"])
+    opinion_2 = EntropyPooling(
+        mean_views=["AMD >= BAC", "JPM <= prior(JPM) * 0.8"],
+        cvar_views=["GE == 0.12"],
+    )
+
+    opinion_pooling = OpinionPooling(
+        estimators=[("opinion_1", opinion_1), ("opinion_2", opinion_2)],
+        opinion_probabilities=[0.4, 0.5],
+    )
+
+    opinion_pooling.fit(X)
+
+
 Recognition
 ~~~~~~~~~~~
 
-We would like to thank all contributors behind our direct dependencies, such as
-scikit-learn and cvxpy, but also the contributors of the following resources that were a
-source of inspiration:
+We would like to thank all contributors to our direct dependencies, such as
+scikit-learn and cvxpy, as well as the contributors of the following resources that
+served as sources of inspiration:
 
     * PyPortfolioOpt
     * Riskfolio-Lib

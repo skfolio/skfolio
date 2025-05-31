@@ -18,8 +18,8 @@ uses.
     :no-members:
     :no-inherited-members:
 
-Base Classe
------------
+Base Class
+----------
 .. currentmodule:: skfolio
 
 .. autosummary::
@@ -77,6 +77,7 @@ Functions
     measures.gini_mean_difference
     measures.owa_gmd_weights
     measures.effective_number_assets
+    measures.correlation
 
 .. _portfolio_ref:
 
@@ -87,8 +88,8 @@ Functions
     :no-members:
     :no-inherited-members:
 
-Base Classe
------------
+Base Class
+----------
 .. currentmodule:: skfolio
 
 .. autosummary::
@@ -253,7 +254,7 @@ Model Dataclass
     :toctree: generated/
     :template: class.rst
 
-    prior.PriorModel
+    prior.ReturnDistribution
 
 Base Class
 ----------
@@ -278,6 +279,9 @@ Classes
     prior.EmpiricalPrior
     prior.BlackLitterman
     prior.FactorModel
+    prior.SyntheticData
+    prior.EntropyPooling
+    prior.OpinionPooling
 
 Loading Matrix Classes for Factor Models
 ----------------------------------------
@@ -490,6 +494,7 @@ Classes
     :template: class.rst
 
     pre_selection.DropCorrelated
+    pre_selection.DropZeroVariance
     pre_selection.SelectKExtremes
     pre_selection.SelectNonDominated
     pre_selection.SelectComplete
@@ -621,3 +626,138 @@ Functions
     stats.rand_weights_dirichlet
     stats.minimize_relative_weight_deviation
 
+
+.. _univariate_distribution_ref:
+
+:mod:`skfolio.distribution.univariate`: Univariate Distribution Estimators
+==========================================================================
+
+.. automodule:: skfolio
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseUnivariateDist
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.Gaussian
+    distribution.StudentT
+    distribution.JohnsonSU
+    distribution.NormalInverseGaussian
+
+Functions
+---------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    distribution.select_univariate_dist
+
+.. _multivariate_distribution_ref:
+
+:mod:`skfolio.distribution.multivariate`: Multivariate Distribution Estimators
+==============================================================================
+
+.. automodule:: skfolio
+   :no-members:
+   :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.VineCopula
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.DependenceMethod
+
+.. _bivariate_copula_ref:
+
+:mod:`skfolio.distribution.copula`: Bivariate Copula Estimators
+===============================================================
+
+.. automodule:: skfolio
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseBivariateCopula
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.GaussianCopula
+    distribution.StudentTCopula
+    distribution.ClaytonCopula
+    distribution.GumbelCopula
+    distribution.JoeCopula
+    distribution.IndependentCopula
+
+Functions
+---------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    distribution.compute_pseudo_observations
+    distribution.empirical_tail_concentration
+    distribution.plot_tail_concentration
+    distribution.select_bivariate_copula
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.CopulaRotation

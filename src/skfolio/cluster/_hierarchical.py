@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from enum import auto
 
@@ -180,7 +180,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         self : HierarchicalClustering
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         assert_is_distance(X)
         self.condensed_distance_ = scd.squareform(X, checks=False)
         self.linkage_matrix_ = sch.linkage(

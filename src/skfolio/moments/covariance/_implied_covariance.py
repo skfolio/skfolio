@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
@@ -272,7 +272,7 @@ class ImpliedCovariance(BaseCovariance):
                 # and re-order to follow returns ordering.
                 implied_vol = safe_indexing(implied_vol, indices=indices, axis=1)
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         _, n_assets = X.shape
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
         implied_vol /= np.sqrt(self.annualized_factor)
@@ -286,11 +286,7 @@ class ImpliedCovariance(BaseCovariance):
                     n_assets=n_assets,
                     fill_value=np.nan,
                     dim=1,
-                    assets_names=(
-                        self.feature_names_in_
-                        if hasattr(self, "feature_names_in_")
-                        else None
-                    ),
+                    assets_names=getattr(self, "feature_names_in_", None),
                     name="volatility_risk_premium_adj",
                 )
 
@@ -416,7 +412,6 @@ def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarra
 
 def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike) -> np.ndarray:
     """Validate implied volatilities.
-
 
     Parameters
     ----------

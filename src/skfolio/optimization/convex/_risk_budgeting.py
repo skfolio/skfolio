@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
@@ -10,6 +10,7 @@ import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
@@ -95,7 +96,7 @@ class RiskBudgeting(ConvexOptimization):
 
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
         containing the estimation of assets expected returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -165,7 +166,7 @@ class RiskBudgeting(ConvexOptimization):
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
             to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_1_mean_risk_plot_6_transaction_costs.py`)
+            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -215,23 +216,23 @@ class RiskBudgeting(ConvexOptimization):
         Linear constraints.
         The linear constraints must match any of following patterns:
 
-           * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
-           * "ref1 >= 2.9 * ref2"
-           * "ref1 == ref2"
-           * "ref1 >= ref1"
+           * `"2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"`
+           * `"ref1 >= 2.9 * ref2"`
+           * `"ref1 == ref2"`
+           * `"ref1 >= ref1"`
 
-        With "ref1", "ref2" ... the assets names or the groups names provided
+        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
         in the parameter `groups`. Assets names can be referenced without the need of
         `groups` if the input `X` of the `fit` method is a DataFrame with these
         assets names in columns.
 
-        Examples:
+        For example:
 
-            * "SPX >= 0.10" --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * "SX5E + TLT >= 0.2" --> the sum of SX5E and TLT weights must be greater than 20%
-            * "US == 0.7" --> the sum of all US weights must be equal to 70%
-            * "Equity == 3 * Bond" --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * "2*SPX + 3*Europe <= Bond + 0.05" --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
+            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
+            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
+            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
+            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -239,10 +240,10 @@ class RiskBudgeting(ConvexOptimization):
         (asset name/asset groups) and the input `X` of the `fit` method must be a
         DataFrame with the assets names in columns.
 
-        Examples:
+        For example:
 
-            * groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}
-            * groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]
+            * `groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}`
+            * `groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]`
 
     left_inequality : array-like of shape (n_constraints, n_assets), optional
         Left inequality matrix :math:`A` of the linear
@@ -452,7 +453,8 @@ class RiskBudgeting(ConvexOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        self._check_feature_names(X, reset=True)
+        # `X` is unchanged and only `feature_names_in_` is performed
+        _ = skv.validate_data(self, X, skip_check_array=True)
 
         if not isinstance(self.risk_measure, RiskMeasure):
             raise TypeError("risk_measure must be of type `RiskMeasure`")
@@ -465,8 +467,8 @@ class RiskBudgeting(ConvexOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        prior_model = self.prior_estimator_.prior_model_
-        n_observations, n_assets = prior_model.returns.shape
+        return_distribution = self.prior_estimator_.return_distribution_
+        n_observations, n_assets = return_distribution.returns.shape
 
         # set solvers params
         if self.solver == "CLARABEL":
@@ -498,9 +500,11 @@ class RiskBudgeting(ConvexOptimization):
 
         # Expected returns
         expected_return = (
-            self._cvx_expected_return(prior_model=prior_model, w=w)
-            - self._cvx_transaction_cost(prior_model=prior_model, w=w, factor=factor)
-            - self._cvx_management_fee(prior_model=prior_model, w=w)
+            self._cvx_expected_return(return_distribution=return_distribution, w=w)
+            - self._cvx_transaction_cost(
+                return_distribution=return_distribution, w=w, factor=factor
+            )
+            - self._cvx_management_fee(return_distribution=return_distribution, w=w)
         )
 
         # risk budgeting constraint
@@ -529,8 +533,8 @@ class RiskBudgeting(ConvexOptimization):
         risk_func = getattr(self, f"_{self.risk_measure.value}_risk")
         args = {}
         for arg_name in args_names(risk_func):
-            if arg_name == "prior_model":
-                args[arg_name] = prior_model
+            if arg_name == "return_distribution":
+                args[arg_name] = return_distribution
             elif arg_name == "w":
                 args[arg_name] = w
             elif arg_name == "factor":

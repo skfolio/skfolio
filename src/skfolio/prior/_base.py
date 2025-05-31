@@ -1,8 +1,8 @@
-"""Base Prior estimator"""
+"""Base Prior estimator."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -15,8 +15,8 @@ import sklearn.base as skb
 # frozen=True with eq=False will lead to an id-based hashing which is needed for
 # caching CVX models in Optimization without impacting performance
 @dataclass(frozen=True, eq=False)
-class PriorModel:
-    """Prior model dataclass.
+class ReturnDistribution:
+    """Return Distribution dataclass used by the optimization estimators.
 
     Attributes
     ----------
@@ -36,12 +36,16 @@ class PriorModel:
         (for example in Factor Models). When provided, this cholesky factor is use in
         some optimizations (for example in mean-variance) to improve performance and
         convergence. The default is `None`.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Sample weights for each observation. If None, equal weights are assumed.
     """
 
     mu: np.ndarray
     covariance: np.ndarray
     returns: np.ndarray
     cholesky: np.ndarray | None = None
+    sample_weight: np.ndarray | None = None
 
 
 class BasePrior(skb.BaseEstimator, ABC):
@@ -54,7 +58,7 @@ class BasePrior(skb.BaseEstimator, ABC):
     arguments (no ``*args`` or ``**kwargs``).
     """
 
-    prior_model_: PriorModel
+    return_distribution_: ReturnDistribution
 
     @abstractmethod
     def __init__(self):

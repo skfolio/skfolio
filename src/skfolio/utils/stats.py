@@ -4,7 +4,7 @@ import warnings
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -24,17 +24,18 @@ from skfolio.utils.tools import AutoEnum
 
 __all__ = [
     "NBinsMethod",
-    "n_bins_freedman",
-    "n_bins_knuth",
-    "is_cholesky_dec",
+    "assert_is_distance",
     "assert_is_square",
     "assert_is_symmetric",
-    "assert_is_distance",
-    "cov_nearest",
-    "cov_to_corr",
-    "corr_to_cov",
     "commutation_matrix",
     "compute_optimal_n_clusters",
+    "corr_to_cov",
+    "cov_nearest",
+    "cov_to_corr",
+    "is_cholesky_dec",
+    "minimize_relative_weight_deviation",
+    "n_bins_freedman",
+    "n_bins_knuth",
     "rand_weights",
     "rand_weights_dirichlet",
     "minimize_relative_weight_deviation",
@@ -45,7 +46,7 @@ __all__ = [
 
 
 class NBinsMethod(AutoEnum):
-    """Enumeration of the Number of Bins Methods
+    """Enumeration of the Number of Bins Methods.
 
     Parameters
     ----------
@@ -86,7 +87,7 @@ def n_bins_freedman(x: np.ndarray) -> int:
     if d == 0:
         return 5
     n_bins = max(1, np.ceil((np.max(x) - np.min(x)) / d))
-    return int(round(n_bins))
+    return round(n_bins)
 
 
 def n_bins_knuth(x: np.ndarray) -> int:
@@ -126,12 +127,12 @@ def n_bins_knuth(x: np.ndarray) -> int:
 
     n_bins_init = n_bins_freedman(x)
     n_bins = sco.fmin(func, n_bins_init, disp=0)[0]
-    return int(round(n_bins))
+    return round(n_bins)
 
 
 def rand_weights_dirichlet(n: int) -> np.array:
     """Produces n random weights that sum to one from a dirichlet distribution
-    (uniform distribution over a simplex)
+    (uniform distribution over a simplex).
 
     Parameters
     ----------
@@ -148,7 +149,7 @@ def rand_weights_dirichlet(n: int) -> np.array:
 
 def rand_weights(n: int, zeros: int = 0) -> np.array:
     """Produces n random weights that sum to one from an uniform distribution
-    (non-uniform distribution over a simplex)
+    (non-uniform distribution over a simplex).
 
     Parameters
     ----------

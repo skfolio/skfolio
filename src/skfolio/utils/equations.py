@@ -1,8 +1,8 @@
-"""Equation module"""
+"""Equation module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import re
 import warnings
@@ -44,7 +44,8 @@ def equations_to_matrix(
     groups : array-like of shape (n_groups, n_assets)
         2D array of assets groups.
 
-        Examples:
+        For example:
+
              groups = np.array(
                 [
                     ["SPX", "SX5E", "NKY", "TLT"],
@@ -66,7 +67,8 @@ def equations_to_matrix(
         The second expression means that the sum of all assets in "group_1" should be
         less or equal to "number" times the sum of all assets in "group_2".
 
-        Examples:
+        For example:
+
              equations = [
                 "Equity <= 3 * Bond",
                 "US >= 1.5",
@@ -101,6 +103,8 @@ def equations_to_matrix(
     groups = _validate_groups(groups, name=names[0])
     equations = _validate_equations(equations, name=names[1])
 
+    n_groups, n_assets = groups.shape
+
     a_equality = []
     b_equality = []
 
@@ -125,10 +129,14 @@ def equations_to_matrix(
                 raise
             warnings.warn(str(e), stacklevel=2)
     return (
-        np.array(a_equality),
-        np.array(b_equality),
-        np.array(a_inequality),
-        np.array(b_inequality),
+        np.array(a_equality, dtype=float)
+        if a_equality
+        else np.empty((0, n_assets), dtype=float),
+        np.array(b_equality, dtype=float),
+        np.array(a_inequality, dtype=float)
+        if a_inequality
+        else np.empty((0, n_assets), dtype=float),
+        np.array(b_inequality, dtype=float),
     )
 
 
@@ -143,9 +151,10 @@ def group_cardinalities_to_matrix(
     Parameters
     ----------
     groups : array-like of shape (n_groups, n_assets)
-       2D array of assets groups.
+        2D array of assets groups.
 
-       Examples:
+        For example:
+
              groups = np.array(
                 [
                     ["Equity", "Equity", "Equity", "Bond"],
@@ -154,8 +163,8 @@ def group_cardinalities_to_matrix(
             )
 
     group_cardinalities : dict[str, int]
-       Dictionary of cardinality constraint per group.
-       Examples: {"Equity": 1, "US": 3}
+        Dictionary of cardinality constraint per group.
+        For example: {"Equity": 1, "US": 3}
 
     raise_if_group_missing : bool, default=False
         If this is set to True, an error is raised when a group is not found in the
@@ -273,7 +282,7 @@ def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarra
     if not arr.any():
         raise EquationToMatrixError(f"Unable to find '{key}' in '{values}'")
     if sum_to_one:
-        s = np.sum(arr)
+        s = arr.sum()
     else:
         s = 1
     return arr / s
@@ -302,7 +311,7 @@ def _comparison_operator_sign(operator: str) -> int:
 
 
 def _sub_add_operator_sign(operator: str) -> int:
-    """Convert the operators '+' and '-' into 1 or -1
+    """Convert the operators '+' and '-' into 1 or -1.
 
     Parameters
     ----------
@@ -342,7 +351,7 @@ def _string_to_float(string: str) -> float:
 
 
 def _split_equation_string(string: str) -> list[str]:
-    """Split an equation strings by operators"""
+    """Split an equation strings by operators."""
     comp_pattern = "(?=" + "|".join([".+\\" + e for e in _COMPARISON_OPERATORS]) + ")"
     if not bool(re.match(comp_pattern, string)):
         raise EquationToMatrixError(

@@ -4,7 +4,7 @@ A population is a collection of portfolios.
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import inspect
 from typing import Any
@@ -18,6 +18,7 @@ import scipy.interpolate as sci
 import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
 from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
+from skfolio.utils.figure import kde_trace
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
 
@@ -285,7 +286,7 @@ class Population(list):
         measure: skt.Measure,
         q: float,
     ) -> BasePortfolio:
-        """Returns the portfolio corresponding to the `q` quantile for a given portfolio
+        """Return the portfolio corresponding to the `q` quantile for a given portfolio
         measure.
 
         Parameters
@@ -311,7 +312,7 @@ class Population(list):
         self,
         measure: skt.Measure,
     ) -> BasePortfolio:
-        """Returns the portfolio with the minimum measure.
+        """Return the portfolio with the minimum measure.
 
         Parameters
         ----------
@@ -329,7 +330,7 @@ class Population(list):
         self,
         measure: skt.Measure,
     ) -> BasePortfolio:
-        """Returns the portfolio with the maximum measure.
+        """Return the portfolio with the maximum measure.
 
         Parameters
         ----------
@@ -347,7 +348,7 @@ class Population(list):
         self,
         formatted: bool = True,
     ) -> pd.DataFrame:
-        """Summary of the portfolios in the population
+        """Summary of the portfolios in the population.
 
         Parameters
         ----------
@@ -361,7 +362,6 @@ class Population(list):
         summary : pandas DataFrame
             The population's portfolios summary
         """
-
         df = pd.concat(
             [p.summary(formatted=formatted) for p in self],
             keys=[p.name for p in self],
@@ -473,7 +473,6 @@ class Population(list):
         dataframe : pandas DataFrame
             The rolling measures.
         """
-
         rolling_measures = []
         names = []
         for ptf in self:
@@ -814,8 +813,7 @@ class Population(list):
                         )
                         + "<extra></extra>",
                         colorbar=dict(
-                            title=str(z),
-                            titleside="top",
+                            title=dict(text=str(z), side="top"),
                             tickformat=",.2%" if not z.is_ratio else None,
                         ),
                     )
@@ -939,6 +937,55 @@ class Population(list):
             xaxis_title="Observations",
             yaxis=yaxis,
             showlegend=False,
+        )
+        return fig
+
+    def plot_returns_distribution(
+        self, percentile_cutoff: float | None = None
+    ) -> go.Figure:
+        """Plot the Portfolios returns distribution using Gaussian KDE.
+
+        Parameters
+        ----------
+        percentile_cutoff : float, default=None
+            Percentile cutoff for tail truncation (percentile), in percent.
+            If a float p is provided, the distribution support is truncated at the p-th
+            and (100 - p)-th percentiles.
+            If None, no truncation is applied (uses full min/max of returns).
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object
+        """
+        traces: list[go.Scatter] = []
+        colors = px.colors.qualitative.Plotly
+
+        for i, ptf in enumerate(self):
+            color = colors[i % len(colors)]
+            returns = ptf.returns
+            traces.append(
+                kde_trace(
+                    x=returns,
+                    sample_weight=ptf.sample_weight,
+                    percentile_cutoff=percentile_cutoff,
+                    name=ptf.name,
+                    line_color=color,
+                    fill_opacity=0.3,
+                    line_dash="solid",
+                    line_width=1,
+                    visible=True,
+                )
+            )
+
+        fig = go.Figure(traces)
+        fig.update_layout(
+            title="Returns Distribution",
+            xaxis_title="Returns",
+            yaxis_title="Probability Density",
+        )
+        fig.update_xaxes(
+            tickformat=".0%",
         )
         return fig
 

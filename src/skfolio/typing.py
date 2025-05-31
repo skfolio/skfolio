@@ -2,7 +2,7 @@
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 from collections.abc import Callable
 
@@ -14,20 +14,20 @@ import plotly.graph_objects as go
 from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
 
 __all__ = [
+    "CvxMeasure",
+    "ExpressionFunction",
+    "Factor",
     "Groups",
     "Inequality",
     "LinearConstraints",
+    "Measure",
     "MultiInput",
-    "Target",
+    "Names",
     "ParametersValues",
-    "Factor",
     "Result",
     "RiskResult",
-    "ExpressionFunction",
-    "Measure",
-    "CvxMeasure",
-    "Names",
     "Tags",
+    "Target",
 ]
 
 Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure

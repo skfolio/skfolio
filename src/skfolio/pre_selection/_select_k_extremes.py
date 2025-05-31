@@ -1,8 +1,8 @@
-"""Pre-selection SelectKExtremes module"""
+"""Pre-selection SelectKExtremes module."""
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
-# License: BSD 3 clause
+# SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
 import numpy.typing as npt
@@ -76,7 +76,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectKExtremes
             Fitted estimator.
         """
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         k = int(self.k)
         if k <= 0:
             raise ValueError("`k` must be strictly positive")
