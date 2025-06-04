@@ -10,6 +10,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
+import sklearn.utils.metadata_routing as skm
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
@@ -19,16 +21,16 @@ from skfolio.optimization.cluster.hierarchical._base import (
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.utils.stats import (
+    cov_nearest,
     inverse_multiply,
     is_cholesky_dec,
     multiply_by_inverse,
     symmetric_step_up_matrix,
-    cov_nearest,
 )
 from skfolio.utils.tools import bisection, check_estimator
 
 
-class SchurComplementaryAllocation(BaseHierarchicalOptimization):
+class SchurComplementary(BaseHierarchicalOptimization):
     r"""Schur Complementary Allocation estimator.
 
     Schur Complementary Allocation is a portfolio allocation method developed by Peter
@@ -188,7 +190,6 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
     def __init__(
         self,
         gamma: float = 0.5,
-        propagation_coef: float = 0.5,
         min_cluster_size: int = 2,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
@@ -212,10 +213,11 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
         self.gamma = gamma
-        self.propagation_coef = propagation_coef
         self.min_cluster_size = min_cluster_size
 
-    def fit(self, X: npt.ArrayLike, y: None = None) -> "SchurComplementaryAllocation":
+    def fit(
+        self, X: npt.ArrayLike, y: None = None, **fit_params
+    ) -> "SchurComplementary":
         """Fit the Schur Complementary Allocation estimator.
 
         Parameters
@@ -228,7 +230,7 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
 
         Returns
         -------
-        self : SchurComplementaryAllocation
+        self : SchurComplementary
             Fitted estimator.
         """
         # Algorithm considerations:
@@ -238,6 +240,7 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
         # Binary search on gamma is applied to both matrix A and D at the same time and
         # symmetrization is applied at the end of the schur augmentation. This seems
         # to improve the stability of the solution as gamma tends to 1.
+        routed_params = skm.process_routing(self, "fit", **fit_params)
 
         # Validate
         self.prior_estimator_ = check_estimator(
@@ -257,25 +260,29 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
         )
 
         # Fit the estimators
-        self.prior_estimator_.fit(X, y)
-        prior_model = self.prior_estimator_.prior_model_
-        returns = prior_model.returns
-        covariance = cov_nearest(prior_model.covariance)
+        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
+        return_distribution = self.prior_estimator_.return_distribution_
+        returns = return_distribution.returns
+        covariance = cov_nearest(return_distribution.covariance)
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        self.distance_estimator_.fit(returns)
+        # noinspection PyArgumentList
+        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        self.hierarchical_clustering_estimator_.fit(distance)
+        # noinspection PyArgumentList
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
 
-        X = self._validate_data(X)
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
@@ -286,42 +293,118 @@ class SchurComplementaryAllocation(BaseHierarchicalOptimization):
         )
         sorted_assets = sch.leaves_list(ordered_linkage_matrix)
 
-        weights = np.ones(n_assets)
-        items = [sorted_assets]
+        self.weights_ = _compute_monotonic_weights(
+            max_gamma=self.gamma,
+            sorted_assets=sorted_assets,
+            covariance=covariance,
+            tol=1e-5,
+            maxiter=100,
+        )
 
-        while len(items) > 0:
-            new_items = []
-
-            for left_cluster, right_cluster in bisection(items):
-                new_items += [left_cluster, right_cluster]
-
-                a = covariance[np.ix_(left_cluster, left_cluster)]
-                d = covariance[np.ix_(right_cluster, right_cluster)]
-
-                if len(left_cluster) <= self.min_cluster_size:
-                    a_aug, d_aug = a, d
-                else:
-                    b = covariance[np.ix_(left_cluster, right_cluster)]
-                    a_aug, d_aug = _schur_augmentation(a, b, d, gamma=self.gamma)
-                    covariance[np.ix_(left_cluster, left_cluster)] = (
-                        a * (1 - self.propagation_coef) + a_aug * self.propagation_coef
-                    )
-                    covariance[np.ix_(right_cluster, right_cluster)] = (
-                        d * (1 - self.propagation_coef) + d_aug * self.propagation_coef
-                    )
-
-                left_variance = _naive_portfolio_variance(a_aug)
-                right_variance = _naive_portfolio_variance(d_aug)
-
-                alpha = 1 - left_variance / (left_variance + right_variance)
-
-                weights[left_cluster] *= alpha
-                weights[right_cluster] *= 1 - alpha
-
-            items = new_items
-
-        self.weights_ = weights
         return self
+
+
+def _compute_monotonic_weights(
+    max_gamma: float,
+    sorted_assets: np.ndarray,
+    covariance: np.ndarray,
+    tol=1e-4,
+    maxiter=30,
+) -> np.ndarray:
+    if max_gamma == 0:
+        return _compute_weights(
+            gamma=0,
+            sorted_assets=sorted_assets,
+            covariance=covariance,
+        )
+
+    def _func(x) -> tuple[np.ndarray, float]:
+        weights = _compute_weights(
+            gamma=x,
+            sorted_assets=sorted_assets,
+            covariance=covariance,
+        )
+        if weights is None:
+            return weights, np.inf
+        return weights, weights @ covariance @ weights.T
+
+    step = 0.1
+
+    weights, prev_variance = _func(0)
+    prev_gamma = 0
+    for gamma in np.linspace(0, max_gamma, int(np.ceil((max_gamma) / step)) + 1)[1:]:
+        weights, variance = _func(gamma)
+        if variance >= prev_variance:
+            break
+        valid_weights = weights
+        prev_variance = variance
+        prev_gamma = gamma
+    else:
+        return weights
+
+    low_variance = prev_variance
+    low = prev_gamma
+    high = gamma
+
+    for _ in range(maxiter):
+        mid = 0.5 * (low + high)
+        weights, variance = _func(mid)
+
+        if variance <= low_variance:
+            low = mid
+            low_variance = variance
+            valid_weights = weights
+        else:
+            high = mid
+        if (high - low) <= tol:
+            break
+
+    return valid_weights
+
+
+def _compute_weights(
+    gamma: float,
+    sorted_assets: np.ndarray,
+    covariance: np.ndarray,
+) -> np.ndarray | None:
+    covariance = covariance.copy()
+
+    n_assets = len(covariance)
+    weights = np.ones(n_assets)
+    items = [sorted_assets]
+    while len(items) > 0:
+        new_items = []
+
+        for left_cluster, right_cluster in bisection(items):
+            new_items += [left_cluster, right_cluster]
+
+            a = covariance[np.ix_(left_cluster, left_cluster)]
+            d = covariance[np.ix_(right_cluster, right_cluster)]
+
+            if len(left_cluster) <= 1:
+                a_aug, d_aug = a, d
+            else:
+                b = covariance[np.ix_(left_cluster, right_cluster)]
+                a_aug = _schur_augmentation(a, b, d, gamma=gamma)
+                d_aug = _schur_augmentation(d, b.T, a, gamma=gamma)
+
+                covariance[np.ix_(left_cluster, left_cluster)] = a_aug
+                covariance[np.ix_(right_cluster, right_cluster)] = d_aug
+
+            if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
+                return None
+
+            left_variance = _naive_portfolio_variance(a_aug)
+            right_variance = _naive_portfolio_variance(d_aug)
+
+            alpha = 1 - left_variance / (left_variance + right_variance)
+
+            weights[left_cluster] *= alpha
+            weights[right_cluster] *= 1 - alpha
+
+        items = new_items
+
+    return weights
 
 
 def _naive_portfolio_variance(covariance: np.ndarray) -> float:
@@ -343,8 +426,8 @@ def _naive_portfolio_variance(covariance: np.ndarray) -> float:
     return variance
 
 
-def _single_schur_augmentation(
-    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float, delta: float
+def _schur_augmentation(
+    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float
 ) -> np.ndarray:
     """Compute an augmented covariance matrix `A` inspired by the
     Schur complement [1]_.
@@ -381,97 +464,13 @@ def _single_schur_augmentation(
     n_a = a.shape[0]
     n_d = d.shape[0]
 
+    if gamma == 0 or n_a == 1 or n_d == 1:
+        return a
+
     a_aug = a - gamma * b @ inverse_multiply(d, b.T)
     m = symmetric_step_up_matrix(n1=n_a, n2=n_d)
-    r = np.eye(n_a) - delta * multiply_by_inverse(b, d) @ m.T
+    r = np.eye(n_a) - gamma * multiply_by_inverse(b, d) @ m.T
     a_aug = inverse_multiply(r, a_aug)
     # make it symmetric
     a_aug = (a_aug + a_aug.T) / 2.0
     return a_aug
-
-
-def _schur_augmentation(
-    a: np.ndarray,
-    b: np.ndarray,
-    d: np.ndarray,
-    gamma: float,
-    gamma_tol: float = 0.01,
-    max_n_iter: int = 10,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Compute the augmented covariance matrix `A` and `D` inspired by the
-    Schur complement [1]_.
-
-    The optimal gamma that preserves positive semi-definiteness of both augmented
-    matrix `A` and `D`and closest to the initial gamma input is found using binary
-    search.
-
-    Parameters
-    ----------
-    a : ndarray of shape (n1, n1)
-        Upper left block matrix `A`
-
-    b : ndarray of shape (n1, n2)
-        Upper right block matrix `B`
-
-    d : ndarray of shape (n2, n2)
-        Lower right block matrix `D`
-
-    gamma : float
-        Regularization factor between 0 and 1.
-        A value of 0 means that no additional information is used from off-diagonal
-        matrix blocks and is equivalent to a Hierarchical Risk Parity.
-        As the value increases to 1, the allocation tends to the Minimum Variance
-        Optimization allocation.
-
-    gamma_tol : float, default=0.01
-        Tolerance of the gamma value used in binary search.
-
-    max_n_iter : int, default=10
-        Maximum number of iteration of the binary search.
-
-    Returns
-    -------
-    a_aug : ndarray of shape (n1, n1)
-        Augmented covariance matrix `A`.
-
-    d_aug : ndarray of shape (n2, n2)
-        Augmented covariance matrix `D`.
-
-    References
-    ----------
-    .. [1] "Schur Complementary Portfolios - A Unification of Machine Learning and
-        Optimization-Based Allocation".
-        Peter Cotton (2022).
-    """
-    n_a = a.shape[0]
-    n_d = d.shape[0]
-    if gamma == 0 or n_a == 1 or n_d == 1:
-        return a, d
-
-    n_iter = 0
-    valid_a_aug = None
-    valid_d_aug = None
-    low = 0
-    high = gamma
-    prev_gamma = gamma
-    while n_iter <= max_n_iter:
-        a_aug = _single_schur_augmentation(a, b, d, gamma=gamma, delta=gamma)
-        d_aug = _single_schur_augmentation(d, b.T, a, gamma=gamma, delta=gamma)
-
-        if is_cholesky_dec(a_aug) and is_cholesky_dec(d_aug):
-            valid_a_aug = a_aug
-            valid_d_aug = d_aug
-            if abs(gamma - prev_gamma) <= gamma_tol:
-                break
-            else:
-                low = gamma
-        else:
-            high = gamma
-        prev_gamma = gamma
-        gamma = (low + high) / 2
-        n_iter += 1
-
-    if valid_a_aug is None:
-        return a, d
-
-    return valid_a_aug, valid_d_aug
