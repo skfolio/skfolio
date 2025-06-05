@@ -8,6 +8,7 @@ import operator
 import re
 import warnings
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import cvxpy as cp
 import numpy as np
@@ -422,12 +423,13 @@ class EntropyPooling(BasePrior):
     n_features_in_: int
     feature_names_in_: np.ndarray
 
-    _returns: np.ndarray
-    _prior_sample_weight: np.ndarray
-    _groups: np.ndarray
-    _is_fixed_mean: np.ndarray
-    _is_fixed_variance: np.ndarray
-    _constraints: dict[str, list[np.ndarray] | None]
+    if TYPE_CHECKING:
+        _returns: np.ndarray
+        _prior_sample_weight: np.ndarray
+        _groups: np.ndarray
+        _is_fixed_mean: np.ndarray
+        _is_fixed_variance: np.ndarray
+        _constraints: dict[str, list[np.ndarray] | None]
 
     def __init__(
         self,
