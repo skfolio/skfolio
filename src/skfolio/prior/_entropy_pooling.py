@@ -410,11 +410,9 @@ class EntropyPooling(BasePrior):
     >>> entropy_pooling.fit(X)
     EntropyPooling(cvar_views=['AMD == 0.10'])
     >>>
-    >>> stressed_X = entropy_pooling.return_distribution_.returns
-    >>> stressed_sample_weight = entropy_pooling.return_distribution_.sample_weight
+    >>> stressed_dist = entropy_pooling.return_distribution_
     >>>
-    >>> stressed_ptf = model.predict(stressed_X)
-    >>> stressed_ptf.sample_weight = stressed_sample_weight
+    >>> stressed_ptf = model.predict(stressed_dist)
     """
 
     relative_entropy_: float

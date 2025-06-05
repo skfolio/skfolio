@@ -213,8 +213,6 @@ print(model.weights_)
 # %%
 # Following scikit-learn conventions, all fitted attributes end with a trailing
 # underscore. You can inspect each model step-by-step by drilling into these attributes:
-retruns = model.prior_estimator_.return_distribution_.returns
-sample_weight = model.prior_estimator_.return_distribution_.sample_weight
 fitted_vine = model.prior_estimator_.factor_prior_estimator_.prior_estimator_.distribution_estimator_
 
 # %%
@@ -256,12 +254,10 @@ opinion_pooling = OpinionPooling(
 opinion_pooling.fit(X)
 
 # We retrieve the stressed distribution:
-stressed_X = opinion_pooling.return_distribution_.returns
-stressed_sample_weight = opinion_pooling.return_distribution_.sample_weight
+stressed_dist = opinion_pooling.return_distribution_
 
 # We stress-test our portfolio:
-stressed_ptf = model.predict(stressed_X)
-stressed_ptf.sample_weight = stressed_sample_weight
+stressed_ptf = model.predict(stressed_dist)
 
 # Add the stressed portfolio to the population
 stressed_ptf.name = "HRP Stressed"
@@ -286,12 +282,10 @@ factor_model = FactorModel(factor_prior_estimator=factor_opinion_pooling)
 factor_model.fit(X, factors)
 
 # We retrieve the stressed distribution:
-stressed_X = factor_model.return_distribution_.returns
-stressed_sample_weight = factor_model.return_distribution_.sample_weight
+stressed_dist = factor_model.return_distribution_
 
 # We stress-test our portfolio:
-stressed_ptf = model.predict(stressed_X)
-stressed_ptf.sample_weight = stressed_sample_weight
+stressed_ptf = model.predict(stressed_dist)
 
 # Add the stressed portfolio to the population
 stressed_ptf.name = "HRP Factor Stressed"

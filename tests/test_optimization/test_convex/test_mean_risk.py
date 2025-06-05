@@ -1612,3 +1612,21 @@ def test_max_ratio_with_neg_f1(X):
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO, risk_free_rate=0.0025
         )
         model.fit(X)
+
+
+def test_predict_with_distribution(X):
+    model = MeanRisk()
+    model.fit(X)
+
+    dist = model.prior_estimator_.return_distribution_
+
+    ptf1 = model.predict(X)
+    ptf2 = model.predict(dist)
+    np.testing.assert_almost_equal(ptf1.returns, ptf2.returns)
+    np.testing.assert_array_equal(ptf1.assets, ptf2.assets)
+
+    model.fit(np.array(X))
+    ptf1 = model.predict(np.array(X))
+    ptf2 = model.predict(dist)
+    np.testing.assert_almost_equal(ptf1.returns, ptf2.returns)
+    np.testing.assert_array_equal(ptf1.assets, ptf2.assets)
