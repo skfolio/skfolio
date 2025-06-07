@@ -108,10 +108,10 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         Example:
 
-           * min_weights = 0 --> long only portfolio (no short selling).
-           * min_weights = None --> no lower bound (same as `-np.Inf`).
-           * min_weights = {"SX5E": 0, "SPX": 0.1}
-           * min_weights = [0, 0.1]
+           * `min_weights = 0` --> long only portfolio (no short selling).
+           * `min_weights = None` --> no lower bound (same as `-np.Inf`).
+           * `min_weights = {"SX5E": 0, "SPX": 0.1}`
+           * `min_weights = [0, 0.1]`
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
         Maximum assets weights (weights upper bounds). Weights above 1.0 are not
@@ -124,10 +124,10 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         Example:
 
-           * max_weights = 0 --> no long position (short only portfolio).
-           * max_weights = 0.5 --> each weight must be below 50%.
-           * max_weights = {"SX5E": 1, "SPX": 0.25}
-           * max_weights = [1, 0.25]
+           * `max_weights = 0` --> no long position (short only portfolio).
+           * `max_weights = 0.5` --> each weight must be below 50%.
+           * `max_weights = {"SX5E": 1, "SPX": 0.25}`
+           * `max_weights = [1, 0.25]`
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to

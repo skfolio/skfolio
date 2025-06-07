@@ -6,6 +6,16 @@
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
 
+# Algorithm considerations:
+# We apply TCO (Tail Call Optimisation): the recursion is replaced by an
+# iteration and inplace covariance update to reduce the call stack and
+# space complexity.
+# Binary search on gamma is applied to both matrix A and D at the same time and
+# symmetrization is applied at the end of the schur augmentation. This seems
+# to improve the stability of the solution as gamma tends to 1.
+
+import math
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -18,6 +28,9 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
+)
+from skfolio.optimization.cluster.hierarchical._hrp import (
+    _apply_weight_constraints_to_split_factor,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.utils.stats import (
@@ -63,11 +76,18 @@ class SchurComplementary(BaseHierarchicalOptimization):
         As the value increases to 1, the allocation tends to the Minimum Variance
         Optimization allocation.
 
+    keep_monotonic : bool, default=True
+        If True, we ensure that the portfolio variance is monotonically decreasing
+        as a function of the regularization factor `gamma` by capping its value to the
+        highest permissible `gamma` (saved in the fitted attribute `gamma_`).
+        Otherwise, no check and gamma capping are performed.
+        For more details, see https://github.com/skfolio/skfolio/discussions/3
+
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
-        containing the estimation of the covariance matrix and returns.
-        The moments and returns estimations are used for the risk computation
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
+        containing the estimation of assets expected returns, covariance matrix and
+        returns. The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -95,10 +115,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
         Example:
 
-           * min_weights = 0 --> long only portfolio (no short selling).
-           * min_weights = None --> no lower bound (same as `-np.Inf`).
-           * min_weights = {"SX5E": 0, "SPX": 0.1}
-           * min_weights = [0, 0.1]
+           * `min_weights = 0` --> long only portfolio (no short selling).
+           * `min_weights = None` --> no lower bound (same as `-np.Inf`).
+           * `min_weights = {"SX5E": 0, "SPX": 0.1}`
+           * `min_weights = [0, 0.1]`
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
         Maximum assets weights (weights upper bounds). Weights above 1.0 are not
@@ -111,10 +131,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
         Example:
 
-           * max_weights = 0 --> no long position (short only portfolio).
-           * max_weights = 0.5 --> each weight must be below 50%.
-           * max_weights = {"SX5E": 1, "SPX": 0.25}
-           * max_weights = [1, 0.25]
+           * `max_weights = 0` --> no long position (short only portfolio).
+           * `max_weights = 0.5` --> each weight must be below 50%.
+           * `max_weights = {"SX5E": 1, "SPX": 0.25}`
+           * `max_weights = [1, 0.25]`
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets.
@@ -151,6 +171,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
+    gamma_ : float
+        If `keep_monotonic` is True, the highest permissible `gamma` that preserves
+        monotonicity; otherwise, the input `gamma`.
+
     distance_estimator_ : BaseDistance
         Fitted `distance_estimator`.
 
@@ -166,31 +190,36 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     References
     ----------
-    .. [1] "Schur Complementary Portfolios - A Unification of Machine Learning and
-        Optimization-Based Allocation".
-        Peter Cotton (2022).
+    .. [1] "Schur Complementary Allocation: A Unification of Hierarchical Risk Parity
+       and Minimum Variance Portfolios". Peter Cotton (2024).
 
-    .. [2] "Building diversified portfolios that outperform out of sample",
+    .. [2] "Portfolio Optimization. Theory and Application".
+        Chapter 12.3.4 "From Portfolio Risk Minimization to Hierarchical Portfolios"
+        Daniel P. Palomar (2025).
+
+    .. [3] "Building diversified portfolios that outperform out of sample",
         The Journal of Portfolio Management,
         Marcos López de Prado (2016).
 
-    .. [3] "A robust estimator of the efficient frontier",
+    .. [4] "A robust estimator of the efficient frontier",
         SSRN Electronic Journal,
         Marcos López de Prado (2019).
 
-    .. [4] "Machine Learning for Asset Managers",
+    .. [5] "Machine Learning for Asset Managers",
         Elements in Quantitative Finance. Cambridge University Press,
         Marcos López de Prado (2020).
 
-    .. [5] "A review of two decades of correlations, hierarchies, networks and
+    .. [6] "A review of two decades of correlations, hierarchies, networks and
         clustering in financial markets",
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
     """
 
+    gamma_ : float
+
     def __init__(
         self,
         gamma: float = 0.5,
-        min_cluster_size: int = 2,
+        keep_monotonic: bool = True,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
@@ -213,12 +242,12 @@ class SchurComplementary(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
         )
         self.gamma = gamma
-        self.min_cluster_size = min_cluster_size
+        self.keep_monotonic = keep_monotonic
 
     def fit(
         self, X: npt.ArrayLike, y: None = None, **fit_params
     ) -> "SchurComplementary":
-        """Fit the Schur Complementary Allocation estimator.
+        """Fit the Schur Complementary estimator.
 
         Parameters
         ----------
@@ -233,14 +262,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self : SchurComplementary
             Fitted estimator.
         """
-        # Algorithm considerations:
-        # We apply TCO (Tail Call Optimisation): the recursion is replaced by an
-        # iteration and inplace covariance update to reduce the call stack and
-        # space complexity.
-        # Binary search on gamma is applied to both matrix A and D at the same time and
-        # symmetrization is applied at the end of the schur augmentation. This seems
-        # to improve the stability of the solution as gamma tends to 1.
         routed_params = skm.process_routing(self, "fit", **fit_params)
+
+        if not 0.0 <= self.gamma <= 1.0:
+            raise ValueError(f"gamma must be between 0 and 1. Got {self.gamma}")
 
         # Validate
         self.prior_estimator_ = check_estimator(
@@ -269,7 +294,6 @@ class SchurComplementary(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
@@ -277,15 +301,11 @@ class SchurComplementary(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.hierarchical_clustering_estimator_.fit(
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )
 
         X = skv.validate_data(self, X)
-        n_assets = X.shape[1]
-
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
 
         ordered_linkage_matrix = sch.optimal_leaf_ordering(
             self.hierarchical_clustering_estimator_.linkage_matrix_,
@@ -293,13 +313,29 @@ class SchurComplementary(BaseHierarchicalOptimization):
         )
         sorted_assets = sch.leaves_list(ordered_linkage_matrix)
 
-        self.weights_ = _compute_monotonic_weights(
-            max_gamma=self.gamma,
-            sorted_assets=sorted_assets,
-            covariance=covariance,
-            tol=1e-5,
-            maxiter=100,
-        )
+        # Prepare weight bounds
+        n_assets = X.shape[1]
+        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
+
+        # Compute allocations
+        if self.keep_monotonic:
+            self.weights_, self.gamma_ = _compute_monotonic_weights(
+                max_gamma=self.gamma,
+                sorted_assets=sorted_assets,
+                covariance=covariance,
+                min_weights=min_weights,
+                max_weights=max_weights,
+            )
+        else:
+            self.weights_ = _compute_weights(
+                gamma=self.gamma,
+                sorted_assets=sorted_assets,
+                covariance=covariance,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                check_spd=False,
+            )
+            self.gamma_ = self.gamma
 
         return self
 
@@ -308,65 +344,133 @@ def _compute_monotonic_weights(
     max_gamma: float,
     sorted_assets: np.ndarray,
     covariance: np.ndarray,
-    tol=1e-4,
-    maxiter=30,
-) -> np.ndarray:
+    max_weights: np.ndarray,
+    min_weights: np.ndarray,
+    step: float = 0.1,
+    tol: float = 1e-4,
+) -> tuple[np.ndarray, float]:
+    """
+    Sweep gamma to find the monotonic "turning point" where risk stops decreasing.
+    Returns weights and effective gamma.
+    """
     if max_gamma == 0:
-        return _compute_weights(
+        weights = _compute_weights(
             gamma=0,
             sorted_assets=sorted_assets,
             covariance=covariance,
+            max_weights=max_weights,
+            min_weights=min_weights,
+            check_spd=False,
         )
+        return weights, 0.0
 
-    def _func(x) -> tuple[np.ndarray, float]:
-        weights = _compute_weights(
+    def objective(x: float) -> tuple[float, np.ndarray | None]:
+        w = _compute_weights(
             gamma=x,
             sorted_assets=sorted_assets,
             covariance=covariance,
+            max_weights=max_weights,
+            min_weights=min_weights,
+            check_spd=True,
         )
-        if weights is None:
-            return weights, np.inf
-        return weights, weights @ covariance @ weights.T
+        risk = np.inf if w is None else w @ covariance @ w.T
+        return risk, w
 
-    step = 0.1
+    n = int(np.ceil(max_gamma / step)) + 1
+    gammas = np.linspace(0, max_gamma, n)
+    variances = np.full_like(gammas, np.nan)
 
-    weights, prev_variance = _func(0)
-    prev_gamma = 0
-    for gamma in np.linspace(0, max_gamma, int(np.ceil((max_gamma) / step)) + 1)[1:]:
-        weights, variance = _func(gamma)
-        if variance >= prev_variance:
-            break
-        valid_weights = weights
-        prev_variance = variance
-        prev_gamma = gamma
-    else:
-        return weights
+    variance, weights = objective(gammas[0])
+    variances[0] = variance
+    for i in range(1, n):
+        variance, weights = objective(gammas[i])
+        variances[i] = variance
+        if variance >= variances[i - 1]:
+            # Turning point is in [prev_gamma, gamma]
+            low_idx = max(i - 2, 0)
+            return _binary_search(
+                objective,
+                low_gamma=gammas[low_idx],
+                high_gamma=gammas[i],
+                low_variance=variances[low_idx],
+                tol=tol,
+            )
 
-    low_variance = prev_variance
-    low = prev_gamma
-    high = gamma
+    # No turning point found in sweep: check local derivative at max_gamma
+    variance_h = objective(max_gamma - tol)[0]
+    if variance <= variance_h:
+        # monotonically decreasing up to max_gamma
+        return weights, max_gamma
 
-    for _ in range(maxiter):
-        mid = 0.5 * (low + high)
-        weights, variance = _func(mid)
+    # Turning point lies between last two gammas
+    return _binary_search(
+        objective,
+        low_gamma=gammas[-2],
+        high_gamma=max_gamma,
+        low_variance=variances[-2],
+        tol=tol,
+    )
 
-        if variance <= low_variance:
-            low = mid
+
+def _binary_search(
+    objective,
+    low_gamma: float,
+    high_gamma: float,
+    low_variance: float,
+    tol: float = 1e-4,
+) -> tuple[np.ndarray, float]:
+    """Locate the turning point inside the interval [low_gamma, high_gamma]."""
+    max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
+
+    for _ in range(max_iter):
+        mid_gamma = 0.5 * (low_gamma + high_gamma)
+        variance, weights = objective(mid_gamma)
+        variance_h = objective(mid_gamma - tol)[0]
+
+        if variance <= low_variance and variance <= variance_h:
+            low_gamma = mid_gamma
             low_variance = variance
-            valid_weights = weights
+            if (high_gamma - low_gamma) <= tol:
+                return weights, low_gamma
         else:
-            high = mid
-        if (high - low) <= tol:
-            break
+            high_gamma = mid_gamma
 
-    return valid_weights
+    raise RuntimeError(f"Binary search did not converge after {max_iter} iterations")
 
 
 def _compute_weights(
     gamma: float,
     sorted_assets: np.ndarray,
     covariance: np.ndarray,
+    max_weights: np.ndarray,
+    min_weights: np.ndarray,
+    check_spd: bool = True,
 ) -> np.ndarray | None:
+    """
+    Core Schur-complement bisection allocation recursion.
+
+    Parameters
+    ----------
+    gamma : float
+       Regularization factor.
+
+    sorted_assets : array-like
+       Asset indices in dendrogram order.
+
+    covariance : ndarray
+       Asset covariance matrix.
+
+    min_weights, max_weights : ndarray
+       Bounds arrays.
+
+    check_spd : bool
+       Abort if any augmented block is not SPD.
+
+    Returns
+    -------
+    weights : ndarray
+       Final portfolio weights, or None if SPD check fails.
+    """
     covariance = covariance.copy()
 
     n_assets = len(covariance)
@@ -391,13 +495,24 @@ def _compute_weights(
                 covariance[np.ix_(left_cluster, left_cluster)] = a_aug
                 covariance[np.ix_(right_cluster, right_cluster)] = d_aug
 
-            if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
-                return None
+            if check_spd:
+                if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
+                    return None
 
             left_variance = _naive_portfolio_variance(a_aug)
             right_variance = _naive_portfolio_variance(d_aug)
 
             alpha = 1 - left_variance / (left_variance + right_variance)
+
+            # Weights constraints
+            alpha = _apply_weight_constraints_to_split_factor(
+                alpha=alpha,
+                weights=weights,
+                max_weights=max_weights,
+                min_weights=min_weights,
+                left_cluster=left_cluster,
+                right_cluster=right_cluster,
+            )
 
             weights[left_cluster] *= alpha
             weights[right_cluster] *= 1 - alpha

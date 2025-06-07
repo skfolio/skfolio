@@ -35,6 +35,6 @@ __all__ = [
     "ObjectiveFunction",
     "Random",
     "RiskBudgeting",
-    "StackingOptimization",
     "SchurComplementary",
+    "StackingOptimization",
 ]

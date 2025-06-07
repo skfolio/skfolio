@@ -199,11 +199,20 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     hierarchical_clustering_estimator_ : HierarchicalClustering
         Fitted `hierarchical_clustering_estimator`.
+
+    n_features_in_ : int
+       Number of assets seen during `fit`.
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+       Names of features seen during `fit`. Defined only when `X`
+       has feature names that are all strings.
     """
 
     prior_estimator_: BasePrior
     distance_estimator_: BaseDistance
     hierarchical_clustering_estimator_: HierarchicalClustering
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     @abstractmethod
     def __init__(
@@ -363,6 +372,11 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
             )
             if np.any(min_weights < 0):
                 raise ValueError("`min_weights` must be strictly positive")
+            if min_weights.sum() >= 1.0:
+                raise ValueError(
+                    f"Invalid `min_weights`: sum is {min_weights.sum():.4f}, "
+                    f"but it must be less than 1.0."
+                )
 
         if self.max_weights is None:
             max_weights = np.ones(n_assets)
@@ -375,9 +389,10 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
             )
             if np.any(max_weights > 1):
                 raise ValueError("`max_weights` must be less than or equal to 1.0")
-            if np.sum(max_weights) < 1:
+            if max_weights.sum() < 1:
                 raise ValueError(
-                    "The sum of `max_weights` must be greater than or equal to 1.0"
+                    f"Invalid `max_weights`: sum is {max_weights.sum():.4f}, "
+                    f"but it must be at least 1.0."
                 )
 
         if np.any(min_weights > max_weights):

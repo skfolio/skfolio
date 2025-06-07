@@ -14,6 +14,6 @@ from skfolio.optimization.cluster.hierarchical._schur import (
 __all__ = [
     "BaseHierarchicalOptimization",
     "HierarchicalEqualRiskContribution",
-    "SchurComplementary",
     "HierarchicalRiskParity",
+    "SchurComplementary",
 ]

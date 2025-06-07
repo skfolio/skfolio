@@ -1,4 +1,4 @@
-"""Tools module"""
+"""Tools module."""
 
 import warnings
 
@@ -32,15 +32,15 @@ __all__ = [
     "corr_to_cov",
     "cov_nearest",
     "cov_to_corr",
+    "inverse_multiply",
     "is_cholesky_dec",
     "minimize_relative_weight_deviation",
+    "minimize_relative_weight_deviation",
+    "multiply_by_inverse",
     "n_bins_freedman",
     "n_bins_knuth",
     "rand_weights",
     "rand_weights_dirichlet",
-    "minimize_relative_weight_deviation",
-    "inverse_multiply",
-    "multiply_by_inverse",
     "symmetric_step_up_matrix",
 ]
 
@@ -627,8 +627,7 @@ def multiply_by_inverse(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
-    """Compute the Symmetric step-up matrix M
-    such that `M @ np.ones(n2) = np.ones(n1)`
+    """Compute the Symmetric step-up matrix M such that `M @ np.ones(n2) = np.ones(n1)`.
 
     Parameters
     ----------
@@ -643,7 +642,6 @@ def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
     m : ndarray of shape (n1, n2)
         The Symmetric step-up matrix.
     """
-
     assert abs(n1 - n2) <= 1
 
     if n1 == n2:

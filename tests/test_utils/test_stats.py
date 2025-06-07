@@ -17,14 +17,14 @@ from skfolio.utils.stats import (
     corr_to_cov,
     cov_nearest,
     cov_to_corr,
+    inverse_multiply,
     is_cholesky_dec,
     minimize_relative_weight_deviation,
+    multiply_by_inverse,
     n_bins_freedman,
     n_bins_knuth,
     rand_weights,
     rand_weights_dirichlet,
-    inverse_multiply,
-    multiply_by_inverse,
     symmetric_step_up_matrix,
 )
 
