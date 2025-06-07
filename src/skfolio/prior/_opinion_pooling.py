@@ -2,6 +2,7 @@
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Credits: Vincent Maladière, Matteo Manzi, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
