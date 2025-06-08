@@ -7,12 +7,11 @@
 # Precise, Copyright (c) 2021, Peter Cotton.
 
 # Algorithm considerations:
-# We apply TCO (Tail Call Optimisation): the recursion is replaced by an
-# iteration and inplace covariance update to reduce the call stack and
-# space complexity.
-# Binary search on gamma is applied to both matrix A and D at the same time and
-# symmetrization is applied at the end of the schur augmentation. This seems
-# to improve the stability of the solution as gamma tends to 1.
+# We apply Tail Call Optimization (TCO), replacing recursion with iteration
+# and updating the covariance in place, to reduce call-stack depth and memory usage.
+# To ensure portfolio variance decreases monotonically with the regularization
+# factor gamma, we identify the variance turning point and cap gamma at its maximum
+# permissible value. See https://github.com/skfolio/skfolio/discussions/3
 
 import math
 
@@ -46,42 +45,52 @@ from skfolio.utils.tools import bisection, check_estimator
 class SchurComplementary(BaseHierarchicalOptimization):
     r"""Schur Complementary Allocation estimator.
 
-    Schur Complementary Allocation is a portfolio allocation method developed by Peter
+    Schur Complementary Allocation is a portfolio allocation method developed by Peter 4
     Cotton [1]_.
 
-    This algorithm uses a distance matrix to compute hierarchical clusters using the
-    Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
-    assets in the dendrogram, minimizing the distance between leafs.
+    It uses Schur-complement-inspired augmentation of sub-covariance matrices,
+    revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance (MVO)
+    portfolios.
 
-    The final step is the recursive bisection where each cluster is split between two
-    sub-clusters by starting with the topmost cluster and traversing in a top-down
-    manner.
+    By tuning the regularization factor `gamma`, which governs how much off-diagonal
+    information is incorporated into the augmented covariance blocks, the method
+    smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
+    (`gamma = 0`) to the exact MVO solution (`gamma -> 1`).
 
-    For each sub-cluster, we compute an augmented covariance matrix inspired by the
-    Schur complement where additional information is used from off-diagonal
-    matrix blocks. Based on this augmented covariance matrix, we calculate the total
-    cluster variance of an inverse-variance allocation. A weighting factor is then
-    computed from these two sub-cluster variance, which is used to update the cluster
-    weight.
+    The algorithm begins by computing a distance matrix and performing hierarchical
+    clustering, then applies seriation to reorder assets in the dendrogram so that
+    adjacent leaves have minimal distance.
 
-    The amount of off-diagonal matrix blocks information used is controlled by the
-    regularization factor `gamma`.
+    Next, it uses recursive bisection: starting with the top-level cluster, each cluster
+    is split into two sub-clusters in a top-down traversal.
+
+    For each sub-cluster, an augmented covariance matrix is built based on the Schur
+    complement to incorporate off-diagonal block information. From this matrix, the
+    total cluster variance under an inverse-variance allocation is computed, and a
+    weighting factor derived from the variances of the two sub-clusters is used to
+    update their cluster weights.
+
+    Note
+    ----
+    A poorly conditioned covariance matrix can produce unstable or extreme portfolio
+    weights and prevent convergence to the true MVO solution as gamma approaches one.
+    To improve numerical stability and estimation accuracy, apply shrinkage or other
+    conditioning techniques via the `prior_estimator`.
 
     Parameters
     ----------
     gamma : float
-        Regularization factor between 0 and 1.
-        A value of 0 means that no additional information is used from off-diagonal
-        matrix blocks and is equivalent to a Hierarchical Risk Parity.
-        As the value increases to 1, the allocation tends to the Minimum Variance
-        Optimization allocation.
+        Regularization factor in [0, 1].
+        When gamma is zero, no off-diagonal information is used (equivalent to HRP).
+        As gamma approaches one, the allocation moves toward the minimum variance (MVO)
+        solution. The better the conditioning of the initial covariance matrix, the
+        closer the allocation will get to the exact MVO solution when gamma is near one.
 
     keep_monotonic : bool, default=True
-        If True, we ensure that the portfolio variance is monotonically decreasing
-        as a function of the regularization factor `gamma` by capping its value to the
-        highest permissible `gamma` (saved in the fitted attribute `gamma_`).
-        Otherwise, no check and gamma capping are performed.
-        For more details, see https://github.com/skfolio/skfolio/discussions/3
+        If True, portfolio variance is enforced to decrease monotonically
+        with gamma by capping gamma at its maximum permissible value
+        (`effective_gamma_`). If False, no monotonicity check or capping is applied.
+        See https://github.com/skfolio/skfolio/discussions/3 for details.
 
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
@@ -171,9 +180,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
-    gamma_ : float
+    effective_gamma_ : float
         If `keep_monotonic` is True, the highest permissible `gamma` that preserves
-        monotonicity; otherwise, the input `gamma`.
+        monotonic variance decrease; otherwise, equal to the input `gamma`.
 
     distance_estimator_ : BaseDistance
         Fitted `distance_estimator`.
@@ -214,7 +223,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
     """
 
-    gamma_ : float
+    effective_gamma_: float
 
     def __init__(
         self,
@@ -319,7 +328,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
         # Compute allocations
         if self.keep_monotonic:
-            self.weights_, self.gamma_ = _compute_monotonic_weights(
+            self.weights_, self.effective_gamma_ = _compute_monotonic_weights(
                 max_gamma=self.gamma,
                 sorted_assets=sorted_assets,
                 covariance=covariance,
@@ -335,7 +344,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 max_weights=max_weights,
                 check_spd=False,
             )
-            self.gamma_ = self.gamma
+            self.effective_gamma_ = self.gamma
 
         return self
 
@@ -376,17 +385,21 @@ def _compute_monotonic_weights(
         risk = np.inf if w is None else w @ covariance @ w.T
         return risk, w
 
+    # Evenly spaced gamma vector in [0, max_gamma]
     n = int(np.ceil(max_gamma / step)) + 1
     gammas = np.linspace(0, max_gamma, n)
     variances = np.full_like(gammas, np.nan)
 
+    # Initial sweep of the discrete gamma vector in [0, max_gamma] to find the range
+    # of the variance turning point if any.
     variance, weights = objective(gammas[0])
     variances[0] = variance
     for i in range(1, n):
         variance, weights = objective(gammas[i])
         variances[i] = variance
         if variance >= variances[i - 1]:
-            # Turning point is in [prev_gamma, gamma]
+            # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
+            # turning point by binary search
             low_idx = max(i - 2, 0)
             return _binary_search(
                 objective,
@@ -396,13 +409,14 @@ def _compute_monotonic_weights(
                 tol=tol,
             )
 
-    # No turning point found in sweep: check local derivative at max_gamma
+    # No turning point found in sweep: check local derivative at the terminal gamma
     variance_h = objective(max_gamma - tol)[0]
     if variance <= variance_h:
         # monotonically decreasing up to max_gamma
         return weights, max_gamma
 
-    # Turning point lies between last two gammas
+    # Turning point lies between last two gammas, we find the exact turning point by
+    # binary search
     return _binary_search(
         objective,
         low_gamma=gammas[-2],
@@ -422,7 +436,7 @@ def _binary_search(
     """Locate the turning point inside the interval [low_gamma, high_gamma]."""
     max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
 
-    for _ in range(max_iter):
+    for i in range(max_iter):
         mid_gamma = 0.5 * (low_gamma + high_gamma)
         variance, weights = objective(mid_gamma)
         variance_h = objective(mid_gamma - tol)[0]
@@ -431,11 +445,16 @@ def _binary_search(
             low_gamma = mid_gamma
             low_variance = variance
             if (high_gamma - low_gamma) <= tol:
+                print(i)
                 return weights, low_gamma
         else:
             high_gamma = mid_gamma
 
-    raise RuntimeError(f"Binary search did not converge after {max_iter} iterations")
+    raise RuntimeError(
+        "Unable to find a permissible regularization factor `gamma` for which "
+        "the portfolio variance decreases monotonically as a function of gamma. "
+        "This can occur when the specified weight bounds are overly restrictive."
+    )
 
 
 def _compute_weights(
@@ -447,29 +466,32 @@ def _compute_weights(
     check_spd: bool = True,
 ) -> np.ndarray | None:
     """
-    Core Schur-complement bisection allocation recursion.
+    Core Schur-complement allocation recursion.
 
     Parameters
     ----------
     gamma : float
-       Regularization factor.
+        Regularization factor.
 
-    sorted_assets : array-like
-       Asset indices in dendrogram order.
+    sorted_assets : ndarray of shape (n_assets,)
+        Asset indices in dendrogram order.
 
-    covariance : ndarray
-       Asset covariance matrix.
+    covariance : ndarray of shape (n_assets, n_assets)
+        Asset covariance matrix.
 
-    min_weights, max_weights : ndarray
-       Bounds arrays.
+    min_weights : ndarray of shape (n_assets,)
+        Minimum weights array.
+
+    max_weights : ndarray of shape (n_assets,)
+        Maximum weights array.
 
     check_spd : bool
-       Abort if any augmented block is not SPD.
+        Return None if any augmented block is not SPD.
 
     Returns
     -------
-    weights : ndarray
-       Final portfolio weights, or None if SPD check fails.
+    weights : ndarray | None
+        Final portfolio weights, or None if SPD check fails.
     """
     covariance = covariance.copy()
 
@@ -527,7 +549,7 @@ def _naive_portfolio_variance(covariance: np.ndarray) -> float:
 
     Parameters
     ----------
-    covariance : ndarray of shape (n, n)
+    covariance : ndarray of shape (n_assets, n_assets)
         Covariance matrix.
 
     Returns

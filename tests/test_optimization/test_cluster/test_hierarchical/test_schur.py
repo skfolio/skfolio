@@ -1,55 +1,18 @@
 import numpy as np
 import pytest
 
-from skfolio import ExtraRiskMeasure, RiskMeasure
-from skfolio.cluster import HierarchicalClustering, LinkageMethod
-from skfolio.datasets import load_factors_dataset, load_sp500_dataset
+from skfolio.cluster import HierarchicalClustering
 from skfolio.moments import EWCovariance
 from skfolio.optimization import (
     HierarchicalRiskParity,
     MeanRisk,
-    SchurComplementaryAllocation,
+    SchurComplementary,
 )
-from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, FactorModel
 
 
-@pytest.fixture(scope="module")
-def X_y():
-    prices = load_sp500_dataset()
-    factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(X=prices, y=factor_prices)
-    return X, y
-
-
-@pytest.fixture(scope="module")
-def X(X_y):
-    return X_y[0]
-
-
-@pytest.fixture(scope="module")
-def y(X_y):
-    return X_y[1]
-
-
-@pytest.fixture(
-    scope="module",
-    params=list(LinkageMethod),
-)
-def linkage_method(request):
-    return request.param
-
-
-@pytest.fixture(
-    scope="module",
-    params=list(RiskMeasure) + list(ExtraRiskMeasure),
-)
-def risk_measure(request):
-    return request.param
-
-
 def test_schur_default(X):
-    model = SchurComplementaryAllocation()
+    model = SchurComplementary()
     model.fit(X)
     np.testing.assert_almost_equal(
         model.weights_,
@@ -83,8 +46,8 @@ def test_schur_default(X):
 def test_schur_hrp_min_var(X):
     hrp = HierarchicalRiskParity()
     min_var = MeanRisk()
-    schur_0 = SchurComplementaryAllocation(gamma=0)
-    schur_05 = SchurComplementaryAllocation(gamma=0.5)
+    schur_0 = SchurComplementary(gamma=0)
+    schur_05 = SchurComplementary(gamma=0.5)
 
     ptf_hrp = hrp.fit_predict(X)
     ptf_min_var = min_var.fit_predict(X)
@@ -105,17 +68,17 @@ def test_schur_hrp_min_var(X):
 
 def test_schur_frontier(X):
     prev_ptf = None
-    for gamma in np.linspace(0, 0.7, 50):
-        schur = SchurComplementaryAllocation(gamma=gamma)
+    for gamma in np.linspace(0, 1.0, 50):
+        schur = SchurComplementary(gamma=gamma)
         ptf = schur.fit_predict(X)
         if prev_ptf is not None:
-            assert ptf.variance < prev_ptf.variance
-            assert ptf.mean < prev_ptf.mean
+            assert ptf.variance <= prev_ptf.variance + 1e-8
+            assert ptf.mean <= prev_ptf.mean + 1e-8
         prev_ptf = ptf
 
 
-def test_schur_empirical_prior(X):
-    model = SchurComplementaryAllocation(
+def test_schur_prior_estimator(X):
+    model = SchurComplementary(
         prior_estimator=EmpiricalPrior(covariance_estimator=EWCovariance())
     )
     model.fit(X)
@@ -123,67 +86,151 @@ def test_schur_empirical_prior(X):
         model.weights_,
         np.array(
             [
-                1.85170271e-04,
-                9.11546502e-05,
-                1.51946606e-01,
-                8.24774798e-03,
-                9.14795270e-02,
-                9.36807937e-03,
-                7.75445408e-03,
-                9.70469517e-02,
-                1.41814048e-01,
-                2.85882437e-02,
-                7.49046401e-02,
-                1.53485794e-01,
-                6.00625896e-04,
-                6.55605288e-02,
-                1.67444978e-02,
-                6.20626545e-02,
-                5.51153123e-03,
-                3.25614228e-02,
-                2.65538500e-02,
-                2.54924720e-02,
+                0.0017058,
+                0.0007265,
+                0.0853799,
+                0.0231435,
+                0.0550234,
+                0.0159805,
+                0.028233,
+                0.1062284,
+                0.1140945,
+                0.045891,
+                0.0509539,
+                0.1137293,
+                0.0056005,
+                0.109078,
+                0.0218608,
+                0.1001613,
+                0.0072586,
+                0.0357706,
+                0.0445501,
+                0.0346304,
             ]
         ),
     )
 
 
 def test_schur_factor_model(X, y):
-    model = SchurComplementaryAllocation(prior_estimator=FactorModel())
+    model = SchurComplementary(prior_estimator=FactorModel())
     model.fit(X, y)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
             [
-                4.15629632e-02,
-                5.17333290e-03,
-                1.28044356e-03,
-                8.18308555e-03,
-                1.51901220e-02,
-                7.67274438e-04,
-                4.15165100e-02,
-                1.54964187e-01,
-                4.28966350e-02,
-                1.23134172e-01,
-                2.59949447e-02,
-                4.41419429e-02,
-                4.92108313e-02,
-                1.27388339e-01,
-                8.80510879e-02,
-                8.83112162e-02,
-                1.48928229e-04,
-                4.59360721e-02,
-                5.40522238e-02,
-                4.20956885e-02,
+                0.0412263,
+                0.0053729,
+                0.0013345,
+                0.0085172,
+                0.0157929,
+                0.000797,
+                0.0415737,
+                0.1538852,
+                0.0438251,
+                0.1222923,
+                0.0262726,
+                0.0444741,
+                0.0487746,
+                0.1262759,
+                0.0876273,
+                0.088709,
+                0.0001549,
+                0.0460946,
+                0.054206,
+                0.0427938,
             ]
         ),
     )
 
 
-def test_schur_linkage(X, linkage_method, risk_measure):
-    model = SchurComplementaryAllocation(
+def test_schur_linkage(X, linkage_method):
+    model = SchurComplementary(
         hierarchical_clustering_estimator=HierarchicalClustering(
             linkage_method=linkage_method
         ),
     )
     model.fit(X)
+
+
+def test_hrp_weight_constraints(X):
+    model = SchurComplementary()
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.0029067297577)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.040488396016)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Min Weights
+    model.set_params(min_weights={"AAPL": 0.05, "XOM": 0.08})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.05)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.08)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(min_weights=0.05)
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) * 0.05)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Max Weights
+    model.set_params(min_weights=0)
+    model.set_params(max_weights={"AAPL": 0.001, "XOM": 0.03})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.001)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.03)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(max_weights=0.05)
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_, np.ones(20) * 0.05)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    # Both
+    model.set_params(min_weights={"AAPL": 0.05}, max_weights={"XOM": 0.03})
+    model.fit(X)
+    np.testing.assert_almost_equal(model.weights_[0], 0.05)
+    np.testing.assert_almost_equal(model.weights_[-1], 0.03)
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+    model.set_params(min_weights=0.01, max_weights=0.08)
+    model.fit(X)
+    np.testing.assert_almost_equal(
+        model.weights_,
+        np.array(
+            [
+                0.01,
+                0.01,
+                0.0136739,
+                0.0227483,
+                0.0317375,
+                0.08,
+                0.0582109,
+                0.08,
+                0.0171891,
+                0.08,
+                0.08,
+                0.08,
+                0.01,
+                0.08,
+                0.0666322,
+                0.08,
+                0.0102266,
+                0.0511294,
+                0.08,
+                0.0584522,
+            ]
+        ),
+    )
+    assert model.effective_gamma_ == 0.5
+    np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+
+def test_hrp_weight_constraints_error(X):
+    model = SchurComplementary(min_weights=0.03, max_weights=0.06)
+    with pytest.raises(
+        RuntimeError, match="Unable to find a permissible regularization factor"
+    ):
+        model.fit(X)
+
+    model = SchurComplementary(min_weights=0.03, max_weights=0.06, keep_monotonic=False)
+    model.fit(X)
+    assert model.effective_gamma_ == 0.5

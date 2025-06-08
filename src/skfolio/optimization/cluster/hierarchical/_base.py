@@ -372,7 +372,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
             )
             if np.any(min_weights < 0):
                 raise ValueError("`min_weights` must be strictly positive")
-            if min_weights.sum() >= 1.0:
+            if min_weights.sum() >= 1.00001:
                 raise ValueError(
                     f"Invalid `min_weights`: sum is {min_weights.sum():.4f}, "
                     f"but it must be less than 1.0."
