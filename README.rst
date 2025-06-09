@@ -582,7 +582,7 @@ Minimum CVaR Optimization on Synthetic Returns
 .. code-block:: python
 
     vine = VineCopula(log_transform=True, n_jobs=-1)
-    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    prior = SyntheticData(distribution_estimator=vine, n_samples=2000)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
     model.fit(X)
     print(model.weights_)
@@ -592,7 +592,7 @@ Stress Test
 -----------
 .. code-block:: python
 
-    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine = VineCopula(log_transform=True, central_assets=["BAC"], n_jobs=-1)
     vine.fit(X)
     X_stressed = vine.sample(n_samples=10_000, conditioning = {"BAC": -0.2})
     ptf_stressed = model.predict(X_stressed)
