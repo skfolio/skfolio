@@ -28,7 +28,7 @@ columns. The default is 0.0 (no management fees).
 
 .. note::
 
-    Another approach is to direcly impact the MF to the input `X` in order to express
+    Another approach is to directly impact the MF to the input `X` in order to express
     the returns net of fee. However, when estimating the :math:`\mu` parameter using,
     for example, Shrinkage estimators, this approach would mix a deterministic amount
     with an uncertain one leading to unwanted bias in the management fees.

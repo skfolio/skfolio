@@ -63,6 +63,9 @@ class MultiPeriodPortfolio(BasePortfolio):
         If this is set to True, cumulative returns are compounded.
         The default is `False`.
 
+    sample_weight : ndarray of shape (n_observations,), optional
+        Sample weights for each observation. If None, equal weights are assumed.
+
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
         returns for the computation of lower partial moments:
@@ -334,6 +337,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
+        sample_weight: np.ndarray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1,
@@ -354,6 +358,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             annualized_factor=annualized_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
+            sample_weight=sample_weight,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
             cvar_beta=cvar_beta,

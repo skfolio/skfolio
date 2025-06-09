@@ -127,6 +127,8 @@ Available models
     * Black & Litterman
     * Factor Model
     * Synthetic Data (Stress Test, Factor Stress Test)
+    * Entropy Pooling
+    * Opinion Pooling
 
 * Uncertainty Set Estimator:
     * On Expected Returns:
@@ -142,6 +144,7 @@ Available models
     * Drop Highly Correlated Assets
     * Select Non-Expiring Assets
     * Select Complete Assets (handle late inception, delisting, etc.)
+    * Drop Zero Variance
 
 * Cross-Validation and Model Selection:
     * Compatible with all `sklearn` methods (KFold, etc.)
@@ -234,7 +237,14 @@ Imports
     )
     from skfolio.pre_selection import SelectKExtremes
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel, SyntheticData
+     from skfolio.prior import (
+        BlackLitterman,
+        EmpiricalPrior,
+        EntropyPooling,
+        FactorModel,
+        OpinionPooling,
+        SyntheticData,
+     )
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
 
@@ -534,9 +544,84 @@ Factor Stress Test
         conditioning={"QUAL": -0.5}
     ))
     factor_model.fit(X,y)
-    stressed_X = factor_model.prior_model_.returns
-    stressed_ptf = model.predict(stressed_X)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
+Entropy Pooling
+~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    entropy_pooling = EntropyPooling(
+        mean_views=[
+            "JPM == -0.002",
+            "PG >= LLY",
+            "BAC >= prior(BAC) * 1.2",
+        ],
+        cvar_views=[
+            "GE == 0.08",
+        ],
+    )
+    entropy_pooling.fit(X)
+    print(entropy_pooling.relative_entropy_)
+    print(entropy_pooling.effective_number_of_scenarios_)
+    print(entropy_pooling.return_distribution_.sample_weight)
+
+CVaR Hierarchical Risk Parity optimization on Entropy Pooling
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    entropy_pooling = EntropyPooling(cvar_views=["GE == 0.08"])
+    model = HierarchicalRiskParity(
+        risk_measure=RiskMeasure.CVAR,
+        prior_estimator=entropy_pooling
+    )
+    model.fit(X)
+    print(model.weights_)
+
+Stress Test with Entropy Pooling on Factor Synthetic Data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: python
+
+    # Regular Vine Copula and sampling of 100,000 synthetic factor returns
+    factor_synth = SyntheticData(
+        n_samples=100_000,
+        distribution_estimator=VineCopula(log_transform=True, n_jobs=-1, random_state=0)
+    )
+
+    # Entropy Pooling by imposing a CVaR-95% of 10% on the Quality factor
+    factor_entropy_pooling = EntropyPooling(
+        prior_estimator=factor_synth,
+        cvar_views=["QUAL == 0.10"],
+    )
+
+    factor_entropy_pooling.fit(X, factors)
+
+    # We retrieve the stressed distribution:
+    stressed_dist = factor_model.return_distribution_
+
+    # We stress-test our portfolio:
+    stressed_ptf = model.predict(stressed_dist)
+
+Opinion Pooling
+~~~~~~~~~~~~~~~
+.. code-block:: python
+
+ # We consider two expert opinions, each generated via Entropy Pooling with
+    # user-defined views.
+    # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
+    # the remaining 10% is allocated to the prior distribution:
+    opinion_1 = EntropyPooling(cvar_views=["AMD == 0.10"])
+    opinion_2 = EntropyPooling(
+        mean_views=["AMD >= BAC", "JPM <= prior(JPM) * 0.8"],
+        cvar_views=["GE == 0.12"],
+    )
+
+    opinion_pooling = OpinionPooling(
+        estimators=[("opinion_1", opinion_1), ("opinion_2", opinion_2)],
+        opinion_probabilities=[0.4, 0.5],
+    )
+
+    opinion_pooling.fit(X)
 
 Recognition
 ~~~~~~~~~~~

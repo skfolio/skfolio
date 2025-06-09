@@ -6,19 +6,42 @@ Empirical Prior
 This tutorial shows how to use the :class:`~skfolio.prior.EmpiricalPrior` estimator in
 the :class:`~skfolio.optimization.MeanRisk` optimization.
 
-A :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the distribution estimate of asset returns. It represents the investor's prior beliefs
-about the model used to estimate such distribution.
+A :ref:`Prior Estimator <prior>` in `skfolio` fits a :class:`ReturnDistribution`
+containing your pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample
+weight, Cholesky decomposition).
 
-The `PriorModel` is a dataclass containing:
+The term "prior" is used in a general optimization sense, not confined to Bayesian
+priors. It denotes any **a priori** assumption or estimation method for the return
+distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+**Information-theoretic** approaches into a single cohesive framework:
 
-    * `mu`: Expected returns estimation
-    * `covariance`: Covariance matrix estimation
-    * `returns`: assets returns estimation
-    * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
+1. Frequentist:
+    * :class:`~skfolio.prior.EmpiricalPrior`
+    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.SyntheticData`
 
-The `EmpiricalPrior` estimator simply estimates the `PriorModel` from a `mu_estimator`
-and a `covariance_estimator`.
+2. Bayesian:
+    * :class:`~skfolio.prior.BlackLitterman`
+
+3. Information-theoretic:
+    * :class:`~skfolio.prior.EntropyPooling`
+    * :class:`~skfolio.prior.OpinionPooling`
+
+In skfolio's API, all such methods share the same interface and adhere to scikit-learn's
+estimator API: the `fit` method accepts `X` (the asset returns) and stores the
+resulting :class:`~skfolio.prior.ReturnDistribution` in its `return_distribution_`
+attribute.
+
+The :class:`~skfolio.prior.ReturnDistribution` is a dataclass containing:
+
+    * `mu`: Estimated expected returns of shape (n_assets,)
+    * `covariance`: Estimated covariance matrix of shape (n_assets, n_assets)
+    * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
+    * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
+    * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+The `EmpiricalPrior` estimator estimates the `ReturnDistribution` by fitting its
+`mu_estimator` and `covariance_estimator` independently.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the
 `EmpiricalPrior` estimator with James-Stein shrinkage for the estimation of expected

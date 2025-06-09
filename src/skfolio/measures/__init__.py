@@ -13,6 +13,7 @@ from skfolio.measures._enums import (
 from skfolio.measures._measures import (
     average_drawdown,
     cdar,
+    correlation,
     cvar,
     drawdown_at_risk,
     edar,
@@ -49,6 +50,7 @@ __all__ = [
     "RiskMeasure",
     "average_drawdown",
     "cdar",
+    "correlation",
     "cvar",
     "drawdown_at_risk",
     "edar",

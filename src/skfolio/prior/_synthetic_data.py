@@ -1,4 +1,4 @@
-"""Synthetic Data Prior Model estimator."""
+"""Synthetic Data Prior estimator."""
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -21,7 +21,7 @@ from skfolio.utils.tools import check_estimator
 class SyntheticData(BasePrior):
     """Synthetic Data Estimator.
 
-    The Synthetic Data model estimates a :class:`~skfolio.prior.PriorModel` by
+    The Synthetic Data model estimates a :class:`~skfolio.prior.ReturnDistribution` by
     fitting a `distribution_estimator` and sampling new returns data from it.
 
     The default ``distribution_estimator`` is a Regular Vine Copula model. Other common
@@ -49,8 +49,10 @@ class SyntheticData(BasePrior):
 
     Attributes
     ----------
-    prior_model_ : PriorModel
-        The assets :class:`~skfolio.prior.PriorModel`.
+    return_distribution_ : ReturnDistribution
+        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
+        estimators, containing the assets syntehtic data distribution and moments
+        estimation.
 
     distribution_estimator_ : BaseEstimator
         The fitted distribution estimator.
@@ -80,7 +82,7 @@ class SyntheticData(BasePrior):
     >>> # Instanciate the SyntheticData model and fit it
     >>> model = SyntheticData()
     >>> model.fit(X)
-    >>> print(model.prior_model_)
+    >>> print(model.return_distribution_)
     >>>
     >>> # Minimum CVaR optimization on synthetic returns
     >>> model = MeanRisk(
@@ -114,8 +116,8 @@ class SyntheticData(BasePrior):
     ...     conditioning={"QUAL": -0.5}
     ... ))
     >>> factor_model.fit(X,y)
-    >>> stressed_X = factor_model.prior_model_.returns
-    >>> stressed_ptf = model.predict(stressed_X)
+    >>> stressed_dist = factor_model.return_distribution_
+    >>> stressed_ptf = model.predict(stressed_dist)
     """
 
     distribution_estimator_: skb.BaseEstimator
@@ -200,7 +202,7 @@ class SyntheticData(BasePrior):
         # Fit empirical posterior estimator
         posterior_estimator = EmpiricalPrior()
         posterior_estimator.fit(synthetic_data)
-        self.prior_model_ = posterior_estimator.prior_model_
+        self.return_distribution_ = posterior_estimator.return_distribution_
 
         return self
 

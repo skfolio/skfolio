@@ -25,7 +25,7 @@ class InverseVolatility(BaseOptimization):
     ----------
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
-        The prior estimator is used to estimate the :class:`~skfolio.prior.PriorModel`
+        The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
         containing the estimation of assets expected returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -98,7 +98,7 @@ class InverseVolatility(BaseOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        covariance = self.prior_estimator_.prior_model_.covariance
+        covariance = self.prior_estimator_.return_distribution_.covariance
         w = 1 / np.sqrt(np.diag(covariance))
         self.weights_ = w / sum(w)
         return self
