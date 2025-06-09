@@ -261,10 +261,12 @@ show(fig)
 # Building a Portfolio based on Entropy Pooling
 # =============================================
 # Now that we've shown how the Entropy Pooling estimator works in isolation, let's
-# see how to implement a risk parity portfolio with CVaR as the risk measure based on
-# EP:
-bench = RiskBudgeting(risk_measure=RiskMeasure.CVAR)
-model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=entropy_pooling)
+# see how to implement a risk parity portfolio with CVaR-90% as the risk measure based
+# on EP:
+bench = RiskBudgeting(risk_measure=RiskMeasure.CVAR, cvar_beta=0.9)
+model = RiskBudgeting(
+    risk_measure=RiskMeasure.CVAR, cvar_beta=0.9, prior_estimator=entropy_pooling
+)
 
 bench.fit(X)
 model.fit(X)

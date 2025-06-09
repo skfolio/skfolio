@@ -153,9 +153,11 @@ plot_kde_distributions(
 # Building a Portfolio based on Opinion Pooling
 # =============================================
 # Now that we've shown how the Opinion Pooling estimator works in isolation, let's
-# see how to implement a risk parity portfolio with CVaR as the risk measure based on
-# Opinion Pooling:
-model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=opinion_pooling)
+# see how to implement a risk parity portfolio with CVaR-90% as the risk measure based
+# on Opinion Pooling:
+model = RiskBudgeting(
+    risk_measure=RiskMeasure.CVAR, cvar_beta=0.9, prior_estimator=opinion_pooling
+)
 
 model.fit(X)
 
