@@ -544,8 +544,8 @@ Factor Stress Test
         conditioning={"QUAL": -0.5}
     ))
     factor_model.fit(X,y)
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_ptf = model.predict(stressed_X)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
 Entropy Pooling
 ~~~~~~~~~~~~~~~
@@ -597,12 +597,10 @@ Stress Test with Entropy Pooling on Factor Synthetic Data
     factor_entropy_pooling.fit(X, factors)
 
     # We retrieve the stressed distribution:
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_sample_weight = factor_model.return_distribution_.sample_weight
+    stressed_dist = factor_model.return_distribution_
 
     # We stress-test our portfolio:
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_ptf = model.predict(stressed_dist)
 
 Opinion Pooling
 ~~~~~~~~~~~~~~~

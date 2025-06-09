@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite|
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -34,6 +34,9 @@
 
 .. |JupyterLite| image:: https://jupyterlite.rtfd.io/en/latest/_static/badge.svg
    :target: https://skfolio.org/lite
+
+.. |Discord| image:: https://img.shields.io/badge/Discord-Join%20Chat-5865F2?logo=discord&logoColor=white
+   :target: https://discord.gg/Bu7EtNYugS
 
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
@@ -619,8 +622,8 @@ Factor Stress Test
         conditioning={"QUAL": -0.5}
     ))
     factor_model.fit(X,y)
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_ptf = model.predict(stressed_X)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
 Entropy Pooling
 ---------------
@@ -672,12 +675,10 @@ Stress Test with Entropy Pooling on Factor Synthetic Data
     factor_entropy_pooling.fit(X, factors)
 
     # We retrieve the stressed distribution:
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_sample_weight = factor_model.return_distribution_.sample_weight
+    stressed_dist = factor_model.return_distribution_
 
     # We stress-test our portfolio:
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_ptf = model.predict(stressed_dist)
 
 Opinion Pooling
 ---------------
