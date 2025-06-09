@@ -157,7 +157,7 @@ summary(X)
 #
 # Mean Views
 # ----------
-# * The daily mean return of SX5E equals -0.20%
+# * The daily mean return of JPM equals -0.20%
 # * The mean return of PG is greater than that of LLY (ranking view)
 # * The mean return of BAC increases by at least 20% (relative to its prior)
 # * The sum of mean returns for Financials assets equals twice the sum for Growth assets (group views)
@@ -258,8 +258,8 @@ fig = plot_kde_distributions(
 show(fig)
 
 # %%
-# Build a Portfolio based on Entropy Pooling
-# ==========================================
+# Building a Portfolio based on Entropy Pooling
+# =============================================
 # Now that we've shown how the Entropy Pooling estimator works in isolation, let's
 # see how to implement a risk parity portfolio with CVaR as the risk measure based on
 # EP:
@@ -275,6 +275,11 @@ print(model.weights_)
 # %%
 # We notice that the weight on GE is lower in the portfolio based on EP versus the
 # benchmark, reflecting that GE's tail risk was the most impacted by our views.
+#
+# Note that instead of :class:`~skfolio.optimization.RiskBudgeting`, Entropy Pooling is
+# also compatible with the other :ref:`portfolio optimization <optimization>` methods
+# such as  :class:`~skfolio.optimization.MeanRisk`,
+# :class:`~skfolio.optimization.HierarchicalRiskParity` etc.
 
 # %%
 # Comparing Risk Contributions

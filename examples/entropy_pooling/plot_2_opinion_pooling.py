@@ -139,11 +139,19 @@ sample_weight = opinion_pooling.return_distribution_.sample_weight
 summary(X, sample_weight=sample_weight)
 
 # %%
-plot_kde_distributions(X, sample_weight=sample_weight, percentile_cutoff=0.05)
+# Let's plot the prior versus the posterior returns distributions for each asset:
+plot_kde_distributions(
+    X,
+    sample_weight=sample_weight,
+    percentile_cutoff=0.05,
+    title="Distribution of Asset Returns (Prior vs. Posterior)",
+    unweighted_suffix="Prior",
+    weighted_suffix="Posterior",
+)
 
 # %%
-# Build a Portfolio based on Opinion Pooling
-# ==========================================
+# Building a Portfolio based on Opinion Pooling
+# =============================================
 # Now that we've shown how the Opinion Pooling estimator works in isolation, let's
 # see how to implement a risk parity portfolio with CVaR as the risk measure based on
 # Opinion Pooling:

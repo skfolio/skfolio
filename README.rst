@@ -684,7 +684,7 @@ Opinion Pooling
 ---------------
 .. code-block:: python
 
- # We consider two expert opinions, each generated via Entropy Pooling with
+    # We consider two expert opinions, each generated via Entropy Pooling with
     # user-defined views.
     # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
     # the remaining 10% is allocated to the prior distribution:
