@@ -493,11 +493,13 @@ Factor Model
 
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(
+        X, factors, test_size=0.33, shuffle=False
+    )
 
     model = MeanRisk(prior_estimator=FactorModel())
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors_train)
 
     print(model.weights_)
 
@@ -505,7 +507,6 @@ Factor Model
 
     print(portfolio.calmar_ratio)
     print(portfolio.summary())
-
 
 Factor Model & Covariance Detoning
 ----------------------------------
@@ -611,7 +612,7 @@ Minimum CVaR Optimization on Synthetic Factors
     )
     factor_model = FactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, y)
+    model.fit(X, factors)
     print(model.weights_)
 
 
@@ -622,7 +623,7 @@ Factor Stress Test
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X,y)
+    factor_model.fit(X, factors)
     stressed_dist = factor_model.return_distribution_
     stressed_ptf = model.predict(stressed_dist)
 
