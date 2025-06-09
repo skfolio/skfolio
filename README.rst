@@ -293,6 +293,7 @@ Imports
     )
     from skfolio.optimization import (
         MeanRisk,
+        HierarchicalRiskParity,
         NestedClustersOptimization,
         ObjectiveFunction,
         RiskBudgeting,
