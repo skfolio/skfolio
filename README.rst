@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite|
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -34,6 +34,9 @@
 
 .. |JupyterLite| image:: https://jupyterlite.rtfd.io/en/latest/_static/badge.svg
    :target: https://skfolio.org/lite
+
+.. |Discord| image:: https://img.shields.io/badge/Discord-Join%20Chat-5865F2?logo=discord&logoColor=white
+   :target: https://discord.gg/Bu7EtNYugS
 
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
@@ -290,6 +293,7 @@ Imports
     )
     from skfolio.optimization import (
         MeanRisk,
+        HierarchicalRiskParity,
         NestedClustersOptimization,
         ObjectiveFunction,
         RiskBudgeting,
@@ -489,11 +493,13 @@ Factor Model
 
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(
+        X, factors, test_size=0.33, shuffle=False
+    )
 
     model = MeanRisk(prior_estimator=FactorModel())
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors_train)
 
     print(model.weights_)
 
@@ -501,7 +507,6 @@ Factor Model
 
     print(portfolio.calmar_ratio)
     print(portfolio.summary())
-
 
 Factor Model & Covariance Detoning
 ----------------------------------
@@ -579,7 +584,7 @@ Minimum CVaR Optimization on Synthetic Returns
 .. code-block:: python
 
     vine = VineCopula(log_transform=True, n_jobs=-1)
-    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    prior = SyntheticData(distribution_estimator=vine, n_samples=2000)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
     model.fit(X)
     print(model.weights_)
@@ -589,7 +594,7 @@ Stress Test
 -----------
 .. code-block:: python
 
-    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine = VineCopula(log_transform=True, central_assets=["BAC"], n_jobs=-1)
     vine.fit(X)
     X_stressed = vine.sample(n_samples=10_000, conditioning = {"BAC": -0.2})
     ptf_stressed = model.predict(X_stressed)
@@ -607,7 +612,7 @@ Minimum CVaR Optimization on Synthetic Factors
     )
     factor_model = FactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, y)
+    model.fit(X, factors)
     print(model.weights_)
 
 
@@ -618,9 +623,9 @@ Factor Stress Test
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X,y)
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_ptf = model.predict(stressed_X)
+    factor_model.fit(X, factors)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
 Entropy Pooling
 ---------------
@@ -672,18 +677,16 @@ Stress Test with Entropy Pooling on Factor Synthetic Data
     factor_entropy_pooling.fit(X, factors)
 
     # We retrieve the stressed distribution:
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_sample_weight = factor_model.return_distribution_.sample_weight
+    stressed_dist = factor_model.return_distribution_
 
     # We stress-test our portfolio:
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_ptf = model.predict(stressed_dist)
 
 Opinion Pooling
 ---------------
 .. code-block:: python
 
- # We consider two expert opinions, each generated via Entropy Pooling with
+    # We consider two expert opinions, each generated via Entropy Pooling with
     # user-defined views.
     # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
     # the remaining 10% is allocated to the prior distribution:

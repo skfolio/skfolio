@@ -297,11 +297,9 @@ Tutorials:
     entropy_pooling = EntropyPooling(cvar_views=["AMD == 0.10"])
     entropy_pooling.fit(X)
     
-    stressed_X = entropy_pooling.return_distribution_.returns
-    stressed_sample_weight = entropy_pooling.return_distribution_.sample_weight
-    
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_dist = entropy_pooling.return_distribution_
+
+    stressed_ptf = model.predict(stressed_dist)
 
 
 Opinion Pooling
@@ -375,11 +373,9 @@ Tutorials:
     )
     opinion_pooling.fit(X)
     
-    stressed_X = opinion_pooling.return_distribution_.returns
-    stressed_sample_weight = opinion_pooling.return_distribution_.sample_weight
-    
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_dist = opinion_pooling.return_distribution_
+
+    stressed_ptf = model.predict(stressed_dist)
 
 Combining Multiple Prior Estimators
 ***********************************
@@ -456,8 +452,8 @@ This is often used for factor stress test.
         conditioning={"QUAL": -0.5}
     ))
     factor_model.fit(X,y)
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_ptf = model.predict(stressed_X)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
 **Example:**
 

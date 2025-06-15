@@ -137,9 +137,9 @@ factor_model.set_params(
 )
 # Refit the factor model on the full dataset to update the stressed scenarios
 factor_model.fit(X, factors)
-stressed_X = factor_model.return_distribution_.returns
+stressed_dist = factor_model.return_distribution_
 
-stressed_ptf = model.predict(stressed_X)
+stressed_ptf = model.predict(stressed_dist)
 
 ptf.name = "Unstressed Ptf"
 stressed_ptf.name = "Stressed Ptf"

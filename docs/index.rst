@@ -231,6 +231,7 @@ Imports
     )
     from skfolio.optimization import (
         MeanRisk,
+        HierarchicalRiskParity,
         NestedClustersOptimization,
         ObjectiveFunction,
         RiskBudgeting,
@@ -423,11 +424,13 @@ Factor Model
 
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(
+        X, factors, test_size=0.33, shuffle=False
+    )
 
     model = MeanRisk(prior_estimator=FactorModel())
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors_train)
 
     print(model.weights_)
 
@@ -507,7 +510,7 @@ Minimum CVaR Optimization on Synthetic Returns
 .. code-block:: python
 
     vine = VineCopula(log_transform=True, n_jobs=-1)
-    prior = =SyntheticData(distribution_estimator=vine, n_samples=2000)
+    prior = SyntheticData(distribution_estimator=vine, n_samples=2000)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=prior)
     model.fit(X)
     print(model.weights_)
@@ -516,7 +519,7 @@ Stress Test
 ~~~~~~~~~~~~
 .. code-block:: python
 
-    vine = VineCopula(log_transform=True, central_assets=["BAC"]  n_jobs=-1)
+    vine = VineCopula(log_transform=True, central_assets=["BAC"], n_jobs=-1)
     vine.fit(X)
     X_stressed = vine.sample(n_samples=10_000, conditioning = {"BAC": -0.2})
     ptf_stressed = model.predict(X_stressed)
@@ -533,7 +536,7 @@ Minimum CVaR Optimization on Synthetic Factors
     )
     factor_model = FactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, y)
+    model.fit(X, factors)
     print(model.weights_)
 
 Factor Stress Test
@@ -543,9 +546,9 @@ Factor Stress Test
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X,y)
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_ptf = model.predict(stressed_X)
+    factor_model.fit(X, factors)
+    stressed_dist = factor_model.return_distribution_
+    stressed_ptf = model.predict(stressed_dist)
 
 Entropy Pooling
 ~~~~~~~~~~~~~~~
@@ -597,12 +600,10 @@ Stress Test with Entropy Pooling on Factor Synthetic Data
     factor_entropy_pooling.fit(X, factors)
 
     # We retrieve the stressed distribution:
-    stressed_X = factor_model.return_distribution_.returns
-    stressed_sample_weight = factor_model.return_distribution_.sample_weight
+    stressed_dist = factor_model.return_distribution_
 
     # We stress-test our portfolio:
-    stressed_ptf = model.predict(stressed_X)
-    stressed_ptf.sample_weight = stressed_sample_weight
+    stressed_ptf = model.predict(stressed_dist)
 
 Opinion Pooling
 ~~~~~~~~~~~~~~~

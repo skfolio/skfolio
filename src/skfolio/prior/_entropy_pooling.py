@@ -2,12 +2,14 @@
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Credits: Vincent Maladière, Matteo Manzi, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
 import operator
 import re
 import warnings
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import cvxpy as cp
 import numpy as np
@@ -409,11 +411,9 @@ class EntropyPooling(BasePrior):
     >>> entropy_pooling.fit(X)
     EntropyPooling(cvar_views=['AMD == 0.10'])
     >>>
-    >>> stressed_X = entropy_pooling.return_distribution_.returns
-    >>> stressed_sample_weight = entropy_pooling.return_distribution_.sample_weight
+    >>> stressed_dist = entropy_pooling.return_distribution_
     >>>
-    >>> stressed_ptf = model.predict(stressed_X)
-    >>> stressed_ptf.sample_weight = stressed_sample_weight
+    >>> stressed_ptf = model.predict(stressed_dist)
     """
 
     relative_entropy_: float
@@ -422,12 +422,13 @@ class EntropyPooling(BasePrior):
     n_features_in_: int
     feature_names_in_: np.ndarray
 
-    _returns: np.ndarray
-    _prior_sample_weight: np.ndarray
-    _groups: np.ndarray
-    _is_fixed_mean: np.ndarray
-    _is_fixed_variance: np.ndarray
-    _constraints: dict[str, list[np.ndarray] | None]
+    if TYPE_CHECKING:
+        _returns: np.ndarray
+        _prior_sample_weight: np.ndarray
+        _groups: np.ndarray
+        _is_fixed_mean: np.ndarray
+        _is_fixed_variance: np.ndarray
+        _constraints: dict[str, list[np.ndarray] | None]
 
     def __init__(
         self,

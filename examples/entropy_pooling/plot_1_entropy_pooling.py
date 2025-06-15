@@ -157,7 +157,7 @@ summary(X)
 #
 # Mean Views
 # ----------
-# * The daily mean return of SX5E equals -0.20%
+# * The daily mean return of JPM equals -0.20%
 # * The mean return of PG is greater than that of LLY (ranking view)
 # * The mean return of BAC increases by at least 20% (relative to its prior)
 # * The sum of mean returns for Financials assets equals twice the sum for Growth assets (group views)
@@ -258,13 +258,15 @@ fig = plot_kde_distributions(
 show(fig)
 
 # %%
-# Build a Portfolio based on Entropy Pooling
-# ==========================================
+# Building a Portfolio based on Entropy Pooling
+# =============================================
 # Now that we've shown how the Entropy Pooling estimator works in isolation, let's
-# see how to implement a risk parity portfolio with CVaR as the risk measure based on
-# EP:
-bench = RiskBudgeting(risk_measure=RiskMeasure.CVAR)
-model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=entropy_pooling)
+# see how to implement a risk parity portfolio with CVaR-90% as the risk measure based
+# on EP:
+bench = RiskBudgeting(risk_measure=RiskMeasure.CVAR, cvar_beta=0.9)
+model = RiskBudgeting(
+    risk_measure=RiskMeasure.CVAR, cvar_beta=0.9, prior_estimator=entropy_pooling
+)
 
 bench.fit(X)
 model.fit(X)
@@ -275,6 +277,11 @@ print(model.weights_)
 # %%
 # We notice that the weight on GE is lower in the portfolio based on EP versus the
 # benchmark, reflecting that GE's tail risk was the most impacted by our views.
+#
+# Note that instead of :class:`~skfolio.optimization.RiskBudgeting`, Entropy Pooling is
+# also compatible with the other :ref:`portfolio optimization <optimization>` methods
+# such as  :class:`~skfolio.optimization.MeanRisk`,
+# :class:`~skfolio.optimization.HierarchicalRiskParity` etc.
 
 # %%
 # Comparing Risk Contributions
@@ -355,8 +362,6 @@ print(model.weights_)
 # %%
 # Following scikit-learn conventions, all fitted attributes end with a trailing
 # underscore. You can inspect each model step-by-step by drilling into these attributes:
-retruns = model.prior_estimator_.return_distribution_.returns
-sample_weight = model.prior_estimator_.return_distribution_.sample_weight
 fitted_vine = model.prior_estimator_.factor_prior_estimator_.prior_estimator_.distribution_estimator_
 
 # %%
@@ -393,12 +398,10 @@ entropy_pooling = EntropyPooling(
 entropy_pooling.fit(X)
 
 # We retrieve the stressed distribution:
-stressed_X = entropy_pooling.return_distribution_.returns
-stressed_sample_weight = entropy_pooling.return_distribution_.sample_weight
+stressed_dist = entropy_pooling.return_distribution_
 
 # We stress-test our portfolio:
-stressed_ptf = model.predict(stressed_X)
-stressed_ptf.sample_weight = stressed_sample_weight
+stressed_ptf = model.predict(stressed_dist)
 
 # Add the stressed portfolio to the population
 stressed_ptf.name = "HRP Stressed"
@@ -420,12 +423,10 @@ factor_model = FactorModel(factor_prior_estimator=factor_entropy_pooling)
 factor_model.fit(X, factors)
 
 # We retrieve the stressed distribution:
-stressed_X = factor_model.return_distribution_.returns
-stressed_sample_weight = factor_model.return_distribution_.sample_weight
+stressed_dist = factor_model.return_distribution_
 
 # We stress-test our portfolio:
-stressed_ptf = model.predict(stressed_X)
-stressed_ptf.sample_weight = stressed_sample_weight
+stressed_ptf = model.predict(stressed_dist)
 
 # Add the stressed portfolio to the population
 stressed_ptf.name = "HRP Factor Stressed"

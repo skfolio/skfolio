@@ -2,6 +2,7 @@
 
 # Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Credits: Vincent Maladière, Matteo Manzi, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
 import numpy as np
@@ -209,11 +210,9 @@ class OpinionPooling(BasePrior, BaseComposition):
     ... )
     >>> opinion_pooling.fit(X)
     >>>
-    >>> stressed_X = opinion_pooling.return_distribution_.returns
-    >>> stressed_sample_weight = opinion_pooling.return_distribution_.sample_weight
+    >>> stressed_dist = opinion_pooling.return_distribution_
     >>>
-    >>> stressed_ptf = model.predict(stressed_X)
-    >>> stressed_ptf.sample_weight = stressed_sample_weight
+    >>> stressed_ptf = model.predict(stressed_dist)
     """
 
     estimators_: list[BasePrior]

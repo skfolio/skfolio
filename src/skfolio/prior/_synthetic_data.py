@@ -116,8 +116,8 @@ class SyntheticData(BasePrior):
     ...     conditioning={"QUAL": -0.5}
     ... ))
     >>> factor_model.fit(X,y)
-    >>> stressed_X = factor_model.return_distribution_.returns
-    >>> stressed_ptf = model.predict(stressed_X)
+    >>> stressed_dist = factor_model.return_distribution_
+    >>> stressed_ptf = model.predict(stressed_dist)
     """
 
     distribution_estimator_: skb.BaseEstimator

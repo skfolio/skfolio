@@ -7,12 +7,14 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import sklearn.base as skb
 from sklearn.utils.validation import check_is_fitted
 
 from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
+from skfolio.prior import ReturnDistribution
 
 # Copyright (c) 2023
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -45,6 +47,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     """
 
     weights_: np.ndarray
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     @abstractmethod
     def __init__(self, portfolio_params: dict | None = None):
@@ -54,7 +58,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):
         pass
 
-    def predict(self, X: npt.ArrayLike) -> Portfolio | Population:
+    def predict(self, X: npt.ArrayLike | ReturnDistribution) -> Portfolio | Population:
         """Predict the `Portfolio` or `Population` of `Portfolio` on `X` based on the
         fitted weights.
 
@@ -83,6 +87,18 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         else:
             ptf_kwargs = self.portfolio_params.copy()
 
+        # Set X and sample_weight
+        if isinstance(X, ReturnDistribution):
+            ptf_kwargs["sample_weight"] = X.sample_weight
+            if hasattr(self, "feature_names_in_"):
+                ptf_kwargs["X"] = pd.DataFrame(
+                    X.returns, columns=self.feature_names_in_
+                )
+            else:
+                ptf_kwargs["X"] = X.returns
+        else:
+            ptf_kwargs["X"] = X
+
         # Set the default portfolio parameters equal to the optimization parameters
         for param in [
             "transaction_costs",
@@ -105,7 +121,6 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return Population(
                 [
                     Portfolio(
-                        X=X,
                         weights=self.weights_[i],
                         name=f"ptf{i} - {name}",
                         **ptf_kwargs,
@@ -113,9 +128,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     for i in range(n_portfolios)
                 ]
             )
-        return Portfolio(X=X, weights=self.weights_, name=name, **ptf_kwargs)
+        return Portfolio(weights=self.weights_, name=name, **ptf_kwargs)
 
-    def score(self, X: npt.ArrayLike, y: npt.ArrayLike = None) -> float:
+    def score(
+        self, X: npt.ArrayLike | ReturnDistribution, y: npt.ArrayLike = None
+    ) -> float:
         """Prediction score.
         If the prediction is a single `Portfolio`, the score is the Sharpe Ratio.
         If the prediction is a `Population` of `Portfolio`, the score is the mean of all
