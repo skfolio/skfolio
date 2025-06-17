@@ -445,6 +445,7 @@ class EntropyPooling(BasePrior):
         groups: skt.Groups | None = None,
         solver: str = "TNC",
         solver_params: dict | None = None,
+        apply_cvar_last:bool=False
     ):
         self.prior_estimator = prior_estimator
         self.mean_views = mean_views
@@ -459,6 +460,7 @@ class EntropyPooling(BasePrior):
         self.groups = groups
         self.solver = solver
         self.solver_params = solver_params
+        self.apply_cvar_last = apply_cvar_last
 
     def get_metadata_routing(self):
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
@@ -537,7 +539,11 @@ class EntropyPooling(BasePrior):
         # Step 1: Mean, VaR and CVaR
         self._add_mean_views()
         self._add_value_at_risk_views()
-        sample_weight = self._solve_with_cvar()
+
+        if self.apply_cvar_last:
+            sample_weight = self._solve()
+        else:
+            sample_weight = self._solve_with_cvar()
 
         # Step 2:  Mean, VaR, CVaR and Variance
         if self.variance_views is not None:
@@ -545,7 +551,10 @@ class EntropyPooling(BasePrior):
             mean = sm.mean(self._returns, sample_weight=sample_weight)
             # Add new views and solve
             self._add_variance_views(mean=mean)
-            sample_weight = self._solve_with_cvar()
+            if self.apply_cvar_last:
+                sample_weight = self._solve()
+            else:
+                sample_weight = self._solve_with_cvar()
 
         # Step 3: Mean, VaR, CVaR, Variance, Correlation, Skew and Kurtosis
         if (
@@ -562,6 +571,12 @@ class EntropyPooling(BasePrior):
             self._add_correlation_views(mean=mean, variance=variance)
             self._add_skew_views(mean=mean, variance=variance)
             self._add_kurtosis_views(mean=mean, variance=variance)
+            if self.apply_cvar_last:
+                sample_weight = self._solve()
+            else:
+                sample_weight = self._solve_with_cvar()
+
+        if self.cvar_views:
             sample_weight = self._solve_with_cvar()
 
         self.relative_entropy_ = float(
