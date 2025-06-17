@@ -1141,10 +1141,10 @@ def test_complex_views(X):
             "BAC == -0.05",
         ],
         cvar_views=[
-            "GE == 0.08",
+            "GE == 0.07",
         ],
         cvar_beta=0.90,
         groups=groups,
     )
     entropy_pooling.fit(X)
-    np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.7048467, 5)
+    np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.6739174515, 5)
