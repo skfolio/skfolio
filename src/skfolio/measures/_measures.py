@@ -136,7 +136,7 @@ def variance(
     if sample_weight is None:
         return np.var(returns, ddof=0 if biased else 1, axis=0)
 
-    biased_var = sample_weight @ (returns - mean(returns)) ** 2
+    biased_var = sample_weight @ (returns - mean(returns, sample_weight=sample_weight)) ** 2
     if biased:
         return biased_var
     n_eff = 1 / np.sum(sample_weight**2)
@@ -177,7 +177,7 @@ def semi_variance(
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
     if min_acceptable_return is None:
-        min_acceptable_return = mean(returns)
+        min_acceptable_return = mean(returns, sample_weight=sample_weight)
 
     biased_semi_var = mean(
         np.maximum(0, min_acceptable_return - returns) ** 2, sample_weight=sample_weight
