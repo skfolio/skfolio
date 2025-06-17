@@ -495,7 +495,7 @@ Combinatorial Purged Cross-Validation
 
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
 
-    print(cv.get_summary(X_train))
+    print(cv.summary(X_train))
 
     population = cross_val_predict(model, X_train, cv=cv)
 

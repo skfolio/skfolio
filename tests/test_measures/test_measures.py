@@ -163,7 +163,7 @@ def test_first_lower_partial_moment_sample_weight(returns, min_acceptable_return
         ("1d", False, True, 0.0007478807),
         ("1d", False, False, 0.0007479707),
         ("1d", True, True, 0.0007406331),
-        ("1d", True, False,0.0007407522),
+        ("1d", True, False, 0.0007407522),
         ("2d", False, True, [0.0007478807, 0.0015151899]),
         ("2d", False, False, [0.0007479707, 0.00151537226]),
         ("2d", True, True, [0.0007406331, 0.0015184352]),
@@ -193,7 +193,7 @@ def test_variance_sample_weight(returns, biased):
     [
         ("1d", None, False, False, 0.0003683217),
         ("1d", None, False, True, 0.0003682774),
-        ("1d", None, True, False,0.0003650834),
+        ("1d", None, True, False, 0.0003650834),
         ("1d", None, True, True, 0.0003650247),
         ("1d", 0.0, False, False, 0.0003480616),
         ("1d", 0.0, False, True, 0.0003480197),
@@ -243,7 +243,7 @@ def test_semi_variance_sample_weight(returns, biased, min_acceptable_return):
     [
         ("1d", False, True, 0.0273474),
         ("1d", False, False, 0.0273490),
-        ("1d", True, True,  0.0272145),
+        ("1d", True, True, 0.0272145),
         ("1d", True, False, 0.0272167),
         ("2d", False, True, [0.0273474, 0.0389254]),
         ("2d", False, False, [0.0273490, 0.0389277]),
@@ -276,7 +276,7 @@ def test_standard_deviation_sample_weight(returns, biased):
         ("1d", None, False, False, 0.0191917),
         ("1d", None, False, True, 0.0191905),
         ("1d", None, True, False, 0.0191071),
-        ("1d", None, True, True,  0.0191056),
+        ("1d", None, True, True, 0.0191056),
         ("1d", 0.0, False, False, 0.0186564),
         ("1d", 0.0, False, True, 0.01865528),
         ("2d", None, False, False, [0.01919177, 0.02673741]),
@@ -351,9 +351,9 @@ def test_third_central_moment_sample_weight(returns):
     "returns,sample_weight,expected",
     [
         ("1d", False, -0.3924154),
-        ("1d", True,  -0.5180085),
+        ("1d", True, -0.5180085),
         ("2d", False, [-0.3924155, 0.3431228]),
-        ("2d", True,  [-0.5180086,  0.3692041]),
+        ("2d", True, [-0.5180086, 0.3692041]),
     ],
     indirect=["returns", "sample_weight"],
 )
@@ -403,9 +403,9 @@ def test_fourth_central_moment_sample_weight(returns):
     "returns,sample_weight,expected",
     [
         ("1d", False, 26.3046784),
-        ("1d", True,  25.6125784),
+        ("1d", True, 25.6125784),
         ("2d", False, [26.3046784, 12.8538355]),
-        ("2d", True,  [25.6125784, 12.7134604]),
+        ("2d", True, [25.6125784, 12.7134604]),
     ],
     indirect=["returns", "sample_weight"],
 )

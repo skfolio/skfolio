@@ -136,7 +136,9 @@ def variance(
     if sample_weight is None:
         return np.var(returns, ddof=0 if biased else 1, axis=0)
 
-    biased_var = sample_weight @ (returns - mean(returns, sample_weight=sample_weight)) ** 2
+    biased_var = (
+        sample_weight @ (returns - mean(returns, sample_weight=sample_weight)) ** 2
+    )
     if biased:
         return biased_var
     n_eff = 1 / np.sum(sample_weight**2)
