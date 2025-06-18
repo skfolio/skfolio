@@ -445,7 +445,7 @@ class EntropyPooling(BasePrior):
         groups: skt.Groups | None = None,
         solver: str = "TNC",
         solver_params: dict | None = None,
-        apply_cvar_last:bool=False
+        apply_cvar_last: bool = False,
     ):
         self.prior_estimator = prior_estimator
         self.mean_views = mean_views

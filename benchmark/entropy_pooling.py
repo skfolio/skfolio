@@ -1,61 +1,77 @@
+import numpy as np
+
 from skfolio.datasets import load_sp500_dataset
-from skfolio.measures import (
-    mean,
-    cvar,
-    variance
-)
+from skfolio.measures import cvar, mean, standard_deviation
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EntropyPooling
 from skfolio.utils.figure import plot_kde_distributions
 
-prices = load_sp500_dataset()
-prices = prices[["AMD", "BAC", "GE", "JNJ", "JPM", "LLY", "PG"]]
-X = prices_to_returns(prices)
+if __name__ == "__main__":
+    # Load price data, keep two stocks and convert to returns
+    prices = load_sp500_dataset()
+    prices = prices[["AMD", "BAC"]]
+    X = prices_to_returns(prices)
 
-mean(X["AMD"])
-variance(X["AMD"])
-cvar(X["AMD"])
+    # Mean, Vol and CVaR stats
+    print(f"Ann. Mean: {mean(X['AMD']) * 252:0.1%}")
+    print(f"Ann. Vol: {standard_deviation(X['AMD']) * np.sqrt(252):0.1%}")
+    print(f"CVaR-95%: {cvar(X['AMD']):0.1%}")
 
-ep = EntropyPooling(cvar_views=["AMD == 0.20"])
-ep.fit(X)
-
-mean(X["AMD"], sample_weight=ep.return_distribution_.sample_weight)
-variance(X["AMD"], sample_weight=ep.return_distribution_.sample_weight)
-cvar(X["AMD"], sample_weight=ep.return_distribution_.sample_weight)
-
-print(f"Relative Entropy : {ep.relative_entropy_:.3f}")
-
-plot_kde_distributions(
-    X[["AMD"]],
-    sample_weight=ep.return_distribution_.sample_weight,
-    percentile_cutoff=0.1,
-    title="Distribution of Asset Returns (Prior vs. Posterior)",
-    unweighted_suffix="Prior",
-    weighted_suffix="Posterior",
-).show()
-
-
-for apply_cvar_last in [True, False]:
-    print("\n")
-    print(f"Apply CVaR Last: {apply_cvar_last}")
-
-    ep = EntropyPooling(variance_views=["AMD == 0.004"], cvar_views=["AMD == 0.20"], apply_cvar_last=apply_cvar_last)
+    # Entropy Pooling with only a CVaR view to see how it affect the mean
+    ep = EntropyPooling(cvar_views=["AMD == 0.15"])
     ep.fit(X)
+
+    sample_weight = ep.return_distribution_.sample_weight
+
+    # Results
     print(f"Relative Entropy : {ep.relative_entropy_:.3f}")
+    print(f"Ann. Mean: {mean(X['AMD'], sample_weight=sample_weight) * 252:0.1%}")
+    print(
+        f"Ann. Vol: {standard_deviation(X['AMD'], sample_weight=sample_weight) * np.sqrt(252):0.1%}"
+    )
+    print(f"CVaR-95%: {cvar(X['AMD'], sample_weight=sample_weight):0.1%}")
 
-    print(f"Mean: {mean(X['AMD'], sample_weight=ep.return_distribution_.sample_weight):0.4f}")
-    print(f"Variance: {variance(X['AMD'], sample_weight=ep.return_distribution_.sample_weight):0.4f}")
-    print(f"CVaR: {cvar(X['AMD'], sample_weight=ep.return_distribution_.sample_weight):0.4f}")
+    # As expected, the posterior mean is smaller than its prior.
 
-
+    # Plot the distribution
     plot_kde_distributions(
         X[["AMD"]],
-        sample_weight=ep.return_distribution_.sample_weight,
+        sample_weight=sample_weight,
         percentile_cutoff=0.1,
         title="Distribution of Asset Returns (Prior vs. Posterior)",
         unweighted_suffix="Prior",
         weighted_suffix="Posterior",
     ).show()
 
+    # Entropy Pooling with a CVaR view plus a variance view.
+    # We compare by applying the CVaR at the first stage vs the final stage.
+    for apply_cvar_last in [True, False]:
+        print("\n")
+        print(f"Apply CVaR Last: {apply_cvar_last}")
 
+        ep = EntropyPooling(
+            variance_views=["AMD == 0.0025"],
+            cvar_views=["AMD == 0.15"],
+            apply_cvar_last=apply_cvar_last,
+        )
+        ep.fit(X)
 
+        sample_weight = ep.return_distribution_.sample_weight
+
+        # Results
+        print(f"Relative Entropy : {ep.relative_entropy_:.3f}")
+        print(f"Ann. Mean: {mean(X['AMD'], sample_weight=sample_weight) * 252:0.1%}")
+        print(
+            f"Ann. Vol: {standard_deviation(X['AMD'], sample_weight=sample_weight) * np.sqrt(252):0.1%}"
+        )
+        print(f"CVaR-95%: {cvar(X['AMD'], sample_weight=sample_weight):0.1%}")
+
+        # Plot the distribution
+        plot_kde_distributions(
+            X[["AMD"]],
+            sample_weight=ep.return_distribution_.sample_weight,
+            percentile_cutoff=0.1,
+            title="Distribution of Asset Returns (Prior vs. Posterior)",
+            unweighted_suffix="Prior",
+            weighted_suffix="Posterior",
+        ).show()
