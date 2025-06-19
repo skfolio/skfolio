@@ -1,7 +1,7 @@
 import numpy as np
 
 from skfolio.datasets import load_sp500_dataset
-from skfolio.measures import cvar, mean, standard_deviation, variance
+from skfolio.measures import cvar, mean, standard_deviation
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EntropyPooling
 from skfolio.utils.figure import plot_kde_distributions
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # We compare by applying the CVaR at the first stage vs the final stage.
 
     vol_view = 0.8
-    variance_view = vol_view**2/252
+    variance_view = vol_view**2 / 252
     for apply_cvar_last in [True, False]:
         print("\n")
         print(f"Apply CVaR Last: {apply_cvar_last}")
