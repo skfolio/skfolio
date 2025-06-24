@@ -42,7 +42,6 @@ class BaseCombinatorialCV(ABC):
     __repr__ = sks.BaseCrossValidator.__repr__
 
 
-# TODO: review params and function naming
 class CombinatorialPurgedCV(BaseCombinatorialCV):
     """Combinatorial Purged Cross-Validation.
 
