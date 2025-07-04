@@ -13,6 +13,7 @@ import math
 import numbers
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -152,7 +153,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         Marcos López de Prado (2018)
     """
 
-    index_train_test_: np.ndarray
+    if TYPE_CHECKING:
+        index_train_test_: np.ndarray
 
     def __init__(
         self,
@@ -160,7 +162,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         n_test_folds: int = 8,
         purged_size: int = 0,
         embargo_size: int = 0,
-    ):
+    ) -> None:
         if not isinstance(n_folds, numbers.Integral):
             raise ValueError(
                 "The number of folds must be of Integral type. "
