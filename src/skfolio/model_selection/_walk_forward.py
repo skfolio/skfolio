@@ -202,7 +202,7 @@ class WalkForward(sks.BaseCrossValidator):
 
     def split(
         self, X: npt.ArrayLike, y=None, groups=None
-    ) -> Iterator[np.ndarray, np.ndarray]:
+    ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
         """Generate indices to split data into training and test set.
 
         Parameters
@@ -309,7 +309,7 @@ def _split_without_period(
     purged_size: int,
     expend_train: bool,
     reduce_test: bool,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     if train_size + purged_size >= n_samples:
         raise ValueError(
             "The sum of `train_size` with `purged_size` "
@@ -353,7 +353,7 @@ def _split_from_period_without_train_offset(
     expend_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:
@@ -400,7 +400,7 @@ def _split_from_period_with_train_offset(
     expend_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:

@@ -665,7 +665,11 @@ def fit_and_predict(
         results of calling 'estimator.method' on each test set in `test`.
     """
     fit_params = fit_params if fit_params is not None else {}
-    fit_params = _check_method_params(X, params=fit_params, indices=train)
+    if column_indices is not None:
+        fit_params = _check_method_params(
+            X, params=fit_params, indices=column_indices, axis=1
+        )
+    fit_params = _check_method_params(X, params=fit_params, indices=train, axis=0)
 
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X_train, y_train = safe_split(X, y, indices=train, axis=0)
