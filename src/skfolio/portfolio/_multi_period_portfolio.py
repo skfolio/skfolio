@@ -12,6 +12,7 @@ from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 
 import skfolio.typing as skt
 from skfolio.portfolio._base import BasePortfolio
@@ -651,7 +652,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         self._loaded = False
         self._portfolios.append(portfolio)
         if len(self.observations) == 0:
-            # We don"t concatenate an empty array as we cannot know the dtype before.
+            # We don't concatenate an empty array as we cannot know the dtype before.
             self.observations = portfolio.observations
             self.returns = portfolio.returns
         else:
@@ -661,3 +662,50 @@ class MultiPeriodPortfolio(BasePortfolio):
             self.returns = np.concatenate([self.returns, portfolio.returns], axis=0)
         self._loaded = True
         self.clear()
+
+    def plot_weights_per_observation(self):
+        """Plot portfolio weights per observation as a stacked-area chart.
+
+        This shows the composition of the portfolio over time, with each asset's weight
+        stacked to illustrate how allocations shift.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        df = self.weights_per_observation
+
+        fig = go.Figure()
+
+        for asset in df.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[asset],
+                    mode="lines",
+                    name=asset,
+                    stackgroup="one",  # stack all series
+                    line=dict(width=0.5),
+                    hovertemplate=(
+                        "%{x|%Y-%m-%d}<br>"  # date
+                        f"{asset}: "  # asset name
+                        "%{y:.2%}"  # two-decimals percent
+                        "<extra></extra>"
+                    ),
+                )
+            )
+        fig.update_layout(
+            title="Weight allocation over time",
+            xaxis_title="Date",
+            yaxis_title="Weight (%)",
+            legend_title_text="Assets",
+        )
+
+        fig.update_yaxes(
+            tickformat=".0%",
+            zeroline=True,
+            zerolinecolor="gray",
+        )
+
+        return fig
