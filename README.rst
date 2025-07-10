@@ -84,29 +84,6 @@ Installation
     pip install -U skfolio
 
 
-Docker
-~~~~~~
-
-To verify your Docker installation, open a terminal (or Command Prompt on Windows) and run::
-
-    docker --version
-
-If Docker is not installed, download Docker Desktop from https://www.docker.com/products/docker-desktop.
-
-After installation, start Docker Desktop and verify that it is running before executing the build and run commands below.
-
-
-Build the Docker image::
-    
-    docker build -t skfolio-jupyterlab .
-
-Run the Docker container::
-
-    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
-
-Finally open a browser to localhost:8888/lab and start using `skfolio`.
-
-
 Dependencies
 ~~~~~~~~~~~~
 
@@ -121,6 +98,23 @@ Dependencies
 - scikit-learn (>= |SklearnMinVersion|)
 - joblib (>= |JoblibMinVersion|)
 - plotly (>= |PlotlyMinVersion|)
+
+Docker
+~~~~~~
+
+You can also spin up a reproducible JupyterLab environment using Docker:
+
+Build the image::
+
+    docker build -t skfolio-jupyterlab .
+
+Run the container::
+
+    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
+
+Browse:
+
+Open localhost:8888/lab and start using `skfolio`
 
 Key Concepts
 ~~~~~~~~~~~~
