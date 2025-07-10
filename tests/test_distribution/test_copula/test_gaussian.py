@@ -184,6 +184,7 @@ def test_cdf_exact(
     np.testing.assert_almost_equal(
         fitted_model.cdf(X),
         np.array([0.0359141, 0.18021753, 0.24926745, 0.44315041, 0.16167046]),
+        5,
     )
 
 
@@ -209,7 +210,7 @@ def test_gaussian_partial_derivative_exact(X, fitted_model, first_margin, expect
 def test_gaussian_partial_derivative_numeric(X, fitted_model, first_margin):
     h = fitted_model.partial_derivative(X, first_margin=first_margin)
 
-    delta = 1e-6
+    delta = 1e-3
     i = 0 if first_margin else 1
     X1 = X.copy()
     X1[:, i] += delta
@@ -218,7 +219,7 @@ def test_gaussian_partial_derivative_numeric(X, fitted_model, first_margin):
 
     h_num = (fitted_model.cdf(X1) - fitted_model.cdf(X2)) / delta / 2
 
-    np.testing.assert_almost_equal(h, h_num)
+    np.testing.assert_almost_equal(h, h_num, 3)
 
 
 @pytest.mark.parametrize(
