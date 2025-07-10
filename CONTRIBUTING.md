@@ -82,21 +82,8 @@ Ready to contribute? Here's how to set yourself up for local development.
    $ uv run pytest
    ```
 
-6. Then run linting and formatting checks with:
+6. Then run linting and formatting with:
 
-   Using **pip**:
-   ```shell
-   $ ruff check --fix
-   $ ruff format
-   ```
-   or using **uv**:
-   ```shell
-   $ uv run ruff check --fix
-   $ uv run ruff format
-   ```
-   
-   To fix linting and formatting issues, you can run:
-   
    Using **pip**:
    ```shell
    $ ruff check --fix
