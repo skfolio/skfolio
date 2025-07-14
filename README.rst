@@ -743,8 +743,6 @@ If you use `skfolio` in a publication, please cite:
 
 **The library**::
 
-    .. code-block:: bibtex
-
         @software{skfolio,
           title     = {skfolio},
           author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
@@ -754,8 +752,6 @@ If you use `skfolio` in a publication, please cite:
         }
 
 **The paper**::
-
-    .. code-block:: bibtex
 
         @article{nicolini2025skfolio,
           title         = {skfolio: Portfolio Optimization in Python},
