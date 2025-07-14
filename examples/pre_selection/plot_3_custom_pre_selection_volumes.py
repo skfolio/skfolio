@@ -20,6 +20,7 @@ import sklearn.utils.validation as skv
 from plotly.io import show
 from sklearn import set_config
 from sklearn.pipeline import Pipeline
+from sklearn.utils.validation import validate_data
 
 from skfolio.datasets import load_sp500_dataset
 from skfolio.model_selection import (
@@ -50,7 +51,7 @@ class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
 
     def fit(self, X, y=None, volumes=None):
         # Validate and convert X to a NumPy array
-        X = self._validate_data(X)
+        X = validate_data(self, X)
 
         # Check parameters
         if not 0 < self.pct_to_keep <= 1:

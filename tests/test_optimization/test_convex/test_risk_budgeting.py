@@ -84,6 +84,7 @@ def test_risk_budgeting_contribution(X):
     )
 
 
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_risk_budgeting(X_small, risk_measure, precisions):
     precision = precisions[risk_measure]
     n_assets = X_small.shape[1]

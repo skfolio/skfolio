@@ -39,6 +39,7 @@
 
 import warnings
 from abc import abstractmethod
+from collections.abc import Callable
 from typing import ClassVar
 
 import numpy as np
@@ -112,6 +113,10 @@ class BasePortfolio:
     compounded : bool, default=False
         If this is set to True, cumulative returns are compounded.
         The default is `False`.
+
+    sample_weight : ndarray of shape (n_observations,), optional
+        Sample weights for each observation. The weights must sum to one.
+         If None, equal weights are assumed.
 
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
@@ -376,6 +381,7 @@ class BasePortfolio:
         "min_acceptable_return",
         "compounded",
         "risk_free_rate",
+        "sample_weight",
     }
 
     # Arguments locally used in measures computation
@@ -403,6 +409,7 @@ class BasePortfolio:
         # custom getter and setter
         "_fitness_measures",
         "_annualized_factor",
+        "_sample_weight",
         # custom getter (read-only and cached)
         "_fitness",
         "_cumulative_returns",
@@ -485,6 +492,7 @@ class BasePortfolio:
         fitness_measures: list[skt.Measure] | None = None,
         risk_free_rate: float = 0.0,
         compounded: bool = False,
+        sample_weight: np.ndarray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1.0,
@@ -497,6 +505,7 @@ class BasePortfolio:
     ):
         self._loaded = False
         self._annualized_factor = annualized_factor
+        self._sample_weight = sample_weight
         self.returns = np.asarray(returns)
         self.observations = np.asarray(observations)
         self.risk_free_rate = risk_free_rate
@@ -652,6 +661,25 @@ class BasePortfolio:
         self._annualized_factor = value
         self.clear()
 
+    @property
+    def sample_weight(self) -> float:
+        """Observations sample weights."""
+        return self._sample_weight
+
+    @sample_weight.setter
+    def sample_weight(self, value: np.ndarray | None) -> None:
+        if value is not None:
+            value = np.asarray(value)
+            if value.ndim != 1:
+                raise ValueError("sample_weight must be a 1D array.")
+            if len(value) != self.n_observations:
+                raise ValueError(
+                    "sample_weight must have the same length as the number of observations."
+                )
+            if not np.isclose(value.sum(), 1):
+                raise ValueError("sample_weight must sum to one.")
+        self._sample_weight = value
+
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
     def fitness(self) -> np.ndarray:
@@ -738,19 +766,9 @@ class BasePortfolio:
             # Local measures function arguments need to be defined in the class
             # attributes with the argument name preceded by the measure name and
             # separated by "_".
-            if measure.is_annualized:
-                func = getattr(mt, str(measure.non_annualized_measure.value))
-            else:
-                func = getattr(mt, str(measure.value))
 
-            args = {
-                arg: (
-                    getattr(self, arg)
-                    if arg in self._measure_global_args
-                    else getattr(self, f"{measure.value}_{arg}")
-                )
-                for arg in args_names(func)
-            }
+            func, args = self._get_measure_func(measure=measure)
+
             try:
                 value = func(**args)
                 if measure in [
@@ -844,15 +862,7 @@ class BasePortfolio:
             risk_measure = non_annualized_measure
 
         if risk_measure is not None:
-            risk_func = getattr(mt, str(risk_measure.value))
-            risk_func_args = {
-                arg: (
-                    getattr(self, arg)
-                    if arg in self._measure_global_args
-                    else getattr(self, f"{risk_measure.value}_{arg}")
-                )
-                for arg in args_names(risk_func)
-            }
+            risk_func, risk_func_args = self._get_measure_func(measure=risk_measure)
 
             if "drawdowns" in risk_func_args:
                 del risk_func_args["drawdowns"]
@@ -1032,18 +1042,33 @@ class BasePortfolio:
         )
         return fig
 
-    def plot_returns_distribution(self) -> go.Figure:
+    def plot_returns_distribution(
+        self, percentile_cutoff: float | None = None
+    ) -> go.Figure:
         """Plot the Portfolio returns distribution using Gaussian KDE.
+
+        Parameters
+        ----------
+        percentile_cutoff : float, default=None
+            Percentile cutoff for tail truncation (percentile), in percent.
+            If a float p is provided, the distribution support is truncated at the p-th
+            and (100 - p)-th percentiles.
+            If None, no truncation is applied (uses full min/max of returns).
 
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        lower = np.percentile(self.returns, 1e-1)
-        upper = np.percentile(self.returns, 100 - 1e-1)
+        returns = self.returns
+        if percentile_cutoff is None:
+            lower, upper = returns.min(), returns.max()
+        else:
+            lower = np.percentile(returns, percentile_cutoff)
+            upper = np.percentile(returns, 100.0 - percentile_cutoff)
+
         x = np.linspace(lower, upper, 500)
-        y = st.gaussian_kde(self.returns)(x)
+        y = st.gaussian_kde(self.returns, weights=self.sample_weight)(x)
 
         fig = go.Figure(
             go.Scatter(
@@ -1090,7 +1115,7 @@ class BasePortfolio:
         fig = rolling.plot(backend="plotly")
         fig.add_hline(
             y=getattr(self, measure.value),
-            line_width=1,
+            line_width=1.5,
             line_dash="dash",
             line_color="blue",
         )
@@ -1163,3 +1188,20 @@ class BasePortfolio:
             legend_title_text="Assets",
         )
         return fig
+
+    def _get_measure_func(self, measure: skt.Measure) -> tuple[Callable, dict]:
+        """Return the function and arguments of a given measure."""
+        if measure.is_annualized:
+            func = getattr(mt, str(measure.non_annualized_measure.value))
+        else:
+            func = getattr(mt, str(measure.value))
+
+        args = {}
+        for arg in args_names(func):
+            if arg in self._measure_global_args:
+                args[arg] = getattr(self, arg)
+            elif arg == "biased":
+                args[arg] = False
+            else:
+                args[arg] = getattr(self, f"{measure.value}_{arg}")
+        return func, args

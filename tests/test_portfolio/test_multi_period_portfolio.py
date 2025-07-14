@@ -344,6 +344,7 @@ def test_portfolio_clear_cache(portfolio, periods, measure):
     args = [
         arg if arg in Portfolio._measure_global_args else f"{r.value}_{arg}"
         for arg in args_names(func)
+        if arg not in ["biased", "sample_weight"]
     ]
     args = [arg for arg in args if arg not in Portfolio._read_only_attrs]
     # default

@@ -6,21 +6,44 @@ Black & Litterman
 This tutorial shows how to use the :class:`~skfolio.prior.BlackLitterman` estimator in
 the :class:`~skfolio.optimization.MeanRisk` optimization.
 
-A :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the distribution estimate of asset returns. It represents the investor's prior beliefs
-about the model used to estimate such distribution.
+A :ref:`Prior Estimator <prior>` in `skfolio` fits a :class:`ReturnDistribution`
+containing your pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample
+weight, Cholesky decomposition).
 
-The `PriorModel` is a dataclass containing:
+The term "prior" is used in a general optimization sense, not confined to Bayesian
+priors. It denotes any **a priori** assumption or estimation method for the return
+distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+**Information-theoretic** approaches into a single cohesive framework:
 
-    * `mu`: Expected returns estimation
-    * `covariance`: Covariance matrix estimation
-    * `returns`: assets returns estimation
-    * `cholesky` : Lower-triangular Cholesky factor of the covariance estimation (optional)
+1. Frequentist:
+    * :class:`~skfolio.prior.EmpiricalPrior`
+    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.SyntheticData`
 
-The `BlackLitterman` estimator estimates the `PriorModel` using the Black & Litterman
-model. It takes as input a prior estimator used to compute the prior expected returns
-and prior covariance matrix, which are updated using the analyst's views to get the
-posterior expected returns and posterior covariance matrix.
+2. Bayesian:
+    * :class:`~skfolio.prior.BlackLitterman`
+
+3. Information-theoretic:
+    * :class:`~skfolio.prior.EntropyPooling`
+    * :class:`~skfolio.prior.OpinionPooling`
+
+In skfolio's API, all such methods share the same interface and adhere to scikit-learn's
+estimator API: the `fit` method accepts `X` (the asset returns) and stores the
+resulting :class:`~skfolio.prior.ReturnDistribution` in its `return_distribution_`
+attribute.
+
+The :class:`~skfolio.prior.ReturnDistribution` is a dataclass containing:
+
+    * `mu`: Estimated expected returns of shape (n_assets,)
+    * `covariance`: Estimated covariance matrix of shape (n_assets, n_assets)
+    * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
+    * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
+    * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+The `BlackLitterman` estimator estimates the `ReturnDistribution` using
+the Black & Litterman model. It takes a Bayesian approach by starting from a prior
+estimate of the assets' expected returns and covariance matrix, then updating them with
+the analyst's views to obtain the posterior estimates.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the
 `BlackLitterman` estimator.

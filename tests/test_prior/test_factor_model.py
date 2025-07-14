@@ -15,11 +15,11 @@ from skfolio.prior import (
 def test_factor_model(X, y):
     model = FactorModel()
     model.fit(X, y)
-    assert model.prior_model_
-    assert model.prior_model_.mu.shape == (20,)
+    assert model.return_distribution_
+    assert model.return_distribution_.mu.shape == (20,)
     np.testing.assert_almost_equal(
-        model.prior_model_.cholesky @ model.prior_model_.cholesky.T,
-        model.prior_model_.covariance,
+        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        model.return_distribution_.covariance,
         15,
     )
 
@@ -30,10 +30,10 @@ def test_factor_model(X, y):
         ),
     )
     model.fit(X, y)
-    assert model.prior_model_
+    assert model.return_distribution_
     np.testing.assert_almost_equal(
-        model.prior_model_.cholesky @ model.prior_model_.cholesky.T,
-        model.prior_model_.covariance,
+        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        model.return_distribution_.covariance,
         15,
     )
 
@@ -49,10 +49,10 @@ def test_black_litterman_factor_model(X, y):
     )
     model.fit(X, y)
 
-    assert model.prior_model_.mu.shape == (20,)
-    assert model.prior_model_.covariance.shape == (20, 20)
+    assert model.return_distribution_.mu.shape == (20,)
+    assert model.return_distribution_.covariance.shape == (20, 20)
     np.testing.assert_almost_equal(
-        model.prior_model_.mu,
+        model.return_distribution_.mu,
         np.array(
             [
                 0.03913265,
@@ -80,7 +80,7 @@ def test_black_litterman_factor_model(X, y):
     )
 
     np.testing.assert_almost_equal(
-        model.prior_model_.covariance,
+        model.return_distribution_.covariance,
         np.array(
             [
                 [

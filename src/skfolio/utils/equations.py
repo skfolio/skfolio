@@ -103,6 +103,8 @@ def equations_to_matrix(
     groups = _validate_groups(groups, name=names[0])
     equations = _validate_equations(equations, name=names[1])
 
+    n_groups, n_assets = groups.shape
+
     a_equality = []
     b_equality = []
 
@@ -127,10 +129,14 @@ def equations_to_matrix(
                 raise
             warnings.warn(str(e), stacklevel=2)
     return (
-        np.array(a_equality),
-        np.array(b_equality),
-        np.array(a_inequality),
-        np.array(b_inequality),
+        np.array(a_equality, dtype=float)
+        if a_equality
+        else np.empty((0, n_assets), dtype=float),
+        np.array(b_equality, dtype=float),
+        np.array(a_inequality, dtype=float)
+        if a_inequality
+        else np.empty((0, n_assets), dtype=float),
+        np.array(b_inequality, dtype=float),
     )
 
 
@@ -276,7 +282,7 @@ def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarra
     if not arr.any():
         raise EquationToMatrixError(f"Unable to find '{key}' in '{values}'")
     if sum_to_one:
-        s = np.sum(arr)
+        s = arr.sum()
     else:
         s = 1
     return arr / s

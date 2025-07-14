@@ -202,6 +202,23 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         x = np.linspace(lower_bound, upper_bound, 1000)
 
         traces = []
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+            pdfs = np.exp(self.score_samples(x.reshape(-1, 1)))
+        traces.append(
+            go.Scatter(
+                x=x,
+                y=pdfs.flatten(),
+                mode="lines",
+                name=self.__class__.__name__,
+                line=dict(color="rgb(31, 119, 180)", dash="solid", width=1),
+                fill="tozeroy",
+                fillcolor="rgba(31, 119, 180, 0.17)",
+                opacity=1.0,
+            )
+        )
+
         if X is not None:
             with warnings.catch_warnings():
                 warnings.filterwarnings(
@@ -216,24 +233,12 @@ class BaseUnivariateDist(BaseDistribution, ABC):
                     y=y_kde,
                     mode="lines",
                     name="Empirical KDE",
-                    line=dict(color="rgb(85,168,104)"),
+                    line=dict(color="rgb(85, 168, 104)", dash="dash", width=2),
                     fill="tozeroy",
+                    fillcolor="rgba(85, 168, 104, 0.17)",
+                    opacity=1.0,
                 )
             )
-
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
-            pdfs = np.exp(self.score_samples(x.reshape(-1, 1)))
-        traces.append(
-            go.Scatter(
-                x=x,
-                y=pdfs.flatten(),
-                mode="lines",
-                name=self.__class__.__name__,
-                line=dict(color="rgb(31, 119, 180)"),
-                fill="tozeroy",
-            )
-        )
 
         fig = go.Figure(data=traces)
         fig.update_layout(

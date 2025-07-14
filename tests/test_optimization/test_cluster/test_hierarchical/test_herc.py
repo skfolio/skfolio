@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
-from sklearn import config_context
+from sklearn import clone, config_context
 
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalEqualRiskContribution
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel
 
 
 @pytest.fixture(
@@ -226,3 +226,202 @@ def test_herc_weight_constraints(X):
         ),
     )
     np.testing.assert_almost_equal(sum(model.weights_), 1.0)
+
+
+def test_optim_with_equal_weighted_sample_weight(X, risk_measure):
+    """No sample weight and equal-weighted sample weight should give the same result"""
+    ref = HierarchicalEqualRiskContribution(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = HierarchicalEqualRiskContribution(
+        risk_measure=risk_measure, prior_estimator=EntropyPooling()
+    )
+    model.fit(X)
+
+    np.testing.assert_almost_equal(model.weights_, ref.weights_, 6)
+
+
+@pytest.mark.parametrize(
+    "risk_measure,view_params,expected_weights",
+    [
+        (
+            RiskMeasure.CVAR,
+            dict(cvar_views=["PG == 0.07"]),
+            [
+                0.02655,
+                0.06663,
+                0.12967,
+                0.01875,
+                0.05418,
+                0.11225,
+                0.02622,
+                0.03357,
+                0.15498,
+                0.02844,
+                0.02423,
+                0.03631,
+                0.02899,
+                0.02569,
+                0.03008,
+                0.02776,
+                0.07274,
+                0.02504,
+                0.03157,
+                0.04635,
+            ],
+        ),
+        (
+            RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.0294,
+                0.09053,
+                0.1042,
+                0.02483,
+                0.04742,
+                0.14054,
+                0.03402,
+                0.03845,
+                0.10816,
+                0.04129,
+                0.02549,
+                0.04785,
+                0.02744,
+                0.02969,
+                0.03121,
+                0.02992,
+                0.03462,
+                0.02764,
+                0.03493,
+                0.05237,
+            ],
+        ),
+        (
+            RiskMeasure.VARIANCE,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.02838413,
+                0.07020902,
+                0.0755202,
+                0.02120639,
+                0.02721367,
+                0.1401606,
+                0.03953189,
+                0.06721798,
+                0.08193436,
+                0.06788847,
+                0.02759994,
+                0.10908505,
+                0.02410307,
+                0.0285904,
+                0.04430349,
+                0.03002163,
+                0.00772711,
+                0.03279928,
+                0.04001126,
+                0.03649207,
+            ],
+        ),
+        (
+            RiskMeasure.STANDARD_DEVIATION,
+            dict(variance_views=["PG == 0.0005"]),
+            [
+                0.02955,
+                0.06355,
+                0.11186,
+                0.02423,
+                0.04113,
+                0.12922,
+                0.03475,
+                0.04098,
+                0.1197,
+                0.04886,
+                0.02857,
+                0.04206,
+                0.02861,
+                0.03659,
+                0.03423,
+                0.03618,
+                0.03308,
+                0.02988,
+                0.03942,
+                0.04754,
+            ],
+        ),
+        (
+            RiskMeasure.SEMI_VARIANCE,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.02712806,
+                0.05553646,
+                0.10652543,
+                0.01575164,
+                0.04613184,
+                0.1228552,
+                0.0303322,
+                0.06683266,
+                0.12662696,
+                0.04220043,
+                0.02504002,
+                0.08129008,
+                0.02593874,
+                0.02317946,
+                0.04489129,
+                0.0300956,
+                0.02312609,
+                0.02771847,
+                0.03541784,
+                0.04338152,
+            ],
+        ),
+        (
+            RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT,
+            dict(variance_views=["PG == 0.005"]),
+            [
+                0.0294,
+                0.09053,
+                0.1042,
+                0.02483,
+                0.04742,
+                0.14054,
+                0.03402,
+                0.03845,
+                0.10816,
+                0.04129,
+                0.02549,
+                0.04785,
+                0.02744,
+                0.02969,
+                0.03121,
+                0.02992,
+                0.03462,
+                0.02764,
+                0.03493,
+                0.05237,
+            ],
+        ),
+    ],
+)
+def test_sample_weight(X, risk_measure, view_params, expected_weights):
+    ref = HierarchicalEqualRiskContribution(risk_measure=risk_measure)
+    ref.fit(X)
+
+    model = clone(ref)
+    model = model.set_params(prior_estimator=EntropyPooling(**view_params))
+    model.fit(X)
+
+    assert model.weights_[15] < ref.weights_[15]
+
+    np.testing.assert_almost_equal(model.weights_, expected_weights, 5)
+
+    ref_ptf = ref.predict(X)
+    ptf = model.predict(X)
+
+    assert getattr(ref_ptf, risk_measure.value) < getattr(ptf, risk_measure.value)
+
+    sample_weight = model.prior_estimator_.return_distribution_.sample_weight
+
+    ref_ptf.sample_weight = sample_weight
+    ptf.sample_weight = sample_weight
+
+    assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)

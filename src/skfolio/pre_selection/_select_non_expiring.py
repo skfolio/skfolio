@@ -123,7 +123,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
             )
 
         if self.expiration_dates is None:
-            raise ValueError("`expiration_lookahead` must be provided")
+            raise ValueError("`expiration_dates` must be provided")
 
         if self.expiration_lookahead is None:
             raise ValueError("`expiration_lookahead` must be provided")
