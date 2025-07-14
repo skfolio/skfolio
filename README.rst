@@ -739,15 +739,30 @@ served as sources of inspiration:
 Citation
 ~~~~~~~~
 
-If you use `skfolio` in a scientific publication, we would appreciate citations:
+If you use `skfolio` in a publication, please cite:
 
-Bibtex entry::
+**The library**::
 
-    @article{nicolini2025skfolio,
-        title = {skfolio: Portfolio Optimization in Python},
-        author = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
-        journal = {arXiv preprint arXiv:2507.04176},
-        year = {2025},
-        url = {https://github.com/skfolio/skfolio}
-    }
+    .. code-block:: bibtex
 
+        @software{skfolio,
+          title     = {skfolio},
+          author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
+          year      = {2024},
+          doi       = {TBD after next release},
+          url       = {https://github.com/skfolio/skfolio}
+        }
+
+**The paper**::
+
+    .. code-block:: bibtex
+
+        @article{nicolini2025skfolio,
+          title         = {skfolio: Portfolio Optimization in Python},
+          author        = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
+          journal       = {arXiv preprint arXiv:2507.04176},
+          year          = {2025},
+          eprint        = {2507.04176},
+          archivePrefix = {arXiv},
+          url           = {https://arxiv.org/abs/2507.04176}
+        }
