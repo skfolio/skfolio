@@ -7,7 +7,8 @@ name = "skfolio"
 version = "0.10.1"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
-    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" }
+    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
+    { name = "Carlo Nicolini", email = "c.nicolini@ipazia.com" }
 ]
 authors = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },

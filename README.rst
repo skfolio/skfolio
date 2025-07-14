@@ -724,7 +724,7 @@ Recognition
 ~~~~~~~~~~~
 
 We would like to thank all contributors to our direct dependencies, such as
-scikit-learn and cvxpy, as well as the contributors of the following resources that
+`scikit-learn <https://github.com/scikit-learn/scikit-learn>`_ and `cvxpy <https://github.com/cvxpy/cvxpy>`_, as well as the contributors of the following resources that
 served as sources of inspiration:
 
     * PyPortfolioOpt
@@ -739,14 +739,26 @@ served as sources of inspiration:
 Citation
 ~~~~~~~~
 
-If you use `skfolio` in a scientific publication, we would appreciate citations:
+If you use `skfolio` in a publication, please cite:
 
-Bibtex entry::
+**The library**::
 
-    @misc{skfolio,
-      author = {Delatte, Hugo and Nicolini, Carlo},
-      title = {skfolio},
-      year  = {2023},
-      url   = {https://github.com/skfolio/skfolio}
-    }
+        @software{skfolio,
+          title     = {skfolio},
+          author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
+          year      = {2024},
+          doi       = {TBD after next release},
+          url       = {https://github.com/skfolio/skfolio}
+        }
 
+**The paper**::
+
+        @article{nicolini2025skfolio,
+          title         = {skfolio: Portfolio Optimization in Python},
+          author        = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
+          journal       = {arXiv preprint arXiv:2507.04176},
+          year          = {2025},
+          eprint        = {2507.04176},
+          archivePrefix = {arXiv},
+          url           = {https://arxiv.org/abs/2507.04176}
+        }
