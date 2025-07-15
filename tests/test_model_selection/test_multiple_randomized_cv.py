@@ -215,3 +215,4 @@ def test_time_cross_val_predict(X):
 
     pred = cross_val_predict(model, X, cv=cv)
     assert isinstance(pred, Population)
+    assert len(pred) == 100
