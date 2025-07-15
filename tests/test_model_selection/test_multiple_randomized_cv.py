@@ -2,29 +2,43 @@
 
 import numpy as np
 import pytest
-from skfolio import RatioMeasure
+from sklearn.pipeline import Pipeline
+
+from skfolio import Population, RatioMeasure
 from skfolio.model_selection import (
     MultipleRandomizedCV,
     WalkForward,
     cross_val_predict,
 )
 from skfolio.optimization import InverseVolatility
+from skfolio.pre_selection import SelectKExtremes
+
+
+def assert_split_equal(split, res):
+    for i, (train, test, assets) in enumerate(split):
+        assert np.array_equal(train, res[i][0])
+        assert np.array_equal(test, res[i][1])
+        assert np.array_equal(assets, res[i][2])
 
 
 def test_invalid_init():
     X = np.random.randn(60, 10)
 
     # walk_forward not correct type
-    with pytest.raises(TypeError, match="`walk_forward` must be a `WalkForward` instance"):
+    with pytest.raises(
+        TypeError, match="`walk_forward` must be a `WalkForward` instance"
+    ):
         cv = MultipleRandomizedCV(
             walk_forward=object(), num_subsamples=1, asset_subset_size=1
         )
         list(cv.split(X))
 
     # invalid num_subsamples
-    wf =  WalkForward(test_size=30, train_size=252)
-    with pytest.raises(ValueError,  match="n_subsample=0 must satisfy"):
-        cv = MultipleRandomizedCV(walk_forward=wf, num_subsamples=0, asset_subset_size=1)
+    wf = WalkForward(test_size=30, train_size=252)
+    with pytest.raises(ValueError, match="n_subsample=0 must satisfy"):
+        cv = MultipleRandomizedCV(
+            walk_forward=wf, num_subsamples=0, asset_subset_size=1
+        )
         list(cv.split(X))
 
     with pytest.raises(ValueError, match="n_subsample=1000 must satisfy"):
@@ -46,23 +60,22 @@ def test_invalid_init():
         )
         list(cv.split(X))
 
-
     # invalid window_size
     with pytest.raises(ValueError, match="When not None, window_size=0 must satisfy"):
-        cv =        MultipleRandomizedCV(
+        cv = MultipleRandomizedCV(
             walk_forward=wf, num_subsamples=2, asset_subset_size=2, window_size=0
         )
         list(cv.split(X))
     with pytest.raises(ValueError, match="When not None, window_size=61 must satisfy"):
-        cv =        MultipleRandomizedCV(
+        cv = MultipleRandomizedCV(
             walk_forward=wf, num_subsamples=2, asset_subset_size=2, window_size=61
         )
         list(cv.split(X))
 
     # invalid WalkForward vs window_size
     with pytest.raises(ValueError, match="The sum of"):
-        cv =        MultipleRandomizedCV(
-        walk_forward=wf, num_subsamples=10, asset_subset_size=2
+        cv = MultipleRandomizedCV(
+            walk_forward=wf, num_subsamples=10, asset_subset_size=2
         )
         list(cv.split(X))
 
@@ -81,9 +94,9 @@ def test_get_n_splits_and_get_path_ids_before_split():
         cv.get_path_ids()
 
 
-def test_split_without_window_size():
+def test_split_without_window_size_1():
     X = np.random.randn(10, 20)
-    wf =  WalkForward(test_size=2, train_size=3)
+    wf = WalkForward(test_size=2, train_size=3)
     cv = MultipleRandomizedCV(
         walk_forward=wf,
         num_subsamples=3,
@@ -93,10 +106,10 @@ def test_split_without_window_size():
     splits = list(cv.split(X))
     assert len(splits) == 9
     # each element is a tuple of (train, test, assets)
-    for idx, (train, test, assets) in enumerate(splits):
+    for _, (train, test, assets) in enumerate(splits):
         # train/test come from dummy logic
-        assert train.shape == (2,)
-        assert test.shape == (1,)
+        assert train.shape == (3,)
+        assert test.shape == (2,)
         # assets length matches asset_subset_size
         assert isinstance(assets, np.ndarray)
         assert assets.shape == (2,)
@@ -104,82 +117,101 @@ def test_split_without_window_size():
         assert np.all((assets >= 0) & (assets < X.shape[1]))
     # now get_path_ids matches subsample ids
     path_ids = cv.get_path_ids()
-    # since dummy n_splits=2, subsample id repeats twice
-    expected = np.repeat(np.arange(3), 2)
-    assert np.array_equal(path_ids, expected)
+    assert np.array_equal(path_ids, [0, 0, 0, 1, 1, 1, 2, 2, 2])
+
+
+def test_split_without_window_size_2():
+    X = np.random.randn(6, 5)
+    wf = WalkForward(test_size=1, train_size=2)
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        num_subsamples=2,
+        asset_subset_size=3,
+        random_state=0,
+    )
+    assert_split_equal(
+        cv.split(X),
+        [
+            ([0, 1], [2], [0, 1, 4]),
+            ([1, 2], [3], [0, 1, 4]),
+            ([2, 3], [4], [0, 1, 4]),
+            ([3, 4], [5], [0, 1, 4]),
+            ([0, 1], [2], [1, 3, 4]),
+            ([1, 2], [3], [1, 3, 4]),
+            ([2, 3], [4], [1, 3, 4]),
+            ([3, 4], [5], [1, 3, 4]),
+        ],
+    )
+
+    assert np.array_equal(cv.get_path_ids(), [0, 0, 0, 0, 1, 1, 1, 1])
 
 
 def test_split_with_window_size():
-    dummy = DummyWalkForward(n_splits=1, train_size=2, test_size=1)
-    window = 3
+    X = np.random.randn(20, 10)
+    wf = WalkForward(test_size=2, train_size=3)
     cv = MultipleRandomizedCV(
-        walk_forward=dummy,
+        walk_forward=wf,
         num_subsamples=2,
-        asset_subset_size=2,
-        window_size=window,
+        asset_subset_size=4,
+        window_size=8,
         random_state=0,
     )
-    splits = list(cv.split(X))
-    # total splits = 2*1 =2
-    assert len(splits) == 2
-    for subsample_id, (train, test, assets) in enumerate(splits):
-        # indices within [start, start+window)
-        assert train.max() < 6
-        assert test.max() < 6
-        # span of indices should not exceed window
-        assert max(train.max(), test.max()) - min(train.min(), test.min()) < window
+    assert_split_equal(
+        cv.split(X),
+        [
+            ([5, 6, 7], [8, 9], [0, 1, 3, 9]),
+            ([7, 8, 9], [10, 11], [0, 1, 3, 9]),
+            ([0, 1, 2], [3, 4], [0, 6, 7, 8]),
+            ([2, 3, 4], [5, 6], [0, 6, 7, 8]),
+        ],
+    )
+
+    assert np.array_equal(cv.get_path_ids(), [0, 0, 1, 1])
 
 
-def test_asset_subset_uniqueness_and_range():
-    dummy = DummyWalkForward(n_splits=1, train_size=1, test_size=1)
+def test_time_aware_wf(X):
     cv = MultipleRandomizedCV(
-        walk_forward=dummy,
-        num_subsamples=5,
-        asset_subset_size=3,
-        window_size=None,
+        walk_forward=WalkForward(test_size=3, train_size=12, freq="WOM-3FRI"),
+        window_size=252 * 2,
+        asset_subset_size=5,
+        num_subsamples=100,
         random_state=1,
     )
     splits = list(cv.split(X))
-    # extract asset subsets per subsample id
+    assert len(splits) == 309
+
+    for split in splits:
+        assert 247 <= len(split[0]) <= 258
+        assert 56 <= len(split[1]) <= 69
+        assert len(split[2]) == 5
+        assert np.all((split[2] >= 0) & (split[2] < X.shape[1]))
+
     path_ids = cv.get_path_ids()
-    subsets = {pid: assets.tolist() for (_, _, assets), pid in zip(splits, path_ids)}
-    # ensure all subsets are unique
-    all_sets = [tuple(sorted(sub)) for sub in subsets.values()]
-    assert len(set(all_sets)) == 5
+    assert len(path_ids) == 309
+    assert path_ids.min() == 0
+    assert path_ids.max() == 99
 
 
-def test_multiple_randomized_cv():
-    X = np.random.randn(60, 10)
-
-    walk_forward = WalkForward(test_size=5, train_size=10)
+def test_time_cross_val_predict(X):
     cv = MultipleRandomizedCV(
-        walk_forward=walk_forward,
-        n_sample_observations=50,
-        n_sample_assets=5,
-        n_subsamples=10,
+        walk_forward=WalkForward(test_size=3, train_size=12, freq="WOM-3FRI"),
+        window_size=252 * 2,
+        asset_subset_size=5,
+        num_subsamples=100,
         random_state=1,
     )
-    list(cv.split(X))
-
-    cv.get_path_ids()
-
-
-def test_multiple_randomized_cv_df(X):
-    walk_forward = WalkForward(test_size=30, train_size=252)
-    cv = MultipleRandomizedCV(
-        walk_forward=walk_forward,
-        n_sample_observations=252 * 2,
-        n_sample_assets=5,
-        n_subsamples=100,
-        random_state=1,
-    )
-    list(cv.split(X))
-
-    cv.get_path_ids()
 
     model = InverseVolatility()
     pred = cross_val_predict(model, X, cv=cv)
-    pred.plot_composition().show()
-    pred.plot_cumulative_returns().show()
-    pred.plot_distribution(measure_list=[RatioMeasure.SHARPE_RATIO]).show()
-    pred[0].plot_weights_per_observation().show()
+    assert isinstance(pred, Population)
+    assert pred.plot_composition()
+    assert pred.plot_cumulative_returns()
+    assert pred.plot_distribution(measure_list=[RatioMeasure.SHARPE_RATIO])
+    assert pred[0].plot_weights_per_observation()
+
+    model = Pipeline(
+        [("pre_selection", SelectKExtremes(k=10)), ("allocation", InverseVolatility())]
+    )
+
+    pred = cross_val_predict(model, X, cv=cv)
+    assert isinstance(pred, Population)

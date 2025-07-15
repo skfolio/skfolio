@@ -62,26 +62,119 @@ class MultipleRandomizedCV:
     Examples
     --------
     >>> import numpy as np
+    >>> from skfolio.datasets import load_sp500_dataset, load_factors_dataset
     >>> from skfolio.model_selection import WalkForward, MultipleRandomizedCV
-    >>> X = np.random.randn(6, 2)
-    >>> cv = WalkForward(test_size=1, train_size=2)
-    >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>>
+    >>> X = np.random.randn(4, 5) # 4 observations and 5 assets
+    >>> # Draw 2 sub-datasets with 3 assets chosen randomly among the 5
+    >>> # For each sub-datasets, run a Walk Forward
+    >>> # Use the full time series (no time resampling)
+    >>> cv = MultipleRandomizedCV(
+    ...     walk_forward=WalkForward(test_size=1, train_size=2),
+    ...     num_subsamples=2,
+    ...     asset_subset_size=3,
+    ...     window_size=None,
+    ...     random_state=0,
+    ... )
+    >>> for i, (train_index, test_index, assets) in enumerate(cv.split(X)):
     ...     print(f"Fold {i}:")
-    ...     print(f"  Train: index={train_index}")
-    ...     print(f"  Test:  index={test_index}")
+    ...     print(f"  Train:  index={train_index}")
+    ...     print(f"  Test:   index={test_index}")
+    ...     print(f"  Assets: columns={assets}")
     Fold 0:
-      Train: index=[0 1]
-      Test:  index=[2]
+      Train:  index=[0 1]
+      Test:   index=[2]
+      Assets: columns=[0 1 4]
     Fold 1:
-      Train: index=[1 2]
-      Test:  index=[3]
+      Train:  index=[1 2]
+      Test:   index=[3]
+      Assets: columns=[0 1 4]
     Fold 2:
-      Train: index=[2 3]
-      Test:  index=[4]
+      Train:  index=[0 1]
+      Test:   index=[2]
+      Assets: columns=[1 3 4]
     Fold 3:
-      Train: index=[3 4]
-      Test:  index=[5]
-   
+      Train:  index=[1 2]
+      Test:   index=[3]
+      Assets: columns=[1 3 4]
+    >>> print(f"Path ids: {cv.get_path_ids()}")
+    Path ids: [0 0 1 1]
+    >>>
+    >>> # Random contiguous time slice of 4 observations among 10 observations
+    >>> X = np.random.randn(10, 5) # 10 observations and 5 assets
+    >>> cv = MultipleRandomizedCV(
+    ...     walk_forward=WalkForward(test_size=1, train_size=2),
+    ...     num_subsamples=2,
+    ...     asset_subset_size=3,
+    ...     window_size=4,
+    ...     random_state=0,
+    ... )
+    >>> for i, (train_index, test_index, assets) in enumerate(cv.split(X)):
+    ...     print(f"Fold {i}:")
+    ...     print(f"  Train:  index={train_index}")
+    ...     print(f"  Test:   index={test_index}")
+    ...     print(f"  Assets: columns={assets}")
+    Fold 0:
+      Train:  index=[4 5]
+      Test:   index=[6]
+      Assets: columns=[0 1 4]
+    Fold 1:
+      Train:  index=[5 6]
+      Test:   index=[7]
+      Assets: columns=[0 1 4]
+    Fold 2:
+      Train:  index=[5 6]
+      Test:   index=[7]
+      Assets: columns=[1 3 4]
+    Fold 3:
+      Train:  index=[6 7]
+      Test:   index=[8]
+      Assets: columns=[1 3 4]
+    >>>
+    >>> # Walk Forward with time-based (calendar) rebalancing
+    >>> # Rebalance every 3 months on the third Friday, and train on the last 12 months.
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>> X = X["2021":"2022"]
+    >>> cv = MultipleRandomizedCV(
+    ...     walk_forward=WalkForward(test_size=3, train_size=12, freq="WOM-3FRI"),
+    ...     num_subsamples=2,
+    ...     asset_subset_size=3,
+    ...     window_size=None,
+    ...     random_state=0,
+    ... )
+    >>> for i, (train_index, test_index, assets) in enumerate(cv.split(X)):
+    ...     print(f"Fold {i}:")
+    ...     print(f"  Train:  size={len(train_index)}")
+    ...     print(f"  Test:   size={len(test_index)}")
+    ...     print(f"  Assets: columns={assets}")
+    Fold 0:
+      Train:  size=256
+      Test:   size=59
+      Assets: columns=[ 9 16 17]
+    Fold 1:
+      Train:  size=253
+      Test:   size=61
+      Assets: columns=[ 9 16 17]
+    Fold 2:
+      Train:  size=251
+      Test:   size=69
+      Assets: columns=[ 9 16 17]
+    Fold 3:
+      Train:  size=256
+      Test:   size=59
+      Assets: columns=[ 7 10 14]
+    Fold 4:
+      Train:  size=253
+      Test:   size=61
+      Assets: columns=[ 7 10 14]
+    Fold 5:
+      Train:  size=251
+      Test:   size=69
+      Assets: columns=[ 7 10 14]
+    >>> print(f"Path ids: {cv.get_path_ids()}")
+    [0 0 0 1 1 1]
     """
 
     if TYPE_CHECKING:
@@ -132,16 +225,16 @@ class MultipleRandomizedCV:
         if self.window_size is not None:
             if not isinstance(self.window_size, int):
                 raise ValueError("`window_size` must be an integer")
-            if self.window_size < 2  or self.window_size > n_observations:
+            if self.window_size < 2 or self.window_size >= n_observations:
                 raise ValueError(
                     f"When not None, window_size={self.window_size} must "
-                    "satisfy 2 <= window_size <= total number of observations"
+                    "satisfy 2 <= window_size < total number of observations"
                     f"={n_observations}."
                 )
 
         if not isinstance(self.asset_subset_size, int):
             raise TypeError("`asset_subset_size` must be an integer")
-        if self.asset_subset_size < 1  or self.asset_subset_size >= n_assets:
+        if self.asset_subset_size < 1 or self.asset_subset_size >= n_assets:
             raise ValueError(
                 f"asset_subset_size={self.asset_subset_size} must satisfy 1 <= asset_subset_size < "
                 f"total number of assets={n_assets}."
@@ -169,12 +262,8 @@ class MultipleRandomizedCV:
                 start_obs = 0
                 X_sample = X
             else:
-                start_obs = rng.integers(
-                    low=0, high=n_observations - self.window_size
-                )
-                obs_indices = np.arange(
-                    start_obs, start_obs + self.window_size
-                )
+                start_obs = rng.randint(low=0, high=n_observations - self.window_size)
+                obs_indices = np.arange(start_obs, start_obs + self.window_size)
                 X_sample, _ = safe_split(X, indices=obs_indices, axis=0)
 
             for train_indices, test_indices in self.walk_forward.split(X_sample):
