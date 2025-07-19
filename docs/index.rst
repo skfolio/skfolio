@@ -648,17 +648,28 @@ Citation
 
 If you use `skfolio` in a scientific publication, we would appreciate citations:
 
-**The library**::
+**The library:**
+
+.. code-block:: bibtex
 
         @software{skfolio,
           title     = {skfolio},
           author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
           year      = {2024},
-          doi       = {TBD after next release},
-          url       = {https://github.com/skfolio/skfolio}
+          doi       = {10.5281/zenodo.16148630},
+          url       = {https://doi.org/10.5281/zenodo.16148630}
         }
 
-**The paper**::
+The above uses the concept DOI, which always resolves to the latest release.
+If you need precise reproducibility, especially for journals or conferences that require
+it, you can cite the version-specific DOI for the exact release you used. To find it,
+go to our `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, locate the
+release you wish to reference (e.g. "v0.10.2"), and copy the DOI listed next to that
+version.
+
+**The paper:**
+
+.. code-block:: bibtex
 
         @article{nicolini2025skfolio,
           title         = {skfolio: Portfolio Optimization in Python},
@@ -669,5 +680,4 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
           archivePrefix = {arXiv},
           url           = {https://arxiv.org/abs/2507.04176}
         }
-
 
