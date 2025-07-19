@@ -733,13 +733,14 @@ served as sources of inspiration:
     * microprediction
     * statsmodels
     * rsome
+    * danielppalomar.com
     * gautier.marti.ai
 
 
 Citation
 ~~~~~~~~
 
-If you use `skfolio` in a publication, please cite:
+If you use `skfolio` in a scientific publication, we would appreciate citations:
 
 **The library**::
 
@@ -762,3 +763,4 @@ If you use `skfolio` in a publication, please cite:
           archivePrefix = {arXiv},
           url           = {https://arxiv.org/abs/2507.04176}
         }
+
