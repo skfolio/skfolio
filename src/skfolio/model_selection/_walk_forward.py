@@ -114,6 +114,13 @@ class WalkForward(sks.BaseCrossValidator):
 
     Examples
     --------
+    Tutorials using `WalkForward`:
+        * :ref:`sphx_glr_auto_examples_pre_selection_plot_3_custom_pre_selection_volumes.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`
+        * :ref:`sphx_glr_auto_examples_mean_risk_plot_8_regularization.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_5_nco_grid_search.py`
+        * :ref:`sphx_glr_auto_examples_ensemble_plot_1_stacking.py`
+
     >>> import numpy as np
     >>> from skfolio.datasets import load_sp500_dataset, load_factors_dataset
     >>> from skfolio.model_selection import WalkForward
@@ -187,7 +194,7 @@ class WalkForward(sks.BaseCrossValidator):
     >>> X = prices_to_returns(prices)
     >>> X = X["2021":"2022"]
     >>> # Rebalance every 3 months on the third Friday, and train on the last 12 months.
-    >>> cv = WalkForward(test_size=3, train_size=12, freq= "WOM-3FRI")
+    >>> cv = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
     >>>
     >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
     >>> ...     print(f"Fold {i}:")

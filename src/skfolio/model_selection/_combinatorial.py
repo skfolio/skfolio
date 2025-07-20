@@ -89,6 +89,11 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     Examples
     --------
+    Tutorials using `CombinatorialPurgedCV`:
+        * :ref:`sphx_glr_auto_examples_pre_selection_plot_1_drop_correlated.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_5_nco_grid_search.py`
+
     >>> import numpy as np
     >>> from skfolio.model_selection import CombinatorialPurgedCV
     >>> X = np.random.randn(12, 2)

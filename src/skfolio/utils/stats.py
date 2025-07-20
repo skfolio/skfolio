@@ -655,7 +655,8 @@ def sample_unique_subsets(
     n: int, k: int, n_subsets: int, random_state: int | None = None
 ) -> np.ndarray:
     """
-    Generate unique k-element subsets from a universe of size n using unranking.
+    Generate unique k-element subsets from a universe of size n using combinatorial
+    unranking.
 
     Each subset is drawn without replacement (elements within subset are distinct) and
     no subset is repeated across draws. Ranks are sampled uniformly without replacement

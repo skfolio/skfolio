@@ -29,54 +29,46 @@ def test_invalid_init():
         TypeError, match="`walk_forward` must be a `WalkForward` instance"
     ):
         cv = MultipleRandomizedCV(
-            walk_forward=object(), num_subsamples=1, asset_subset_size=1
+            walk_forward=object(), n_subsamples=1, asset_subset_size=1
         )
         list(cv.split(X))
 
     # invalid num_subsamples
     wf = WalkForward(test_size=30, train_size=252)
     with pytest.raises(ValueError, match="n_subsample=0 must satisfy"):
-        cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=0, asset_subset_size=1
-        )
+        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=0, asset_subset_size=1)
         list(cv.split(X))
 
     with pytest.raises(ValueError, match="n_subsample=1000 must satisfy"):
         cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=1000, asset_subset_size=1
+            walk_forward=wf, n_subsamples=1000, asset_subset_size=1
         )
         list(cv.split(X))
 
     # invalid asset_subset_size
     with pytest.raises(ValueError, match="asset_subset_size=0 must satisfy"):
-        cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=2, asset_subset_size=0
-        )
+        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=0)
         list(cv.split(X))
 
     with pytest.raises(ValueError, match="asset_subset_size=10 must satisfy"):
-        cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=2, asset_subset_size=10
-        )
+        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=10)
         list(cv.split(X))
 
     # invalid window_size
     with pytest.raises(ValueError, match="When not None, window_size=0 must satisfy"):
         cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=2, asset_subset_size=2, window_size=0
+            walk_forward=wf, n_subsamples=2, asset_subset_size=2, window_size=0
         )
         list(cv.split(X))
     with pytest.raises(ValueError, match="When not None, window_size=61 must satisfy"):
         cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=2, asset_subset_size=2, window_size=61
+            walk_forward=wf, n_subsamples=2, asset_subset_size=2, window_size=61
         )
         list(cv.split(X))
 
     # invalid WalkForward vs window_size
     with pytest.raises(ValueError, match="The sum of"):
-        cv = MultipleRandomizedCV(
-            walk_forward=wf, num_subsamples=10, asset_subset_size=2
-        )
+        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=10, asset_subset_size=2)
         list(cv.split(X))
 
 
@@ -84,7 +76,7 @@ def test_get_n_splits_and_get_path_ids_before_split():
     wf = WalkForward(test_size=30, train_size=252)
     cv = MultipleRandomizedCV(
         walk_forward=wf,
-        num_subsamples=3,
+        n_subsamples=3,
         asset_subset_size=2,
         window_size=None,
         random_state=0,
@@ -99,7 +91,7 @@ def test_split_without_window_size_1():
     wf = WalkForward(test_size=2, train_size=3)
     cv = MultipleRandomizedCV(
         walk_forward=wf,
-        num_subsamples=3,
+        n_subsamples=3,
         asset_subset_size=2,
         random_state=42,
     )
@@ -125,7 +117,7 @@ def test_split_without_window_size_2():
     wf = WalkForward(test_size=1, train_size=2)
     cv = MultipleRandomizedCV(
         walk_forward=wf,
-        num_subsamples=2,
+        n_subsamples=2,
         asset_subset_size=3,
         random_state=0,
     )
@@ -151,7 +143,7 @@ def test_split_with_window_size():
     wf = WalkForward(test_size=2, train_size=3)
     cv = MultipleRandomizedCV(
         walk_forward=wf,
-        num_subsamples=2,
+        n_subsamples=2,
         asset_subset_size=4,
         window_size=8,
         random_state=0,
@@ -174,7 +166,7 @@ def test_time_aware_wf(X):
         walk_forward=WalkForward(test_size=3, train_size=12, freq="WOM-3FRI"),
         window_size=252 * 2,
         asset_subset_size=5,
-        num_subsamples=100,
+        n_subsamples=100,
         random_state=1,
     )
     splits = list(cv.split(X))
@@ -197,7 +189,7 @@ def test_time_cross_val_predict(X):
         walk_forward=WalkForward(test_size=3, train_size=12, freq="WOM-3FRI"),
         window_size=252 * 2,
         asset_subset_size=5,
-        num_subsamples=100,
+        n_subsamples=100,
         random_state=1,
     )
 

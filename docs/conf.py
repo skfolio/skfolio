@@ -117,9 +117,10 @@ ORDER_OF_EXAMPLES = {
     "maximum_diversification": 6,
     "distributionally_robust_cvar": 7,
     "ensemble": 8,
-    "pre_selection": 9,
-    "metadata_routing": 10,
-    "data_preparation": 11,
+    "model_selection": 9,
+    "pre_selection": 10,
+    "metadata_routing": 11,
+    "data_preparation": 12,
 }
 
 
