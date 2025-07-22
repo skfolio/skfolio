@@ -35,7 +35,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # -- Project information -----------------------------------------------------
 
 project = "skfolio"
-copyright = "2023, skfolio developers (BSD License)"
+copyright = "2025, skfolio developers (BSD License)"
 author = "Hugo Delatte"
 
 # -- General configuration ---------------------------------------------------

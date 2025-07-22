@@ -608,6 +608,14 @@ def test_sample_unique_subsets_full_cycle():
     assert subs.shape[0] == total
 
 
+def test_sample_unique_subsets_big_comb():
+    n, k = 100, 10
+    total = math.comb(n, k)
+    assert total > 1e9
+    subs = sample_unique_subsets(n, k, 5, random_state=42)
+    assert subs.shape == (5, 10)
+
+
 def test_sample_unique_subsets_errors():
     with pytest.raises(ValueError):
         sample_unique_subsets(-1, 2, 1)

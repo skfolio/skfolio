@@ -1,4 +1,9 @@
 
+/* Code stdout color */
+html[data-theme="dark"] .highlight .go {
+    color: #9d9d9d;
+}
+
 /* plotly */
 
 .plotly-graph-div {

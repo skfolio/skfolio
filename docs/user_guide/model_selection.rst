@@ -16,7 +16,7 @@ Cross-Validation Prediction
 Every `skfolio` estimator is compatible with `sklearn.model_selection.cross_val_predict`.
 We also implement our own :func:`cross_val_predict` for enhanced integration
 with `Portfolio` and `Population` objects, as well as compatibility with
-`CombinatorialPurgedCV`.
+:class:`CombinatorialPurgedCV` and :class:`MultipleRandomizedCV`.
 
 .. _data_leakage:
 .. danger::
@@ -32,15 +32,15 @@ The portfolio optimization estimator is fitted on the training set and portfolio
 predicted on the corresponding test set.
 
 For `scikit-learn` cross-validations methods such as `Kfold` and `skfolio`'s
-`WalkForward`, the output is a :class:`~skfolio.MultiPeriodPortfolio`, where
-each :class:`~skfolio.Portfolio` corresponds to the prediction on a single train/test
-split (resulting in K portfolios for `KFold`).
+`WalkForward`, the output is a :class:`~skfolio.portfolio.MultiPeriodPortfolio`, where
+each :class:`~skfolio.portfolio.Portfolio` corresponds to the prediction on a single
+train/test split (resulting in K portfolios for `KFold`).
 
-For combinatorial cross-validation methods such as :class:`CombinatorialPurgeCV` and
-Monte Carlo-style methods such as :class:`MultipleRandomizedCV`, the output a
-:class:`~skfolio.Population` containing multiple :class:`~skfolio.MultiPeriodPortfolio`.
-This is because each test produces a collection of multiple paths rather than a single
-path.
+For combinatorial cross-validation methods such as :class:`CombinatorialPurgedCV` and
+Monte Carlo-style methods such as :class:`MultipleRandomizedCV`, the output is a
+:class:`~skfolio.population.Population` containing multiple
+:class:`~skfolio.portfolio.MultiPeriodPortfolio`. This is because each test produces a
+collection of multiple paths rather than a single path.
 
 **Example:**
 
@@ -165,7 +165,7 @@ For that, you can use the function :func:`optimal_folds_number` as shown in the 
 Multiple Randomized Cross-Validation
 ************************************
 The :class:`MultipleRandomizedCV` cross‑validation strategy, based on the
-"Multiple Randomized Backtests" methodology of Palomar & Zhou, performs a Monte
+"Multiple Randomized Backtests" methodology of Palomar, performs a Monte
 Carlo–style evaluation by repeatedly sampling **distinct** asset subsets (without
 replacement) and **contiguous** time windows. It then applies an inner walk‑forward
 split to each subsample, capturing both temporal and cross‑sectional variability in

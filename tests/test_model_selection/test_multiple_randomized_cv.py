@@ -107,6 +107,8 @@ def test_split_without_window_size_1():
         assert assets.shape == (2,)
         # all asset indices are in valid range
         assert np.all((assets >= 0) & (assets < X.shape[1]))
+        assert len(assets) == len(set(assets))
+
     # now get_path_ids matches subsample ids
     path_ids = cv.get_path_ids()
     assert np.array_equal(path_ids, [0, 0, 0, 1, 1, 1, 2, 2, 2])
@@ -208,3 +210,32 @@ def test_time_cross_val_predict(X):
     pred = cross_val_predict(model, X, cv=cv)
     assert isinstance(pred, Population)
     assert len(pred) == 100
+
+
+def test_big_comb():
+    X = np.random.randn(20, 10_000)
+    wf = WalkForward(test_size=2, train_size=3)
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=5,
+        asset_subset_size=1_000,
+        window_size=8,
+        random_state=0,
+    )
+    splits = list(cv.split(X))
+    assert len(splits) == 10
+
+    for _, (train, test, assets) in enumerate(splits):
+        # train/test come from dummy logic
+        assert train.shape == (3,)
+        assert test.shape == (2,)
+        # assets length matches asset_subset_size
+        assert isinstance(assets, np.ndarray)
+        assert assets.shape == (1000,)
+        # all asset indices are in valid range
+        assert np.all((assets >= 0) & (assets < X.shape[1]))
+        assert len(assets) == len(set(assets))
+
+    # now get_path_ids matches subsample ids
+    path_ids = cv.get_path_ids()
+    assert np.array_equal(path_ids, [0, 0, 1, 1, 2, 2, 3, 3, 4, 4])

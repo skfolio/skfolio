@@ -1,6 +1,7 @@
 """Tools module."""
 
 import math
+import random
 import warnings
 
 # Copyright (c) 2023
@@ -18,7 +19,6 @@ import scipy.optimize as sco
 import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
 import scipy.special as scs
-import sklearn.utils as sku
 from scipy.sparse import csr_matrix
 
 from skfolio.utils.tools import AutoEnum
@@ -701,8 +701,12 @@ def sample_unique_subsets(
             f"n_subsets={n_subsets} must satisfy 0 <= n_subsets <= C({n},{k})={total}."
         )
 
-    rng = sku.check_random_state(random_state)
-    ranks = rng.choice(total, size=n_subsets, replace=False)
+    rng = random.Random(random_state)
+    ranks = rng.sample(range(total), k=n_subsets)
+    # random.sample has a special-case for range objects that avoids building a list of
+    # length M=C(n,k) and runs in O(n_subsets) time and space as opposed to
+    # `choice(total, size=n_subsets, replace=False)` which run in O(M) space and raises
+    # ArrayMemoryError for very big M.
     subsets = np.empty((n_subsets, k), dtype=int)
     for i, rank in enumerate(ranks):
         subsets[i, :] = combination_by_index(rank, n, k)

@@ -505,7 +505,7 @@ Classes
 :mod:`skfolio.model_selection`: Model Selection
 ===============================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.model_selection
    :no-members:
    :no-inherited-members:
 
@@ -529,8 +529,9 @@ Classes
     :toctree: generated/
     :template: class.rst
 
-    model_selection.CombinatorialPurgedCV
     model_selection.WalkForward
+    model_selection.CombinatorialPurgedCV
+    model_selection.MultipleRandomizedCV
 
 Functions
 ---------
