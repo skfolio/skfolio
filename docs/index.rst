@@ -1,7 +1,8 @@
-:og:description: skfolio is a Python library for portfolio optimization built on top of scikit-learn
+:og:description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. meta::
-    :keywords: skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading
+    :keywords: skfolio, portfolio, optimization, portfolio optimization, finance, python, quantitative, trading, risk management, scikit-learn, stress test
+    :description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. toctree::
    :hidden:
@@ -610,7 +611,7 @@ Opinion Pooling
 ~~~~~~~~~~~~~~~
 .. code-block:: python
 
- # We consider two expert opinions, each generated via Entropy Pooling with
+    # We consider two expert opinions, each generated via Entropy Pooling with
     # user-defined views.
     # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
     # the remaining 10% is allocated to the prior distribution:

@@ -84,7 +84,7 @@ walk_forward = WalkForward(test_size=1, train_size=12, freq="WOM-3FRI")
 # =====================
 # Initially, the number of selected assets and the shrinkage parameter were
 # chosen randomly. We use `RandomizedSearchCV` to explore these parameters and
-# find the combination that maximizes the out-of-sample CVaR ratio.
+# find the combination that maximizes the mean out-of-sample CVaR ratio.
 random_search = RandomizedSearchCV(
     estimator=model_bench,
     cv=walk_forward,
@@ -106,9 +106,10 @@ model_tuned = random_search.best_estimator_
 model_tuned
 
 # %%
-# In practice, we recommend increasing `n_iter` and plotting the sampled parameters to
-# ensure adequate coverage of the search space and analyse the train/test convergence
-# (see regularization example tutorial :ref:`sphx_glr_auto_examples_mean_risk_plot_8_regularization.py`).
+# In practice, it's recommended to increase `n_iter` to sample more parameter
+# combinations, then plot those samples to ensure adequate search-space coverage and
+# examine the convergence of training and test performance. (see the
+# :ref:`sphx_glr_auto_examples_mean_risk_plot_8_regularization.py` tutorial).
 #
 # Standard Walk-Forward Analysis
 # ==============================
@@ -117,7 +118,7 @@ model_tuned
 # A single backtest path represents one possible trajectory of cumulative
 # returns under the given rebalancing scheme and parameter set. While easy
 # to compute, it may understate the variability and uncertainty of real-world
-# performance compared to Monte Carlo-based methods below.
+# performance compared to Monte Carlo-based methods.
 pred_bench = cross_val_predict(model_bench, X_test, cv=walk_forward)
 pred_bench.name = "Benchmark Model"
 
@@ -138,8 +139,8 @@ population.summary()
 # ====================================
 # We perform Monte Carlo-style resampling by drawing 500 subsamples of 50 distinct
 # assets and contiguous 3-year windows (3 x 252 trading days), then applying our
-# walk-forward split to each. This approach captures both temporal and cross-sectional
-# variability.
+# walk-forward split to each subsample. This approach captures both temporal and
+# cross-sectional variability.
 cv_mc = MultipleRandomizedCV(
     walk_forward=walk_forward,
     n_subsamples=500,
@@ -167,12 +168,22 @@ population_mc = pred_bench_mc + pred_tuned_mc
 # %%
 # Visualization and Analysis
 # --------------------------
-# We plot cumulative returns for the first 10 Monte Carlo paths of the tuned model.
-fig = pred_tuned_mc[:10].plot_cumulative_returns()
+# We plot cumulative returns for the first 10 `MultiPeriodPortfolio` (Monte Carlo paths)
+# of the tuned model. Each `MultiPeriodPortfolio` concatenates the tests (out-of-sample)
+# results from the walk-forward.
+fig = pred_tuned_mc[:10].plot_cumulative_returns(use_tag_in_legend=False)
 show(fig)
 
 # %%
-# We compute and display the distribution of annualized Sharpe ratios.
+# |
+#
+# We now compute and display the distribution of out-of-sample annualized Sharpe ratios:
+population_mc.plot_distribution(
+    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO],
+    tag_list=["Benchmark Model", "Tuned Model"],
+)
+
+# %%
 for pred in [pred_bench_mc, pred_tuned_mc]:
     tag = pred[0].tag
     mean_sr = pred.measures_mean(measure=RatioMeasure.ANNUALIZED_SHARPE_RATIO)
@@ -181,34 +192,25 @@ for pred in [pred_bench_mc, pred_tuned_mc]:
     print(f"Average Sharpe Ratio: {mean_sr:0.2f}")
     print(f"Sharpe Ratio Std Dev: {std_sr:0.2f}\n")
 
-fig = population_mc.plot_distribution(
-    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO],
-    tag_list=["Benchmark Model", "Tuned Model"],
-)
-fig.update_layout(
-    title="Sharpe Ratio Distribution",
-    xaxis_title=str(RatioMeasure.ANNUALIZED_SHARPE_RATIO),
-)
-
 # %%
-# Plot the asset composition for the first two Monte Carlo portfolios.
+# We plot the asset composition for the first two `MultiPeriodPortfolio`:
 pred_tuned_mc[:2].plot_composition(display_sub_ptf_name=False)
 
 # %%
-# Plot weight evolution over time for the first Monte Carlo portfolio.
+# We plot the weights evolution over time for the first `MultiPeriodPortfolio`:
 pred_tuned_mc[0].plot_weights_per_observation()
 
 # %%
 # Conclusion
 # ==========
-# Key Insights:
-# - Single-path walk-forward analysis may underrepresent time-variation risk.
-# - Monte Carlo resampling revealed distributions of annualized Sharpe ratios, showing
-#   that the tuned model achieved a higher average Sharpe ratio while exhibiting
-#   variability across different subsamples.
+# A single-path walk-forward analysis may understate the variability and uncertainty of
+# real-world performance. Multiple Randomized Cross-Validation, by contrast, applies
+# Monte Carlo sampling across asset subsets and time windows, yielding performance
+# estimates that are more robust and less prone to overfitting.
 
 # %%
 # References
 # ==========
-# [1] "Portfolio Optimization, Theory and Application", Chapter 8
-#     Daniel P. Palomar & Zhuo (2025)
+# .. [1] "Portfolio Optimization, Theory and Application", Chapter 8
+#         Daniel P. Palomar (2025)
+#

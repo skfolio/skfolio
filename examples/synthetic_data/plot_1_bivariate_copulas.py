@@ -270,6 +270,7 @@ show(fig)
 
 # %%
 # |
+#
 # Let's plot the tail concentration of the copula model versus the historical data:
 copula.plot_tail_concentration(X)
 

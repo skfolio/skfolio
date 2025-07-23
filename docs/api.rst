@@ -241,7 +241,7 @@ Classes
 :mod:`skfolio.prior`: Prior Estimators
 ======================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.prior
    :no-members:
    :no-inherited-members:
 
@@ -297,10 +297,10 @@ Loading Matrix Classes for Factor Models
 
 .. _mu_ref:
 
-:mod:`skfolio.moments.mu`: Mu Estimators
-========================================
+:mod:`skfolio.moments.expected_returns`: Expected Returns Estimators
+====================================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.moments.expected_returns
    :no-members:
    :no-inherited-members:
 
@@ -335,7 +335,7 @@ Classes
 :mod:`skfolio.moments.covariance`: Covariance Estimators
 ========================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.moments.covariance
    :no-members:
    :no-inherited-members:
 
@@ -375,7 +375,7 @@ Classes
 :mod:`skfolio.distance`: Distance Estimators
 ============================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.distance
    :no-members:
    :no-inherited-members:
 
@@ -411,7 +411,7 @@ Classes
 :mod:`skfolio.cluster`: Cluster Estimators
 ===================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.cluster
    :no-members:
    :no-inherited-members:
 
@@ -432,7 +432,7 @@ Classes
 :mod:`skfolio.uncertainty_set`: Uncertainty set Estimators
 ==========================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.uncertainty_set
    :no-members:
    :no-inherited-members:
 
@@ -480,7 +480,7 @@ Classes
 :mod:`skfolio.pre_selection`: Pre-selection Transformers
 ========================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.pre_selection
    :no-members:
    :no-inherited-members:
 
@@ -549,7 +549,7 @@ Functions
 :mod:`skfolio.metrics`: Metrics
 ===============================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.metrics
    :no-members:
    :no-inherited-members:
 
@@ -633,7 +633,7 @@ Functions
 :mod:`skfolio.distribution.univariate`: Univariate Distribution Estimators
 ==========================================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.distribution.univariate
    :no-members:
    :no-inherited-members:
 
@@ -677,7 +677,7 @@ Functions
 :mod:`skfolio.distribution.multivariate`: Multivariate Distribution Estimators
 ==============================================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.distribution.multivariate
    :no-members:
    :no-inherited-members:
 
@@ -708,7 +708,7 @@ Enum
 :mod:`skfolio.distribution.copula`: Bivariate Copula Estimators
 ===============================================================
 
-.. automodule:: skfolio
+.. automodule:: skfolio.distribution.copula
    :no-members:
    :no-inherited-members:
 

@@ -9,11 +9,14 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 import json
 import os
 import warnings
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import urlparse
 
 import nbformat
 import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
+from sphinx.errors import SphinxError
 from sphinx_gallery.sorting import FileNameSortKey
 
 import skfolio
@@ -38,6 +41,11 @@ project = "skfolio"
 copyright = "2025, skfolio developers (BSD License)"
 author = "Hugo Delatte"
 
+# -- SEO meta tags ------------------------------------------------------------
+html_meta = {
+    "robots": "index, follow",
+}
+
 # -- General configuration ---------------------------------------------------
 
 extensions = [
@@ -53,7 +61,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.imgconverter",
     "sphinx_gallery.gen_gallery",
-    "sphinx-prompt",
     "sphinx.ext.mathjax",
     "sphinxext.opengraph",
     "sphinx_sitemap",
@@ -92,6 +99,9 @@ numpydoc_class_members_toctree = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["templates"]
+
+# Copy robots.txt into the HTML root
+html_extra_path = ["robots.txt"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -139,6 +149,9 @@ autosummary_generate = True
 html_baseurl = "https://skfolio.org/"
 sitemap_url_scheme = "{link}"
 
+sitemap_excludes = [
+    "search.html",
+]
 # -- Internationalization ----------------------------------------------------
 
 # specifying the natural language populates some key tags
@@ -196,8 +209,8 @@ release = skfolio.__version__
 version_match = "v" + release
 
 html_theme_options = {
-    "pygment_light_style": "friendly",  # "friendly",
-    "pygment_dark_style": "dracula",  # "monokai", # dracula highlight print
+    "pygments_light_style": "friendly",  # "friendly",
+    "pygments_dark_style": "dracula",  # "monokai", # dracula highlight print
     "header_links_before_dropdown": 4,
     "icon_links": [
         {
@@ -299,6 +312,7 @@ sphinx_gallery_conf = {
         "dependencies": "./binder/requirements.txt",
         "use_jupyter_lab": True,
     },
+    "write_computation_times": False,
     # 'compress_images': ('images', 'thumbnails'),
     # 'promote_jupyter_magic': False,
     # 'junit': os.path.join('sphinx-gallery', 'junit-results.xml'),
@@ -354,7 +368,10 @@ PATCH_CELL = nbformat.v4.new_code_cell(
 )
 
 
-def patch_jupyterlite_notebooks():
+# -- Sphinx Hooks ----------------------------------------------------------------
+
+
+def patch_jupyterlite_notebooks(app, exception):
     """
     Iterates over all ipynb files in the _build/lite/files directory and prepends the
     `PATCH_CELL` node to each notebook.
@@ -364,6 +381,14 @@ def patch_jupyterlite_notebooks():
 
     :raises FileNotFoundError if the JupyterLite build directory is not found
     """
+    print("Running Patch jupyterlite notebooks...")
+    # 1) Skip on build errors
+    if exception:
+        warnings.warn(
+            f"Sitemap hook: skipping because build failed ({exception!r})", stacklevel=2
+        )
+        return
+
     built_jupyterlite_dir = Path(jupyterlite_dir, "_build", "lite")
     if not built_jupyterlite_dir.exists():
         raise FileNotFoundError(
@@ -374,29 +399,107 @@ def patch_jupyterlite_notebooks():
     for notebook_path in notebook_paths:
         print(f"Patching {notebook_path}")
         with open(notebook_path) as f:
-            nb = nbformat.read(f, as_version=4)
+            nb = nbformat.read(f, as_version=nbformat.NO_CONVERT)
             nb.cells.insert(0, PATCH_CELL)
+            # Remove any 'id' fields
+            for cell in nb.cells:
+                cell.pop("id", None)
             with open(notebook_path, "w") as file:
-                nbformat.write(nb, file)
+                nbformat.write(nb, file, version=nbformat.NO_CONVERT)
 
 
-# -- Sphinx Hooks ----------------------------------------------------------------
+def prune_and_fix_sitemap(app, exception):
+    print("Running Prune and fix sitemap...")
+    # 1) Skip on build errors
+    if exception:
+        warnings.warn(
+            f"Sitemap hook: skipping because build failed ({exception!r})", stacklevel=2
+        )
+        return
+
+    # 2) Only for HTML builder
+    if app.builder.name != "html":
+        warnings.warn(
+            f"Sitemap hook: builder is '{app.builder.name}', not 'html' — skipping",
+            stacklevel=2,
+        )
+        return
+
+    sitemap_path = Path(app.outdir) / app.config.sitemap_filename
+
+    # 3) Ensure sitemap exists
+    if not sitemap_path.exists():
+        warnings.warn(
+            f"Sitemap hook: '{sitemap_path}' not found, skipping", stacklevel=2
+        )
+        return
+
+    try:
+        # Parse existing sitemap
+        tree = ET.parse(sitemap_path)
+        root = tree.getroot()
+        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        removed = 0
+
+        for url in list(root.findall("sm:url", ns)):
+            loc = url.find("sm:loc", ns)
+            if loc is None or not loc.text:
+                continue
+            href = loc.text
+            path = urlparse(href).path
+
+            # drop any viewcode pages under /_modules/
+            if path.startswith("/_modules/"):
+                root.remove(url)
+                removed += 1
+                continue
+
+            # rewrite only the root index.html → /
+            if path == "/index.html":
+                loc.text = app.config.html_baseurl.rstrip("/") + "/"
+
+        if removed:
+            warnings.warn(
+                f"Sitemap hook: removed {removed} entries under '/_modules/'",
+                stacklevel=2,
+            )
+
+        # Register default namespace so no ns0 prefix appears
+        ET.register_namespace("", ns["sm"])
+
+        # Write back, using default_namespace (Python 3.8+)
+        tree.write(
+            sitemap_path,
+            encoding="utf-8",
+            xml_declaration=True,
+            default_namespace=ns["sm"],
+        )
+
+    except ET.ParseError as pe:
+        raise SphinxError(
+            f"Sitemap hook: XML parse error in '{sitemap_path}': {pe}"
+        ) from pe
+    except Exception as e:
+        raise SphinxError(
+            f"Sitemap hook: unexpected error during post‑processing: {e}"
+        ) from e
 
 
-def on_build_finished(app, exception):
-    """
-    Hook that runs when the entire Sphinx build process is finished
-    """
-    if exception is None:
-        print("Build finished successfully, running custom code now...")
-        patch_jupyterlite_notebooks()
-
+def override_canonical(app, pagename, templatename, context, doctree):
+    # only run if you have a base URL set
+    if not app.config.html_baseurl:
+        return
+    # Homepage → slash-only
+    if pagename == "index":
+        context["pageurl"] = html_baseurl.rstrip("/") + "/"
 
 def setup(app):
-    """
-    Setup function to register the build-finished hook
-    """
-    app.connect("build-finished", on_build_finished)
+    """Setup function to register the build-finished hook."""
+    # register existing hook
+    app.connect("build-finished", patch_jupyterlite_notebooks)
+    app.connect("build-finished", prune_and_fix_sitemap)
+    # add the canonical-URL hook
+    app.connect("html-page-context", override_canonical)
 
     return {
         "version": "1.0",
