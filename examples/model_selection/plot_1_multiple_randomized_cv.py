@@ -23,10 +23,10 @@ the test set using :class:`~skfolio.model_selection.MultipleRandomizedCV`.
 # We load the FTSE 100 :ref:`dataset <datasets>`, which contains daily prices
 # of 64 assets from the FTSE 100 index, spanning 2000-01-04 to 2023-05-31.
 import scipy.stats as stats
+from plotly.io import show
 from sklearn import set_config
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.pipeline import Pipeline
-from plotly.io import show
 
 from skfolio import Population, RatioMeasure, RiskMeasure
 from skfolio.datasets import load_ftse100_dataset
@@ -74,10 +74,16 @@ model_bench = Pipeline(
 # %%
 # Rebalancing Strategy
 # ====================
-# We define a monthly rebalancing on the third Friday (WOM-3FRI), training on the
-# prior 12 months. Different frequencies can trade off turnover and overfitting risk.
-walk_forward = WalkForward(test_size=1, train_size=12, freq="WOM-3FRI")
+# We use :class:`~skfolio.model_selection.WalkForward` to define a monthly rebalancing
+# (20 trading days), training on the prior year (252 trading days):
+walk_forward = WalkForward(test_size=20, train_size=252)
 
+# %%
+# Note that :class:`~skfolio.model_selection.WalkForward` also supports specific
+# datetime frequencies. For examples, we could use
+# `walk_forward = WalkForward(test_size=1, train_size=12, freq="WOM-3FRI")` to
+# rebalance **monthly** on the **third Friday** (WOM-3FRI), training on the prior 12
+# months.
 
 # %%
 # Hyperparameter Tuning
