@@ -589,10 +589,10 @@ class EntropyPooling(BasePrior):
 
         Parameters
         ----------
-        a : ndarray of shape (n_observations, n_constrains)
+        a : ndarray of shape (n_observations, n_constraints)
             Left matrix in `x @ a == b` or `x @ a <= b`.
 
-        a : ndarray of shape (n_observations, n_constrains)
+        a : ndarray of shape (n_observations, n_constraints)
             Right vector in `x @ a == b` or `x @ a <= b`.
 
         Returns
@@ -1029,16 +1029,16 @@ class EntropyPooling(BasePrior):
 
         """
         n_observations, _ = self._returns.shape
-        # Init constrains with sum(p)==1, rescaled by its norm
+        # Init constraints with sum(p)==1, rescaled by its norm
         # Has better convergence than the normalized form done inside the dual.
         a = [np.ones(n_observations).reshape(-1, 1) / np.sqrt(n_observations)]
         b = [np.array([1.0]) / np.sqrt(n_observations)]
         bounds = [(None, None)]
-        for name, constrains in self._constraints.items():
-            if constrains is not None:
-                a.append(constrains[0])
-                b.append(constrains[1])
-                s = constrains[1].size
+        for name, constraints in self._constraints.items():
+            if constraints is not None:
+                a.append(constraints[0])
+                b.append(constraints[1])
+                s = constraints[1].size
                 match name:
                     case "equality" | "cvar_equality":
                         bounds += [(None, None)] * s
@@ -1145,7 +1145,7 @@ class EntropyPooling(BasePrior):
 
         if self._constraints["fixed_equality"] is not None:
             a, b = self._constraints["fixed_equality"]
-            # Relaxe the problem with slack variables with a norm1 penalty to avoid
+            # Relax the problem with slack variables with a norm1 penalty to avoid
             # solver infeasibility that may arise from overly tight constraints from
             # fixing the moments.
             slack = cp.Variable(b.size)

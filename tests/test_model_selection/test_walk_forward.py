@@ -3,8 +3,13 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
 
-from skfolio.model_selection import WalkForward
+from skfolio import MultiPeriodPortfolio
+from skfolio.model_selection import WalkForward, cross_val_predict
+from skfolio.optimization import InverseVolatility
+from skfolio.pre_selection import SelectKExtremes
 
 
 def assert_split_equal(split, res):
@@ -352,6 +357,7 @@ def test_walk_forward_with_period(
         purged_size=purged_size,
     )
     assert_split_equal_dates(X_small.index, cv.split(X_small), expected)
+    assert cv.get_n_splits(X_small) == len(list(cv.split(X_small)))
 
 
 @pytest.mark.parametrize(
@@ -430,6 +436,7 @@ def test_walk_forward_with_period_long(
         test_size=test_size, train_size=train_size, freq=freq, previous=previous
     )
     assert_split_equal_dates(X_medium.index, cv.split(X_medium), expected)
+    assert cv.get_n_splits(X_medium) == len(list(cv.split(X_medium)))
 
 
 def test_walk_forward_without_period():
@@ -522,3 +529,185 @@ def test_walk_forward_without_period():
         ],
     )
     assert cv.get_n_splits(X) == 2
+
+
+@pytest.mark.parametrize(
+    "test_size,train_size,freq,freq_offset,previous,reduce_test,expend_train,purged_size",
+    [
+        (
+            2,
+            3,
+            "WOM-3FRI",
+            None,
+            True,
+            False,
+            False,
+            0,
+        ),
+        (
+            2,
+            3,
+            "WOM-3FRI",
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            4,
+            pd.offsets.Week(3),
+            "WOM-3FRI",
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            None,
+            True,
+            False,
+            False,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            None,
+            False,
+            False,
+            False,
+            1,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            None,
+            False,
+            True,
+            False,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            None,
+            False,
+            False,
+            True,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            dt.timedelta(days=2),
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            2,
+            6,
+            "MS",
+            pd.offsets.BDay(2),
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            1,
+            48,
+            pd.offsets.Week(weekday=4),
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            1,
+            pd.offsets.Week(48),
+            pd.offsets.Week(weekday=4),
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            1,
+            pd.DateOffset(months=1),
+            pd.offsets.QuarterEnd(),
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+        (
+            1,
+            pd.DateOffset(years=1),
+            pd.offsets.QuarterEnd(),
+            None,
+            False,
+            False,
+            False,
+            0,
+        ),
+    ],
+)
+def test_cross_val_predict_and_grid_search(
+    X_medium,
+    test_size,
+    train_size,
+    freq,
+    freq_offset,
+    previous,
+    reduce_test,
+    expend_train,
+    purged_size,
+):
+    cv = WalkForward(
+        test_size=test_size,
+        train_size=train_size,
+        freq=freq,
+        freq_offset=freq_offset,
+        previous=previous,
+        reduce_test=reduce_test,
+        expend_train=expend_train,
+        purged_size=purged_size,
+    )
+
+    model = Pipeline(
+        [("pre_selection", SelectKExtremes(k=10)), ("allocation", InverseVolatility())]
+    )
+
+    pred = cross_val_predict(model, X_medium, cv=cv)
+    assert isinstance(pred, MultiPeriodPortfolio)
+    assert len(pred) == cv.get_n_splits(X_medium)
+
+    gs = GridSearchCV(
+        estimator=model, cv=cv, param_grid={"pre_selection__k": [2, 3, 4, 5]}
+    )
+    gs.fit(X_medium)
+    assert gs.best_estimator_

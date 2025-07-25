@@ -57,6 +57,24 @@ def test_empirical_prior(X):
 
 
 def test_empirical_prior_log_normal(X):
+    model1 = EmpiricalPrior()
+    model2 = EmpiricalPrior(is_log_normal=True, investment_horizon=1)
+
+    model1.fit(X)
+    model2.fit(X)
+
+    np.testing.assert_almost_equal(
+        model1.return_distribution_.mu, model2.return_distribution_.mu, 4
+    )
+
+    np.testing.assert_almost_equal(
+        model1.return_distribution_.covariance,
+        model2.return_distribution_.covariance,
+        4,
+    )
+
+
+def test_empirical_prior_log_normal_investment_horizon(X):
     model = EmpiricalPrior(is_log_normal=True, investment_horizon=252)
     model.fit(X)
     res = model.return_distribution_
@@ -67,26 +85,26 @@ def test_empirical_prior_log_normal(X):
         res.mu,
         np.array(
             [
-                1.30067519,
-                1.61216954,
-                1.15758953,
-                1.20469753,
-                1.13647218,
-                0.97530679,
-                1.2249461,
-                1.12453549,
-                1.16940725,
-                1.10375612,
-                1.3198692,
-                1.16179255,
-                1.29758174,
-                1.14443353,
-                1.13237546,
-                1.12428224,
-                1.05359132,
-                1.3058039,
-                1.11575736,
-                1.09670825,
+                0.30067519,
+                0.61216954,
+                0.15758953,
+                0.20469753,
+                0.13647218,
+                -0.02469321,
+                0.2249461,
+                0.12453549,
+                0.16940725,
+                0.10375612,
+                0.3198692,
+                0.16179255,
+                0.29758174,
+                0.14443353,
+                0.13237546,
+                0.12428224,
+                0.05359132,
+                0.3058039,
+                0.11575736,
+                0.09670825,
             ]
         ),
     )

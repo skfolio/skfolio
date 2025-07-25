@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord|
+|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord| |DOI|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -38,6 +38,9 @@
 .. |Discord| image:: https://img.shields.io/badge/Discord-Join%20Chat-5865F2?logo=discord&logoColor=white
    :target: https://discord.gg/Bu7EtNYugS
 
+.. |DOI| image:: https://zenodo.org/badge/731792488.svg
+   :target: https://doi.org/10.5281/zenodo.16148630
+
 .. |PythonMinVersion| replace:: 3.10
 .. |NumpyMinVersion| replace:: 1.23.4
 .. |ScipyMinVersion| replace:: 1.8.0
@@ -58,9 +61,9 @@
     :target: https://skfolio.org/
 
 
-**skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
-It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
-and cross-validate portfolio models.
+**skfolio** is a Python library for portfolio optimization and risk management built on
+top of scikit-learn. It offers a unified interface and tools compatible with
+scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 It is distributed under the open-source 3-Clause BSD license.
 
@@ -84,7 +87,6 @@ Installation
     pip install -U skfolio
 
 
-
 Dependencies
 ~~~~~~~~~~~~
 
@@ -99,6 +101,23 @@ Dependencies
 - scikit-learn (>= |SklearnMinVersion|)
 - joblib (>= |JoblibMinVersion|)
 - plotly (>= |PlotlyMinVersion|)
+
+Docker
+~~~~~~
+
+You can also spin up a reproducible JupyterLab environment using Docker:
+
+Build the image::
+
+    docker build -t skfolio-jupyterlab .
+
+Run the container::
+
+    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
+
+Browse:
+
+Open localhost:8888/lab and start using `skfolio`
 
 Key Concepts
 ~~~~~~~~~~~~
@@ -215,6 +234,7 @@ Available models
     * Compatible with all `sklearn` methods (KFold, etc.)
     * Walk Forward
     * Combinatorial Purged Cross-Validation
+    * Multiple Randomized Cross-Validation
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
@@ -568,7 +588,7 @@ Combinatorial Purged Cross-Validation
 
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
 
-    print(cv.get_summary(X_train))
+    print(cv.summary(X_train))
 
     population = cross_val_predict(model, X_train, cv=cv)
 
@@ -708,7 +728,7 @@ Recognition
 ~~~~~~~~~~~
 
 We would like to thank all contributors to our direct dependencies, such as
-scikit-learn and cvxpy, as well as the contributors of the following resources that
+`scikit-learn <https://github.com/scikit-learn/scikit-learn>`_ and `cvxpy <https://github.com/cvxpy/cvxpy>`_, as well as the contributors of the following resources that
 served as sources of inspiration:
 
     * PyPortfolioOpt
@@ -717,6 +737,7 @@ served as sources of inspiration:
     * microprediction
     * statsmodels
     * rsome
+    * danielppalomar.com
     * gautier.marti.ai
 
 
@@ -725,12 +746,36 @@ Citation
 
 If you use `skfolio` in a scientific publication, we would appreciate citations:
 
-Bibtex entry::
+**The library:**
 
-    @misc{skfolio,
-      author = {Delatte, Hugo and Nicolini, Carlo},
-      title = {skfolio},
-      year  = {2023},
-      url   = {https://github.com/skfolio/skfolio}
-    }
+.. code-block:: bibtex
+
+        @software{skfolio,
+          title     = {skfolio},
+          author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
+          year      = {2024},
+          doi       = {10.5281/zenodo.16148630},
+          url       = {https://doi.org/10.5281/zenodo.16148630}
+        }
+
+The above uses the concept DOI, which always resolves to the latest release.
+If you need precise reproducibility, especially for journals or conferences that require
+it, you can cite the version-specific DOI for the exact release you used. To find it,
+go to our `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, locate the
+release you wish to reference (e.g. "v0.10.2"), and copy the DOI listed next to that
+version.
+
+**The paper:**
+
+.. code-block:: bibtex
+
+        @article{nicolini2025skfolio,
+          title         = {skfolio: Portfolio Optimization in Python},
+          author        = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
+          journal       = {arXiv preprint arXiv:2507.04176},
+          year          = {2025},
+          eprint        = {2507.04176},
+          archivePrefix = {arXiv},
+          url           = {https://arxiv.org/abs/2507.04176}
+        }
 

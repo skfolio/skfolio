@@ -7,12 +7,12 @@ User Guide
 .. danger::
 
     This package is still under active development. We plan to release the first stable
-    version (1.0.0) in early 2025. Until then, we recommend pinning versions if you are
+    version (1.0.0) in 2025. Until then, we recommend pinning versions if you are
     concerned about breaking changes.
 
-`skfolio` is a portfolio optimization framework build on top of scikit-learn to perform
-model selection, validation and parameter tuning while reducing the risk of data leakage
-and overfitting.
+`skfolio` is a portfolio optimization and risk management framework build on top of
+scikit-learn to perform model selection, validation, parameter tuning and stress-test
+while reducing the risk of data leakage and overfitting.
 
 .. toctree::
     :maxdepth: 2

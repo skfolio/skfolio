@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /*.ipynb$
+Disallow: /_downloads/
+Disallow: /_modules/
+Disallow: /_sources/
+Disallow: /lite/
+Sitemap: https://skfolio.org/sitemap.xml

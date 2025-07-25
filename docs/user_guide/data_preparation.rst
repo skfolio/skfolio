@@ -23,7 +23,7 @@ of a portfolio is the sum of the weighted linear returns of its components:
 .. math:: R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}
 
 
-This property is needed to properly compute portfolio return and risk.
+This property is needed to properly compute portfolio return and risk ([5]_).
 However, linear returns cannot be aggregated across time.
 
 Logarithmic return
@@ -47,7 +47,7 @@ Pitfall in Portfolio Optimization
 =================================
 Given the similarities of linear and logarithmic returns in the short run, they are
 sometimes used interchangeably.
-It is not uncommon to witness the following steps [1]_:
+It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
 
 #. Take the daily prices :math:`S_{t}, S_{t+1}, ...,` for all the n securities
 #. Transform the daily prices to daily logarithmic returns
@@ -82,7 +82,7 @@ Example for stocks
 #. Take the prices :math:`S_{t}, S_{t+1}, ...,` (for example daily) for all the n securities
 #. Transform the daily prices to daily logarithmic returns. Note that linear return is also a market invariant for stock, however logarithmic return is going to simplify step 3) and 4).
 #. Estimate the joint distribution of market invariants by fitting parametrically the daily logarithmic returns to a multivariate normal distribution: estimate the joint distribution parameters :math:`\mu^{Log}_{daily}` and :math:`\Sigma^{Log}_{daily}`
-#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have:
+#. Project the distribution of invariants to the time period of investment (for example one year i.e. 252 business days). Because logarithmic returns are additive across time, we have ([4]_, [7]_):
 
         * .. math:: \mu^{Log}_{yearly} = 252 \times \mu^{Log}_{daily}
         * .. math:: \Sigma^{Log}_{yearly} = 252 \times \Sigma^{Log}_{daily}
@@ -126,13 +126,15 @@ to logarithmic returns should be reformed inside the estimator.
 For bonds and options, the general procedure will be implemented in a future release. In the meantime
 you can use your own custom :ref:`prior estimator <prior>`.
 
+
+
 .. rubric:: References
 
 .. [1] Quant nugget 2: linear vs. compounded returns – common pitfalls in portfolio management, GARP Risk Professional, Meucci (2010)
 
 .. [2] Quant nugget 4: annualization and general projection of skewness, kurtosis and all summary statistics, GARP Risk Professional, Meucci (2010)
 
-.. [3]Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
+.. [3] Quant nugget 5: return calculations for leveraged securities and portfolios, GARP Risk Professional, Meucci (2010)
 
 .. [4] Efficient Asset Management: A Practical Guide to Stock Portfolio Optimization and Asset Allocation, Oxford University Press, Richard Michaud and Robert Michaud.
 

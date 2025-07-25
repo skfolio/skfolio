@@ -177,7 +177,7 @@ summary(X)
 #
 # CVaR Views
 # ----------
-# * The CVaR at 90% of GE equals 8%
+# * The CVaR at 90% of GE equals 7%
 #
 # Finally we specify asset groupings by sector and style.
 
@@ -209,7 +209,7 @@ entropy_pooling = EntropyPooling(
         "BAC == -0.05",
     ],
     cvar_views=[
-        "GE == 0.08",
+        "GE == 0.07",
     ],
     cvar_beta=0.90,
     groups=groups,

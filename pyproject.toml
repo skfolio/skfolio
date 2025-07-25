@@ -4,10 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.10.0"
+version = "0.10.2"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
-    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" }
+    { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
+    { name = "Carlo Nicolini", email = "c.nicolini@ipazia.com" }
 ]
 authors = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
@@ -79,14 +80,13 @@ docs = [
     "Sphinx",
     "sphinx-gallery",
     "sphinx-design",
-    "pydata-sphinx-theme==0.13.3",
+    "pydata-sphinx-theme~=0.16",
     "matplotlib",
-    "kaleido==0.2.1",
+    "kaleido",
     "sphinx-copybutton",
     "numpydoc",
     "sphinx-togglebutton",
     "sphinx-favicon",
-    "sphinx-prompt",
     "sphinxext.opengraph",
     "sphinx-sitemap",
     "jupyterlite-sphinx",

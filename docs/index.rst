@@ -1,7 +1,8 @@
-:og:description: skfolio is a Python library for portfolio optimization built on top of scikit-learn
+:og:description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. meta::
-    :keywords: skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading
+    :keywords: skfolio, portfolio, optimization, portfolio optimization, finance, python, quantitative, trading, risk management, scikit-learn, stress test
+    :description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. toctree::
    :hidden:
@@ -14,9 +15,9 @@
 skfolio
 =======
 
-**skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
-It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
-and cross-validate portfolio models.
+**skfolio** is a Python library for portfolio optimization and risk management built on
+top of scikit-learn. It offers a unified interface and tools compatible with
+scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 It is distributed under the open-source 3-Clause BSD license.
 
@@ -150,6 +151,7 @@ Available models
     * Compatible with all `sklearn` methods (KFold, etc.)
     * Walk Forward
     * Combinatorial Purged Cross-Validation
+    * Multiple Randomized Cross-Validation
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
@@ -495,7 +497,7 @@ Combinatorial Purged Cross-Validation
 
     cv = CombinatorialPurgedCV(n_folds=10, n_test_folds=2)
 
-    print(cv.get_summary(X_train))
+    print(cv.summary(X_train))
 
     population = cross_val_predict(model, X_train, cv=cv)
 
@@ -609,7 +611,7 @@ Opinion Pooling
 ~~~~~~~~~~~~~~~
 .. code-block:: python
 
- # We consider two expert opinions, each generated via Entropy Pooling with
+    # We consider two expert opinions, each generated via Entropy Pooling with
     # user-defined views.
     # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
     # the remaining 10% is allocated to the prior distribution:
@@ -639,6 +641,7 @@ served as sources of inspiration::
     * microprediction
     * statsmodels
     * rsome
+    * danielppalomar.com
     * gautier.marti.ai
 
 
@@ -647,12 +650,36 @@ Citation
 
 If you use `skfolio` in a scientific publication, we would appreciate citations:
 
-Bibtex entry::
+**The library:**
 
-    @misc{skfolio,
-          author = {Hugo Delatte, Carlo Nicolini},
-          title = {skfolio},
-          year  = {2023},
-          url   = {https://github.com/skfolio/skfolio}
+.. code-block:: bibtex
 
+        @software{skfolio,
+          title     = {skfolio},
+          author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
+          year      = {2024},
+          doi       = {10.5281/zenodo.16148630},
+          url       = {https://doi.org/10.5281/zenodo.16148630}
+        }
+
+The above uses the concept DOI, which always resolves to the latest release.
+If you need precise reproducibility, especially for journals or conferences that require
+it, you can cite the version-specific DOI for the exact release you used. To find it,
+go to our `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, locate the
+release you wish to reference (e.g. "v0.10.2"), and copy the DOI listed next to that
+version.
+
+**The paper:**
+
+.. code-block:: bibtex
+
+        @article{nicolini2025skfolio,
+          title         = {skfolio: Portfolio Optimization in Python},
+          author        = {Nicolini, Carlo and Manzi, Matteo and Delatte, Hugo},
+          journal       = {arXiv preprint arXiv:2507.04176},
+          year          = {2025},
+          eprint        = {2507.04176},
+          archivePrefix = {arXiv},
+          url           = {https://arxiv.org/abs/2507.04176}
+        }
 

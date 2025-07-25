@@ -191,6 +191,7 @@ class EmpiricalPrior(BasePrior):
             # horizon
             mu = np.exp(mu + 0.5 * np.diag(covariance))
             covariance = np.outer(mu, mu) * (np.exp(covariance) - 1)
+            mu -= 1
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
