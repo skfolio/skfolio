@@ -82,7 +82,7 @@ def test_get_n_splits_and_get_path_ids_before_split():
         random_state=0,
     )
     # get_path_ids before split raises
-    with pytest.raises(ValueError, match="Before get_path_ids you must call split"):
+    with pytest.raises(ValueError, match="Before calling"):
         cv.get_path_ids()
 
 
@@ -123,6 +123,30 @@ def test_split_without_window_size_2():
         asset_subset_size=3,
         random_state=0,
     )
+
+    assert_split_equal(
+        cv.split(X),
+        [
+            ([0, 1], [2], [1, 2, 3]),
+            ([1, 2], [3], [1, 2, 3]),
+            ([2, 3], [4], [1, 2, 3]),
+            ([3, 4], [5], [1, 2, 3]),
+            ([0, 1], [2], [2, 3, 4]),
+            ([1, 2], [3], [2, 3, 4]),
+            ([2, 3], [4], [2, 3, 4]),
+            ([3, 4], [5], [2, 3, 4]),
+        ],
+    )
+
+    assert np.array_equal(cv.get_path_ids(), [0, 0, 0, 0, 1, 1, 1, 1])
+
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=2,
+        asset_subset_size=3,
+        random_state=1,
+    )
+
     assert_split_equal(
         cv.split(X),
         [
@@ -130,10 +154,10 @@ def test_split_without_window_size_2():
             ([1, 2], [3], [0, 1, 4]),
             ([2, 3], [4], [0, 1, 4]),
             ([3, 4], [5], [0, 1, 4]),
-            ([0, 1], [2], [1, 3, 4]),
-            ([1, 2], [3], [1, 3, 4]),
-            ([2, 3], [4], [1, 3, 4]),
-            ([3, 4], [5], [1, 3, 4]),
+            ([0, 1], [2], [0, 1, 3]),
+            ([1, 2], [3], [0, 1, 3]),
+            ([2, 3], [4], [0, 1, 3]),
+            ([3, 4], [5], [0, 1, 3]),
         ],
     )
 
@@ -150,13 +174,14 @@ def test_split_with_window_size():
         window_size=8,
         random_state=0,
     )
+
     assert_split_equal(
         cv.split(X),
         [
-            ([5, 6, 7], [8, 9], [0, 1, 3, 9]),
-            ([7, 8, 9], [10, 11], [0, 1, 3, 9]),
-            ([0, 1, 2], [3, 4], [0, 6, 7, 8]),
-            ([2, 3, 4], [5, 6], [0, 6, 7, 8]),
+            ([5, 6, 7], [8, 9], [1, 2, 5, 9]),
+            ([7, 8, 9], [10, 11], [1, 2, 5, 9]),
+            ([0, 1, 2], [3, 4], [3, 7, 8, 9]),
+            ([2, 3, 4], [5, 6], [3, 7, 8, 9]),
         ],
     )
 
@@ -172,7 +197,7 @@ def test_time_aware_wf(X):
         random_state=1,
     )
     splits = list(cv.split(X))
-    assert len(splits) == 309
+    assert len(splits) == 305
 
     for split in splits:
         assert 247 <= len(split[0]) <= 258
@@ -181,7 +206,7 @@ def test_time_aware_wf(X):
         assert np.all((split[2] >= 0) & (split[2] < X.shape[1]))
 
     path_ids = cv.get_path_ids()
-    assert len(path_ids) == 309
+    assert len(path_ids) == 305
     assert path_ids.min() == 0
     assert path_ids.max() == 99
 
