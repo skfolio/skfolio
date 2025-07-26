@@ -1,3 +1,6 @@
+import itertools
+import math
+
 import cvxpy as cp
 import numpy as np
 import pytest
@@ -12,6 +15,7 @@ from skfolio.utils.stats import (
     assert_is_distance,
     assert_is_square,
     assert_is_symmetric,
+    combination_by_index,
     commutation_matrix,
     compute_optimal_n_clusters,
     corr_to_cov,
@@ -23,6 +27,7 @@ from skfolio.utils.stats import (
     n_bins_knuth,
     rand_weights,
     rand_weights_dirichlet,
+    sample_unique_subsets,
 )
 
 
@@ -520,3 +525,116 @@ class TestMinimizeRelativeWeightDeviation:
             _ = minimize_relative_weight_deviation(
                 weights=weights, min_weights=np.zeros(6), max_weights=np.ones(6) * 0.1
             )
+
+
+# Helper to generate all combinations for small N, k
+def generate_all_combinations(N: int, k: int):
+    return list(itertools.combinations(range(N), k))
+
+
+@pytest.mark.parametrize(
+    "N,k",
+    [
+        (5, 1),
+        (5, 2),
+        (5, 3),
+        (5, 5),
+        (6, 3),
+    ],
+)
+def test_unrank_all_positions(N, k):
+    """Test that it maps every possible index correctly for small N,k."""
+    all_combos = generate_all_combinations(N, k)
+    M = math.comb(N, k)
+    for idx in range(M):
+        expected = list(all_combos[idx])
+        result = combination_by_index(idx, N, k)
+        np.testing.assert_array_equal(expected, result)
+
+
+def test_unrank_invalid_index():
+    """Out-of-range indices should raise ValueError."""
+    with pytest.raises(ValueError):
+        combination_by_index(-1, 5, 2)
+    with pytest.raises(ValueError):
+        combination_by_index(math.comb(5, 2), 5, 2)
+
+
+def test_unrank_combination_full_cycle():
+    """Unranking all indices yields the full set of combinations exactly once."""
+    N, k = 7, 3
+    all_combos = generate_all_combinations(N, k)
+    M = math.comb(N, k)
+    results = [tuple(combination_by_index(i, N, k)) for i in range(M)]
+    assert set(results) == set(all_combos)
+    assert len(results) == len(all_combos)
+
+
+def test_unrank_edge_cases():
+    """Handle k=0 and k=N edge cases correctly."""
+    # k = 0: only one empty combination
+    np.testing.assert_array_equal(combination_by_index(0, 5, 0), [])
+    with pytest.raises(ValueError):
+        combination_by_index(1, 5, 0)
+
+    # k = N: only one full combination
+    np.testing.assert_array_equal(combination_by_index(0, 5, 5), [0, 1, 2, 3, 4])
+    with pytest.raises(ValueError):
+        combination_by_index(1, 5, 5)
+
+
+def test_sample_unique_subsets_properties():
+    n, k, n_subsets = 10, 4, 20
+    subs = sample_unique_subsets(n, k, n_subsets, random_state=1)
+    assert isinstance(subs, np.ndarray)
+    assert subs.shape == (n_subsets, k)
+    seen = set()
+    for row in subs:
+        lst = row.tolist()
+        assert len(lst) == k
+        assert lst == sorted(lst)
+        assert all(0 <= x < n for x in lst)
+        seen.add(tuple(lst))
+    assert len(seen) == n_subsets
+
+
+def test_sample_unique_subsets_full_cycle():
+    n, k = 5, 3
+    total = math.comb(n, k)
+    subs = sample_unique_subsets(n, k, total, random_state=42)
+    expected = set(generate_all_combinations(n, k))
+    actual = set(tuple(row.tolist()) for row in subs)
+    assert actual == expected
+    assert subs.shape[0] == total
+
+
+def test_sample_unique_subsets_big_comb():
+    n, k = 100, 10
+    total = math.comb(n, k)
+    assert total > 1e9
+    subs = sample_unique_subsets(n, k, 5, random_state=42)
+    assert subs.shape == (5, 10)
+
+
+def test_sample_unique_subsets_errors():
+    with pytest.raises(ValueError):
+        sample_unique_subsets(-1, 2, 1)
+    with pytest.raises(ValueError):
+        sample_unique_subsets(5, 6, 1)
+    with pytest.raises(ValueError):
+        sample_unique_subsets(5, 2, math.comb(5, 2) + 1)
+
+
+def test_edge_cases():
+    # k=0
+    arr0 = sample_unique_subsets(5, 0, 1, random_state=1)
+    assert isinstance(arr0, np.ndarray)
+    assert arr0.shape == (1, 0)
+    with pytest.raises(ValueError):
+        sample_unique_subsets(5, 0, 2)
+    # k=n
+    arr1 = sample_unique_subsets(4, 4, 1, random_state=2)
+    assert arr1.shape == (1, 4)
+    assert arr1.tolist() == [list(range(4))]
+    with pytest.raises(ValueError):
+        sample_unique_subsets(4, 4, 2)

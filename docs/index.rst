@@ -1,7 +1,8 @@
-:og:description: skfolio is a Python library for portfolio optimization built on top of scikit-learn
+:og:description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. meta::
-    :keywords: skfolio, portfolio, optimization, portfolio optimization, scikit-learn, quantitative, trading
+    :keywords: skfolio, portfolio, optimization, portfolio optimization, finance, python, quantitative, trading, risk management, scikit-learn, stress test
+    :description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 .. toctree::
    :hidden:
@@ -14,9 +15,9 @@
 skfolio
 =======
 
-**skfolio** is a Python library for portfolio optimization built on top of scikit-learn.
-It offers a unified interface and tools compatible with scikit-learn to build, fine-tune,
-and cross-validate portfolio models.
+**skfolio** is a Python library for portfolio optimization and risk management built on
+top of scikit-learn. It offers a unified interface and tools compatible with
+scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 It is distributed under the open-source 3-Clause BSD license.
 
@@ -150,6 +151,7 @@ Available models
     * Compatible with all `sklearn` methods (KFold, etc.)
     * Walk Forward
     * Combinatorial Purged Cross-Validation
+    * Multiple Randomized Cross-Validation
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
@@ -609,7 +611,7 @@ Opinion Pooling
 ~~~~~~~~~~~~~~~
 .. code-block:: python
 
- # We consider two expert opinions, each generated via Entropy Pooling with
+    # We consider two expert opinions, each generated via Entropy Pooling with
     # user-defined views.
     # We assign probabilities of 40% to Expert 1, 50% to Expert 2, and by default
     # the remaining 10% is allocated to the prior distribution:

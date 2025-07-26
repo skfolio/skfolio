@@ -1,3 +1,9 @@
+:og:description: Examples and tutorials of skfolio, a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
+
+.. meta::
+    :description: Examples and tutorials of skfolio, a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
+    :keywords: skfolio, portfolio, optimization, portfolio optimization, finance, python, quantitative, trading, risk management, scikit-learn, stress test
+
 .. _general_examples:
 
 Examples

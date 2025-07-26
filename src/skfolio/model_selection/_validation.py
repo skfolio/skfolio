@@ -19,6 +19,7 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
 
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
+from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
 from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio
 from skfolio.utils.tools import fit_and_predict, safe_split
@@ -39,7 +40,11 @@ def cross_val_predict(
     estimator: skb.BaseEstimator,
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
-    cv: sks.BaseCrossValidator | BaseCombinatorialCV | int | None = None,
+    cv: sks.BaseCrossValidator
+    | BaseCombinatorialCV
+    | MultipleRandomizedCV
+    | int
+    | None = None,
     n_jobs: int | None = None,
     method: str = "predict",
     verbose: int = 0,
@@ -182,7 +187,7 @@ def cross_val_predict(
     portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
 
     # We ensure that the folds are not shuffled
-    if not isinstance(cv, BaseCombinatorialCV):
+    if not isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
         try:
             if cv.shuffle:
                 raise ValueError(
@@ -202,7 +207,7 @@ def cross_val_predict(
     # and that it is pickle-able.
     parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
     # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
-    # noinspection PyCallingNonCallable
+
     predictions = parallel(
         skp.delayed(fit_and_predict)(
             sk.clone(estimator),
@@ -212,18 +217,24 @@ def cross_val_predict(
             test=test,
             fit_params=routed_params.estimator.fit,
             method=method,
+            column_indices=column_indices[0] if column_indices else None,
         )
-        for train, test in splits
+        for train, test, *column_indices in splits
     )
 
-    if isinstance(cv, BaseCombinatorialCV):
+    if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
         path_ids = cv.get_path_ids()
         path_nb = np.max(path_ids) + 1
         portfolios = [[] for _ in range(path_nb)]
-        for i, prediction in enumerate(predictions):
-            for j, p in enumerate(prediction):
-                path_id = path_ids[i, j]
-                portfolios[path_id].append(p)
+        if isinstance(cv, BaseCombinatorialCV):
+            for i, prediction in enumerate(predictions):
+                for j, p in enumerate(prediction):
+                    path_id = path_ids[i, j]
+                    portfolios[path_id].append(p)
+        else:
+            for i, prediction in enumerate(predictions):
+                portfolios[path_ids[i]].append(prediction)
+
         name = portfolio_params.pop("name", "path")
         pred = Population(
             [
@@ -238,12 +249,12 @@ def cross_val_predict(
         # CV generator.
         # Because the tests folds are not shuffled, we use the first index of each
         # fold to order them.
-        test_indices = np.concatenate([test for _, test in splits])
-        if np.unique(test_indices, axis=0).shape[0] != test_indices.shape[0]:
+        test_indices = [test for _, test in splits]
+        concat = np.concatenate(test_indices)
+        if np.unique(concat, axis=0).shape[0] != concat.shape[0]:
             raise ValueError(
                 "`cross_val_predict` only works with non-duplicated test indices"
             )
-        test_indices = [test for _, test in splits]
         sorted_fold_id = np.argsort([x[0] for x in test_indices])
         pred = MultiPeriodPortfolio(
             portfolios=[predictions[fold_id] for fold_id in sorted_fold_id],

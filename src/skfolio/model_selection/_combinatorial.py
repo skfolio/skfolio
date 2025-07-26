@@ -13,6 +13,7 @@ import math
 import numbers
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -42,7 +43,6 @@ class BaseCombinatorialCV(ABC):
     __repr__ = sks.BaseCrossValidator.__repr__
 
 
-# TODO: review params and function naming
 class CombinatorialPurgedCV(BaseCombinatorialCV):
     """Combinatorial Purged Cross-Validation.
 
@@ -89,6 +89,11 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     Examples
     --------
+    Tutorials using `CombinatorialPurgedCV`:
+        * :ref:`sphx_glr_auto_examples_pre_selection_plot_1_drop_correlated.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_5_nco_grid_search.py`
+
     >>> import numpy as np
     >>> from skfolio.model_selection import CombinatorialPurgedCV
     >>> X = np.random.randn(12, 2)
@@ -153,7 +158,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         Marcos López de Prado (2018)
     """
 
-    index_train_test_: np.ndarray
+    if TYPE_CHECKING:
+        index_train_test_: np.ndarray
 
     def __init__(
         self,
@@ -161,7 +167,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         n_test_folds: int = 8,
         purged_size: int = 0,
         embargo_size: int = 0,
-    ):
+    ) -> None:
         if not isinstance(n_folds, numbers.Integral):
             raise ValueError(
                 "The number of folds must be of Integral type. "

@@ -256,6 +256,7 @@ def test_portfolio_methods(portfolio_and_returns, periods):
     assert portfolio.plot_composition()
     assert isinstance(portfolio.summary(), pd.Series)
     assert isinstance(portfolio.summary(formatted=False), pd.Series)
+    assert portfolio.plot_weights_per_observation()
 
 
 def test_mpp_magic_methods(portfolio, periods):
@@ -408,3 +409,4 @@ def test_weights_per_observation(portfolio):
     np.testing.assert_array_equal(df.index.values, portfolio.observations)
     assert len(df.columns) == 17
     assert len(set(df.columns)) == 17
+    assert portfolio.plot_weights_per_observation()

@@ -114,9 +114,19 @@ class WalkForward(sks.BaseCrossValidator):
 
     Examples
     --------
+    Tutorials using `WalkForward`:
+        * :ref:`sphx_glr_auto_examples_pre_selection_plot_3_custom_pre_selection_volumes.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`
+        * :ref:`sphx_glr_auto_examples_mean_risk_plot_8_regularization.py`
+        * :ref:`sphx_glr_auto_examples_clustering_plot_5_nco_grid_search.py`
+        * :ref:`sphx_glr_auto_examples_ensemble_plot_1_stacking.py`
+
     >>> import numpy as np
+    >>> from skfolio.datasets import load_sp500_dataset, load_factors_dataset
     >>> from skfolio.model_selection import WalkForward
-    >>> X = np.random.randn(6, 2)
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>>
+    >>> X = np.random.randn(6, 2) # 6 observations
     >>> cv = WalkForward(test_size=1, train_size=2)
     >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
     ...     print(f"Fold {i}:")
@@ -178,6 +188,27 @@ class WalkForward(sks.BaseCrossValidator):
     Fold 1:
       Train: index=[0 1 2 3 4]
       Test:  index=[5]
+    >>>
+    >>> # Time-based (calendar) rebalancing
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>> X = X["2021":"2022"]
+    >>> # Rebalance every 3 months on the third Friday, and train on the last 12 months.
+    >>> cv = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
+    >>>
+    >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
+    >>> ...     print(f"Fold {i}:")
+    >>> ...     print(f"  Train: size={len(train_index)}")
+    >>> ...     print(f"  Test:  size={len(test_index)}")
+    Fold 0:
+      Train: size=256
+      Test:  size=59
+    Fold 1:
+      Train: size=253
+      Test:  size=61
+    Fold 2:
+      Train: size=251
+      Test:  size=69
     """
 
     def __init__(
@@ -202,7 +233,7 @@ class WalkForward(sks.BaseCrossValidator):
 
     def split(
         self, X: npt.ArrayLike, y=None, groups=None
-    ) -> Iterator[np.ndarray, np.ndarray]:
+    ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
         """Generate indices to split data into training and test set.
 
         Parameters
@@ -295,11 +326,48 @@ class WalkForward(sks.BaseCrossValidator):
             raise ValueError("The 'X' parameter should not be None.")
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
-        n = n_samples - self.train_size - self.purged_size
 
-        if self.reduce_test and n % self.test_size != 0:
-            return n // self.test_size + 1
-        return n // self.test_size
+        if self.freq is None:
+            n = n_samples - self.train_size - self.purged_size
+
+            if self.reduce_test and n % self.test_size != 0:
+                return n // self.test_size + 1
+            return n // self.test_size
+
+        if not hasattr(X, "index") or not isinstance(X.index, pd.DatetimeIndex):
+            raise ValueError(
+                "X must be a DataFrame with an index of type DatetimeIndex"
+            )
+        ts_index = X.index
+
+        start = ts_index[0]
+        end = ts_index[-1]
+        if self.freq_offset is not None:
+            start = min(start, start - self.freq_offset)
+
+        date_range = pd.date_range(start=start, end=end, freq=self.freq)
+        if self.freq_offset is not None:
+            date_range += self.freq_offset
+
+        idx = ts_index.get_indexer(
+            date_range, method="ffill" if self.previous else "bfill"
+        )
+        n = len(idx)
+
+        if isinstance(self.train_size, int):
+            max_start = (
+                n - self.train_size - (0 if self.reduce_test else self.test_size)
+            )
+            return _special_div(max_start, self.test_size) + 1 if max_start > 0 else 0
+
+        train_idx = ts_index.get_indexer(date_range - self.train_size, method="ffill")
+        if np.all(train_idx == -1):
+            return 0
+        first_valid = np.argmax(train_idx > -1)
+        last_allowed_start = n if self.reduce_test else n - self.test_size
+        if first_valid >= last_allowed_start:
+            return 0
+        return _special_div(last_allowed_start - first_valid, self.test_size) + 1
 
 
 def _split_without_period(
@@ -309,12 +377,12 @@ def _split_without_period(
     purged_size: int,
     expend_train: bool,
     reduce_test: bool,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     if train_size + purged_size >= n_samples:
         raise ValueError(
-            "The sum of `train_size` with `purged_size` "
-            f"({train_size + purged_size}) cannot be greater than the"
-            f" number of samples ({n_samples})."
+            f"The sum of `train_size={train_size}` with `purged_size={purged_size}` "
+            f"(total={train_size + purged_size}) must be at least the number of "
+            f"observations={n_samples}."
         )
 
     indices = np.arange(n_samples)
@@ -353,7 +421,7 @@ def _split_from_period_without_train_offset(
     expend_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:
@@ -400,7 +468,7 @@ def _split_from_period_with_train_offset(
     expend_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[np.ndarray, np.ndarray]:
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:
@@ -438,3 +506,9 @@ def _split_from_period_with_train_offset(
         yield train_indices, test_indices
 
         i += test_size
+
+
+def _special_div(a: int, b: int) -> int:
+    """Returns ⌊a/b⌋, but if a is evenly divisible by b, returns ⌊a/b⌋ - 1."""
+    q, r = divmod(a, b)
+    return q - (1 if r == 0 else 0)

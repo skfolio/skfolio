@@ -1,5 +1,7 @@
 """Tools module."""
 
+import math
+import random
 import warnings
 
 # Copyright (c) 2023
@@ -26,6 +28,7 @@ __all__ = [
     "assert_is_distance",
     "assert_is_square",
     "assert_is_symmetric",
+    "combination_by_index",
     "commutation_matrix",
     "compute_optimal_n_clusters",
     "corr_to_cov",
@@ -37,6 +40,7 @@ __all__ = [
     "n_bins_knuth",
     "rand_weights",
     "rand_weights_dirichlet",
+    "sample_unique_subsets",
 ]
 
 
@@ -575,3 +579,136 @@ def minimize_relative_weight_deviation(
         ) from None
 
     return w.value
+
+
+def combination_by_index(idx: int, n: int, k: int) -> np.ndarray:
+    """
+    Retrieve the k-combination at a given lexicographic position without enumerating
+    all combinations.
+
+    This function implements the *unranking* algorithm (also known as the combinatorial
+    number system or "combinadic") to retrieve the specific k-combination corresponding
+    to a given lexicographic `idx` without generating all C(n, k) possible subsets.
+
+    Given a universe of size `n`, there are M = C(n, k) possible subsets of size k.
+    This function returns the subset corresponding to the `idx` in lex order.
+
+    This approach is crucial when M = C(n, k) is too large to generate or store all
+    combinations, and you need to draw random subsets uniformly (sampling k=5 from n=100
+    gives M ≈ 7.5e7).
+
+    Time complexity: O(k)
+    Space complexity: O(k)
+
+    Parameters
+    ----------
+    idx : int
+        Index (rank) of the desired combination in lex order. Must satisfy
+        0 <= idx < C(n, k).
+
+    n : int
+        Size of the universe.
+
+    k : int
+        Size of each combination (0 <= k <= n).
+
+    Returns
+    -------
+    combination : ndarray of shape (k,)
+        1D integer array of length k containing the sorted k-combination.
+
+    Raises
+    ------
+    ValueError
+        If parameters are out of valid range.
+
+    References
+    ----------
+    ..[1] "The Art of Computer Programming", Vol. 4A: Combinatorial Algorithms,
+      Section 7.2.1.3. Knuth, D. E. (1998).
+    """
+    total = math.comb(n, k)
+    if idx < 0 or idx >= total:
+        raise ValueError(
+            f"Index {idx} out of range for C({n},{k})={total} combinations."
+        )
+
+    combination = np.empty(k, dtype=int)
+    remaining_rank = idx
+    next_element = 0
+
+    for pos in range(k):
+        remaining_slots = k - pos
+        x = next_element
+        block_size = math.comb(n - x - 1, remaining_slots - 1)
+        while block_size <= remaining_rank:
+            remaining_rank -= block_size
+            x += 1
+            block_size = math.comb(n - x - 1, remaining_slots - 1)
+        combination[pos] = x
+        next_element = x + 1
+
+    return combination
+
+
+def sample_unique_subsets(
+    n: int, k: int, n_subsets: int, random_state: int | None = None
+) -> np.ndarray:
+    """
+    Generate unique k-element subsets from a universe of size n using combinatorial
+    unranking.
+
+    Each subset is drawn without replacement (elements within subset are distinct) and
+    no subset is repeated across draws. Ranks are sampled uniformly without replacement
+    over [0, C(n, k)).
+
+    Time complexity: O(n_subsets * k)
+    Space complexity: O(n_subsets * k)
+
+    Parameters
+    ----------
+    n : int
+        Universe size.
+
+    k : int
+        Subset size (0 <= k <= n).
+
+    n_subsets : int
+        Number of distinct subsets to generate (0 <= n_subsets <= C(n, k)).
+
+    random_state : int, RandomState instance or None, default=None
+        Seed or random state to ensure reproducibility.
+
+    Returns
+    -------
+    subsets : ndarray of shape (n_subsets, k)
+        2D integer array of shape (n_subsets, k) where each row is a sorted
+        k-combination.
+
+    Raises
+    ------
+    ValueError
+        If any parameters are out of valid ranges.
+    """
+    if n < 0:
+        raise ValueError(f"n must be non-negative, got {n}.")
+    if k < 0 or k > n:
+        raise ValueError(f"k={k} must satisfy 0 <= k <= n={n}.")
+
+    total = math.comb(n, k)
+    if n_subsets < 0 or n_subsets > total:
+        raise ValueError(
+            f"n_subsets={n_subsets} must satisfy 0 <= n_subsets <= C({n},{k})={total}."
+        )
+
+    rng = random.Random(random_state)
+    ranks = rng.sample(range(total), k=n_subsets)
+    # random.sample has a special-case for range objects that avoids building a list of
+    # length M=C(n,k) and runs in O(n_subsets) time and space as opposed to
+    # `choice(total, size=n_subsets, replace=False)` which run in O(M) space and raises
+    # ArrayMemoryError for very big M.
+    subsets = np.empty((n_subsets, k), dtype=int)
+    for i, rank in enumerate(ranks):
+        subsets[i, :] = combination_by_index(rank, n, k)
+
+    return subsets

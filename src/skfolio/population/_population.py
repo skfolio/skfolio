@@ -512,13 +512,14 @@ class Population(list):
         plot : Figure
             Returns the plotly Figure object.
         """
+        n = len(measure_list)
         values = []
         labels = []
         for measure in measure_list:
             if tag_list is not None:
                 for tag in tag_list:
                     values.append(self.filter(tags=tag).measures(measure=measure))
-                    labels.append(f"{measure} - {tag}")
+                    labels.append(tag if n == 1 else f"{measure} - {tag}")
             else:
                 values.append(self.measures(measure=measure))
                 labels.append(measure.value)
@@ -534,13 +535,17 @@ class Population(list):
             nbins=n_bins,
             **kwargs,
         )
-        fig.update_layout(title_text="Measures Distribution", xaxis_title="measures")
+        title = f"{measure_list[0]} Distribution" if n == 1 else "Measures Distribution"
+        fig.update_layout(
+            title_text=title, xaxis_title=str(measure_list[0]) if n == 1 else "measures"
+        )
         return fig
 
     def plot_cumulative_returns(
         self,
         log_scale: bool = False,
         idx: slice | np.ndarray | None = None,
+        use_tag_in_legend: bool = True,
     ) -> go.Figure:
         """Plot the population's portfolios cumulative returns.
         Non-compounded cumulative returns start at 0.
@@ -549,13 +554,18 @@ class Population(list):
         Parameters
         ----------
         log_scale : bool, default=False
-            If this is set to True, the cumulative returns are displayed with a
+            If set to True, the cumulative returns are displayed with a
             logarithm scale on the y-axis and rebased at 1000. The cumulative returns
             must be compounded otherwise an exception is raise.
 
         idx : slice | array, optional
             Indexes or slice of the observations to plot.
             The default (`None`) is to take all observations.
+
+        use_tag_in_legend : bool, default=True
+            Whether to include the portfolio tag in legend entries.
+            If True, each legend label will show the portfolio name followed by its tag;
+            if False, only the portfolio name will be displayed.
 
         Returns
         -------
@@ -570,7 +580,7 @@ class Population(list):
         compounded = []
         for ptf in self:
             cumulative_returns.append(ptf.cumulative_returns_df)
-            names.append(_ptf_name_with_tag(ptf))
+            names.append(_ptf_name_with_tag(ptf) if use_tag_in_legend else ptf.name)
             compounded.append(ptf.compounded)
         compounded = set(compounded)
 

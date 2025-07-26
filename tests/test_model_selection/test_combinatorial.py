@@ -4,9 +4,17 @@ import math
 
 import numpy as np
 import pytest
+from sklearn.pipeline import Pipeline
 
-from skfolio.model_selection import CombinatorialPurgedCV, optimal_folds_number
+from skfolio import Population
+from skfolio.model_selection import (
+    CombinatorialPurgedCV,
+    cross_val_predict,
+    optimal_folds_number,
+)
 from skfolio.model_selection._combinatorial import _avg_train_size, _n_test_paths
+from skfolio.optimization import InverseVolatility
+from skfolio.pre_selection import SelectKExtremes
 
 
 def assert_split_equal(split, res):
@@ -261,3 +269,15 @@ def test_optimal_folds_number_weight():
     assert n_test_folds == 19
     assert int(avg_train_size) == 250
     assert n_test_paths == 19
+
+
+def test_cross_val_predict_and_grid_search(X):
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=1, embargo_size=2)
+
+    model = Pipeline(
+        [("pre_selection", SelectKExtremes(k=10)), ("allocation", InverseVolatility())]
+    )
+
+    pred = cross_val_predict(model, X, cv=cv)
+    assert isinstance(pred, Population)
+    assert len(pred) == cv.n_test_paths
