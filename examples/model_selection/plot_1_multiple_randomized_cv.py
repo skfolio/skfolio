@@ -175,7 +175,7 @@ population_mc = pred_bench_mc + pred_tuned_mc
 # Visualization and Analysis
 # --------------------------
 # We plot cumulative returns for the first 10 `MultiPeriodPortfolio` (Monte Carlo paths)
-# of the tuned model. Each `MultiPeriodPortfolio` concatenates the tests (out-of-sample)
+# of the tuned model. Each `MultiPeriodPortfolio` concatenates the test (out-of-sample)
 # results from the walk-forward.
 fig = pred_tuned_mc[:10].plot_cumulative_returns(use_tag_in_legend=False)
 show(fig)
