@@ -38,7 +38,6 @@ __all__ = [
     "inverse_multiply",
     "is_cholesky_dec",
     "minimize_relative_weight_deviation",
-    "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
     "n_bins_knuth",

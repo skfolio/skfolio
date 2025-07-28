@@ -50,8 +50,8 @@ def test_invalid_init():
         cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=0)
         list(cv.split(X))
 
-    with pytest.raises(ValueError, match="asset_subset_size=10 must satisfy"):
-        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=10)
+    with pytest.raises(ValueError, match="asset_subset_size=11 must satisfy"):
+        cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=11)
         list(cv.split(X))
 
     # invalid window_size

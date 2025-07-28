@@ -243,18 +243,18 @@ class MultipleRandomizedCV:
         if self.window_size is not None:
             if not isinstance(self.window_size, int):
                 raise ValueError("`window_size` must be an integer")
-            if self.window_size < 2 or self.window_size >= n_observations:
+            if self.window_size < 2 or self.window_size > n_observations:
                 raise ValueError(
                     f"When not None, window_size={self.window_size} must "
-                    f"satisfy 2 <= window_size < n_observations={n_observations}."
+                    f"satisfy 2 <= window_size <= n_observations={n_observations}."
                 )
 
         if not isinstance(self.asset_subset_size, int):
             raise TypeError("`asset_subset_size` must be an integer")
-        if self.asset_subset_size < 1 or self.asset_subset_size >= n_assets:
+        if self.asset_subset_size < 1 or self.asset_subset_size > n_assets:
             raise ValueError(
                 f"asset_subset_size={self.asset_subset_size} must satisfy "
-                f"1 <= asset_subset_size < n_assets={n_assets}."
+                f"1 <= asset_subset_size <= n_assets={n_assets}."
             )
 
         if not isinstance(self.n_subsamples, int):
