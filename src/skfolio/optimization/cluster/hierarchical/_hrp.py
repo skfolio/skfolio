@@ -98,36 +98,35 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         :class:`~skfolio.cluster.HierarchicalClustering`.
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
-        Minimum assets weights (weights lower bounds). Negative weights are not allowed.
-        If a float is provided, it is applied to each asset.
-        If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset minium weight) and the input `X` of the `fit`
-        methods must be a DataFrame with the assets names in columns. When using a
-        dictionary, assets values that are not provided are assigned a minimum weight
-        of `0.0`. The default is 0.0 (no short selling).
+        Minimum assets weights (weights lower bounds). The default is 0.0 (no short
+        selling). Negative weights are not allowed. If a float is provided, it is
+        applied to each asset. `None` is equivalent to the default `0.0`. If a
+        dictionary is provided, its (key/value) pair must be the (asset name/asset
+        minimum weight) and the input `X` of the `fit` methods must be a DataFrame with
+        the asset names in columns. When using a dictionary, assets values that are not
+        provided are assigned the default  minimum weight of `0.0`.
 
         Example:
 
-           * `min_weights = 0` --> long only portfolio (no short selling).
-           * `min_weights = None` --> no lower bound (same as `-np.Inf`).
-           * `min_weights = {"SX5E": 0, "SPX": 0.1}`
-           * `min_weights = [0, 0.1]`
+           * `min_weights = 0.0` --> long only portfolio (default).
+           * `min_weights = {"SX5E": 0.1, "SPX": 0.2}`
+           * `min_weights = [0.1, 0.2]`
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=1.0
-        Maximum assets weights (weights upper bounds). Weights above 1.0 are not
-        allowed. If a float is provided, it is applied to each asset.
-        If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset maximum weight) and the input `X` of the `fit` method must
-        be a DataFrame with the assets names in columns.
-        When using a dictionary, assets values that are not provided are assigned a
-        minimum weight of `1.0`. The default is 1.0 (each asset is below 100%).
+        Maximum assets weights (weights upper bounds). The default is 1.0 (each asset
+        is below 100%). Weights above 1.0 are not allowed. If a float is provided, it is
+        applied to each asset. `None` is equivalent to the default `1.0`. If a
+        dictionary is provided, its (key/value) pair must be the (asset name/asset
+        maximum weight) and the input `X` of the `fit` method must be a DataFrame with
+        the asset names in columns. When using a dictionary, assets values that are not
+        provided are assigned the default maximum weight of `1.0`.
 
         Example:
 
-           * `max_weights = 0` --> no long position (short only portfolio).
+           * `max_weights = 1.0` --> each weight  must be below 100% (default).
            * `max_weights = 0.5` --> each weight must be below 50%.
-           * `max_weights = {"SX5E": 1, "SPX": 0.25}`
-           * `max_weights = [1, 0.25]`
+           * `max_weights = {"SX5E": 0.8, "SPX": 0.9}`
+           * `max_weights = [0.8, 0.9]`
 
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets. It is used to add linear transaction costs to
@@ -147,7 +146,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
-        DataFrame with the assets names in columns.
+        DataFrame with the asset names in columns.
         The default value is `0.0`.
 
         .. warning::
@@ -175,7 +174,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset fee) and the input `X` of the `fit` method must be a
-        DataFrame with the assets names in columns.
+        DataFrame with the asset names in columns.
         The default value is `0.0`.
 
         .. warning::
@@ -198,7 +197,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         portfolio total cost. If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
-        be a DataFrame with the assets names in columns.
+        be a DataFrame with the asset names in columns.
         The default (`None`) means no previous weights.
 
     portfolio_params :  dict, optional
@@ -223,7 +222,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
-        has assets names that are all strings.
+        has asset names that are all strings.
 
     References
     ----------
