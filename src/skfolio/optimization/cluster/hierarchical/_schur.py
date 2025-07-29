@@ -470,19 +470,22 @@ def _binary_search(
 ) -> tuple[np.ndarray, float]:
     """Locate the turning point inside the interval [low_gamma, high_gamma]."""
     max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
+    is_decreasing = False
 
-    for i in range(max_iter):
+    for _ in range(max_iter):
         mid_gamma = 0.5 * (low_gamma + high_gamma)
         variance, weights = objective(mid_gamma)
         variance_h = objective(mid_gamma - tol)[0]
 
         if variance <= low_variance and variance <= variance_h:
+            is_decreasing = True
             low_gamma = mid_gamma
             low_variance = variance
-            if (high_gamma - low_gamma) <= tol:
-                return weights, low_gamma
         else:
             high_gamma = mid_gamma
+
+        if is_decreasing and weights is not None and (high_gamma - low_gamma) <= tol:
+            return weights, low_gamma
 
     raise RuntimeError(
         "Unable to find a permissible regularization factor `gamma` for which "

@@ -1,14 +1,42 @@
+
 import numpy as np
 import pytest
 
 from skfolio.cluster import HierarchicalClustering
+from skfolio.datasets import (
+    load_sp500_dataset,
+)
 from skfolio.moments import EWCovariance
 from skfolio.optimization import (
     HierarchicalRiskParity,
     MeanRisk,
     SchurComplementary,
 )
+from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, FactorModel
+
+
+@pytest.fixture(scope="module")
+def full_X():
+    prices = load_sp500_dataset()
+    full_X = prices_to_returns(prices)
+    return full_X
+
+
+@pytest.mark.parametrize(
+    "date_range",
+    [slice(None), slice("2010", None), slice("2015", None), slice("2010", "2015")],
+)
+def test_schur_frontier(full_X, date_range):
+    rets = full_X[date_range]
+    prev_ptf = None
+    for gamma in np.linspace(0, 1.0, 50):
+        schur = SchurComplementary(gamma=gamma)
+        ptf = schur.fit_predict(rets)
+        if prev_ptf is not None:
+            assert ptf.variance <= prev_ptf.variance + 1e-8
+            assert ptf.mean <= prev_ptf.mean + 1e-5
+        prev_ptf = ptf
 
 
 def test_schur_default(X):
@@ -64,17 +92,6 @@ def test_schur_hrp_min_var(X):
 
     assert ptf_schur_05.variance < ptf_hrp.variance
     assert ptf_schur_05.mean < ptf_hrp.mean
-
-
-def test_schur_frontier(X):
-    prev_ptf = None
-    for gamma in np.linspace(0, 1.0, 50):
-        schur = SchurComplementary(gamma=gamma)
-        ptf = schur.fit_predict(X)
-        if prev_ptf is not None:
-            assert ptf.variance <= prev_ptf.variance + 1e-8
-            assert ptf.mean <= prev_ptf.mean + 1e-8
-        prev_ptf = ptf
 
 
 def test_schur_prior_estimator(X):
