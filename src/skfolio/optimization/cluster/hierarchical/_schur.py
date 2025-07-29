@@ -220,6 +220,42 @@ class SchurComplementary(BaseHierarchicalOptimization):
     .. [6] "A review of two decades of correlations, hierarchies, networks and
         clustering in financial markets",
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
+
+    Examples
+    --------
+    For a full tutorial on Schur Complementary Allocation, see
+    :ref:`sphx_glr_auto_examples_clustering_plot_6_schur.py`.
+
+    >>> from skfolio import RiskMeasure
+    >>> from skfolio.cluster import HierarchicalClustering, LinkageMethod
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.distance import KendallDistance
+    >>> from skfolio.moments import LedoitWolf
+    >>> from skfolio.optimization import SchurComplementary
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>> from skfolio.prior import EmpiricalPrior
+    >>>
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Default Schur Complementary allocation
+    >>> model = SchurComplementary(gamma=0.5)
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> # Advanced model:
+    >>> #    * Ledoit-Wolf covariance shrinkage
+    >>> #    * Kendall's tau distance (absolute) for asset co-dependence
+    >>> #    * Hierarchical clustering with Ward's linkage
+    >>> model = SchurComplementary(
+    ...     gamma=0.5,
+    ...     prior_estimator=EmpiricalPrior(covariance_estimator=LedoitWolf()),
+    ...     distance_estimator=KendallDistance(absolute=True),
+    ...     hierarchical_clustering_estimator=HierarchicalClustering(
+    ...         linkage_method=LinkageMethod.WARD,
+    ... )
+    >>> model.fit(X)
+    >>> print(model.weights_)
     """
 
     effective_gamma_: float
@@ -444,7 +480,6 @@ def _binary_search(
             low_gamma = mid_gamma
             low_variance = variance
             if (high_gamma - low_gamma) <= tol:
-                print(i)
                 return weights, low_gamma
         else:
             high_gamma = mid_gamma
