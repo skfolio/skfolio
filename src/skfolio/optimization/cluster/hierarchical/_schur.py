@@ -377,7 +377,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 covariance=covariance,
                 min_weights=min_weights,
                 max_weights=max_weights,
-                check_spd=False,
+                force_spd=True,
             )
             self.effective_gamma_ = self.gamma
 
@@ -404,7 +404,7 @@ def _compute_monotonic_weights(
             covariance=covariance,
             max_weights=max_weights,
             min_weights=min_weights,
-            check_spd=False,
+            force_spd=True,
         )
         return weights, 0.0
 
@@ -415,7 +415,7 @@ def _compute_monotonic_weights(
             covariance=covariance,
             max_weights=max_weights,
             min_weights=min_weights,
-            check_spd=True,
+            force_spd=False,
         )
         risk = np.inf if w is None else w @ covariance @ w.T
         return risk, w
@@ -500,7 +500,7 @@ def _compute_weights(
     covariance: np.ndarray,
     max_weights: np.ndarray,
     min_weights: np.ndarray,
-    check_spd: bool = True,
+    force_spd: bool = False,
 ) -> np.ndarray | None:
     """
     Core Schur-complement allocation recursion.
@@ -522,8 +522,9 @@ def _compute_weights(
     max_weights : ndarray of shape (n_assets,)
         Maximum weights array.
 
-    check_spd : bool
-        Return None if any augmented block is not SPD.
+    force_spd : bool
+        If set to False, return None if any augmented block is not SPD; otherwise
+        convert non-SPD blocks to their nearest SPD during the bisection steps.
 
     Returns
     -------
@@ -554,9 +555,20 @@ def _compute_weights(
                 covariance[np.ix_(left_cluster, left_cluster)] = a_aug
                 covariance[np.ix_(right_cluster, right_cluster)] = d_aug
 
-            if check_spd:
+            if not force_spd:
                 if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
                     return None
+            else:
+                try:
+                    if not is_cholesky_dec(a_aug):
+                        a_aug = cov_nearest(a_aug)
+                    if not is_cholesky_dec(a_aug):
+                        d_aug = cov_nearest(d_aug)
+                except Exception:
+                    raise ValueError(
+                        f"Schur complement failed with gamma={gamma:0.4f}. Chose a "
+                        "smaller gamma or set `keep_monotonic=True`"
+                    ) from None
 
             left_variance = _naive_portfolio_variance(a_aug)
             right_variance = _naive_portfolio_variance(d_aug)
