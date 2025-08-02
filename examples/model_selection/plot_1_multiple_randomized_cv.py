@@ -12,7 +12,7 @@ temporal and cross-sectional variability in performance.
 
 In this example, we build a portfolio model composed of a preselection of top
 performers, followed by a Hierarchical Equal Risk Contribution optimization with
-covariance shrinkage. We split the dataset into training and testing sets, tune
+covariance shrinkage. We split the dataset into training and test sets, tune
 hyperparameters on the training set, and then evaluate the final portfolio models on
 the test set using :class:`~skfolio.model_selection.MultipleRandomizedCV`.
 """

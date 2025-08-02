@@ -14,6 +14,7 @@
 # permissible value. See https://github.com/skfolio/skfolio/discussions/3
 
 import math
+from collections.abc import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -49,13 +50,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
     Cotton [1]_.
 
     It uses Schur-complement-inspired augmentation of sub-covariance matrices,
-    revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance (MVO)
+    revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance
     portfolios.
 
     By tuning the regularization factor `gamma`, which governs how much off-diagonal
     information is incorporated into the augmented covariance blocks, the method
     smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
-    (`gamma = 0`) to the exact MVO solution (`gamma -> 1`).
+    (`gamma = 0`) to the MVO solution (`gamma -> 1`).
 
     The algorithm begins by computing a distance matrix and performing hierarchical
     clustering, then applies seriation to reorder assets in the dendrogram so that
@@ -70,12 +71,15 @@ class SchurComplementary(BaseHierarchicalOptimization):
     weighting factor derived from the variances of the two sub-clusters is used to
     update their cluster weights.
 
-    Note
-    ----
-    A poorly conditioned covariance matrix can produce unstable or extreme portfolio
-    weights and prevent convergence to the true MVO solution as gamma approaches one.
-    To improve numerical stability and estimation accuracy, apply shrinkage or other
-    conditioning techniques via the `prior_estimator`.
+    Notes
+    -----
+    A poorly conditioned covariance matrix can prevent convergence to the MVO solution
+    as gamma approaches one. Setting `keep_monotonic=True` (the default) ensures that
+    the portfolio variance decreases monotonically with respect to gamma and remains
+    bounded by the variance of the HRP portfolio (`variance(Schur) <= variance(HRP)`),
+    even in the presence of ill-conditioned covariance matrices. Additionally, you can
+    apply shrinkage or other conditioning techniques via the `prior_estimator` parameter
+    to improve numerical stability and estimation accuracy.
 
     Parameters
     ----------
@@ -84,13 +88,16 @@ class SchurComplementary(BaseHierarchicalOptimization):
         When gamma is zero, no off-diagonal information is used (equivalent to HRP).
         As gamma approaches one, the allocation moves toward the minimum variance (MVO)
         solution. The better the conditioning of the initial covariance matrix, the
-        closer the allocation will get to the exact MVO solution when gamma is near one.
+        closer the allocation will get to the MVO solution when gamma is near one.
 
     keep_monotonic : bool, default=True
-        If True, portfolio variance is enforced to decrease monotonically
-        with gamma by capping gamma at its maximum permissible value
-        (`effective_gamma_`). If False, no monotonicity check or capping is applied.
-        See https://github.com/skfolio/skfolio/discussions/3 for details.
+        If True, ensures that the portfolio variance decreases monotonically with
+        respect to gamma. This is achieved by capping gamma at its maximum permissible
+        value (`effective_gamma_`). This constraint guarantees that the solution remains
+        variance-bounded by the HRP portfolio (`variance(Schur) <= variance(HRP)`),
+        even in the presence of ill-conditioned covariance matrices.
+        If False, no monotonicity enforcement or gamma capping is applied.
+        For more details, see: https://github.com/skfolio/skfolio/discussions/3
 
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
@@ -394,8 +401,46 @@ def _compute_monotonic_weights(
     tol: float = 1e-4,
 ) -> tuple[np.ndarray, float]:
     """
-    Sweep gamma to find the monotonic "turning point" where risk stops decreasing.
-    Returns weights and effective gamma.
+    Finds the gamma value corresponding to the turning point where portfolio risk
+    (variance) stops decreasing monotonically.
+
+     This method exploits the smooth (i.e., continuously differentiable) functional
+     dependence of portfolio variance on the risk-aversion parameter gamma in a
+     Schur-complement-based optimization. It searches for the smallest gamma value
+     (up to `max_gamma`) beyond which further increases no longer yield significant
+     variance reduction, as defined by `tol`.
+
+    Parameters
+    ----------
+     max_gamma : float
+        Maximum gamma value to sweep up to.
+
+     sorted_assets : np.ndarray
+        Array of ordered asset indices.
+
+     covariance : np.ndarray
+        Covariance matrix of asset returns.
+
+     max_weights : np.ndarray
+        Maximum allowable weights for each asset.
+
+     min_weights : np.ndarray
+        Minimum allowable weights for each asset.
+
+     step : float, default=0.1
+        Step size for incrementing gamma during the initial sweep.
+
+     tol : float, default=1e-4
+        Tolerance for detecting when further variance reduction is negligible during
+        binary search.
+
+    Returns
+    -------
+     weights : np.ndarray
+        Asset weights at the identified turning point.
+
+     effective_gamma : float
+        Gamma value at which variance stops decreasing meaningfully.
     """
     if max_gamma == 0:
         weights = _compute_weights(
@@ -427,30 +472,46 @@ def _compute_monotonic_weights(
 
     # Initial sweep of the discrete gamma vector in [0, max_gamma] to find the range
     # of the variance turning point if any.
-    variance, weights = objective(gammas[0])
+    variance, weights_0 = objective(gammas[0])
     variances[0] = variance
     for i in range(1, n):
         variance, weights = objective(gammas[i])
         variances[i] = variance
         if variance >= variances[i - 1]:
-            # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
-            # turning point by binary search
-            low_idx = max(i - 2, 0)
-            return _binary_search(
-                objective,
-                low_gamma=gammas[low_idx],
-                high_gamma=gammas[i],
-                low_variance=variances[low_idx],
-                tol=tol,
-            )
+            if i == 1:
+                # Turning point either lies in [0, gammas[1]], or there is no turning
+                # points (monotonically decreasing from 0.0). If in [0, gammas[1]],
+                # we find the exact turning point by binary search.
+                try:
+                    _binary_search(
+                        objective,
+                        low_gamma=gammas[0],
+                        high_gamma=gammas[1],
+                        low_variance=variances[0],
+                        tol=tol,
+                    )
+                except RuntimeError:
+                    return weights_0, 0.0
+            else:
+                # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
+                # turning point by binary search.
+                return _binary_search(
+                    objective,
+                    low_gamma=gammas[i - 2],
+                    high_gamma=gammas[i],
+                    low_variance=variances[i - 2],
+                    tol=tol,
+                )
 
-    # No turning point found in sweep: check local derivative at the terminal gamma
+    # No turning point found in sweep
+
+    # 1) Check local derivative at the terminal gamma
     variance_h = objective(max_gamma - tol)[0]
     if variance <= variance_h:
-        # monotonically decreasing up to max_gamma
+        # monotonically decreasing up to max_gamma --> we return the terminal gamma
         return weights, max_gamma
 
-    # Turning point lies between last two gammas, we find the exact turning point by
+    # 2) Turning point lies between last two gammas, we find the exact turning point by
     # binary search
     return _binary_search(
         objective,
@@ -462,13 +523,54 @@ def _compute_monotonic_weights(
 
 
 def _binary_search(
-    objective,
+    objective: Callable,
     low_gamma: float,
     high_gamma: float,
     low_variance: float,
     tol: float = 1e-4,
 ) -> tuple[np.ndarray, float]:
-    """Locate the turning point inside the interval [low_gamma, high_gamma]."""
+    """
+    Performs a binary search to locate the turning point in the interval
+    [low_gamma, high_gamma] where portfolio variance stops decreasing monotonically.
+
+    This method assumes that portfolio variance decreases smoothly with gamma up to
+    a point, after which it stabilizes or increases. It evaluates the `objective`
+    function (which returns variance and weights) at midpoints to identify this
+    transition with precision up to a specified tolerance.
+
+    Parameters
+    ----------
+    objective : callable
+        A function that takes a float gamma value and returns a tuple:
+        (variance: float, weights: np.ndarray).
+
+    low_gamma : float
+        Lower bound of the gamma search interval.
+
+    high_gamma : float
+        Upper bound of the gamma search interval.
+
+    low_variance : float
+        The variance value corresponding to `low_gamma`.
+
+    tol : float, default=1e-4
+        Tolerance level for stopping the search when the interval between
+        low and high gamma becomes sufficiently small.
+
+    Returns
+    -------
+    weights : np.ndarray
+        Asset weights corresponding to the turning point gamma.
+
+    gamma : float
+        Gamma value at which the minimum (or lowest feasible) variance is achieved
+        before monotonic decrease ends.
+
+    Raises
+    ------
+    RuntimeError
+        If a suitable gamma cannot be found within the allowed number of iterations.
+    """
     max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
     is_decreasing = False
 
@@ -489,8 +591,7 @@ def _binary_search(
 
     raise RuntimeError(
         "Unable to find a permissible regularization factor `gamma` for which "
-        "the portfolio variance decreases monotonically as a function of gamma. "
-        "This can occur when the specified weight bounds are overly restrictive."
+        "the portfolio variance decreases monotonically as a function of gamma."
     )
 
 

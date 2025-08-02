@@ -242,11 +242,12 @@ def test_hrp_weight_constraints(X):
 
 def test_hrp_weight_constraints_error(X):
     model = SchurComplementary(min_weights=0.03, max_weights=0.06)
-    with pytest.raises(
-        RuntimeError, match="Unable to find a permissible regularization factor"
-    ):
-        model.fit(X)
+    model.fit(X)
+    assert model.effective_gamma_ == 0.0
+    assert model.weights_ is not None
+    assert not np.any(np.isnan(model.weights_))
 
     model = SchurComplementary(min_weights=0.03, max_weights=0.06, keep_monotonic=False)
     model.fit(X)
     assert model.effective_gamma_ == 0.5
+    assert not np.any(np.isnan(model.weights_))
