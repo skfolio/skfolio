@@ -6,6 +6,7 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
 # -- Path setup --------------------------------------------------------------
+import datetime as dt
 import json
 import os
 import warnings
@@ -56,7 +57,6 @@ extensions = [
     "sphinx_copybutton",
     "matplotlib.sphinxext.plot_directive",
     "numpydoc",
-    "sphinx_togglebutton",
     "sphinx_favicon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.imgconverter",
@@ -230,10 +230,6 @@ html_theme_options = {
     "navbar_align": (
         "left"
     ),  # [left, content, right] For testing that the navbar items align properly
-    "announcement": """<div class="sidebar-message">
-    If you'd like to contribute,
-    <a href="https://github.com/skfolio/skfolio">check out our GitHub repository.</a>
-    Your contributions are welcome!</div>""",
     "secondary_sidebar_items": [],  # No secondary sidebar due to bug with plotly
 }
 
@@ -493,6 +489,149 @@ def override_canonical(app, pagename, templatename, context, doctree):
     if pagename == "index":
         context["pageurl"] = html_baseurl.rstrip("/") + "/"
 
+
+def get_doc_title(app, docname) -> str:
+    """Retrieve the title text for a given docname from the Sphinx environment."""
+    title_node = app.env.titles.get(docname)
+    if title_node:
+        return title_node.astext()
+
+    raise ValueError(f"Failed to retrieve title from {docname}")
+
+
+def inject_schema(app, pagename, templatename, context, doctree):
+    print("Running Inject Schema...")
+    base = app.config.html_baseurl.rstrip("/")
+    schema = None
+
+    # Main Documentation Site
+    if pagename == "index":
+        schema = {
+            "@context": "https://schema.org/",
+            "@type": "WebSite",
+            "name": "skfolio Documentation",
+            "url": f"{base}/",
+            "description": (
+                "Python library for portfolio optimization and risk management"
+                " to build, cross-validate and stress-test portfolio models."
+            ),
+            "hasPart": [
+                {"@type": "HowTo", "url": "https://skfolio.org/user_guide/index.html"},
+                {
+                    "@type": "TechArticle",
+                    "url": "https://skfolio.org/auto_examples/index.html",
+                },
+                {"@type": "APIReference", "url": "https://skfolio.org/api.html"},
+            ],
+        }
+
+    # User Guide Index: dynamically discover all subpages
+    elif pagename == "user_guide/index":
+        # discover docs under user_guide/, excluding index
+        all_steps = sorted(
+            [
+                doc
+                for doc in app.env.found_docs
+                if doc.startswith("user_guide/") and doc != "user_guide/index"
+            ]
+        )
+        steps = []
+        for doc in all_steps:
+            title = get_doc_title(app, doc)
+            steps.append(
+                {"@type": "HowToStep", "name": title, "url": f"{base}/{doc}.html"}
+            )
+        schema = {
+            "@context": "https://schema.org/",
+            "@type": "HowTo",
+            "name": "skfolio User Guide",
+            "description": (
+                "Comprehensive guide to installing, configuring, and using "
+                "the skfolio Python library."
+            ),
+            "url": f"{base}/user_guide/index.html",
+            "step": steps,
+            "author": {"@type": "Organization", "name": "skfolio developers"},
+            "datePublished": f"{dt.date.today()}",
+        }
+
+        # Individual User Guide Steps: any page under user_guide/ except index
+
+    elif pagename.startswith("user_guide/") and pagename != "user_guide/index":
+        title = get_doc_title(app, pagename)
+
+        schema = {
+            "@context": "https://schema.org/",
+            "@type": "HowToStep",
+            "name": title,
+            "url": f"{base}/{pagename}.html",
+            "text": f"User Guide section: {title}.",
+            "author": {"@type": "Organization", "name": "skfolio developers"},
+            "datePublished": f"{dt.date.today()}",
+        }
+
+    # API Reference Page
+    elif pagename == "api":
+        schema = {
+            "@context": "https://schema.org/",
+            "@type": "APIReference",
+            "name": "skfolio API Reference",
+            "description": (
+                "Complete reference for the skfolio Python library's API: "
+                "functions, classes, and modules."
+            ),
+            "url": f"{base}/api.html",
+            "programmingModel": "Python",
+            "targetPlatform": "Any platform running Python 3.10+",
+            "version": app.config.release,
+            "author": {"@type": "Organization", "name": "skfolio developers"},
+            "publisher": {
+                "@type": "Organization",
+                "name": "skfolio",
+                "url": "https://skfolio.org/",
+            },
+        }
+
+        # 4) Examples Page as TechArticle with hasPart listing example TechArticles
+    elif pagename == "auto_examples/index":
+        all_examples = sorted(
+            [
+                doc
+                for doc in app.env.found_docs
+                if doc.startswith("auto_examples/") and doc != "auto_examples/index"
+            ]
+        )
+        parts = []
+        for doc in all_examples:
+            title = get_doc_title(app, doc)
+            parts.append(
+                {"@type": "TechArticle", "headline": title, "url": f"{base}/{doc}.html"}
+            )
+        schema = {
+            "@context": "https://schema.org/",
+            "@type": "TechArticle",
+            "headline": "Code Examples & Tutorials",
+            "description": (
+                "A gallery of code examples and tutorials demonstrating how to "
+                "use skfolio for portfolio optimization."
+            ),
+            "url": f"{base}/auto_examples/index.html",
+            "hasPart": parts,
+            "author": {"@type": "Organization", "name": "skfolio developers"},
+            "datePublished": f"{dt.date.today()}",
+        }
+
+    # Inject into context if schema defined
+    if schema:
+        print(f"Inject Schema into {pagename}")
+        script = json.dumps(schema, indent=2)
+        # Append inline script directly to metatags
+        context.setdefault("metatags", "")
+        context["metatags"] += (
+            '\n<script type="application/ld+json">\n' + script + "\n</script>\n"
+        )
+
+
 def setup(app):
     """Setup function to register the build-finished hook."""
     # register existing hook
@@ -500,6 +639,8 @@ def setup(app):
     app.connect("build-finished", prune_and_fix_sitemap)
     # add the canonical-URL hook
     app.connect("html-page-context", override_canonical)
+    # add schema
+    app.connect("html-page-context", inject_schema)
 
     return {
         "version": "1.0",
