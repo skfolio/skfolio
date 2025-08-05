@@ -23,6 +23,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Enable full git history for sitemap last-updated detection
 
       - name: Setup Python
         uses: actions/setup-python@v5

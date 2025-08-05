@@ -1,8 +1,20 @@
-:og:description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
+:og:description:  Python library for portfolio optimization and risk management built on scikit-learn to create, fine-tune, cross-validate and stress-test portfolio models.
 
 .. meta::
-    :keywords: skfolio, portfolio, optimization, portfolio optimization, finance, python, quantitative, trading, risk management, scikit-learn, stress test
-    :description: skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
+    :keywords: python portfolio optimization,
+               quantitative finance,
+               risk management,
+               portfolio backtesting,
+               algorithmic trading,
+               robust optimization,
+               scikit-learn integration,
+               financial modeling,
+               stress testing,
+               skfolio
+    :description: Python library for portfolio optimization and risk management built
+                  on scikit-learn to create, fine-tune, cross-validate and stress-test
+                  portfolio models.
+
 
 .. toctree::
    :hidden:
@@ -10,6 +22,7 @@
     User guide <user_guide/index>
     Examples <auto_examples/index>
     API Reference <api>
+
 
 =======
 skfolio
@@ -21,9 +34,46 @@ scikit-learn to build, fine-tune, cross-validate and stress-test portfolio model
 
 It is distributed under the open-source 3-Clause BSD license.
 
-.. image:: _static/expo.jpg
-    :target: https://skfolio.org/auto_examples/
-    :alt: examples
+.. raw:: html
+
+    <link
+        rel="preload"
+        as="image"
+        href="_static/expo.webp"
+        imagesrcset="
+            _static/expo-750.webp 750w,
+            _static/expo-1000.webp 1000w,
+            _static/expo.webp 1500w"
+        imagesizes="(max-width: 960px) 100vw, 1500px"
+        type="image/webp">
+
+    <a href="https://skfolio.org/auto_examples/"
+       title="Browse the skfolio examples gallery">
+        <picture>
+            <source
+                    srcset="
+                        _static/expo-750.webp 750w,
+                        _static/expo-1000.webp 1000w,
+                        _static/expo.webp 1500w"
+                    sizes="(max-width: 960px) 100vw, 1500px"
+                    type="image/webp">
+
+            <source
+                    srcset="
+                        _static/expo-750.jpg 750w,
+                        _static/expo-1000.jpg 1000w,
+                        _static/expo.jpg 1500w"
+                    sizes="(max-width: 960px) 100vw, 1500px"
+                    type="image/jpeg">
+            <img
+                    src="_static/expo.jpg"
+                    alt="Portfolio optimization examples gallery from skfolio"
+                    width="1500" height="750"
+                    style="display:block;width:100%;height:auto;"
+                    loading="eager"
+                    decoding="async">
+        </picture>
+    </a>
 
 
 Installation
@@ -35,6 +85,14 @@ Installation
 
     $ pip install skfolio
 
+Contribution
+************
+
+We welcome contributions of all kinds. To get started, please visit our
+`GitHub repository <https://github.com/skfolio/skfolio>`_.
+
+Whether it's reporting a bug, suggesting an improvement, or submitting code, your input
+helps make `skfolio` better.
 
 Key Concepts
 ************
