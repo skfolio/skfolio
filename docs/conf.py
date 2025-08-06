@@ -675,6 +675,12 @@ def prune_and_fix_sitemap(app, exception):
             if path == "/index.html":
                 loc.text = app.config.html_baseurl.rstrip("/") + "/"
 
+                # Inject <priority>1.0</priority> for the homepage
+                priority_el = url.find("sm:priority", ns)
+                if priority_el is None:
+                    priority_el = ET.SubElement(url, f"{{{ns['sm']}}}priority")
+                priority_el.text = "1.0"
+
             # Inject known <lastmod>
             lastmod = EXAMPLE_LAST_UPDATED.get(path.lstrip("/").removesuffix(".html"))
             if lastmod:
