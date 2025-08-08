@@ -14,6 +14,7 @@ import warnings
 import xml.etree.ElementTree as ET
 from html import escape
 from pathlib import Path
+from string import Template
 from urllib.parse import urlparse
 
 import nbformat
@@ -210,6 +211,45 @@ EXAMPLE_LAST_UPDATED = {
     "auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "2023-12-18",
     # Metadata Routing
     "auto_examples/metadata_routing/plot_1_implied_volatility": "2023-12-18",
+}
+
+
+# Map old *docname* (no .rst/.html) -> new URL (root-relative or absolute)
+REDIRECTS = {
+    "auto_examples/5_distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "/auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar.html",
+    "auto_examples/6_clustering/plot_5_nco_grid_search": "/auto_examples/clustering/plot_5_nco_grid_search.html",
+    "auto_examples/6_clustering/plot_4_nco": "/auto_examples/clustering/plot_4_nco.html",
+    "auto_examples/7_ensemble/plot_1_stacking": "/auto_examples/ensemble/plot_1_stacking.html",
+    "auto_examples/6_clustering/plot_3_hrp_vs_herc": "/auto_examples/clustering/plot_3_hrp_vs_herc.html",
+    "auto_examples/2_risk_budgeting/plot_3_risk_parity_ledoit_wolf": "/auto_examples/risk_budgeting/plot_3_risk_parity_ledoit_wolf.html",
+    "auto_examples/6_clustering/index": "/auto_examples/clustering/index.html",
+    "auto_examples/1_mean_risk/plot_8_regularization": "/auto_examples/mean_risk/plot_8_regularization.html",
+    "auto_examples/6_ensemble/plot_1_stacking": "/auto_examples/ensemble/plot_1_stacking.html",
+    "auto_examples/1_mean_risk/plot_7_management_fees": "/auto_examples/mean_risk/plot_7_management_fees.html",
+    "auto_examples/1_mean_risk/plot_1_maximum_sharpe_ratio": "/auto_examples/mean_risk/plot_1_maximum_sharpe_ratio.html",
+    "auto_examples/1_mean_risk/plot_13_factor_model": "/auto_examples/mean_risk/plot_13_factor_model.html",
+    "auto_examples/1_mean_risk/plot_15_mip_cardinality_constraints": "/auto_examples/mean_risk/plot_15_mip_cardinality_constraints.html",
+    "auto_examples/1_mean_risk/plot_2_minimum_CVaR": "/auto_examples/mean_risk/plot_2_minimum_CVaR.html",
+    "auto_examples/2_risk_budgeting/index": "/auto_examples/risk_budgeting/index.html",
+    "auto_examples/8_pre_selection/plot_4_incomplete_dataset": "/auto_examples/pre_selection/plot_4_incomplete_dataset.html",
+    "auto_examples/1_mean_risk/plot_12_black_and_litterman": "/auto_examples/mean_risk/plot_12_black_and_litterman.html",
+    "auto_examples/2_risk_budgeting/plot_2_risk_budgeting_CVaR": "/auto_examples/risk_budgeting/plot_2_risk_budgeting_CVaR.html",
+    "auto_examples/1_mean_risk/index": "/auto_examples/mean_risk/index.html",
+    "auto_examples/1_mean_risk/plot_10_tracking_error": "/auto_examples/mean_risk/plot_10_tracking_error.html",
+    "auto_examples/3_synthetic_data/plot_1_bivariate_copulas": "/auto_examples/synthetic_data/plot_1_bivariate_copulas.html",
+    "auto_examples/1_mean_risk/plot_16_mip_threshold_constraints": "/auto_examples/mean_risk/plot_16_mip_threshold_constraints.html",
+    "auto_examples/5_clustering/plot_5_nco_grid_search": "/auto_examples/clustering/plot_5_nco_grid_search.html",
+    "auto_examples/5_clustering/plot_3_hrp_vs_herc": "/auto_examples/clustering/plot_3_hrp_vs_herc.html",
+    "auto_examples/5_clustering/plot_4_nco": "/auto_examples/clustering/plot_4_nco.html",
+    "auto_examples/3_maxiumum_diversification/index": "/auto_examples/maximum_diversification/index.html",
+    "auto_examples/9_data_preparation/index": "/auto_examples/data_preparation/index.html",
+    "auto_examples/7_pre_selection/index": "/auto_examples/pre_selection/index.html",
+    "auto_examples/4_distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "/auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar.html",
+    "auto_examples/6_ensemble/index": "/auto_examples/ensemble/index.html",
+    "auto_examples/5_clustering/index": "/auto_examples/clustering/index.html",
+    "auto_examples/4_distributionally_robust_cvar/index": "/auto_examples/distributionally_robust_cvar/index.html",
+    "auto_examples/8_metadata_routing/index": "/auto_examples/metadata_routing/index.html",
+    "auto_examples/8_data_preparation/index": "/auto_examples/data_preparation/index.html",
 }
 
 
@@ -913,8 +953,12 @@ def override_example_meta_descriptions(app, exception):
 
     for html_file in output_dir.rglob("*.html"):
         pagename = html_file.relative_to(output_dir).with_suffix("").as_posix()
-        if not (
-            pagename.startswith("auto_examples/") and pagename != "auto_examples/index"
+        if (
+            not (
+                pagename.startswith("auto_examples/")
+                and pagename != "auto_examples/index"
+            )
+            or pagename in REDIRECTS
         ):
             continue
 
@@ -942,6 +986,80 @@ def override_example_meta_descriptions(app, exception):
         print(f"Updated: {html_file.relative_to(output_dir)}")
 
 
+def replace_index_links(app, exception):
+    """
+    Normalize homepage links in the built HTML.
+
+    After a successful Sphinx build, this hook scans the output directory and
+    rewrites any anchor that points to the homepage via an explicit file URL
+    (e.g., `href="index.html"` or `href="../index.html"`) to use a cleaner
+    directory-style URL for the homepage.
+
+    Specifically, it replaces those patterns with `href="/"`, which helps:
+      - keep internal links consistent with SEO best practices,
+      - avoid duplicate homepage URLs (`/` vs `/index.html`),
+    """
+    if exception:
+        return
+
+    # Match either href="index.html" or href="../index.html"
+    pattern = re.compile(r'href="(?:\.\./)?index\.html"')
+
+    for root, _, files in os.walk(app.outdir):
+        for fname in files:
+            if not fname.endswith(".html"):
+                continue
+            path = os.path.join(root, fname)
+            text = open(path, encoding="utf-8").read()
+            # Replace any matched href with an absolute root link
+            new_text = pattern.sub('href="/"', text)
+            if new_text != text:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(new_text)
+
+
+# Accessible + bot-friendly template: meta refresh + canonical + JS + link
+REDIRECT_HTML = """<!doctype html>
+<meta charset="utf-8">
+<title>Redirecting…</title>
+<link rel="canonical" href="${canonical}">
+<meta http-equiv="refresh" content="0;url=${to_uri}">
+<p>If you are not redirected, <a href="${to_uri}">click here</a>.</p>
+<script>
+  (function() {
+    var target = "${to_uri}";
+    if (window.location.hash) target += window.location.hash;
+    window.location.replace(target);
+  })();
+</script>
+"""
+
+
+def _canonical(app, target: str) -> str:
+    """Simple canonical: if html_baseurl is set and target starts with '/', join them; otherwise use target."""
+    base = (getattr(app.config, "html_baseurl", "") or "").rstrip("/")
+    if base and target.startswith("/"):
+        return base + target
+    return target
+
+
+def create_redirects(app, exception):
+    if exception:
+        return  # skip on failed builds
+
+    outdir = Path(app.outdir)
+    suffix = getattr(app.builder, "out_suffix", ".html")  # default HTML builder
+    for src_docname, target in REDIRECTS.items():
+        out_path = outdir / f"{src_docname}{suffix}"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        html = Template(REDIRECT_HTML).substitute(
+            to_uri=target,
+            canonical=_canonical(app, target),
+        )
+        out_path.write_text(html, encoding="utf-8")
+        print(f"[redirects] {src_docname}{suffix} → {target}")
+
+
 def setup(app):
     """Setup function to register the build-finished hook."""
     # html page context
@@ -953,6 +1071,8 @@ def setup(app):
     app.connect("build-finished", patch_jupyterlite_notebooks)
     app.connect("build-finished", prune_and_fix_sitemap)
     app.connect("build-finished", override_example_meta_descriptions)
+    app.connect("build-finished", replace_index_links)
+    app.connect("build-finished", create_redirects)
 
     return {
         "version": "1.0",
