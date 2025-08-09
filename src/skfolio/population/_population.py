@@ -889,6 +889,12 @@ class Population(list):
                 symbol="tag",
             )
             fig.update_traces(marker_size=10)
+
+            if color_scale is None:
+                legend = dict(title=None, yanchor="top", y=0.98, xanchor="left", x=1.02)
+            else:
+                legend = dict(title=None, yanchor="top", y=0.98, xanchor="left", x=0.02)
+
             fig.update_layout(
                 title=title,
                 xaxis={
@@ -899,7 +905,7 @@ class Population(list):
                     "title": str(y),
                     "tickformat": ",.1%" if not y.is_ratio else None,
                 },
-                legend=dict(yanchor="top", y=0.96, xanchor="left", x=1.25),
+                legend=legend,
             )
         return fig
 

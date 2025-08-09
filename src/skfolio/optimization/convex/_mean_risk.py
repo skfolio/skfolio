@@ -156,7 +156,7 @@ class MeanRisk(ConvexOptimization):
         If a float is provided, it is applied to each asset.
         `None` is equivalent to `-np.Inf` (no lower bound).
         If a dictionary is provided, its (key/value) pair must be the
-        (asset name/asset minium weight) and the input `X` of the `fit` method must
+        (asset name/asset minimum weight) and the input `X` of the `fit` method must
         be a DataFrame with the assets names in columns.
         When using a dictionary, assets values that are not provided are assigned
         a minimum weight of `0.0`.
