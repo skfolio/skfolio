@@ -157,7 +157,6 @@ EXAMPLE_DESCRIPTIONS = {
     ),
 }
 
-
 EXAMPLE_LAST_UPDATED = {
     "auto_examples/index": str(dt.date.today()),
     # Data Preparation
@@ -212,7 +211,6 @@ EXAMPLE_LAST_UPDATED = {
     # Metadata Routing
     "auto_examples/metadata_routing/plot_1_implied_volatility": "2023-12-18",
 }
-
 
 # Map old *docname* (no .rst/.html) -> new URL (root-relative or absolute)
 REDIRECTS = {
@@ -355,7 +353,6 @@ html_extra_path = ["robots.txt"]
 # Last updated date format
 html_last_updated_fmt = "%Y-%m-%d"
 
-
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
@@ -386,12 +383,11 @@ ORDER_OF_EXAMPLES = {
     "data_preparation": 12,
 }
 
-
 # -- sphinxext-opengraph ----------------------------------------------------
 
 ogp_site_url = "https://skfolio.org/"
 ogp_site_name = "skfolio"
-ogp_image = "https://skfolio.org/_images/expo.jpg"
+ogp_image = "https://skfolio.org/_static/expo.jpg"
 ogp_enable_meta_description = True
 ogp_description_length = 160
 
@@ -423,12 +419,6 @@ myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
 # -- sphinx-favicons ------------------------------------------------------------
 favicons = [
     {
-        "rel": "shortcut icon",
-        "type": "image/svg+xml",
-        "sizes": "any",
-        "href": "favicon.svg",
-    },
-    {
         "rel": "icon",
         "type": "image/svg+xml",
         "sizes": "any",
@@ -449,8 +439,24 @@ favicons = [
     {
         "rel": "icon",
         "type": "image/png",
+        "sizes": "96x96",
+        "href": "favicon-96.png",
+    },
+    {
+        "rel": "icon",
+        "type": "image/png",
         "sizes": "144x144",
         "href": "favicon-144.png",
+    },
+    {
+        "rel": "shortcut icon",
+        "type": "image/x-icon",
+        "href": "favicon.ico",
+    },
+    {
+        "rel": "apple-touch-icon",
+        "sizes": "180x180",
+        "href": "apple-touch-icon.png",
     },
 ]
 
@@ -882,8 +888,8 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 doc
                 for doc in app.env.found_docs
                 if doc.startswith("auto_examples/")
-                and not doc.endswith("index")
-                and "/index" not in doc  # filters nested auto_examples/**/index
+                   and not doc.endswith("index")
+                   and "/index" not in doc  # filters nested auto_examples/**/index
             ]
         )
         parts = []
@@ -933,7 +939,7 @@ def inject_schema(app, pagename, templatename, context, doctree):
         # Append inline script directly to metatags
         context.setdefault("metatags", "")
         context["metatags"] += (
-            '\n<script type="application/ld+json">\n' + script + "\n</script>\n"
+                '\n<script type="application/ld+json">\n' + script + "\n</script>\n"
         )
 
 
@@ -954,11 +960,11 @@ def override_example_meta_descriptions(app, exception):
     for html_file in output_dir.rglob("*.html"):
         pagename = html_file.relative_to(output_dir).with_suffix("").as_posix()
         if (
-            not (
-                pagename.startswith("auto_examples/")
-                and pagename != "auto_examples/index"
-            )
-            or pagename in REDIRECTS
+                not (
+                        pagename.startswith("auto_examples/")
+                        and pagename != "auto_examples/index"
+                )
+                or pagename in REDIRECTS
         ):
             continue
 
@@ -991,19 +997,32 @@ def replace_index_links(app, exception):
     Normalize homepage links in the built HTML.
 
     After a successful Sphinx build, this hook scans the output directory and
-    rewrites any anchor that points to the homepage via an explicit file URL
-    (e.g., `href="index.html"` or `href="../index.html"`) to use a cleaner
-    directory-style URL for the homepage.
+    rewrites any anchor that points to the homepage via an explicit file URL.
 
-    Specifically, it replaces those patterns with `href="/"`, which helps:
+    Patterns handled include:
+      - href="index.html"
+      - href="./index.html"
+      - href="../index.html"
+      - href="../../index.html"
+      - href="../../../index.html"
+
+    All such links are rewritten to use the cleaner root form `href="/"`, which
+    helps:
       - keep internal links consistent with SEO best practices,
-      - avoid duplicate homepage URLs (`/` vs `/index.html`),
+      - avoid duplicate homepage URLs (`/`, `/index.html`, `../index.html`, etc.).
+
+    Notes:
+      - This assumes the site is deployed at the domain root (`/`). If your
+        documentation is served under a subpath (e.g. `/docs/`), update the
+        replacement accordingly.
     """
     if exception:
         return
 
-    # Match either href="index.html" or href="../index.html"
-    pattern = re.compile(r'href="(?:\.\./)?index\.html"')
+    # Match href pointing to index.html with any ./ or ../ depth
+    pattern = re.compile(
+        r'href\s*=\s*(["\'])(?:\./)?(?:\.\./)*index\.html\1'
+    )
 
     for root, _, files in os.walk(app.outdir):
         for fname in files:
