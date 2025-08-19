@@ -230,6 +230,7 @@ Classes
     optimization.BaseHierarchicalOptimization
     optimization.HierarchicalRiskParity
     optimization.HierarchicalEqualRiskContribution
+    optimization.SchurComplementary
     optimization.NestedClustersOptimization
 
 .. _optimization_ensemble_ref:
@@ -599,7 +600,6 @@ Functions
     datasets.load_ftse100_dataset
     datasets.load_nasdaq_dataset
 
-
 .. _preprocessing_ref:
 
 :mod:`skfolio.preprocessing`: Preprocessing
@@ -629,21 +629,25 @@ Functions
     :template: function.rst
 
     stats.NBinsMethod
-    stats.n_bins_freedman
-    stats.n_bins_knuth
-    stats.is_cholesky_dec
+    stats.assert_is_distance
     stats.assert_is_square
     stats.assert_is_symmetric
-    stats.assert_is_distance
-    stats.cov_nearest
-    stats.cov_to_corr
-    stats.corr_to_cov
+    stats.combination_by_index
     stats.commutation_matrix
     stats.compute_optimal_n_clusters
+    stats.corr_to_cov
+    stats.cov_nearest
+    stats.cov_to_corr
+    stats.inverse_multiply
+    stats.is_cholesky_dec
+    stats.minimize_relative_weight_deviation
+    stats.multiply_by_inverse
+    stats.n_bins_freedman
+    stats.n_bins_knuth
     stats.rand_weights
     stats.rand_weights_dirichlet
-    stats.minimize_relative_weight_deviation
-
+    stats.sample_unique_subsets
+    stats.symmetric_step_up_matrix
 
 .. _univariate_distribution_ref:
 
