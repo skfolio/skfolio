@@ -699,7 +699,7 @@ served as sources of inspiration::
     * scikit-portfolio
     * statsmodels
     * rsome
-    * microprediction (Peter cotton)
+    * microprediction (Peter Cotton)
     * danielppalomar.com (Daniel P. Palomar)
     * quantresearch.org (Marcos López de Prado)
     * gautier.marti.ai (Gautier Marti)
