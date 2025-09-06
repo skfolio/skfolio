@@ -135,6 +135,7 @@ Available models
     * Clustering:
         * Hierarchical Risk Parity
         * Hierarchical Equal Risk Contribution
+        * Schur Complementary Allocation
         * Nested Clusters Optimization
     * Ensemble Methods:
         * Stacking Optimization
@@ -693,14 +694,15 @@ We would like to thank all contributors to our direct dependencies, such as
 scikit-learn and cvxpy, as well as the contributors of the following resources that
 served as sources of inspiration::
 
-    * PyPortfolioOpt
+   * PyPortfolioOpt
     * Riskfolio-Lib
     * scikit-portfolio
-    * microprediction
     * statsmodels
     * rsome
-    * danielppalomar.com
-    * gautier.marti.ai
+    * microprediction (Peter Cotton)
+    * danielppalomar.com (Daniel P. Palomar)
+    * quantresearch.org (Marcos López de Prado)
+    * gautier.marti.ai (Gautier Marti)
 
 
 Citation
