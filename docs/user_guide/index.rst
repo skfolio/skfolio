@@ -1,3 +1,21 @@
+:og:description:  Comprehensive user guide for skfolio: step-by-step tutorials to install, configure, and use the Python library for portfolio optimization and risk management.
+
+.. meta::
+    :keywords: python portfolio optimization,
+               quantitative finance,
+               risk management,
+               portfolio backtesting,
+               algorithmic trading,
+               robust optimization,
+               scikit-learn integration,
+               financial modeling,
+               stress testing,
+               skfolio
+    :description: Comprehensive user guide for skfolio: step-by-step tutorials to
+                  install, configure, and use the Python library for portfolio
+                  optimization and risk management.
+
+
 .. _user_guide:
 
 ==========

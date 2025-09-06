@@ -79,19 +79,18 @@ docs = [
     "PySCIPOpt",
     "Sphinx",
     "sphinx-gallery",
-    "sphinx-design",
     "pydata-sphinx-theme~=0.16",
     "matplotlib",
     "kaleido",
     "sphinx-copybutton",
     "numpydoc",
-    "sphinx-togglebutton",
     "sphinx-favicon",
     "sphinxext.opengraph",
     "sphinx-sitemap",
     "jupyterlite-sphinx",
     "jupyterlite-pyodide-kernel",
     "nbformat",
+    "sphinx-last-updated-by-git",
 ]
 
 [tool.setuptools.packages.find]
