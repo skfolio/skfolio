@@ -77,7 +77,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         The goal is to early detect corrupted asset data (with zero variance) that
         would lead to optimizations errors.
         """
-        cond = np.diag(covariance) < 1e-15
+        cond = np.diag(covariance) < 0
         if np.any(cond):
             corrupted_assets = list(np.argwhere(cond).flatten())
             detail = "assets indices"
