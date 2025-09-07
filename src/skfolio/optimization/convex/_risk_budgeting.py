@@ -25,21 +25,21 @@ class RiskBudgeting(ConvexOptimization):
 
     The Risk Budgeting estimator solves the below convex problem:
 
-        .. math::   \begin{cases}
-                    \begin{aligned}
-                    & \min_{w,s} && \mathrm{risk}_{i}(w) \\
-                    & \text{s.t.} && b^{\top}\log(w) \ge 0 \\
-                    &             && \mathbf{1}^{\top} w = s \\
-                    &             && \mu^{\top} w \ge s\, r_{\min} \\
-                    &             && A\,w \ge s\,d \\
-                    &             && w \ge 0,\ \ s>0
-                    \end{aligned}
-                    \end{cases}
+        .. math::  \begin{cases}
+                   \begin{aligned}
+                   & \min_{w,s} && \mathrm{Risk}(w) \\
+                   & \text{s.t.} && budget^{\top}\log(w) \ge 0 \\
+                   &             && \mathbf{1}^{\top} w = s \\
+                   &             && expected\_return(w) \ge s\, min\_return \\
+                   &             && A w \le s\, b \\
+                   &             && w \ge 0
+                   \end{aligned}
+                   \end{cases}
 
-    with :math:`b` the risk budget vector and :math:`r_{\min}` the minimum expected
-    return vector `min_return`.
+    with :math:`budget` the risk budget vector and :math:`min\_return` the minimum
+    expected return constraint.
 
-    And :math:`risk_{i}` a risk measure among:
+    And :math:`Risk` a risk measure among:
 
         * Mean Absolute Deviation
         * First Lower Partial Moment
@@ -274,15 +274,9 @@ class RiskBudgeting(ConvexOptimization):
 
     cvar_beta : float, default=0.95
         CVaR (Conditional Value at Risk) confidence level.
-
-    evar_beta : float, default=0
-        EVaR (Entropic Value at Risk) confidence level.
-
-    cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
         The default value is `0.95`.
 
-    evar_beta : float, default=0
+    evar_beta : float, default=0.95
         EVaR (Entropic Value at Risk) confidence level.
         The default value is `0.95`.
 
@@ -368,6 +362,11 @@ class RiskBudgeting(ConvexOptimization):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
+
+    References
+    ----------
+    - "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
+       Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
     """
 
     def __init__(
