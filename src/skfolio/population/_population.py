@@ -454,6 +454,15 @@ class Population(list):
         -------
         summary : pandas DataFrame
             The population's portfolios summary
+
+        Notes
+        -----
+        This method returns a static pandas DataFrame. For interactive exploration
+        (e.g., sortable/filterable/clickable tables or visual summaries), you may want
+        to use libraries such as `ipydatagrid`, `D-Tale`, or `Lux` in a Jupyter
+        environment, or `dash_table` / `streamlit.dataframe` when building dashboards.
+        For example, you can explore the summary with D-Tale:
+        `dtale.show(population.summary().T)`
         """
         df = pd.concat(
             [p.summary(formatted=formatted) for p in self],
