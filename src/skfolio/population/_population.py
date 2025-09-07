@@ -157,6 +157,9 @@ class Population(list):
         self, use_tag_in_column_name: bool = True
     ) -> pd.DataFrame:
         """DataFrame of cumulative returns for each portfolio in the population.
+        Non-compounded (arithmetic) cumulative returns start at 0.
+        Compounded (geometric) cumulative returns are expressed as a wealth index,
+        starting at 1.0 (i.e., the value of $1 invested).
 
         Parameters
         ----------
@@ -638,15 +641,16 @@ class Population(list):
         use_tag_in_legend: bool = True,
     ) -> go.Figure:
         """Plot the cumulative returns of the population's portfolios.
-        Non-compounded cumulative returns start at 0.
-        Compounded cumulative returns are rescaled to start at 1000.
+        Non-compounded (arithmetic) cumulative returns start at 0.
+        Compounded (geometric) cumulative returns are expressed as a wealth index,
+        starting at 1.0 (i.e., the value of $1 invested).
 
         Parameters
         ----------
         log_scale : bool, default=False
             If set to True, the cumulative returns are displayed with a
-            logarithm scale on the y-axis and rebased at 1000. The cumulative returns
-            must be compounded otherwise an exception is raise.
+            logarithm scale on the y-axis. The cumulative returns must be compounded
+            otherwise an exception is raise.
 
         idx : slice | array, optional
             Indexes or slice of the observations to plot.
@@ -668,7 +672,6 @@ class Population(list):
         compounded = self._validate_compounded()
         title = "Cumulative Returns"
         if compounded:
-            yaxis_title = f"{title} (rebased at 1000)"
             if log_scale:
                 title = f"{title} (compounded & log scaled)"
             else:
@@ -681,7 +684,6 @@ class Population(list):
                     "You can change to compounded with "
                     "`set_portfolio_params(compounded=True)`"
                 )
-            yaxis_title = title
             title = f"{title} (non-compounded)"
 
         df = self.cumulative_returns_df(use_tag_in_column_name=use_tag_in_legend)
@@ -689,11 +691,11 @@ class Population(list):
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
-            yaxis_title=yaxis_title,
+            yaxis_title="Cumulative Returns",
             legend_title_text="Portfolios",
         )
         if compounded:
-            fig.update_yaxes(tickformat=".0f")
+            fig.update_yaxes(tickformat=".2f")
         else:
             fig.update_yaxes(tickformat=".2%")
         if log_scale:
