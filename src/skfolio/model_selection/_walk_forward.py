@@ -119,18 +119,18 @@ class WalkForward(sks.BaseCrossValidator):
             With `purged_size=0`:
                 - Training ends at the current period and testing begins immediately.
                 - Assumes you can observe, compute, and execute within the same period.
-                - If observation/computation-to-execution latency is non-negligible (submission
-                  cutoffs, illiquidity, end-of-period finalization, or markets with no intraday
-                  quotation), results may be too optimistic.
+                - If observation/computation-to-execution latency is non-negligible
+                  (submission cutoffs, illiquidity, end-of-period finalization, or
+                  markets with no intraday quotation), results may be too optimistic.
 
             With `purged_size=1`:
                 - One observation is dropped between training and test.
-                - Decisions made on the current period start affecting performance from the next
-                  period.
+                - Decisions made on the current period start affecting performance from
+                  the next period.
 
             Rules of thumb:
-                - Use `purged_size=0` only when you truly can execute at the same period with
-                  minimal latency.
+                - Use `purged_size=0` only when you truly can execute at the same period
+                  with minimal latency.
                 - Use `purged_size >= 1` when execution is delayed (daily-priced assets,
                   illiquid markets, end-of-day data that settles after the close).
 

@@ -224,3 +224,32 @@ def test_portfolio_contribution(small_population):
     assert contribution.shape[0] <= 20
 
     assert small_population.plot_contribution(measure=RiskMeasure.STANDARD_DEVIATION)
+
+
+def test_plot_distribution(population):
+    assert population.plot_distribution(measure_list=[RiskMeasure.STANDARD_DEVIATION])
+    assert population.plot_distribution(
+        measure_list=[RiskMeasure.STANDARD_DEVIATION, RatioMeasure.SHARPE_RATIO]
+    )
+
+    for i in range(len(population)):
+        population[i].tag = f"Tag_{int(i > len(population) / 2)}"
+
+    assert population.plot_distribution(
+        measure_list=[RiskMeasure.STANDARD_DEVIATION], tag_list=["Tag_0", "Tag_1"]
+    )
+    assert population.plot_distribution(
+        measure_list=[RiskMeasure.STANDARD_DEVIATION, RatioMeasure.SHARPE_RATIO],
+        tag_list=["Tag_0", "Tag_1"],
+    )
+
+
+def test_boxplot(population):
+    assert population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
+
+    for i in range(len(population)):
+        population[i].tag = f"Tag_{int(i > len(population) / 2)}"
+
+    assert population.boxplot_measure(
+        measure=RatioMeasure.SHARPE_RATIO, tag_list=["Tag_0", "Tag_1"]
+    )

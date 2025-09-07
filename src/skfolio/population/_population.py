@@ -615,20 +615,35 @@ class Population(list):
             Returns the plotly Figure object.
         """
         n = len(measure_list)
-        values = []
-        labels = []
-        for measure in measure_list:
-            if tag_list is not None:
-                for tag in tag_list:
-                    values.append(self.filter(tags=tag).measures(measure=measure))
-                    labels.append(tag if n == 1 else f"{measure} - {tag}")
-            else:
-                values.append(self.measures(measure=measure))
-                labels.append(measure.value)
 
-        df = pd.DataFrame(np.array(values).T, columns=labels).melt(
-            var_name="Population"
-        )
+        if tag_list is None:
+            df = pd.concat(
+                [
+                    pd.DataFrame(
+                        {
+                            "Population": measure.value,
+                            "value": self.measures(measure=measure),
+                        }
+                    )
+                    for measure in measure_list
+                ],
+                ignore_index=True,
+            )
+        else:
+            df = pd.concat(
+                [
+                    pd.DataFrame(
+                        {
+                            "Population": tag if n == 1 else f"{measure} - {tag}",
+                            "value": self.filter(tags=tag).measures(measure=measure),
+                        }
+                    )
+                    for measure in measure_list
+                    for tag in tag_list
+                ],
+                ignore_index=True,
+            )
+
         fig = px.histogram(
             df,
             color="Population",
@@ -641,6 +656,66 @@ class Population(list):
         fig.update_layout(
             title_text=title, xaxis_title=str(measure_list[0]) if n == 1 else "measures"
         )
+        return fig
+
+    def boxplot_measure(
+        self,
+        measure: skt.Measure,
+        tag_list: list[str] | None = None,
+        points: str | bool = "all",
+    ) -> go.Figure:
+        """Plot a box plot of a measure's distribution, optionally split by tags.
+
+        If no tags are provided, the function draws a single box showing the
+        population distribution of `measure`. If `tag_list` is provided, it draws
+        one box per tag using values from the portfolio filtered by each tag.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure to plot.
+
+        tag_list : list[str], optional
+            For each tag in this list, filter the portfolio by that tag and plot a
+            separate box. If None or empty, plot a single overall distribution.
+
+        points : {'all', 'outliers', 'suspectedoutliers', False}, default 'all'
+            Passed to `plotly.express.box(..., points=...)` to control which points
+            are shown.
+
+        Returns
+        -------
+        go.Figure
+            The Plotly figure.
+
+        Examples
+        --------
+        >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
+        >>> fig = population.plot_measure_box(
+        ...     measure=RatioMeasure.SHARPE_RATIO,
+        ...     tag_list=["Benchmark", "Risk Parity Model"]
+        ... )
+        """
+        if tag_list is None:
+            y = None
+            df = pd.DataFrame(self.measures(measure=measure), columns=["value"])
+        else:
+            y = "Population"
+            df = pd.concat(
+                [
+                    pd.DataFrame(
+                        {
+                            y: tag,
+                            "value": self.filter(tags=tag).measures(measure=measure),
+                        }
+                    )
+                    for tag in tag_list
+                ],
+                ignore_index=True,
+            )
+
+        fig = px.box(df, x="value", y=y, color=y, points=points)
+        fig.update_layout(title_text=f"Box plot of {measure}", xaxis_title=str(measure))
         return fig
 
     def plot_cumulative_returns(

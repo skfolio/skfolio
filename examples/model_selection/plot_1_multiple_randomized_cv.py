@@ -199,6 +199,12 @@ for pred in [pred_bench_mc, pred_tuned_mc]:
     print(f"Sharpe Ratio Std Dev: {std_sr:0.2f}\n")
 
 # %%
+# Let's display the Box plot of the CVaR Ratio:
+population_mc.boxplot_measure(
+    measure=RatioMeasure.CVAR_RATIO, tag_list=["Benchmark Model", "Tuned Model"]
+)
+
+# %%
 # We plot the asset composition for the first two `MultiPeriodPortfolio`:
 pred_tuned_mc[:2].plot_composition(display_sub_ptf_name=False)
 
