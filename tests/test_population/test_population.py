@@ -177,7 +177,11 @@ def test_slicing(population, multi_period_portfolio):
     assert mpp == multi_period_portfolio
 
 
-def test_population_plot_cumulative_returns(population):
+def test_population_cumulative_returns(population):
+    assert isinstance(population.cumulative_returns_df(), pd.DataFrame)
+    assert isinstance(
+        population.cumulative_returns_df(use_tag_in_column_name=False), pd.DataFrame
+    )
     assert population[:2].plot_cumulative_returns()
 
     with pytest.raises(ValueError):
@@ -186,6 +190,16 @@ def test_population_plot_cumulative_returns(population):
     population.set_portfolio_params(compounded=True)
     assert population[:2].plot_cumulative_returns()
     assert population[:2].plot_cumulative_returns(log_scale=True)
+
+
+def test_population_drawdowns(population):
+    assert isinstance(population.drawdowns_df(), pd.DataFrame)
+    assert isinstance(
+        population.drawdowns_df(use_tag_in_column_name=False), pd.DataFrame
+    )
+    assert population[:2].plot_drawdowns()
+    population.set_portfolio_params(compounded=True)
+    assert population[:2].plot_drawdowns()
 
 
 def test_population_rolling_measure(small_population):

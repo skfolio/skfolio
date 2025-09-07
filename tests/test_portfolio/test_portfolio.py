@@ -235,10 +235,13 @@ def test_portfolio_methods(X, weights):
     names_2.sort()
     names_1.sort()
     assert np.array_equal(names_1, names_2)
+    assert isinstance(portfolio.cumulative_returns_df, pd.Series)
+    assert isinstance(portfolio.drawdowns_df, pd.Series)
     portfolio.clear()
     assert portfolio.plot_returns()
     assert portfolio.plot_returns_distribution()
     assert portfolio.plot_cumulative_returns()
+    assert portfolio.plot_drawdowns()
     assert portfolio.plot_rolling_measure(measure=RatioMeasure.SHARPE_RATIO, window=20)
     assert isinstance(portfolio.composition, pd.DataFrame)
     assert portfolio.plot_composition()
@@ -460,6 +463,13 @@ def test_portfolio_plot_cumulative_returns(X, weights):
     portfolio.compounded = True
     assert portfolio.plot_cumulative_returns()
     assert portfolio.plot_cumulative_returns(log_scale=True)
+
+
+def test_portfolio_plot_drawdowns(X, weights):
+    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+    assert portfolio.plot_drawdowns()
+    portfolio.compounded = True
+    assert portfolio.plot_drawdowns()
 
 
 def test_portfolio_contribution(portfolio):

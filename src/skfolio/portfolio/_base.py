@@ -726,6 +726,15 @@ class BasePortfolio:
         )
 
     @property
+    def drawdowns_df(self) -> pd.Series:
+        """Portfolio drawdowns Series."""
+        return pd.Series(
+            index=self.observations,
+            data=self.drawdowns,
+            name="drawdowns",
+        )
+
+    @property
     def measures_df(self) -> pd.DataFrame:
         """DataFrame of all measures."""
         idx = [e.value for enu in [PerfMeasure, RiskMeasure, RatioMeasure] for e in enu]
@@ -1015,6 +1024,39 @@ class BasePortfolio:
             fig.update_yaxes(tickformat=".2%")
         if log_scale:
             fig.update_yaxes(type="log")
+        return fig
+
+    def plot_drawdowns(self, idx: slice | np.ndarray | None = None) -> go.Figure:
+        """Plot the Portfolio drawdowns.
+
+        Parameters
+        ----------
+        idx : slice | array, optional
+            Indexes or slice of the observations to plot.
+            The default (`None`) is to plot all observations.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        if idx is None:
+            idx = slice(None)
+        df = self.drawdowns_df.iloc[idx]
+        title = "Drawdowns"
+        if self.compounded:
+            title = f"{title} (compounded returns)"
+        else:
+            title = f"{title} (non-compounded returns)"
+
+        fig = df.plot(backend="plotly")
+        fig.update_layout(
+            title=title,
+            xaxis_title="Observations",
+            yaxis_title="Drawdowns",
+            showlegend=False,
+        )
+        fig.update_yaxes(tickformat=".1%")
         return fig
 
     def plot_returns(self, idx: slice | np.ndarray | None = None) -> go.Figure:

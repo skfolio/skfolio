@@ -123,6 +123,96 @@ class Population(list):
             f", got {type(item).__name__}"
         )
 
+    def _validate_compounded(self) -> bool:
+        """
+        Determine whether all portfolios in the population use compounded returns.
+
+        Returns
+        -------
+        bool
+            True if all portfolios are compounded, False if all are non-compounded.
+
+        Raises
+        ------
+        ValueError
+            If the population is empty, or if it mixes compounded and non-compounded
+            portfolios.
+        """
+        compounded = [ptf.compounded for ptf in self]
+
+        if not compounded:
+            raise ValueError("Cannot determine compounded status: population is empty.")
+
+        compounded = set(compounded)
+        if len(compounded) > 1:
+            raise ValueError(
+                "Population contains a mix of compounded and non-compounded portfolios."
+                " Ensure consistency, for example with "
+                "`population.set_portfolio_params(compounded=False)`."
+            )
+
+        return compounded.pop()
+
+    def cumulative_returns_df(
+        self, use_tag_in_column_name: bool = True
+    ) -> pd.DataFrame:
+        """DataFrame of cumulative returns for each portfolio in the population.
+
+        Parameters
+        ----------
+        use_tag_in_column_name : bool, default=True
+            Whether to include the portfolio tag in the DataFrame column names.
+            If True, each column name will use the portfolio name followed by its tag;
+            if False, only the portfolio name will be used.
+
+        Returns
+        -------
+        cumulative_returns : DataFrame
+            Cumulative returns DataFrame.
+        """
+        self._validate_compounded()
+        cumulative_returns = []
+        names = []
+        for ptf in self:
+            cumulative_returns.append(ptf.cumulative_returns_df)
+            names.append(
+                _ptf_name_with_tag(ptf) if use_tag_in_column_name else ptf.name
+            )
+        df = pd.concat(cumulative_returns, axis=1)
+        # Sort index because pd.concat unsort NaNs at the end
+        df.sort_index(inplace=True)
+        df.columns = deduplicate_names(names)
+        return df
+
+    def drawdowns_df(self, use_tag_in_column_name: bool = True) -> pd.DataFrame:
+        """DataFrame of drawdowns for each portfolio in the population.
+
+        Parameters
+        ----------
+        use_tag_in_column_name : bool, default=True
+            Whether to include the portfolio tag in the DataFrame column names.
+            If True, each column name will use the portfolio name followed by its tag;
+            if False, only the portfolio name will be used.
+
+        Returns
+        -------
+        drawdowns : DataFrame
+            Drawdowns DataFrame.
+        """
+        self._validate_compounded()
+        drawdowns = []
+        names = []
+        for ptf in self:
+            drawdowns.append(ptf.drawdowns_df)
+            names.append(
+                _ptf_name_with_tag(ptf) if use_tag_in_column_name else ptf.name
+            )
+        df = pd.concat(drawdowns, axis=1)
+        # Sort index because pd.concat unsort NaNs at the end
+        df.sort_index(inplace=True)
+        df.columns = deduplicate_names(names)
+        return df
+
     def non_denominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
         """Fast non-dominated sorting.
         Sort the portfolios into different non-domination levels.
@@ -547,7 +637,7 @@ class Population(list):
         idx: slice | np.ndarray | None = None,
         use_tag_in_legend: bool = True,
     ) -> go.Figure:
-        """Plot the population's portfolios cumulative returns.
+        """Plot the cumulative returns of the population's portfolios.
         Non-compounded cumulative returns start at 0.
         Compounded cumulative returns are rescaled to start at 1000.
 
@@ -575,23 +665,8 @@ class Population(list):
         if idx is None:
             idx = slice(None)
 
-        cumulative_returns = []
-        names = []
-        compounded = []
-        for ptf in self:
-            cumulative_returns.append(ptf.cumulative_returns_df)
-            names.append(_ptf_name_with_tag(ptf) if use_tag_in_legend else ptf.name)
-            compounded.append(ptf.compounded)
-        compounded = set(compounded)
-
-        if len(compounded) == 2:
-            raise ValueError(
-                "Some portfolios cumulative returns are compounded while some "
-                "are non-compounded. You can change the compounded with"
-                "`population.set_portfolio_params(compounded=False)`",
-            )
+        compounded = self._validate_compounded()
         title = "Cumulative Returns"
-        compounded = compounded.pop()
         if compounded:
             yaxis_title = f"{title} (rebased at 1000)"
             if log_scale:
@@ -609,12 +684,8 @@ class Population(list):
             yaxis_title = title
             title = f"{title} (non-compounded)"
 
-        df = pd.concat(cumulative_returns, axis=1).iloc[:, idx]
-        # Sort index because pd.concat unsort NaNs at the end
-        df.sort_index(inplace=True)
-        df.columns = deduplicate_names(names)
-
-        fig = df.plot(backend="plotly")
+        df = self.cumulative_returns_df(use_tag_in_column_name=use_tag_in_legend)
+        fig = df.iloc[idx].plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
@@ -627,6 +698,50 @@ class Population(list):
             fig.update_yaxes(tickformat=".2%")
         if log_scale:
             fig.update_yaxes(type="log")
+        return fig
+
+    def plot_drawdowns(
+        self,
+        idx: slice | np.ndarray | None = None,
+        use_tag_in_legend: bool = True,
+    ) -> go.Figure:
+        """Plot the drawdowns of the population's portfolios.
+
+        Parameters
+        ----------
+        idx : slice | array, optional
+            Indexes or slice of the observations to plot.
+            The default (`None`) is to take all observations.
+
+        use_tag_in_legend : bool, default=True
+            Whether to include the portfolio tag in legend entries.
+            If True, each legend label will show the portfolio name followed by its tag;
+            if False, only the portfolio name will be displayed.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        if idx is None:
+            idx = slice(None)
+
+        compounded = self._validate_compounded()
+        title = "Drawdowns"
+        if compounded:
+            title = f"{title} (compounded returns)"
+        else:
+            title = f"{title} (non-compounded returns)"
+
+        df = self.drawdowns_df(use_tag_in_column_name=use_tag_in_legend)
+        fig = df.iloc[idx].plot(backend="plotly")
+        fig.update_layout(
+            title=title,
+            xaxis_title="Observations",
+            yaxis_title="Drawdowns",
+            legend_title_text="Portfolios",
+        )
+        fig.update_yaxes(tickformat=".1%")
         return fig
 
     def plot_composition(self, display_sub_ptf_name: bool = True) -> go.Figure:
