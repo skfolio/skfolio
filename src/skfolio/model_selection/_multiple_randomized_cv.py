@@ -22,7 +22,7 @@ class MultipleRandomizedCV:
     r"""Multiple Randomized Cross-Validation.
 
     Based on the "Multiple Randomized Backtests" methodology of Palomar [1]_,
-    this cross-validation strategy performs a Monte Carlo-style evaluation by repeatedly
+    this cross-validation strategy performs a resampling-based evaluation by repeatedly
     sampling **distinct** asset subsets (without replacement) and **contiguous** time
     windows, then applying an inner walk-forward split to each subsample, capturing both
     temporal and cross-sectional variability in performance.
@@ -41,8 +41,8 @@ class MultipleRandomizedCV:
     all :math:`M=\binom{n\_assets}{asset\_subset\_size}` subsets. When :math:`M` is
     small, this guarantees exhaustive coverage of every possible asset-universe.
     Because ranks are drawn without replacement from a finite population of size
-    :math:`M`, the variance of the Monte Carlo sample mean is reduced by the
-    finite-population correction factor :math:`\tfrac{M - n\_subsamples}{M - 1}`.
+    :math:`M`, the variance of the sample mean is reduced by the finite-population
+    correction factor :math:`\tfrac{M - n\_subsamples}{M - 1}`.
 
     Parameters
     ----------

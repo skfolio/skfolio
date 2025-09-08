@@ -1,10 +1,11 @@
 """Risk Budgeting Optimization estimator."""
 
-# Copyright (c) 2023
+# Copyright (c) 2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
-# The optimization features are derived
+# Some optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# Credits: Daniel P. Palomar (improvements)
 
 import cvxpy as cp
 import numpy as np
@@ -24,20 +25,21 @@ class RiskBudgeting(ConvexOptimization):
 
     The Risk Budgeting estimator solves the below convex problem:
 
-        .. math::   \begin{cases}
-                    \begin{aligned}
-                    &\min_{w} & & risk_{i}(w) \\
-                    &\text{s.t.} & & b^T \cdot log(w) \ge c \\
-                    & & & w^T \cdot \mu \ge min\_return \\
-                    & & & A \cdot w \ge b \\
-                    & & & w \ge 0
-                    \end{aligned}
-                    \end{cases}
+        .. math::  \begin{cases}
+                   \begin{aligned}
+                   & \min_{w,s} && \mathrm{Risk}(w) \\
+                   & \text{s.t.} && budget^{\top}\log(w) \ge 0 \\
+                   &             && \mathbf{1}^{\top} w = s \\
+                   &             && expected\_return(w) \ge s\, min\_return \\
+                   &             && A w \le s\, b \\
+                   &             && w \ge 0
+                   \end{aligned}
+                   \end{cases}
 
-    with :math:`b` the risk budget vector and :math:`c` an auxiliary variable of
-    the log barrier.
+    with :math:`budget` the risk budget vector and :math:`min\_return` the minimum
+    expected return constraint.
 
-    And :math:`risk_{i}` a risk measure among:
+    And :math:`Risk` a risk measure among:
 
         * Mean Absolute Deviation
         * First Lower Partial Moment
@@ -82,7 +84,7 @@ class RiskBudgeting(ConvexOptimization):
             * AVERAGE_DRAWDOWN
             * EDAR
             * ULCER_INDEX
-            * GINI_MEAN_DIFFERENCE_RATIO
+            * GINI_MEAN_DIFFERENCE
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -272,15 +274,9 @@ class RiskBudgeting(ConvexOptimization):
 
     cvar_beta : float, default=0.95
         CVaR (Conditional Value at Risk) confidence level.
-
-    evar_beta : float, default=0
-        EVaR (Entropic Value at Risk) confidence level.
-
-    cvar_beta : float, default=0.95
-        CVaR (Conditional Value at Risk) confidence level.
         The default value is `0.95`.
 
-    evar_beta : float, default=0
+    evar_beta : float, default=0.95
         EVaR (Entropic Value at Risk) confidence level.
         The default value is `0.95`.
 
@@ -366,6 +362,11 @@ class RiskBudgeting(ConvexOptimization):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
+
+    References
+    ----------
+    - "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
+       Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
     """
 
     def __init__(
@@ -445,7 +446,6 @@ class RiskBudgeting(ConvexOptimization):
             Price returns of factors.
             The default is `None`.
 
-
         Returns
         -------
         self : RiskBudgeting
@@ -496,7 +496,6 @@ class RiskBudgeting(ConvexOptimization):
         # Variables
         w = cp.Variable(n_assets)
         factor = cp.Variable()
-        c = cp.Variable(nonneg=True)
 
         # Expected returns
         expected_return = (
@@ -508,10 +507,7 @@ class RiskBudgeting(ConvexOptimization):
         )
 
         # risk budgeting constraint
-        constraints = [
-            risk_budget @ cp.log(w) * self._scale_constraints
-            >= c * self._scale_constraints
-        ]
+        constraints = [risk_budget @ cp.log(w) * self._scale_constraints >= 0]
 
         # weight constraints
         constraints += self._get_weight_constraints(

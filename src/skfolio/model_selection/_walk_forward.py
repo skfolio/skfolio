@@ -52,12 +52,12 @@ class WalkForward(sks.BaseCrossValidator):
         If provided, it must be a frequency string or a pandas DateOffset, and the
         returns `X` must be a DataFrame with an index of type `DatetimeIndex`.
         For a list of pandas frequencies and offsets, see `here <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases>`_.
-        The defaul (`None`) means `test_size` and `train_size` represent the number of
+        The default (`None`) means `test_size` and `train_size` represent the number of
         observations.
 
         Below are some common examples:
 
-            * Rebalancing    : Montly on the first day
+            * Rebalancing    : Monthly on the first day
             * Test Duration  : 1 month
             * Train Duration : 6 months
 
@@ -69,7 +69,7 @@ class WalkForward(sks.BaseCrossValidator):
 
             >>> cv = WalkForward(test_size=1, train_size=pd.DateOffset(months=2), freq="QS")
 
-            * Rebalancing    : Montly on the third Friday
+            * Rebalancing    : Monthly on the third Friday
             * Test Duration  : 1 month
             * Train Duration : 6 weeks
 
@@ -111,6 +111,28 @@ class WalkForward(sks.BaseCrossValidator):
         The number of observations to exclude from the end of each training set before
         the test set.
         The default value is `0`.
+
+        .. warning::
+
+            **Execution timing and look-ahead control**
+
+            With `purged_size=0`:
+                - Training ends at the current period and testing begins immediately.
+                - Assumes you can observe, compute, and execute within the same period.
+                - If observation/computation-to-execution latency is non-negligible
+                  (submission cutoffs, illiquidity, end-of-period finalization, or
+                  markets with no intraday quotation), results may be too optimistic.
+
+            With `purged_size=1`:
+                - One observation is dropped between training and test.
+                - Decisions made on the current period start affecting performance from
+                  the next period.
+
+            Rules of thumb:
+                - Use `purged_size=0` only when you truly can execute at the same period
+                  with minimal latency.
+                - Use `purged_size >= 1` when execution is delayed (daily-priced assets,
+                  illiquid markets, end-of-day data that settles after the close).
 
     Examples
     --------

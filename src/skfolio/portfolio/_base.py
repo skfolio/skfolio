@@ -695,9 +695,13 @@ class BasePortfolio:
 
     @cached_property_slots
     def cumulative_returns(self) -> np.ndarray:
-        """Portfolio cumulative returns array."""
+        """Portfolio cumulative returns array.
+        Non-compounded (arithmetic) cumulative returns start at 0.
+        Compounded (geometric) cumulative returns are expressed as a wealth index,
+        starting at 1.0 (i.e., the value of $1 invested).
+        """
         return mt.get_cumulative_returns(
-            returns=self.returns, compounded=self.compounded
+            returns=self.returns, compounded=self.compounded, base=1.0
         )
 
     @cached_property_slots
@@ -718,11 +722,24 @@ class BasePortfolio:
 
     @property
     def cumulative_returns_df(self) -> pd.Series:
-        """Portfolio cumulative returns Series."""
+        """Portfolio cumulative returns Series.
+        Non-compounded (arithmetic) cumulative returns start at 0.
+        Compounded (geometric) cumulative returns are expressed as a wealth index,
+        starting at 1.0 (i.e., the value of $1 invested).
+        """
         return pd.Series(
             index=self.observations,
             data=self.cumulative_returns,
             name="cumulative_returns",
+        )
+
+    @property
+    def drawdowns_df(self) -> pd.Series:
+        """Portfolio drawdowns Series."""
+        return pd.Series(
+            index=self.observations,
+            data=self.drawdowns,
+            name="drawdowns",
         )
 
     @property
@@ -963,15 +980,16 @@ class BasePortfolio:
         self, log_scale: bool = False, idx: slice | np.ndarray | None = None
     ) -> go.Figure:
         """Plot the Portfolio cumulative returns.
-        Non-compounded cumulative returns start at 0.
-        Compounded cumulative returns are rescaled to start at 1000.
+        Non-compounded (arithmetic) cumulative returns start at 0.
+        Compounded (geometric) cumulative returns are expressed as a wealth index,
+        starting at 1.0 (i.e., the value of $1 invested).
 
         Parameters
         ----------
         log_scale : bool, default=False
             If this is set to True, the cumulative returns are displayed with a
-            logarithm scale on the y-axis and rebased at 1000. The cumulative returns
-            must be compounded otherwise an exception is raised.
+            logarithm scale on the y-axis. The cumulative returns must be compounded
+            otherwise an exception is raised.
 
         idx : slice | array, optional
             Indexes or slice of the observations to plot.
@@ -987,7 +1005,6 @@ class BasePortfolio:
         df = self.cumulative_returns_df.iloc[idx]
         title = "Cumulative Returns"
         if self.compounded:
-            yaxis_title = f"{title} (rebased at 1000)"
             if log_scale:
                 title = f"{title} (compounded & log scaled)"
             else:
@@ -999,22 +1016,54 @@ class BasePortfolio:
                     "returns that are compounded as opposed to non-compounded."
                     "You can change to compounded with `compounded=True`"
                 )
-            yaxis_title = title
             title = f"{title} (non-compounded)"
 
         fig = df.plot(backend="plotly")
         fig.update_layout(
             title=title,
             xaxis_title="Observations",
-            yaxis_title=yaxis_title,
+            yaxis_title="Cumulative Returns",
             showlegend=False,
         )
         if self.compounded:
-            fig.update_yaxes(tickformat=".0f")
+            fig.update_yaxes(tickformat=".2f")
         else:
             fig.update_yaxes(tickformat=".2%")
         if log_scale:
             fig.update_yaxes(type="log")
+        return fig
+
+    def plot_drawdowns(self, idx: slice | np.ndarray | None = None) -> go.Figure:
+        """Plot the Portfolio drawdowns.
+
+        Parameters
+        ----------
+        idx : slice | array, optional
+            Indexes or slice of the observations to plot.
+            The default (`None`) is to plot all observations.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        if idx is None:
+            idx = slice(None)
+        df = self.drawdowns_df.iloc[idx]
+        title = "Drawdowns"
+        if self.compounded:
+            title = f"{title} (compounded returns)"
+        else:
+            title = f"{title} (non-compounded returns)"
+
+        fig = df.plot(backend="plotly")
+        fig.update_layout(
+            title=title,
+            xaxis_title="Observations",
+            yaxis_title="Drawdowns",
+            showlegend=False,
+        )
+        fig.update_yaxes(tickformat=".1%")
         return fig
 
     def plot_returns(self, idx: slice | np.ndarray | None = None) -> go.Figure:

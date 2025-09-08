@@ -604,11 +604,9 @@ def evar(returns: npt.ArrayLike, beta: float = 0.95) -> float:
 
 
 def get_cumulative_returns(
-    returns: npt.ArrayLike, compounded: bool = False
+    returns: npt.ArrayLike, compounded: bool = False, base: float = 1.0
 ) -> np.ndarray:
-    """Compute the cumulative returns from the returns.
-    Non-compounded cumulative returns start at 0.
-    Compounded cumulative returns are rescaled to start at 1000.
+    """Compute the cumulative returns from a series of returns.
 
     Parameters
     ----------
@@ -616,8 +614,14 @@ def get_cumulative_returns(
         Array of return values.
 
     compounded : bool, default=False
-        If this is set to True, the cumulative returns are compounded otherwise they
-        are uncompounded.
+        If True, compute compounded (geometric) cumulative returns as a wealth index
+        starting at `base`. If False, compute non-compounded (arithmetic) cumulative
+        returns starting at 0. Default is False.
+
+    base : float, default=1.0
+        Starting value for compounded cumulative returns, expressed as a wealth index.
+        For example, use 1.0 for a "wealth index" representing $1 invested, or 100.0
+        for index-style rebasing.
 
     Returns
     -------
@@ -625,8 +629,7 @@ def get_cumulative_returns(
         Cumulative returns.
     """
     if compounded:
-        # Rescaled to start at 1000
-        cumulative_returns = 1000 * np.cumprod(1 + returns, axis=0)
+        cumulative_returns = base * np.cumprod(1 + returns, axis=0)
     else:
         cumulative_returns = np.cumsum(returns, axis=0)
     return cumulative_returns
