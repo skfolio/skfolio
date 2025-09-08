@@ -5,7 +5,7 @@ Multiple Randomized Cross-Validation
 
 This tutorial introduces :class:`~skfolio.model_selection.MultipleRandomizedCV`,
 which is based on the "Multiple Randomized Backtests" methodology of Palomar in [1]_.
-This cross-validation strategy performs a Monte Carlo–style evaluation by repeatedly
+This cross-validation strategy performs a resampling-based evaluation by repeatedly
 sampling **distinct** asset subsets (without replacement) and **contiguous** time
 windows, then applying an inner walk-forward split to each subsample, capturing both
 temporal and cross-sectional variability in performance.
@@ -124,7 +124,7 @@ model_tuned
 # A single backtest path represents one possible trajectory of cumulative
 # returns under the given rebalancing scheme and parameter set. While easy
 # to compute, it may understate the variability and uncertainty of real-world
-# performance compared to Monte Carlo-based methods.
+# performance compared to resampling-based methods.
 pred_bench = cross_val_predict(model_bench, X_test, cv=walk_forward)
 pred_bench.name = "Benchmark Model"
 
@@ -143,7 +143,7 @@ population.summary()
 # %%
 # Multiple Randomized Cross-Validation
 # ====================================
-# We perform Monte Carlo-style resampling by drawing 500 subsamples of 50 distinct
+# We perform resampling-based cross-validation by drawing 500 subsamples of 50 distinct
 # assets and contiguous 3-year windows (3 x 252 trading days), then applying our
 # walk-forward split to each subsample. This approach captures both temporal and
 # cross-sectional variability.
@@ -174,7 +174,7 @@ population_mc = pred_bench_mc + pred_tuned_mc
 # %%
 # Visualization and Analysis
 # --------------------------
-# We plot cumulative returns for the first 10 `MultiPeriodPortfolio` (Monte Carlo paths)
+# We plot cumulative returns for the first 10 `MultiPeriodPortfolio` (resampled paths)
 # of the tuned model. Each `MultiPeriodPortfolio` concatenates the test (out-of-sample)
 # results from the walk-forward.
 fig = pred_tuned_mc[:10].plot_cumulative_returns(use_tag_in_legend=False)
@@ -217,8 +217,8 @@ pred_tuned_mc[0].plot_weights_per_observation()
 # ==========
 # A single-path walk-forward analysis may understate the variability and uncertainty of
 # real-world performance. Multiple Randomized Cross-Validation, by contrast, applies
-# Monte Carlo sampling across asset subsets and time windows, yielding performance
-# estimates that are more robust and less prone to overfitting.
+# a resampling-based evaluation across asset subsets and time windows, yielding
+# performance estimates that are more robust and less prone to overfitting.
 
 # %%
 # References

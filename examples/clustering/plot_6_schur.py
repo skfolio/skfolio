@@ -10,16 +10,16 @@ Schur Complementary Allocation is a portfolio allocation method developed by Pet
 Cotton [1]_.
 
 It uses Schur-complement-inspired augmentation of sub-covariance matrices,
-revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance (MVO)
-portfolios.
+revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance
+portfolios (MVP).
 
 By tuning the regularization factor `gamma`, which governs how much off-diagonal
 information is incorporated into the augmented covariance blocks, the method
 smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
-(`gamma = 0`) to the MVO solution (`gamma -> 1`).
+(`gamma = 0`) to the MVP solution (`gamma -> 1`).
 
 .. note ::
-    A poorly conditioned covariance matrix can prevent convergence to the MVO solution
+    A poorly conditioned covariance matrix can prevent convergence to the MVP solution
     as gamma approaches one. Setting `keep_monotonic=True` (the default) ensures that
     the portfolio variance decreases monotonically with respect to gamma and remains
     bounded by the variance of the HRP portfolio (`variance(Schur) <= variance(HRP)`),
@@ -83,8 +83,8 @@ print(model.weights_)
 # To do that, we're going to fit a few different portfolio models on the
 # **training set**:
 #
-# * Minimum-Variance (MVO)
-# * Mean-Variance Efficient Frontier: 20 Markowitz portfolios spanning different risk levels
+# * Minimum-Variance (MVP)
+# * Mean-Variance Efficient Frontier: 20 Markowitz portfolios spanning different risk levels (MVO)
 # * Hierarchical Risk Parity (HRP)
 # * 20 Schur portfolios with gamma values ranging from 0 to 1
 #
@@ -122,20 +122,20 @@ hrp_std = ptf.standard_deviation
 ptf = hrp.predict(X_test)
 population_test.append(ptf)
 
-# 20 Markowitz (including MVO) portfolios
+# 20 MVO (including MVP) portfolios
 mean_variance = MeanRisk(
     prior_estimator=prior,
     efficient_frontier_size=20,
     max_standard_deviation=hrp_std,
-    portfolio_params={"tag": "Markowitz"},
+    portfolio_params={"tag": "MVO"},
 )
 # Train
 mv_population_train = mean_variance.fit_predict(X_train)
-mv_population_train[0].tag = "MVO"
+mv_population_train[0].tag = "MVP"
 population_train += mv_population_train
 # Test
 mv_population_test = mean_variance.predict(X_test)
-mv_population_test[0].tag = "MVO"
+mv_population_test[0].tag = "MVP"
 population_test += mv_population_test
 
 # %%
@@ -144,7 +144,7 @@ fig = population_train.plot_measures(
     x=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     y=PerfMeasure.ANNUALIZED_MEAN,
     hover_measures=[RatioMeasure.ANNUALIZED_SHARPE_RATIO],
-    title="Training Set | Markowitz - HRP - Schur",
+    title="Training Set | MVO - HRP - Schur",
 )
 show(fig)
 
@@ -156,26 +156,26 @@ population_test.plot_measures(
     x=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     y=PerfMeasure.ANNUALIZED_MEAN,
     hover_measures=[RatioMeasure.ANNUALIZED_SHARPE_RATIO],
-    title="Test Set | Markowitz - HRP - Schur",
+    title="Test Set | MVO - HRP - Schur",
 )
 
 # %%
 # Plot portfolio compositions
-population_train.filter(tags=["Schur", "MVO", "Markowitz"]).plot_composition()
+population_train.filter(tags=["Schur", "MVP", "MVO"]).plot_composition()
 
 # %%
 # Analysis
 # ========
 # * When `gamma = 0`, the Schur portfolio is exactly equal to HRP.
-# * As `gamma` increases toward 1, it gradually approaches the MVO solution,
+# * As `gamma` increases toward 1, it gradually approaches the MVP solution,
 #   **without fully reaching it**.
 # * On the **training set**, both Schur and HRP portfolios are Pareto dominated
-#   by the Markowitz portfolios, as expected, since those lie on the efficient frontier
+#   by the MVO portfolios, as expected, since those lie on the efficient frontier
 #   by construction.
-# * On the **test set**, Schur portfolios dominate the Markowitz portfolios.
+# * On the **test set**, Schur portfolios dominate the MVO portfolios.
 #
 # We observe a reversal in the relative frontiers (mean-variance dominance) between the
-# training and test sets: Markowitz portfolios dominate in-sample, but their structure
+# training and test sets: MVO portfolios dominate in-sample, but their structure
 # fails to hold out-of-sample versus Schur portfolios, which generalize more
 # effectively.
 #
@@ -191,7 +191,7 @@ walk_forward = WalkForward(test_size=60, train_size=252 * 3)
 
 # %%
 # Note that :class:`~skfolio.model_selection.WalkForward` also supports specific
-# datetime frequencies. For examples, we could use
+# datetime frequencies. For example, we could use
 # `walk_forward = WalkForward(test_size=3, train_size=36, freq="WOM-3FRI")` to
 # rebalance quarterly on the **third Friday** (WOM-3FRI), training on the prior 36
 # months.
@@ -230,12 +230,12 @@ schur
 #
 # Standard Walk-Forward Analysis
 # ==============================
-# We evaluate the MVO and tuned Schur models on the test set using standard
+# We evaluate the MVP and tuned Schur models on the test set using standard
 # walk-forward analysis:
 
 mvo = MeanRisk(prior_estimator=prior)
 pred_mvo = cross_val_predict(mvo, X_test, cv=walk_forward, n_jobs=-1)
-pred_mvo.name = "MVO"
+pred_mvo.name = "MVP"
 
 pred_schur = cross_val_predict(schur, X_test, cv=walk_forward, n_jobs=-1)
 pred_schur.name = "Schur"
@@ -253,17 +253,17 @@ print(summary.loc[["Annualized Sharpe Ratio", "CDaR Ratio at 95%"]])
 # A single backtest path represents one possible trajectory of cumulative
 # returns under the given rebalancing scheme and parameter set. While easy
 # to compute, it may understate the variability and uncertainty of real-world
-# performance compared to Monte Carlo-based methods.
+# performance compared to resampling-based methods.
 
 
 # %%
 # Multiple Randomized Cross-Validation
 # ====================================
 # Using the :class:`~skfolio.model_selection.MultipleRandomizedCV` methodology of
-# Palomar in [2]_, we perform Monte Carlo-style resampling by drawing 800 subsamples
-# of 10 distinct assets from the 20-asset universe and contiguous 5-year windows
-# (5 x 252 trading days). We then apply our walk-forward split to each subsample.
-# This approach captures both temporal and cross-sectional variability:
+# Palomar in [2]_, we perform resampling-based cross-validation by drawing 800
+# subsamples of 10 distinct assets from the 20-asset universe and contiguous 5-year
+# windows (5 x 252 trading days). We then apply our walk-forward split to each
+# subsample. This approach captures both temporal and cross-sectional variability:
 X_train, X_test = train_test_split(X, test_size=0.3, shuffle=False)
 
 cv_mc = MultipleRandomizedCV(
@@ -276,7 +276,7 @@ cv_mc = MultipleRandomizedCV(
 
 # Generate cross-validated predictions for both models.
 pred_mvo_mc = cross_val_predict(
-    mvo, X_test, cv=cv_mc, n_jobs=-1, portfolio_params={"tag": "MVO"}
+    mvo, X_test, cv=cv_mc, n_jobs=-1, portfolio_params={"tag": "MVP"}
 )
 
 pred_schur_mc = cross_val_predict(
@@ -288,16 +288,16 @@ population_mc = pred_mvo_mc + pred_schur_mc
 
 # %%
 # Let's plot the distribution of out-of-sample performance metrics (e.g., Sharpe ratio,
-# CDaR ratio) across all Monte Carlo subsamples for both the Schur and MVO portfolios.
+# CDaR ratio) across all resampled subsamples for both the Schur and MVP portfolios.
 # This helps assess how robust each model is across different asset combinations and
 # time periods:
 population_mc.plot_distribution(
-    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO], tag_list=["MVO", "Schur"]
+    measure_list=[RatioMeasure.ANNUALIZED_SHARPE_RATIO], tag_list=["MVP", "Schur"]
 )
 
 # %%
 population_mc.plot_distribution(
-    measure_list=[RatioMeasure.CDAR_RATIO], tag_list=["MVO", "Schur"]
+    measure_list=[RatioMeasure.CDAR_RATIO], tag_list=["MVP", "Schur"]
 )
 
 
@@ -311,7 +311,7 @@ for pred in [pred_mvo_mc, pred_schur_mc]:
     print(f"Sharpe Ratio Std Dev: {std_sr:0.2f}\n")
 
 # %%
-# In this simple example, Schur portfolios tend to outperform MVO out-of-sample,
+# In this simple example, Schur portfolios tend to outperform MVP out-of-sample,
 # exhibiting higher average Sharpe and CDaR ratios.
 #
 # For a full tutorial on :class:`~skfolio.model_selection.MultipleRandomizedCV`,

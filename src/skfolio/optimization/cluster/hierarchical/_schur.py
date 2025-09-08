@@ -51,12 +51,12 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     It uses Schur-complement-inspired augmentation of sub-covariance matrices,
     revealing a link between Hierarchical Risk Parity (HRP) and minimum-variance
-    portfolios.
+    portfolios (MVP).
 
     By tuning the regularization factor `gamma`, which governs how much off-diagonal
     information is incorporated into the augmented covariance blocks, the method
     smoothly interpolates from the heuristic divide-and-conquer allocation of HRP
-    (`gamma = 0`) to the MVO solution (`gamma -> 1`).
+    (`gamma = 0`) to the MVP solution (`gamma -> 1`).
 
     The algorithm begins by computing a distance matrix and performing hierarchical
     clustering, then applies seriation to reorder assets in the dendrogram so that
@@ -73,7 +73,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     Notes
     -----
-    A poorly conditioned covariance matrix can prevent convergence to the MVO solution
+    A poorly conditioned covariance matrix can prevent convergence to the MVP solution
     as gamma approaches one. Setting `keep_monotonic=True` (the default) ensures that
     the portfolio variance decreases monotonically with respect to gamma and remains
     bounded by the variance of the HRP portfolio (`variance(Schur) <= variance(HRP)`),
@@ -86,9 +86,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
     gamma : float
         Regularization factor in [0, 1].
         When gamma is zero, no off-diagonal information is used (equivalent to HRP).
-        As gamma approaches one, the allocation moves toward the minimum variance (MVO)
+        As gamma approaches one, the allocation moves toward the minimum variance
         solution. The better the conditioning of the initial covariance matrix, the
-        closer the allocation will get to the MVO solution when gamma is near one.
+        closer the allocation will get to the MVP solution when gamma is near one.
 
     keep_monotonic : bool, default=True
         If True, ensures that the portfolio variance decreases monotonically with
