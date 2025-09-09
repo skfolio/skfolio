@@ -52,6 +52,7 @@ def cross_val_predict(
     pre_dispatch: str = "2*n_jobs",
     column_indices: np.ndarray | None = None,
     portfolio_params: dict | None = None,
+    transaction_costs: dict | None = None,
 ) -> MultiPeriodPortfolio | Population:
     """Generate cross-validated `Portfolios` estimates.
 
@@ -128,6 +129,9 @@ def cross_val_predict(
     portfolio_params :  dict, optional
         Additional portfolio parameters passed to `MultiPeriodPortfolio`.
 
+    transaction_costs: dict, optional
+        Optional transaction costs to factor in.
+
     Returns
     -------
     predictions : MultiPeriodPortfolio | Population
@@ -202,26 +206,39 @@ def cross_val_predict(
                     raise ValueError(
                         "`cross_val_predict` only works with un-shuffled folds"
                     ) from None
+    if transaction_costs is None: # assume 0 transaction costs and cross validate in parallel
+        # We clone the estimator to make sure that all the folds are independent
+        # and that it is pickle-able.
+        parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
+        # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
 
-    # We clone the estimator to make sure that all the folds are independent
-    # and that it is pickle-able.
-    parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
-    # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
-
-    predictions = parallel(
-        skp.delayed(fit_and_predict)(
-            sk.clone(estimator),
-            X,
-            y,
-            train=train,
-            test=test,
-            fit_params=routed_params.estimator.fit,
-            method=method,
-            column_indices=column_indices[0] if column_indices else None,
+        predictions = parallel(
+            skp.delayed(fit_and_predict)(
+                sk.clone(estimator),
+                X,
+                y,
+                train=train,
+                test=test,
+                fit_params=routed_params.estimator.fit,
+                method=method,
+                column_indices=column_indices[0] if column_indices else None,
+            )
+            for train, test, *column_indices in splits
         )
-        for train, test, *column_indices in splits
-    )
-
+    else:
+        # take into account of transaction cost and weight drift by
+        # cross validating in sequence
+        predictions = [] # initialize empty prediction list for sequential fitting
+        estimator.set_params(transaction_costs=transaction_costs)
+        previous_weights = None
+        for train, test, *column_indices in splits:
+            X_train = X.take(train)
+            X_test = X.take(test)
+            estimator.set_params(previous_weights=previous_weights)
+            estimator.fit(X_train)
+            predictions.append(estimator.predict(X_test))
+            previous_weights = estimator.weights_
+    
     if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
         path_ids = cv.get_path_ids()
         path_nb = np.max(path_ids) + 1
