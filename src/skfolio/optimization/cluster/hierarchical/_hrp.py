@@ -28,7 +28,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
     r"""Hierarchical Risk Parity estimator.
 
     Hierarchical Risk Parity is a portfolio optimization method developed by Marcos
-    Lopez de Prado [2]_.
+    Lopez de Prado [1]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
     Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
@@ -46,7 +46,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         multiple risk measures and linkage methods.
         The default linkage method is set to the Ward
         variance minimization algorithm, which is more stable and has better properties
-        than the single-linkage method [4]_.
+        than the single-linkage method [2]_.
 
     Parameters
     ----------
@@ -226,21 +226,24 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     References
     ----------
-    .. [1] "Building diversified portfolios that outperform out of sample",
-        The Journal of Portfolio Management,
-        Marcos López de Prado (2016).
-
-    .. [2] "A robust estimator of the efficient frontier",
+    .. [1] "A robust estimator of the efficient frontier",
         SSRN Electronic Journal,
         Marcos López de Prado (2019).
 
-    .. [3] "Machine Learning for Asset Managers",
-        Elements in Quantitative Finance. Cambridge University Press,
-        Marcos López de Prado (2020).
-
-    .. [4] "A review of two decades of correlations, hierarchies, networks and
+    .. [2] "A review of two decades of correlations, hierarchies, networks and
         clustering in financial markets",
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
+
+    .. [3] "Portfolio Optimization: Theory and Application", Chapter 12,
+        Daniel P. Palomar (2025)
+
+    .. [4] "Building diversified portfolios that outperform out of sample",
+        The Journal of Portfolio Management,
+        Marcos López de Prado (2016).
+
+    .. [5] "Machine Learning for Asset Managers",
+        Elements in Quantitative Finance. Cambridge University Press,
+        Marcos López de Prado (2020).
     """
 
     def __init__(

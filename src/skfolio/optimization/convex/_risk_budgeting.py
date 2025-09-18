@@ -365,8 +365,11 @@ class RiskBudgeting(ConvexOptimization):
 
     References
     ----------
-    - "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
-       Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
+    .. [1] "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
+        Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
+
+    .. [2] "Portfolio Optimization: Theory and Application", Chapter 11,
+        Daniel P. Palomar (2025)
     """
 
     def __init__(
