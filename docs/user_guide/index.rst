@@ -22,11 +22,14 @@
 User Guide
 ==========
 
-.. danger::
+.. warning::
+    The API is already stable and follows scikit-learn conventions.
+    However, the version number remains below 1.0.0 to allow for rapid iteration
+    and development. A first official stable release (1.0.0) is planned for 2025.
+    Until then, we recommend pinning versions in production environments to guard
+    against minor breaking changes, or connecting with `Skfolio Labs <https://skfoliolabs.com>`_
+    for enterprise support and dedicated SLAs.
 
-    This package is still under active development. We plan to release the first stable
-    version (1.0.0) in 2025. Until then, we recommend pinning versions if you are
-    concerned about breaking changes.
 
 `skfolio` is a portfolio optimization and risk management framework build on top of
 scikit-learn to perform model selection, validation, parameter tuning and stress-test

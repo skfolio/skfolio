@@ -34,6 +34,9 @@ scikit-learn to build, fine-tune, cross-validate and stress-test portfolio model
 
 It is distributed under the open-source 3-Clause BSD license.
 
+**skfolio**  is backed by `Skfolio Labs <https://skfoliolabs.com>`_, which provides enterprise support and SLAs for
+institutions.
+
 .. raw:: html
 
     <link
@@ -75,6 +78,13 @@ It is distributed under the open-source 3-Clause BSD license.
         </picture>
     </a>
 
+Important links
+***************
+
+- `Examples <https://skfolio.org/auto_examples/>`_
+- `User Guide <https://skfolio.org/user_guide/>`_
+- `GitHub Repo <https://github.com/skfolio/skfolio>`_
+- `Enterprise Support <https://skfoliolabs.com>`_
 
 Installation
 ************
