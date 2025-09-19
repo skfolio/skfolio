@@ -172,7 +172,7 @@ def test_student_t_rho_out_of_bounds():
     # Manually set rho_ out-of-bounds after fitting
     model.rho_ = 1.2
     model.dof_ = 3.0
-    with pytest.raises(ValueError, match="rho must be between -1 and 1."):
+    with pytest.raises(ValueError, match=r"rho must be between -1 and 1."):
         _ = model.score_samples(np.random.rand(5, 2))
 
 
@@ -183,7 +183,7 @@ def test_student_t_dof_out_of_bounds():
     model.rho_ = 0.5
     model.dof_ = 0.3
     with pytest.raises(
-        ValueError, match="Degrees of freedom `dof` must be between 1 and 50."
+        ValueError, match=r"Degrees of freedom `dof` must be between 1 and 50."
     ):
         _ = model.score_samples(np.random.rand(5, 2))
 

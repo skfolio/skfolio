@@ -59,7 +59,7 @@ def test_kde_trace_weighted():
 
 
 def test_plot_kde_distributions_default():
-    data, weights = generate_sample_data()
+    data, _ = generate_sample_data()
     fig = plot_kde_distributions(data)
     assert isinstance(fig, go.Figure)
     # Only unweighted traces: two assets -> two traces

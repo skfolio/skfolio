@@ -782,7 +782,7 @@ class MeanRisk(ConvexOptimization):
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         return_distribution = self.prior_estimator_.return_distribution_
-        n_observations, n_assets = return_distribution.returns.shape
+        _, n_assets = return_distribution.returns.shape
 
         # set solvers params
         match self.solver:

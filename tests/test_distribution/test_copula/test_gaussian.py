@@ -147,7 +147,7 @@ def test_gaussian_rho_out_of_bounds():
     model = GaussianCopula(itau=False)
     # Manually set rho_ out-of-bounds after fitting
     model.rho_ = 1.2
-    with pytest.raises(ValueError, match="rho must be between -1 and 1."):
+    with pytest.raises(ValueError, match=r"rho must be between -1 and 1."):
         _ = model.score_samples(np.random.rand(5, 2))
 
 
@@ -284,7 +284,7 @@ def test_tail_concentration(fitted_model):
 
 def test_tail_concentration_raise(fitted_model):
     quantiles = np.linspace(0.01, 1.5, 50)
-    with pytest.raises(ValueError, match="quantiles must be between 0.0 and 1.0."):
+    with pytest.raises(ValueError, match=r"quantiles must be between 0.0 and 1.0."):
         _ = fitted_model.tail_concentration(quantiles)
 
 

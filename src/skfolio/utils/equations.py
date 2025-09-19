@@ -103,7 +103,7 @@ def equations_to_matrix(
     groups = _validate_groups(groups, name=names[0])
     equations = _validate_equations(equations, name=names[1])
 
-    n_groups, n_assets = groups.shape
+    _, n_assets = groups.shape
 
     a_equality = []
     b_equality = []

@@ -172,7 +172,7 @@ def mean_risk_params_coef(request):
 
 
 def test_cvx_cache(X):
-    n_observations, n_assets = X.shape
+    _n_observations, n_assets = X.shape
 
     model = MeanRisk()
     model.fit(X)
@@ -1310,7 +1310,7 @@ def test_mip_threshold_constraints_long_short(X, objective_function):
     model.set_params(threshold_long=threshold_long)
     with pytest.raises(
         ValueError,
-        match="When 'threshold_long' is provided*",
+        match=r"When 'threshold_long' is provided*",
     ):
         model.fit(X)
     # noinspection PyTypeChecker

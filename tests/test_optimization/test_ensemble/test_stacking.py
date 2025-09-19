@@ -93,7 +93,7 @@ def test_stacking_factor(X_medium, y_medium):
 
 
 def test_stacking_cv(X_medium):
-    X_train, X_test = sks.train_test_split(X_medium, test_size=0.33, shuffle=False)
+    X_train, _X_test = sks.train_test_split(X_medium, test_size=0.33, shuffle=False)
 
     estimators = [
         ("model1", MeanRisk(risk_measure=RiskMeasure.CVAR)),
