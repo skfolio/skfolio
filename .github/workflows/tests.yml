@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test wheels on ${{ matrix.os }} with ${{ matrix.python-version }}
