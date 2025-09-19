@@ -8,7 +8,7 @@
 .. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
    :target: https://codecov.io/gh/skfolio/skfolio
 
-.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg
+.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg
    :target: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
@@ -67,6 +67,9 @@ scikit-learn to build, fine-tune, cross-validate and stress-test portfolio model
 
 It is distributed under the open-source 3-Clause BSD license.
 
+**skfolio**  is backed by `Skfolio Labs <https://skfoliolabs.com>`_, which provides enterprise support and SLAs for
+institutions.
+
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
     :target: https://skfolio.org/auto_examples/
     :alt: examples
@@ -74,10 +77,11 @@ It is distributed under the open-source 3-Clause BSD license.
 Important links
 ~~~~~~~~~~~~~~~
 
-- Documentation: https://skfolio.org/
-- Examples: https://skfolio.org/auto_examples/
-- User Guide: https://skfolio.org/user_guide/
-- GitHub Repo: https://github.com/skfolio/skfolio/
+- `Documentation <https://skfolio.org/>`_
+- `Examples <https://skfolio.org/auto_examples/>`_
+- `User Guide <https://skfolio.org/user_guide/>`_
+- `GitHub Repo <https://github.com/skfolio/skfolio>`_
+- `Enterprise Support <https://skfoliolabs.com>`_
 
 Installation
 ~~~~~~~~~~~~

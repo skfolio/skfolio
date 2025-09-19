@@ -365,8 +365,11 @@ class RiskBudgeting(ConvexOptimization):
 
     References
     ----------
-    - "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
-       Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
+    .. [1] "Constrained Risk Budgeting Portfolios: Theory, Algorithms, Applications",
+        Journal of Portfolio Management, Richard, J.-C., & Roncalli, T. (2019)
+
+    .. [2] "Portfolio Optimization: Theory and Application", Chapter 11,
+        Daniel P. Palomar (2025)
     """
 
     def __init__(
@@ -468,7 +471,7 @@ class RiskBudgeting(ConvexOptimization):
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         return_distribution = self.prior_estimator_.return_distribution_
-        n_observations, n_assets = return_distribution.returns.shape
+        _, n_assets = return_distribution.returns.shape
 
         # set solvers params
         if self.solver == "CLARABEL":

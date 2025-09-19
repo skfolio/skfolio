@@ -22,7 +22,6 @@ from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
 from skfolio.utils.tools import args_names, check_estimator
 
-# noinspection PyUnresolvedReferences
 _NON_ANNUALIZED_RISK_MEASURES = [rm for rm in RiskMeasure if not rm.is_annualized]
 
 
@@ -579,6 +578,11 @@ class MeanRisk(ConvexOptimization):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
+
+    References
+    ----------
+    .. [1] "Portfolio Optimization: Theory and Application", Chapter 7, 10, 13 and 14,
+        Daniel P. Palomar (2025)
     """
 
     def __init__(
@@ -729,7 +733,6 @@ class MeanRisk(ConvexOptimization):
                 )
 
     def get_metadata_routing(self):
-        # noinspection PyTypeChecker
         router = (
             super()
             .get_metadata_routing()
@@ -779,7 +782,7 @@ class MeanRisk(ConvexOptimization):
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         return_distribution = self.prior_estimator_.return_distribution_
-        n_observations, n_assets = return_distribution.returns.shape
+        _, n_assets = return_distribution.returns.shape
 
         # set solvers params
         match self.solver:
@@ -860,7 +863,6 @@ class MeanRisk(ConvexOptimization):
         if self.mu_uncertainty_set_estimator is None:
             mu_uncertainty_set = cp.Constant(0)
         else:
-            # noinspection PyTypeChecker
             self.mu_uncertainty_set_estimator_ = sk.clone(
                 self.mu_uncertainty_set_estimator
             )
@@ -925,9 +927,7 @@ class MeanRisk(ConvexOptimization):
         # Efficient frontier
         if self.efficient_frontier_size is not None:
             # We find the lower and upper bounds of the expected returns.
-            # noinspection PyTypeChecker
             model: MeanRisk = sk.clone(self)
-            # noinspection PyTypeChecker
             model.set_params(
                 objective_function=ObjectiveFunction.MINIMIZE_RISK,
                 efficient_frontier_size=None,
@@ -935,7 +935,6 @@ class MeanRisk(ConvexOptimization):
             )
             model.fit(X, y, **fit_params)
             min_return = model.problem_values_["expected_return"]
-            # noinspection PyTypeChecker
             model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
             model.fit(X, y, **fit_params)
             max_return = model.problem_values_["expected_return"]
@@ -986,7 +985,6 @@ class MeanRisk(ConvexOptimization):
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
-                        # noinspection PyTypeChecker
                         self.covariance_uncertainty_set_estimator_ = sk.clone(
                             self.covariance_uncertainty_set_estimator
                         )

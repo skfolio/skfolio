@@ -119,7 +119,7 @@ def test_clayton_theta_out_of_bounds():
     model.theta_ = 0
     model.rotation_ = CopulaRotation.R0
     with pytest.raises(
-        ValueError, match="Theta must be greater than 1 for the Clayton copula."
+        ValueError, match=r"Theta must be greater than 1 for the Clayton copula."
     ):
         _ = model.score_samples(np.random.rand(5, 2))
 

@@ -780,39 +780,126 @@ def get_doc_title(app, pagename) -> str:
     raise ValueError(f"Failed to retrieve title from {pagename}")
 
 
+# Stable entity IDs shared across skfolio.org and skfoliolabs.com
+ORG_ID = "https://skfoliolabs.com#organization"
+APP_ID = "https://skfoliolabs.com#skfolio"
+CODE_ID = "https://github.com/skfolio/skfolio#code"
+WEBSITE_ID = "https://skfolio.org#website"
+SEARCH_TARGET = "{base}/search.html?q={{search_term_string}}"
+
+def _breadcrumb(id_url: str, items: list[tuple[int, str, str]]):
+    return {
+        "@type": "BreadcrumbList",
+        "@id": f"{id_url}#breadcrumb",
+        "itemListElement": [
+            {"@type": "ListItem", "position": pos, "name": name, "item": url}
+            for (pos, name, url) in items
+        ],
+    }
+
 def inject_schema(app, pagename, templatename, context, doctree):
     base = app.config.html_baseurl.rstrip("/")
-    schema = None
-    date_published = str(dt.date(2023, 12, 18))
-    date_modified = context.get("last_updated", str(dt.date.today()))
+    in_lang = "en"
 
-    # Main Documentation Site
-    if pagename == "index":
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "WebSite",
-            "name": "skfolio Documentation",
-            "url": f"{base}/",
-            "description": (
-                "Python library for portfolio optimization and risk management built "
-                "on scikit-learn to create, fine-tune, cross-validate and stress-test "
-                "portfolio models."
-            ),
-            "datePublished": date_published,
-            "dateModified": date_modified,
-            "hasPart": [
-                {"@type": "HowTo", "url": "https://skfolio.org/user_guide/index.html"},
-                {
-                    "@type": "TechArticle",
-                    "url": "https://skfolio.org/auto_examples/index.html",
+    # helper: always return a usable URL for this page
+    def _url_for(page: str) -> str:
+        return context.get("pageurl") or (f"{base}/" if page == "index" else f"{base}/{page}.html")
+
+    date_published = str(dt.date(2023, 12, 18))
+    date_modified = context.get("last_updated") or str(dt.date.today())
+
+    # Always initialize metatags safely
+    context["metatags"] = context.get("metatags", "")
+
+    # ---------- 1) SITE-WIDE BLOCK (present on every page) ----------
+    sitewide_graph = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": WEBSITE_ID,
+                "url": base,
+                "name": "Skfolio Documentation",
+                "inLanguage": in_lang,
+                "publisher": {"@id": ORG_ID},
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": SEARCH_TARGET.format(base=base),
+                    "query-input": "required name=search_term_string",
                 },
-                {"@type": "APIReference", "url": "https://skfolio.org/api.html"},
+            },
+            # Global primary nav (header links appear on all pages)
+            {
+                "@type": "SiteNavigationElement",
+                "@id": f"{base}/#site-nav",
+                "name": "Primary navigation",
+                "url": base,
+                "about": {"@id": WEBSITE_ID},
+                "inLanguage": in_lang,
+                "hasPart": [
+                    {"@type": "WebPage", "name": "User Guide",   "url": f"{base}/user_guide/index.html"},
+                    {"@type": "WebPage", "name": "Examples",     "url": f"{base}/auto_examples/index.html"},
+                    {"@type": "WebPage", "name": "API Reference","url": f"{base}/api.html"},
+                ],
+            },
+            # cross-domain stubs (unchanged)
+            {"@type": "SoftwareApplication", "@id": APP_ID},
+            {"@type": "SoftwareSourceCode", "@id": CODE_ID},
+            {"@type": "Corporation", "@id": ORG_ID},
+        ],
+    }
+
+    # Inject site-wide graph
+    context["metatags"] += (
+        '\n<script type="application/ld+json">\n'
+        + json.dumps(sitewide_graph, indent=2)
+        + "\n</script>\n"
+    )
+    print(f"Inject Site-wide Schema into {pagename}")
+
+    # ---------- 2) PAGE-LEVEL BLOCK (exactly one per page) ----------
+    page_schema = None
+    url = _url_for(pagename)
+
+    # Docs home (/) as CollectionPage + breadcrumb + featured ItemList
+    if pagename == "index":
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "CollectionPage",
+                    "@id": f"{base}/#docs-home",
+                    "name": "Skfolio Documentation",
+                    "url": url,
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "datePublished": date_published,
+                    "dateModified": date_modified,
+                    "primaryImageOfPage": {
+                        "@type": "ImageObject",
+                        "url": f"{base}/_static/expo.jpg"
+                    },
+                },
+                {
+                    "@type": "ItemList",
+                    "@id": f"{base}/#featured-sections",
+                    "itemListElement": [
+                        {"@type": "ListItem", "position": 1, "url": f"{base}/user_guide/index.html"},
+                        {"@type": "ListItem", "position": 2, "url": f"{base}/auto_examples/index.html"},
+                        {"@type": "ListItem", "position": 3, "url": f"{base}/api.html"},
+                    ],
+                },
+                _breadcrumb(url, [(1, "Docs Home", f"{base}/")]),
             ],
         }
 
-    # User Guide Index: dynamically discover all subpages
+    # User Guide index as CollectionPage + ItemList of child pages + breadcrumb
     elif pagename == "user_guide/index":
-        # discover docs under user_guide/, excluding index
         all_steps = sorted(
             [
                 doc
@@ -820,127 +907,197 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 if doc.startswith("user_guide/") and doc != "user_guide/index"
             ]
         )
-        steps = []
-        for doc in all_steps:
-            title = get_doc_title(app, doc)
-            steps.append(
-                {"@type": "HowToStep", "name": title, "url": f"{base}/{doc}.html"}
-            )
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "HowTo",
-            "name": "skfolio User Guide",
-            "description": (
-                "Comprehensive guide to installing, configuring, and using "
-                "the skfolio Python library."
-            ),
-            "url": f"{base}/user_guide/index.html",
-            "step": steps,
-            "author": {"@type": "Organization", "name": "skfolio developers"},
-            "datePublished": date_published,
-            "dateModified": date_modified,
+        step_items = [
+            {"@type": "ListItem", "position": i, "url": f"{base}/{doc}.html"}
+            for i, doc in enumerate(all_steps, start=1)
+        ]
+
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "CollectionPage",
+                    "@id": f"{url}#guide-home",
+                    "name": "skfolio User Guide",
+                    "description": (
+                        "Comprehensive guide to installing, configuring, and using "
+                        "the skfolio Python library."
+                    ),
+                    "url": url,
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "datePublished": date_published,
+                    "dateModified": date_modified,
+                },
+                {
+                    "@type": "ItemList",
+                    "@id": f"{url}#guide-list",
+                    "itemListElement": step_items,
+                },
+                _breadcrumb(
+                    url,
+                    [
+                        (1, "Docs Home", f"{base}/"),
+                        (2, "User Guide", url),
+                    ],
+                ),
+            ],
         }
 
-        # Individual User Guide Steps: any page under user_guide/ except index
-
+    # Individual User Guide pages -> TechArticle + breadcrumb
     elif pagename.startswith("user_guide/") and pagename != "user_guide/index":
         title = get_doc_title(app, pagename)
-
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "HowToStep",
-            "name": title,
-            "url": f"{base}/{pagename}.html",
-            "text": f"User Guide section: {title}.",
-            "author": {"@type": "Organization", "name": "skfolio developers"},
-            "datePublished": date_published,
-            "dateModified": date_modified,
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "TechArticle",
+                    "@id": f"{url}#article",
+                    "headline": title,
+                    "url": url,
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "datePublished": date_published,
+                    "dateModified": date_modified,
+                },
+                _breadcrumb(
+                    url,
+                    [
+                        (1, "Docs Home", f"{base}/"),
+                        (2, "User Guide", f"{base}/user_guide/index.html"),
+                        (3, title, url),
+                    ],
+                ),
+            ],
         }
 
-    # API Reference Page
+    # API Reference
     elif pagename == "api":
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "APIReference",
-            "name": "skfolio API Reference",
-            "description": (
-                "Complete reference for the skfolio Python library's API: "
-                "functions, classes, and modules."
-            ),
-            "url": f"{base}/api.html",
-            "programmingModel": "Python",
-            "targetPlatform": "Any platform running Python 3.10+",
-            "version": app.config.release,
-            "author": {"@type": "Organization", "name": "skfolio developers"},
-            "publisher": {
-                "@type": "Organization",
-                "name": "skfolio",
-                "url": "https://skfolio.org/",
-            },
-            "datePublished": date_published,
-            "dateModified": date_modified,
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "APIReference",
+                    "@id": f"{url}#article",
+                    "headline": "skfolio API Reference",
+                    "description": (
+                        "Complete reference for the skfolio Python library's API: "
+                        "functions, classes, and modules."
+                    ),
+                    "url": url,
+                    "version": app.config.release,
+                    "programmingModel": "Python",
+                    "targetPlatform": "Any platform running Python 3.10+",
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "datePublished": date_published,
+                    "dateModified": date_modified,
+                },
+                _breadcrumb(url, [(1, "Docs Home", f"{base}/"), (2, "API", url)]),
+            ],
         }
 
-    # 4) Main Example Page as TechArticle with hasPart listing example TechArticles
+    # Examples index (gallery) as TechArticle with hasPart + breadcrumb
     elif pagename == "auto_examples/index":
         all_examples = sorted(
             [
                 doc
                 for doc in app.env.found_docs
                 if doc.startswith("auto_examples/")
-                   and not doc.endswith("index")
-                   and "/index" not in doc  # filters nested auto_examples/**/index
+                and not doc.endswith("index")
+                and "/index" not in doc
             ]
         )
         parts = []
         for doc in all_examples:
             headline, _ = get_example_headline_and_description(app, doc)
-            parts.append(
+            parts.append({"@type": "TechArticle", "headline": headline, "url": f"{base}/{doc}.html"})
+
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
                 {
                     "@type": "TechArticle",
-                    "headline": headline,
-                    "url": f"{base}/{doc}.html",
-                }
-            )
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "TechArticle",
-            "headline": "Code Examples & Tutorials",
-            "description": (
-                "A gallery of code examples and tutorials demonstrating how to "
-                "use skfolio for portfolio optimization."
-            ),
-            "url": f"{base}/auto_examples/index.html",
-            "hasPart": parts,
-            "author": {"@type": "Organization", "name": "skfolio developers"},
-            "datePublished": date_published,
-            "dateModified": date_modified,
+                    "@id": f"{url}#article",
+                    "headline": "Code Examples & Tutorials",
+                    "description": (
+                        "A gallery of code examples and tutorials demonstrating how to "
+                        "use skfolio for portfolio optimization."
+                    ),
+                    "url": url,
+                    "hasPart": parts,
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "datePublished": date_published,
+                    "dateModified": date_modified,
+                },
+                _breadcrumb(url, [(1, "Docs Home", f"{base}/"), (2, "Examples", url)]),
+            ],
         }
 
-    # 2) Examples Page as TechArticle
+    # Individual example pages as TechArticle + breadcrumb (+ provenance)
     elif pagename.startswith("auto_examples/") and not pagename.endswith("index"):
         headline, desc = get_example_headline_and_description(app, pagename)
         example_date = EXAMPLE_LAST_UPDATED.get(pagename, str(dt.date.today()))
-        schema = {
-            "@context": "https://schema.org/",
-            "@type": "TechArticle",
-            "headline": headline,
-            "description": desc,
-            "url": f"{base}/{pagename}.html",
-            "author": {"@type": "Organization", "name": "skfolio developers"},
-            "datePublished": example_date,
-            "dateModified": example_date,
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "TechArticle",
+                    "@id": f"{url}#article",
+                    "headline": headline,
+                    "description": desc,
+                    "url": url,
+                    "inLanguage": in_lang,
+                    "isPartOf": {"@id": WEBSITE_ID},
+                    "about": {"@id": APP_ID},
+                    "publisher": {"@id": ORG_ID},
+                    "author": {"@id": ORG_ID},
+                    "copyrightHolder": {"@id": ORG_ID},
+                    "mainEntityOfPage": url,
+                    "isBasedOn": {"@id": CODE_ID},
+                    "datePublished": example_date,
+                    "dateModified": example_date,
+                },
+                _breadcrumb(
+                    url,
+                    [
+                        (1, "Docs Home", f"{base}/"),
+                        (2, "Examples", f"{base}/auto_examples/index.html"),
+                        (3, headline, url),
+                    ],
+                ),
+            ],
         }
 
-    # Inject into context if schema defined
-    if schema:
-        print(f"Inject Schema into {pagename}")
-        script = json.dumps(schema, indent=2)
-        # Append inline script directly to metatags
-        context.setdefault("metatags", "")
+    # Inject page-level block when defined
+    if page_schema:
         context["metatags"] += (
-                '\n<script type="application/ld+json">\n' + script + "\n</script>\n"
+            '\n<script type="application/ld+json">\n'
+            + json.dumps(page_schema, indent=2)
+            + "\n</script>\n"
         )
+        print(f"Inject Page-level Schema into {pagename}")
 
 
 def override_html_title(app, pagename, templatename, context, doctree):
@@ -992,46 +1149,88 @@ def override_example_meta_descriptions(app, exception):
         print(f"Updated: {html_file.relative_to(output_dir)}")
 
 
+
 def replace_index_links(app, exception):
     """
-    Normalize homepage links in the built HTML.
+    Normalize only links that truly point to the *root* homepage:
 
-    After a successful Sphinx build, this hook scans the output directory and
-    rewrites any anchor that points to the homepage via an explicit file URL.
+      - href="/index.html"                    -> href="/"
+      - href="{html_baseurl}/index.html"      -> href="{html_baseurl}/"
+      - href="../index.html", "../../index.html", ...  (only if they resolve to root)
+      - href="index.html" or "./index.html"   (only from files in the root outdir)
 
-    Patterns handled include:
-      - href="index.html"
-      - href="./index.html"
-      - href="../index.html"
-      - href="../../index.html"
-      - href="../../../index.html"
-
-    All such links are rewritten to use the cleaner root form `href="/"`, which
-    helps:
-      - keep internal links consistent with SEO best practices,
-      - avoid duplicate homepage URLs (`/`, `/index.html`, `../index.html`, etc.).
-
-    Notes:
-      - This assumes the site is deployed at the domain root (`/`). If your
-        documentation is served under a subpath (e.g. `/docs/`), update the
-        replacement accordingly.
+    Do NOT touch:
+      - section indexes like /auto_examples/index.html
+      - ../index.html that resolve to a section index
+      - links with fragments or queries (index.html#..., index.html?...).
     """
     if exception:
         return
 
-    # Match href pointing to index.html with any ./ or ../ depth
-    pattern = re.compile(
-        r'href\s*=\s*(["\'])(?:\./)?(?:\.\./)*index\.html\1'
+    base = app.config.html_baseurl.rstrip("/")
+    outdir = app.outdir
+    root_index_abs = os.path.normpath(os.path.join(outdir, "index.html"))
+
+    # 1) Absolute root link: href="/index.html"
+    abs_root_pattern = re.compile(
+        r'href\s*=\s*(["\'])/index\.html\1(?![#?])',
+        flags=re.IGNORECASE,
     )
 
-    for root, _, files in os.walk(app.outdir):
+    # 2) Fully-qualified root link: href="{base}/index.html"
+    fq_root_pattern = re.compile(
+        r'href\s*=\s*(["\'])' + re.escape(base) + r'/index\.html\1(?![#?])',
+        flags=re.IGNORECASE,
+    )
+
+    # 3) Relative links with one-or-more "../" segments: href="../index.html", "../../index.html", ...
+    rel_up_pattern = re.compile(
+        r'href\s*=\s*(["\'])(?P<prefix>(?:\.\./)+)index\.html\1(?![#?])',
+        flags=re.IGNORECASE,
+    )
+
+    # 4) Plain or "./" relative link: href="index.html" or href="./index.html"
+    rel_same_pattern = re.compile(
+        r'href\s*=\s*(["\'])(?:\./)?index\.html\1(?![#?])',
+        flags=re.IGNORECASE,
+    )
+
+    def _rel_up_repl(current_html_path: str):
+        """Return a callable that rewrites ../index.html → / only if it resolves to root index."""
+        current_dir = os.path.dirname(current_html_path)
+
+        def _repl(m: re.Match) -> str:
+            quote = m.group(1)
+            prefix = m.group('prefix')  # e.g., "../" or "../../"
+            # Resolve the target to an absolute path on disk
+            resolved = os.path.normpath(os.path.join(current_dir, prefix, "index.html"))
+            if resolved == root_index_abs:
+                return f'href={quote}/{quote}'
+            # Not the root index → leave untouched
+            return m.group(0)
+
+        return _repl
+
+    for root, _, files in os.walk(outdir):
         for fname in files:
             if not fname.endswith(".html"):
                 continue
+
             path = os.path.join(root, fname)
-            text = open(path, encoding="utf-8").read()
-            # Replace any matched href with an absolute root link
-            new_text = pattern.sub('href="/"', text)
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+
+            # Absolute / fully-qualified root → "/"
+            new_text = abs_root_pattern.sub(r'href="/"', text)
+            new_text = fq_root_pattern.sub(lambda m: f'href="{base}/"', new_text)
+
+            # ../index.html (or deeper) → resolve; rewrite only if it maps to root index
+            new_text = rel_up_pattern.sub(_rel_up_repl(path), new_text)
+
+            # "index.html" or "./index.html" → rewrite only if *this file* lives in outdir root
+            if os.path.dirname(path) == outdir:
+                new_text = rel_same_pattern.sub(r'href="/"', new_text)
+
             if new_text != text:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(new_text)

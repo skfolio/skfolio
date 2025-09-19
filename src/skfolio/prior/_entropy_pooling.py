@@ -642,7 +642,7 @@ class EntropyPooling(BasePrior):
 
         a_eq, b_eq, a_ineq, b_ineq = self._process_views(measure=RiskMeasure.VARIANCE)
 
-        n_observations, n_assets = self._returns.shape
+        _, n_assets = self._returns.shape
 
         fix = np.zeros(n_assets, dtype=bool)
         for a, b, name in [(a_eq, b_eq, "equality"), (a_ineq, b_ineq, "inequality")]:
@@ -792,7 +792,7 @@ class EntropyPooling(BasePrior):
             return
 
         assets = self._groups[0]
-        n_observations, n_assets = self._returns.shape
+        _, n_assets = self._returns.shape
         asset_to_index = {asset: i for i, asset in enumerate(assets)}
         try:
             views = []
@@ -869,7 +869,7 @@ class EntropyPooling(BasePrior):
             sample_weight = self._solve()
             return sample_weight
 
-        a_eq, b_eq, a_ineq, b_ineq = self._process_views(measure=RiskMeasure.CVAR)
+        a_eq, b_eq, _, b_ineq = self._process_views(measure=RiskMeasure.CVAR)
 
         if b_ineq.size != 0:
             raise ValueError(
