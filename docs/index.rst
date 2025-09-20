@@ -22,6 +22,7 @@
     User guide <user_guide/index>
     Examples <auto_examples/index>
     API Reference <api>
+    Enterprise Support <https://skfoliolabs.com/>
 
 
 =======
