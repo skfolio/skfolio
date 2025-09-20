@@ -842,10 +842,36 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     {"@type": "WebPage", "name": "API Reference","url": f"{base}/api.html"},
                 ],
             },
-            # cross-domain stubs (unchanged)
-            {"@type": "SoftwareApplication", "@id": APP_ID},
-            {"@type": "SoftwareSourceCode", "@id": CODE_ID},
-            {"@type": "Corporation", "@id": ORG_ID},
+            # cross-domain entities with minimal fields to avoid validator warnings
+            {
+                "@type": "Corporation",
+                "@id": ORG_ID,
+                "name": "Skfolio Labs",
+                "url": "https://skfoliolabs.com",
+                "logo": "https://skfoliolabs.com/icon.svg"
+            },
+            {
+                "@type": "SoftwareApplication",
+                "@id": APP_ID,
+                "name": "Skfolio",
+                "applicationCategory": "DeveloperApplication",
+                "operatingSystem": "Any",
+                "softwareHelp": "https://skfolio.org",
+                "sameAs": ["https://skfolio.org", "https://github.com/skfolio/skfolio"],
+                "publisher": {"@id": ORG_ID}
+                # NOTE: intentionally no 'offers' and no 'aggregateRating' (no stars)
+            },
+            {
+                "@type": "SoftwareSourceCode",
+                "@id": CODE_ID,
+                "name": "Skfolio Source Code",
+                "url": "https://github.com/skfolio/skfolio",
+                "codeRepository": "https://github.com/skfolio/skfolio",
+                "programmingLanguage": "Python",
+                "isPartOf": {"@id": APP_ID},
+                "author": {"@id": ORG_ID},
+                "publisher": {"@id": ORG_ID}
+            }
         ],
     }
 
