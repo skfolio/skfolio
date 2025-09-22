@@ -46,7 +46,7 @@ jobs:
         #  repository-url: https://test.pypi.org/legacy/
 
       - name: Publish package distributions to GitHub Releases
-        uses: python-semantic-release/upload-to-gh-release@v9.8.6
+        uses: python-semantic-release/upload-to-gh-release@v9.8.9
         # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
         # See https://github.com/actions/runner/issues/1173
         if: steps.release.outputs.released == 'true'
