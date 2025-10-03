@@ -6,6 +6,8 @@
 # Gini mean difference and OWA GMD weights features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
+import warnings
+
 import numpy as np
 import numpy.typing as npt
 import scipy.optimize as sco
@@ -30,9 +32,18 @@ def mean(
         The computed mean.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if sample_weight is None:
-        return np.mean(returns, axis=0)
+        # Ignore NaNs and suppress warnings for all-NaN slices
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return np.nanmean(returns, axis=0)
     return sample_weight @ returns
 
 
@@ -61,6 +72,12 @@ def mean_absolute_deviation(
         Mean absolute deviation.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -98,6 +115,12 @@ def first_lower_partial_moment(
         First lower partial moment.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -123,7 +146,7 @@ def variance(
          If False (default), computes the sample variance (unbiased); otherwise,
          computes the population variance (biased).
 
-     sample_weight : ndarray of shape (n_observations,), optional
+    sample_weight : ndarray of shape (n_observations,), optional
          Sample weights for each observation. If None, equal weights are assumed.
 
     Returns
@@ -132,9 +155,18 @@ def variance(
          Variance.
          If `returns` is a 1D-array, the result is a float.
          If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if sample_weight is None:
-        return np.var(returns, ddof=0 if biased else 1, axis=0)
+        # Ignore NaNs and suppress warnings for all-NaN slices
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            return np.nanvar(returns, ddof=0 if biased else 1, axis=0)
 
     biased_var = (
         sample_weight @ (returns - mean(returns, sample_weight=sample_weight)) ** 2
@@ -177,6 +209,12 @@ def semi_variance(
         Semi-variance.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -220,6 +258,12 @@ def standard_deviation(
         Standard-deviation.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return np.sqrt(variance(returns, sample_weight=sample_weight, biased=biased))
 
@@ -254,6 +298,12 @@ def semi_deviation(
         Semi-deviation.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return np.sqrt(
         semi_variance(
@@ -284,6 +334,12 @@ def third_central_moment(
         Third central moment.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 3,
@@ -314,6 +370,12 @@ def skew(
         Skew.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return (
         third_central_moment(returns, sample_weight)
@@ -340,6 +402,12 @@ def fourth_central_moment(
         Fourth central moment.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 4,
@@ -369,6 +437,12 @@ def kurtosis(
         Kurtosis.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return (
         fourth_central_moment(returns, sample_weight=sample_weight)
@@ -402,6 +476,12 @@ def fourth_lower_partial_moment(
         Fourth lower partial moment.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns)
@@ -422,8 +502,17 @@ def worst_realization(returns: npt.ArrayLike) -> float | np.ndarray:
         Worst realization.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
-    return -np.min(returns, axis=0)
+    with warnings.catch_warnings():
+        # all-NaN slice warning
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        return -np.nanmin(returns, axis=0)
 
 
 def value_at_risk(
@@ -449,22 +538,58 @@ def value_at_risk(
         Value at Risk.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
-    """
-    returns = np.asarray(returns)
-    if sample_weight is None:
-        k = (1 - beta) * len(returns)
-        ik = max(0, int(np.ceil(k) - 1))
-        # We only need the first k elements so using `partition` O(n log(n)) is faster
-        # than `sort` O(n).
-        return -np.partition(returns, ik, axis=0)[ik]
 
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
+    """
+    returns = np.asarray(returns, dtype=float)
+
+    if np.isnan(returns).all():
+        return (
+            np.nan
+            if returns.ndim == 1
+            else np.full(returns.shape[1], np.nan, dtype=float)
+        )
+
+    def _func(arr: np.ndarray) -> float:
+        size = arr.shape[0]
+        if size == 0:
+            return np.nan
+        k = (1.0 - beta) * size
+        ik = max(0, int(np.ceil(k) - 1))
+        # We only need the first k elements, `partition` (~O(n) avg) beats
+        # `sort` (O(n log n))
+        part = np.partition(arr, ik, axis=0)
+        return -part[ik]
+
+    if sample_weight is None:
+        if not np.isnan(returns).any():
+            return _func(returns)
+
+        # Contains NaNs and returns is 1D
+        if returns.ndim == 1:
+            return _func(returns[~np.isnan(returns)])
+
+        # Contains NaNs and returns is 2D
+        n_assets = returns.shape[1]
+        return np.array(
+            [_func(returns[~np.isnan(returns[:, j]), j]) for j in range(n_assets)],
+            dtype=float,
+        )
+
+    # With sample weights
     sorted_idx = np.argsort(returns, axis=0)
     cum_weights = np.cumsum(sample_weight[sorted_idx], axis=0)
     i = np.apply_along_axis(
         np.searchsorted, axis=0, arr=cum_weights, v=1 - beta, side="left"
     )
+    # Returns is 1D
     if returns.ndim == 1:
         return -returns[sorted_idx][i]
+    # Returns is 2D
     return -np.diag(np.take_along_axis(returns, sorted_idx, axis=0)[i])
 
 
@@ -493,16 +618,49 @@ def cvar(
         CVaR.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
-    """
-    returns = np.asarray(returns)
-    if sample_weight is None:
-        k = (1 - beta) * len(returns)
-        ik = max(0, int(np.ceil(k) - 1))
-        # We only need the first k elements so using `partition` O(n log(n)) is faster
-        # than `sort` O(n).
-        ret = np.partition(returns, ik, axis=0)
-        return -np.sum(ret[:ik], axis=0) / k + ret[ik] * (ik / k - 1)
 
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
+    """
+    returns = np.asarray(returns, dtype=float)
+
+    if np.isnan(returns).all():
+        return (
+            np.nan
+            if returns.ndim == 1
+            else np.full(returns.shape[1], np.nan, dtype=float)
+        )
+
+    def _func(arr: np.ndarray) -> float:
+        size = arr.shape[0]
+        if size == 0:
+            return np.nan
+        k = (1.0 - beta) * size
+        ik = max(0, int(np.ceil(k) - 1))
+        # We only need the first k elements, `partition` (~O(n) avg) beats
+        # `sort` (O(n log n))
+        part = np.partition(arr, ik, axis=0)
+        return -np.sum(part[:ik], axis=0) / k + part[ik] * (ik / k - 1.0)
+
+    if sample_weight is None:
+        if not np.isnan(returns).any():
+            return _func(returns)
+
+        # Contains NaNs and returns is 1D
+        if returns.ndim == 1:
+            return _func(returns[~np.isnan(returns)])
+
+        # Contains NaNs and returns is 2D
+        n_assets = returns.shape[1]
+        return np.array(
+            [_func(returns[~np.isnan(returns[:, j]), j]) for j in range(n_assets)],
+            dtype=float,
+        )
+
+    # With sample weight
     order = np.argsort(returns, axis=0)
     sorted_returns = np.take_along_axis(returns, order, axis=0)
     sorted_w = sample_weight[order]
@@ -519,12 +677,16 @@ def cvar(
             + _sorted_returns[_idx] * (1 - beta - _cum_w[_idx - 1])
         ) / (1 - beta)
 
+    # Returns is 1D
     if returns.ndim == 1:
         return -_func(idx, sorted_returns, sorted_w, cum_w)
+
+    # Returns is 2D
+    n_assets = returns.shape[1]
     return -np.array(
         [
             _func(idx[i], sorted_returns[:, i], sorted_w[:, i], cum_w[:, i])
-            for i in range(returns.shape[1])
+            for i in range(n_assets)
         ]
     )
 
@@ -561,6 +723,12 @@ def entropic_risk_measure(
         Entropic risk measure.
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
+
+    Notes
+    -----
+    NaN handling:
+    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
+    - Weighted: NaNs propagate.
     """
     return theta * np.log(
         mean(np.exp(-returns / theta), sample_weight=sample_weight) / (1 - beta)
@@ -587,12 +755,14 @@ def evar(returns: npt.ArrayLike, beta: float = 0.95) -> float:
     value : float
         EVaR.
     """
+    if np.isnan(returns).all():
+        return np.nan
 
     def func(x: float) -> float:
         return entropic_risk_measure(returns=returns, theta=x, beta=beta)
 
     # The lower bound is chosen to avoid exp overflow
-    lower_bound = np.max(-returns) / 100
+    lower_bound = np.nanmax(-returns) / 100
     result = sco.minimize(
         func,
         x0=np.array([lower_bound * 2]),
@@ -627,11 +797,34 @@ def get_cumulative_returns(
     -------
     values: ndarray of shape (n_observations,) or (n_observations, n_assets)
         Cumulative returns.
+
+    Notes
+    -----
+    NaN handling:
+    Missing values (NaNs) remain at their original locations in the output and are
+    treated as neutral elements during accumulation, so they do not propagate to
+    subsequent values.
     """
-    if compounded:
-        cumulative_returns = base * np.cumprod(1 + returns, axis=0)
+    returns = np.asarray(returns, dtype=float)
+
+    if np.isnan(returns).all():
+        return np.full(returns.shape, np.nan, dtype=float)
+
+    if np.isnan(returns).any():
+        mask = np.isnan(returns)
+        returns_clean = np.nan_to_num(returns, nan=0.0)
     else:
-        cumulative_returns = np.cumsum(returns, axis=0)
+        mask = None
+        returns_clean = returns
+
+    if compounded:
+        cumulative_returns = base * np.cumprod(1 + returns_clean, axis=0)
+    else:
+        cumulative_returns = np.cumsum(returns_clean, axis=0)
+
+    if mask is not None:
+        cumulative_returns[mask] = np.nan
+
     return cumulative_returns
 
 
@@ -651,12 +844,34 @@ def get_drawdowns(returns: npt.ArrayLike, compounded: bool = False) -> np.ndarra
     -------
     values: ndarray of shape (n_observations,) or (n_observations, n_assets)
        Drawdowns.
+
+    Notes
+    -----
+    NaN handling:
+    Missing values (NaNs) remain at their original locations in the output and are
+    treated as neutral elements during accumulation, so they do not propagate to
+    subsequent values.
     """
+    if np.isnan(returns).all():
+        return np.full(returns.shape, np.nan, dtype=float)
+
     cumulative_returns = get_cumulative_returns(returns=returns, compounded=compounded)
-    if compounded:
-        drawdowns = cumulative_returns / np.maximum.accumulate(cumulative_returns) - 1
+
+    if np.isnan(cumulative_returns).any():
+        mask = np.isnan(cumulative_returns)
+        cum_clean = np.nan_to_num(cumulative_returns, nan=-np.inf)
     else:
-        drawdowns = cumulative_returns - np.maximum.accumulate(cumulative_returns)
+        mask = None
+        cum_clean = cumulative_returns
+
+    if compounded:
+        drawdowns = cum_clean / np.maximum.accumulate(cum_clean, axis=0) - 1
+    else:
+        drawdowns = cum_clean - np.maximum.accumulate(cum_clean, axis=0)
+
+    if mask is not None:
+        drawdowns[mask] = np.nan
+
     return drawdowns
 
 
@@ -821,8 +1036,33 @@ def gini_mean_difference(returns: npt.ArrayLike) -> float | np.ndarray:
         If `returns` is a 1D-array, the result is a float.
         If `returns` is a 2D-array, the result is a ndarray of shape (n_assets,).
     """
-    w = owa_gmd_weights(len(returns))
-    return w @ np.sort(returns, axis=0)
+    returns = np.asarray(returns, dtype=float)
+
+    # No NaNs
+    if not np.isnan(returns).any():
+        w = owa_gmd_weights(returns.shape[0])
+        return w @ np.sort(returns, axis=0)
+
+    # 1D with NaN
+    if returns.ndim == 1:
+        v = returns[~np.isnan(returns)]
+        if v.size == 0:
+            return np.nan
+        w = owa_gmd_weights(v.size)
+        return w @ np.sort(v)
+
+    # 2D with NaNs
+    n_assets = returns.shape[1]
+    out = np.full(n_assets, np.nan, dtype=float)
+    isnan = np.isnan(returns)
+    for j in range(n_assets):
+        col = returns[:, j]
+        v = col[~isnan[:, j]]
+        if v.size == 0:
+            continue  # leave NaN
+        w = owa_gmd_weights(v.size)
+        out[j] = w @ np.sort(v)
+    return out
 
 
 def effective_number_assets(weights: np.ndarray) -> float:

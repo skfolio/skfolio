@@ -146,3 +146,6 @@ sphinx_gallery/tests/tinybuild/auto_examples/
 sphinx_gallery/tests/tinybuild/_build/
 sphinx_gallery/tests/tinybuild/tiny_html/
 junit-results.xml
+
+# Cursor editor workspace
+.cursor/
