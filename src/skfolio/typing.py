@@ -4,7 +4,10 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal, TypeAlias, Union
 
 import cvxpy as cp
 import numpy as np
@@ -13,10 +16,14 @@ import plotly.graph_objects as go
 
 from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
 
+if TYPE_CHECKING:
+    from skfolio.optimization._base import BaseOptimization
+
 __all__ = [
     "CvxMeasure",
     "ExpressionFunction",
     "Factor",
+    "Fallback",
     "Groups",
     "Inequality",
     "LinearConstraints",
@@ -45,6 +52,12 @@ RiskResult = tuple[
 ]
 ExpressionFunction = Callable[[cp.Variable, any], cp.Expression]
 Figure = go.Figure
+Fallback: TypeAlias = Union[
+    "BaseOptimization",
+    list[Union["BaseOptimization", Literal["previous_weights"]]],
+    Literal["previous_weights"],
+    None,
+]
 
 # Population
 Names = str | list[str]

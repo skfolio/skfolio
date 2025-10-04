@@ -50,6 +50,7 @@ import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio import measures as mt
+from skfolio._constants import _ParamKey
 from skfolio.measures import (
     ExtraRiskMeasure,
     PerfMeasure,
@@ -380,7 +381,7 @@ class BasePortfolio:
         "drawdowns",
         "min_acceptable_return",
         "compounded",
-        "risk_free_rate",
+        _ParamKey.RISK_FREE_RATE.value,
         "sample_weight",
     }
 

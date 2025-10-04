@@ -16,6 +16,7 @@ import numpy.typing as npt
 import pandas as pd
 
 import skfolio.typing as skt
+from skfolio._constants import _ParamKey
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.utils.tools import (
@@ -422,23 +423,22 @@ class Portfolio(BasePortfolio):
             "X",
             "assets",
             "weights",
-            "previous_weights",
-            "transaction_costs",
-            "management_fees",
+            _ParamKey.PREVIOUS_WEIGHTS.value,
+            _ParamKey.TRANSACTION_COSTS.value,
+            _ParamKey.MANAGEMENT_FEES.value,
             "n_assets",
             "total_cost",
             "total_fee",
         }
     )
 
-    # ruff: noqa: RUF023
     __slots__ = {
         # read-only
         "X",
         "weights",
-        "previous_weights",
-        "transaction_costs",
-        "management_fees",
+        _ParamKey.PREVIOUS_WEIGHTS.value,
+        _ParamKey.TRANSACTION_COSTS.value,
+        _ParamKey.MANAGEMENT_FEES.value,
         "assets",
         "n_assets",
         "total_cost",
@@ -511,7 +511,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name="previous_weights",
+                name=_ParamKey.PREVIOUS_WEIGHTS.value,
             )
 
         if transaction_costs is None:
@@ -523,7 +523,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name="transaction_costs",
+                name=_ParamKey.TRANSACTION_COSTS.value,
             )
 
         if management_fees is None:
@@ -535,7 +535,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name="management_fees",
+                name=_ParamKey.MANAGEMENT_FEES.value,
             )
 
         # Default observations and assets if X is not a DataFrame
