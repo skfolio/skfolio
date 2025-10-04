@@ -1,12 +1,17 @@
 """Model validation module."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
+from __future__ import annotations
+
+import warnings
+from collections import defaultdict
 
 import numpy as np
 import numpy.typing as npt
@@ -17,27 +22,18 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
+from sklearn.pipeline import Pipeline
 
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
 from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
+from skfolio.model_selection._walk_forward import WalkForward
 from skfolio.population import Population
-from skfolio.portfolio import MultiPeriodPortfolio
+from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.utils.tools import fit_and_predict, safe_split
 
 
-def _routing_enabled():
-    """Return whether metadata routing is enabled.
-    Returns.
-    -------
-    enabled : bool
-        Whether metadata routing is enabled. If the config is not set, it
-        defaults to False.
-    """
-    return sk.get_config().get("enable_metadata_routing", False)
-
-
 def cross_val_predict(
-    estimator: skb.BaseEstimator,
+    estimator: skb.BaseEstimator | Pipeline,
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
     cv: sks.BaseCrossValidator
@@ -59,21 +55,28 @@ def cross_val_predict(
     The optimization estimator is fitted on the training set and portfolios are
     predicted on the corresponding test set.
 
-    For non-combinatorial cross-validation like `Kfold`, the output is the predicted
-    :class:`~skfolio.portfolio.MultiPeriodPortfolio` where
-    each :class:`~skfolio.portfolio.Portfolio` corresponds to the prediction on each
-    train/test pair (`k` portfolios for `Kfold`).
+    For single-path cross-validation such as `KFold` or
+    :class:`~skfolio.model_selection.WalkForward`, the output is a
+    :class:`~skfolio.portfolio.MultiPeriodPortfolio` where each
+    :class:`~skfolio.portfolio.Portfolio` corresponds to a train/test split (`k`
+    portfolios for `KFold`).
 
-    For combinatorial cross-validation
-    like :class:`~skfolio.model_selection.CombinatorialPurgedCV`, the output is the
-    predicted :class:`~skfolio.population.Population` of multiple
-    :class:`~skfolio.portfolio.MultiPeriodPortfolio` (each test outputs are a
-    collection of multiple paths instead of one single path).
+    For multi-path cross-validation such as
+    :class:`~skfolio.model_selection.CombinatorialPurgedCV` or
+    :class:`~skfolio.model_selection.MultipleRandomizedCV`, the output is a
+    :class:`~skfolio.population.Population` of multiple
+    :class:`~skfolio.portfolio.MultiPeriodPortfolio` objects (each test produces a
+    collection of paths rather than a single path).
+
+    If the final estimator in the pipeline (or the estimator itself) declares
+    `needs_previous_weights=True`, this function automatically propagates
+    `previous_weights` from one fold to the next for sequential CV strategies
+    (e.g., `WalkForward` or `MultipleRandomizedCV`).
 
     Parameters
     ----------
-    estimator : BaseOptimization
-        :ref:`Optimization estimators <optimization>` use to fit the data.
+    estimator : BaseEstimator | Pipeline
+        Estimator or pipeline whose last step is an optimization estimator.
 
     X : array-like of shape (n_observations, n_assets)
         Price returns of the assets.
@@ -203,24 +206,74 @@ def cross_val_predict(
                         "`cross_val_predict` only works with un-shuffled folds"
                     ) from None
 
-    # We clone the estimator to make sure that all the folds are independent
-    # and that it is pickle-able.
-    parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
-    # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
+    # estimator can be a Pipeline
+    last_step = _get_last_step(estimator)
 
-    predictions = parallel(
-        skp.delayed(fit_and_predict)(
-            sk.clone(estimator),
-            X,
-            y,
-            train=train,
-            test=test,
-            fit_params=routed_params.estimator.fit,
-            method=method,
-            column_indices=column_indices[0] if column_indices else None,
+    if getattr(last_step, "needs_previous_weights", False) and isinstance(
+        cv, WalkForward | MultipleRandomizedCV | sks.TimeSeriesSplit
+    ):
+        if isinstance(cv, MultipleRandomizedCV):
+            splits = list(cv.split(X, y, **routed_params.splitter.split))
+            path_ids = cv.get_path_ids()
+            paths = defaultdict(list)
+            for (train, test, col_idx), pid in zip(splits, path_ids, strict=True):
+                paths[pid].append((train, test, col_idx))
+
+            parallel = skp.Parallel(
+                n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
+            )
+            predictions = parallel(
+                skp.delayed(_run_path)(
+                    estimator=estimator,
+                    X=X,
+                    y=y,
+                    routed_params=routed_params,
+                    method=method,
+                    path_splits=paths[pid],
+                )
+                for pid in sorted(paths.keys())
+            )
+            predictions = [ptf for path in predictions for ptf in path]
+
+        else:
+            if n_jobs not in (None, 1):
+                warnings.warn(
+                    "Parallel processing has been disabled because the optimization "
+                    "method requires sequential processing of previous weights. To "
+                    "suppress this warning, set `n_jobs=None`, or disable sequential "
+                    "processing of previous weights by setting your Optimization's "
+                    "`needs_previous_weights` attribute to False.",
+                    stacklevel=2,
+                )
+            predictions = _run_path(
+                estimator=estimator,
+                X=X,
+                y=y,
+                routed_params=routed_params,
+                method=method,
+                path_splits=splits,
+            )
+
+    else:
+        # We clone the estimator to make sure that all the folds are independent
+        # and that it is pickle-able.
+        parallel = skp.Parallel(
+            n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
         )
-        for train, test, *column_indices in splits
-    )
+        # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
+        predictions = parallel(
+            skp.delayed(fit_and_predict)(
+                sk.clone(estimator),
+                X,
+                y,
+                train=train,
+                test=test,
+                fit_params=routed_params.estimator.fit,
+                method=method,
+                column_indices=column_indices[0] if column_indices else None,
+            )
+            for train, test, *column_indices in splits
+        )
 
     if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
         path_ids = cv.get_path_ids()
@@ -263,3 +316,109 @@ def cross_val_predict(
         )
 
     return pred
+
+
+def _routing_enabled() -> bool:
+    """Return whether metadata routing is enabled.
+
+    Returns
+    -------
+    enabled: bool
+        Whether metadata routing is enabled. If the config is not set, it
+        defaults to False.
+    """
+    return sk.get_config().get("enable_metadata_routing", False)
+
+
+def _asset_names_enabled(X: npt.ArrayLike) -> bool:
+    """Return whether X is a DataFrame and its column names are transferred inside
+    a Pipeline.
+    """
+    return hasattr(X, "columns") and sk.get_config().get("transform_output") in [
+        "pandas",
+        "polars",
+    ]
+
+
+def _get_last_step(estimator: skb.BaseEstimator | Pipeline) -> skb.BaseEstimator:
+    """Return the final estimator to be fitted/predicted.
+
+    If `estimator` is a `Pipeline`, returns its last step; otherwise returns
+    `estimator` itself.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        Estimator or pipeline passed to cross-validation.
+
+    Returns
+    -------
+    BaseEstimator
+        The final estimator (last step when a pipeline).
+    """
+    if isinstance(estimator, Pipeline):
+        return estimator[-1]
+    return estimator
+
+
+def _run_path(
+    estimator: skb.BaseEstimator | Pipeline,
+    X: npt.ArrayLike,
+    y: npt.ArrayLike | None,
+    routed_params: sku.Bunch,
+    method: str,
+    path_splits: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+) -> list[Portfolio]:
+    """Run sequential fit/predict along a single path of ordered splits.
+
+    Used when the final estimator requires previous portfolio weights between
+    consecutive folds (e.g. walk-forward validation). The function propagates
+    the `previous_weights` from the prediction of the previous fold to the
+    next one.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        Estimator or pipeline to clone and fit on each split.
+
+    X : array-like of shape (n_observations, n_assets)
+        Asset returns.
+
+    y : array-like of shape (n_observations, n_targets), optional
+        Optional target data (e.g., factor returns).
+
+    routed_params : Bunch
+        Fit parameters after metadata routing (``routed_params.estimator.fit``).
+
+    method : str
+        Estimator method to call on the test fold (e.g. ``"predict"``).
+
+    path_splits : list of tuple
+        Sequence of ``(train_idx, test_idx[, column_indices])`` describing one
+        path of folds. ``column_indices`` can be ``None``.
+
+    Returns
+    -------
+    list[Portfolio]
+        Portfolios predicted for each test fold in the path, in order.
+    """
+    use_dict = _asset_names_enabled(X)
+    predictions = []
+    prev_weights = _get_last_step(estimator).previous_weights
+    for train, test, *column_indices in path_splits:
+        est = sk.clone(estimator)
+        last_step = _get_last_step(est)
+        last_step.set_params(previous_weights=prev_weights)
+        ptf = fit_and_predict(
+            est,
+            X,
+            y,
+            train=train,
+            test=test,
+            fit_params=routed_params.estimator.fit,
+            method=method,
+            column_indices=column_indices[0] if column_indices else None,
+        )
+        predictions.append(ptf)
+        prev_weights = ptf.weights_dict if use_dict else ptf.weights
+    return predictions
