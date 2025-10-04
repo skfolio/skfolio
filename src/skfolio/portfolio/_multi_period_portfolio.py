@@ -16,6 +16,7 @@ import plotly.graph_objects as go
 
 import skfolio.typing as skt
 from skfolio.portfolio._base import BasePortfolio
+from skfolio.portfolio._failed_portfolio import FailedPortfolio
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.utils.tools import deduplicate_names
 
@@ -551,6 +552,16 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     # Classic property
     @property
+    def n_failed_portfolios(self) -> int:
+        """Number of `FailedPortfolio` in the population."""
+        return sum(isinstance(x, FailedPortfolio) for x in self)
+
+    @property
+    def n_fallback_portfolios(self) -> int:
+        """Number of Portfolios in the population that used fallback optimization."""
+        return sum(1 for x in self if getattr(x, "fallback_chain", None) is not None)
+
+    @property
     def assets(self) -> list:
         """List of assets names in each Portfolio."""
         return [p.assets for p in self]
@@ -559,9 +570,29 @@ class MultiPeriodPortfolio(BasePortfolio):
     def composition(self) -> pd.DataFrame:
         """DataFrame of the Portfolio composition."""
         df = pd.concat([p.composition for p in self], axis=1)
-        df.fillna(0, inplace=True)
+        # Leave columns of only NaNs untouched
+        mask = ~df.isna().all(axis=0)
+        df.loc[:, mask] = df.loc[:, mask].fillna(0)
         df.columns = deduplicate_names(df.columns)
         return df
+
+    @property
+    def weights_dict(self) -> dict[str, dict[str, float]]:
+        """Dictionary mapping each Portfolio name to its asset weight allocation."""
+        names = deduplicate_names([ptf.name for ptf in self.portfolios])
+        return {
+            name: ptf.weights_dict
+            for name, ptf in zip(names, self.portfolios, strict=True)
+        }
+
+    @property
+    def previous_weights_dict(self) -> dict[str, dict[str, float]]:
+        """Dictionary mapping Portfolio name to its previous asset weight allocation."""
+        names = deduplicate_names([ptf.name for ptf in self.portfolios])
+        return {
+            name: ptf.previous_weights_dict
+            for name, ptf in zip(names, self.portfolios, strict=True)
+        }
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
@@ -604,7 +635,9 @@ class MultiPeriodPortfolio(BasePortfolio):
         if not to_df:
             return contributions
         df = pd.concat(contributions, axis=1)
-        df.fillna(0, inplace=True)
+        # Leave columns of only NaNs untouched
+        mask = ~df.isna().all(axis=0)
+        df.loc[:, mask] = df.loc[:, mask].fillna(0)
         df.columns = deduplicate_names(df.columns)
         return df
 
@@ -623,13 +656,22 @@ class MultiPeriodPortfolio(BasePortfolio):
             Portfolio summary of all its measures.
         """
         df = super().summary(formatted=formatted)
-        portfolios_number = len(self)
         avg_assets_per_portfolio = np.mean([p.n_assets for p in self])
+        n_portfolios = len(self)
+        n_failed_portfolios = self.n_failed_portfolios
+        n_fallback_portfolios = self.n_fallback_portfolios
+
         if formatted:
-            portfolios_number = str(int(portfolios_number))
             avg_assets_per_portfolio = f"{avg_assets_per_portfolio:0.1f}"
-        df["Portfolios Number"] = portfolios_number
+            n_portfolios = str(int(n_portfolios))
+            n_failed_portfolios = str(n_failed_portfolios)
+            n_fallback_portfolios = str(n_fallback_portfolios)
+
         df["Avg nb of Assets per Portfolio"] = avg_assets_per_portfolio
+        df["Number of Portfolios"] = n_portfolios
+        df["Number of Failed Portfolios"] = n_failed_portfolios
+        df["Number of Fallback Portfolios"] = n_fallback_portfolios
+
         return df
 
     # Public methods

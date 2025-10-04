@@ -196,6 +196,22 @@ class Portfolio(BasePortfolio):
         The confidence level of the Portfolio EDaR (Entropic Drawdown at Risk).
         The default value is `0.95`.
 
+    fallback_chain : list[tuple[str, str]] | None, optional
+        Sequence describing the optimization fallback attempts.
+        Each element is a pair `(estimator_repr, outcome)` where:
+
+            * `estimator_repr` is the string representation of the primary
+              estimator or a fallback (e.g. `"EqualWeighted()"`, `"previous_weights"`).
+            * `outcome` is `"success"` if that step produced a valid solution, otherwise
+              the stringified error message.
+
+        For successful fits without any fallback, this is `None`. When
+        fallbacks are provided and the primary fails, the chain starts with
+        `(primary_repr, primary_error)` and is followed by one entry per
+        fallback that was attempted, ending with the first `"success"` or the
+        last error if all fail. This is set by the optimization estimator and
+        propagated to the resulting `Portfolio`.
+
     Attributes
     ----------
     n_observations : float
@@ -430,15 +446,17 @@ class Portfolio(BasePortfolio):
         # custom getter (read-only and cached)
         "_nonzero_assets",
         "_nonzero_assets_index",
+        # read-write
+        "fallback_chain",
     }
 
     def __init__(
         self,
         X: npt.ArrayLike,
-        weights: skt.MultiInput,
-        previous_weights: skt.MultiInput = None,
-        transaction_costs: skt.MultiInput = None,
-        management_fees: skt.MultiInput = None,
+        weights: skt.MultiInput | None,
+        previous_weights: skt.MultiInput | None = None,
+        transaction_costs: skt.MultiInput | None = None,
+        management_fees: skt.MultiInput | None = None,
         risk_free_rate: float = 0,
         name: str | None = None,
         tag: str | None = None,
@@ -455,6 +473,7 @@ class Portfolio(BasePortfolio):
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        fallback_chain: list[tuple[str, str]] | None = None,
     ):
         # extract assets names from X
         assets = None
@@ -470,14 +489,18 @@ class Portfolio(BasePortfolio):
 
         n_observations, n_assets = rets.shape
 
-        weights = input_to_array(
-            items=weights,
-            n_assets=n_assets,
-            fill_value=0,
-            dim=1,
-            assets_names=assets,
-            name="weights",
-        )
+        weights_provided = weights is not None
+        if not weights_provided:
+            weights = np.full(n_assets, np.nan)
+        else:
+            weights = input_to_array(
+                items=weights,
+                n_assets=n_assets,
+                fill_value=0,
+                dim=1,
+                assets_names=assets,
+                name="weights",
+            )
 
         if previous_weights is None:
             previous_weights = np.zeros(n_assets)
@@ -533,9 +556,12 @@ class Portfolio(BasePortfolio):
         else:
             total_fee = (management_fees * weights).sum()
 
-        returns = weights @ rets.T - total_cost - total_fee
+        if weights_provided:
+            returns = weights @ rets.T - total_cost - total_fee
+        else:
+            returns = np.full(n_observations, np.nan)
 
-        if np.any(np.isnan(returns)):
+        if weights_provided and np.any(np.isnan(returns)):
             raise ValueError("NaN found in `returns`")
 
         super().__init__(
@@ -570,19 +596,31 @@ class Portfolio(BasePortfolio):
         self.previous_weights = previous_weights
         self.total_cost = total_cost
         self.total_fee = total_fee
+        # Keep attribute name aligned with Optimization API (fallback_chain_)
+        self.fallback_chain = fallback_chain
         self._loaded = True
 
+    @property
+    def _is_failed_portfolio(self) -> bool:
+        return self.__class__.__name__ == "FailedPortfolio"
+
     def __neg__(self):
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = -self.weights
         return self.__class__(**args)
 
     def __abs__(self):
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = np.abs(self.weights)
         return self.__class__(**args)
 
     def __round__(self, n: int):
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = np.round(self.weights, n)
         return self.__class__(**args)
@@ -592,11 +630,17 @@ class Portfolio(BasePortfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"
             )
+        if self._is_failed_portfolio:
+            return self.copy()
+        if other._is_failed_portfolio:
+            return other.copy()
         args = args_names(self.__init__)
         for arg in args:
-            if arg not in ["weights", "name", "tag"] and not np.array_equal(
-                getattr(self, arg), getattr(other, arg)
-            ):
+            if arg not in [
+                "weights",
+                "name",
+                "tag",
+            ] and not np.array_equal(getattr(self, arg), getattr(other, arg)):
                 raise ValueError(f"Cannot add two Portfolios with different `{arg}`")
         args = {arg: getattr(self, arg) for arg in args}
         args["weights"] = self.weights + other.weights
@@ -607,11 +651,17 @@ class Portfolio(BasePortfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"
             )
+        if self._is_failed_portfolio:
+            return self.copy()
+        if other._is_failed_portfolio:
+            return other.copy()
         args = args_names(self.__init__)
         for arg in args:
-            if arg not in ["weights", "name", "tag"] and not np.array_equal(
-                getattr(self, arg), getattr(other, arg)
-            ):
+            if arg not in [
+                "weights",
+                "name",
+                "tag",
+            ] and not np.array_equal(getattr(self, arg), getattr(other, arg)):
                 raise ValueError(
                     f"Cannot subtract two Portfolios with different `{arg}`"
                 )
@@ -625,6 +675,8 @@ class Portfolio(BasePortfolio):
                 "Portfolio can only be multiplied by a number, but received a"
                 f" {type(other)}"
             )
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = other * self.weights
         return self.__class__(**args)
@@ -637,6 +689,8 @@ class Portfolio(BasePortfolio):
                 "Portfolio can only be floor divided by a number, but received a"
                 f" {type(other)}"
             )
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = np.floor_divide(self.weights, other)
         return self.__class__(**args)
@@ -647,6 +701,8 @@ class Portfolio(BasePortfolio):
                 "Portfolio can only be divided by a number, but received a"
                 f" {type(other)}"
             )
+        if self._is_failed_portfolio:
+            return self.copy()
         args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
         args["weights"] = self.weights / other
         return self.__class__(**args)
@@ -660,17 +716,37 @@ class Portfolio(BasePortfolio):
     @cached_property_slots
     def nonzero_assets_index(self) -> np.ndarray:
         """Indices of invested asset :math:`abs(weights) > 0.001%`."""
-        return np.flatnonzero(abs(self.weights) > _ZERO_THRESHOLD)
+        return np.flatnonzero(
+            np.isnan(self.weights) | (abs(self.weights) > _ZERO_THRESHOLD)
+        )
 
     @property
     def composition(self) -> pd.DataFrame:
-        """DataFrame of the Portfolio composition."""
+        """DataFrame of portfolio composition (weights). Rows with zero weights are
+        filtered out. Use `weights_dict` to access all weights, including zeros.
+        """
         weights = self.weights[self.nonzero_assets_index]
         df = pd.DataFrame({"asset": self.nonzero_assets, "weight": weights})
         df.sort_values(by="weight", ascending=False, inplace=True)
         df.rename(columns={"weight": self.name}, inplace=True)
         df.set_index("asset", inplace=True)
         return df
+
+    @property
+    def weights_dict(self) -> dict[str, float]:
+        """Dict mapping asset name to weight; includes zeros."""
+        return {
+            asset: float(weight)
+            for asset, weight in zip(self.assets, self.weights, strict=True)
+        }
+
+    @property
+    def previous_weights_dict(self) -> dict[str, float]:
+        """Dict mapping asset name to previous weight; includes zeros."""
+        return {
+            asset: float(weight)
+            for asset, weight in zip(self.assets, self.previous_weights, strict=True)
+        }
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
@@ -792,30 +868,34 @@ class Portfolio(BasePortfolio):
         values : numpy array of shape (n_assets,) or DataFrame
             The measure contribution of each asset.
         """
-        if spacing is None:
-            if measure in [
-                RiskMeasure.MAX_DRAWDOWN,
-                RiskMeasure.AVERAGE_DRAWDOWN,
-                RiskMeasure.CDAR,
-                RiskMeasure.EDAR,
-            ]:
-                spacing = 1e-1
-            else:
-                spacing = 1e-5
-        args = {
-            arg: getattr(self, arg)
-            for arg in args_names(self.__init__)
-            if arg != "weights"
-        }
+        if self._is_failed_portfolio:
+            assets = self.assets
+            contribution = np.full(len(assets), np.nan)
+        else:
+            if spacing is None:
+                if measure in [
+                    RiskMeasure.MAX_DRAWDOWN,
+                    RiskMeasure.AVERAGE_DRAWDOWN,
+                    RiskMeasure.CDAR,
+                    RiskMeasure.EDAR,
+                ]:
+                    spacing = 1e-1
+                else:
+                    spacing = 1e-5
+            args = {
+                arg: getattr(self, arg)
+                for arg in args_names(self.__init__)
+                if arg != "weights"
+            }
 
-        contribution, assets = _compute_contribution(
-            args=args,
-            weights=self.weights,
-            assets=self.assets,
-            measure=measure,
-            h=spacing,
-            drop_zero_weights=to_df,
-        )
+            contribution, assets = _compute_contribution(
+                args=args,
+                weights=self.weights,
+                assets=self.assets,
+                measure=measure,
+                h=spacing,
+                drop_zero_weights=to_df,
+            )
 
         if not to_df:
             return np.array(contribution)

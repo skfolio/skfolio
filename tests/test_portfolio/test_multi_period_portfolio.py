@@ -7,6 +7,7 @@ import pytest
 import skfolio.measures as mt
 from skfolio import (
     ExtraRiskMeasure,
+    FailedPortfolio,
     MultiPeriodPortfolio,
     PerfMeasure,
     Portfolio,
@@ -143,7 +144,54 @@ def portfolio_and_returns(prices, periods, weights):
     for i, (period, weight) in enumerate(zip(periods, weights, strict=True)):
         X = prices_to_returns(X=prices[period[0] : period[1]])
         returns = np.concatenate([returns, _portfolio_returns(X.to_numpy(), weight)])
-        portfolios.append(Portfolio(X=X, weights=weight, name=f"portfolio_{i}"))
+        portfolios.append(
+            Portfolio(
+                X=X,
+                weights=weight,
+                previous_weights=weights[i - 1] if i > 0 else None,
+                name=f"portfolio_{i}",
+            ),
+        )
+    portfolio = MultiPeriodPortfolio(
+        portfolios=portfolios,
+        name="mpp",
+        tag="my_tag",
+    )
+    return portfolio, returns
+
+
+@pytest.fixture(scope="function")
+def portfolio_and_returns_with_failed_ptf(prices, periods, weights):
+    returns = np.array([])
+    portfolios = []
+    for i, (period, weight) in enumerate(zip(periods, weights, strict=True)):
+        X = prices_to_returns(X=prices[period[0] : period[1]])
+        if i != 1:
+            returns = np.concatenate(
+                [returns, _portfolio_returns(X.to_numpy(), weight)]
+            )
+            portfolios.append(Portfolio(X=X, weights=weight, name=f"portfolio_{i}"))
+        else:
+            returns = np.concatenate([returns, np.full(len(X), np.nan)])
+            portfolios.append(FailedPortfolio(X=X, name=f"failed_portfolio_{i}"))
+
+    portfolio = MultiPeriodPortfolio(
+        portfolios=portfolios,
+        name="mpp",
+        tag="my_tag",
+    )
+    return portfolio, returns
+
+
+@pytest.fixture(scope="function")
+def portfolio_and_returns_with_full_failed_ptf(prices, periods, weights):
+    returns = np.array([])
+    portfolios = []
+    for i, period in enumerate(periods):
+        X = prices_to_returns(X=prices[period[0] : period[1]])
+        returns = np.concatenate([returns, np.full(len(X), np.nan)])
+        portfolios.append(FailedPortfolio(X=X, name=f"failed_portfolio_{i}"))
+
     portfolio = MultiPeriodPortfolio(
         portfolios=portfolios,
         name="mpp",
@@ -260,6 +308,8 @@ def test_portfolio_methods(portfolio_and_returns, periods):
     assert isinstance(portfolio.summary(), pd.Series)
     assert isinstance(portfolio.summary(formatted=False), pd.Series)
     assert portfolio.plot_weights_per_observation()
+    assert isinstance(portfolio.weights_dict, dict)
+    assert isinstance(portfolio.previous_weights_dict, dict)
 
 
 def test_mpp_magic_methods(portfolio, periods):
@@ -320,7 +370,7 @@ def test_portfolio_dominate(X):
         ) == portfolio_1.dominates(portfolio_2)
 
 
-def test_portfolio_metrics(portfolio, measure):
+def test_portfolio_measure(portfolio, measure):
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
     assert not np.isnan(m)
@@ -388,8 +438,9 @@ def test_portfolio_delete_attr(portfolio, periods):
 
 def test_portfolio_summary(portfolio, periods):
     df = portfolio.summary(formatted=False)
-    assert df.loc["Portfolios Number"] == 3.0
-    assert df.loc["Avg nb of Assets per Portfolio"] == 20.0
+    assert df.loc["Number of Portfolios"] == 3.0
+    assert df.loc["Number of Failed Portfolios"] == 0
+    assert df.loc["Number of Fallback Portfolios"] == 0
 
 
 def test_portfolio_contribution(portfolio):
@@ -413,3 +464,101 @@ def test_weights_per_observation(portfolio):
     assert len(df.columns) == 17
     assert len(set(df.columns)) == 17
     assert portfolio.plot_weights_per_observation()
+
+
+def test_mpp_with_failed_ptf_methods(portfolio_and_returns_with_failed_ptf, periods, X):
+    portfolio, returns = portfolio_and_returns_with_failed_ptf
+
+    assert portfolio.n_failed_portfolios == 1
+    assert portfolio.n_fallback_portfolios == 0
+    assert portfolio.n_observations == returns.shape[0]
+    assert len(portfolio) == len(periods)
+    np.testing.assert_almost_equal(returns, portfolio.returns)
+    assert np.isnan(portfolio.drawdowns).any()
+    assert not np.isnan(portfolio.drawdowns[-1])
+    assert np.isnan(portfolio.cumulative_returns).any()
+    assert not np.isnan(portfolio.cumulative_returns[-1])
+
+    assert len(portfolio.assets) == len(periods)
+    assert portfolio.composition.shape[1] == len(periods)
+    assert isinstance(portfolio.cumulative_returns_df, pd.Series)
+    assert isinstance(portfolio.drawdowns_df, pd.Series)
+    portfolio.clear()
+    assert portfolio.plot_returns()
+    assert portfolio.plot_cumulative_returns()
+    assert portfolio.plot_drawdowns()
+    assert isinstance(portfolio.composition, pd.DataFrame)
+    assert portfolio.plot_composition()
+    assert isinstance(portfolio.summary(), pd.Series)
+    summary = portfolio.summary(formatted=False)
+    assert summary.loc["Number of Failed Portfolios"] == 1
+    assert summary.loc["Number of Fallback Portfolios"] == 0
+    assert not np.isnan(summary.values).any()
+    assert portfolio.plot_weights_per_observation()
+    contrib = portfolio.contribution(measure=RatioMeasure.SHARPE_RATIO)
+    assert not np.isnan(contrib).all().all()
+    assert np.isnan(contrib["failed_portfolio_1"]).all()
+
+
+def test_portfolio_measure_nan(portfolio_and_returns_with_failed_ptf, measure):
+    portfolio, returns = portfolio_and_returns_with_failed_ptf
+
+    m = getattr(portfolio, measure.value)
+    assert isinstance(m, float)
+    assert not np.isnan(m)
+
+
+def test_mpp_with_full_failed_ptf_methods(
+    portfolio_and_returns_with_full_failed_ptf, periods, X
+):
+    portfolio, returns = portfolio_and_returns_with_full_failed_ptf
+
+    assert portfolio.n_failed_portfolios == 3
+    assert portfolio.n_fallback_portfolios == 0
+    assert portfolio.n_observations == returns.shape[0]
+    assert len(portfolio) == len(periods)
+    np.testing.assert_almost_equal(returns, portfolio.returns)
+    assert np.isnan(portfolio.drawdowns).all()
+    assert np.isnan(portfolio.cumulative_returns).all()
+
+    assert len(portfolio.assets) == len(periods)
+    assert portfolio.composition.shape[1] == len(periods)
+    assert isinstance(portfolio.cumulative_returns_df, pd.Series)
+    assert isinstance(portfolio.drawdowns_df, pd.Series)
+    portfolio.clear()
+    assert portfolio.plot_returns()
+    assert portfolio.plot_cumulative_returns()
+    assert portfolio.plot_drawdowns()
+    assert isinstance(portfolio.composition, pd.DataFrame)
+    assert portfolio.plot_composition()
+    assert isinstance(portfolio.summary(), pd.Series)
+    summary = portfolio.summary(formatted=False)
+    assert summary.loc["Number of Failed Portfolios"] == 3
+    assert summary.loc["Number of Fallback Portfolios"] == 0
+    assert np.isnan(summary.values[:-4]).all()
+    assert portfolio.plot_weights_per_observation()
+    contrib = portfolio.contribution(measure=RatioMeasure.SHARPE_RATIO)
+    assert np.isnan(contrib).all().all()
+
+
+def test_portfolio_measure_all_nan(portfolio_and_returns_with_full_failed_ptf, measure):
+    portfolio, returns = portfolio_and_returns_with_full_failed_ptf
+
+    m = getattr(portfolio, measure.value)
+    assert isinstance(m, float)
+    assert np.isnan(m)
+
+
+def test_weight_dict(X, weights, portfolio_and_returns):
+    portfolio, returns = portfolio_and_returns
+
+    for i in range(len(weights)):
+        np.testing.assert_almost_equal(
+            [portfolio.weights_dict[f"portfolio_{i}"][x] for x in X.columns], weights[i]
+        )
+
+    for i in range(len(weights)):
+        np.testing.assert_almost_equal(
+            [portfolio.previous_weights_dict[f"portfolio_{i}"][x] for x in X.columns],
+            weights[i - 1] if i > 0 else np.zeros(20),
+        )

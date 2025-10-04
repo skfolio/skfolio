@@ -17,7 +17,7 @@ import scipy.interpolate as sci
 
 import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
-from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio
+from skfolio.portfolio import BasePortfolio, FailedPortfolio, MultiPeriodPortfolio
 from skfolio.utils.figure import kde_trace
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
@@ -329,7 +329,7 @@ class Population(list):
         value : float
             The mean of portfolios measures.
         """
-        return self.measures(measure=measure).mean()
+        return np.nanmean(self.measures(measure=measure), axis=0)
 
     def measures_std(
         self,
@@ -348,7 +348,7 @@ class Population(list):
         value : float
             The standard-deviation of portfolios measures.
         """
-        return self.measures(measure=measure).std()
+        return np.nanstd(self.measures(measure=measure), axis=0)
 
     def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> "Population":
         """Sort the population by a given portfolio measure.
@@ -368,7 +368,7 @@ class Population(list):
         """
         return self.__class__(
             sorted(
-                self,
+                [x for x in self if not isinstance(x, FailedPortfolio)],
                 key=lambda x: x.__getattribute__(measure.value),
                 reverse=reverse,
             )
@@ -502,8 +502,10 @@ class Population(list):
             res.append(comp)
 
         df = pd.concat(res, axis=1)
+        # Leave columns of only NaNs untouched
+        mask = ~df.isna().all(axis=0)
+        df.loc[:, mask] = df.loc[:, mask].fillna(0)
         df.columns = deduplicate_names(list(df.columns))
-        df.fillna(0, inplace=True)
         return df
 
     def contribution(
@@ -552,8 +554,10 @@ class Population(list):
             res.append(contribution)
 
         df = pd.concat(res, axis=1)
+        # Leave columns of only NaNs untouched
+        mask = ~df.isna().all(axis=0)
+        df.loc[:, mask] = df.loc[:, mask].fillna(0)
         df.columns = deduplicate_names(list(df.columns))
-        df.fillna(0, inplace=True)
         return df
 
     def rolling_measure(
@@ -978,7 +982,12 @@ class Population(list):
         hover_data = {str(k): v for k, v in hover_data.items()}
 
         df = pd.DataFrame(res, columns=columns)
-        df["tag"] = df["tag"].astype(str).replace("None", "")
+        if pd.isnull(df["tag"]).all():
+            del hover_data["tag"]
+            tag = None
+        else:
+            tag = "tag"
+            df["tag"] = df["tag"].astype(str).replace("None", "")
 
         if show_fronts:
             fronts = self.non_denominated_sort(first_front_only=False)
@@ -990,7 +999,7 @@ class Population(list):
         elif color_scale is not None:
             color = str(color_scale)
         else:
-            color = "tag"
+            color = tag
 
         if z is not None:
             if to_surface:
@@ -1057,7 +1066,7 @@ class Population(list):
                     hover_name="name",
                     hover_data=hover_data,
                     color=color,
-                    symbol="tag",
+                    symbol=tag,
                 )
                 fig.update_traces(marker_size=8)
                 fig.update_layout(
@@ -1087,7 +1096,7 @@ class Population(list):
                 hover_name="name",
                 hover_data=hover_data,
                 color=color,
-                symbol="tag",
+                symbol=tag,
             )
             fig.update_traces(marker_size=10)
 
@@ -1179,6 +1188,8 @@ class Population(list):
         colors = px.colors.qualitative.Plotly
 
         for i, ptf in enumerate(self):
+            if isinstance(ptf, FailedPortfolio):
+                continue
             color = colors[i % len(colors)]
             returns = ptf.returns
             traces.append(

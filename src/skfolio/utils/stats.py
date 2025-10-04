@@ -150,8 +150,8 @@ def rand_weights_dirichlet(n: int) -> np.array:
     return np.random.dirichlet(np.ones(n))
 
 
-def rand_weights(n: int, zeros: int = 0) -> np.array:
-    """Produces n random weights that sum to one from an uniform distribution
+def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> np.ndarray:
+    """Produces n random weights that sum to one from a uniform distribution
     (non-uniform distribution over a simplex).
 
     Parameters
@@ -162,16 +162,21 @@ def rand_weights(n: int, zeros: int = 0) -> np.array:
     zeros : int, default=0
         The number of weights to randomly set to zeros.
 
+    seed : int or None, default=None
+        Seed for reproducibility. If None, use an unseeded generator.
+
     Returns
     -------
     weights : ndarray of shape (n, )
         The vector of weights.
     """
-    k = np.random.rand(n)
+    rng = np.random.default_rng(seed)
+
+    k = rng.random(n)
     if zeros > 0:
-        zeros_idx = np.random.choice(n, zeros, replace=False)
+        zeros_idx = rng.choice(n, zeros, replace=False)
         k[zeros_idx] = 0
-    return k / sum(k)
+    return k / k.sum()
 
 
 def is_cholesky_dec(x: np.ndarray) -> bool:
