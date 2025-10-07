@@ -55,11 +55,11 @@ class FailedPortfolio(Portfolio):
         Sequence describing the optimization fallback attempts. Each element is
         a pair `(estimator_repr, outcome)` where:
 
-            * `estimator_repr` is the string representation of the primary
-              estimator or a fallback (e.g. `"EqualWeighted()"`,
-              `"previous_weights"`).
-            * `outcome` is `"success"` if that step produced a valid solution,
-              otherwise the stringified error message.
+        * `estimator_repr` is the string representation of the primary
+          estimator or a fallback (e.g. `"EqualWeighted()"`,
+          `"previous_weights"`).
+        * `outcome` is `"success"` if that step produced a valid solution,
+          otherwise the stringified error message.
 
         For successful fits without any fallback, this is `None`. When
         fallbacks are provided and the primary fails, the chain starts with
@@ -69,8 +69,6 @@ class FailedPortfolio(Portfolio):
         propagated to the resulting portfolio objects (including
         `FailedPortfolio`).
 
-    Other Parameters
-    ----------------
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.

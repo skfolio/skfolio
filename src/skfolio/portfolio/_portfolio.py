@@ -198,20 +198,21 @@ class Portfolio(BasePortfolio):
         The default value is `0.95`.
 
     fallback_chain : list[tuple[str, str]] | None, optional
-        Sequence describing the optimization fallback attempts.
-        Each element is a pair `(estimator_repr, outcome)` where:
+        Sequence describing the optimization fallback attempts. Each element is
+        a pair `(estimator_repr, outcome)` where:
 
-            * `estimator_repr` is the string representation of the primary
-              estimator or a fallback (e.g. `"EqualWeighted()"`, `"previous_weights"`).
-            * `outcome` is `"success"` if that step produced a valid solution, otherwise
-              the stringified error message.
+        * `estimator_repr` is the string representation of the primary
+          estimator or a fallback (e.g. `"EqualWeighted()"`,
+          `"previous_weights"`).
+        * `outcome` is `"success"` if that step produced a valid solution,
+          otherwise the stringified error message.
 
         For successful fits without any fallback, this is `None`. When
         fallbacks are provided and the primary fails, the chain starts with
         `(primary_repr, primary_error)` and is followed by one entry per
         fallback that was attempted, ending with the first `"success"` or the
         last error if all fail. This is set by the optimization estimator and
-        propagated to the resulting `Portfolio`.
+        propagated to the resulting portfolio.
 
     Attributes
     ----------

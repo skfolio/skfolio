@@ -570,10 +570,10 @@ class MultiPeriodPortfolio(BasePortfolio):
     def composition(self) -> pd.DataFrame:
         """DataFrame of the Portfolio composition."""
         df = pd.concat([p.composition for p in self], axis=1)
+        df.columns = deduplicate_names(df.columns)
         # Leave columns of only NaNs untouched
         mask = ~df.isna().all(axis=0)
         df.loc[:, mask] = df.loc[:, mask].fillna(0)
-        df.columns = deduplicate_names(df.columns)
         return df
 
     @property
@@ -635,10 +635,10 @@ class MultiPeriodPortfolio(BasePortfolio):
         if not to_df:
             return contributions
         df = pd.concat(contributions, axis=1)
+        df.columns = deduplicate_names(df.columns)
         # Leave columns of only NaNs untouched
         mask = ~df.isna().all(axis=0)
         df.loc[:, mask] = df.loc[:, mask].fillna(0)
-        df.columns = deduplicate_names(df.columns)
         return df
 
     def summary(self, formatted: bool = True) -> pd.Series:

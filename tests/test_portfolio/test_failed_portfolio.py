@@ -1,4 +1,5 @@
 import pickle
+import random
 import timeit
 import tracemalloc
 from copy import copy
@@ -6,6 +7,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import pytest
+import sklearn.utils.validation as skv
 
 import skfolio.measures as mt
 from skfolio import (
@@ -17,9 +19,11 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.optimization import BaseOptimization
 from skfolio.portfolio._base import _MEASURES
 from skfolio.utils.stats import rand_weights
 from skfolio.utils.tools import args_names
+from skfolio.model_selection import WalkForward, cross_val_predict
 
 
 @pytest.fixture(
@@ -37,6 +41,34 @@ def measure(request):
 def portfolio(X: pd.DataFrame) -> FailedPortfolio:
     portfolio = FailedPortfolio(X=X)
     return portfolio
+
+
+class CustomOptimization(BaseOptimization):
+    """Simple custom optimizer forcing fit failure to test fallback"""
+
+    def __init__(
+        self,
+        fail: bool = False,
+        portfolio_params: dict | None = None,
+        fallback=None,
+        previous_weights=None,
+        raise_on_failure: bool = True,
+    ):
+        super().__init__(
+            portfolio_params=portfolio_params,
+            fallback=fallback,
+            raise_on_failure=raise_on_failure,
+            previous_weights=previous_weights,
+        )
+        self.fail = fail
+
+    def fit(self, X, y=None):
+        X = skv.validate_data(self, X)
+        if self.fail or random.random() < 0.5:
+            raise RuntimeError("Forced failure")
+        n_assets = X.shape[1]
+        self.weights_ = rand_weights(n_assets, seed=0)
+        return self
 
 
 def test_pickle(portfolio):
@@ -291,3 +323,29 @@ def test_weights_per_observation(portfolio):
     np.testing.assert_array_equal(df.index.values, portfolio.observations)
     assert len(df.columns) == 20
     assert np.isnan(df).all().all()
+
+
+def test_cross_val_predict(X):
+    walk_forward = WalkForward(test_size=6, train_size=12, freq="WOM-3FRI")
+    model = CustomOptimization(raise_on_failure=False)
+    pred = cross_val_predict(model, X, cv=walk_forward)
+
+    assert len(pred.composition) == 20
+    assert not np.isnan(pred.composition).all().all()
+
+    contrib = pred.contribution(measure=RatioMeasure.SHARPE_RATIO)
+    assert len(contrib) == 20
+    assert not np.isnan(contrib).all().all()
+
+    assert isinstance(pred.cumulative_returns_df, pd.Series)
+    assert isinstance(pred.drawdowns_df, pd.Series)
+    pred.clear()
+    assert pred.plot_returns()
+    assert pred.plot_cumulative_returns()
+    assert pred.plot_drawdowns()
+    assert pred.plot_rolling_measure(measure=RatioMeasure.SHARPE_RATIO, window=20)
+    assert isinstance(pred.composition, pd.DataFrame)
+    assert pred.plot_composition()
+    assert isinstance(pred.summary(), pd.Series)
+    assert isinstance(pred.summary(formatted=False), pd.Series)
+    assert isinstance(pred.summary(), pd.Series)

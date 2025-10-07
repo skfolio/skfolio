@@ -211,13 +211,14 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         attributes are propagated to the portfolio by default: `name`,
         `transaction_costs`, `management_fees`, `previous_weights` and `risk_free_rate`.
 
-    fallback : BaseOptimization | list[BaseOptimization] | "previous_weights", optional
+    fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. When a fallback succeeds, its fitted
-        `weights_` are copied back to the primary estimator so that `fit` still returns
-        the original instance. For traceability, `fallback_` stores the successful
-        estimator (or the string `"previous_weights"`), and `fallback_chain_` stores
-        each attempt with the associated outcome.
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
+        (alone or in a list) to fall back to the estimator's `previous_weights`.
+        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
+        estimator so that `fit` still returns the original instance. For traceability, 
+        `fallback_` stores the successful estimator (or the string `"previous_weights"`)
+         and `fallback_chain_` stores each attempt with the associated outcome.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets,), optional
         When `fallback="previous_weights"`, failures will fall back to these weights if
@@ -225,12 +226,12 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     raise_on_failure : bool, default=True
         Controls error handling when fitting fails.
-        - If True: failures during `fit` are raised and no `weights_` are set.
-          Subsequent calls to `predict` will raise a not-fitted error.
-        - If False: errors are not raised; a warning is emitted and `weights_` is set to
-          `None`. Subsequent calls to `predict` will return a `FailedPortfolio`.
-        When fallbacks are specified, this behavior applies only after all fallbacks are
-        exhausted.
+        If True, any failure during `fit` is raised immediately, no `weights_` are
+        set and subsequent calls to `predict` will raise a `NotFittedError`.
+        If False, errors are not raised; instead, a warning is emitted, `weights_`
+        is set to `None` and subsequent calls to `predict` will return a
+        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
+        after all fallbacks have been exhausted.
 
     Attributes
     ----------
