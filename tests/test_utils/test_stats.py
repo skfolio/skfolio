@@ -106,8 +106,8 @@ def test_n_bins_knuth(returns):
 
 def test_cov_nearest(nasdaq_X):
     cov = np.cov(np.array(nasdaq_X).T)
-    corr, std = cov_to_corr(cov)
-    eig_vals, _ = np.linalg.eigh(corr)
+    corr, _ = cov_to_corr(cov)
+    _, _ = np.linalg.eigh(corr)
     assert not is_cholesky_dec(cov)
     cov2 = cov_nearest(cov, higham=False)
     assert is_cholesky_dec(cov2)

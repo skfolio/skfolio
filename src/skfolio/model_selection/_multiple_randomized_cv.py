@@ -67,7 +67,7 @@ class MultipleRandomizedCV:
 
     References
     ----------
-    .. [1]  "Portfolio Optimization, Theory and Application", Chapter 8,
+    .. [1]  "Portfolio Optimization: Theory and Application", Chapter 8,
             Daniel P. Palomar (2025)
 
     Examples

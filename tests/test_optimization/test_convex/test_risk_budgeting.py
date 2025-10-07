@@ -223,7 +223,9 @@ def test_risk_budgeting_negative_weight_constraints(X_small):
 
     with pytest.raises(
         ValueError,
-        match="RiskBudgeting must have non negative `min_weights` "
-        "constraint otherwise the problem becomes non-convex.",
+        match=(
+            r"RiskBudgeting must have non negative `min_weights` "
+            r"constraint otherwise the problem becomes non-convex."
+        ),
     ):
         model.fit(X_small)

@@ -319,7 +319,7 @@ class VineCopula(BaseMultivariateDist):
             If the number of assets is less than or equal to 2, or if max_depth <= 1.
         """
         X = skv.validate_data(self, X, dtype=np.float64)
-        n_observations, n_assets = X.shape
+        _, n_assets = X.shape
 
         if n_assets <= 2:
             raise ValueError(

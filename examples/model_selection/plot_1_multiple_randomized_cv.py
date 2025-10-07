@@ -223,6 +223,6 @@ pred_tuned_mc[0].plot_weights_per_observation()
 # %%
 # References
 # ==========
-# .. [1] "Portfolio Optimization, Theory and Application", Chapter 8
+# .. [1] "Portfolio Optimization: Theory and Application", Chapter 8
 #         Daniel P. Palomar (2025)
 #

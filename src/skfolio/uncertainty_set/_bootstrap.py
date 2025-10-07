@@ -75,14 +75,17 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
 
     References
     ----------
-    .. [1]  "Robustness properties of mean-variance portfolios",
+    .. [1] "Portfolio Optimization: Theory and Application", Chapter 14,
+        Daniel P. Palomar (2025)
+
+    .. [2] "Robustness properties of mean-variance portfolios",
         Optimization: A Journal of Mathematical Programming and Operations Research,
         Schöttle & Werner (2009).
 
-    .. [2]  "Automatic Block-Length Selection for the Dependent Bootstrap",
+    .. [3] "Automatic Block-Length Selection for the Dependent Bootstrap",
         Politis & White (2004).
 
-    .. [3]  "Correction to Automatic Block-Length Selection for the Dependent
+    .. [4] "Correction to Automatic Block-Length Selection for the Dependent
         Bootstrap",
         Patton, Politis & White (2009).
     """
@@ -213,14 +216,17 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
 
     References
     ----------
-    .. [1]  "Robustness properties of mean-variance portfolios",
+    .. [1] "Portfolio Optimization: Theory and Application", Chapter 14,
+        Daniel P. Palomar (2025)
+
+    .. [2] "Robustness properties of mean-variance portfolios",
         Optimization: A Journal of Mathematical Programming and Operations Research,
         Schöttle & Werner (2009).
 
-    .. [2]  "Automatic Block-Length Selection for the Dependent Bootstrap",
+    .. [3] "Automatic Block-Length Selection for the Dependent Bootstrap",
         Politis & White (2004).
 
-    .. [3]  "Correction to Automatic Block-Length Selection for the Dependent
+    .. [4] "Correction to Automatic Block-Length Selection for the Dependent
         Bootstrap",
         Patton, Politis & White (2009).
     """

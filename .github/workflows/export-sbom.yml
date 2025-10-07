@@ -1,0 +1,32 @@
+name: export-sbom
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export SBOM (SPDX JSON) from Dependency Graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/dependency-graph/sbom \
+            -H "X-GitHub-Api-Version: 2022-11-28" > sbom.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.ref_name }}
+          path: sbom.spdx.json
+      - name: Attach to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" -t "${{ github.ref_name }}" -n "Automated release" || true
+          gh release upload "${{ github.ref_name }}" sbom.spdx.json --clobber
+
+

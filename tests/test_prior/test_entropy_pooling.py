@@ -1062,14 +1062,14 @@ def test_value_at_risk_view_error(X, solver):
 
     model = EntropyPooling(solver=solver, value_at_risk_views=["AAPL >= 0.9"])
     with pytest.raises(
-        ValueError, match="The Value-at-Risk view of -90.000% is excessively extreme"
+        ValueError, match=r"The Value-at-Risk view of -90.000% is excessively extreme"
     ):
         model.fit(X)
 
 
 def test_correlation_view_error(X, solver):
     model = EntropyPooling(solver=solver, correlation_views=["(AAPL,AMD) == 1.5"])
-    with pytest.raises(ValueError, match="Correlation views must be between 0 and 1."):
+    with pytest.raises(ValueError, match=r"Correlation views must be between 0 and 1."):
         model.fit(X)
 
 
@@ -1091,7 +1091,7 @@ def test_cvar_view_error(X, solver):
     model = EntropyPooling(solver=solver, cvar_views=["AAPL == 0.9"])
     with pytest.raises(
         ValueError,
-        match="The CVaR views of 90.00% is excessively extreme and cannot exceed 12.87% which is the worst realization",
+        match=r"The CVaR views of 90.00% is excessively extreme and cannot exceed 12.87% which is the worst realization",
     ):
         model.fit(X)
 

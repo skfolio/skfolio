@@ -501,7 +501,7 @@ def test_mpp_with_failed_ptf_methods(portfolio_and_returns_with_failed_ptf, peri
 
 
 def test_portfolio_measure_nan(portfolio_and_returns_with_failed_ptf, measure):
-    portfolio, returns = portfolio_and_returns_with_failed_ptf
+    portfolio, _ = portfolio_and_returns_with_failed_ptf
 
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
@@ -542,7 +542,7 @@ def test_mpp_with_full_failed_ptf_methods(
 
 
 def test_portfolio_measure_all_nan(portfolio_and_returns_with_full_failed_ptf, measure):
-    portfolio, returns = portfolio_and_returns_with_full_failed_ptf
+    portfolio, _ = portfolio_and_returns_with_full_failed_ptf
 
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
@@ -550,7 +550,7 @@ def test_portfolio_measure_all_nan(portfolio_and_returns_with_full_failed_ptf, m
 
 
 def test_weight_dict(X, weights, portfolio_and_returns):
-    portfolio, returns = portfolio_and_returns
+    portfolio, _ = portfolio_and_returns
 
     for i in range(len(weights)):
         np.testing.assert_almost_equal(

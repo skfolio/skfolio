@@ -333,7 +333,7 @@ for pred in [pred_mvo_mc, pred_schur_mc]:
 # .. [1] "Schur Complementary Allocation: A Unification of Hierarchical Risk Parity
 #         and Minimum Variance Portfolios". Peter Cotton (2024).
 #
-# .. [2] "Portfolio Optimization, Theory and Application", Chapter 8,
+# .. [2] "Portfolio Optimization: Theory and Application", Chapter 8,
 #         Daniel P. Palomar (2025)
 #
 # .. [3] "Advances in Financial Machine Learning",

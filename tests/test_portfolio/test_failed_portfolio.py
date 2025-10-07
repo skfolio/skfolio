@@ -1,5 +1,4 @@
 import pickle
-import random
 import timeit
 import tracemalloc
 from copy import copy
@@ -19,11 +18,11 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import BaseOptimization
 from skfolio.portfolio._base import _MEASURES
 from skfolio.utils.stats import rand_weights
 from skfolio.utils.tools import args_names
-from skfolio.model_selection import WalkForward, cross_val_predict
 
 
 @pytest.fixture(
@@ -44,11 +43,11 @@ def portfolio(X: pd.DataFrame) -> FailedPortfolio:
 
 
 class CustomOptimization(BaseOptimization):
-    """Simple custom optimizer forcing fit failure to test fallback"""
+    """Dummy optimization that forces a `fit` failure with proba `failure_proba`."""
 
     def __init__(
         self,
-        fail: bool = False,
+        failure_proba: float = 0.5,
         portfolio_params: dict | None = None,
         fallback=None,
         previous_weights=None,
@@ -60,14 +59,15 @@ class CustomOptimization(BaseOptimization):
             raise_on_failure=raise_on_failure,
             previous_weights=previous_weights,
         )
-        self.fail = fail
+        self.failure_proba = failure_proba
 
     def fit(self, X, y=None):
         X = skv.validate_data(self, X)
-        if self.fail or random.random() < 0.5:
+        # Fail with probability equal to `failure_proba`
+        if np.random.rand() < self.failure_proba:
             raise RuntimeError("Forced failure")
         n_assets = X.shape[1]
-        self.weights_ = rand_weights(n_assets, seed=0)
+        self.weights_ = rand_weights(n_assets)
         return self
 
 
@@ -326,9 +326,12 @@ def test_weights_per_observation(portfolio):
 
 
 def test_cross_val_predict(X):
-    walk_forward = WalkForward(test_size=6, train_size=12, freq="WOM-3FRI")
-    model = CustomOptimization(raise_on_failure=False)
-    pred = cross_val_predict(model, X, cv=walk_forward)
+    walk_forward = WalkForward(test_size=1, train_size=12, freq="WOM-3FRI")
+
+    model = CustomOptimization(failure_proba=0.5, raise_on_failure=False)
+
+    with pytest.warns(UserWarning):
+        pred = cross_val_predict(model, X, cv=walk_forward)
 
     assert len(pred.composition) == 20
     assert not np.isnan(pred.composition).all().all()

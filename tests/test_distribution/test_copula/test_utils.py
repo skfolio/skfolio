@@ -58,7 +58,7 @@ def test_empirical_tail_concentration():
 
 def test_empirical_tail_concentration_raise():
     with pytest.raises(
-        ValueError, match="X must be a 2D array with exactly 2 columns."
+        ValueError, match=r"X must be a 2D array with exactly 2 columns."
     ):
         X = np.array(
             [[0.1, 0.2, 0.2], [0.2, 0.25, 0.2], [0.3, 0.35, 0.2], [0.4, 1.5, 0.2]]
@@ -67,13 +67,13 @@ def test_empirical_tail_concentration_raise():
         _ = empirical_tail_concentration(X, quantiles)
 
     with pytest.raises(
-        ValueError, match="X must be pseudo-observation in the interval"
+        ValueError, match=r"X must be pseudo-observation in the interval"
     ):
         X = np.array([[0.1, 0.2], [0.2, 0.25], [0.3, 0.35], [0.4, 1.5]])
         quantiles = np.linspace(0.0, 1.0, 5)
         _ = empirical_tail_concentration(X, quantiles)
 
-    with pytest.raises(ValueError, match="quantiles must be between 0.0 and 1.0."):
+    with pytest.raises(ValueError, match=r"quantiles must be between 0.0 and 1.0."):
         X = np.array([[0.1, 0.2], [0.2, 0.25], [0.3, 0.35], [0.4, 0.5]])
         quantiles = np.linspace(0.0, 1.5, 5)
         _ = empirical_tail_concentration(X, quantiles)
@@ -102,7 +102,7 @@ def test_plot_tail_concentration():
     assert isinstance(fig, go.Figure)
 
     with pytest.raises(
-        ValueError, match="The smoothing parameter must be between 0 and 1.3."
+        ValueError, match=r"The smoothing parameter must be between 0 and 1.3."
     ):
         _ = plot_tail_concentration(
             tail_concentration_dict,

@@ -111,10 +111,10 @@ class StackingOptimization(BaseOptimization, BaseComposition):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
+        optimization raises during `fit`. Alternatively, use `"previous_weights"`
         (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
-        estimator so that `fit` still returns the original instance. For traceability, 
+        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
          and `fallback_chain_` stores each attempt with the associated outcome.
 

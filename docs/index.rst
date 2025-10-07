@@ -22,6 +22,7 @@
     User guide <user_guide/index>
     Examples <auto_examples/index>
     API Reference <api>
+    Enterprise Support <https://skfoliolabs.com/>
 
 
 =======
@@ -33,6 +34,9 @@ top of scikit-learn. It offers a unified interface and tools compatible with
 scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
 
 It is distributed under the open-source 3-Clause BSD license.
+
+**skfolio**  is backed by `Skfolio Labs <https://skfoliolabs.com>`_, which provides enterprise support and SLAs for
+institutions.
 
 .. raw:: html
 
@@ -75,6 +79,13 @@ It is distributed under the open-source 3-Clause BSD license.
         </picture>
     </a>
 
+Important links
+***************
+
+- `Examples <https://skfolio.org/auto_examples/>`_
+- `User Guide <https://skfolio.org/user_guide/>`_
+- `GitHub Repo <https://github.com/skfolio/skfolio>`_
+- `Enterprise Support <https://skfoliolabs.com>`_
 
 Installation
 ************
