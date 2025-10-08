@@ -54,6 +54,9 @@ jobs:
         with:
           version: latest
 
+      - name: Create venv
+        run: uv venv
+
       - name: Install project (dev extras)
         run: uv pip install -e ".[dev]"
 
@@ -97,6 +100,9 @@ jobs:
       - uses: astral-sh/setup-uv@v4
         with:
           version: latest
+
+      - name: Create venv
+        run: uv venv
 
       - name: Install dependencies
         run: |
@@ -146,6 +152,9 @@ jobs:
         with:
           version: latest
 
+      - name: Create venv
+        run: uv venv
+
       - name: Install project (latest deps)
         run: uv pip install -e ".[dev]"
 
@@ -170,6 +179,9 @@ jobs:
       - uses: astral-sh/setup-uv@v4
         with:
           version: latest
+
+      - name: Create venv
+        run: uv venv
 
       - name: Install project (latest deps)
         run: uv pip install -e ".[dev]"
