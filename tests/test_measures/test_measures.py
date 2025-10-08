@@ -26,7 +26,7 @@ def returns_2d():
 
 @pytest.fixture(scope="module")
 def returns_1d_nan():
-    returns_1d_nan = np.array([0.15, 0.1, -0.5, np.nan, np.nan, -0.3, 0.8])
+    returns_1d_nan = np.array([np.nan, 0.1, -0.5, np.nan, np.nan, -0.3, 0.8])
     return returns_1d_nan
 
 
@@ -86,7 +86,7 @@ def sample_weight(request, returns_1d):
         ("1d", True, 0.0010021),
         ("2d", False, [0.0011234, 0.0010841]),
         ("2d", True, [0.0010021, 0.0010231]),
-        ("1d_nan", False, 0.05),
+        ("1d_nan", False, 0.025),
         ("2d_nan", False, [0.05, 0.1071429]),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
@@ -120,7 +120,7 @@ def test_mean_sample_weight(returns):
         ("2d", 0.0, False, [0.0185882, 0.0268155]),
         ("2d", None, True, [0.0185890, 0.0267258]),
         ("2d", 0.0, True, [0.0185672, 0.0266662]),
-        ("1d_nan", None, False, 0.36),
+        ("1d_nan", None, False, 0.425),
         ("all_nan", None, False, np.nan),
         ("all_nan", None, True, np.nan),
     ],
@@ -165,7 +165,7 @@ def test_mean_absolute_deviation_sample_weight(returns, min_acceptable_return):
         ("2d", 0.0, False, [0.0087324, 0.0128657]),
         ("2d", None, True, [0.0092945, 0.0133629]),
         ("2d", 0.0, True, [0.0087826, 0.0128216]),
-        ("1d_nan", None, False, 0.18),
+        ("1d_nan", None, False, 0.2125),
         ("all_nan", None, False, np.nan),
         ("all_nan", None, True, np.nan),
     ],
@@ -210,7 +210,7 @@ def test_first_lower_partial_moment_sample_weight(returns, min_acceptable_return
         ("2d", False, False, [0.0007479707, 0.00151537226]),
         ("2d", True, True, [0.0007406331, 0.0015184352]),
         ("2d", True, False, [0.0007407523, 0.0015186795]),
-        ("1d_nan", False, True, 0.2),
+        ("1d_nan", False, True, 0.246875),
         ("2d_nan", False, True, [0.2, 0.1517346939]),
         ("all_nan", False, True, np.nan),
         ("all_nan", True, True, np.nan),
@@ -249,7 +249,7 @@ def test_variance_sample_weight(returns, biased):
         ("2d", None, True, True, [0.0003650247, 0.0007129245]),
         ("2d", 0.0, False, False, [0.0003480616, 0.000686374]),
         ("2d", 0.0, False, True, [0.0003480198, 0.0006862914]),
-        ("1d_nan", None, False, True, 0.085),
+        ("1d_nan", None, False, True, 0.0953125),
         ("all_nan", None, False, True, np.nan),
         ("all_nan", None, True, True, np.nan),
     ],
@@ -298,7 +298,7 @@ def test_semi_variance_sample_weight(returns, biased, min_acceptable_return):
         ("2d", False, False, [0.0273490, 0.0389277]),
         ("2d", True, True, [0.0272146, 0.0389671]),
         ("2d", True, False, [0.0272168, 0.0389702]),
-        ("1d_nan", False, True, 0.447213595),
+        ("1d_nan", False, True, 0.4968651728),
         ("all_nan", False, True, np.nan),
         ("all_nan", True, True, np.nan),
     ],
@@ -337,7 +337,7 @@ def test_standard_deviation_sample_weight(returns, biased):
         ("2d", None, True, True, [0.0191056, 0.0267006]),
         ("2d", 0.0, False, False, [0.0186564, 0.02619866]),
         ("2d", 0.0, False, True, [0.0186553, 0.0261972]),
-        ("1d_nan", None, False, True, 0.2915475947),
+        ("1d_nan", None, False, True, 0.308727225),
         ("all_nan", None, False, True, np.nan),
         ("all_nan", None, True, True, np.nan),
     ],
@@ -383,7 +383,7 @@ def test_semi_deviation_sample_weight(returns, biased, min_acceptable_return):
         ("1d", True, -1.04409e-05),
         ("2d", False, [-8.0259e-06, 2.02371e-05]),
         ("2d", True, [-1.04409e-05, 2.18454e-05]),
-        ("1d_nan", False, 0.04275),
+        ("1d_nan", False, 0.07171875),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -412,7 +412,7 @@ def test_third_central_moment_sample_weight(returns):
         ("1d", True, -0.5180085),
         ("2d", False, [-0.3924155, 0.3431228]),
         ("2d", True, [-0.5180086, 0.3692041]),
-        ("1d_nan", False, 0.477959530190),
+        ("1d_nan", False, 0.58467838959),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -441,7 +441,7 @@ def test_skew_sample_weight(returns):
         ("1d", True, 1.40494576e-05),
         ("2d", False, [1.47128822e-05, 2.95098431e-05]),
         ("2d", True, [1.40494576e-05, 2.93127320e-05]),
-        ("1d_nan", False, 0.084605),
+        ("1d_nan", False, 0.11197695312),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -470,7 +470,7 @@ def test_fourth_central_moment_sample_weight(returns):
         ("1d", True, 25.6125784),
         ("2d", False, [26.3046784, 12.8538355]),
         ("2d", True, [25.6125784, 12.7134604]),
-        ("1d_nan", False, 2.115125),
+        ("1d_nan", False, 1.83727607755),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -499,7 +499,7 @@ def test_kurtosis_sample_weight(returns):
         ("1d", 0.0, 1.0510848e-05),
         ("2d", None, [1.0675109e-05, 1.1070756e-05]),
         ("2d", 0.0, [1.0510848e-05, 1.0777481e-05]),
-        ("1d_nan", None, 0.0213025),
+        ("1d_nan", None, 0.0217814),
         ("all_nan", None, np.nan),
     ],
     indirect=["returns"],
@@ -596,7 +596,7 @@ def test_cvar_sample_weight(returns):
         ("1d", True, 1.0, 0.95, 2.995102782),
         ("2d", False, 1.0, 0.95, [2.9949848, 2.9954033]),
         ("2d", True, 1.0, 0.95, [2.9951028, 2.9954657]),
-        ("1d_nan", False, 1.0, 0.95, 3.03753703687),
+        ("1d_nan", False, 1.0, 0.95, 3.080244928518),
         ("all_nan", False, 1.0, 0.95, np.nan),
         ("all_nan", True, 1.0, 0.95, np.nan),
     ],
@@ -625,7 +625,7 @@ def test_entropic_risk_measure_sample_weight(returns):
     "returns,expected",
     [
         ("1d", 0.213993692),
-        ("1d_nan", 0.5069314718),
+        ("1d_nan", 0.50804718956),
         ("all_nan", np.nan),
     ],
     indirect=["returns"],
@@ -645,12 +645,10 @@ def test_get_cumulative_returns(returns, expected_ndim, compounded):
 
 def test_get_cumulative_returns_nan(returns_1d_nan):
     res = skm.get_cumulative_returns(returns_1d_nan, compounded=False)
-    np.testing.assert_almost_equal(
-        res, [0.15, 0.25, -0.25, np.nan, np.nan, -0.55, 0.25]
-    )
+    np.testing.assert_almost_equal(res, [np.nan, 0.1, -0.4, np.nan, np.nan, -0.7, 0.1])
     res = skm.get_cumulative_returns(returns_1d_nan, compounded=True)
     np.testing.assert_almost_equal(
-        res, [1.15, 1.265, 0.6325, np.nan, np.nan, 0.44275, 0.79695]
+        res, [np.nan, 1.1, 0.55, np.nan, np.nan, 0.385, 0.693]
     )
 
 
@@ -665,9 +663,11 @@ def test_get_drawdowns(returns, expected_ndim, compounded):
 
 def test_get_drawdowns_nan(returns_1d_nan):
     res = skm.get_drawdowns(returns_1d_nan, compounded=False)
-    np.testing.assert_almost_equal(res, [0.0, 0.0, -0.5, np.nan, np.nan, -0.8, 0.0])
+    np.testing.assert_almost_equal(res, [np.nan, 0.0, -0.5, np.nan, np.nan, -0.8, 0.0])
     res = skm.get_drawdowns(returns_1d_nan, compounded=True)
-    np.testing.assert_almost_equal(res, [0.0, 0.0, -0.5, np.nan, np.nan, -0.65, -0.37])
+    np.testing.assert_almost_equal(
+        res, [np.nan, 0.0, -0.5, np.nan, np.nan, -0.65, -0.37]
+    )
 
 
 @pytest.mark.parametrize(
@@ -716,7 +716,7 @@ def test_max_drawdown(returns, compounded, expected):
         ("1d", True, 0.28518241),
         ("2d", False, [0.2444493, 0.5652300]),
         ("2d", True, [0.2851824, 0.5607065]),
-        ("1d_nan", False, 0.26),
+        ("1d_nan", False, 0.325),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -753,7 +753,7 @@ def test_cdar(returns, compounded, expected):
     [
         ("1d", False, 0.996230976),
         ("1d", True, 0.791260923),
-        ("1d_nan", False, 0.8110903548),
+        ("1d_nan", False, 0.812875503),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -772,7 +772,7 @@ def test_edar(returns, compounded, expected):
         ("1d", True, 0.383078682),
         ("2d", False, [0.360642, 0.7670693]),
         ("2d", True, [0.3830787, 0.6368674]),
-        ("1d_nan", False, 0.421900462),
+        ("1d_nan", False, 0.47169905),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -795,7 +795,7 @@ def test_owa_gmd_weights(n_observations):
     [
         ("1d", 0.0278023),
         ("2d", [0.0278023, 0.0400147]),
-        ("1d_nan", 0.61),
+        ("1d_nan", 0.7166666),
         ("all_nan", np.nan),
     ],
     indirect=["returns"],

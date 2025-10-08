@@ -864,10 +864,14 @@ def get_drawdowns(returns: npt.ArrayLike, compounded: bool = False) -> np.ndarra
         mask = None
         cum_clean = cumulative_returns
 
+    peak = np.maximum.accumulate(cum_clean, axis=0)
+    # Identify -Inf positions due to NaN at the start and replace with baseline
+    peak = np.where(peak == -np.inf, 1.0 if compounded else 0.0, peak)
+
     if compounded:
-        drawdowns = cum_clean / np.maximum.accumulate(cum_clean, axis=0) - 1
+        drawdowns = cum_clean / peak - 1
     else:
-        drawdowns = cum_clean - np.maximum.accumulate(cum_clean, axis=0)
+        drawdowns = cum_clean - peak
 
     if mask is not None:
         drawdowns[mask] = np.nan

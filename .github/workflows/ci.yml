@@ -40,7 +40,7 @@ env:
 # -----------------------------------------------------------------------------
 jobs:
   lint:
-    name: Lint & Format (Linux, Py ${{ env.MAIN_PYTHON }})
+    name: Lint & Format (Linux)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -112,7 +112,7 @@ jobs:
         run: uv run pytest -q --maxfail=1
 
       # Coverage on a single representative job (Py MAIN_PYTHON + latest)
-      - name: Run tests with coverage (Py ${{ env.MAIN_PYTHON }} • latest only)
+      - name: Run tests with coverage (main Python • latest only)
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
         run: uv run pytest -q --maxfail=1 --cov=skfolio --cov-report=xml
 
@@ -126,7 +126,7 @@ jobs:
 # 3) Cross-OS tests
 # -----------------------------------------------------------------------------
   tests-os:
-    name: Cross-OS (${{ matrix.os }} • Py ${{ env.MAIN_PYTHON }} • latest)
+    name: Cross-OS (${{ matrix.os }} • latest)
     runs-on: ${{ matrix.os }}
     needs: lint
     timeout-minutes: 50
