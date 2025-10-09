@@ -150,4 +150,5 @@ junit-results.xml
 # Cursor editor workspace
 .cursor/*
 !.cursor/mcp.json
+!.cursor/rules/
 !.cursor/rules/mcp.mdc
