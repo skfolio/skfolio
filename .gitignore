@@ -148,4 +148,5 @@ sphinx_gallery/tests/tinybuild/tiny_html/
 junit-results.xml
 
 # Cursor editor workspace
-.cursor/
+.cursor/*
+!.cursor/mcp.json
