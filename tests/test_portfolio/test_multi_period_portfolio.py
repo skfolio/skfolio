@@ -562,3 +562,53 @@ def test_weight_dict(X, weights, portfolio_and_returns):
             [portfolio.previous_weights_dict[f"portfolio_{i}"][x] for x in X.columns],
             weights[i - 1] if i > 0 else np.zeros(20),
         )
+
+
+def test_fallback_portfolios_include_failed(prices, periods, weights):
+    # Build three portfolios: one normal without fallback, one normal with fallback,
+    # and one FailedPortfolio with fallback. The failed one must be included.
+    portfolios = []
+
+    # p0: normal, no fallback
+    X0 = prices_to_returns(X=prices[periods[0][0] : periods[0][1]])
+    p0 = Portfolio(X=X0, weights=weights[0], name="p0")
+    portfolios.append(p0)
+
+    # p1: normal, with fallback_chain
+    X1 = prices_to_returns(X=prices[periods[1][0] : periods[1][1]])
+    p1 = Portfolio(
+        X=X1,
+        weights=weights[1],
+        name="p1",
+        fallback_chain=[("EqualWeighted()", "success")],
+    )
+    portfolios.append(p1)
+
+    # p2: failed, with fallback_chain
+    X2 = prices_to_returns(X=prices[periods[2][0] : periods[2][1]])
+    p2 = FailedPortfolio(
+        X=X2,
+        name="p2_failed",
+        fallback_chain=[
+            ("MeanVariance()", "solver_error"),
+            ("EqualWeighted()", "success"),
+        ],
+    )
+    portfolios.append(p2)
+
+    mpp = MultiPeriodPortfolio(portfolios=portfolios, name="mpp_fallback")
+
+    # failed_portfolios should only contain the FailedPortfolio
+    assert mpp.n_failed_portfolios == 1
+    assert mpp.failed_portfolios == [p2]
+
+    # fallback_portfolios should include both p1 and p2 (including the failed one)
+    assert mpp.n_fallback_portfolios == 2
+    fps = mpp.fallback_portfolios
+    assert p1 in fps and p2 in fps
+    assert len(fps) == 2
+
+    # Summary should reflect counts
+    summary = mpp.summary(formatted=False)
+    assert summary.loc["Number of Failed Portfolios"] == 1
+    assert summary.loc["Number of Fallback Portfolios"] == 2

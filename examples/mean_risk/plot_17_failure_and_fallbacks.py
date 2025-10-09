@@ -19,13 +19,14 @@ can use `"previous_weights"` to reuse the last valid allocation.
 Each attempt is recorded in `fallback_chain_`, and the successful estimator is available
 through `fallback_`.
 
-This mechanism is critical in automated production, where optimization failures
-shouldn't interrupt pipelines and where you need reproducibility and auditability.
-It can also be used to loosen optimization constraints gradually.
+This mechanism is essential in automated pipelines, ensuring that optimization failures
+never halt production runs while preserving full reproducibility and traceability.
+Beyond safeguarding workflows, it can also be used to deliberately relax constraints in
+a controlled manner when strict convergence cannot be achieved.
 
 Raise on Failure
 ================
-In research, cross-validation and hyperparameter tuning (e.g., walk-forward, multiple
+In research, cross-validation and hyperparameter tuning (e.g. walk-forward, multiple
 randomized cross-validation), it's often useful to let all runs complete while keeping
 a full record of failures instead of stopping on the first failed rebalancing.
 
@@ -44,8 +45,7 @@ a full record of failures instead of stopping on the first failed rebalancing.
 # Data and Setup
 # ==============
 # Load the S&P 500 :ref:`dataset <datasets>` and split into train/test.
-import numpy as np
-from numpy.typing import ArrayLike
+import pandas as pd
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import validate_data
@@ -176,14 +176,16 @@ print(pred.summary().iloc[-4:])
 # ================
 # In this section, we show how to handle optimization failures using the
 # `raise_on_failure` parameter.
-# As an example, we create a custom optimization that fails randomly
-# with probability `failure_proba`:
+# As an example, we create a custom optimization that intentionally fails during `fit`
+# when the first date of the input window falls on an even day of the month, or when
+# `always_fail=True`.
 class CustomOptimization(BaseOptimization):
-    """Dummy optimization that forces a `fit` failure with proba `failure_proba`."""
+    """Dummy optimization that intentionally fails during `fit` when the first
+    date of the input window is an even day-of-month, or when `always_fail=True`."""
 
     def __init__(
         self,
-        failure_proba: float = 0.5,
+        always_fail: bool = False,
         portfolio_params: dict | None = None,
         fallback: Fallback = None,
         previous_weights: MultiInput | None = None,
@@ -195,13 +197,16 @@ class CustomOptimization(BaseOptimization):
             raise_on_failure=raise_on_failure,
             previous_weights=previous_weights,
         )
-        self.failure_proba = failure_proba
+        self.always_fail = always_fail
 
-    def fit(self, X: ArrayLike, y=None):
-        X = validate_data(self, X)
-        # Fail with probability equal to `failure_proba`
-        if np.random.rand() < self.failure_proba:
+    def fit(self, X: pd.DataFrame, y=None):
+        validate_data(self, X)
+        # Fail when first observation date has an even day-of-month, or always.
+        if self.always_fail:
             raise RuntimeError("Forced failure")
+        first_day = X.index[0].day
+        if first_day % 2 == 0:
+            raise RuntimeError("Forced failure (even-start window)")
         n_assets = X.shape[1]
         self.weights_ = rand_weights(n_assets)
         return self
@@ -209,7 +214,7 @@ class CustomOptimization(BaseOptimization):
 
 # %%
 # By default, as with all scikit-learn estimators, failures raise an error during `fit`:
-model = CustomOptimization(failure_proba=1.0)
+model = CustomOptimization(always_fail=True)
 try:
     model.fit(X_train)
 except RuntimeError as err:
@@ -219,7 +224,7 @@ except RuntimeError as err:
 # %%
 # By setting `raise_on_failure=False`, a warning is emitted instead of raising an error,
 # and `weights_` are set to `None`, with the error message stored in `error_`:
-model = CustomOptimization(failure_proba=1.0, raise_on_failure=False)
+model = CustomOptimization(always_fail=True, raise_on_failure=False)
 model.fit(X_train)
 print(model.weights_)
 print(model.error_)
@@ -233,10 +238,10 @@ print(portfolio.optimization_error)
 
 # %%
 # Setting `raise_on_failure=False` is useful for cross-validation and hyperparameter
-# tuning, as it allows all runs to complete without stopping at the first
-# rebalancing failure. Let's instantiate our custom optimization with a 50% failure rate
-# and run a walk-forward analysis:
-model = CustomOptimization(failure_proba=0.5, raise_on_failure=False)
+# tuning as it allows all runs to complete without stopping at the first rebalancing
+# failure. Let's instantiate our custom optimization and run a walk-forward analysis
+# where failures occur deterministically on even-start windows:
+model = CustomOptimization(raise_on_failure=False)
 pred = cross_val_predict(model, X, cv=walk_forward)
 
 
@@ -262,3 +267,15 @@ print(pred.summary())
 # periods:
 fig = pred.plot_cumulative_returns()
 show(fig)
+
+# %%
+# |
+# Finally, let's inspect the first failed portfolio:
+failed_ptf = pred.failed_portfolios[0]
+print(failed_ptf.optimization_error)
+
+# %%
+# To replay the optimization on the failed period, we can run:
+
+# model.fit(failed_ptf.X)
+

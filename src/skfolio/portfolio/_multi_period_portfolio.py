@@ -552,14 +552,28 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     # Classic property
     @property
+    def failed_portfolios(self) -> list[FailedPortfolio]:
+        """Return the list of `FailedPortfolio` in the multi-period portfolio."""
+        return [x for x in self if isinstance(x, FailedPortfolio)]
+
+    @property
+    def fallback_portfolios(self) -> list[Portfolio]:
+        """
+        Return the list of portfolios in the multi-period portfolio that used a
+        fallback (i.e., have a non-None `fallback_chain`). This includes
+        `FailedPortfolio` instances when fallbacks were attempted.
+        """
+        return [x for x in self if getattr(x, "fallback_chain", None) is not None]
+
+    @property
     def n_failed_portfolios(self) -> int:
-        """Number of `FailedPortfolio` in the population."""
-        return sum(isinstance(x, FailedPortfolio) for x in self)
+        """Number of `FailedPortfolio` in the multi-period portfolio."""
+        return len(self.failed_portfolios)
 
     @property
     def n_fallback_portfolios(self) -> int:
-        """Number of Portfolios in the population that used fallback optimization."""
-        return sum(1 for x in self if getattr(x, "fallback_chain", None) is not None)
+        """Number of portfolios in the multi-period portfolio with a fallback."""
+        return len(self.fallback_portfolios)
 
     @property
     def assets(self) -> list:

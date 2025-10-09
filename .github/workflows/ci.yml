@@ -107,7 +107,8 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.deps }}" = "min" ]; then
-            uv pip install -e ".[dev]" --resolution=lowest-direct
+            uv pip install -e . --resolution=lowest-direct
+            uv pip install -e ".[dev]"
           else
             uv pip install -e ".[dev]"
           fi
@@ -164,27 +165,27 @@ jobs:
 # -----------------------------------------------------------------------------
 # 4) Canary on next Python
 # -----------------------------------------------------------------------------
-  canary:
-    name: Canary (Linux • Py 3.14-dev • latest)
-    runs-on: ubuntu-latest
-    continue-on-error: true   # informational only
-    timeout-minutes: 50
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.14-dev"
-
-      - uses: astral-sh/setup-uv@v4
-        with:
-          version: latest
-
-      - name: Create venv
-        run: uv venv
-
-      - name: Install project (latest deps)
-        run: uv pip install -e ".[dev]"
-
-      - name: Run tests
-        run: uv run pytest -q --maxfail=1
+#  canary:
+#    name: Canary (Linux • Py 3.15-dev • latest)
+#    runs-on: ubuntu-latest
+#    continue-on-error: true   # informational only
+#    timeout-minutes: 50
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - uses: actions/setup-python@v5
+#        with:
+#          python-version: "3.15-dev"
+#
+#      - uses: astral-sh/setup-uv@v4
+#        with:
+#          version: latest
+#
+#      - name: Create venv
+#        run: uv venv
+#
+#      - name: Install project (latest deps)
+#        run: uv pip install -e ".[dev]"
+#
+#      - name: Run tests
+#        run: uv run pytest -q --maxfail=1
