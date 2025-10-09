@@ -55,7 +55,7 @@ Ready to contribute? Here's how to set yourself up for local development.
 
    or using **uv**:
    ```shell
-   $ uv pip install -r pyproject.toml --editable . --extra dev
+   $ uv pip install --editable ".[dev]"
    ```
 
 4. Create a branch for local development:
@@ -105,7 +105,7 @@ Ready to contribute? Here's how to set yourself up for local development.
    ```
    or using **uv**:
    ```shell
-   $ uv pip install -r pyproject.toml --editable . --extra docs
+   $ uv pip install --editable ".[docs]"
    $ cd docs
    $ uv run sphinx-build . _build
    ```

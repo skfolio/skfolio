@@ -120,7 +120,7 @@ It supports the following parameters:
 
     * Weight Constraints
     * Budget Constraints
-    * Group Constrains
+    * Group Constraints
     * Transaction Costs
     * Management Fees
     * L1 and L2 Regularization
@@ -216,9 +216,9 @@ This example is **purposely complex** to demonstrate how multiple estimators can
 combined.
 
 The model below is a Maximum Sharpe Ratio optimization using a Factor Model for the
-estimation of the **assets** expected reruns and covariance matrix. A Black & Litterman
-model is used for the estimation of the **factors** expected reruns and covariance matrix,
-incorporating the analyst' views on the factors. Finally, the Black & Litterman prior
+estimation of the **assets** expected returns and covariance matrix. A Black & Litterman
+model is used for the estimation of the **factors** expected returns and covariance matrix,
+incorporating the analysts' views on the factors. Finally, the Black & Litterman prior
 expected returns are estimated using an equal-weighted market equilibrium with a risk
 aversion of 2 and a denoised prior covariance matrix:
 
@@ -510,6 +510,7 @@ by Marcos Lopez de Prado.
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
 in the dendrogram, minimizing the distance between leafs.
+in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
@@ -599,7 +600,7 @@ during the top-down recursive division instead of bisecting it.
 It supports all :ref:`prior estimators <prior>` and :ref:`risk measures <measures_ref>`
 as well as weight constraints.
 
-It also supports all :ref:`distance estimator <distance>` through the
+It also supports all :ref:`distance estimators <distance>` through the
 `distance_estimator` parameter. It fits a distance model for the
 estimation of the codependence and the distance matrix used to compute the linkage
 matrix:
@@ -650,7 +651,7 @@ The :class:`NestedClustersOptimization` (NCO) is a portfolio optimization method
 developed by Marcos Lopez de Prado.
 
 It uses a distance matrix to compute clusters using a clustering algorithm (
-Hierarchical Tree Clustering, KMeans, etc..). For each cluster, the inner-cluster
+Hierarchical Tree Clustering, KMeans, etc.). For each cluster, the inner-cluster
 weights are computed by fitting the inner-estimator on each cluster using the whole
 training data. Then the outer-cluster weights are computed by training the
 outer-estimator using out-of-sample estimates of the inner-estimators with
@@ -667,7 +668,7 @@ inner-weights and outer-weights.
     To avoid data leakage at the outer-estimator, we use out-of-sample estimates to
     fit the outer estimator.
 
-It supports all :ref:`distance estimator <distance>`
+It supports all :ref:`distance estimators <distance>`
 and :ref:`clustering estimator <cluster>` (both `skfolio` and `sklearn`)
 
 **Example:**
@@ -675,7 +676,7 @@ and :ref:`clustering estimator <cluster>` (both `skfolio` and `sklearn`)
 Nested Clusters Optimization with KMeans as the clustering algorithm, Kendall Distance
 as the distance estimator, Minimum Semi-Variance as the inner estimator, and CVaR Risk
 Parity as the outer (meta) estimator trained on the out-of-sample estimates from the
-KFolds cross-validation and run with parallelization:
+    KFold cross-validation and run with parallelization:
 
 .. code-block:: python
 
@@ -718,14 +719,14 @@ the `quantile` and `quantile_measure` parameters.
 Stacking Optimization
 *********************
 
-:class:`StackingOptimization` is an ensemble method that consists in stacking the output
+:class:`StackingOptimization` is an ensemble method that consists of stacking the outputs
 of individual portfolio optimizations with a final portfolio optimization.
 
-The weights are the dot-product of individual optimizations weights with the final
-optimization weights.
+The final weights are the dot product of the individual optimizations' weights and the final
+optimization's weights.
 
-Stacking allows to use the strength of each individual portfolio optimization by
-using their output as input of a final portfolio optimization.
+Stacking leverages the strengths of each individual portfolio optimization by
+using their outputs as inputs to a final portfolio optimization.
 
 To avoid data leakage, out-of-sample estimates are used to fit the outer
 optimization.
@@ -772,3 +773,104 @@ The `cv` parameter can also be a combinatorial cross-validation, such as
 collection of multiple paths instead of one single path. The selected out-of-sample path
 among this collection of paths is chosen according to the `quantile` and
 `quantile_measure` parameters.
+
+Fallbacks
+*********
+
+Optimization can sometimes fail during a given rebalancing. For example, a convex
+mean-variance problem with strict risk or sector constraints may become infeasible on
+specific dates.
+
+All optimization estimators accept a `fallback` parameter that can be either a single
+estimator or a list of estimators. When the primary optimization raises during `fit`,
+the models in `fallback` are tried in order until one succeeds. The fitted weights and
+core fitted attributes are copied back to the original estimator so you can keep a
+single reference in your workflow. Fallbacks can also be set to the string
+`previous_weights` to reuse the latest available allocation when the primary fit fails.
+
+Each attempt is recorded in `fallback_chain_`, and the successful estimator is available
+through `fallback_`.
+
+This mechanism is critical in automated production, where optimization failures
+shouldn't interrupt pipelines and where you need reproducibility and auditability.
+It can also be used to loosen optimization constraints gradually.
+
+Example: The primary model is a minimum-variance optimization made intentionally
+infeasible (the assets' minimum weights are set to 10%, which exceeds the feasible
+upper bound of 1/n_assets = 5%). As a fallback, we provide a feasible minimum-variance
+model with a 2% minimum weight constraint:
+
+.. code-block:: python
+
+    model = MeanRisk(
+    min_weights=0.1,  # intentionally infeasible
+    fallback=MeanRisk(min_weights=0.02),  # feasible fallback
+    )
+    model.fit(X_train)
+    print(model.weights_)
+
+    # Let's retrieve the fitted fallback that produced the final result:
+    print(model.fallback_)
+    # Let's display the sequence of attempts and their outcomes:
+    print(model.fallback_chain_)
+    # The fallback audit trail is also propagated to the predicted portfolio:
+    portfolio = model.predict(X_test)
+    assert portfolio.fallback_chain == model.fallback_chain_
+
+When calling `predict`, the selected fallback and the full attempt log are propagated
+to the resulting portfolio via `fallback_chain`.
+
+
+For a step-by-step tutorial and more details, see
+:ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+
+Failure Handling
+****************
+In research, cross-validation and hyperparameter tuning (e.g., walk-forward, multiple
+randomized cross-validation), it's often useful to let all runs complete while keeping
+a full record of failures instead of stopping on the first failed rebalancing.
+
+The behavior on optimization failure is controlled by the `raise_on_failure`
+parameter.
+
+- If `raise_on_failure=True` (default): any error raised by the primary estimator is
+  re-raised after fallbacks are exhausted. No `weights_` are set, and calling
+  `predict` before a successful `fit` raises a `NotFittedError`.
+- If `raise_on_failure=False`: errors are not raised. Instead, a warning is
+  emitted, `weights_` is set to `None`, and `predict` returns a
+  :class:`~skfolio.portfolio.FailedPortfolio` that carries diagnostics.
+
+Diagnostics are exposed via:
+
+- `error_`: the stringified error of the failed fit.
+- `fallback_chain_`: a sequence of attempts with outcomes (`"success"` or the
+  error message), starting from the primary estimator.
+
+Example: proceed without raising and retrieve failure diagnostics
+
+.. code-block:: python
+
+    from skfolio import RiskMeasure
+    from skfolio.optimization import MeanRisk, ObjectiveFunction
+
+    # Configure an intentionally infeasible problem
+    model = MeanRisk(
+        min_weights=1.0,
+        raise_on_failure=False,  # do not raise; collect diagnostics instead
+    )
+
+    model.fit(X_train)  # does not raise; weights_ is None on failure
+    print(model.error_)          # stringified error message
+    print(model.fallback_chain_) # attempts and outcomes
+
+    ptf = model.predict(X_test)  # returns a FailedPortfolio sentinel
+    print(type(ptf).__name__)    # "FailedPortfolio"
+    print(ptf.optimization_error)
+    print(ptf.fallback_chain)
+
+
+For a complete tutorial illustrating failure handling and fallbacks, see
+:ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
+

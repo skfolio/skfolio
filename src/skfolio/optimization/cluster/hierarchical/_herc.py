@@ -5,6 +5,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Weight constraints is a novel implementation, see docstring for more details.
 
+from __future__ import annotations
+
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -225,12 +227,8 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         (asset name/asset previous weight) and the input `X` of the `fit` method must
         be a DataFrame with the asset names in columns.
         The default (`None`) means no previous weights.
-
-    portfolio_params :  dict, optional
-        Portfolio parameters passed to the portfolio evaluated by the `predict` and
-        `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
-        optimization model and passed to the portfolio.
+        Additionally, when `fallback="previous_weights"`, failures will fall back to
+        these weights if provided.
 
     solver : str, default="CLARABEL"
         The solver used for the weights constraints optimization. The default is
@@ -244,6 +242,30 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         The default (`None`) is to use the CVXPY default.
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+
+    portfolio_params : dict, optional
+        Portfolio parameters forwarded to the resulting `Portfolio` in `predict`.
+        If not provided and if available on the estimator, the following
+        attributes are propagated to the portfolio by default: `name`,
+        `transaction_costs`, `management_fees`, `previous_weights` and `risk_free_rate`.
+
+    fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
+        Fallback estimator or a list of estimators to try, in order, when the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` 
+        (alone or in a list) to fall back to the estimator's `previous_weights`.
+        When a fallback succeeds, its fitted `weights_` are copied back to the primary 
+        estimator so that `fit` still returns the original instance. For traceability, 
+        `fallback_` stores the successful estimator (or the string `"previous_weights"`)
+         and `fallback_chain_` stores each attempt with the associated outcome.
+
+    raise_on_failure : bool, default=True
+        Controls error handling when fitting fails.
+        If True, any failure during `fit` is raised immediately, no `weights_` are
+        set and subsequent calls to `predict` will raise a `NotFittedError`.
+        If False, errors are not raised; instead, a warning is emitted, `weights_`
+        is set to `None` and subsequent calls to `predict` will return a
+        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
+        after all fallbacks have been exhausted.
 
     Attributes
     ----------
@@ -262,6 +284,27 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has asset names that are all strings.
+
+    fallback_ : BaseOptimization | "previous_weights" | None
+        The fallback estimator instance, or the string `"previous_weights"`, that
+        produced the final result. `None` if no fallback was used.
+
+    fallback_chain_ : list[tuple[str, str]] | None
+        Sequence describing the optimization fallback attempts. Each element is a
+        pair `(estimator_repr, outcome)` where `estimator_repr` is the string
+        representation of the primary estimator or a fallback (e.g. `"EqualWeighted()"`,
+        `"previous_weights"`), and `outcome` is `"success"` if that step produced
+        a valid solution, otherwise the stringified error message. For successful
+        fits without any fallback, this is `None`.
+
+    error_ : str | list[str] | None
+        Captured error message(s) when `fit` fails. For multi-portfolio outputs
+        (`weights_` is 2D), this is a list aligned with portfolios.
+
+    Notes
+    -----
+    All estimators should specify all parameters as explicit keyword arguments in
+    `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
 
     References
     ----------
@@ -294,6 +337,8 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
         portfolio_params: dict | None = None,
+        fallback: skt.Fallback = None,
+        raise_on_failure: bool = True,
     ):
         super().__init__(
             risk_measure=risk_measure,
@@ -306,13 +351,15 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
             management_fees=management_fees,
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
+            fallback=fallback,
+            raise_on_failure=raise_on_failure,
         )
         self.solver = solver
         self.solver_params = solver_params
 
     def fit(
         self, X: npt.ArrayLike, y: None = None, **fit_params
-    ) -> "HierarchicalEqualRiskContribution":
+    ) -> HierarchicalEqualRiskContribution:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 
         Parameters

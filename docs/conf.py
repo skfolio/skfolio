@@ -318,6 +318,8 @@ extensions = [
     "sphinx_last_updated_by_git",
 ]
 
+templates_path = ["_templates"]
+
 # Produce `plot::` directives for examples that contain `import matplotlib` or
 # `from matplotlib import`.
 numpydoc_use_plots = True

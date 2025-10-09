@@ -7,6 +7,8 @@
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -178,12 +180,32 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         (asset name/asset previous weight) and the input `X` of the `fit` method must
         be a DataFrame with the asset names in columns.
         The default (`None`) means no previous weights.
+        Additionally, when `fallback="previous_weights"`, failures will fall back to
+        these weights if provided.
 
-    portfolio_params :  dict, optional
-        Portfolio parameters passed to the portfolio evaluated by the `predict` and
-        `score` methods. If not provided, the `name`, `transaction_costs`,
-        `management_fees`, `previous_weights` and `risk_free_rate` are copied from the
-        optimization model and passed to the portfolio.
+    portfolio_params : dict, optional
+        Portfolio parameters forwarded to the resulting `Portfolio` in `predict`.
+        If not provided and if available on the estimator, the following
+        attributes are propagated to the portfolio by default: `name`,
+        `transaction_costs`, `management_fees`, `previous_weights` and `risk_free_rate`.
+
+    fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
+        Fallback estimator or a list of estimators to try, in order, when the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"`
+        (alone or in a list) to fall back to the estimator's `previous_weights`.
+        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        estimator so that `fit` still returns the original instance. For traceability,
+        `fallback_` stores the successful estimator (or the string `"previous_weights"`)
+         and `fallback_chain_` stores each attempt with the associated outcome.
+
+    raise_on_failure : bool, default=True
+        Controls error handling when fitting fails.
+        If True, any failure during `fit` is raised immediately, no `weights_` are
+        set and subsequent calls to `predict` will raise a `NotFittedError`.
+        If False, errors are not raised; instead, a warning is emitted, `weights_`
+        is set to `None` and subsequent calls to `predict` will return a
+        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
+        after all fallbacks have been exhausted.
 
     Attributes
     ----------
@@ -205,13 +227,32 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
        Names of features seen during `fit`. Defined only when `X`
        has feature names that are all strings.
+
+    fallback_ : BaseOptimization | "previous_weights" | None
+        The fallback estimator instance, or the string `"previous_weights"`, that
+        produced the final result. `None` if no fallback was used.
+
+    fallback_chain_ : list[tuple[str, str]] | None
+        Sequence describing the optimization fallback attempts. Each element is a
+        pair `(estimator_repr, outcome)` where `estimator_repr` is the string
+        representation of the primary estimator or a fallback (e.g. `"EqualWeighted()"`,
+        `"previous_weights"`), and `outcome` is `"success"` if that step produced
+        a valid solution, otherwise the stringified error message. For successful
+        fits without any fallback, this is `None`.
+
+    error_ : str | list[str] | None
+        Captured error message(s) when `fit` fails. For multi-portfolio outputs
+        (`weights_` is 2D), this is a list aligned with portfolios.
+
+    Notes
+    -----
+    All estimators should specify all parameters as explicit keyword arguments in
+    `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
     """
 
     prior_estimator_: BasePrior
     distance_estimator_: BaseDistance
     hierarchical_clustering_estimator_: HierarchicalClustering
-    n_features_in_: int
-    feature_names_in_: np.ndarray
 
     @abstractmethod
     def __init__(
@@ -226,8 +267,15 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
         portfolio_params: dict | None = None,
+        fallback: skt.Fallback = None,
+        raise_on_failure: bool = True,
     ):
-        super().__init__(portfolio_params=portfolio_params)
+        super().__init__(
+            portfolio_params=portfolio_params,
+            fallback=fallback,
+            previous_weights=previous_weights,
+            raise_on_failure=raise_on_failure,
+        )
         self.risk_measure = risk_measure
         self.prior_estimator = prior_estimator
         self.distance_estimator = distance_estimator
@@ -236,7 +284,6 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         self.max_weights = max_weights
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
-        self.previous_weights = previous_weights
         self._seriated = False
 
     def _clean_input(

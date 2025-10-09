@@ -169,21 +169,12 @@ for portfolio in pred1:
     pred2.append(new_portfolio)
 
 # %%
-# Finally, we train and test the model with TC. Note that we cannot use the
-# `cross_val_predict` function anymore because it uses parallelization and cannot handle
-# the `previous_weights` dependency between folds:
-pred3 = MultiPeriodPortfolio(name="pred3")
-
+# Finally, we train and test the model with TC.
+# `cross_val_predict` automatically handles the `previous_weights` dependency
+# between consecutive folds by propagating weights from one fold to the next.
 model.set_params(transaction_costs=transaction_costs)
-previous_weights = None
-for train, test in cv.split(X):
-    X_train = X.take(train)
-    X_test = X.take(test)
-    model.set_params(previous_weights=previous_weights)
-    model.fit(X_train)
-    portfolio = model.predict(X_test)
-    pred3.append(portfolio)
-    previous_weights = model.weights_
+pred3 = cross_val_predict(model, X, cv=cv)
+pred3.name = "pred3"
 
 # %%
 # We visualize the results by plotting the cumulative returns of the successive test

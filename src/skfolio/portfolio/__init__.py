@@ -7,7 +7,8 @@ is the dot product of the assets weights with the assets returns and
 """
 
 from skfolio.portfolio._base import BasePortfolio
+from skfolio.portfolio._failed_portfolio import FailedPortfolio
 from skfolio.portfolio._multi_period_portfolio import MultiPeriodPortfolio
 from skfolio.portfolio._portfolio import Portfolio
 
-__all__ = ["BasePortfolio", "MultiPeriodPortfolio", "Portfolio"]
+__all__ = ["BasePortfolio", "FailedPortfolio", "MultiPeriodPortfolio", "Portfolio"]

@@ -126,6 +126,7 @@ Classes
     :template: class.rst
 
     portfolio.Portfolio
+    portfolio.FailedPortfolio
     portfolio.MultiPeriodPortfolio
 
 
@@ -149,6 +150,26 @@ Classes
 
     population.Population
 
+
+.. _optimization_base_ref:
+
+:mod:`skfolio.optimization.base`: Base Optimization Estimator
+=============================================================
+
+.. automodule:: skfolio.optimization
+   :no-members:
+   :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    optimization.BaseOptimization
 
 .. _optimization_naive_ref:
 

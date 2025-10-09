@@ -12,7 +12,12 @@ from skfolio.measures import (
     RiskMeasure,
 )
 from skfolio.population import Population
-from skfolio.portfolio import BasePortfolio, MultiPeriodPortfolio, Portfolio
+from skfolio.portfolio import (
+    BasePortfolio,
+    FailedPortfolio,
+    MultiPeriodPortfolio,
+    Portfolio,
+)
 
 __version__ = importlib.metadata.version("skfolio")
 
@@ -20,6 +25,7 @@ __all__ = [
     "BaseMeasure",
     "BasePortfolio",
     "ExtraRiskMeasure",
+    "FailedPortfolio",
     "MultiPeriodPortfolio",
     "PerfMeasure",
     "Population",

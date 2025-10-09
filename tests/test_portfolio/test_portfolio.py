@@ -250,6 +250,8 @@ def test_portfolio_methods(X, weights):
     assert portfolio.get_weight(asset=portfolio.nonzero_assets[5])
     portfolio.annualized_factor = 252
     assert isinstance(portfolio.summary(), pd.Series)
+    assert isinstance(portfolio.weights_dict, dict)
+    assert isinstance(portfolio.previous_weights_dict, dict)
 
 
 def test_portfolio_magic_methods(X, weights):
@@ -315,6 +317,9 @@ def test_portfolio_metrics(portfolio, measure):
     m = getattr(portfolio, measure.value)
     assert isinstance(m, float)
     assert not np.isnan(m)
+
+
+def test_portfolio_metrics_2(portfolio, measure):
     assert portfolio.sric
     assert portfolio.skew
     assert portfolio.kurtosis
@@ -334,8 +339,7 @@ def test_portfolio_diversification(portfolio):
     np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
-def test_portfolio_slots(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_slots(portfolio):
     for attr in portfolio._slots():
         if attr[0] == "_":
             try:
@@ -345,16 +349,14 @@ def test_portfolio_slots(X, weights):
         getattr(portfolio, attr)
 
 
-def test_copy(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_copy(portfolio):
     with pytest.raises(AttributeError):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
 
 
-def test_portfolio_cache(X, weights, measure):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_cache(portfolio, measure):
     # time for accessing cached attributes
     n = int(1e5)
     ref = timeit.timeit(lambda: portfolio.name, number=n) / n
@@ -368,8 +370,7 @@ def test_portfolio_cache(X, weights, measure):
     assert ref > cached_access_time / 10
 
 
-def test_portfolio_clear_cache(X, weights, measure):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=1)
+def test_portfolio_clear_cache(portfolio, measure):
     if measure.is_ratio:
         r = measure.linked_risk_measure
     else:
@@ -402,23 +403,20 @@ def test_portfolio_clear_cache(X, weights, measure):
             assert getattr(portfolio, measure.value) == portfolio.mean / new_m
 
 
-def test_portfolio_read_only(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_read_only(portfolio):
     for attr in Portfolio._read_only_attrs:
-        try:
+        with pytest.raises(
+            AttributeError,
+            match=f"can't set attribute '{attr}' because it is read-only",
+        ):
             setattr(portfolio, attr, 0)
-            raise
-        except AttributeError as e:
-            assert str(e) == f"can't set attribute '{attr}' because it is read-only"
 
 
-def test_portfolio_delete_attr(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
-    try:
+def test_portfolio_delete_attr(portfolio):
+    with pytest.raises(
+        AttributeError, match="`Portfolio` object has no attribute 'dummy'"
+    ):
         delattr(portfolio, "dummy")
-        raise
-    except AttributeError as e:
-        assert str(e) == "`Portfolio` object has no attribute 'dummy'"
 
 
 def test_portfolio_rolling_measure(X, weights):
@@ -452,9 +450,7 @@ def test_portfolio_variance_from_assets(X, weights):
     )
 
 
-def test_portfolio_plot_cumulative_returns(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
-
+def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
     with pytest.raises(ValueError):
@@ -465,8 +461,7 @@ def test_portfolio_plot_cumulative_returns(X, weights):
     assert portfolio.plot_cumulative_returns(log_scale=True)
 
 
-def test_portfolio_plot_drawdowns(X, weights):
-    portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
+def test_portfolio_plot_drawdowns(portfolio):
     assert portfolio.plot_drawdowns()
     portfolio.compounded = True
     assert portfolio.plot_drawdowns()
@@ -520,3 +515,13 @@ def test_sample_weight_error(portfolio, sample_weight):
 
     with pytest.raises(ValueError, match="sample_weight must be a 1D array"):
         portfolio.sample_weight = [[1]]
+
+
+def test_weight_dict(X, weights):
+    portfolio = Portfolio(X=X, weights=weights, previous_weights=np.arange(20))
+    np.testing.assert_almost_equal(
+        [portfolio.weights_dict[x] for x in X.columns], weights
+    )
+    np.testing.assert_almost_equal(
+        [portfolio.previous_weights_dict[x] for x in X.columns], np.arange(20)
+    )

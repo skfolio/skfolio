@@ -5,6 +5,7 @@ import sklearn.model_selection as sks
 from sklearn import clone, config_context
 
 from skfolio import (
+    FailedPortfolio,
     MultiPeriodPortfolio,
     Population,
     Portfolio,
@@ -13,7 +14,11 @@ from skfolio import (
 )
 from skfolio.model_selection import cross_val_predict
 from skfolio.moments import EmpiricalMu, ImpliedCovariance
-from skfolio.optimization import MeanRisk, ObjectiveFunction
+from skfolio.optimization import (
+    EqualWeighted,
+    MeanRisk,
+    ObjectiveFunction,
+)
 from skfolio.optimization.convex._mean_risk import _optimal_homogenization_factor
 from skfolio.prior import (
     BlackLitterman,
@@ -1630,3 +1635,187 @@ def test_predict_with_distribution(X):
     ptf2 = model.predict(dist)
     np.testing.assert_almost_equal(ptf1.returns, ptf2.returns)
     np.testing.assert_array_equal(ptf1.assets, ptf2.assets)
+
+
+def test_fallback(X):
+    model = MeanRisk()
+    model.fit(X)
+
+    assert hasattr(model, "weights_")
+    assert np.isclose(model.weights_.sum(), 1.0)
+    assert model.fallback_ is None
+    assert model.fallback_chain_ is None
+    assert model.error_ is None
+    assert model.n_features_in_ == 20
+
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(min_weights=1.0)
+
+    with pytest.raises(cp.error.SolverError):
+        model.fit(X)
+
+    model = MeanRisk(
+        min_weights=1.0,
+        fallback=MeanRisk(min_weights=0.01),
+    )
+    model.fit(X)
+
+    assert hasattr(model, "weights_")
+    assert np.isclose(model.weights_.sum(), 1.0)
+    assert isinstance(model.fallback_, MeanRisk)
+    assert model.fallback_chain_ == [
+        (
+            "MeanRisk(fallback=MeanRisk(min_weights=0.01), min_weights=1.0)",
+            "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+        ),
+        ("MeanRisk(min_weights=0.01)", "success"),
+    ]
+    assert model.error_ is None
+    assert model.n_features_in_ == 20
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    ptf = model.predict(X)
+    assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+    assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_raise_on_failure(X):
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(min_weights=1.0, raise_on_failure=False)
+
+    with pytest.warns(UserWarning):
+        model.fit(X)
+
+    assert hasattr(model, "weights_")
+    assert model.weights_ is None
+    assert model.fallback_ is None
+    assert model.fallback_chain_ is None
+    assert (
+        model.error_
+        == "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+    )
+    assert model.n_features_in_ == 20
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    ptf = model.predict(X)
+    assert isinstance(ptf, FailedPortfolio)
+    assert ptf.optimization_error == model.error_
+    assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_raise_on_failure_multi(X):
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(min_return=[0.001, 0.002, 0.003], raise_on_failure=False)
+
+    with pytest.warns(UserWarning):
+        model.fit(X)
+
+    assert model.weights_.shape == (3, 20)
+    assert not np.isnan(model.weights_[0:2]).any()
+    assert np.isnan(model.weights_[2]).all()
+    assert model.error_ == [
+        None,
+        None,
+        "Solver 'CLARABEL' failed with parameters 0.003. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+    ]
+    assert model.fallback_ is None
+    assert model.fallback_chain_ is None
+    assert model.n_features_in_ == 20
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+
+    pop = model.predict(X)
+    assert isinstance(pop, Population)
+    assert len(pop) == 3
+
+    for i, ptf in enumerate(pop):
+        assert ptf.name == f"ptf{i} - MeanRisk"
+        assert ptf.fallback_chain is None
+        if i < 2:
+            assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+        else:
+            assert isinstance(ptf, FailedPortfolio)
+            assert (
+                ptf.optimization_error
+                == "Solver 'CLARABEL' failed with parameters 0.003. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+            )
+
+    assert pop.plot_measures(
+        x=RiskMeasure.ANNUALIZED_VARIANCE,
+        y=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
+    )
+
+
+def test_raise_on_failure_off_multi_all_fail(X):
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(min_return=[0.003, 0.004], raise_on_failure=False)
+
+    with pytest.warns(UserWarning):
+        model.fit(X)
+
+    assert model.weights_ is None
+    assert (
+        model.error_
+        == "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' failed with parameters 0.004. Try another solver, or solve with solver_params=dict(verbose=True) for more information"
+    )
+    assert model.fallback_ is None
+    assert model.fallback_chain_ is None
+    assert model.n_features_in_ == 20
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+
+    ptf = model.predict(X)
+    assert isinstance(ptf, FailedPortfolio)
+    assert ptf.optimization_error == model.error_
+    assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_raise_on_failure_off_multi_all_fail_fallback(X):
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(
+        min_return=[0.003, 0.004], fallback=EqualWeighted(), raise_on_failure=False
+    )
+
+    with pytest.warns(UserWarning):
+        model.fit(X)
+
+    assert model.weights_ is not None
+    assert model.error_ is None
+    assert isinstance(model.fallback_, EqualWeighted)
+    assert model.fallback_chain_ == [
+        (
+            "MeanRisk(fallback=EqualWeighted(), min_return=[0.003, 0.004],\n         raise_on_failure=False)",
+            "All 2 optimizations failed, with last optimization error Solver 'CLARABEL' failed with parameters 0.004. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+        ),
+        ("EqualWeighted()", "success"),
+    ]
+
+    ptf = model.predict(X)
+    assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+    assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_raise_on_failure_on_multi_all_fail(X):
+    # Force an error by using an impossible constraint configuration
+    model = MeanRisk(min_return=[0.003, 0.004])
+
+    with pytest.raises(cp.error.SolverError):
+        model.fit(X)
+
+
+def test_fallback_with_raise_on_failure(X):
+    model = MeanRisk(min_weights=1, fallback=MeanRisk(), raise_on_failure=False)
+    model.fit(X)
+
+    assert hasattr(model, "weights_")
+    assert model.weights_ is not None
+    assert isinstance(model.fallback_, MeanRisk)
+    assert model.fallback_chain_ == [
+        (
+            "MeanRisk(fallback=MeanRisk(), min_weights=1, raise_on_failure=False)",
+            "Solver 'CLARABEL' failed. Try another solver, or solve with solver_params=dict(verbose=True) for more information",
+        ),
+        ("MeanRisk()", "success"),
+    ]
+    assert model.error_ is None
+    assert model.n_features_in_ == 20
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    ptf = model.predict(X)
+    assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+    assert ptf.fallback_chain == model.fallback_chain_

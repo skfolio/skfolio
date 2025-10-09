@@ -20,7 +20,7 @@
 #     * Public (read and right)
 #     * Private (read and right for private usage)
 #     * Read-only (handled in __setattr__)
-#     * Global abd local measures arguments: when they change, we clear the cache of
+#     * Global and local measures arguments: when they change, we clear the cache of
 #       all the measures (handled in __setattr__)
 #     * Attributes with custom getter and setter (using @property + private name
 #       in __slots__)
@@ -50,6 +50,7 @@ import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio import measures as mt
+from skfolio._constants import _ParamKey
 from skfolio.measures import (
     ExtraRiskMeasure,
     PerfMeasure,
@@ -380,7 +381,7 @@ class BasePortfolio:
         "drawdowns",
         "min_acceptable_return",
         "compounded",
-        "risk_free_rate",
+        _ParamKey.RISK_FREE_RATE.value,
         "sample_weight",
     }
 

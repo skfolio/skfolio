@@ -549,6 +549,8 @@ def optimal_rounding_decimals(x: float) -> int:
     n : int
         Rounding decimal number.
     """
+    if np.isclose(x, 0.0):
+        return 2
     return min(6, max(int(-np.log10(abs(x))) + 2, 2))
 
 
