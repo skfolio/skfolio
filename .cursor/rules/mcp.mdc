@@ -1,4 +1,4 @@
 ---
 alwaysApply: true
 ---
-Generate portfolio optimization code with skfolio. use library /skfolio/skfolio for API and doc, and website /website/skfolio for examples.
+Generate portfolio optimization code with skfolio. use library /skfolio/skfolio for API and doc, and website /website/skfolio for doc and examples.
