@@ -1,16 +1,17 @@
 """Tools module."""
 
-import math
-import random
-import warnings
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
+
+import math
+import random
+import warnings
 from enum import auto
 
 import cvxpy as cp
@@ -347,13 +348,13 @@ def cov_nearest(
         Covariance matrix.
 
     higham : bool, default=False
-        If this is set to True, the Higham & Nick (2002) algorithm [1]_ is used,
+        If this is set to True, the Higham (2002) algorithm [1]_ is used,
         otherwise the eigenvalues are clipped to threshold above zeros (1e-13).
-        The default (`False`) is to use the clipping method as the Higham & Nick
+        The default (`False`) is to use the clipping method as the Higham
         algorithm can be slow for large datasets.
 
     higham_max_iteration : int, default=100
-        Maximum number of iteration of the Higham & Nick (2002) algorithm.
+        Maximum number of iterations of the Higham (2002) algorithm.
         The default value is `100`.
 
     warn : bool, default=False
@@ -369,7 +370,7 @@ def cov_nearest(
     ----------
     .. [1] "Computing the nearest correlation matrix - a problem from finance"
         IMA Journal of Numerical Analysis
-        Higham & Nick (2002)
+        Higham (2002)
     """
     assert_is_square(cov)
     assert_is_symmetric(cov)

@@ -620,6 +620,7 @@ Functions
     datasets.load_factors_dataset
     datasets.load_ftse100_dataset
     datasets.load_nasdaq_dataset
+    datasets.load_sp500_implied_vol_dataset
 
 .. _preprocessing_ref:
 

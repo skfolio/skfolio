@@ -2,7 +2,7 @@
 A population is a collection of portfolios.
 """
 
-# Copyright (c) 2023
+# failure_proba
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 

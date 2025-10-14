@@ -1,6 +1,6 @@
 """Base Convex Optimization estimator."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # The optimization features are derived
@@ -214,7 +214,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
-        with :math:`\mu` the vector af assets' expected returns and :math:`w` the
+        with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -242,7 +242,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
-        with :math:`\mu` the vector af assets expected returns and :math:`w` the vector
+        with :math:`\mu` the vector of assets' expected returns and :math:`w` the vector
         of assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -398,12 +398,12 @@ class ConvexOptimization(BaseOptimization, ABC):
     add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
         It is a function that must take as argument the weights `w` and returns a
-        CVPXY expression or a list of CVPXY expressions.
+        CVXPY expression or a list of CVXPY expressions.
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
         Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
         It is a function that must take as argument the weights `w` and returns a
-        CVPXY expression.
+        CVXPY expression.
 
     solver : str, default="CLARABEL"
         The solver to use. The default is "CLARABEL" which is written in Rust and has
@@ -414,7 +414,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
-        The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
+        The default (`None`) is to use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
         for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/solvers
@@ -656,7 +656,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             ) from err
 
     def _clear_models_cache(self):
-        """CLear the cache of CVX models."""
+        """Clear the cache of CVX models."""
         self._cvx_cache = {}
 
     def _get_weight_constraints(
@@ -681,8 +681,8 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         Returns
         -------
-        constrains : list[cvxpy Constrains]
-            The list of weights constraints.
+        constraints : list[cvxpy Constraint]
+            The list of weight constraints.
         """
         constraints = []
 
@@ -780,7 +780,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         if self.max_long is not None:
             max_long = float(self.max_long)
             if max_long <= 0:
-                raise ValueError("`max_long` must be strictly positif")
+                raise ValueError("`max_long` must be strictly positive")
             constraints.append(
                 cp.sum(cp.pos(w)) * self._scale_constraints
                 <= max_long * factor * self._scale_constraints
@@ -789,7 +789,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         if self.max_short is not None:
             max_short = float(self.max_short)
             if max_short <= 0:
-                raise ValueError("`max_short` must be strictly positif")
+                raise ValueError("`max_short` must be strictly positive")
             constraints.append(
                 cp.sum(cp.neg(w)) * self._scale_constraints
                 <= max_short * factor * self._scale_constraints

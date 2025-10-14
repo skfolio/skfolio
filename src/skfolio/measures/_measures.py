@@ -1,6 +1,6 @@
 """Module that includes all Measures functions used across `skfolio`."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Gini mean difference and OWA GMD weights features are derived

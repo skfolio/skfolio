@@ -1,6 +1,6 @@
 """Base Covariance Estimators."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -33,13 +33,13 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         The default is `True`.
 
     higham : bool, default=False
-        If this is set to True, the Higham & Nick (2002) algorithm is used to find the
+        If this is set to True, the Higham (2002) algorithm is used to find the
         nearest PD covariance, otherwise the eigenvalues are clipped to a threshold
-        above zeros (1e-13). The default is `False` and use the clipping method as the
-        Higham & Nick algorithm can be slow for large datasets.
+        above zeros (1e-13). The default is `False` and uses the clipping method as the
+        Higham algorithm can be slow for large datasets.
 
     higham_max_iteration : int, default=100
-        Maximum number of iteration of the Higham & Nick (2002) algorithm.
+        Maximum number of iterations of the Higham (2002) algorithm.
         The default value is `100`.
 
     Attributes

@@ -1,6 +1,6 @@
 """Factor Model estimator."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -173,14 +173,14 @@ class FactorModel(BasePrior):
         (residuals variance) is added to the factor model covariance.
 
     higham : bool, default=False
-        If this is set to True, we use the Higham & Nick (2002) algorithm to find the
+        If this is set to True, we use the Higham (2002) algorithm to find the
         nearest covariance matrix that is positive semi-definite. It is more accurate
-        but slower that the default clipping method. For more information
+        but slower than the default clipping method. For more information
         see :func:`~skfolio.utils.stats.cov_nearest`.
 
     max_iteration : int, default=100
         Only used when `higham` is set to True. Maximum number of iterations of the
-        Higham & Nick (2002) algorithm.
+        Higham (2002) algorithm.
 
     Attributes
     ----------

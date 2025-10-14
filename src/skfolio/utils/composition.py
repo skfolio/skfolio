@@ -2,7 +2,7 @@
 Follow same implementation as Base composition from sklearn.
 """
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:

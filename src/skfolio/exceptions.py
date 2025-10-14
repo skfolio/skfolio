@@ -3,7 +3,7 @@ The :mod:`skfolio.exceptions` module includes all custom warnings and error
 classes used across skfolio.
 """
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 

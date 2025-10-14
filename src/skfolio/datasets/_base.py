@@ -1,6 +1,6 @@
 """Datasets module."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -166,16 +166,16 @@ def download_dataset(
 
 
 def load_sp500_dataset() -> pd.DataFrame:
-    """Load the prices of 20 assets from the S&P 500 Index composition.
+    """Load the prices of 20 assets from the S&P 500 Index.
 
-    This dataset is composed of the daily prices of 20 assets from the S&P 500
-    composition starting from 1990-01-02 up to 2022-12-28.
+    This dataset contains daily adjusted closing prices for 20 selected constituents of
+    the S&P 500 Index, covering the period from 1990-01-02 to 2022-12-28.
 
-    The data comes from the Yahoo public API.
-    The price is the adjusted close which is the closing price after adjustments for
-    all applicable splits and dividend distributions.
-    The adjustment uses appropriate split and dividend multipliers, adhering to
-    the Center for Research in Security Prices (CRSP) standards.
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     8313
@@ -193,11 +193,11 @@ def load_sp500_dataset() -> pd.DataFrame:
     >>> prices = load_sp500_dataset()
     >>> prices.head()
                     AAPL     AMD       BAC  ...       UNH       WMT      XOM
-    1990-01-02  0.332589  4.1250  11.65625  ...  0.382813  5.890625  12.5000
-    1990-01-03  0.334821  4.0000  11.75000  ...  0.375000  5.890625  12.3750
-    1990-01-04  0.335938  3.9375  11.50000  ...  0.371094  5.859375  12.2500
-    1990-01-05  0.337054  3.8125  11.25000  ...  0.355469  5.796875  12.1875
-    1990-01-08  0.339286  3.8125  11.31250  ...  0.347656  5.875000  12.3750
+    1990-01-02  0.264  4.125  4.599  0.144  ...  3.322  0.310  3.653  4.068
+    1990-01-03  0.266  4.000  4.636  0.161  ...  3.322  0.304  3.653  4.027
+    1990-01-04  0.267  3.938  4.537  0.159  ...  3.322  0.301  3.634  3.987
+    1990-01-05  0.268  3.812  4.438  0.159  ...  3.322  0.288  3.595  3.966
+    1990-01-08  0.269  3.812  4.463  0.147  ...  3.322  0.282  3.644  4.027
     """
     data_filename = "sp500_dataset.csv.gz"
     df = load_gzip_compressed_csv_data(data_filename)
@@ -207,14 +207,14 @@ def load_sp500_dataset() -> pd.DataFrame:
 def load_sp500_index() -> pd.DataFrame:
     """Load the prices of the S&P 500 Index.
 
-    This dataset is composed of the daily prices of the S&P 500 Index starting from
-    1990-01-02 up to 2022-12-28.
+    This dataset contains daily adjusted closing prices of the S&P 500 Index, covering
+    the period from 1990-01-02 to 2022-12-28.
 
-    The data comes from the Yahoo public API.
-    The price is the adjusted close which is the closing price after adjustments for
-    all applicable splits and dividend distributions.
-    The adjustment uses appropriate split and dividend multipliers, adhering to
-    the Center for Research in Security Prices (CRSP) standards.
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     8313
@@ -247,8 +247,8 @@ def load_sp500_index() -> pd.DataFrame:
 def load_factors_dataset() -> pd.DataFrame:
     """Load the prices of 5 factor ETFs.
 
-    This dataset is composed of the daily prices of 5 ETF representing common factors
-    starting from 2014-01-02 up to 2022-12-28.
+    This dataset contains daily adjusted closing prices of 5 ETF representing common
+    factors, covering the period from 2014-01-02 up to 2022-12-28.
 
     The factors are:
 
@@ -258,11 +258,12 @@ def load_factors_dataset() -> pd.DataFrame:
         * "VLUE": Value
         * "USMV": low volatility
 
-    The data comes from the Yahoo public API.
-    The price is the adjusted close which is the closing price after adjustments for
-    all applicable splits and dividend distributions.
-    The adjustment uses appropriate split and dividend multipliers, adhering to
-    the Center for Research in Security Prices (CRSP) standards.
+
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     2264
@@ -295,15 +296,15 @@ def load_factors_dataset() -> pd.DataFrame:
 def load_ftse100_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
     """Load the prices of 64 assets from the FTSE 100 Index composition.
 
-    This dataset is composed of the daily prices of 64 assets from the FTSE 100 Index
-    starting from 2000-01-04 up to 2023-05-31.
-
-    The data comes from the Yahoo public API.
-    The price is the adjusted close which is the closing price after adjustments for
-    all applicable splits and dividend distributions.
-    The adjustment uses appropriate split and dividend multipliers, adhering to
-    the Center for Research in Security Prices (CRSP) standards.
+    This dataset contains daily adjusted closing prices of 64 assets from the FTSE 100
+    Index, covering the period from 2000-01-04 up to 2023-05-31.
     The data contains NaN.
+
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     5960
@@ -348,14 +349,14 @@ def load_ftse100_dataset(data_home=None, download_if_missing=True) -> pd.DataFra
 def load_nasdaq_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
     """Load the prices of 1455 assets from the NASDAQ Composite Index.
 
-    This dataset is composed of the daily prices of 1455 assets from the NASDAQ
-    Composite starting from 2018-01-02 up to 2023-05-31.
+    This dataset contains daily adjusted closing prices of 1455 assets from the NASDAQ
+    Composite, covering the period from 2018-01-02 up to 2023-05-31.
 
-    The data comes from the Yahoo public API.
-    The price is the adjusted close which is the closing price after adjustments for
-    all applicable splits and dividend distributions.
-    The adjustment uses appropriate split and dividend multipliers, adhering to
-    the Center for Research in Security Prices (CRSP) standards.
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     1362
@@ -406,7 +407,11 @@ def load_sp500_implied_vol_dataset(
     This dataset is composed of the 3 months ATM implied volatility of 20 assets
     from the S&P 500 composition starting from 2010-01-04 up to 2022-12-28.
 
-    The data comes from the Yahoo public API option chains.
+    .. caution::
+        This dataset is provided solely for testing and example purposes. It is a stale
+        dataset and does not reflect current or accurate market prices. It is not
+        intended for investment, trading, or commercial use and should not be relied
+        upon as authoritative market data.
 
     ==============   ==================
     Observations     3270

@@ -1,6 +1,6 @@
 """Distributionally Robust CVaR Optimization estimator."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -170,12 +170,12 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
         It is a function that must take as argument the weights `w` and returns a
-        CVPXY expression or a list of CVPXY expressions.
+        CVXPY expression or a list of CVXPY expressions.
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
         Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
         It is a function that must take as argument the weights `w` and returns a
-        CVPXY expression.
+        CVXPY expression.
 
     solver : str, default="CLARABEL"
         The solver to use. The default is "CLARABEL" which is written in Rust and has
@@ -186,7 +186,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     solver_params : dict, optional
         Solver parameters. For example, `solver_params=dict(verbose=True)`.
-        The default (`None`) is use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
+        The default (`None`) is to use `{"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}`
         for the solver "CLARABEL" and the CVXPY default otherwise.
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options

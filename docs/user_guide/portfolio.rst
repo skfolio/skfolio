@@ -39,9 +39,9 @@ a large set of attributes and methods.
 
 Attributes and Methods
 ----------------------
-More than 40 attributes and  methods are available, including all the
-:ref:`measures <measures_ref>` (Mean, Variance, Sharpe Ration, CVaR, CDaR, Drawdowns,
-etc.). The attributes are computed only when requested then cached in `slots` for
+More than 40 attributes and methods are available, including all the
+:ref:`measures <measures_ref>` (Mean, Variance, Sharpe Ratio, CVaR, CDaR, Drawdowns,
+etc.). The attributes are computed only when requested, then cached in `slots` for
 enhanced performance.
 
 **Example:**
@@ -72,7 +72,7 @@ enhanced performance.
     portfolio.plot_rolling_measure(measure=RatioMeasure.SHARPE_RATIO)
 
 
-It's also an array-container:
+It is also an array container:
 
 .. code-block:: python
 
@@ -107,7 +107,7 @@ the assets previous weights.
 
 .. warning::
 
-    The :class:`Portfolio` formulation is **homogenous** to the convex optimization
+    The :class:`Portfolio` formulation is **homogeneous** to the convex optimization
     problems for coherent analysis. It's important to note that this portfolio
     formulation is **not perfectly replicable** due to weight drift when asset prices
     move. The only case where it would be perfectly replicable is with periodic

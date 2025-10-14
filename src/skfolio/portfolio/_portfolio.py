@@ -1,10 +1,10 @@
 """Portfolio module.
 `Portfolio` is returned by the `predict` method of Optimization estimators.
-It needs to be homogenous to the convex optimization problems meaning that `Portfolio`
+It needs to be homogeneous to the convex optimization problems meaning that `Portfolio`
 is the dot product of the assets weights with the assets returns.
 """
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -32,7 +32,7 @@ class Portfolio(BasePortfolio):
     Portfolio class.
 
     `Portfolio` is returned by the `predict` method of Optimization estimators.
-    It is homogenous to the convex optimization problems meaning that `Portfolio` is
+    It is homogeneous to the convex optimization problems meaning that `Portfolio` is
     the dot product of the assets weights with the assets returns.
 
     Parameters
@@ -63,7 +63,7 @@ class Portfolio(BasePortfolio):
 
         .. math:: ptf\_returns = R \cdot w - total\_cost
 
-        with :math:`R` the matrix af assets returns and :math:`w` the vector of
+        with :math:`R` the matrix of assets returns and :math:`w` the vector of
         assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -74,8 +74,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogenous to the optimization problems, the periodicity of the
-            transaction costs needs to be homogenous to the periodicity of the
+            To be homogeneous to the optimization problems, the periodicity of the
+            transaction costs needs to be homogeneous to the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `transaction_costs` need to be expressed in **daily** transaction costs.
 
@@ -90,7 +90,7 @@ class Portfolio(BasePortfolio):
 
         .. math:: ptf\_returns = R \cdot w - total\_fee
 
-        with :math:`R` the matrix af assets returns and :math:`w` the vector of
+        with :math:`R` the matrix of assets returns and :math:`w` the vector of
         assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -101,8 +101,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogenous to the optimization problems, the periodicity of the
-            management fees needs to be homogenous to the periodicity of the
+            To be homogeneous to the optimization problems, the periodicity of the
+            management fees needs to be homogeneous to the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `management_fees` need to be expressed in **daily** fees.
 
