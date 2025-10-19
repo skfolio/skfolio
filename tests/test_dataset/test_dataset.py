@@ -13,6 +13,7 @@ from skfolio.datasets import (
     load_sp500_dataset,
     load_sp500_implied_vol_dataset,
     load_sp500_index,
+    load_usd_rates_dataset,
 )
 from skfolio.datasets._base import clear_data_home, get_data_home
 
@@ -238,3 +239,21 @@ class TestSp500ImpliedVolDataset:
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (3270, 20)
+
+class TestUsdRatesDataset:
+    def test_load_usd_rates_dataset_success(self):
+        df = load_usd_rates_dataset()
+
+        # Check if the returned object is a pandas DataFrame
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
+
+        # Check if the DataFrame is not empty
+        assert not df.empty
+
+    #  Returns a pandas DataFrame with the correct shape
+    def test_load_usd_rates_dataset_shape(self):
+        df = load_usd_rates_dataset()
+
+        # Check if the shape of the DataFrame is correct
+        assert df.shape == (4801, 7)
