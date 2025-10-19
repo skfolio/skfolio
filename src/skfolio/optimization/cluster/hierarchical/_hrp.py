@@ -1,6 +1,6 @@
 """Hierarchical Risk Parity Optimization estimator."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # The risk measure generalization and constraint features are derived
@@ -142,7 +142,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
-        with :math:`\mu` the vector af assets' expected returns and :math:`w` the
+        with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -154,7 +154,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
+            needs to be homogeneous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
             to be expressed as **daily** costs.
             (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
@@ -170,7 +170,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
-        with :math:`\mu` the vector af assets expected returns and :math:`w` the vector
+        with :math:`\mu` the vector of assets' expected returns and :math:`w` the vector
         of assets weights.
 
         If a float is provided, it is applied to each asset.
@@ -182,7 +182,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            be homogeneous to the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
             expressed in **daily** fees.
 

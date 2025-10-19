@@ -1,6 +1,6 @@
 """pre-selection estimators module."""
 
-# Copyright (c) 2023
+# Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # Implementation derived from:
 # Conway-Yu https://github.com/skfolio/skfolio/discussions/60
