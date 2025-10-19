@@ -144,7 +144,7 @@ def download_dataset(
     # Use a CORS proxy when triggering requests from the browser
     url_prefix = "https://corsproxy.io/?" if sys.platform == "emscripten" else ""
     url = url_prefix + (
-        f"https://github.com/skfolio/skfolio-datasets/raw/main/"
+        f"https://github.com/BrandtWP/skfolio-datasets/raw/main/"
         f"datasets/{data_filename}.csv.gz"
     )
 
@@ -442,6 +442,53 @@ def load_sp500_implied_vol_dataset(
     2010-01-08  0.348085  0.543932  0.360345  ...  0.351130  0.170897  0.204832
     """
     data_filename = "sp500_implied_vol_dataset"
+    df = download_dataset(
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+def load_usd_rates_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Load the 1, 2, 3, 5, 7, 10, and 30 year daily end-of-day USD swap rates 
+    from 2000-07-03 to 2016-10-28.
+
+    The data comes from the St. Louis Fed's public FRED API.
+
+    ==============   ==================
+    Observations     4081
+    Assets           7
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> usd_rates = load_usd_rates_dataset()
+    >>> usd_rates.head()
+                1Y    2Y    3Y    5Y    7Y   10Y   30Y
+    Date
+    2000-07-03  7.10  7.16  7.17  7.17  7.20  7.24  7.24
+    2000-07-05  7.03  7.06  7.07  7.08  7.11  7.14  7.16
+    2000-07-06  7.07  7.13  7.14  7.16  7.19  7.21  7.21
+    2000-07-07  7.01  7.04  7.06  7.07  7.10  7.14  7.14
+    2000-07-10  7.04  7.09  7.11  7.14  7.17  7.20  7.19
+    """
+    data_filename = "usd_rates_dataset"
     df = download_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
     )

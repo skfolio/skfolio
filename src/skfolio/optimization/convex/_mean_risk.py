@@ -815,7 +815,7 @@ class MeanRisk(ConvexOptimization):
 
         # Validate
         self._validation()
-        # Used to avoid adding multiple times similar constrains linked to identical
+        # Used to avoid adding multiple times similar constraints linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
