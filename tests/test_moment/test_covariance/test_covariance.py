@@ -23,6 +23,17 @@ class TestEmpiricalCovariance:
         assert model.covariance_.shape == (20, 20)
         np.testing.assert_almost_equal(model.covariance_, np.cov(X.T))
 
+    def test_empirical_covariance_single(self, X):
+        model = EmpiricalCovariance()
+
+        X_truncated = X.iloc[:, :1]
+        model.fit(X_truncated)
+
+        assert model.covariance_.shape == (1, 1)
+        np.testing.assert_almost_equal(
+            model.covariance_, np.cov(X_truncated, rowvar=False)
+        )
+
 
 class TestEWCovariance:
     def test_ew_covariance(self, X):
