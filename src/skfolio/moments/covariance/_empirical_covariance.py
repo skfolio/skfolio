@@ -96,6 +96,10 @@ class EmpiricalCovariance(BaseCovariance):
         X = skv.validate_data(self, X)
         if self.window_size is not None:
             X = X[-int(self.window_size) :]
-        covariance = np.cov(X.T, ddof=self.ddof)
+        covariance = np.cov(X, ddof=self.ddof, rowvar=False)
+
+        if covariance.ndim == 0:
+            covariance = covariance.reshape(1, 1)
+
         self._set_covariance(covariance)
         return self
