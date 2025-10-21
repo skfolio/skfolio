@@ -498,3 +498,50 @@ def load_usd_rates_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
     )
     return df
+
+def load_bond_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Load the clean prices of a selection of 10 US corporate bonds from 2020-01-01 
+    through 2025-10-20
+
+    The data comes from the Luxembourg Stock Exchange's public website.
+
+    ==============   ==================
+    Observations     1231
+    Assets           10
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> bond_prices = load_bond_dataset()
+    >>> bond_prices.head()
+                US606822BR40  US172967EW71  ...  US904764AH00  US254687FX90
+    date                                    ...
+    2021-01-04       107.809       178.590  ...       146.763       109.400
+    2021-01-05       107.737       178.445  ...       146.558       109.085
+    2021-01-06       106.994       173.600  ...       145.054       108.570
+    2021-01-07       106.584       173.190  ...       144.869       108.250
+    2021-01-08       106.464       173.995  ...       144.545       108.025
+    """
+    data_filename = "bond_dataset"
+    df = download_dataset(
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
