@@ -11,7 +11,8 @@ from skfolio.datasets._base import (
     load_sp500_implied_vol_dataset,
     load_sp500_index,
     load_usd_rates_dataset,
-    load_bond_dataset
+    load_bond_dataset,
+    load_bond_metadata_dataset
 )
 
 __all__ = [
@@ -22,5 +23,6 @@ __all__ = [
     "load_sp500_implied_vol_dataset",
     "load_sp500_index",
     "load_usd_rates_dataset",
-    "load_bond_dataset"
+    "load_bond_dataset",
+    "load_bond_metadata_dataset"
 ]

@@ -117,6 +117,7 @@ def download_dataset(
     data_filename: str,
     data_home: str | Path | None = None,
     download_if_missing: bool = True,
+    **csv_reader_kwargs,
 ) -> pd.DataFrame:
     """Download and save locally a dataset from the remote GitHub dataset folder.
 
@@ -159,7 +160,7 @@ def download_dataset(
 
     archive_path = os.path.join(data_home, os.path.basename(url))
     ur.urlretrieve(url, archive_path)
-    df = load_gzip_compressed_csv_data(archive_path)
+    df = load_gzip_compressed_csv_data(archive_path, **csv_reader_kwargs)
     joblib.dump(df, filepath, compress=6)
     os.remove(archive_path)
     return df
@@ -543,5 +544,54 @@ def load_bond_dataset(
     data_filename = "bond_dataset"
     df = download_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+def load_bond_metadata_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Load the bond issue parameters for the bonds included in the bond_dataset.
+
+    The data comes from FINRA's public website.
+
+    ==============   ==================
+    Bonds            10
+    Parameters       10
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> bond_info = load_bond_metadata_dataset()
+    >>> bond_info.head()
+                                                issuer  ... callable
+    isin                                                ...
+    US606822BR40         MITSUBISHI UFJ FINL GROUP INC  ...    False
+    US172967EW71                         CITIGROUP INC  ...    False
+    US86562MBP41        SUMITOMO MITSUI FINL GROUP INC  ...    False
+    US925524AH30                            VIACOM INC  ...    False
+    US233835AQ08  DAIMLERCHRYSLER NORTH AMER HLDG CORP  ...    False
+    """
+    data_filename = "bond_metadata_dataset"
+    df = download_dataset(
+        data_filename, 
+        data_home=data_home,
+        download_if_missing=download_if_missing,
+        datetime_index=False
     )
     return df
