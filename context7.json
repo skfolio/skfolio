@@ -1,7 +1,7 @@
 {
     "$schema": "https://context7.com/schema/context7.json",
     "projectTitle": "skfolio",
-    "description": "A Python library for portfolio optimization, compatible with scikit-learn.",
+    "description": "skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn.",
 
     "folders": [
       "docs", 
@@ -34,7 +34,6 @@
     "rules": [
       "Input data (X) should be asset price returns, not prices.",
       "Follows scikit-learn API: use .fit(X, y) to train and .predict(X) to get weights.",
-      "Ensure data is pre-processed and does not contain NaNs before fitting.",
-      "The final portfolio weights are in the .weights_ attribute after fitting."
+      "Ensure data is pre-processed and does not contain NaNs before fitting."
     ]
   }
