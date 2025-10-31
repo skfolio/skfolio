@@ -4,12 +4,12 @@
     "description": "skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn.",
 
     "folders": [
-      "docs", 
-      "src/skfolio"
+      "docs"
     ],
   
     "excludeFolders": [
       "tests",
+      "src",
       "**/tests",
       "*.test",
       "__pycache__",
