@@ -11,6 +11,7 @@ from skfolio.moments.covariance import (
     GraphicalLassoCV,
     ImpliedCovariance,
     LedoitWolf,
+    RegimeAdjustedEWCovariance,
     ShrunkCovariance,
 )
 from skfolio.moments.expected_returns import (
@@ -37,6 +38,7 @@ __all__ = [
     "GraphicalLassoCV",
     "ImpliedCovariance",
     "LedoitWolf",
+    "RegimeAdjustedEWCovariance",
     "ShrunkCovariance",
     "ShrunkMu",
     "ShrunkMuMethods",
