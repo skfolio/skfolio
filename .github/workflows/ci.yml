@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           version: latest
 
@@ -97,7 +97,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           version: latest
 
@@ -149,7 +149,7 @@ jobs:
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           version: latest
 
@@ -177,7 +177,7 @@ jobs:
 #        with:
 #          python-version: "3.15-dev"
 #
-#      - uses: astral-sh/setup-uv@v4
+#      - uses: astral-sh/setup-uv@v7
 #        with:
 #          version: latest
 #
