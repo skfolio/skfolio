@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-from numpy.linalg import pinv
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import check_array, check_is_fitted
 
@@ -46,7 +45,7 @@ class CrossSectionalOLS(BaseEstimator, RegressorMixin):
 
     Parameters
     ----------
-    fit_intercept : bool, default=True
+    fit_intercept : bool, default=False
         Whether to calculate the intercept for each observation.
         If set to False, no intercept will be used in calculations.
 
@@ -115,7 +114,7 @@ class CrossSectionalOLS(BaseEstimator, RegressorMixin):
     (3, 5)
     """
 
-    def __init__(self, fit_intercept: bool = True) -> None:
+    def __init__(self, fit_intercept: bool = False) -> None:
         self.fit_intercept = fit_intercept
 
     def fit(
@@ -220,30 +219,27 @@ class CrossSectionalOLS(BaseEstimator, RegressorMixin):
             weight_sums = weights.sum(axis=1, keepdims=True)  # (n_observations, 1)
 
             # Weighted mean of y: shape (n_observations,)
-            y_mean = np.divide(
-                (y * weights).sum(axis=1),
-                weight_sums[:, 0],
-                out=np.zeros(n_observations, dtype=float),
-                where=weight_sums[:, 0] > 0,
+            y_mean = np.zeros(n_observations, dtype=X.dtype)
+            np.einsum("tn,tn->t", y, weights, out=y_mean, optimize=True)
+            np.divide(
+                y_mean, weight_sums[:, 0], out=y_mean, where=weight_sums[:, 0] > 0
             )
-
-            # Weighted mean of X: shape (n_observations, n_factors)
-            X_mean = np.divide(
-                (X * weights[:, :, None]).sum(axis=1),
-                weight_sums,
-                out=np.zeros((n_observations, n_factors), dtype=float),
-                where=weight_sums > 0,
-            )
-
-            # Center in-place
-            X -= X_mean[:, None, :]
             y -= y_mean[:, None]
 
+            # Weighted mean of X: shape (n_observations, n_factors)
+            X_mean = np.zeros((n_observations, n_factors), dtype=X.dtype)
+            np.einsum("tni,tn->ti", X, weights, out=X_mean, optimize=True)
+            np.divide(X_mean, weight_sums, out=X_mean, where=weight_sums > 0)
+            X -= X_mean[:, None, :]
+
+            del weight_sums
+
         # Pre-multiply by sqrt(weights) for numerical stability
-        sqrt_weights = np.sqrt(weights)[:, :, None]
-        X *= sqrt_weights
+        np.sqrt(weights, out=weights)
+        X *= weights[..., None]
+        y *= weights
         XtWX = X.transpose(0, 2, 1) @ X
-        XtWy = np.einsum("tnk,tn->tk", X, sqrt_weights[:, :, 0] * y)
+        XtWy = (X.transpose(0, 2, 1) @ y[..., None]).squeeze(-1)
 
         # Try vectorized solve first (10-100x faster than pinv for full rank)
         try:
@@ -251,7 +247,7 @@ class CrossSectionalOLS(BaseEstimator, RegressorMixin):
             coef = np.linalg.solve(XtWX, XtWy[:, :, None]).squeeze(-1)
         except np.linalg.LinAlgError:
             # Fall back to pseudo-inverse for rank-deficient case (matches sklearn)
-            coef = np.einsum("tij,tj->ti", pinv(XtWX), XtWy)
+            coef = np.einsum("tij,tj->ti", np.linalg.pinv(XtWX), XtWy)
 
         # Compute intercept
         if self.fit_intercept:
@@ -300,8 +296,7 @@ class CrossSectionalOLS(BaseEstimator, RegressorMixin):
             )
 
         # Predict: y_pred = X @ beta + alpha
-        # Use einsum for efficiency
-        return np.einsum("tnk,tk->tn", X, self.coef_) + self.intercept_[:, None]
+        return (X @ self.coef_[..., None]).squeeze(-1) + self.intercept_[:, None]
 
     def score(
         self,

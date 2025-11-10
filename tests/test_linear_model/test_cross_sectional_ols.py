@@ -1,5 +1,7 @@
 """Tests for CrossSectionalOLS estimator."""
 
+import time
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -83,6 +85,25 @@ def make_data_with_nans(
     weights[idx_t, idx_n] = 0.0
 
     return X, y, weights, beta_true
+
+
+def _benchmark():
+    X, y, weights, _ = make_data_with_nans(
+        n_observations=3_000,
+        n_assets=5_000,
+        n_factors=70,
+        seed=42,
+    )
+    print(3_000 * 5_000 * 70 / 1e9)  # 1.05B entries
+    3000 / 252
+
+    model = CrossSectionalOLS(fit_intercept=False)
+
+    s = time.time()
+    model.fit(X, y, sample_weight=weights)
+    e = time.time()
+    print(e - s)  # 7s
+    assert (e - s) < 7.5
 
 
 def compute_valid_mask(X, y, weights):
