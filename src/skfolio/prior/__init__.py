@@ -11,6 +11,14 @@ from skfolio.prior._factor_model import (
 )
 from skfolio.prior._opinion_pooling import OpinionPooling
 from skfolio.prior._synthetic_data import SyntheticData
+from skfolio.prior._non_linear_prior import (
+    Instrument,
+    InstrumentAdapter,
+    MarketContext,
+    NonLinearPrior,
+    PortfolioInstruments,
+    price_df
+)
 
 __all__ = [
     "BaseLoadingMatrix",
@@ -23,4 +31,10 @@ __all__ = [
     "OpinionPooling",
     "ReturnDistribution",
     "SyntheticData",
+    "Instrument",
+    "InstrumentAdapter",
+    "PortfolioInstruments",
+    "MarketContext",
+    "NonLinearPrior",
+    "price_df"
 ]

@@ -35,6 +35,7 @@ __all__ = [
     "RiskResult",
     "Tags",
     "Target",
+    "ReturnType"
 ]
 
 Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure
@@ -58,6 +59,7 @@ Fallback: TypeAlias = Union[
     Literal["previous_weights"],
     None,
 ]
+ReturnType = Literal["linear", "log", "arithmetic"]
 
 # Population
 Names = str | list[str]

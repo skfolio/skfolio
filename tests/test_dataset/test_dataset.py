@@ -258,7 +258,7 @@ class TestUsdRatesDataset:
         df = load_usd_rates_dataset()
 
         # Check if the shape of the DataFrame is correct
-        assert df.shape == (4081, 7)
+        assert df.shape == (1767, 7)
 
 class TestBondDataset:
     def test_load_bond_dataset_success(self):

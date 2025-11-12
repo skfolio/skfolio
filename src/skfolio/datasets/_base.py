@@ -459,10 +459,10 @@ def load_usd_rates_dataset(
     """Load the 1, 2, 3, 5, 7, 10, and 30 year daily end-of-day USD swap rates 
     from 2000-07-03 to 2016-10-28.
 
-    The data comes from the St. Louis Fed's public FRED API.
+    The data comes from the Investing.com public api.
 
     ==============   ==================
-    Observations     4081
+    Observations     1769
     Assets           7
     ==============   ==================
 
@@ -487,12 +487,12 @@ def load_usd_rates_dataset(
     >>> usd_rates = load_usd_rates_dataset()
     >>> usd_rates.head()
                 1Y    2Y    3Y    5Y    7Y   10Y   30Y
-    Date
-    2000-07-03  7.10  7.16  7.17  7.17  7.20  7.24  7.24
-    2000-07-05  7.03  7.06  7.07  7.08  7.11  7.14  7.16
-    2000-07-06  7.07  7.13  7.14  7.16  7.19  7.21  7.21
-    2000-07-07  7.01  7.04  7.06  7.07  7.10  7.14  7.14
-    2000-07-10  7.04  7.09  7.11  7.14  7.17  7.20  7.19
+    Date                               ...
+    2020-01-01  1.763  1.6909  1.6823  ...  1.774  1.873  2.0705
+    2020-01-02  1.751  1.6370  1.6320  ...  1.737  1.826  2.0150
+    2020-01-03  1.751  1.6370  1.6320  ...  1.737  1.826  2.0150
+    2020-01-06  1.713  1.6100  1.5832  ...  1.650  1.741  1.9200
+    2020-01-07  1.711  1.6040  1.5916  ...  1.664  1.762  1.9465
     """
     data_filename = "usd_rates_dataset"
     df = download_dataset(

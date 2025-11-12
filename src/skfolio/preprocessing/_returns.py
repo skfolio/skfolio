@@ -8,11 +8,12 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
-
+import skfolio.typing as skt
 
 def prices_to_returns(
     X: pd.DataFrame,
     y: pd.DataFrame | None = None,
+    return_type: skt.ReturnType = "linear",
     log_returns: bool = False,
     nan_threshold: float = 1,
     join: Literal["left", "right", "inner", "outer", "cross"] = "outer",
@@ -54,8 +55,14 @@ def prices_to_returns(
         If provided, it is joined with the DataFrame of prices to ensure identical
         observations.
 
+    return_type: {'linear', 'log', 'arithmetic'}, default='linear'
+        The type of returns to compute.
+        - 'linear': Linear returns (simple returns): $\frac{X_t}{X_{t-1}} - 1$.
+        - 'log': Logarithmic returns (continuously compounded returns): $\ln\Biggl(\frac{X_t}{X_{t-1}}\Biggr)$.
+        - 'arithmetic': the difference between successive prices: $X_t - X_{t-1}$.
+        
     log_returns : bool, default=True
-        If this is set to True, logarithmic returns are used instead of simple returns.
+        Deprecated since version X.X.X. If this is set to True, logarithmic returns are used instead of simple returns.
 
     join : str, default="outer"
         The join method between `X` and `y` when `y` is provided.
@@ -88,6 +95,14 @@ def prices_to_returns(
         GARP Risk Professional.
         Attilio Meucci (2010).
     """
+
+    if log_returns:
+        return_type = "log"
+        raise DeprecationWarning(
+            "`log_returns` is deprecated since version X.X.X. "
+            "Please use `return_type='log'` instead."
+        )
+
     if not isinstance(X, pd.DataFrame):
         raise TypeError("`X` must be a DataFrame")
 
@@ -120,9 +135,18 @@ def prices_to_returns(
     df.dropna(axis=1, how="all", inplace=True)
 
     # returns
-    all_returns = df.pct_change(fill_method=None).iloc[1:]
-    if log_returns:
-        all_returns = np.log1p(all_returns)
+    
+    match return_type:
+        case "linear":
+            all_returns = df.pct_change(fill_method=None).iloc[1:]
+        case "log":
+            all_returns = np.log1p(df).diff().iloc[1:]
+        case "arithmetic":
+            all_returns = df.diff().iloc[1:]
+        case _:
+            raise ValueError(
+                "`return_type` must be one of {'linear', 'log', 'arithmetic'}"
+            )
 
     if y is None:
         return all_returns
