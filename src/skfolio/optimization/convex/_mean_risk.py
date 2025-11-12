@@ -1084,7 +1084,7 @@ class MeanRisk(ConvexOptimization):
                     and np.isscalar(self.min_weights)
                     and self.min_weights >= 0
                     and np.max(return_distribution.mu) - self.risk_free_rate <= 0
-               ):
+                ):
                     raise ValueError(
                         "Cannot optimize for Maximum Ratio with your current "
                         "constraints and input. This is because your assets' "
