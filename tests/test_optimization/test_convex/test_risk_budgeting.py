@@ -39,6 +39,8 @@ def X(X):
         and rm
         not in [
             RiskMeasure.GINI_MEAN_DIFFERENCE,  # Too slow without MOSEK
+            RiskMeasure.EX_ANTE_TRACKING_ERROR,
+            RiskMeasure.EX_POST_TRACKING_ERROR,
         ]
     ],
 )

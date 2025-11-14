@@ -19,7 +19,13 @@ def small_X(X):
     params=[
         x
         for x in [*RiskMeasure, *ExtraRiskMeasure]
-        if x not in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
+        if x
+        not in [
+            ExtraRiskMeasure.SKEW,
+            ExtraRiskMeasure.KURTOSIS,
+            RiskMeasure.EX_POST_TRACKING_ERROR,
+            RiskMeasure.EX_ANTE_TRACKING_ERROR,
+        ]
     ],
 )
 def risk_measure(request):
