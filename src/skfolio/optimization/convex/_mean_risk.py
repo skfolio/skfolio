@@ -94,6 +94,8 @@ class MeanRisk(ConvexOptimization):
         * EDaR (Entropic Drawdown at Risk)
         * Ulcer Index
         * Gini Mean Difference
+        * Ex Ante Tracking Error
+        * Ex Post Tracking Error
 
     Cost, regularization, uncertainty set, and additional constraints can also be added
     to the optimization problem (see the parameters description).
@@ -133,6 +135,8 @@ class MeanRisk(ConvexOptimization):
             * EDAR
             * ULCER_INDEX
             * GINI_MEAN_DIFFERENCE_RATIO
+            * EX_ANTE_TRACKING_ERROR (target weights `y` must be provided in the `fit` method)
+            * EX_POST_TRACKING_ERROR (target returns `y` must be provided in the `fit` method)
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -779,6 +783,10 @@ class MeanRisk(ConvexOptimization):
             super()
             .get_metadata_routing()
             .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
                 mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
             )
@@ -1006,7 +1014,7 @@ class MeanRisk(ConvexOptimization):
         # risk and risk constraints
         risk = None
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
-            risk_limit = getattr(self, f"max_{r_m.value}")
+            risk_limit = getattr(self, f"max_{r_m.value}", None)
 
             if self.risk_measure == r_m or risk_limit is not None:
                 # Add covariance uncertainty set if provided
@@ -1022,6 +1030,8 @@ class MeanRisk(ConvexOptimization):
                 for arg_name in args_names(risk_func):
                     if arg_name == "return_distribution":
                         args[arg_name] = return_distribution
+                    elif arg_name == "y":
+                        args[arg_name] = y
                     elif arg_name == "w":
                         args[arg_name] = w
                     elif arg_name == "factor":

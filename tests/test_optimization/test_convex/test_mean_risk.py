@@ -43,6 +43,8 @@ def precisions():
     precisions[RiskMeasure.ULCER_INDEX] = 5
     precisions[RiskMeasure.EVAR] = 6
     precisions[RiskMeasure.GINI_MEAN_DIFFERENCE] = 6
+    precisions[RiskMeasure.EX_ANTE_TRACKING_ERROR] = 4
+    precisions[RiskMeasure.EX_POST_TRACKING_ERROR] = 4
     return precisions
 
 
@@ -83,6 +85,8 @@ def y(y):
             RiskMeasure.GINI_MEAN_DIFFERENCE,
             RiskMeasure.EDAR,
             RiskMeasure.EVAR,
+            RiskMeasure.EX_ANTE_TRACKING_ERROR,
+            RiskMeasure.EX_POST_TRACKING_ERROR,
         ]
     ],
 )
@@ -1819,3 +1823,46 @@ def test_fallback_with_raise_on_failure(X):
     ptf = model.predict(X)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_ex_ante_tracking_error_minimize_risk(X, precisions):
+    n_assets = X.shape[1]
+    benchmark_weights = np.ones(n_assets) / n_assets
+    precision = precisions[RiskMeasure.EX_ANTE_TRACKING_ERROR]
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.EX_ANTE_TRACKING_ERROR,
+        min_weights=0,
+    )
+
+    p = model.fit(X, benchmark_weights).predict(X)
+
+    weight_diff = p.weights - benchmark_weights
+    cov_matrix = np.cov(X.T, ddof=1)
+    ex_ante_te = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+
+    np.testing.assert_almost_equal(ex_ante_te, model.problem_values_["risk"], precision)
+    np.testing.assert_almost_equal(
+        p.mean, model.problem_values_["expected_return"], precision
+    )
+
+
+def test_ex_post_tracking_error_minimize_risk(X, y, precisions):
+    benchmark_returns = np.asarray(y["SIZE"])
+    precision = precisions[RiskMeasure.EX_POST_TRACKING_ERROR]
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.EX_POST_TRACKING_ERROR,
+        min_weights=0,
+    )
+
+    p = model.fit(X, benchmark_returns).predict(X)
+
+    ex_post_te = np.std(p.returns - benchmark_returns, ddof=1)
+
+    np.testing.assert_almost_equal(ex_post_te, model.problem_values_["risk"], precision)
+    np.testing.assert_almost_equal(
+        p.mean, model.problem_values_["expected_return"], precision
+    )

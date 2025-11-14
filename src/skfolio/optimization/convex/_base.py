@@ -2206,6 +2206,72 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
+    def _ex_ante_tracking_error_risk(
+        self, return_distribution: ReturnDistribution, w: cp.Variable, y: npt.ArrayLike
+    ) -> skt.RiskResult:
+        """Expression and Constraints of the Ex-ante Tracking Error risk measure.
+
+        Parameters
+        ----------
+        return_distribution : ReturnDistribution
+            asset returns distribution DataModel.
+
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        y : ndarray of shape (n_assets,)
+            Benchmark weights for the tracking error computation.
+
+        Returns
+        -------
+        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
+            CVXPY Expression and Constraints of the Ex-ante Tracking Error risk measure.
+        """
+        n_assets = return_distribution.returns.shape[1]
+
+        benchmark_weights = self._clean_input(
+            y,
+            n_assets=n_assets,
+            fill_value=0,
+            name="benchmark_weights",
+        )
+
+        delta = w - benchmark_weights
+        return self._standard_deviation_risk(return_distribution, delta)
+
+    def _ex_post_tracking_error_risk(
+        self,
+        return_distribution: ReturnDistribution,
+        w: cp.Variable,
+        y: npt.ArrayLike,
+        factor: skt.Factor,
+    ) -> skt.RiskResult:
+        """Expression and Constraints of the Ex-post Tracking Error risk measure.
+
+        Parameters
+        ----------
+        return_distribution : ReturnDistribution
+            asset returns distribution DataModel.
+
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        y : ndarray of shape (n_observations,)
+            Benchmark returns for the tracking error computation.
+
+        factor: cvxpy Variable | cvxpy Constant
+            Additional variable used for the optimization of some objective function.
+
+        Returns
+        -------
+        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
+            CVXPY Expression and Constraints of the Ex-post Tracking Error risk measure.
+        """
+        tracking_error = self._tracking_error(
+            return_distribution=return_distribution, w=w, y=y, factor=factor
+        )
+        return tracking_error, []
+
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(

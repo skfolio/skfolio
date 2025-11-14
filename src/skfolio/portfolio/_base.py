@@ -66,8 +66,15 @@ from skfolio.utils.tools import (
 )
 
 _ZERO_THRESHOLD = 1e-5
+_EXCLUDED_MEASURES = {
+    RiskMeasure.EX_ANTE_TRACKING_ERROR,
+    RiskMeasure.EX_POST_TRACKING_ERROR,
+}
 _MEASURES = {
-    e for enu in [PerfMeasure, RiskMeasure, ExtraRiskMeasure, RatioMeasure] for e in enu
+    e
+    for enu in [PerfMeasure, RiskMeasure, ExtraRiskMeasure, RatioMeasure]
+    for e in enu
+    if e not in _EXCLUDED_MEASURES
 }
 _MEASURES_VALUES = {e.value: e for e in _MEASURES}
 
@@ -746,7 +753,12 @@ class BasePortfolio:
     @property
     def measures_df(self) -> pd.DataFrame:
         """DataFrame of all measures."""
-        idx = [e.value for enu in [PerfMeasure, RiskMeasure, RatioMeasure] for e in enu]
+        idx = [
+            e.value
+            for enu in [PerfMeasure, RiskMeasure, RatioMeasure]
+            for e in enu
+            if e not in _EXCLUDED_MEASURES
+        ]
         res = [getattr(self, attr) for attr in idx]
         return pd.DataFrame(res, index=idx, columns=["measures"])
 
@@ -758,7 +770,10 @@ class BasePortfolio:
     def clear(self) -> None:
         """Clear all measures, fitness, cumulative returns and drawdowns in slots."""
         attrs = ["_fitness", "_cumulative_returns", "_drawdowns"]
-        for attr in attrs + list(_MEASURES_VALUES):
+        measure_attrs = [
+            m for m in _MEASURES_VALUES if _MEASURES_VALUES[m] not in _EXCLUDED_MEASURES
+        ]
+        for attr in attrs + measure_attrs:
             delattr(self, attr)
 
     def get_measure(self, measure: skt.Measure) -> float:
@@ -774,6 +789,9 @@ class BasePortfolio:
         value : float
             The measure value.
         """
+        if measure in _EXCLUDED_MEASURES:
+            return np.nan
+
         if isinstance(measure, PerfMeasure | RiskMeasure | ExtraRiskMeasure):
             # We call the measure functions and their arguments dynamically.
             # The measure functions are called from the "measures" module.
@@ -950,6 +968,7 @@ class BasePortfolio:
             e
             for enu in [PerfMeasure, RiskMeasure, ExtraRiskMeasure, RatioMeasure]
             for e in enu
+            if e not in _EXCLUDED_MEASURES
         )
         summary = {}
         for e in measures:

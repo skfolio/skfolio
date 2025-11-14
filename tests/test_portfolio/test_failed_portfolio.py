@@ -28,8 +28,18 @@ from skfolio.utils.tools import args_names
 @pytest.fixture(
     scope="module",
     params=list(PerfMeasure)
-    + list(RiskMeasure)
-    + list(RiskMeasure)
+    + [
+        r
+        for r in RiskMeasure
+        if r
+        not in [RiskMeasure.EX_ANTE_TRACKING_ERROR, RiskMeasure.EX_POST_TRACKING_ERROR]
+    ]
+    + [
+        r
+        for r in RiskMeasure
+        if r
+        not in [RiskMeasure.EX_ANTE_TRACKING_ERROR, RiskMeasure.EX_POST_TRACKING_ERROR]
+    ]
     + list(ExtraRiskMeasure),
 )
 def measure(request):
