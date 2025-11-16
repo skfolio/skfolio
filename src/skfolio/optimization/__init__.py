@@ -14,6 +14,7 @@ from skfolio.optimization.convex import (
     MaximumDiversification,
     MeanRisk,
     ObjectiveFunction,
+    ReturnBasedTracker,
     RiskBudgeting,
 )
 from skfolio.optimization.ensemble import BaseComposition, StackingOptimization
@@ -34,6 +35,7 @@ __all__ = [
     "NestedClustersOptimization",
     "ObjectiveFunction",
     "Random",
+    "ReturnBasedTracker",
     "RiskBudgeting",
     "SchurComplementary",
     "StackingOptimization",

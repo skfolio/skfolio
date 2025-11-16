@@ -94,8 +94,6 @@ class MeanRisk(ConvexOptimization):
         * EDaR (Entropic Drawdown at Risk)
         * Ulcer Index
         * Gini Mean Difference
-        * Ex Ante Tracking Error
-        * Ex Post Tracking Error
 
     Cost, regularization, uncertainty set, and additional constraints can also be added
     to the optimization problem (see the parameters description).
@@ -135,8 +133,6 @@ class MeanRisk(ConvexOptimization):
             * EDAR
             * ULCER_INDEX
             * GINI_MEAN_DIFFERENCE_RATIO
-            * EX_ANTE_TRACKING_ERROR (target weights `y` must be provided in the `fit` method)
-            * EX_POST_TRACKING_ERROR (target returns `y` must be provided in the `fit` method)
 
         The default is `RiskMeasure.VARIANCE`.
 
@@ -650,6 +646,7 @@ class MeanRisk(ConvexOptimization):
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
+        target_weights: skt.MultiInput | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -715,6 +712,7 @@ class MeanRisk(ConvexOptimization):
             transaction_costs=transaction_costs,
             management_fees=management_fees,
             previous_weights=previous_weights,
+            target_weights=target_weights,
             groups=groups,
             linear_constraints=linear_constraints,
             left_inequality=left_inequality,
@@ -1030,10 +1028,19 @@ class MeanRisk(ConvexOptimization):
                 for arg_name in args_names(risk_func):
                     if arg_name == "return_distribution":
                         args[arg_name] = return_distribution
-                    elif arg_name == "y":
-                        args[arg_name] = y
                     elif arg_name == "w":
-                        args[arg_name] = w
+                        if self.target_weights is None:
+                            args[arg_name] = w
+                        else:
+                            target_weights_array = self._clean_input(
+                                self.target_weights,
+                                n_assets=n_assets,
+                                fill_value=0,
+                                name="target_weights",
+                            )
+                            if np.isscalar(target_weights_array):
+                                target_weights_array *= np.ones(n_assets)
+                            args[arg_name] = w - target_weights_array
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":

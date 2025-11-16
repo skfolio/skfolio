@@ -225,6 +225,7 @@ Classes
 
     optimization.ConvexOptimization
     optimization.MeanRisk
+    optimization.ReturnBasedTracker
     optimization.RiskBudgeting
     optimization.MaximumDiversification
     optimization.DistributionallyRobustCVaR

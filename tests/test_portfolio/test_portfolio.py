@@ -70,18 +70,8 @@ def portfolio(X: pd.DataFrame, weights: np.ndarray) -> Portfolio:
 @pytest.fixture(
     scope="module",
     params=list(PerfMeasure)
-    + [
-        r
-        for r in RiskMeasure
-        if r
-        not in [RiskMeasure.EX_ANTE_TRACKING_ERROR, RiskMeasure.EX_POST_TRACKING_ERROR]
-    ]
-    + [
-        r
-        for r in RiskMeasure
-        if r
-        not in [RiskMeasure.EX_ANTE_TRACKING_ERROR, RiskMeasure.EX_POST_TRACKING_ERROR]
-    ]
+    + list(RiskMeasure)
+    + list(RiskMeasure)
     + list(ExtraRiskMeasure),
 )
 def measure(request):

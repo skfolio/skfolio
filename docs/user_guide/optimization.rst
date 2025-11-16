@@ -774,6 +774,121 @@ collection of multiple paths instead of one single path. The selected out-of-sam
 among this collection of paths is chosen according to the `quantile` and
 `quantile_measure` parameters.
 
+Tracking Error Optimization
+****************************
+
+Tracking error measures the deviation between a portfolio's performance and a benchmark.
+`skfolio` provides three approaches for tracking error optimization:
+
+1. **Return-based tracking error constraint** (via `max_tracking_error`):
+   Constrains the tracking error while optimizing another objective (e.g., minimize CVaR).
+
+2. **Weight-based target** (via `target_weights`):
+   Minimizes ex-ante tracking error by finding weights that minimize deviation from a
+   target portfolio allocation.
+
+3. **Return-based target** (via :class:`ReturnBasedTracker`):
+   Minimizes ex-post tracking error by optimizing on excess returns (portfolio returns
+   minus benchmark returns).
+
+**Example 1: Return-based tracking error constraint**
+
+Minimize CVaR while constraining the tracking error to 0.30% vs a benchmark:
+
+.. code-block:: python
+
+    from sklearn.model_selection import train_test_split
+
+    from skfolio import RiskMeasure
+    from skfolio.datasets import load_sp500_dataset, load_sp500_index
+    from skfolio.optimization import MeanRisk, ObjectiveFunction
+    from skfolio.preprocessing import prices_to_returns
+
+    prices = load_sp500_dataset()
+    spx_prices = load_sp500_index()
+
+    X, y = prices_to_returns(prices, spx_prices)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.CVAR,
+        max_tracking_error=0.003,  # 0.30% tracking error constraint
+    )
+    model.fit(X_train, y_train)
+    print(model.weights_)
+
+    portfolio = model.predict(X_test)
+    print(portfolio.cvar)
+
+**Example 2: Weight-based target**
+
+Minimize ex-ante tracking error vs an equal-weighted target portfolio:
+
+.. code-block:: python
+
+    from sklearn.model_selection import train_test_split
+
+    import numpy as np
+    from skfolio import RiskMeasure
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.optimization import MeanRisk, ObjectiveFunction
+    from skfolio.preprocessing import prices_to_returns
+
+    prices = load_sp500_dataset()
+
+    X = prices_to_returns(prices)
+    X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
+
+    # Define target portfolio (e.g., equal-weighted)
+    n_assets = X.shape[1]
+    target_weights = np.ones(n_assets) / n_assets
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=target_weights,
+    )
+    model.fit(X_train)
+    print(model.weights_)
+
+    portfolio = model.predict(X_test)
+    print(portfolio.annualized_sharpe_ratio)
+
+**Example 3: Return-based target**
+
+Minimize ex-post tracking error vs a benchmark's returns:
+
+.. code-block:: python
+
+    from sklearn.model_selection import train_test_split
+
+    from skfolio import RiskMeasure
+    from skfolio.datasets import load_sp500_dataset
+    from skfolio.optimization import ReturnBasedTracker
+    from skfolio.preprocessing import prices_to_returns
+
+    prices = load_sp500_dataset()
+
+    X = prices_to_returns(prices)
+    X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
+
+    # Create benchmark returns (e.g., equal-weighted portfolio)
+    benchmark_returns_train = X_train.mean(axis=1)
+    benchmark_returns_test = X_test.mean(axis=1)
+
+    model = ReturnBasedTracker(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+    )
+    model.fit(X_train, benchmark_returns_train)
+    print(model.weights_)
+
+    portfolio = model.predict(X_test)
+    # Compare portfolio returns to benchmark
+    excess_returns = portfolio.returns - benchmark_returns_test.values
+    tracking_error = np.std(excess_returns, ddof=1)
+    print(f"Tracking Error: {tracking_error:0.2%}")
+
 Fallbacks
 *********
 

@@ -163,12 +163,6 @@ class RiskMeasure(BaseMeasure):
 
     GINI_MEAN_DIFFERENCE : str
         Gini Mean Difference.
-
-    EX_ANTE_TRACKING_ERROR : str
-        Ex-Ante Tracking Error.
-
-    EX_POST_TRACKING_ERROR : str
-        Ex-Post Tracking Error.
     """
 
     VARIANCE = auto()
@@ -190,8 +184,6 @@ class RiskMeasure(BaseMeasure):
     FIRST_LOWER_PARTIAL_MOMENT = auto()
     ULCER_INDEX = auto()
     GINI_MEAN_DIFFERENCE = auto()
-    EX_ANTE_TRACKING_ERROR = auto()
-    EX_POST_TRACKING_ERROR = auto()
 
     @property
     def is_perf(self) -> bool:
