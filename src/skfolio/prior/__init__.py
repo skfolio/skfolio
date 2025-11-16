@@ -9,16 +9,18 @@ from skfolio.prior._factor_model import (
     FactorModel,
     LoadingMatrixRegression,
 )
-from skfolio.prior._opinion_pooling import OpinionPooling
-from skfolio.prior._synthetic_data import SyntheticData
 from skfolio.prior._non_linear_prior import (
     Instrument,
     InstrumentAdapter,
     MarketContext,
     NonLinearPrior,
     PortfolioInstruments,
-    price_df
+    ReturnsProcessor,
+    calculate_sensis,
+    price_df,
 )
+from skfolio.prior._opinion_pooling import OpinionPooling
+from skfolio.prior._synthetic_data import SyntheticData
 
 __all__ = [
     "BaseLoadingMatrix",
@@ -27,14 +29,16 @@ __all__ = [
     "EmpiricalPrior",
     "EntropyPooling",
     "FactorModel",
-    "LoadingMatrixRegression",
-    "OpinionPooling",
-    "ReturnDistribution",
-    "SyntheticData",
     "Instrument",
     "InstrumentAdapter",
-    "PortfolioInstruments",
+    "LoadingMatrixRegression",
     "MarketContext",
     "NonLinearPrior",
-    "price_df"
+    "OpinionPooling",
+    "PortfolioInstruments",
+    "ReturnDistribution",
+    "ReturnsProcessor",
+    "SyntheticData",
+    "calculate_sensis"
+    "price_df",
 ]
