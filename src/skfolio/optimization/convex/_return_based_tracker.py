@@ -23,7 +23,10 @@ class ReturnBasedTracker(MeanRisk):
 
     This is a special case of the :class:`~skfolio.optimization.MeanRisk` estimator
     where the input returns are transformed to excess returns (X - y) before
-    optimization.
+    optimization. The estimator enforces a fully invested portfolio (budget = 1.0)
+    because the excess returns formulation
+    :math:`r_t^{excess}(w) = \sum_i w_i(r_{t,i} - r_{b,t}) = r_{p,t} - (\sum_i w_i)r_{b,t}`
+    equals :math:`r_{p,t} - r_{b,t}` only when :math:`\sum_i w_i = 1`.
 
     The tracking risk can be measured using different risk measures such as
     standard deviation (for traditional tracking error), variance (MSE),
@@ -47,18 +50,6 @@ class ReturnBasedTracker(MeanRisk):
 
     max_weights : float | dict[str, float] | array-like of shape (n_assets, ) | None, default=1.0
         Maximum assets weights (weights upper bounds).
-        See :class:`~skfolio.optimization.MeanRisk` for details.
-
-    budget : float | None, default=1.0
-        Investment budget.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
-
-    min_budget : float, optional
-        Minimum budget.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
-
-    max_budget :  float, optional
-        Maximum budget.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     max_short : float, optional
@@ -191,9 +182,6 @@ class ReturnBasedTracker(MeanRisk):
         prior_estimator: BasePrior | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
-        budget: float | None = 1.0,
-        min_budget: float | None = None,
-        max_budget: float | None = None,
         max_short: float | None = None,
         max_long: float | None = None,
         transaction_costs: skt.MultiInput = 0.0,
@@ -223,9 +211,9 @@ class ReturnBasedTracker(MeanRisk):
             prior_estimator=prior_estimator,
             min_weights=min_weights,
             max_weights=max_weights,
-            budget=budget,
-            min_budget=min_budget,
-            max_budget=max_budget,
+            budget=1.0,
+            min_budget=None,
+            max_budget=None,
             max_short=max_short,
             max_long=max_long,
             transaction_costs=transaction_costs,
