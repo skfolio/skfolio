@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from skfolio.measures import RiskMeasure
-from skfolio.optimization import MeanRisk, ReturnBasedTracker, ObjectiveFunction
+from skfolio.optimization import MeanRisk, ObjectiveFunction, ReturnBasedTracker
 
 
 def test_return_based_tracker(X):
@@ -75,7 +75,9 @@ def test_return_based_tracker_errors(X):
     with pytest.raises(ValueError, match=r"benchmark returns.*must be provided"):
         model.fit(X, y=None)
 
-    with pytest.raises(ValueError, match="Found input variables with inconsistent numbers of samples"):
+    with pytest.raises(
+        ValueError, match="Found input variables with inconsistent numbers of samples"
+    ):
         model.fit(X, np.random.randn(len(X) - 10) * 0.01)
 
     multi_column_y = pd.DataFrame(
@@ -84,5 +86,7 @@ def test_return_based_tracker_errors(X):
             "b2": np.random.randn(len(X)) * 0.01,
         }
     )
-    with pytest.raises(ValueError, match="y should be a 1d array, got an array of shape"):
+    with pytest.raises(
+        ValueError, match="y should be a 1d array, got an array of shape"
+    ):
         model.fit(X, multi_column_y)
