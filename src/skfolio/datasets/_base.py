@@ -117,6 +117,7 @@ def download_dataset(
     data_filename: str,
     data_home: str | Path | None = None,
     download_if_missing: bool = True,
+    **csv_reader_kwargs,
 ) -> pd.DataFrame:
     """Download and save locally a dataset from the remote GitHub dataset folder.
 
@@ -144,7 +145,7 @@ def download_dataset(
     # Use a CORS proxy when triggering requests from the browser
     url_prefix = "https://corsproxy.io/?" if sys.platform == "emscripten" else ""
     url = url_prefix + (
-        f"https://github.com/skfolio/skfolio-datasets/raw/main/"
+        f"https://github.com/BrandtWP/skfolio-datasets/raw/main/"
         f"datasets/{data_filename}.csv.gz"
     )
 
@@ -159,7 +160,7 @@ def download_dataset(
 
     archive_path = os.path.join(data_home, os.path.basename(url))
     ur.urlretrieve(url, archive_path)
-    df = load_gzip_compressed_csv_data(archive_path)
+    df = load_gzip_compressed_csv_data(archive_path, **csv_reader_kwargs)
     joblib.dump(df, filepath, compress=6)
     os.remove(archive_path)
     return df
@@ -449,5 +450,147 @@ def load_sp500_implied_vol_dataset(
     data_filename = "sp500_implied_vol_dataset"
     df = download_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+
+def load_usd_rates_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+    """Load the 1, 2, 3, 5, 7, 10, and 30 year daily end-of-day USD swap rates
+    from 2000-07-03 to 2016-10-28.
+
+    The data comes from the Investing.com public api.
+
+    ==============   ==================
+    Observations     1769
+    Assets           7
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> usd_rates = load_usd_rates_dataset()
+    >>> usd_rates.head()
+                1Y    2Y    3Y    5Y    7Y   10Y   30Y
+    Date                               ...
+    2020-01-01  1.763  1.6909  1.6823  ...  1.774  1.873  2.0705
+    2020-01-02  1.751  1.6370  1.6320  ...  1.737  1.826  2.0150
+    2020-01-03  1.751  1.6370  1.6320  ...  1.737  1.826  2.0150
+    2020-01-06  1.713  1.6100  1.5832  ...  1.650  1.741  1.9200
+    2020-01-07  1.711  1.6040  1.5916  ...  1.664  1.762  1.9465
+    """
+    data_filename = "usd_rates_dataset"
+    df = download_dataset(
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+
+def load_bond_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+    """Load the clean prices of a selection of 10 US corporate bonds from 2020-01-01
+    through 2025-10-20.
+
+    The data comes from the Luxembourg Stock Exchange's public website.
+
+    ==============   ==================
+    Observations     1231
+    Assets           10
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> bond_prices = load_bond_dataset()
+    >>> bond_prices.head()
+                US606822BR40  US172967EW71  ...  US904764AH00  US254687FX90
+    date                                    ...
+    2021-01-04       107.809       178.590  ...       146.763       109.400
+    2021-01-05       107.737       178.445  ...       146.558       109.085
+    2021-01-06       106.994       173.600  ...       145.054       108.570
+    2021-01-07       106.584       173.190  ...       144.869       108.250
+    2021-01-08       106.464       173.995  ...       144.545       108.025
+    """
+    data_filename = "bond_dataset"
+    df = download_dataset(
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
+    )
+    return df
+
+
+def load_bond_metadata_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Load the bond issue parameters for the bonds included in the bond_dataset.
+
+    The data comes from FINRA's public website.
+
+    ==============   ==================
+    Bonds            10
+    Parameters       10
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> bond_info = load_bond_metadata_dataset()
+    >>> bond_info.head()
+                                                issuer  ... callable
+    isin                                                ...
+    US606822BR40         MITSUBISHI UFJ FINL GROUP INC  ...    False
+    US172967EW71                         CITIGROUP INC  ...    False
+    US86562MBP41        SUMITOMO MITSUI FINL GROUP INC  ...    False
+    US925524AH30                            VIACOM INC  ...    False
+    US233835AQ08  DAIMLERCHRYSLER NORTH AMER HLDG CORP  ...    False
+    """
+    data_filename = "bond_metadata_dataset"
+    df = download_dataset(
+        data_filename,
+        data_home=data_home,
+        download_if_missing=download_if_missing,
+        datetime_index=False,
     )
     return df
