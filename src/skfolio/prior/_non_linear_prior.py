@@ -1,8 +1,7 @@
 import datetime as dt
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Literal, List
-from unittest import case
+from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -10,9 +9,7 @@ import pandas as pd
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 from pandas.tseries.frequencies import to_offset
-from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import make_column_selector
-from sklearn.pipeline import Pipeline
 
 import skfolio.measures as sm
 import skfolio.typing as skt
@@ -70,7 +67,7 @@ class MarketContext:
             self.data = dict(series) | self.data
 
         return self
-    
+
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         return self.data
 
@@ -104,7 +101,7 @@ class InstrumentAdapter(Instrument):
         self.instrument = instrument
 
     def __getattr__(self, attr):
-        """All non-adapted calls are passed to the original instrument object"""
+        """All non-adapted calls are passed to the original instrument object."""
         return getattr(self.instrument, attr)
 
 
@@ -134,7 +131,7 @@ class PortfolioInstruments(dict):
             {instr_id: instr.price(market_context) for instr_id, instr in self.items()},
             name=market_context.date,
         )
-    
+
     def get_params(self, deep: bool = True) -> dict[str, Any]:
         return self
 
@@ -142,10 +139,16 @@ class PortfolioInstruments(dict):
 def price_df(
     X: pd.DataFrame,
     portfolio_instruments: PortfolioInstruments,
-    reference_market_context=MarketContext(),
+    reference_market_context: MarketContext | None = None,
     market_data_parser: Callable[[pd.Series], dict] | None = None,
     use_date_index: bool = True,
 ) -> pd.DataFrame:
+    
+    reference_market_context = (
+        reference_market_context if reference_market_context is not None 
+        else MarketContext()
+    )
+
     rows = []
     for idx, market_data in X.iterrows():
         if market_data_parser:
@@ -277,7 +280,7 @@ class ReturnsProcessor:
 def calculate_sensis(
     market_context: MarketContext,
     portfolio_instruments: PortfolioInstruments,
-    keys: List[str] | None = None,
+    keys: list[str] | None = None,
     bump_size: float = 1e-4,
     mode: Literal["central", "forward", "backward"] = "central",
     percent: bool = True,
@@ -290,7 +293,7 @@ def calculate_sensis(
         The market context containing pricing parameters.
     portfolio_instruments : PortfolioInstruments
         The portfolio of instruments to calculate sensitivities for.
-    keys : List[str]
+    keys : list[str]
         The list of market context parameter keys to calculate sensitivities for.
     bump_size : float, optional
         The size of the bump to apply to each market parameter, by default 1e-4 (1bp).
@@ -381,13 +384,17 @@ class NonLinearPrior(BasePrior):
         self.portfolio_instruments = portfolio_instruments
         self.market_quotes_prior = market_quotes_prior or EmpiricalPrior()
         self.reference_index = reference_index
-        self.reference_market_context = reference_market_context if reference_market_context is not None else MarketContext()
+        self.reference_market_context = (
+            reference_market_context
+            if reference_market_context is not None
+            else MarketContext()
+        )
         self.market_data_parser = market_data_parser
         self.pricing_date_offset = pricing_date_offset
         self.returns_processor = returns_processor or ReturnsProcessor()
         self.transform_quotes_prior_moments = (
             transform_quotes_prior_moments if market_quotes_prior else False
-        ) # Only transform is a prior has been provided (which may have different moments than empirical)
+        )  # Only transform is a prior has been provided (which may have different moments than empirical)
 
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
@@ -450,10 +457,12 @@ class NonLinearPrior(BasePrior):
             else reference_date
         )
 
-        reference_quotes = pd.Series({
-            key: self.reference_market_context[key] 
-            for key in self.market_quotes_prior_.feature_names_in_
-        })
+        reference_quotes = pd.Series(
+            {
+                key: self.reference_market_context[key]
+                for key in self.market_quotes_prior_.feature_names_in_
+            }
+        )
 
         market_quote_distribution = self.returns_processor.returns_to_df(
             prior_quote_returns, reference_quotes
@@ -501,119 +510,3 @@ class NonLinearPrior(BasePrior):
         )
 
         return self
-
-    # def __sklearn_clone__(self):
-    #     """Custom clone method to avoid cloning the portfolio instruments."""
-    #     return self
-
-
-class MarketDataProcessor(ABC, BaseEstimator, TransformerMixin):
-    # TODO: add caching logic
-
-    def parse_market_quotes(self, market_quotes: pd.Series) -> MarketContext:
-        """A default implentation is provided for parsing market quotes that
-        simply converts the pd.Series directly into a MarketContext. However,
-        subclasses may override this method to provide custom parsing logic.
-        """
-        return MarketContext.from_series(market_quotes)
-
-    @abstractmethod
-    def transform_market_context(self, market_context: MarketContext) -> pd.Series:
-        pass
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X, y=None) -> pd.DataFrame:
-        return pd.concat(
-            [
-                self.transform_market_context(self.parse_market_quotes(X.iloc[i]))
-                for i in range(len(X))
-            ],
-            axis=1,
-        )
-
-
-class SaveMarketContext(BaseEstimator, TransformerMixin):
-    """A simple transformer that saves a market context from a given row in the input DataFrame to a target MarketContext object.
-    This transformer does not modify the input DataFrame, it simply updates the target MarketContext.
-    The row from the DataFrame to be used is set as the last row by default, but any index label or integer position may be specified.
-
-    By default, the given dataframe row is converted directly to a market_context, but more complicated logic may be provided by setting
-    the market_context_parser argument.
-    """
-
-    def __init__(
-        self,
-        target_market_context: MarketContext,
-        df_index=-1,
-        market_context_parser: Callable[
-            [pd.Series], MarketContext
-        ] = MarketContext.from_series,
-    ):
-        self.target_market_context = target_market_context
-        self.df_index = df_index
-        self.market_context_parser = market_context_parser
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X, y=None) -> pd.DataFrame:
-        """The transform function does not actually transform the data at all,
-        instead it simply grabs the correct market context and saves it in the given market_context object"""
-
-        # Get the correct row in X. If df_index is an integer, first check if it's in the index. Otherwise, treat it as a positional index.
-        if self.df_index in X.index:
-            row = X.loc[self.df_index]
-        elif isinstance(self.df_index, int):
-            row = X.iloc[self.df_index]
-        else:
-            raise ValueError("df_index must be an index label or integer position")
-
-        # Update the target market context in-place to ensure the reference is preserved
-        self.target_market_context.update(
-            {label: value for label, value in self.market_context_parser(row).items()}
-        )
-
-        if isinstance(row.name, dt.date):
-            self.target_market_context.date = row.name
-
-        return X
-
-
-class ExtrapolateReturns(TransformerMixin, BaseEstimator):
-    def __init__(
-        self,
-        periods: int = 1,
-        freq: str = "D",
-        return_type: Literal["linear", "log", "arithmetic"] = "linear",
-    ):
-        self.periods = periods
-        self.freq = freq
-        self.return_type = return_type
-
-    def fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
-        return self
-
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        returns = PricesToReturns(
-            periods=self.periods,
-        ).transform(X)
-
-        output_index = None
-        if isinstance(X.index, pd.DatetimeIndex):
-            last_date = max(X.index)
-            reference_prices = X.loc[last_date]
-            output_date = last_date + to_offset(self.freq) * self.periods
-            output_index = pd.Index(
-                [output_date] * len(returns), name=returns.index.name
-            )
-        else:
-            reference_prices = X.iloc[-1]
-
-        if self.return_type == "arithmetic":
-            prices = reference_prices.values + returns.values
-        else:
-            prices = reference_prices.values * (1 + returns.values)
-
-        return pd.DataFrame(prices, index=output_index, columns=X.columns)
