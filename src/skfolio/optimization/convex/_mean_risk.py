@@ -815,7 +815,7 @@ class MeanRisk(ConvexOptimization):
 
         # Validate
         self._validation()
-        # Used to avoid adding multiple times similar constraints linked to identical
+        # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
@@ -1079,15 +1079,19 @@ class MeanRisk(ConvexOptimization):
                 )
             case ObjectiveFunction.MAXIMIZE_RATIO:
                 # Capture common obvious mistake before solver failure to help user
-                if self.overwrite_expected_return is None:
-                    if np.isscalar(self.min_weights) and self.min_weights >= 0:
-                        if np.max(return_distribution.mu) - self.risk_free_rate <= 0:
-                            raise ValueError(
-                                "Cannot optimize for Maximum Ratio with your current "
-                                "constraints and input. This is because your assets' "
-                                "expected returns are all under-performing your risk-free "
-                                f"rate {self.risk_free_rate:.2%}."
-                        )
+                if (
+                    self.overwrite_expected_return is None
+                    and np.isscalar(self.min_weights)
+                    and self.min_weights >= 0
+                    and np.max(return_distribution.mu) - self.risk_free_rate <= 0
+                ):
+                    raise ValueError(
+                        "Cannot optimize for Maximum Ratio with your current "
+                        "constraints and input. This is because your assets' "
+                        "expected returns are all under-performing your risk-free "
+                        f"rate {self.risk_free_rate:.2%}."
+                    )
+
                 homogenization_factor = _optimal_homogenization_factor(
                     mu=return_distribution.mu
                 )

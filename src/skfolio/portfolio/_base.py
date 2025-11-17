@@ -1135,9 +1135,9 @@ class BasePortfolio:
             yaxis_title="Probability Density",
             showlegend=False,
         )
-        # fig.update_xaxes(
-            # tickformat=".0%",
-        # )
+        fig.update_xaxes(
+            tickformat=".0%",
+        )
         return fig
 
     def plot_rolling_measure(
