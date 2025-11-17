@@ -70,6 +70,9 @@ class MarketContext:
             self.data = dict(series) | self.data
 
         return self
+    
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return self.data
 
     def __len__(self) -> int:
         return self.data.__len__()
@@ -131,6 +134,9 @@ class PortfolioInstruments(dict):
             {instr_id: instr.price(market_context) for instr_id, instr in self.items()},
             name=market_context.date,
         )
+    
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return self
 
 
 def price_df(
@@ -368,14 +374,14 @@ class NonLinearPrior(BasePrior):
         reference_market_context: MarketContext | None = None,
         market_data_parser: Callable[[pd.Series], dict] | None = None,
         reference_index=-1,
-        pricing_date_offset: str | None = "1B",
+        pricing_date_offset: str = "1B",
         returns_processor: ReturnsProcessor | None = None,
         transform_quotes_prior_moments: bool = True,
     ):
         self.portfolio_instruments = portfolio_instruments
         self.market_quotes_prior = market_quotes_prior or EmpiricalPrior()
         self.reference_index = reference_index
-        self.reference_market_context = reference_market_context or MarketContext()
+        self.reference_market_context = reference_market_context if reference_market_context is not None else MarketContext()
         self.market_data_parser = market_data_parser
         self.pricing_date_offset = pricing_date_offset
         self.returns_processor = returns_processor or ReturnsProcessor()
@@ -433,43 +439,21 @@ class NonLinearPrior(BasePrior):
         if sample_weight is None:
             sample_weight = np.ones(n_observations) / n_observations
 
-        # Get reference quotes and prices
-        if self.reference_index in market_quotes.index:
-            reference_quotes = market_quotes.loc[self.reference_index]
-        elif isinstance(self.reference_index, int):
-            reference_quotes = market_quotes.iloc[self.reference_index]
-        else:
-            raise ValueError(
-                "reference_index must be an index label or integer position"
-            )
-
-        if self.market_data_parser:
-            reference_quotes = self.market_data_parser(reference_quotes)
-        self.reference_market_context.update(**reference_quotes)
-
-        # Determine reference date used for computing the reference portfolio prices
-        pricing_date = self.reference_market_context.date
-        if isinstance(reference_quotes.name, dt.date):
-            reference_date = reference_quotes.name
-        elif isinstance(reference_quotes.name, pd.Timestamp):
-            reference_date = reference_quotes.name.date()
-        elif pricing_date:
-            reference_date = pricing_date
-        else:
-            raise ValueError("""Could not determine reference date for pricing instruments.
-                             Please ensure that either X has a date index or the 
-                             reference_market_context has a valid date.""")
-        self.reference_market_context.update_date(reference_date)
         reference_prices = self.portfolio_instruments.price(
             self.reference_market_context
         )
 
-        if not pricing_date:
-            pricing_date = (
-                (reference_date + to_offset(self.pricing_date_offset))
-                if self.pricing_date_offset
-                else reference_date
-            )
+        reference_date = self.reference_market_context.date
+        pricing_date = (
+            (reference_date + to_offset(self.pricing_date_offset))
+            if self.pricing_date_offset
+            else reference_date
+        )
+
+        reference_quotes = pd.Series({
+            key: self.reference_market_context[key] 
+            for key in self.market_quotes_prior_.feature_names_in_
+        })
 
         market_quote_distribution = self.returns_processor.returns_to_df(
             prior_quote_returns, reference_quotes
@@ -493,18 +477,18 @@ class NonLinearPrior(BasePrior):
                 self.portfolio_instruments,
                 keys=self.market_quotes_prior_.feature_names_in_,
             )
-            # mu = (
-            #     reference_prices
-            #     + sensis @ self.market_quotes_prior_.return_distribution_.mu
-            # ) / reference_prices - 1
+            mu = (
+                reference_prices.values
+                + sensis.values @ self.market_quotes_prior_.return_distribution_.mu
+            ) / reference_prices.values - 1
 
-            # cov = (
-            #     sensis
-            #     @ self.market_quotes_prior_.return_distribution_.covariance
-            #     @ sensis.T
-            # )
-            mu = sm.mean(returns, sample_weight=sample_weight).values
-            cov = np.cov(returns, rowvar=False, aweights=sample_weight)
+            cov = (
+                sensis.values
+                @ self.market_quotes_prior_.return_distribution_.covariance
+                @ sensis.values.T
+            )
+            # mu = sm.mean(returns, sample_weight=sample_weight).values
+            # cov = np.cov(returns, rowvar=False, aweights=sample_weight)
         else:
             mu = sm.mean(returns, sample_weight=sample_weight).values
             cov = np.cov(returns, rowvar=False, aweights=sample_weight)
@@ -518,9 +502,9 @@ class NonLinearPrior(BasePrior):
 
         return self
 
-    def __sklearn_clone__(self):
-        """Custom clone method to avoid cloning the portfolio instruments."""
-        return self
+    # def __sklearn_clone__(self):
+    #     """Custom clone method to avoid cloning the portfolio instruments."""
+    #     return self
 
 
 class MarketDataProcessor(ABC, BaseEstimator, TransformerMixin):
