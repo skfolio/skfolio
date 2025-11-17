@@ -453,10 +453,9 @@ def load_sp500_implied_vol_dataset(
     )
     return df
 
-def load_usd_rates_dataset(
-    data_home=None, download_if_missing=True
-) -> pd.DataFrame:
-    """Load the 1, 2, 3, 5, 7, 10, and 30 year daily end-of-day USD swap rates 
+
+def load_usd_rates_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+    """Load the 1, 2, 3, 5, 7, 10, and 30 year daily end-of-day USD swap rates
     from 2000-07-03 to 2016-10-28.
 
     The data comes from the Investing.com public api.
@@ -500,11 +499,10 @@ def load_usd_rates_dataset(
     )
     return df
 
-def load_bond_dataset(
-    data_home=None, download_if_missing=True
-) -> pd.DataFrame:
-    """Load the clean prices of a selection of 10 US corporate bonds from 2020-01-01 
-    through 2025-10-20
+
+def load_bond_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+    """Load the clean prices of a selection of 10 US corporate bonds from 2020-01-01
+    through 2025-10-20.
 
     The data comes from the Luxembourg Stock Exchange's public website.
 
@@ -546,6 +544,7 @@ def load_bond_dataset(
         data_filename, data_home=data_home, download_if_missing=download_if_missing
     )
     return df
+
 
 def load_bond_metadata_dataset(
     data_home=None, download_if_missing=True
@@ -589,9 +588,9 @@ def load_bond_metadata_dataset(
     """
     data_filename = "bond_metadata_dataset"
     df = download_dataset(
-        data_filename, 
+        data_filename,
         data_home=data_home,
         download_if_missing=download_if_missing,
-        datetime_index=False
+        datetime_index=False,
     )
     return df

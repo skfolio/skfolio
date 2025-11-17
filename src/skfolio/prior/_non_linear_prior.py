@@ -143,9 +143,9 @@ def price_df(
     market_data_parser: Callable[[pd.Series], dict] | None = None,
     use_date_index: bool = True,
 ) -> pd.DataFrame:
-    
     reference_market_context = (
-        reference_market_context if reference_market_context is not None 
+        reference_market_context
+        if reference_market_context is not None
         else MarketContext()
     )
 

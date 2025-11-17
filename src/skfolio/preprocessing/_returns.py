@@ -8,7 +8,9 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+
 import skfolio.typing as skt
+
 
 def prices_to_returns(
     X: pd.DataFrame,
@@ -95,7 +97,6 @@ def prices_to_returns(
         GARP Risk Professional.
         Attilio Meucci (2010).
     """
-
     if log_returns:
         return_type = "log"
         raise DeprecationWarning(

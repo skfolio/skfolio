@@ -7,6 +7,8 @@ import pandas as pd
 import pytest
 
 from skfolio.datasets import (
+    load_bond_dataset,
+    load_bond_metadata_dataset,
     load_factors_dataset,
     load_ftse100_dataset,
     load_nasdaq_dataset,
@@ -14,8 +16,6 @@ from skfolio.datasets import (
     load_sp500_implied_vol_dataset,
     load_sp500_index,
     load_usd_rates_dataset,
-    load_bond_dataset,
-    load_bond_metadata_dataset
 )
 from skfolio.datasets._base import clear_data_home, get_data_home
 
@@ -242,6 +242,7 @@ class TestSp500ImpliedVolDataset:
         # Check if the shape of the DataFrame is correct
         assert df.shape == (3270, 20)
 
+
 class TestUsdRatesDataset:
     def test_load_usd_rates_dataset_success(self):
         df = load_usd_rates_dataset()
@@ -260,6 +261,7 @@ class TestUsdRatesDataset:
         # Check if the shape of the DataFrame is correct
         assert df.shape == (1767, 7)
 
+
 class TestBondDataset:
     def test_load_bond_dataset_success(self):
         df = load_bond_dataset()
@@ -277,6 +279,7 @@ class TestBondDataset:
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (1231, 10)
+
 
 class TestBondMetadataDataset:
     def test_load_bond_metadata_dataset_success(self):

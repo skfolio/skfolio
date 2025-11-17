@@ -34,8 +34,7 @@ __all__ = [
     "Result",
     "RiskResult",
     "Tags",
-    "Target",
-    "ReturnType"
+    "Target"
 ]
 
 Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure

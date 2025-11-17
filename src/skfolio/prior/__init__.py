@@ -39,6 +39,6 @@ __all__ = [
     "ReturnDistribution",
     "ReturnsProcessor",
     "SyntheticData",
-    "calculate_sensis"
+    "calculate_sensis",
     "price_df",
 ]
