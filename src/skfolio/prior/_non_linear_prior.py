@@ -37,6 +37,20 @@ class MarketContext:
     date: dt.date
 
     def __init__(self, date: dt.date | None = None, **kwargs: Any):
+        """Initialize MarketContext.
+
+        Parameters
+        ----------
+        date : dt.date, optional
+            The pricing date for the market context.
+        **kwargs : Any
+            Additional market parameters as key-value pairs.
+
+        Raises
+        ------
+        ValueError
+            If date is not None and not of type datetime.date.
+        """
         if (date is not None) and (not isinstance(date, dt.date)):
             raise ValueError(
                 f"MarketContext requires a valid date of type datetime.date, not {type(date)}"
@@ -47,14 +61,54 @@ class MarketContext:
 
     @classmethod
     def from_series(cls, series: pd.Series) -> "MarketContext":
+        """Create a MarketContext from a pandas Series.
+
+        Parameters
+        ----------
+        series : pd.Series
+            A pandas Series where the index name is used as the date and
+            the values become market parameters.
+
+        Returns
+        -------
+        MarketContext
+            A new MarketContext instance.
+        """
         date = series.name
         return cls(date=date, **series)
 
     def update_date(self, date: dt.date) -> "MarketContext":
+        """Update the date of the market context.
+
+        Parameters
+        ----------
+        date : dt.date
+            The new date to set.
+
+        Returns
+        -------
+        MarketContext
+            Self for method chaining.
+        """
         self.date = date
         return self
 
     def update_from_series(self, series: pd.Series, overwrite=True) -> "MarketContext":
+        """Update the market context from a pandas Series.
+
+        Parameters
+        ----------
+        series : pd.Series
+            A pandas Series containing market parameters.
+        overwrite : bool, default=True
+            If True, existing parameters are overwritten. If False, existing
+            parameters are preserved.
+
+        Returns
+        -------
+        MarketContext
+            Self for method chaining.
+        """
         if (self.date is None) or overwrite:
             if isinstance(series.name, dt.date):
                 self.date = series.name
@@ -69,39 +123,137 @@ class MarketContext:
         return self
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """Get the market parameters. Necessary for sklearn cloning.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, performs a deep copy (not currently used).
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary of market parameters.
+        """
         return self.data
 
     def __len__(self) -> int:
+        """Return the number of market parameters.
+
+        Returns
+        -------
+        int
+            Number of parameters in the market context.
+        """
         return self.data.__len__()
 
     def __getitem__(self, key):
+        """Get a market parameter by key.
+
+        Parameters
+        ----------
+        key : str
+            The parameter key.
+
+        Returns
+        -------
+        Any
+            The parameter value.
+        """
         return self.data.__getitem__(key)
 
     def __setitem__(self, key, value) -> None:
+        """Set a market parameter.
+
+        Parameters
+        ----------
+        key : str
+            The parameter key.
+        value : Any
+            The parameter value.
+        """
         self.data.__setitem__(key, value)
 
     def __delitem__(self, key) -> None:
+        """Delete a market parameter.
+
+        Parameters
+        ----------
+        key : str
+            The parameter key to delete.
+        """
         self.data.__delitem__(key)
 
     def __iter__(self):
+        """Iterate over market parameter keys.
+
+        Returns
+        -------
+        iterator
+            Iterator over parameter keys.
+        """
         return self.data.__iter__()
 
     def __getattr__(self, attr):
+        """Get an attribute from the underlying data dictionary.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute name.
+
+        Returns
+        -------
+        Any
+            The attribute value.
+        """
         return getattr(self.data, attr)
 
 
 class Instrument(ABC):
     @abstractmethod
     def price(self, market_context: MarketContext) -> float:
+        """Price the instrument given a market context.
+
+        Parameters
+        ----------
+        market_context : MarketContext
+            The market context containing pricing parameters.
+
+        Returns
+        -------
+        float
+            The price of the instrument.
+        """
         pass
 
 
 class InstrumentAdapter(Instrument):
     def __init__(self, instrument):
+        """Initialize InstrumentAdapter.
+
+        Parameters
+        ----------
+        instrument : object
+            The instrument to wrap.
+        """
         self.instrument = instrument
 
     def __getattr__(self, attr):
-        """All non-adapted calls are passed to the original instrument object."""
+        """Get an attribute from the wrapped instrument.
+
+        All non-adapted calls are passed to the original instrument object.
+
+        Parameters
+        ----------
+        attr : str
+            The attribute name.
+
+        Returns
+        -------
+        Any
+            The attribute value from the wrapped instrument.
+        """
         return getattr(self.instrument, attr)
 
 
@@ -118,6 +270,18 @@ class PortfolioInstruments(dict):
     """
 
     def __init__(self, **kwargs: dict[str, Instrument]):
+        """Initialize PortfolioInstruments.
+
+        Parameters
+        ----------
+        **kwargs : dict[str, Instrument]
+            Instrument IDs mapped to Instrument objects.
+
+        Raises
+        ------
+        ValueError
+            If any value is not an Instrument or any key is not a string.
+        """
         if not all(isinstance(instr, Instrument) for instr in kwargs.values()):
             raise ValueError("All portfolio items must be of type Instrument")
 
@@ -127,12 +291,36 @@ class PortfolioInstruments(dict):
         super().__init__(**kwargs)
 
     def price(self, market_context: MarketContext) -> pd.Series:
+        """Price all instruments in the portfolio.
+
+        Parameters
+        ----------
+        market_context : MarketContext
+            The market context containing pricing parameters.
+
+        Returns
+        -------
+        pd.Series
+            Series of prices for each instrument, indexed by instrument ID.
+        """
         return pd.Series(
             {instr_id: instr.price(market_context) for instr_id, instr in self.items()},
             name=market_context.date,
         )
 
     def get_params(self, deep: bool = True) -> dict[str, Any]:
+        """Get the portfolio instruments. Necessary for sklearn cloning.
+
+        Parameters
+        ----------
+        deep : bool, default=True
+            If True, performs a deep copy (not currently used).
+
+        Returns
+        -------
+        dict[str, Any]
+            The portfolio instruments dictionary.
+        """
         return self
 
 
@@ -143,6 +331,27 @@ def price_df(
     market_data_parser: Callable[[pd.Series], dict] | None = None,
     use_date_index: bool = True,
 ) -> pd.DataFrame:
+    """Price portfolio instruments over a time series of market data.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        DataFrame containing market data over time.
+    portfolio_instruments : PortfolioInstruments
+        Portfolio of instruments to price.
+    reference_market_context : MarketContext, optional
+        Reference market context to update with data from X.
+        Defaults to empty MarketContext.
+    market_data_parser : Callable[[pd.Series], dict], optional
+        Function to parse each row of market data.
+    use_date_index : bool, default=True
+        Whether to use the DataFrame index as the pricing date.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of prices for each instrument over time.
+    """
     reference_market_context = (
         reference_market_context
         if reference_market_context is not None
@@ -172,25 +381,97 @@ class ReturnsProcessor:
         | dict[str, skt.ReturnType]
         | dict[make_column_selector, skt.ReturnType] = "linear",
     ):
+        """Initialize ReturnsProcessor.
+
+        Parameters
+        ----------
+        periods : int, default=1
+            Number of periods for return calculation.
+        freq : str, optional
+            Frequency string for return calculation.
+        return_types : skt.ReturnType or dict, default="linear"
+            Type of returns to calculate. Can be a single return type or a
+            dictionary mapping column selectors to return types.
+        """
         self.periods = periods
         self.freq = freq
         self.return_types = return_types
 
     def linear_returns(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Calculate linear (percentage) returns.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame of prices.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of linear returns.
+
+        Raises
+        ------
+        ValueError
+            If any prices are non-positive.
+        """
         if np.any(X <= 0):
             raise ValueError("Prices must be positive to compute returns.")
 
         return X.pct_change(freq=self.freq, periods=self.periods).iloc[self.periods :]
 
     def log_returns(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Calculate logarithmic returns.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame of prices.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of log returns.
+        """
         return np.log1p(self.linear_returns(X)).iloc[self.periods :]
 
     def arithmetic_returns(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Calculate arithmetic (simple difference) returns.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame of prices.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of arithmetic returns.
+        """
         return X.diff(periods=self.periods).iloc[self.periods :]
 
     def prices_to_returns(
         self, X: pd.DataFrame, return_type: skt.ReturnType
     ) -> pd.DataFrame:
+        """Convert prices to returns based on return type.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame of prices.
+        return_type : skt.ReturnType
+            Type of returns: "linear", "log", or "arithmetic".
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of returns.
+
+        Raises
+        ------
+        ValueError
+            If return_type is not recognized.
+        """
         match return_type:
             case "linear":
                 return self.linear_returns(X)
@@ -207,6 +488,27 @@ class ReturnsProcessor:
         reference_prices: pd.Series,
         return_type: skt.ReturnType,
     ) -> pd.DataFrame:
+        """Convert returns to prices based on return type.
+
+        Parameters
+        ----------
+        returns : pd.DataFrame
+            DataFrame of returns.
+        reference_prices : pd.Series
+            Series of reference prices to use as the base.
+        return_type : skt.ReturnType
+            Type of returns: "linear", "log", or "arithmetic".
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of prices.
+
+        Raises
+        ------
+        ValueError
+            If return_type is not recognized.
+        """
         match return_type:
             case "linear":
                 prices = reference_prices.values * (1 + returns)
@@ -219,6 +521,23 @@ class ReturnsProcessor:
         return pd.DataFrame(prices, index=returns.index, columns=returns.columns)
 
     def df_to_returns(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Convert a DataFrame of prices to returns.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame of prices.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of returns.
+
+        Raises
+        ------
+        ValueError
+            If return_types configuration is invalid.
+        """
         if isinstance(self.return_types, str):
             return self.prices_to_returns(X, self.return_types)
         elif isinstance(self.return_types, dict):
@@ -244,6 +563,25 @@ class ReturnsProcessor:
     def returns_to_df(
         self, returns: pd.DataFrame, reference_prices: pd.Series
     ) -> pd.DataFrame:
+        """Convert a DataFrame of returns to prices.
+
+        Parameters
+        ----------
+        returns : pd.DataFrame
+            DataFrame of returns.
+        reference_prices : pd.Series
+            Series of reference prices to use as the base.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of prices.
+
+        Raises
+        ------
+        ValueError
+            If return_types configuration is invalid.
+        """
         if isinstance(self.return_types, str):
             return self.returns_to_prices(returns, reference_prices, self.return_types)
         elif isinstance(self.return_types, dict):
@@ -293,12 +631,18 @@ def calculate_sensis(
         The market context containing pricing parameters.
     portfolio_instruments : PortfolioInstruments
         The portfolio of instruments to calculate sensitivities for.
-    keys : list[str]
+    keys : list[str], optional
         The list of market context parameter keys to calculate sensitivities for.
-    bump_size : float, optional
-        The size of the bump to apply to each market parameter, by default 1e-4 (1bp).
-    percent : bool, optional
-        Whether to express sensitivities as percentage changes, by default True.
+        If None, all keys in the market context are used.
+    bump_size : float, default=1e-4
+        The size of the bump to apply to each market parameter (1 basis point by default).
+    mode : {"central", "forward", "backward"}, default="central"
+        The finite difference method to use:
+        - "central": Central difference (most accurate)
+        - "forward": Forward difference
+        - "backward": Backward difference
+    percent : bool, default=True
+        Whether to express sensitivities as percentage changes.
         For example, setting this to True would correspond to calculating modified duration,
         while setting it False would correspond to DV01.
 
@@ -381,6 +725,27 @@ class NonLinearPrior(BasePrior):
         returns_processor: ReturnsProcessor | None = None,
         transform_quotes_prior_moments: bool = True,
     ):
+        """Initialize NonLinearPrior.
+
+        Parameters
+        ----------
+        portfolio_instruments : PortfolioInstruments
+            The portfolio of instruments to price.
+        market_quotes_prior : BasePrior, optional
+            Prior estimator for market quotes. Defaults to EmpiricalPrior.
+        reference_market_context : MarketContext, optional
+            Reference market context for pricing. Defaults to empty MarketContext.
+        market_data_parser : Callable[[pd.Series], dict], optional
+            Function to parse market data from a Series.
+        reference_index : int, default=-1
+            Index to use as reference point.
+        pricing_date_offset : str, default="1B"
+            Date offset for pricing (e.g., "1B" for one business day).
+        returns_processor : ReturnsProcessor, optional
+            Processor for handling returns calculations. Defaults to ReturnsProcessor().
+        transform_quotes_prior_moments : bool, default=True
+            Whether to transform moments from the quotes prior using sensitivities.
+        """
         self.portfolio_instruments = portfolio_instruments
         self.market_quotes_prior = market_quotes_prior or EmpiricalPrior()
         self.reference_index = reference_index
@@ -397,6 +762,13 @@ class NonLinearPrior(BasePrior):
         )  # Only transform is a prior has been provided (which may have different moments than empirical)
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        MetadataRouter
+            The metadata router for routing fit parameters.
+        """
         # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -415,6 +787,24 @@ class NonLinearPrior(BasePrior):
         market_quotes: npt.ArrayLike | None = None,
         **fit_params,
     ):
+        """Fit the NonLinearPrior model.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Historical asset prices (not used directly).
+        y : Ignored
+            Not used, present for API consistency.
+        market_quotes : npt.ArrayLike, optional
+            Historical market quotes used for pricing the instruments.
+        **fit_params : dict
+            Additional fit parameters to route to sub-estimators.
+
+        Returns
+        -------
+        self : NonLinearPrior
+            Fitted estimator.
+        """
         if market_quotes is not None:
             # noinspection PyTypeChecker
             fit_params["market_quotes"] = market_quotes
@@ -496,8 +886,6 @@ class NonLinearPrior(BasePrior):
                 @ self.market_quotes_prior_.return_distribution_.covariance
                 @ sensis.values.T
             )
-            # mu = sm.mean(returns, sample_weight=sample_weight).values
-            # cov = np.cov(returns, rowvar=False, aweights=sample_weight)
         else:
             mu = sm.mean(returns, sample_weight=sample_weight).values
             cov = np.cov(returns, rowvar=False, aweights=sample_weight)
