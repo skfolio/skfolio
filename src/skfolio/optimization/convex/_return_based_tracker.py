@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
@@ -287,7 +286,6 @@ class ReturnBasedTracker(MeanRisk):
         self : ReturnBasedTracker
            Fitted estimator.
         """
-
         if y is None:
             raise ValueError(
                 "y (benchmark returns) must be provided for ReturnBasedTracker"
