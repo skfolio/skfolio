@@ -60,6 +60,22 @@ class ReturnBasedTracker(MeanRisk):
         Maximum long position.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
+    cardinality : int, optional
+        Cardinality constraint to limit the number of invested assets.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+
+    group_cardinalities : dict[str, int], optional
+        Cardinality constraints for specific groups of assets.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+
+    threshold_long : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Minimum weight threshold for long positions.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+
+    threshold_short : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Maximum weight threshold for short positions.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+
     transaction_costs : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Transaction costs of the assets.
         See :class:`~skfolio.optimization.MeanRisk` for details.
@@ -173,7 +189,7 @@ class ReturnBasedTracker(MeanRisk):
     Notes
     -----
     The `y` parameter in the `fit` method must contain the benchmark returns
-    with the same shape as `X` (n_observations,) or (n_observations, 1).
+    with shape (n_observations, 1).
     """
 
     def __init__(
@@ -184,6 +200,10 @@ class ReturnBasedTracker(MeanRisk):
         max_weights: skt.MultiInput | None = 1.0,
         max_short: float | None = None,
         max_long: float | None = None,
+        cardinality: int | None = None,
+        group_cardinalities: dict[str, int] | None = None,
+        threshold_long: skt.MultiInput | None = None,
+        threshold_short: skt.MultiInput | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -216,6 +236,10 @@ class ReturnBasedTracker(MeanRisk):
             max_budget=None,
             max_short=max_short,
             max_long=max_long,
+            cardinality=cardinality,
+            group_cardinalities=group_cardinalities,
+            threshold_long=threshold_long,
+            threshold_short=threshold_short,
             transaction_costs=transaction_costs,
             management_fees=management_fees,
             previous_weights=previous_weights,
@@ -248,7 +272,7 @@ class ReturnBasedTracker(MeanRisk):
         X : array-like of shape (n_observations, n_assets)
            Price returns of the assets.
 
-        y : array-like of shape (n_observations,) or (n_observations, 1)
+        y : array-like of shape (n_observations, 1)
             Price returns of the benchmark.
 
         **fit_params : dict

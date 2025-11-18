@@ -327,6 +327,19 @@ class MeanRisk(ConvexOptimization):
         Additionally, when `fallback="previous_weights"`, failures will fall back to
         these weights if provided.
 
+    target_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Target weights of the assets. When provided, risk measures are computed on the
+        deviation from these target weights (w - target_weights) instead of the
+        absolute weights. This is useful for tracking error minimization or when
+        optimizing around a specific allocation.
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset target weight) and the input `X` of the `fit` method must
+        be a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned
+        a target weight of `0.0`.
+        The default (`None`) means no target weights.
+
     l1_coef : float, default=0.0
         L1 regularization coefficient.
         It is used to penalize the objective function by the L1 norm:
@@ -1012,7 +1025,7 @@ class MeanRisk(ConvexOptimization):
         # risk and risk constraints
         risk = None
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
-            risk_limit = getattr(self, f"max_{r_m.value}", None)
+            risk_limit = getattr(self, f"max_{r_m.value}")
 
             if self.risk_measure == r_m or risk_limit is not None:
                 # Add covariance uncertainty set if provided
@@ -1032,15 +1045,13 @@ class MeanRisk(ConvexOptimization):
                         if self.target_weights is None:
                             args[arg_name] = w
                         else:
-                            target_weights_array = self._clean_input(
+                            target_weights = self._clean_input(
                                 self.target_weights,
                                 n_assets=n_assets,
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            if np.isscalar(target_weights_array):
-                                target_weights_array *= np.ones(n_assets)
-                            args[arg_name] = w - target_weights_array
+                            args[arg_name] = w - target_weights
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
