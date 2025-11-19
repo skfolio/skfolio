@@ -3,27 +3,28 @@ import pandas as pd
 import pytest
 
 from skfolio.measures import RiskMeasure
-from skfolio.optimization import MeanRisk, ObjectiveFunction, ReturnBasedTracker
+from skfolio.optimization import BenchmarkTracker, MeanRisk, ObjectiveFunction
 
 
-def test_return_based_tracker(X):
-    benchmark_returns = X.mean(axis=1)
-    model = ReturnBasedTracker(min_weights=0)
+@pytest.fixture
+def benchmark_returns(y):
+    return y["MTUM"]
+
+
+def test_benchmark_tracker(X, benchmark_returns):
+    model = BenchmarkTracker(min_weights=0)
     model.fit(X, benchmark_returns)
     portfolio = model.predict(X)
 
     excess_returns = portfolio.returns - benchmark_returns.values
     tracking_error = np.std(excess_returns, ddof=1)
-
     np.testing.assert_almost_equal(
         tracking_error, model.problem_values_["risk"], decimal=4
     )
 
 
-def test_return_based_tracker_vs_manual(X):
-    benchmark_returns = X.mean(axis=1)
-
-    model1 = ReturnBasedTracker(
+def test_benchmark_tracker_vs_manual(X, benchmark_returns):
+    model1 = BenchmarkTracker(
         risk_measure=RiskMeasure.STANDARD_DEVIATION,
         min_weights=0,
     )
@@ -42,6 +43,7 @@ def test_return_based_tracker_vs_manual(X):
     np.testing.assert_almost_equal(model1.weights_, model2.weights_, decimal=6)
 
 
+@pytest.mark.filterwarnings("ignore:A column-vector y was passed")
 @pytest.mark.parametrize(
     "y_input",
     [
@@ -51,7 +53,7 @@ def test_return_based_tracker_vs_manual(X):
         "2d_array",
     ],
 )
-def test_return_based_tracker_input_formats(X, y_input):
+def test_benchmark_tracker_input_formats(X, y_input):
     if y_input == "array":
         benchmark_returns = np.random.randn(len(X)) * 0.01
     elif y_input == "series":
@@ -63,14 +65,14 @@ def test_return_based_tracker_input_formats(X, y_input):
     else:
         benchmark_returns = np.random.randn(len(X), 1) * 0.01
 
-    model = ReturnBasedTracker(min_weights=0)
+    model = BenchmarkTracker(min_weights=0)
     portfolio = model.fit(X, benchmark_returns).predict(X)
 
     assert portfolio.weights.shape == (X.shape[1],)
 
 
-def test_return_based_tracker_errors(X):
-    model = ReturnBasedTracker()
+def test_benchmark_tracker_errors(X, benchmark_returns):
+    model = BenchmarkTracker()
 
     with pytest.raises(ValueError, match=r"benchmark returns.*must be provided"):
         model.fit(X, y=None)
@@ -90,3 +92,8 @@ def test_return_based_tracker_errors(X):
         ValueError, match="y should be a 1d array, got an array of shape"
     ):
         model.fit(X, multi_column_y)
+
+    model.budget = 2.0
+
+    with pytest.raises(ValueError, match=r"Budget must be 1.0 for BenchmarkTracker"):
+        model.fit(X, benchmark_returns)

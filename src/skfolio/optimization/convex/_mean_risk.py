@@ -340,6 +340,10 @@ class MeanRisk(ConvexOptimization):
         a target weight of `0.0`.
         The default (`None`) means no target weights.
 
+        .. seealso::
+
+            :ref:`Tracking Error Optimization <tracking_error_optimization>`
+
     l1_coef : float, default=0.0
         L1 regularization coefficient.
         It is used to penalize the objective function by the L1 norm:
@@ -432,6 +436,10 @@ class MeanRisk(ConvexOptimization):
         The tracking error is defined as the RMSE (root-mean-square error) of the
         portfolio returns compared to a target returns. If `max_tracking_error` is
         provided, the target returns `y` must be provided in the `fit` method.
+
+        .. seealso::
+
+            :ref:`Tracking Error Optimization <tracking_error_optimization>`
 
     max_turnover : float, optional
         Upper bound constraint of the turnover.

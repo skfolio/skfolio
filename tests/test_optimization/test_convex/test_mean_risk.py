@@ -1832,41 +1832,56 @@ def test_target_weights_with_standard_deviation(X):
         target_weights=target_weights,
         min_weights=0,
     )
+    model.fit(X)
 
-    portfolio = model.fit(X).predict(X)
+    np.testing.assert_almost_equal(model.weights_, target_weights)
 
-    weight_diff = portfolio.weights - target_weights
+    weight_diff = model.weights_ - target_weights
     cov_matrix = np.cov(X.T, ddof=1)
-    tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+    manual_tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
 
     np.testing.assert_almost_equal(
-        tracking_error, model.problem_values_["risk"], decimal=4
+        manual_tracking_error, model.problem_values_["risk"], decimal=5
     )
 
 
-@pytest.mark.parametrize(
-    "risk_measure",
-    [
-        RiskMeasure.VARIANCE,
-        RiskMeasure.STANDARD_DEVIATION,
-        RiskMeasure.MEAN_ABSOLUTE_DEVIATION,
-        RiskMeasure.SEMI_VARIANCE,
-    ],
-)
-def test_target_weights_with_multiple_risk_measures(X, risk_measure):
+def test_target_weights_with_standard_deviation_mip(X):
     n_assets = X.shape[1]
     target_weights = np.ones(n_assets) / n_assets
 
     model = MeanRisk(
-        objective_function=ObjectiveFunction.MINIMIZE_RISK,
-        risk_measure=risk_measure,
+        risk_measure=RiskMeasure.VARIANCE,
         target_weights=target_weights,
-        min_weights=0,
+        cardinality=n_assets - 1,
+        solver="SCIP",
+    )
+    model.fit(X)
+
+    assert np.sum(model.weights_ == 0) == 1
+
+    weight_diff = model.weights_ - target_weights
+    cov_matrix = np.cov(X.T, ddof=1)
+    tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+    np.testing.assert_almost_equal(
+        tracking_error, np.sqrt(model.problem_values_["risk"]), decimal=5
     )
 
-    portfolio = model.fit(X).predict(X)
-    assert portfolio.weights.shape == (n_assets,)
-    assert np.linalg.norm(portfolio.weights - target_weights) < 0.5
+
+@pytest.mark.parametrize("objective_function", list(ObjectiveFunction))
+def test_target_weights_with_multiple_risk_measures(
+    X, risk_measure, objective_function
+):
+    n_assets = X.shape[1]
+    target_weights = np.ones(n_assets) / n_assets
+
+    model = MeanRisk(
+        objective_function=objective_function,
+        risk_measure=risk_measure,
+        target_weights=target_weights,
+    )
+    model.fit(X)
+    if objective_function == ObjectiveFunction.MINIMIZE_RISK:
+        np.testing.assert_almost_equal(model.weights_, target_weights)
 
 
 def test_target_weights_input_formats(X):
@@ -1920,5 +1935,5 @@ def test_target_weights_manual_calculation(X):
     manual_tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
 
     np.testing.assert_almost_equal(
-        manual_tracking_error, model.problem_values_["risk"], decimal=4
+        manual_tracking_error, model.problem_values_["risk"], decimal=5
     )

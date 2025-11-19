@@ -1,4 +1,4 @@
-"""Return-Based Tracker estimator."""
+"""Benchmark Tracker estimator."""
 
 from __future__ import annotations
 
@@ -13,23 +13,41 @@ from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
 
 
-class ReturnBasedTracker(MeanRisk):
-    r"""Return-Based Tracker Optimization estimator.
+class BenchmarkTracker(MeanRisk):
+    r"""Benchmark Tracker Optimization estimator.
 
-    Minimizes the tracking error or tracking risk between the portfolio returns
-    and a benchmark's returns by optimizing on excess returns (portfolio returns
-    minus benchmark returns).
+    Optimize a portfolio to track a benchmark by minimizing the risk of
+    benchmark-relative (excess) returns.
 
-    This is a special case of the :class:`~skfolio.optimization.MeanRisk` estimator
-    where the input returns are transformed to excess returns (X - y) before
-    optimization. The estimator enforces a fully invested portfolio (budget = 1.0)
-    because the excess returns formulation
-    :math:`r_t^{excess}(w) = \sum_i w_i(r_{t,i} - r_{b,t}) = r_{p,t} - (\sum_i w_i)r_{b,t}`
-    equals :math:`r_{p,t} - r_{b,t}` only when :math:`\sum_i w_i = 1`.
+    This estimator minimizes the tracking risk between portfolio returns and a
+    benchmark's returns by optimizing directly on excess (active) returns, defined as
+    portfolio returns minus benchmark returns.
 
-    The tracking risk can be measured using different risk measures such as
-    standard deviation (for traditional tracking error), variance (MSE),
-    mean absolute deviation, etc.
+    Tracking risk can be defined using any of the available risk measures. Typical
+    choices include standard deviation (tracking-error volatility), semi-deviation and
+    mean absolute deviation.
+
+    .. seealso::
+
+        :ref:`Tracking Error Optimization <tracking_error_optimization>`
+
+    Notes
+    -----
+    It is implemented as a special case of :class:`~skfolio.optimization.MeanRisk` where
+    the input asset returns `X` and benchmark returns `y` are first transformed to
+    excess returns `X_excess = X - y` before optimization. A full-investment constraint
+    (`budget = 1.0`) is always enforced because:
+
+    .. math::
+        r_t^{excess}(w) = \sum_i w_i(r_{t,i} - r_{b,t}) = r_{p,t} - (\sum_i w_i)r_{b,t}
+
+    where :math:`r_{p,t}` is the portfolio return and :math:`r_{b,t}` the benchmark
+    return, coincides with the active (benchmark-relative) return
+
+    .. math::
+        r_{p,t} - r_{b,t}
+
+    when :math:`\sum_i w_i = 1`
 
     Parameters
     ----------
@@ -185,10 +203,10 @@ class ReturnBasedTracker(MeanRisk):
     error_ : str | None
         Captured error message when `fit` fails.
 
-    Notes
-    -----
-    The `y` parameter in the `fit` method must contain the benchmark returns
-    with shape (n_observations, 1).
+    References
+    ----------
+    .. [1] "Portfolio Optimization: Theory and Application", Chapter 13,
+        Daniel P. Palomar (2025)
     """
 
     def __init__(
@@ -261,9 +279,7 @@ class ReturnBasedTracker(MeanRisk):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params
-    ) -> ReturnBasedTracker:
+    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params) -> BenchmarkTracker:
         """Fit the Return-Based Tracker estimator.
 
         Parameters
@@ -283,13 +299,16 @@ class ReturnBasedTracker(MeanRisk):
 
         Returns
         -------
-        self : ReturnBasedTracker
+        self : BenchmarkTracker
            Fitted estimator.
         """
         if y is None:
             raise ValueError(
-                "y (benchmark returns) must be provided for ReturnBasedTracker"
+                "y (benchmark returns) must be provided for BenchmarkTracker"
             )
+
+        if self.budget != 1.0:
+            raise ValueError("Budget must be 1.0 for BenchmarkTracker")
 
         X, y = skv.validate_data(self, X, y)
 

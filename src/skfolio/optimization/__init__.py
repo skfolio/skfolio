@@ -9,12 +9,12 @@ from skfolio.optimization.cluster import (
     SchurComplementary,
 )
 from skfolio.optimization.convex import (
+    BenchmarkTracker,
     ConvexOptimization,
     DistributionallyRobustCVaR,
     MaximumDiversification,
     MeanRisk,
     ObjectiveFunction,
-    ReturnBasedTracker,
     RiskBudgeting,
 )
 from skfolio.optimization.ensemble import BaseComposition, StackingOptimization
@@ -24,6 +24,7 @@ __all__ = [
     "BaseComposition",
     "BaseHierarchicalOptimization",
     "BaseOptimization",
+    "BenchmarkTracker",
     "ConvexOptimization",
     "DistributionallyRobustCVaR",
     "EqualWeighted",
@@ -35,7 +36,6 @@ __all__ = [
     "NestedClustersOptimization",
     "ObjectiveFunction",
     "Random",
-    "ReturnBasedTracker",
     "RiskBudgeting",
     "SchurComplementary",
     "StackingOptimization",
