@@ -595,9 +595,8 @@ def load_bond_metadata_dataset(
     )
     return df
 
-def load_eur_rates_dataset(
-    data_home=None, download_if_missing=True
-) -> pd.DataFrame:
+
+def load_eur_rates_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
     """Loads EUR risk-free yields for various maturities from 2004-09-06 to 2025-11-17.
     The yields are calculated using a Svensson interpolation fitted to AAA-rated sovereign
     bonds from eurozone issuers.
@@ -631,7 +630,7 @@ def load_eur_rates_dataset(
     >>> eur_rates = load_eur_rates_dataset()
     >>> eur_rates.head()
                     3M        1Y    ...     15Y       30Y
-    Date                            ...                    
+    Date                            ...
     2004-09-06  2.034172  2.298838  ...  4.576354  4.988680
     2004-09-07  2.040893  2.328891  ...  4.569196  4.975495
     2004-09-08  2.044384  2.346666  ...  4.581290  4.978894
@@ -640,9 +639,6 @@ def load_eur_rates_dataset(
     """
     data_filename = "eur_risk_free_yields_dataset"
     df = download_dataset(
-        data_filename,
-        data_home=data_home,
-        download_if_missing=download_if_missing,
-        datetime_index=False,
+        data_filename, data_home=data_home, download_if_missing=download_if_missing
     )
     return df

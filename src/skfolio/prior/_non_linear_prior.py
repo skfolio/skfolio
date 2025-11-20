@@ -812,7 +812,7 @@ class NonLinearPrior(BasePrior):
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         # Validation
-        skv.validate_data(self, market_quotes)
+        skv.validate_data(self, X)
 
         self.market_quotes_prior_ = check_estimator(
             self.market_quotes_prior,

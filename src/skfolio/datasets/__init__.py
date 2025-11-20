@@ -6,6 +6,7 @@
 from skfolio.datasets._base import (
     load_bond_dataset,
     load_bond_metadata_dataset,
+    load_eur_rates_dataset,
     load_factors_dataset,
     load_ftse100_dataset,
     load_nasdaq_dataset,
@@ -18,6 +19,7 @@ from skfolio.datasets._base import (
 __all__ = [
     "load_bond_dataset",
     "load_bond_metadata_dataset",
+    "load_eur_rates_dataset",
     "load_factors_dataset",
     "load_ftse100_dataset",
     "load_nasdaq_dataset",

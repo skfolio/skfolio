@@ -9,6 +9,7 @@ import pytest
 from skfolio.datasets import (
     load_bond_dataset,
     load_bond_metadata_dataset,
+    load_eur_rates_dataset,
     load_factors_dataset,
     load_ftse100_dataset,
     load_nasdaq_dataset,
@@ -241,6 +242,25 @@ class TestSp500ImpliedVolDataset:
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (3270, 20)
+
+
+class TestEurRatesDataset:
+    def test_load_eur_rates_dataset_success(self):
+        df = load_eur_rates_dataset()
+
+        # Check if the returned object is a pandas DataFrame
+        assert isinstance(df, pd.DataFrame)
+        assert isinstance(df.index, pd.DatetimeIndex)
+
+        # Check if the DataFrame is not empty
+        assert not df.empty
+
+    #  Returns a pandas DataFrame with the correct shape
+    def test_load_eur_rates_dataset_shape(self):
+        df = load_eur_rates_dataset()
+
+        # Check if the shape of the DataFrame is correct
+        assert df.shape == (5420, 8)
 
 
 class TestUsdRatesDataset:
