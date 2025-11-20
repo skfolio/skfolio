@@ -575,7 +575,7 @@ def load_bond_metadata_dataset(
 
     Examples
     --------
-    >>> from skfolio.datasets import load_usd_rates_dataset
+    >>> from skfolio.datasets import load_bond_metadata_dataset
     >>> bond_info = load_bond_metadata_dataset()
     >>> bond_info.head()
                                                 issuer  ... callable
@@ -587,6 +587,58 @@ def load_bond_metadata_dataset(
     US233835AQ08  DAIMLERCHRYSLER NORTH AMER HLDG CORP  ...    False
     """
     data_filename = "bond_metadata_dataset"
+    df = download_dataset(
+        data_filename,
+        data_home=data_home,
+        download_if_missing=download_if_missing,
+        datetime_index=False,
+    )
+    return df
+
+def load_eur_rates_dataset(
+    data_home=None, download_if_missing=True
+) -> pd.DataFrame:
+    """Loads EUR risk-free yields for various maturities from 2004-09-06 to 2025-11-17.
+    The yields are calculated using a Svensson interpolation fitted to AAA-rated sovereign
+    bonds from eurozone issuers.
+
+    The data comes from ECB's public API. For full details on their methodolgy, visit
+    https://www.ecb.europa.eu/stats/financial_markets_and_interest_rates/euro_area_yield_curves/html/index.en.html
+
+    ==============   ==================
+    Observations     5420
+    Parameters       8
+    ==============   ==================
+
+    Parameters
+    ----------
+    data_home : str, optional
+        Specify another download and cache folder for the datasets.
+        By default, all skfolio data is stored in `~/skfolio_data` subfolders.
+
+    download_if_missing : bool, default=True
+        If False, raise an OSError if the data is not locally available
+        instead of trying to download the data from the source site.
+
+    Returns
+    -------
+    df : DataFrame of shape (n_observations, n_assets)
+        Implied volatility DataFrame
+
+    Examples
+    --------
+    >>> from skfolio.datasets import load_eur_rates_dataset
+    >>> eur_rates = load_eur_rates_dataset()
+    >>> eur_rates.head()
+                    3M        1Y    ...     15Y       30Y
+    Date                            ...                    
+    2004-09-06  2.034172  2.298838  ...  4.576354  4.988680
+    2004-09-07  2.040893  2.328891  ...  4.569196  4.975495
+    2004-09-08  2.044384  2.346666  ...  4.581290  4.978894
+    2004-09-09  2.037111  2.308988  ...  4.527995  4.946545
+    2004-09-10  2.034645  2.271566  ...  4.493569  4.918530
+    """
+    data_filename = "eur_risk_free_yields_dataset"
     df = download_dataset(
         data_filename,
         data_home=data_home,
