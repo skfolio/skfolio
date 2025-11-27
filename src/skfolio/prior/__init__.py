@@ -16,6 +16,7 @@ from skfolio.prior._non_linear_prior import (
     NonLinearPrior,
     PortfolioInstruments,
     ReturnsProcessor,
+    adjust_prices_for_cashflows,
     calculate_sensis,
     price_df,
 )
@@ -39,6 +40,7 @@ __all__ = [
     "ReturnDistribution",
     "ReturnsProcessor",
     "SyntheticData",
+    "adjust_prices_for_cashflows",
     "calculate_sensis",
     "price_df",
 ]

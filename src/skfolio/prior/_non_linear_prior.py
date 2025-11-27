@@ -1,11 +1,12 @@
 import datetime as dt
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-from typing import Any, Literal
+from collections.abc import Callable, ItemsView, Iterable
+from typing import Any, Literal, Self, overload
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 from pandas.tseries.frequencies import to_offset
@@ -13,6 +14,7 @@ from sklearn.compose import make_column_selector
 
 import skfolio.measures as sm
 import skfolio.typing as skt
+from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
 from skfolio.prior import BasePrior, EmpiricalPrior, ReturnDistribution
 from skfolio.utils.tools import check_estimator
 
@@ -60,7 +62,7 @@ class MarketContext:
         self.data = dict(**kwargs)
 
     @classmethod
-    def from_series(cls, series: pd.Series) -> "MarketContext":
+    def from_series(cls, series: pd.Series) -> Self:
         """Create a MarketContext from a pandas Series.
 
         Parameters
@@ -77,7 +79,7 @@ class MarketContext:
         date = series.name
         return cls(date=date, **series)
 
-    def update_date(self, date: dt.date) -> "MarketContext":
+    def update_date(self, date: dt.date) -> Self:
         """Update the date of the market context.
 
         Parameters
@@ -93,7 +95,7 @@ class MarketContext:
         self.date = date
         return self
 
-    def update_from_series(self, series: pd.Series, overwrite=True) -> "MarketContext":
+    def update_from_series(self, series: pd.Series, overwrite=True) -> Self:
         """Update the market context from a pandas Series.
 
         Parameters
@@ -227,6 +229,26 @@ class Instrument(ABC):
         """
         pass
 
+    @abstractmethod
+    def cashflow(self, market_context: MarketContext) -> float:
+        """Calculate the cashflow of the instrument given a market context.
+
+        Although many instruments' cashflows may depend only on time (e.g., 
+        coupons paid at specific dates), many more exotic instruments have 
+        conditional coupons.
+
+        Parameters
+        ----------
+        market_context : MarketContext
+            The market context containing pricing parameters.
+
+        Returns
+        -------
+        float
+            The cashflow of the instrument.
+        """
+        pass
+
 
 class InstrumentAdapter(Instrument):
     def __init__(self, instrument):
@@ -323,12 +345,55 @@ class PortfolioInstruments(dict):
         """
         return self
 
+    @overload
+    def __getitem__(self, key: str) -> Instrument:
+        ...
+    
+    @overload
+    def __getitem__(self, key: Iterable) -> Self:
+        ...
+        
+    def __getitem__(self, key: str | Iterable) -> Instrument | Self:
+        """Get instrument(s) by key(s).
+
+        Parameters
+        ----------
+        key : str or Iterable
+            The instrument ID or an iterable of instrument IDs.
+
+        Returns
+        -------
+        Instrument or List[Instrument]
+            The requested instrument(s).
+        """
+        if isinstance(key, str):
+            return dict.__getitem__(self, key)
+        elif isinstance(key, Iterable):
+            return self.__class__(**{k: dict.__getitem__(self, k) for k in key})
+        else:
+            raise KeyError(f"Invalid key type: {type(key)}")
+
+    def items(self) -> ItemsView[str, Instrument]:
+        """Get the items of the portfolio instruments.
+
+        Explicitly defined to provide proper type hints.
+
+        Returns
+        -------
+        ItemsView
+            The items of the portfolio instruments.
+        """
+        return dict.items(self)
+
 
 def price_df(
     X: pd.DataFrame,
     portfolio_instruments: PortfolioInstruments,
     reference_market_context: MarketContext | None = None,
-    market_data_parser: Callable[[pd.Series], dict] | None = None,
+    market_data_parser: Callable[
+        [pd.Series, MarketContext, PortfolioInstruments], MarketContext
+    ]
+    | None = None,
     use_date_index: bool = True,
 ) -> pd.DataFrame:
     """Price portfolio instruments over a time series of market data.
@@ -352,7 +417,7 @@ def price_df(
     pd.DataFrame
         DataFrame of prices for each instrument over time.
     """
-    reference_market_context = (
+    reference_market_context = skb.clone(
         reference_market_context
         if reference_market_context is not None
         else MarketContext()
@@ -360,16 +425,68 @@ def price_df(
 
     rows = []
     for idx, market_data in X.iterrows():
-        if market_data_parser:
-            market_data = market_data_parser(market_data)
-        reference_market_context.update(**market_data)
-
         if use_date_index and isinstance(idx, dt.date):
             reference_market_context.update_date(idx)
+        if market_data_parser is not None:
+            reference_market_context = market_data_parser(
+                market_data, reference_market_context, portfolio_instruments
+            )
 
         rows.append(portfolio_instruments.price(reference_market_context))
 
     return pd.concat(rows, axis=1).T
+
+
+def adjust_prices_for_cashflows(
+    prices: pd.DataFrame,
+    portfolio_instruments: PortfolioInstruments,
+    method: Literal["simple", "reinvested"] = "simple",
+    include_redemption: bool = False
+) -> pd.DataFrame:
+    """Adjust prices for cashflows from the instruments.
+    The resulting price series can be passed to prices_to_returns functions
+    to obtain total returns.
+
+    When using method "simple", cashflows are added to the price series.
+    When using method "reinvested", cashflows are assumed to be reinvested
+    on the same day the cashflow is received.
+
+    Parameters
+    ----------
+    prices : pd.DataFrame
+        DataFrame of prices for each instrument over time.
+    portfolio_instruments : PortfolioInstruments
+        Portfolio of instruments.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of adjusted prices.
+    """
+    adjusted_prices = prices.copy()
+    cashflows = []
+    for date in adjusted_prices.index:
+        market_context = MarketContext(date=date)
+        cashflows_row = []
+        for instr_id in adjusted_prices.columns:
+            instr = portfolio_instruments[instr_id]
+            cashflow = instr.cashflow(market_context)
+            cashflows_row.append(cashflow)
+        cashflows.append(cashflows_row)
+                    
+    cashflows_df = pd.DataFrame(
+        cashflows, index=adjusted_prices.index, columns=adjusted_prices.columns
+    )
+
+    match method:
+        case "simple":
+            adjusted_prices += cashflows_df.cumsum()
+        case "reinvested":
+            adjusted_prices *= (1 + cashflows_df / prices).cumprod()
+        case _:
+            raise ValueError(f"Unknown adjustment method: {method}")
+
+    return adjusted_prices
 
 
 class ReturnsProcessor:
@@ -719,11 +836,16 @@ class NonLinearPrior(BasePrior):
         portfolio_instruments: PortfolioInstruments,
         market_quotes_prior: BasePrior | None = None,
         reference_market_context: MarketContext | None = None,
-        market_data_parser: Callable[[pd.Series], dict] | None = None,
+        market_data_parser: Callable[
+            [pd.Series, MarketContext, PortfolioInstruments], MarketContext
+        ]
+        | None = None,
         reference_index=-1,
         pricing_date_offset: str = "1B",
         returns_processor: ReturnsProcessor | None = None,
         transform_quotes_prior_moments: bool = True,
+        mu_estimator: BaseMu | None = None,
+        covariance_estimator: BaseCovariance | None = None,
     ):
         """Initialize NonLinearPrior.
 
@@ -760,6 +882,8 @@ class NonLinearPrior(BasePrior):
         self.transform_quotes_prior_moments = (
             transform_quotes_prior_moments if market_quotes_prior else False
         )  # Only transform is a prior has been provided (which may have different moments than empirical)
+        self.mu_estimator = mu_estimator
+        self.covariance_estimator = covariance_estimator
 
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
@@ -775,6 +899,14 @@ class NonLinearPrior(BasePrior):
             .add_self_request(self)
             .add(
                 market_quotes_prior=self.market_quotes_prior,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                mu_estimator=self.mu_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                covariance_estimator=self.covariance_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
             )
         )
@@ -811,8 +943,10 @@ class NonLinearPrior(BasePrior):
 
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
-        # Validation
-        skv.validate_data(self, X)
+        # Validate X and get feature_names_in_
+        skv.validate_data(self, X, ensure_all_finite="allow-nan")
+        # Only keep instruments that are in X
+        self.portfolio_instruments_ = self.portfolio_instruments[self.feature_names_in_]
 
         self.market_quotes_prior_ = check_estimator(
             self.market_quotes_prior,
@@ -833,10 +967,8 @@ class NonLinearPrior(BasePrior):
         )
         sample_weight = self.market_quotes_prior_.return_distribution_.sample_weight
         n_observations = len(prior_quote_returns)
-        if sample_weight is None:
-            sample_weight = np.ones(n_observations) / n_observations
 
-        reference_prices = self.portfolio_instruments.price(
+        reference_prices = self.portfolio_instruments_.price(
             self.reference_market_context
         )
 
@@ -861,7 +993,7 @@ class NonLinearPrior(BasePrior):
         self.reference_market_context.update_date(pricing_date)
         portfolio_price_distribution = price_df(
             market_quote_distribution,
-            self.portfolio_instruments,
+            self.portfolio_instruments_,
             reference_market_context=self.reference_market_context,
             market_data_parser=self.market_data_parser,
         )
@@ -870,29 +1002,61 @@ class NonLinearPrior(BasePrior):
             portfolio_price_distribution - reference_prices.values
         ) / reference_prices.values
 
+        moment_estimators_given = (self.mu_estimator is not None) or (
+            self.covariance_estimator is not None
+        )
+
+        if sample_weight is None:
+            sample_weight = np.ones(n_observations) / n_observations
+        elif moment_estimators_given:
+            raise ValueError(
+                "When mu_estimator or covariance_estimator are provided, "
+                "the sample_weight of the market_quotes_prior must be None."
+                f"Got sample_weight={sample_weight}"
+            )
+
+        if moment_estimators_given:
+            self.mu_estimator_ = check_estimator(
+                self.mu_estimator,
+                default=EmpiricalMu(),
+                check_type=BaseMu,
+            )
+            self.covariance_estimator_ = check_estimator(
+                self.covariance_estimator,
+                default=EmpiricalCovariance(),
+                check_type=BaseCovariance,
+            )
+            # fitting estimators
+            # Expected returns
+            # noinspection PyArgumentList
+            self.mu_estimator_.fit(returns, y, **routed_params.mu_estimator.fit)
+            mu = self.mu_estimator_.mu_
+
+            # Covariance
+            # noinspection PyArgumentList
+            self.covariance_estimator_.fit(
+                returns, y, **routed_params.covariance_estimator.fit
+            )
+            covariance = self.covariance_estimator_.covariance_
+        else:
+            mu = sm.mean(returns, sample_weight=sample_weight).values
+            covariance = np.cov(returns, rowvar=False, aweights=sample_weight)
+
         if self.transform_quotes_prior_moments:
             sensis = calculate_sensis(
                 self.reference_market_context,
-                self.portfolio_instruments,
+                self.portfolio_instruments_,
                 keys=self.market_quotes_prior_.feature_names_in_,
             )
             mu = (
-                reference_prices.values
-                + sensis.values @ self.market_quotes_prior_.return_distribution_.mu
+                reference_prices.values + sensis.values @ mu
             ) / reference_prices.values - 1
 
-            cov = (
-                sensis.values
-                @ self.market_quotes_prior_.return_distribution_.covariance
-                @ sensis.values.T
-            )
-        else:
-            mu = sm.mean(returns, sample_weight=sample_weight).values
-            cov = np.cov(returns, rowvar=False, aweights=sample_weight)
+            covariance = sensis.values @ covariance @ sensis.values.T
 
         self.return_distribution_ = ReturnDistribution(
             mu=mu,
-            covariance=cov,
+            covariance=covariance,
             returns=returns.values,
             sample_weight=sample_weight,
         )
