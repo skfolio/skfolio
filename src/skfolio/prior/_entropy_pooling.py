@@ -1216,6 +1216,7 @@ class EntropyPooling(BasePrior):
             }
             views = _replace_prior_views(views=views, prior_values=prior_values)
 
+        print(views)
         a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
             groups=self._groups,
             equations=views,
@@ -1354,7 +1355,7 @@ def _replace_prior_views(
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0
         result_value = prior_values[asset] * pre_multiplier * post_multiplier
-        return str(result_value)
+        return f"{result_value:.16f}"
 
     new_views = [re.sub(pattern, repl, view) for view in views]
 
