@@ -42,7 +42,7 @@ class MarketContext:
         Parameters
         ----------
         date : dt.date, optional
-            The pricing date for the market context.
+            The pricing date for the market context. If not provided uses the current date.
         **kwargs : Any
             Additional market parameters as key-value pairs.
 
@@ -51,7 +51,9 @@ class MarketContext:
         ValueError
             If date is not None and not of type datetime.date.
         """
-        if (date is not None) and (not isinstance(date, dt.date)):
+        if date is None:
+            date = dt.date.today()
+        elif not isinstance(date, dt.date):
             raise ValueError(
                 f"MarketContext requires a valid date of type datetime.date, not {type(date)}"
             )
@@ -77,6 +79,13 @@ class MarketContext:
             A new MarketContext instance.
         """
         date = series.name
+        if isinstance(date, pd.Timestamp):
+            date = date.date()
+        elif not isinstance(date, dt.date):
+            raise ValueError(
+                f"Series name must be of type datetime.date or pd.Timestamp, not {type(date)}"
+            )
+        
         return cls(date=date, **series, **kwargs)
 
     def update_date(self, date: dt.date) -> Self:
