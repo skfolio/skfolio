@@ -1354,7 +1354,9 @@ def _replace_prior_views(
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0
         result_value = prior_values[asset] * pre_multiplier * post_multiplier
-        return f"{result_value:.16f}"
+
+        # Cast the float to a string making sure to use :16f to avoid scientific notation
+        return f"{result_value:.16f}".rstrip("0").rstrip(".")
 
     new_views = [re.sub(pattern, repl, view) for view in views]
 

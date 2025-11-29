@@ -824,13 +824,13 @@ def test_replace_prior_views(views):
 
     assert res == [
         "AAPL>= -16.25",
-        "AAPL >=495.792375",
-        "AAPL >= 7.0",
+        "AAPL >=495.7923749999999927",
+        "AAPL >= 7",
         "AAPL >=5.25",
         "AAPL ==2.8000000000000003",
-        "AAPL <=   0.0 ",
+        "AAPL <=   0 ",
         "AAPL >=   A3 ",
-        "BA/ LN Equity ==   50.0",
+        "BA/ LN Equity ==   50",
     ]
 
 
@@ -1148,3 +1148,10 @@ def test_complex_views(X):
     )
     entropy_pooling.fit(X)
     np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.6739174515, 5)
+
+
+def test_small_prior():
+    model = EntropyPooling(mean_views=["x0 == prior(x0)"])
+    evil_float = 1e-5
+    X = np.array([[evil_float, 0.0], [0.0, evil_float], [0.0, 1.0]])
+    model.fit(X)
