@@ -43,7 +43,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
     of the chi-squared distribution with `n_assets` degrees of freedom at the
     :math:`\beta` confidence level.
 
-    The Shape of the ellipsoid :math:`S` is computed using:
+    The shape of the ellipsoid :math:`S` is computed using:
 
     .. math:: S = \frac{1}{T}\Sigma
 
@@ -55,13 +55,20 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         The :ref:`prior estimator <prior>` used to estimate the assets covariance
         matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
-    confidence_level : float , default=0.95
+    confidence_level : float, default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
         If this is set to True, the non-diagonal elements of the covariance matrix are
         set to zero.
+
+    n_eff : int, optional
+        Effective number of observations used for the mean estimator. If `None`,
+        the number of observations in `X` is used. This is useful when the expected
+        returns are estimated using a different window length or a weighted estimator
+        (e.g. EWMA), in which case `n_eff` should be set to the corresponding effective
+        sample size.
 
     Attributes
     ----------
@@ -70,6 +77,9 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
+
+    n_eff_ : int
+        Effective number of observations actually used to build the uncertainty set.
 
     References
     ----------
@@ -81,15 +91,19 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         Daniel P. Palomar (2025)
     """
 
+    n_eff_: int
+
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
+        n_eff: int | None = None,
     ):
         super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
+        self.n_eff = n_eff
 
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
@@ -108,7 +122,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -129,9 +143,11 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
 
         return_distribution = self.prior_estimator_.return_distribution_
         n_observations, n_assets = return_distribution.returns.shape
+        self.n_eff_ = n_observations if self.n_eff is None else self.n_eff
+
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
 
-        sigma = return_distribution.covariance / n_observations
+        sigma = return_distribution.covariance / self.n_eff_
         if self.diagonal:
             sigma = np.diag(np.diag(sigma))
 
@@ -155,14 +171,14 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     .. math:: \kappa^2 = \chi^2_{n\_assets^2} (\beta)
 
     with :math:`\chi^2_{n\_assets^2}(\beta)` the inverse cumulative distribution
-    function of the chi-squared distribution with `n_assets` degrees of freedom at the
-    :math:`\beta` confidence level.
+    function of the chi-squared distribution with `n_assets^2` degrees of freedom at
+    the :math:`\beta` confidence level.
 
-    The Shape of the ellipsoid :math:`S` is based on a closed form solution of the
+    The shape of the ellipsoid :math:`S` is based on a closed form solution of the
     covariance matrix of the Wishart distributed random variable by using the vector
     notation :math:`vec(x)`:
 
-    .. math:: Cov[vec(\hat{\Sigma})]=\frac{1}{T-1}(I_{n^2} + K_{nn})(\Sigma \otimes \Sigma)
+    .. math:: \text{Cov}[\text{vec}(\hat{\Sigma})]=\frac{1}{T-1}(I_{n^2} + K_{nn})(\Sigma \otimes \Sigma)
 
     with :math:`K_{nn}` denoting a commutation matrix and :math:`\otimes` representing
     the Kronecker product.
@@ -173,13 +189,20 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         The :ref:`prior estimator <prior>` used to estimate the assets covariance
         matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
-    confidence_level : float , default=0.95
+    confidence_level : float, default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
         If this is set to True, the non-diagonal elements of the covariance matrix are
         set to zero.
+
+    n_eff : int, optional
+        Effective number of observations used for the covariance estimator. If `None`,
+        the number of observations in `X` is used. This is useful when the covariance
+        matrix is estimated using a different window length or a weighted estimator
+        (e.g. EWMA), in which case `n_eff` should be set to the corresponding effective
+        sample size.
 
     Attributes
     ----------
@@ -188,6 +211,9 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
+
+    n_eff_ : int
+        Effective number of observations actually used to build the uncertainty set.
 
     References
     ----------
@@ -199,15 +225,19 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Daniel P. Palomar (2025)
     """
 
+    n_eff_: int
+
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
+        n_eff: int | None = None,
     ):
         super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
         self.diagonal = diagonal
+        self.n_eff = n_eff
 
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
@@ -226,7 +256,7 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -247,15 +277,17 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
 
         return_distribution = self.prior_estimator_.return_distribution_
         n_observations, n_assets = return_distribution.returns.shape
+        self.n_eff_ = n_observations if self.n_eff is None else self.n_eff
+
         k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 
-        sigma = return_distribution.covariance / n_observations
+        sigma = return_distribution.covariance / self.n_eff_
         if self.diagonal:
             sigma = np.diag(np.diag(sigma))
 
         sigma = np.diag(
             np.diag(
-                n_observations
+                self.n_eff_
                 * (np.identity(n_assets**2) + commutation_matrix(sigma))
                 @ np.kron(sigma, sigma)
             )
