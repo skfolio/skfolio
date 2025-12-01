@@ -6,7 +6,8 @@ import pytest
 import skfolio.measures as sm
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
 from skfolio.exceptions import GroupNotFoundError
-from skfolio.prior import EntropyPooling, FactorModel, SyntheticData
+from skfolio.moments import ShrunkCovariance, ShrunkMu
+from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel, SyntheticData
 from skfolio.prior._entropy_pooling import (
     _extract_prior_assets,
     _parse_correlation_view,
@@ -121,6 +122,31 @@ def test_mean_views_prior(X, solver):
     assert mean[0] >= prior_mean[0] * 1.2
     np.testing.assert_almost_equal(mean[1], prior_mean[1], 5)
     assert mean[2] <= prior_mean[2] * 0.8
+    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 8)
+
+
+def test_mean_views_prior_estimator(X, solver):
+    model = EntropyPooling(
+        prior_estimator=EmpiricalPrior(mu_estimator=ShrunkMu()),
+        solver=solver,
+        mean_views=[
+            "AAPL >= prior(AAPL) * 1.2",
+            "AMD == prior(AMD)",
+            "BAC <= prior(BAC)*0.8",
+            "1.5 * BBY == 2*CVX + 3*GE",
+        ],
+    )
+    model.fit(X)
+    sw = model.return_distribution_.sample_weight
+    x = np.array(X)
+    prior_mean = ShrunkMu().fit(x).mu_
+    mean = sm.mean(x, sw)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.000133, 5)
+    assert np.all(sw >= 0)
+    np.testing.assert_almost_equal(np.sum(sw), 1, 8)
+    assert (mean[0] - prior_mean[0] * 1.2) >= -1e-6  # allow for numerical tolerance
+    np.testing.assert_almost_equal(mean[1], prior_mean[1], 5)
+    assert (mean[2] - prior_mean[2] * 0.8) <= 1e-6  # allow for numerical tolerance
     np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 8)
 
 
@@ -291,6 +317,29 @@ def test_variance_views_prior(X, solver):
     np.testing.assert_almost_equal(variance[2], variance_prior[2] * 0.5, 5)
 
 
+def test_variance_views_prior_estimator(X, solver):
+    model = EntropyPooling(
+        prior_estimator=EmpiricalPrior(covariance_estimator=ShrunkCovariance()),
+        solver=solver,
+        variance_views=[
+            "AAPL >= prior(AAPL)*2",
+            "AMD == 0.002",
+            "BAC <= 0.5 * prior(BAC)",
+        ],
+    )
+    model.fit(X)
+    sw = model.return_distribution_.sample_weight
+    x = np.array(X)
+    variance_prior = ShrunkCovariance().fit(x).covariance_.diagonal()
+    variance = sm.variance(x, sample_weight=sw, biased=True)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.119500, 4)
+    assert np.all(sw >= 0)
+    np.testing.assert_almost_equal(np.sum(sw), 1, 8)
+    np.testing.assert_almost_equal(variance[0], variance_prior[0] * 2, 5)
+    np.testing.assert_almost_equal(variance[1], 0.002, 5)
+    np.testing.assert_almost_equal(variance[2], variance_prior[2] * 0.5, 5)
+
+
 def test_mean_variance_views(X, solver):
     model = EntropyPooling(
         solver=solver,
@@ -429,6 +478,33 @@ def test_correlation_views_prior(X, solver):
     corr_prior = np.corrcoef(x.T)
     corr = sm.correlation(x, sw)
     np.testing.assert_almost_equal(model.relative_entropy_, 0.075878, 5)
+    assert np.all(sw >= 0)
+    np.testing.assert_almost_equal(np.sum(sw), 1, 8)
+    np.testing.assert_almost_equal(corr[0, 1], corr_prior[0, 1] * 1.5, 5)
+    np.testing.assert_almost_equal(corr[1, 2], 0.6, 5)
+    np.testing.assert_almost_equal(corr[18, 19], corr_prior[18, 19] * 0.3, 5)
+
+
+def test_correlation_views_prior_estimator(X, solver):
+    model = EntropyPooling(
+        solver=solver,
+        prior_estimator=EmpiricalPrior(covariance_estimator=ShrunkCovariance()),
+        correlation_views=[
+            "(AAPL,AMD) == prior(AAPL,AMD)*1.5",
+            "(AMD, BAC) >= 0.6",
+            "(WMT, XOM) <= 0.3 * prior(WMT, XOM)",
+        ],
+    )
+    model.fit(X)
+
+    sw = model.return_distribution_.sample_weight
+    x = np.array(X)
+    cov_prior = ShrunkCovariance().fit(x).covariance_
+    diag = np.sqrt(np.diag(np.diag(cov_prior)))
+    gaid = np.linalg.inv(diag)
+    corr_prior = gaid @ cov_prior @ gaid
+    corr = sm.correlation(x, sw)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.073717, 5)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(corr[0, 1], corr_prior[0, 1] * 1.5, 5)
