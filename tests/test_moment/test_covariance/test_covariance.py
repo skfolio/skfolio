@@ -2339,7 +2339,6 @@ class TestGerberCovariance:
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered")
-@pytest.mark.filterwarnings("ignore: overflow encountered in dot")
 class TestGraphicalLassoCV:
     def test_fit(self, X):
         model = GraphicalLassoCV()

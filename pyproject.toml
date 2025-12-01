@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.15.0"
+version = "0.14.3"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -69,14 +69,14 @@ Repository = "https://github.com/skfolio/skfolio"
 
 [project.optional-dependencies]
 dev = [
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt",
     "pytest",
     "pytest-cov",
     "ruff",
     "pre-commit",
 ]
 docs = [
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt",
     "Sphinx",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",

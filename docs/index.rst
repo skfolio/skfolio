@@ -143,7 +143,6 @@ Available models
         * Risk Budgeting
         * Maximum Diversification
         * Distributionally Robust CVaR
-        * Benchmark Tracker
     * Clustering:
         * Hierarchical Risk Parity
         * Hierarchical Equal Risk Contribution
