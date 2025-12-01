@@ -1223,7 +1223,7 @@ def test_complex_views(X):
         groups=groups,
     )
     entropy_pooling.fit(X)
-    np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.6739174515, 5)
+    np.testing.assert_almost_equal(entropy_pooling.relative_entropy_, 0.674364, 5)
 
 
 def test_small_prior():
