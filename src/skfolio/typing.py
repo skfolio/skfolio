@@ -32,7 +32,6 @@ __all__ = [
     "Names",
     "ParametersValues",
     "Result",
-    "ReturnType",
     "RiskResult",
     "Tags",
     "Target",
@@ -59,7 +58,6 @@ Fallback: TypeAlias = Union[
     Literal["previous_weights"],
     None,
 ]
-ReturnType = Literal["linear", "log", "arithmetic"]
 
 # Population
 Names = str | list[str]

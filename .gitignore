@@ -152,3 +152,4 @@ junit-results.xml
 
 # VS Code settings
 .vscode/
+settings.json
