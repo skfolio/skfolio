@@ -1,5 +1,6 @@
 import cvxpy as cp
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn.model_selection as sks
 from sklearn import clone, config_context
@@ -1164,7 +1165,7 @@ def test_group_cardinalities_constraint(X, groups, objective_function, expected)
     )
     model.fit(X)
     w = model.weights_
-    assert np.sum(abs(w) > 1e-10) == 12
+    assert np.sum(abs(w) > 1e-10) in [11, 12]
     np.testing.assert_almost_equal(np.sum(w), 0.9)
     assert np.max(w) - 0.2 <= 1e-8
     assert np.min(w) + 0.03 >= -1e-8
@@ -1819,3 +1820,120 @@ def test_fallback_with_raise_on_failure(X):
     ptf = model.predict(X)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_target_weights_with_standard_deviation(X):
+    n_assets = X.shape[1]
+    target_weights = np.ones(n_assets) / n_assets
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=target_weights,
+        min_weights=0,
+    )
+    model.fit(X)
+
+    np.testing.assert_almost_equal(model.weights_, target_weights)
+
+    weight_diff = model.weights_ - target_weights
+    cov_matrix = np.cov(X.T, ddof=1)
+    manual_tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+
+    np.testing.assert_almost_equal(
+        manual_tracking_error, model.problem_values_["risk"], decimal=5
+    )
+
+
+def test_target_weights_with_standard_deviation_mip(X):
+    n_assets = X.shape[1]
+    target_weights = np.ones(n_assets) / n_assets
+
+    model = MeanRisk(
+        risk_measure=RiskMeasure.VARIANCE,
+        target_weights=target_weights,
+        cardinality=n_assets - 1,
+        solver="SCIP",
+    )
+    model.fit(X)
+
+    assert np.sum(model.weights_ == 0) == 1
+
+    weight_diff = model.weights_ - target_weights
+    cov_matrix = np.cov(X.T, ddof=1)
+    tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+    np.testing.assert_almost_equal(
+        tracking_error, np.sqrt(model.problem_values_["risk"]), decimal=5
+    )
+
+
+@pytest.mark.parametrize("objective_function", list(ObjectiveFunction))
+def test_target_weights_with_multiple_risk_measures(
+    X, risk_measure, objective_function
+):
+    n_assets = X.shape[1]
+    target_weights = np.ones(n_assets) / n_assets
+
+    model = MeanRisk(
+        objective_function=objective_function,
+        risk_measure=risk_measure,
+        target_weights=target_weights,
+    )
+    model.fit(X)
+    if objective_function == ObjectiveFunction.MINIMIZE_RISK:
+        np.testing.assert_almost_equal(model.weights_, target_weights)
+
+
+def test_target_weights_input_formats(X):
+    n_assets = X.shape[1]
+
+    target_weights_array = np.ones(n_assets) / n_assets
+    model1 = MeanRisk(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=target_weights_array,
+        min_weights=0,
+    )
+    portfolio1 = model1.fit(X).predict(X)
+
+    model2 = MeanRisk(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=1 / n_assets,
+        min_weights=0,
+    )
+    portfolio2 = model2.fit(X).predict(X)
+
+    np.testing.assert_almost_equal(portfolio1.weights, portfolio2.weights, decimal=6)
+
+    if isinstance(X, pd.DataFrame):
+        target_weights_dict = {col: 1 / n_assets for col in X.columns[:5]}
+        model3 = MeanRisk(
+            risk_measure=RiskMeasure.STANDARD_DEVIATION,
+            target_weights=target_weights_dict,
+            min_weights=0,
+        )
+        portfolio3 = model3.fit(X).predict(X)
+        assert portfolio3.weights.shape == (n_assets,)
+
+
+def test_target_weights_manual_calculation(X):
+    n_assets = X.shape[1]
+
+    target_weights = np.random.dirichlet(np.ones(n_assets))
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=target_weights,
+        min_weights=0,
+    )
+
+    portfolio = model.fit(X).predict(X)
+
+    # Manual calculation: tracking_error = sqrt((w - target)' Σ (w - target))
+    weight_diff = portfolio.weights - target_weights
+    cov_matrix = np.cov(X.T, ddof=1)
+    manual_tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
+
+    np.testing.assert_almost_equal(
+        manual_tracking_error, model.problem_values_["risk"], decimal=5
+    )

@@ -9,6 +9,7 @@ from skfolio.optimization.cluster import (
     SchurComplementary,
 )
 from skfolio.optimization.convex import (
+    BenchmarkTracker,
     ConvexOptimization,
     DistributionallyRobustCVaR,
     MaximumDiversification,
@@ -23,6 +24,7 @@ __all__ = [
     "BaseComposition",
     "BaseHierarchicalOptimization",
     "BaseOptimization",
+    "BenchmarkTracker",
     "ConvexOptimization",
     "DistributionallyRobustCVaR",
     "EqualWeighted",

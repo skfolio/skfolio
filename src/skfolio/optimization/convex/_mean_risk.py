@@ -327,6 +327,23 @@ class MeanRisk(ConvexOptimization):
         Additionally, when `fallback="previous_weights"`, failures will fall back to
         these weights if provided.
 
+    target_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
+        Target weights of the assets. When provided, risk measures are computed on the
+        deviation from these target weights (w - target_weights) instead of the
+        absolute weights. This is useful for tracking error minimization or when
+        optimizing around a specific allocation.
+        If a float is provided, it is applied to each asset.
+        If a dictionary is provided, its (key/value) pair must be the
+        (asset name/asset target weight) and the input `X` of the `fit` method must
+        be a DataFrame with the assets names in columns.
+        When using a dictionary, assets values that are not provided are assigned
+        a target weight of `0.0`.
+        The default (`None`) means no target weights.
+
+        .. seealso::
+
+            :ref:`Tracking Error Optimization <tracking_error_optimization>`
+
     l1_coef : float, default=0.0
         L1 regularization coefficient.
         It is used to penalize the objective function by the L1 norm:
@@ -419,6 +436,10 @@ class MeanRisk(ConvexOptimization):
         The tracking error is defined as the RMSE (root-mean-square error) of the
         portfolio returns compared to a target returns. If `max_tracking_error` is
         provided, the target returns `y` must be provided in the `fit` method.
+
+        .. seealso::
+
+            :ref:`Tracking Error Optimization <tracking_error_optimization>`
 
     max_turnover : float, optional
         Upper bound constraint of the turnover.
@@ -646,6 +667,7 @@ class MeanRisk(ConvexOptimization):
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
+        target_weights: skt.MultiInput | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -711,6 +733,7 @@ class MeanRisk(ConvexOptimization):
             transaction_costs=transaction_costs,
             management_fees=management_fees,
             previous_weights=previous_weights,
+            target_weights=target_weights,
             groups=groups,
             linear_constraints=linear_constraints,
             left_inequality=left_inequality,
@@ -778,6 +801,10 @@ class MeanRisk(ConvexOptimization):
         router = (
             super()
             .get_metadata_routing()
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
             .add(
                 mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
@@ -1023,7 +1050,16 @@ class MeanRisk(ConvexOptimization):
                     if arg_name == "return_distribution":
                         args[arg_name] = return_distribution
                     elif arg_name == "w":
-                        args[arg_name] = w
+                        if self.target_weights is None:
+                            args[arg_name] = w
+                        else:
+                            target_weights = self._clean_input(
+                                self.target_weights,
+                                n_assets=n_assets,
+                                fill_value=0,
+                                name="target_weights",
+                            )
+                            args[arg_name] = w - target_weights
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
