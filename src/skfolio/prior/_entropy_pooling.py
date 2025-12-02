@@ -504,6 +504,8 @@ class EntropyPooling(BasePrior):
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         # Prior distribution
         self._returns = self.prior_estimator_.return_distribution_.returns
+        self._mu = self.prior_estimator_.return_distribution_.mu
+        self._covariance = self.prior_estimator_.return_distribution_.covariance
         n_observations, n_assets = self._returns.shape
         self._prior_sample_weight = (
             self.prior_estimator_.return_distribution_.sample_weight
@@ -577,6 +579,8 @@ class EntropyPooling(BasePrior):
 
         # Manage memory
         del self._returns
+        del self._mu
+        del self._covariance
         del self._constraints
         del self._prior_sample_weight
 
@@ -803,7 +807,8 @@ class EntropyPooling(BasePrior):
                 if "prior_assets" in expression:
                     i, j = (asset_to_index[a] for a in expression["prior_assets"])
                     corr_view += (
-                        np.corrcoef(self._returns[:, i], self._returns[:, j])[0][1]
+                        self._covariance[i, j]
+                        / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
                         * expression["multiplier"]
                     )
                     corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
@@ -1203,17 +1208,29 @@ class EntropyPooling(BasePrior):
         views = np.asarray(views)
         if views.ndim != 1:
             raise ValueError(f"{name} must be a list of strings")
-        measure_func = getattr(sm, str(measure.value))
-        measure_args = {}
-        if measure == RiskMeasure.VARIANCE:
-            measure_args["biased"] = True
         required_prior_assets = _extract_prior_assets(views, assets=assets)
+
         if len(required_prior_assets) != 0:
-            prior_values = {
-                k: measure_func(self._returns[:, i], **measure_args)
-                for i, k in enumerate(assets)
-                if k in required_prior_assets
-            }
+            prior_values = {}
+            if measure == PerfMeasure.MEAN:
+                prior_values = {
+                    k: self._mu[i]
+                    for i, k in enumerate(assets)
+                    if k in required_prior_assets
+                }
+            elif measure == RiskMeasure.VARIANCE:
+                prior_values = {
+                    k: self._covariance[i, i]
+                    for i, k in enumerate(assets)
+                    if k in required_prior_assets
+                }
+            else:
+                measure_func = getattr(sm, str(measure.value))
+                prior_values = {
+                    k: measure_func(self._returns[:, i])
+                    for i, k in enumerate(assets)
+                    if k in required_prior_assets
+                }
             views = _replace_prior_views(views=views, prior_values=prior_values)
 
         a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
@@ -1354,7 +1371,9 @@ def _replace_prior_views(
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0
         result_value = prior_values[asset] * pre_multiplier * post_multiplier
-        return str(result_value)
+
+        # Cast the float to a string making sure to use :16f to avoid scientific notation
+        return f"{result_value:.16f}".rstrip("0").rstrip(".")
 
     new_views = [re.sub(pattern, repl, view) for view in views]
 

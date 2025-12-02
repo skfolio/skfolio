@@ -149,3 +149,7 @@ junit-results.xml
 
 # Cursor editor workspace
 .cursor/
+
+# VS Code settings
+.vscode/
+settings.json
