@@ -63,7 +63,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         If this is set to True, the non-diagonal elements of the covariance matrix are
         set to zero.
 
-    n_eff : int, optional
+    n_eff : float, optional
         Effective number of observations used for the mean estimator. If `None`,
         the number of observations in `X` is used. This is useful when the expected
         returns are estimated using a different window length or a weighted estimator
@@ -78,7 +78,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
 
-    n_eff_ : int
+    n_eff_ : float
         Effective number of observations actually used to build the uncertainty set.
 
     References
@@ -91,14 +91,14 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         Daniel P. Palomar (2025)
     """
 
-    n_eff_: int
+    n_eff_: float
 
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
-        n_eff: int | None = None,
+        n_eff: float | None = None,
     ):
         super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
@@ -197,7 +197,7 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         If this is set to True, the non-diagonal elements of the covariance matrix are
         set to zero.
 
-    n_eff : int, optional
+    n_eff : float, optional
         Effective number of observations used for the covariance estimator. If `None`,
         the number of observations in `X` is used. This is useful when the covariance
         matrix is estimated using a different window length or a weighted estimator
@@ -212,7 +212,7 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
 
-    n_eff_ : int
+    n_eff_ : float
         Effective number of observations actually used to build the uncertainty set.
 
     References
@@ -225,14 +225,14 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         Daniel P. Palomar (2025)
     """
 
-    n_eff_: int
+    n_eff_: float
 
     def __init__(
         self,
         prior_estimator: BasePrior | None = None,
         confidence_level: float = 0.95,
         diagonal: bool = True,
-        n_eff: int | None = None,
+        n_eff: float | None = None,
     ):
         super().__init__(prior_estimator=prior_estimator)
         self.confidence_level = confidence_level
