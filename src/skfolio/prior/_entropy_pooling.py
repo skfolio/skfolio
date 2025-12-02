@@ -1231,7 +1231,6 @@ class EntropyPooling(BasePrior):
                     for i, k in enumerate(assets)
                     if k in required_prior_assets
                 }
-            print(views, prior_values)
             views = _replace_prior_views(views=views, prior_values=prior_values)
 
         a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
