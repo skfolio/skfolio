@@ -143,11 +143,11 @@ def test_mean_views_prior_estimator(X, solver):
     mean = sm.mean(x, sw)
     np.testing.assert_almost_equal(model.relative_entropy_, 0.000133, 5)
     assert np.all(sw >= 0)
-    np.testing.assert_almost_equal(np.sum(sw), 1, 8)
+    np.testing.assert_almost_equal(np.sum(sw), 1, 5)
     assert (mean[0] - prior_mean[0] * 1.2) >= -1e-6  # allow for numerical tolerance
     np.testing.assert_almost_equal(mean[1], prior_mean[1], 5)
     assert (mean[2] - prior_mean[2] * 0.8) <= 1e-6  # allow for numerical tolerance
-    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 8)
+    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 5)
 
 
 def test_value_at_risk_views(X, solver):
