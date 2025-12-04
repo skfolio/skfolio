@@ -11,7 +11,7 @@ jobs:
   sbom:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Export SBOM (SPDX JSON) from Dependency Graph
         env:
           GH_TOKEN: ${{ github.token }}

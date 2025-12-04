@@ -194,6 +194,17 @@ class TestEmpiricalMuUncertaintySet:
         # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
+    def test_n_eff(self, X):
+        ref = EmpiricalMuUncertaintySet()
+        ref.fit(X)
+        assert ref.n_eff_ == len(X)
+
+        model = EmpiricalMuUncertaintySet(n_eff=10)
+        model.fit(X)
+        assert model.n_eff_ == 10
+
+        assert not np.allclose(ref.uncertainty_set_.sigma, model.uncertainty_set_.sigma)
+
 
 class TestEmpiricalCovarianceUncertaintySet:
     def test_fit(self, X):
@@ -349,3 +360,14 @@ class TestEmpiricalCovarianceUncertaintySet:
 
         # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+    def test_n_eff(self, X):
+        ref = EmpiricalCovarianceUncertaintySet()
+        ref.fit(X)
+        assert ref.n_eff_ == len(X)
+
+        model = EmpiricalCovarianceUncertaintySet(n_eff=10)
+        model.fit(X)
+        assert model.n_eff_ == 10
+
+        assert not np.allclose(ref.uncertainty_set_.sigma, model.uncertainty_set_.sigma)
