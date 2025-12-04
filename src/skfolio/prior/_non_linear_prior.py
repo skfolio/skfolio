@@ -85,7 +85,7 @@ class MarketContext:
             raise ValueError(
                 f"Series name must be of type datetime.date or pd.Timestamp, not {type(date)}"
             )
-        
+
         return cls(date=date, **series, **kwargs)
 
     def update_date(self, date: dt.date) -> Self:
@@ -509,6 +509,7 @@ class ReturnsProcessor:
         return_types: skt.ReturnType
         | dict[str, skt.ReturnType]
         | dict[make_column_selector, skt.ReturnType] = "linear",
+        drop_nan: bool = True,
     ):
         """Initialize ReturnsProcessor.
 
@@ -525,6 +526,7 @@ class ReturnsProcessor:
         self.periods = periods
         self.freq = freq
         self.return_types = return_types
+        self.drop_nan = drop_nan
 
     def linear_returns(self, X: pd.DataFrame) -> pd.DataFrame:
         """Calculate linear (percentage) returns.
@@ -603,13 +605,18 @@ class ReturnsProcessor:
         """
         match return_type:
             case "linear":
-                return self.linear_returns(X)
+                df = self.linear_returns(X)
             case "log":
-                return self.log_returns(X)
+                df = self.log_returns(X)
             case "arithmetic":
-                return self.arithmetic_returns(X)
+                df = self.arithmetic_returns(X)
             case _:
                 raise ValueError(f"Unknown return_type: {return_type}")
+
+        if self.drop_nan:
+            df = df.dropna(axis=1)
+
+        return df
 
     def returns_to_prices(
         self,
@@ -647,7 +654,12 @@ class ReturnsProcessor:
                 prices = reference_prices.values + returns
             case _:
                 raise ValueError(f"Unknown return_type: {return_type}")
-        return pd.DataFrame(prices, index=returns.index, columns=returns.columns)
+
+        df = pd.DataFrame(prices, index=returns.index, columns=returns.columns)
+        if self.drop_nan:
+            df = df.dropna(how="all")
+
+        return df
 
     def df_to_returns(self, X: pd.DataFrame) -> pd.DataFrame:
         """Convert a DataFrame of prices to returns.
@@ -745,8 +757,13 @@ class ReturnsProcessor:
 
 
 def calculate_sensis(
-    market_context: MarketContext,
+    reference_market_quotes: pd.Series,
+    reference_market_context: MarketContext,
     portfolio_instruments: PortfolioInstruments,
+    market_data_parser: Callable[
+        [pd.Series, MarketContext, PortfolioInstruments], MarketContext
+    ]
+    | None = None,
     keys: list[str] | None = None,
     bump_size: float = 1e-4,
     mode: Literal["central", "forward", "backward"] = "central",
@@ -780,49 +797,70 @@ def calculate_sensis(
     pd.DataFrame
         A DataFrame containing the sensitivities of each instrument to each market parameter.
     """
-    keys = keys if keys is not None else list(market_context.keys())
+    keys = keys if keys is not None else list(reference_market_quotes.index)
     sensitivities = pd.DataFrame(index=portfolio_instruments.keys(), columns=keys)
 
-    original_prices = portfolio_instruments.price(market_context)
+    if market_data_parser is None:
+        market_data_parser = _default_market_data_parser
+
+    pricing_context = market_data_parser(
+        reference_market_quotes, reference_market_context, portfolio_instruments
+    )
+    original_prices = portfolio_instruments.price(pricing_context)
     denominator = bump_size * original_prices if percent else bump_size
 
     for param in keys:
-        original_value = market_context[param]
+        original_value = reference_market_quotes[param]
 
         match mode:
             case "forward":
                 # Bump up
-                market_context[param] = original_value + bump_size
-                bumped_up_prices = portfolio_instruments.price(market_context)
+                reference_market_quotes[param] = original_value + bump_size
+                bumped_up_prices = portfolio_instruments.price(
+                    market_data_parser(
+                        reference_market_quotes, pricing_context, portfolio_instruments
+                    )
+                )
 
                 # Restore original value
-                market_context[param] = original_value
+                reference_market_quotes[param] = original_value
 
                 # Calculate sensitivity using forward difference
                 sensitivity = (bumped_up_prices - original_prices) / denominator
                 sensitivities[param] = sensitivity
             case "backward":
                 # Bump down
-                market_context[param] = original_value - bump_size
-                bumped_down_prices = portfolio_instruments.price(market_context)
+                reference_market_quotes[param] = original_value - bump_size
+                bumped_down_prices = portfolio_instruments.price(
+                    market_data_parser(
+                        reference_market_quotes, pricing_context, portfolio_instruments
+                    )
+                )
 
                 # Restore original value
-                market_context[param] = original_value
+                reference_market_quotes[param] = original_value
 
                 # Calculate sensitivity using backward difference
                 sensitivity = (original_prices - bumped_down_prices) / denominator
                 sensitivities[param] = sensitivity
             case "central":
                 # Bump up
-                market_context[param] = original_value + bump_size
-                bumped_up_prices = portfolio_instruments.price(market_context)
+                reference_market_quotes[param] = original_value + bump_size
+                bumped_up_prices = portfolio_instruments.price(
+                    market_data_parser(
+                        reference_market_quotes, pricing_context, portfolio_instruments
+                    )
+                )
 
                 # Bump down
-                market_context[param] = original_value - bump_size
-                bumped_down_prices = portfolio_instruments.price(market_context)
-
+                reference_market_quotes[param] = original_value - bump_size
+                bumped_down_prices = portfolio_instruments.price(
+                    market_data_parser(
+                        reference_market_quotes, pricing_context, portfolio_instruments
+                    )
+                )
                 # Restore original value
-                market_context[param] = original_value
+                reference_market_quotes[param] = original_value
 
                 # Calculate sensitivity using central difference
                 sensitivity = (bumped_up_prices - bumped_down_prices) / (
@@ -830,7 +868,7 @@ def calculate_sensis(
                 )
                 sensitivities[param] = sensitivity
 
-    return sensitivities.T
+    return sensitivities
 
 
 class NonLinearPrior(BasePrior):
@@ -854,7 +892,7 @@ class NonLinearPrior(BasePrior):
         reference_index=-1,
         pricing_date_offset: pd.offsets.BaseOffset | None = None,
         returns_processor: ReturnsProcessor | None = None,
-        transform_quotes_prior_moments: bool = True,
+        transform_quotes_prior_moments: bool = False,
         mu_estimator: BaseMu | None = None,
         covariance_estimator: BaseCovariance | None = None,
     ):
@@ -987,7 +1025,10 @@ class NonLinearPrior(BasePrior):
 
         reference_date = market_quotes.index[-1]
         pricing_date = reference_date + self.pricing_date_offset
-        reference_quotes = market_quotes.loc[reference_date]
+        reference_quotes = market_quotes.loc[
+            reference_date,
+            quote_returns.columns,  # Remove any columns that were dropped due to NaNs
+        ]
         self.reference_market_context = self.market_data_parser(
             reference_quotes,
             self.reference_market_context,
@@ -1056,15 +1097,22 @@ class NonLinearPrior(BasePrior):
 
         if self.transform_quotes_prior_moments:
             sensis = calculate_sensis(
+                reference_quotes,
                 self.reference_market_context,
                 self.portfolio_instruments_,
+                market_data_parser=self.market_data_parser,
                 keys=self.market_quotes_prior_.feature_names_in_,
             )
+            market_quotes_mu = self.market_quotes_prior_.return_distribution_.mu
+            market_quotes_covariance = (
+                self.market_quotes_prior_.return_distribution_.covariance
+            )
+
             mu = (
-                reference_prices.values + sensis.values @ mu
+                reference_prices.values + sensis.values @ market_quotes_mu
             ) / reference_prices.values - 1
 
-            covariance = sensis.values @ covariance @ sensis.values.T
+            covariance = sensis.values @ market_quotes_covariance @ sensis.values.T
 
         self.return_distribution_ = ReturnDistribution(
             mu=mu,
