@@ -5,8 +5,11 @@
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+import numpy as np
 import numpy.typing as npt
 import scipy.stats as st
+from scipy.optimize import root
+import torch
 
 from skfolio.distribution.univariate._base import BaseUnivariateDist
 
@@ -150,3 +153,191 @@ class JohnsonSU(BaseUnivariateDist):
             X, **fixed_params
         )
         return self
+
+    @staticmethod
+    def _find_johnson_su_params(skew_target: float, excess_kurt_target: float) -> tuple[float, float]:
+        """Find the a (gamma) and b (delta) parameters for a Johnson SU distribution.
+
+        Finds parameters that match the target skewness and excess kurtosis.
+
+        Parameters
+        ----------
+        skew_target : float
+            Target skewness value.
+        excess_kurt_target : float
+            Target excess kurtosis value.
+
+        Returns
+        -------
+        tuple[float, float]
+            The (a, b) parameters for the Johnson SU distribution.
+
+        Raises
+        ------
+        RuntimeError
+            If the optimization fails to find parameters matching the target moments.
+        """
+        def equations(p):
+            a, b = p
+            if b <= 0:
+                return [1e9, 1e9]
+            try:
+                skew, kurt = st.johnsonsu.stats(a, b, moments="sk")
+            except (ValueError, ZeroDivisionError):
+                return [1e9, 1e9]
+
+            return [skew - skew_target, kurt - excess_kurt_target]
+
+        initial_guess = [0.0, 1.0]
+        solution = root(equations, initial_guess, method="lm")
+
+        if not solution.success:
+            raise RuntimeError(
+                f"Failed to find Johnson SU parameters: {solution.message}"
+            )
+
+        a, b = solution.x
+        return a, b
+
+    @staticmethod
+    def sample_from_param(
+        mu: float,
+        var: float,
+        skew: float,
+        ex_kurt: float,
+        n_samples: int = 1,
+        random_state: int | None = None,
+    ) -> np.ndarray:
+        """Generate random samples from Johnson SU distribution specified by moments.
+
+        This method generates samples from a Johnson SU distribution that matches
+        the specified four moments (mean, variance, skewness, excess kurtosis)
+        without requiring fitting to data.
+
+        Parameters
+        ----------
+        mu : float
+            Mean (first moment) of the distribution.
+        var : float
+            Variance (second central moment) of the distribution.
+        skew : float
+            Skewness (third standardized moment) of the distribution.
+        ex_kurt : float
+            Excess kurtosis (fourth standardized moment minus 3) of the distribution.
+        n_samples : int, default=1
+            Number of samples to generate.
+        random_state : int, RandomState instance or None, default=None
+            Seed or random state to ensure reproducibility.
+
+        Returns
+        -------
+        X : ndarray of shape (n_samples, 1)
+            Random samples from the Johnson SU distribution matching the specified moments.
+
+        Raises
+        ------
+        ValueError
+            If variance is non-positive.
+        RuntimeError
+            If the optimization fails to find parameters matching the target moments.
+        """
+        if var <= 0:
+            raise ValueError("Variance must be positive")
+
+        std = np.sqrt(var)
+
+        # Find a and b parameters from skewness and excess kurtosis
+        a, b = JohnsonSU._find_johnson_su_params(skew, ex_kurt)
+
+        # Calculate loc and scale to match mean and std
+        w = np.exp(1 / (b**2))
+        mu_y = -np.sqrt(w) * np.sinh(a / b)
+        var_y = 0.5 * (w - 1) * (w * np.cosh(2 * a / b) + 1)
+        std_y = np.sqrt(var_y)
+
+        scale = std / std_y
+        loc = mu - scale * mu_y
+
+        # Generate samples
+        samples = st.johnsonsu.rvs(
+            a, b, loc=loc, scale=scale, size=n_samples, random_state=random_state
+        )
+
+        # Reshape to match existing API (n_samples, 1)
+        return samples.reshape(-1, 1)
+
+    @staticmethod
+    def sample_from_param_torch(
+        batch_size: int,
+        n_samples: int,
+        mean: float,
+        std: float,
+        skew: float,
+        ex_kurt: float,
+        device: str = "cpu",
+    ) -> torch.Tensor:
+        """Generate random samples from Johnson SU distribution using PyTorch.
+
+        This method generates samples in parallel batches using PyTorch, enabling
+        GPU acceleration. The distribution matches the specified four moments
+        (mean, standard deviation, skewness, excess kurtosis) without requiring
+        fitting to data.
+
+        Parameters
+        ----------
+        batch_size : int
+            Number of parallel batches to generate.
+        n_samples : int
+            Number of samples per batch.
+        mean : float
+            Mean (first moment) of the distribution.
+        std : float
+            Standard deviation (square root of variance) of the distribution.
+        skew : float
+            Skewness (third standardized moment) of the distribution.
+        ex_kurt : float
+            Excess kurtosis (fourth standardized moment minus 3) of the distribution.
+        device : str, default='cpu'
+            PyTorch device on which to generate samples. Options include 'cpu',
+            'cuda', 'mps', etc.
+
+        Returns
+        -------
+        X : torch.Tensor of shape (batch_size, n_samples)
+            Random samples from the Johnson SU distribution matching the specified
+            moments. The tensor is on the specified device.
+
+        Raises
+        ------
+        ValueError
+            If standard deviation is non-positive.
+        RuntimeError
+            If the optimization fails to find parameters matching the target moments.
+        """
+        if std <= 1e-9:
+            # Handle case with zero standard deviation
+            return torch.full((batch_size, n_samples), mean, device=device)
+
+        if std <= 0:
+            raise ValueError("Standard deviation must be positive")
+
+        # Find a and b parameters from skewness and excess kurtosis
+        a, b = JohnsonSU._find_johnson_su_params(skew, ex_kurt)
+
+        # Calculate loc and scale to match mean and std
+        w = np.exp(1 / (b**2))
+        mu_y = -np.sqrt(w) * np.sinh(a / b)
+        var_y = 0.5 * (w - 1) * (w * np.cosh(2 * a / b) + 1)
+        std_y = np.sqrt(var_y)
+
+        scale = std / std_y
+        loc = mean - scale * mu_y
+
+        # Generate standard normal variables
+        z = torch.randn((batch_size, n_samples), device=device)
+
+        # Apply inverse Johnson SU transformation
+        # Y = loc + scale * sinh((Z - a) / b)
+        y = loc + scale * torch.sinh((z - a) / b)
+
+        return y
