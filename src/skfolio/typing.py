@@ -19,6 +19,7 @@ from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMe
 
 if TYPE_CHECKING:
     from skfolio.optimization._base import BaseOptimization
+    from skfolio.prior import MarketContext, PortfolioInstruments
 
 __all__ = [
     "CvxMeasure",
@@ -28,9 +29,9 @@ __all__ = [
     "Groups",
     "Inequality",
     "LinearConstraints",
+    "MarketDataParser",
     "Measure",
     "MultiInput",
-    "MarketDataParser",
     "Names",
     "ParametersValues",
     "Result",

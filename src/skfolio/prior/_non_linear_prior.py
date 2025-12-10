@@ -1,6 +1,6 @@
 import datetime as dt
 from abc import ABC, abstractmethod
-from collections.abc import Callable, ItemsView, Iterable
+from collections.abc import ItemsView, Iterable
 from typing import Any, Literal, Self, overload
 
 import numpy as np
@@ -1137,11 +1137,16 @@ class NonLinearPrior(BasePrior):
         )
 
         if self.adjust_for_cashflows:
-            portfolio_price_distribution += get_cashflows(
-                self.portfolio_instruments_,
-                pd.bdate_range(reference_date, self.pricing_date_),
-                reference_market_context=self.reference_market_context_,
-            ).cumsum().loc[self.pricing_date_].values
+            portfolio_price_distribution += (
+                get_cashflows(
+                    self.portfolio_instruments_,
+                    pd.bdate_range(reference_date, self.pricing_date_),
+                    reference_market_context=self.reference_market_context_,
+                )
+                .cumsum()
+                .loc[self.pricing_date_]
+                .values
+            )
 
         returns = (
             portfolio_price_distribution - self.reference_prices_.values
