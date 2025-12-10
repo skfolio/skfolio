@@ -258,7 +258,7 @@ class Instrument(ABC):
         float
             The cashflow of the instrument.
         """
-        return 0.
+        return 0.0
 
 
 class InstrumentAdapter(Instrument):
