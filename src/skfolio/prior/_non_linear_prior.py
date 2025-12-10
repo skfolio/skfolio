@@ -238,13 +238,15 @@ class Instrument(ABC):
         """
         pass
 
-    @abstractmethod
     def cashflow(self, market_context: MarketContext) -> float:
         """Calculate the cashflow of the instrument given a market context.
+        The default implementation returns zero cashflows but this should be
+        overridden by instruments that pay coupons or dividends.
 
         Although many instruments' cashflows may depend only on time (e.g.,
         coupons paid at specific dates), many more exotic instruments have
-        conditional coupons.
+        conditional coupons. Therefore we require a full MarketContext to be
+        passed instead of only a date.
 
         Parameters
         ----------
@@ -256,7 +258,7 @@ class Instrument(ABC):
         float
             The cashflow of the instrument.
         """
-        pass
+        return 0.
 
 
 class InstrumentAdapter(Instrument):
@@ -1024,7 +1026,7 @@ class NonLinearPrior(BasePrior):
         n_observations = len(prior_quote_returns)
 
         reference_date = market_quotes.index[-1]
-        pricing_date = reference_date + self.pricing_date_offset
+        self.pricing_date_ = reference_date + self.pricing_date_offset
         reference_quotes = market_quotes.loc[
             reference_date,
             quote_returns.columns,  # Remove any columns that were dropped due to NaNs
@@ -1035,15 +1037,15 @@ class NonLinearPrior(BasePrior):
             self.portfolio_instruments_,
         )
 
-        market_quote_distribution = self.returns_processor.returns_to_df(
+        self.market_quote_distribution_ = self.returns_processor.returns_to_df(
             prior_quote_returns, reference_quotes
         )
-        reference_prices = self.portfolio_instruments_.price(
+        self.reference_prices_ = self.portfolio_instruments_.price(
             self.reference_market_context
         )
-        self.reference_market_context.update_date(pricing_date)
+        self.reference_market_context.update_date(self.pricing_date_)
         portfolio_price_distribution = price_df(
-            market_quote_distribution,
+            self.market_quote_distribution_,
             self.portfolio_instruments_,
             reference_market_context=self.reference_market_context,
             market_data_parser=self.market_data_parser,
@@ -1051,8 +1053,8 @@ class NonLinearPrior(BasePrior):
         )
 
         returns = (
-            portfolio_price_distribution - reference_prices.values
-        ) / reference_prices.values
+            portfolio_price_distribution - self.reference_prices_.values
+        ) / self.reference_prices_.values
         # print(portfolio_price_distribution, reference_prices, returns)
 
         moment_estimators_given = (self.mu_estimator is not None) or (
@@ -1109,8 +1111,8 @@ class NonLinearPrior(BasePrior):
             )
 
             mu = (
-                reference_prices.values + sensis.values @ market_quotes_mu
-            ) / reference_prices.values - 1
+                self.reference_prices_.values + sensis.values @ market_quotes_mu
+            ) / self.reference_prices_.values - 1
 
             covariance = sensis.values @ market_quotes_covariance @ sensis.values.T
 
