@@ -407,9 +407,7 @@ def price_df(
     X: pd.DataFrame,
     portfolio_instruments: PortfolioInstruments,
     reference_market_context: MarketContext | None = None,
-    market_data_parser: Callable[
-        [pd.Series, MarketContext, PortfolioInstruments], MarketContext
-    ] = _default_market_data_parser,
+    market_data_parser: skt.MarketDataParser = _default_market_data_parser,
     use_date_index: bool = True,
 ) -> pd.DataFrame:
     """Price portfolio instruments over a time series of market data.
@@ -447,8 +445,44 @@ def price_df(
         )
 
         rows.append(portfolio_instruments.price(reference_market_context))
-
     return pd.concat(rows, axis=1).T
+
+
+def get_cashflows(
+    portfolio_instruments: PortfolioInstruments,
+    dates: Iterable[dt.date],
+    reference_market_context: MarketContext | None = None,
+) -> pd.DataFrame:
+    """Get cashflows from portfolio instruments over a series of dates.
+
+    Parameters
+    ----------
+    portfolio_instruments : PortfolioInstruments
+        The portfolio of instruments to get cashflows from.
+    dates : Iterable[dt.date]
+        An iterable of dates for which to calculate cashflows.
+    reference_market_context : MarketContext, optional
+        Reference market context to use. If None, an empty MarketContext is created.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of cashflows indexed by dates with columns for each instrument.
+    """
+    if reference_market_context is None:
+        reference_market_context = MarketContext()
+
+    cashflows = []
+    for date in dates:
+        market_context = reference_market_context.update_date(date)
+        cashflows_row = []
+        for instr_id in portfolio_instruments.keys():
+            instr = portfolio_instruments[instr_id]
+            cashflow = instr.cashflow(market_context)
+            cashflows_row.append(cashflow)
+        cashflows.append(cashflows_row)
+
+    return pd.DataFrame(cashflows, index=dates, columns=portfolio_instruments.keys())
 
 
 def adjust_prices_for_cashflows(
@@ -478,19 +512,7 @@ def adjust_prices_for_cashflows(
         DataFrame of adjusted prices.
     """
     adjusted_prices = prices.copy()
-    cashflows = []
-    for date in adjusted_prices.index:
-        market_context = MarketContext(date=date)
-        cashflows_row = []
-        for instr_id in adjusted_prices.columns:
-            instr = portfolio_instruments[instr_id]
-            cashflow = instr.cashflow(market_context)
-            cashflows_row.append(cashflow)
-        cashflows.append(cashflows_row)
-
-    cashflows_df = pd.DataFrame(
-        cashflows, index=adjusted_prices.index, columns=adjusted_prices.columns
-    )
+    cashflows_df = get_cashflows(portfolio_instruments, adjusted_prices.index)
 
     match method:
         case "simple":
@@ -762,10 +784,7 @@ def calculate_sensis(
     reference_market_quotes: pd.Series,
     reference_market_context: MarketContext,
     portfolio_instruments: PortfolioInstruments,
-    market_data_parser: Callable[
-        [pd.Series, MarketContext, PortfolioInstruments], MarketContext
-    ]
-    | None = None,
+    market_data_parser: skt.MarketDataParser = _default_market_data_parser,
     keys: list[str] | None = None,
     bump_size: float = 1e-4,
     mode: Literal["central", "forward", "backward"] = "central",
@@ -775,20 +794,31 @@ def calculate_sensis(
 
     Parameters
     ----------
-    market_context : MarketContext
+    reference_market_quotes : pd.Series
+        The market quotes serving as the reference point for sensitivity calculations.
+
+    reference_market_context : MarketContext
         The market context containing pricing parameters.
+
     portfolio_instruments : PortfolioInstruments
         The portfolio of instruments to calculate sensitivities for.
+
+    market_data_parser : skt.MarketDataParser, optional
+        Function to build a MarketContext from market quotes. Defaults to _default_market_data_parser.
+
     keys : list[str], optional
         The list of market context parameter keys to calculate sensitivities for.
         If None, all keys in the market context are used.
+
     bump_size : float, default=1e-4
         The size of the bump to apply to each market parameter (1 basis point by default).
+
     mode : {"central", "forward", "backward"}, default="central"
         The finite difference method to use:
         - "central": Central difference (most accurate)
         - "forward": Forward difference
         - "backward": Backward difference
+
     percent : bool, default=True
         Whether to express sensitivities as percentage changes.
         For example, setting this to True would correspond to calculating modified duration,
@@ -801,9 +831,6 @@ def calculate_sensis(
     """
     keys = keys if keys is not None else list(reference_market_quotes.index)
     sensitivities = pd.DataFrame(index=portfolio_instruments.keys(), columns=keys)
-
-    if market_data_parser is None:
-        market_data_parser = _default_market_data_parser
 
     pricing_context = market_data_parser(
         reference_market_quotes, reference_market_context, portfolio_instruments
@@ -875,53 +902,108 @@ def calculate_sensis(
 
 class NonLinearPrior(BasePrior):
     """The NonLinearPrior class creates a distribution of returns for a portfolio of non-linear instruments.
-    Instead of the usual design pattern of fitting a prior using the historical asset returns, instead this
-    prior is fitted using a history of market quotes used to price the given portfolio. These market quotes
-    could be, for example, implied volatilities for options, z-scores for bonds, swap-rates for rates
-    instruments, etc.
+    Instead of using the historical returns of the instruments directly, it uses arbitrary market quotes,
+    provided these market quotes can be used to reprice the instruments in the portfolio. The NonLinearPrior
+    assumes the returns of the market quotes are independent and identically distributed, and based on this
+    assumption builds a distribution of returns for the instruments in the portfolio. The process is as follows.
+
+    1. The user fits the NonLinearPrior with historical market quotes data (e.g. implied vols or credit spreads)
+        whose returns are approximately i.i.d.
+    2. The NonLinearPrior builds a distribution of market quotes returns using the market_quotes_prior (e.g. EmpiricalPrior).
+    3. Using the distribution of market quotes returns, the NonLinearPrior generates a distribution of market quotes
+      at the investment horizon.
+    4. The NonLinearPrior maps the distribution of invariants into the distribution of security prices at the investment
+      horizon through the pricing functions provided in the portfolio_instruments.
+    5. Finally, it computes the linear returns of the instruments in the portfolio.
+
+    Parameters
+    ----------
+    portfolio_instruments : PortfolioInstruments
+        The portfolio of instruments to price.
+
+    market_quotes_prior : BasePrior, optional
+        Prior estimator for market quotes. Defaults to EmpiricalPrior.
+
+    reference_market_context : MarketContext, optional
+        Reference market context for pricing. Defaults to empty MarketContext.
+
+    market_data_parser : Callable[[pd.Series], dict], optional
+        Function to parse market data from a Series.
+
+    reference_index : int, default=-1
+        Index to use as reference point.
+
+    pricing_date_offset : str, default="1B"
+        Date offset for pricing (e.g., "1B" for one business day).
+
+    returns_processor : ReturnsProcessor, optional
+        Processor for handling returns calculations. Defaults to ReturnsProcessor().
+
+    transform_quotes_prior_moments : bool, default=True
+        Whether to transform moments from the quotes prior using sensitivities.
+
+    adjust_for_cashflows : bool, default=False
+        Whether to adjust prices for cashflows before calculating returns.
+
+    Attributes
+    ----------
+    return_distribution_ : ReturnDistribution
+        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
+        estimators, containing the assets distribution, moments estimation and the EP
+        posterior probabilities (sample weights).
+
+    portfolio_instruments_ : PortfolioInstruments
+        The portfolio of instruments to price, filtered to those present in the training data.
+
+    market_quotes_prior_ : BasePrior
+        Fitted `prior_estimator`.
+
+    pricing_date_ : dt.date
+        The pricing date after applying the offset to the reference date.
+
+    reference_market_context_ : MarketContext
+        The reference market context used for pricing. Created by calling the market_data_parser
+        with the last market quotes and the reference_market_context passed on instantiation.
+
+    mu_estimator_ : BaseMu | None
+        Fitted mean estimator for market quotes, or None if not provided.
+
+    covariance_estimator_ : BaseCovariance | None
+        Fitted covariance estimator for market quotes, or None if not provided.
+
+    n_features_in_ : int
+       Number of assets seen during `fit`.
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+       Names of features seen during `fit`. Defined only when `X`
+       has feature names that are all strings.
+
     """
 
+    portfolio_instruments_: PortfolioInstruments
     market_quotes_prior_: BasePrior
+    pricing_date_: dt.date
+    reference_market_context_: MarketContext
+    mu_estimator_: BaseMu | None
+    covariance_estimator_: BaseCovariance | None
+    n_features_in_: int
+    feature_names_in_: np.ndarray
 
     def __init__(
         self,
         portfolio_instruments: PortfolioInstruments,
         market_quotes_prior: BasePrior | None = None,
         reference_market_context: MarketContext | None = None,
-        market_data_parser: Callable[
-            [pd.Series, MarketContext, PortfolioInstruments], MarketContext
-        ] = _default_market_data_parser,
-        reference_index=-1,
+        market_data_parser: skt.MarketDataParser = _default_market_data_parser,
         pricing_date_offset: pd.offsets.BaseOffset | None = None,
         returns_processor: ReturnsProcessor | None = None,
-        transform_quotes_prior_moments: bool = False,
         mu_estimator: BaseMu | None = None,
         covariance_estimator: BaseCovariance | None = None,
+        transform_quotes_prior_moments: bool = False,
+        adjust_for_cashflows: bool = False,
     ):
-        """Initialize NonLinearPrior.
-
-        Parameters
-        ----------
-        portfolio_instruments : PortfolioInstruments
-            The portfolio of instruments to price.
-        market_quotes_prior : BasePrior, optional
-            Prior estimator for market quotes. Defaults to EmpiricalPrior.
-        reference_market_context : MarketContext, optional
-            Reference market context for pricing. Defaults to empty MarketContext.
-        market_data_parser : Callable[[pd.Series], dict], optional
-            Function to parse market data from a Series.
-        reference_index : int, default=-1
-            Index to use as reference point.
-        pricing_date_offset : str, default="1B"
-            Date offset for pricing (e.g., "1B" for one business day).
-        returns_processor : ReturnsProcessor, optional
-            Processor for handling returns calculations. Defaults to ReturnsProcessor().
-        transform_quotes_prior_moments : bool, default=True
-            Whether to transform moments from the quotes prior using sensitivities.
-        """
         self.portfolio_instruments = portfolio_instruments
         self.market_quotes_prior = market_quotes_prior or EmpiricalPrior()
-        self.reference_index = reference_index
         self.reference_market_context = (
             reference_market_context
             if reference_market_context is not None
@@ -932,11 +1014,13 @@ class NonLinearPrior(BasePrior):
             pricing_date_offset if pricing_date_offset else pd.offsets.BDay(1)
         )
         self.returns_processor = returns_processor or ReturnsProcessor()
+        self.mu_estimator = mu_estimator
+        self.covariance_estimator = covariance_estimator
+
         self.transform_quotes_prior_moments = (
             transform_quotes_prior_moments if market_quotes_prior else False
         )  # Only transform is a prior has been provided (which may have different moments than empirical)
-        self.mu_estimator = mu_estimator
-        self.covariance_estimator = covariance_estimator
+        self.adjust_for_cashflows = adjust_for_cashflows
 
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
@@ -1031,26 +1115,33 @@ class NonLinearPrior(BasePrior):
             reference_date,
             quote_returns.columns,  # Remove any columns that were dropped due to NaNs
         ]
-        self.reference_market_context = self.market_data_parser(
+        self.reference_market_context_ = self.market_data_parser(
             reference_quotes,
             self.reference_market_context,
             self.portfolio_instruments_,
         )
 
-        self.market_quote_distribution_ = self.returns_processor.returns_to_df(
+        market_quote_distribution = self.returns_processor.returns_to_df(
             prior_quote_returns, reference_quotes
         )
         self.reference_prices_ = self.portfolio_instruments_.price(
-            self.reference_market_context
+            self.reference_market_context_
         )
-        self.reference_market_context.update_date(self.pricing_date_)
+        self.reference_market_context_.update_date(self.pricing_date_)
         portfolio_price_distribution = price_df(
-            self.market_quote_distribution_,
+            market_quote_distribution,
             self.portfolio_instruments_,
-            reference_market_context=self.reference_market_context,
+            reference_market_context=self.reference_market_context_,
             market_data_parser=self.market_data_parser,
             use_date_index=False,
         )
+
+        if self.adjust_for_cashflows:
+            portfolio_price_distribution += get_cashflows(
+                self.portfolio_instruments_,
+                pd.bdate_range(reference_date, self.pricing_date_),
+                reference_market_context=self.reference_market_context_,
+            ).cumsum().loc[self.pricing_date_].values
 
         returns = (
             portfolio_price_distribution - self.reference_prices_.values
@@ -1100,7 +1191,7 @@ class NonLinearPrior(BasePrior):
         if self.transform_quotes_prior_moments:
             sensis = calculate_sensis(
                 reference_quotes,
-                self.reference_market_context,
+                self.reference_market_context_,
                 self.portfolio_instruments_,
                 market_data_parser=self.market_data_parser,
                 keys=self.market_quotes_prior_.feature_names_in_,

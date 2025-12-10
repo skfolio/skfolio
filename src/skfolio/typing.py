@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Literal, TypeAlias, Union
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
 
 from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
@@ -29,6 +30,7 @@ __all__ = [
     "LinearConstraints",
     "Measure",
     "MultiInput",
+    "MarketDataParser",
     "Names",
     "ParametersValues",
     "Result",
@@ -60,7 +62,9 @@ Fallback: TypeAlias = Union[
     None,
 ]
 ReturnType = Literal["linear", "log", "arithmetic"]
-
+MarketDataParser = Callable[
+    [pd.Series, "MarketContext", "PortfolioInstruments"], "MarketContext"
+]
 # Population
 Names = str | list[str]
 Tags = str | list[str]
