@@ -18,7 +18,7 @@ jobs:
         run: |
           gh api repos/${{ github.repository }}/dependency-graph/sbom \
             -H "X-GitHub-Api-Version: 2022-11-28" > sbom.spdx.json
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: sbom-${{ github.ref_name }}
           path: sbom.spdx.json
