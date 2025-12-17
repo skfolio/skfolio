@@ -1,13 +1,16 @@
 import datetime as dt
 from abc import ABC, abstractmethod
 from collections.abc import ItemsView, Iterable
+from itertools import product
 from typing import Any, Literal, Self, overload
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
+from scipy.differentiate import hessian, jacobian
 from sklearn.compose import make_column_selector
 
 import skfolio.measures as sm
@@ -786,10 +789,11 @@ def calculate_sensis(
     portfolio_instruments: PortfolioInstruments,
     market_data_parser: skt.MarketDataParser = _default_market_data_parser,
     keys: list[str] | None = None,
-    bump_size: float = 1e-4,
-    mode: Literal["central", "forward", "backward"] = "central",
-    percent: bool = True,
-) -> pd.DataFrame:
+    order: Literal[1, 2] = 1,
+    percent: bool = False,
+    pandas_output: bool = True,
+    **kwargs,
+) -> npt.ArrayLike:
     """Calculate the sensitivities (Greeks) of the portfolio instruments to the market context parameters.
 
     Parameters
@@ -810,94 +814,77 @@ def calculate_sensis(
         The list of market context parameter keys to calculate sensitivities for.
         If None, all keys in the market context are used.
 
-    bump_size : float, default=1e-4
-        The size of the bump to apply to each market parameter (1 basis point by default).
+    order : {1, 2}, default=1
+        The order of the derivative to compute.
 
-    mode : {"central", "forward", "backward"}, default="central"
-        The finite difference method to use:
-        - "central": Central difference (most accurate)
-        - "forward": Forward difference
-        - "backward": Backward difference
-
-    percent : bool, default=True
+    percent : bool, default=False
         Whether to express sensitivities as percentage changes.
-        For example, setting this to True would correspond to calculating modified duration,
-        while setting it False would correspond to DV01.
+
+    pandas_output : bool, default=True
+        Whether to return the result as a pandas DataFrame. Only supported for first-order derivatives.
+
+    kwargs: dict, optional
+        Arguments to be passed to scipy's derivative function.
 
     Returns
     -------
     pd.DataFrame
         A DataFrame containing the sensitivities of each instrument to each market parameter.
     """
+    finite_difference_params = {"initial_step": 0.0001} | kwargs
+
+    if order not in (1, 2):
+        raise ValueError("Order must be 1 or 2.")
+
     keys = keys if keys is not None else list(reference_market_quotes.index)
-    sensitivities = pd.DataFrame(index=portfolio_instruments.keys(), columns=keys)
 
     pricing_context = market_data_parser(
         reference_market_quotes, reference_market_context, portfolio_instruments
     )
-    original_prices = portfolio_instruments.price(pricing_context)
-    denominator = bump_size * original_prices if percent else bump_size
 
-    for param in keys:
-        original_value = reference_market_quotes[param]
+    def price_function(market_quotes: npt.ArrayLike) -> npt.ArrayLike:
+        temp_series = pd.Series(market_quotes, index=keys)
+        temp_context = market_data_parser(
+            temp_series, pricing_context, portfolio_instruments
+        )
+        return portfolio_instruments.price(temp_context).values
 
-        match mode:
-            case "forward":
-                # Bump up
-                reference_market_quotes[param] = original_value + bump_size
-                bumped_up_prices = portfolio_instruments.price(
-                    market_data_parser(
-                        reference_market_quotes, pricing_context, portfolio_instruments
-                    )
-                )
+    def vectorized_price_function(x: npt.ArrayLike) -> npt.ArrayLike:
+        return np.apply_along_axis(price_function, axis=0, arr=x)
 
-                # Restore original value
-                reference_market_quotes[param] = original_value
+    if order == 1:
+        res = jacobian(
+            vectorized_price_function,
+            reference_market_quotes[keys],
+            **finite_difference_params,
+        )
+        df = res.df.T
+        if pandas_output:
+            df = pd.DataFrame(
+                df,
+                index=list(portfolio_instruments.keys()),
+                columns=keys,
+            )
+    elif order == 2:
+        res = hessian(
+            vectorized_price_function,
+            reference_market_quotes[keys],
+            **finite_difference_params,
+        )
+        df = res.ddf.T
+        if pandas_output:
+            m, n, r = df.shape
+            out_arr = np.column_stack(df.reshape(-1, m * n))
+            df = pd.DataFrame(
+                out_arr,
+                index=pd.MultiIndex.from_tuples(product(keys, repeat=2)),
+                columns=list(portfolio_instruments.keys()),
+            )
 
-                # Calculate sensitivity using forward difference
-                sensitivity = (bumped_up_prices - original_prices) / denominator
-                sensitivities[param] = sensitivity
-            case "backward":
-                # Bump down
-                reference_market_quotes[param] = original_value - bump_size
-                bumped_down_prices = portfolio_instruments.price(
-                    market_data_parser(
-                        reference_market_quotes, pricing_context, portfolio_instruments
-                    )
-                )
+    if percent:
+        df /= portfolio_instruments.price(pricing_context).values
 
-                # Restore original value
-                reference_market_quotes[param] = original_value
-
-                # Calculate sensitivity using backward difference
-                sensitivity = (original_prices - bumped_down_prices) / denominator
-                sensitivities[param] = sensitivity
-            case "central":
-                # Bump up
-                reference_market_quotes[param] = original_value + bump_size
-                bumped_up_prices = portfolio_instruments.price(
-                    market_data_parser(
-                        reference_market_quotes, pricing_context, portfolio_instruments
-                    )
-                )
-
-                # Bump down
-                reference_market_quotes[param] = original_value - bump_size
-                bumped_down_prices = portfolio_instruments.price(
-                    market_data_parser(
-                        reference_market_quotes, pricing_context, portfolio_instruments
-                    )
-                )
-                # Restore original value
-                reference_market_quotes[param] = original_value
-
-                # Calculate sensitivity using central difference
-                sensitivity = (bumped_up_prices - bumped_down_prices) / (
-                    2 * denominator
-                )
-                sensitivities[param] = sensitivity
-
-    return sensitivities
+    return df
 
 
 class NonLinearPrior(BasePrior):
@@ -1220,3 +1207,134 @@ class NonLinearPrior(BasePrior):
         )
 
         return self
+
+
+class SensiPrior(BasePrior):
+    def __init__(
+        self,
+        portfolio_instruments: PortfolioInstruments | None = None,
+        approximation_order: int = 2,
+        sensis: list[npt.ArrayLike] | None = None,
+        market_quotes_prior: BasePrior | None = None,
+        mu_estimator: BaseMu | None = None,
+        covariance_estimator: BaseCovariance | None = None,
+        returns_processor: ReturnsProcessor | None = None,
+    ):
+        if portfolio_instruments is None and sensis is None:
+            raise ValueError("Either portfolio_instruments or sensis must be provided.")
+        elif portfolio_instruments is not None and sensis is not None:
+            raise ValueError(
+                "Only one of portfolio_instruments or sensis should be provided."
+            )
+        self.portfolio_instruments = portfolio_instruments
+
+        if approximation_order > 2:
+            raise NotImplementedError(
+                "Approximation orders higher than 2 are not implemented."
+            )
+        elif approximation_order < 1:
+            raise ValueError("Approximation order must be at least 1.")
+        self.approximation_order = approximation_order
+
+        self.sensis = sensis
+        self.market_quotes_prior = market_quotes_prior
+        self.mu_estimator = mu_estimator
+        self.covariance_estimator = covariance_estimator
+        self.returns_processor = returns_processor or ReturnsProcessor()
+
+    def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        MetadataRouter
+            The metadata router for routing fit parameters.
+        """
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add_self_request(self)
+            .add(
+                market_quotes_prior=self.market_quotes_prior,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                mu_estimator=self.mu_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                covariance_estimator=self.covariance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
+        return router
+
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y=None,
+        market_quotes: pd.DataFrame | None = None,
+        **fit_params,
+    ):
+        """Fit the NonLinearPrior model.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Historical asset prices (not used directly).
+        y : Ignored
+            Not used, present for API consistency.
+        market_quotes : npt.ArrayLike, optional
+            Historical market quotes used for pricing the instruments.
+        **fit_params : dict
+            Additional fit parameters to route to sub-estimators.
+
+        Returns
+        -------
+        self : NonLinearPrior
+            Fitted estimator.
+        """
+        if market_quotes is not None:
+            # noinspection PyTypeChecker
+            fit_params["market_quotes"] = market_quotes
+        else:
+            raise ValueError(
+                "market_quotes metadata must be provided to fit SensiPrior."
+            )
+
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
+        # Validate X and get feature_names_in_
+        skv.validate_data(self, X, ensure_all_finite="allow-nan")
+        # Only keep instruments that are in X
+        self.portfolio_instruments_ = self.portfolio_instruments[self.feature_names_in_]
+
+        self.market_quotes_prior_ = check_estimator(
+            self.market_quotes_prior,
+            default=EmpiricalPrior(),
+            check_type=BasePrior,
+        )
+
+        quote_returns = self.returns_processor.df_to_returns(market_quotes)
+
+        # Fitting prior estimator
+        self.market_quotes_prior_.fit(
+            quote_returns, y, **routed_params.market_quotes_prior.fit
+        )
+        # Prior distribution
+        prior_quote_returns = pd.DataFrame(
+            self.market_quotes_prior_.return_distribution_.returns,
+            columns=self.market_quotes_prior_.feature_names_in_,
+        )
+        sample_weight = self.market_quotes_prior_.return_distribution_.sample_weight
+        n_observations = len(prior_quote_returns)
+
+        reference_date = market_quotes.index[-1]
+        reference_quotes = market_quotes.loc[
+            reference_date,
+            quote_returns.columns,  # Remove any columns that were dropped due to NaNs
+        ]
+
+        market_quote_distribution = self.returns_processor.returns_to_df(
+            prior_quote_returns, reference_quotes
+        )
