@@ -525,3 +525,44 @@ def test_weight_dict(X, weights):
     np.testing.assert_almost_equal(
         [portfolio.previous_weights_dict[x] for x in X.columns], np.arange(20)
     )
+
+
+def test_portfolio_nan_handling(X, weights):
+    """Test that NaN values in X are handled gracefully."""
+    X_with_nan = X.to_numpy().copy()
+
+    # Asset index 3 has zero weight, asset index 0 has non-zero weight
+    assert weights[3] == 0.0
+    assert weights[0] != 0.0
+
+    # NaN in asset with zero weight should be ignored
+    X_nan_zero_weight = X_with_nan.copy()
+    X_nan_zero_weight[5, 3] = np.nan  # Day 5, asset 3 (zero weight)
+    portfolio = Portfolio(X=X_nan_zero_weight, weights=weights)
+    assert not np.any(np.isnan(portfolio.returns))
+
+    # NaN in asset with non-zero weight should produce NaN for that day
+    X_nan_nonzero_weight = X_with_nan.copy()
+    X_nan_nonzero_weight[10, 0] = np.nan  # Day 10, asset 0 (non-zero weight)
+    portfolio = Portfolio(X=X_nan_nonzero_weight, weights=weights)
+    assert np.isnan(portfolio.returns[10])
+    assert np.sum(np.isnan(portfolio.returns)) == 1
+
+    # Multiple NaNs on different days
+    X_multi_nan = X_with_nan.copy()
+    X_multi_nan[10, 0] = np.nan  # Day 10, asset 0 (non-zero weight)
+    X_multi_nan[20, 1] = np.nan  # Day 20, asset 1 (non-zero weight)
+    X_multi_nan[30, 3] = np.nan  # Day 30, asset 3 (zero weight) - should be ignored
+    portfolio = Portfolio(X=X_multi_nan, weights=weights)
+    assert np.isnan(portfolio.returns[10])
+    assert np.isnan(portfolio.returns[20])
+    assert not np.isnan(portfolio.returns[30])
+    assert np.sum(np.isnan(portfolio.returns)) == 2
+
+    # NaN in asset with zero weight, verify returns match clean computation
+    X_nan_zero_only = X_with_nan.copy()
+    X_nan_zero_only[5, 3] = np.nan
+    X_nan_zero_only[15, 4] = np.nan  # Asset 4 also has zero weight
+    portfolio_nan = Portfolio(X=X_nan_zero_only, weights=weights)
+    portfolio_ref = Portfolio(X=X, weights=weights)
+    np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)

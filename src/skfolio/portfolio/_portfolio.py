@@ -575,12 +575,19 @@ class Portfolio(BasePortfolio):
             total_fee = (management_fees * weights).sum()
 
         if weights_provided:
-            returns = weights @ rets.T - total_cost - total_fee
+            # Handle NaNs gracefully:
+            # - If an asset has NaN but weight is zero, ignore it
+            # - If weight is non-zero and value is NaN, result is NaN for that observation
+            nan_mask = np.isnan(rets)
+
+            if np.any(nan_mask):
+                irrelevant_nan = nan_mask & (weights == 0)
+                rets_clean = np.where(irrelevant_nan, 0.0, rets)
+                returns = weights @ rets_clean.T - total_cost - total_fee
+            else:
+                returns = weights @ rets.T - total_cost - total_fee
         else:
             returns = np.full(n_observations, np.nan)
-
-        if weights_provided and np.any(np.isnan(returns)):
-            raise ValueError("NaN found in `returns`")
 
         super().__init__(
             returns=returns,
