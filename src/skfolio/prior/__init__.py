@@ -10,6 +10,7 @@ from skfolio.prior._factor_model import (
     LoadingMatrixRegression,
 )
 from skfolio.prior._non_linear_prior import (
+    FiniteDifferenceSensiEstimator,
     Instrument,
     InstrumentAdapter,
     MarketContext,
@@ -31,6 +32,7 @@ __all__ = [
     "EmpiricalPrior",
     "EntropyPooling",
     "FactorModel",
+    "FiniteDifferenceSensiEstimator",
     "Instrument",
     "InstrumentAdapter",
     "LoadingMatrixRegression",
