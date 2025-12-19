@@ -107,14 +107,24 @@ the assets previous weights.
 
 .. warning::
 
-    The :class:`Portfolio` formulation is **homogeneous** to the convex optimization
-    problems for coherent analysis. It's important to note that this portfolio
-    formulation is **not perfectly replicable** due to weight drift when asset prices
-    move. The only case where it would be perfectly replicable is with periodic
-    rebalancing with zero costs. In practice, portfolios are
-    rebalanced frequently enough, so this weight drift becomes negligible in regards to
-    model analysis and selection. Before trading, a full replicability analysis should
-    be performed, which is another topic left to the investor.
+    The :class:`Portfolio` formulation is **consistent** with the convex optimization
+    problems: portfolio returns are computed as a **dot product** of weights and asset
+    returns, minus costs. This formulation is **not perfectly replicable** due to weight
+    drift when asset prices move, except in the ideal case of periodic rebalancing with
+    zero transaction costs.
+
+    This design choice is analogous to using **non-compounded vs compounded returns** to
+    compare trading strategies. `skfolio` focuses on **allocation skill**, which corresponds
+    to an **expectation-based (ex-ante) evaluation**, rather than on **realized capital
+    growth**, which corresponds to a **path-dependent (ex-post) evaluation** along a
+    single return path.
+
+    Weight drift introduces **path dependence**: early winners get larger weights, early
+    losers shrink, and outcomes depend on return ordering. Two portfolios with the same
+    expected returns and covariances can end with very different performance due only to
+    the sequence of returns, which contaminates the comparison. Likewise, a volatile asset
+    can dominate portfolio results because it moved early, not because it has a higher
+    expected return.
 
 **Example:**
 

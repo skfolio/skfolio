@@ -32,8 +32,25 @@ class Portfolio(BasePortfolio):
     Portfolio class.
 
     `Portfolio` is returned by the `predict` method of Optimization estimators.
-    It is homogeneous to the convex optimization problems meaning that `Portfolio` is
-    the dot product of the assets weights with the assets returns.
+
+    Its formulation is **consistent** with the convex optimization problems: portfolio
+    returns are computed as a **dot product** of weights and asset returns, minus costs.
+    This formulation is **not perfectly replicable** due to weight drift when asset
+    prices move, except in the ideal case of periodic rebalancing with zero transaction
+    costs.
+
+    This design choice is analogous to using **non-compounded vs compounded returns** to
+    compare trading strategies. `skfolio` focuses on **allocation skill**, which
+    corresponds to an **expectation-based (ex-ante) evaluation**, rather than on
+    **realized capital growth**, which corresponds to a **path-dependent (ex-post)
+    evaluation** along a single return path.
+
+    Weight drift introduces **path dependence**: early winners get larger weights, early
+    losers shrink, and outcomes depend on return ordering. Two portfolios with the same
+    expected returns and covariances can end with very different performance due only to
+    the sequence of returns, which contaminates the comparison. Likewise, a volatile
+    asset can dominate portfolio results because it moved early, not because it has a
+    higher expected return.
 
     Parameters
     ----------
