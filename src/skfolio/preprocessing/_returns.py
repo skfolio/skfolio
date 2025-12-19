@@ -54,7 +54,7 @@ def prices_to_returns(
         If provided, it is joined with the DataFrame of prices to ensure identical
         observations.
 
-    log_returns : bool, default=True
+    log_returns : bool, default=False
         If this is set to True, logarithmic returns are used instead of simple returns.
 
     join : str, default="outer"
