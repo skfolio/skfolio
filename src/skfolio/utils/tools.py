@@ -11,7 +11,7 @@ import warnings
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -325,11 +325,17 @@ def args_names(func: object) -> list[str]:
     ]
 
 
+# TODO: once support for python versions prior to 3.12 is dropped,
+#  these can be rewritten using in-line typing notation.
+EstimatorTypeVar = TypeVar("EstimatorTypeVar", bound=skb.BaseEstimator | None)
+DefaultTypeVar = TypeVar("DefaultTypeVar", bound=skb.BaseEstimator | None)
+
+
 def check_estimator(
-    estimator: skb.BaseEstimator | None,
-    default: skb.BaseEstimator | None,
+    estimator: EstimatorTypeVar,
+    default: DefaultTypeVar,
     check_type: Any,
-):
+) -> EstimatorTypeVar | DefaultTypeVar:
     """Check the estimator type and returns its cloned version it provided, otherwise
      return the default estimator.
 

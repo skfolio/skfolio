@@ -1233,6 +1233,7 @@ class EntropyPooling(BasePrior):
                 }
             views = _replace_prior_views(views=views, prior_values=prior_values)
 
+        print(views)
         a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
             groups=self._groups,
             equations=views,

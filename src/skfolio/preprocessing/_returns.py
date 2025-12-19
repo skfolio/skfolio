@@ -4,15 +4,42 @@
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-from typing import Literal
+from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
 
 
+@overload
+def prices_to_returns(
+    X: pd.DataFrame,
+    y: None = None,
+    *,
+    log_returns: bool = False,
+    nan_threshold: float = 1,
+    join: Literal["left", "right", "inner", "outer", "cross"] = "outer",
+    drop_inceptions_nan: bool = True,
+    fill_nan: bool = True,
+) -> pd.DataFrame: ...
+
+
+@overload
+def prices_to_returns(
+    X: pd.DataFrame,
+    y: pd.DataFrame,
+    *,
+    log_returns: bool = False,
+    nan_threshold: float = 1,
+    join: Literal["left", "right", "inner", "outer", "cross"] = "outer",
+    drop_inceptions_nan: bool = True,
+    fill_nan: bool = True,
+) -> tuple[pd.DataFrame, pd.DataFrame]: ...
+
+
 def prices_to_returns(
     X: pd.DataFrame,
     y: pd.DataFrame | None = None,
+    *,
     log_returns: bool = False,
     nan_threshold: float = 1,
     join: Literal["left", "right", "inner", "outer", "cross"] = "outer",

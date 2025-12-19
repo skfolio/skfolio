@@ -530,7 +530,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
-        target_weights: skt.MultiInput | None = None,
         groups: skt.Groups | None = None,
         linear_constraints: skt.LinearConstraints | None = None,
         left_inequality: skt.Inequality | None = None,
@@ -590,7 +589,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.min_acceptable_return = min_acceptable_return
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
-        self.target_weights = target_weights
         self.groups = groups
         self.linear_constraints = linear_constraints
         self.left_inequality = left_inequality
