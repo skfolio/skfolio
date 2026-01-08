@@ -155,6 +155,10 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/metadata_routing/plot_1_implied_volatility": (
         "Routing implied volatility data into optimization models"
     ),
+    # Feature Extraction
+    "auto_examples/feature_extraction/plot_1_feature_extraction": (
+        "Dimensionality reduction and noise filtering using PPCA and PKPCA"
+    ),
 }
 
 EXAMPLE_LAST_UPDATED = {
@@ -210,6 +214,8 @@ EXAMPLE_LAST_UPDATED = {
     "auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "2023-12-18",
     # Metadata Routing
     "auto_examples/metadata_routing/plot_1_implied_volatility": "2023-12-18",
+    # Feature Extraction
+    "auto_examples/feature_extraction/plot_1_feature_extraction": "2026-01-08",
 }
 
 # Map old *docname* (no .rst/.html) -> new URL (root-relative or absolute)
@@ -383,6 +389,7 @@ ORDER_OF_EXAMPLES = {
     "pre_selection": 10,
     "metadata_routing": 11,
     "data_preparation": 12,
+    "feature_extraction": 13,
 }
 
 # -- sphinxext-opengraph ----------------------------------------------------
