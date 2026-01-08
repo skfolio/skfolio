@@ -58,7 +58,7 @@ dependencies = [
     "clarabel>=0.9.0",
     "scikit-learn>=1.6.0",
     "joblib>=1.3.2",
-    "plotly>=5.22.0"
+    "plotly>=5.22.0",
 ]
 
 [project.urls]
@@ -81,6 +81,8 @@ docs = [
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
     "matplotlib",
+    "seaborn>=0.13.2",
+    "statsmodels>=0.14.6",
     "kaleido",
     "sphinx-copybutton",
     "numpydoc",
@@ -91,6 +93,9 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
+]
+feature_extraction = [
+    "gen_fex @ git+https://github.com/AI-Ahmed/gen_fex.git",
 ]
 
 [tool.setuptools.packages.find]

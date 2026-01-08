@@ -24,6 +24,31 @@ By default, the solver `Clarabel`  is installed.
 To install additional solvers (`SCIP`, `GUROBI`, `MOSEK`), please refer to
 `the cvxpy documentation <https://www.cvxpy.org/install/index.html>`_
 
+Install Optional Dependencies
+*****************************
+
+Feature Extraction
+==================
+
+To use the feature extraction module with probabilistic PCA methods:
+
+.. code:: console
+
+    $ pip install 'skfolio[feature_extraction]'
+
+Or using uv:
+
+.. code:: console
+
+    $ uv pip install 'skfolio[feature_extraction]'
+
+This installs the `gen_fex` package which provides:
+
+- **PPCA**: Probabilistic Principal Component Analysis
+- **PKPCA**: Probabilistic Kernel PCA with Wishart process priors
+
+See :ref:`feature_extraction` for usage examples.
+
 
 Dependencies
 ************
