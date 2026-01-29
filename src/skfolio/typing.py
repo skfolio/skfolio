@@ -47,9 +47,7 @@ Target = float | np.ndarray
 ParametersValues = list[tuple[cp.Parameter, float | np.ndarray]]
 Factor = cp.Variable | cp.Constant
 Result = np.ndarray | tuple[float | tuple[float, float] | np.ndarray, np.ndarray]
-RiskResult = tuple[
-    cp.Expression | cp.Variable | cp.Trace, list[cp.Expression | cp.SOC | cp.PSD]
-]
+RiskResult = tuple[cp.Expression | cp.Variable, list[cp.Expression | cp.SOC | cp.PSD]]
 ExpressionFunction = Callable[[cp.Variable, any], cp.Expression]
 Figure = go.Figure
 Fallback: TypeAlias = Union[
