@@ -226,7 +226,6 @@ class FactorModel(BasePrior):
         # route to factor_prior_estimator.fit
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
-            .add_self_request(self)
             .add(
                 factor_prior_estimator=self.factor_prior_estimator,
                 method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
@@ -240,13 +239,7 @@ class FactorModel(BasePrior):
         return router
 
     # noinspection PyMethodOverriding, PyPep8Naming
-    def fit(
-        self,
-        X: npt.ArrayLike,
-        y: Any,
-        factors: npt.ArrayLike | None = None,
-        **fit_params,
-    ):
+    def fit(self, X: npt.ArrayLike, y: Any, **fit_params):
         """Fit the Factor Model estimator.
 
         Parameters
@@ -256,9 +249,6 @@ class FactorModel(BasePrior):
 
         y : array-like of shape (n_observations, n_factors)
             Factors' returns.
-
-        factors : array-like of shape (n_observations, n_factors), optional
-            Factors' returns. If provided, it will override `y`.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -284,9 +274,6 @@ class FactorModel(BasePrior):
             default=LoadingMatrixRegression(),
             check_type=BaseLoadingMatrix,
         )
-
-        if factors is not None:
-            y = factors
 
         # Fitting prior estimator
         self.factor_prior_estimator_.fit(

@@ -12,12 +12,14 @@ from typing import TYPE_CHECKING, Literal, TypeAlias, Union
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
 
 from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
 
 if TYPE_CHECKING:
     from skfolio.optimization._base import BaseOptimization
+    from skfolio.prior import MarketContext, PortfolioInstruments
 
 __all__ = [
     "CvxMeasure",
@@ -27,11 +29,13 @@ __all__ = [
     "Groups",
     "Inequality",
     "LinearConstraints",
+    "MarketDataParser",
     "Measure",
     "MultiInput",
     "Names",
     "ParametersValues",
     "Result",
+    "ReturnType",
     "RiskResult",
     "Tags",
     "Target",
@@ -56,7 +60,10 @@ Fallback: TypeAlias = Union[
     Literal["previous_weights"],
     None,
 ]
-
+ReturnType = Literal["linear", "log", "arithmetic"]
+MarketDataParser = Callable[
+    [pd.Series, "MarketContext", "PortfolioInstruments"], "MarketContext"
+]
 # Population
 Names = str | list[str]
 Tags = str | list[str]
