@@ -1,6 +1,5 @@
-import datetime as dt
-
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio.datasets import load_sp500_dataset
@@ -11,7 +10,7 @@ from skfolio.utils.bootstrap import stationary_bootstrap
 @pytest.fixture(scope="module")
 def returns():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2017, 1, 1) :]
+    prices = prices.loc[pd.Timestamp(2017, 1, 1) :]
     X = prices_to_returns(X=prices)
     returns = np.array(X)
     return returns

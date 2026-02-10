@@ -1,5 +1,3 @@
-import datetime as dt
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -38,7 +36,7 @@ def _dominate(fitness_1: np.ndarray, fitness_2: np.ndarray) -> bool:
 @pytest.fixture(scope="module")
 def prices():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2017, 1, 1) :]
+    prices = prices.loc[pd.Timestamp(2017, 1, 1) :]
     return prices
 
 
@@ -51,9 +49,9 @@ def X(prices):
 @pytest.fixture(scope="module")
 def periods():
     periods = [
-        (dt.date(2018, 1, 1), dt.date(2018, 3, 1)),
-        (dt.date(2018, 3, 15), dt.date(2018, 5, 1)),
-        (dt.date(2018, 5, 1), dt.date(2018, 8, 1)),
+        (pd.Timestamp(2018, 1, 1), pd.Timestamp(2018, 3, 1)),
+        (pd.Timestamp(2018, 3, 15), pd.Timestamp(2018, 5, 1)),
+        (pd.Timestamp(2018, 5, 1), pd.Timestamp(2018, 8, 1)),
     ]
     return periods
 

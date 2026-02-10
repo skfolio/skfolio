@@ -1,4 +1,3 @@
-import datetime as dt
 import pickle
 import timeit
 import tracemalloc
@@ -27,7 +26,7 @@ from skfolio.utils.tools import args_names
 @pytest.fixture(scope="module")
 def X() -> pd.DataFrame:
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2017, 1, 1) :]
+    prices = prices.loc[pd.Timestamp(2017, 1, 1) :]
     X = prices_to_returns(X=prices)
     return X
 
