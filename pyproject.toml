@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "0.15.4"
+version = "0.15.5"
 maintainers = [
     { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
