@@ -16,7 +16,6 @@ import urllib.request as ur
 from importlib import resources
 from pathlib import Path
 
-import joblib
 import pandas as pd
 
 DATA_MODULE = "skfolio.datasets.data"
@@ -149,20 +148,16 @@ def download_dataset(
     )
 
     data_home = get_data_home(data_home=data_home)
-    filepath = os.path.join(data_home, f"{data_filename}.pkz")
+    filepath = os.path.join(data_home, f"{data_filename}.csv.gz")
 
     if os.path.exists(filepath):
-        return joblib.load(filepath)
+        return load_gzip_compressed_csv_data(filepath)
 
     if not download_if_missing:
         raise OSError("Data not found and `download_if_missing` is False")
 
-    archive_path = os.path.join(data_home, os.path.basename(url))
-    ur.urlretrieve(url, archive_path)
-    df = load_gzip_compressed_csv_data(archive_path)
-    joblib.dump(df, filepath, compress=6)
-    os.remove(archive_path)
-    return df
+    ur.urlretrieve(url, filepath)
+    return load_gzip_compressed_csv_data(filepath)
 
 
 def load_sp500_dataset() -> pd.DataFrame:
