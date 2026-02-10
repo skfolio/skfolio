@@ -12,7 +12,11 @@ from skfolio.model_selection import (
     cross_val_predict,
     optimal_folds_number,
 )
-from skfolio.model_selection._combinatorial import _avg_train_size, _n_test_paths
+from skfolio.model_selection._combinatorial import (
+    _MAX_COMBINATIONS,
+    _avg_train_size,
+    _n_test_paths,
+)
 from skfolio.optimization import InverseVolatility
 from skfolio.pre_selection import SelectKExtremes
 
@@ -183,6 +187,53 @@ def test_combinatorial_purged_cv():
             ]
         ),
     )
+
+
+class TestCombinatorialPurgedCVMaxCombinations:
+    """Tests for the _MAX_COMBINATIONS guard in CombinatorialPurgedCV."""
+
+    def test_exceeds_max_combinations(self):
+        """n_folds=20, n_test_folds=10 produces C(20,10)=184,756 splits which
+        exceeds _MAX_COMBINATIONS and should raise."""
+        with pytest.raises(ValueError, match="exceeds the maximum allowed"):
+            CombinatorialPurgedCV(n_folds=20, n_test_folds=10)
+
+    def test_error_message_contains_split_count(self):
+        n_folds, n_test_folds = 20, 10
+        n_combinations = math.comb(n_folds, n_test_folds)
+        with pytest.raises(ValueError, match=f"{n_combinations:,}"):
+            CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
+
+    def test_error_message_contains_max(self):
+        with pytest.raises(ValueError, match=f"{_MAX_COMBINATIONS:,}"):
+            CombinatorialPurgedCV(n_folds=20, n_test_folds=10)
+
+    def test_error_message_mentions_misconfiguration(self):
+        with pytest.raises(ValueError, match="misconfiguration"):
+            CombinatorialPurgedCV(n_folds=20, n_test_folds=10)
+
+    def test_below_max_combinations_ok(self):
+        """n_folds=15, n_test_folds=2 produces C(15,2)=105 splits, well within
+        the limit."""
+        cv = CombinatorialPurgedCV(n_folds=15, n_test_folds=2)
+        assert cv.n_splits == math.comb(15, 2)
+
+    def test_just_below_max_combinations_ok(self):
+        """Find a combination just under the limit and verify it is accepted."""
+        # C(18, 9) = 48,620 — well within 100,000
+        cv = CombinatorialPurgedCV(n_folds=18, n_test_folds=9)
+        assert cv.n_splits == math.comb(18, 9)
+
+    def test_symmetric_both_sides(self):
+        """C(n, k) == C(n, n-k), so n_test_folds near 1 should be fine even
+        for large n_folds, while n_test_folds near n_folds/2 blows up."""
+        # C(50, 2) = 1,225 — fine
+        cv = CombinatorialPurgedCV(n_folds=50, n_test_folds=2)
+        assert cv.n_splits == 1225
+
+        # C(50, 25) is astronomically large — should raise
+        with pytest.raises(ValueError, match="exceeds the maximum allowed"):
+            CombinatorialPurgedCV(n_folds=50, n_test_folds=25)
 
 
 def optimal_folds_number_full_search(

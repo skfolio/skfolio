@@ -24,6 +24,8 @@ import sklearn.utils as sku
 
 import skfolio.typing as skt
 
+_MAX_COMBINATIONS = 100_000
+
 
 class BaseCombinatorialCV(ABC):
     """Base class for all combinatorial cross-validators.
@@ -194,6 +196,21 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
         if embargo_size < 0:
             raise ValueError("`embargo_size` cannot be negative")
+
+        n_combinations = math.comb(n_folds, n_test_folds)
+        if n_combinations > _MAX_COMBINATIONS:
+            raise ValueError(
+                f"The combination of `n_folds={n_folds}` and "
+                f"`n_test_folds={n_test_folds}` produces {n_combinations:,} splits, "
+                f"which exceeds the maximum allowed ({_MAX_COMBINATIONS:,}). "
+                f"Combinatorial Purged Cross-Validation is designed to generate a "
+                f"moderate number of backtest paths from train/test combinations "
+                f"(typically tens to a few thousands). A number this large likely "
+                f"indicates a misconfiguration rather than an intended use case, as "
+                f"each split requires a full model fit. "
+                f"Reduce `n_folds` or adjust `n_test_folds` further from `n_folds / 2` "
+                f"to decrease the number of combinations."
+            )
 
         self.n_folds = n_folds
         self.n_test_folds = n_test_folds
