@@ -181,7 +181,7 @@ class Population(list):
             names.append(
                 _ptf_name_with_tag(ptf) if use_tag_in_column_name else ptf.name
             )
-        df = pd.concat(cumulative_returns, axis=1)
+        df = pd.concat(cumulative_returns, axis=1, sort=False)
         # Sort index because pd.concat unsort NaNs at the end
         df.sort_index(inplace=True)
         df.columns = deduplicate_names(names)

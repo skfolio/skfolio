@@ -1,8 +1,7 @@
 """conftest module."""
 
-import datetime as dt
-
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio import RiskMeasure
@@ -30,7 +29,7 @@ def random_data():
 @pytest.fixture(scope="module")
 def X():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2014, 1, 1) :]
+    prices = prices.loc[pd.Timestamp(2014, 1, 1) :]
     X = prices_to_returns(X=prices)
     return X
 
@@ -38,7 +37,7 @@ def X():
 @pytest.fixture(scope="module")
 def y():
     factor_prices = load_factors_dataset()
-    factor_prices = factor_prices.loc[dt.date(2014, 1, 1) :]
+    factor_prices = factor_prices.loc[pd.Timestamp(2014, 1, 1) :]
     y = prices_to_returns(factor_prices)
     return y
 
@@ -52,7 +51,7 @@ def returns(X):
 @pytest.fixture(scope="module")
 def implied_vol():
     implied_vol = load_sp500_implied_vol_dataset()
-    implied_vol = implied_vol.loc[dt.date(2014, 1, 3) :]
+    implied_vol = implied_vol.loc[pd.Timestamp(2014, 1, 3) :]
     return implied_vol
 
 

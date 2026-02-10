@@ -1,5 +1,3 @@
-import datetime as dt
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -21,7 +19,7 @@ from skfolio.utils.stats import rand_weights
 @pytest.fixture(scope="module")
 def X():
     prices = load_sp500_dataset()
-    prices = prices.loc[dt.date(2017, 1, 1) :]
+    prices = prices.loc[pd.Timestamp(2017, 1, 1) :]
     X = prices_to_returns(X=prices)
     return X
 
@@ -65,9 +63,9 @@ def small_population(X):
 def multi_period_portfolio(X):
     # Add the multi period portfolio
     periods = [
-        (dt.date(2017, 1, 1), dt.date(2017, 3, 1)),
-        (dt.date(2017, 3, 15), dt.date(2017, 5, 1)),
-        (dt.date(2017, 5, 1), dt.date(2017, 8, 1)),
+        (pd.Timestamp(2017, 1, 1), pd.Timestamp(2017, 3, 1)),
+        (pd.Timestamp(2017, 3, 15), pd.Timestamp(2017, 5, 1)),
+        (pd.Timestamp(2017, 5, 1), pd.Timestamp(2017, 8, 1)),
     ]
 
     multi_period_portfolio = MultiPeriodPortfolio(
