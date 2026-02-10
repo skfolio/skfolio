@@ -69,14 +69,14 @@ Repository = "https://github.com/skfolio/skfolio"
 
 [project.optional-dependencies]
 dev = [
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt<7.0.0",
     "pytest",
     "pytest-cov",
     "ruff",
     "pre-commit",
 ]
 docs = [
-    "PySCIPOpt<6.0.0",
+    "PySCIPOpt<7.0.0",
     "Sphinx",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
