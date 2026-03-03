@@ -42,7 +42,13 @@ class BaseCombinatorialCV(ABC):
         """Return the path id of each test sets in each split."""
         pass
 
+    @abstractmethod
+    def get_n_splits(self) -> int:
+        """Return the number of splitting iterations in the cross-validator."""
+        pass
+
     __repr__ = sks.BaseCrossValidator.__repr__
+
 
 
 class CombinatorialPurgedCV(BaseCombinatorialCV):
@@ -262,6 +268,10 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             for j in range(self.n_test_folds):
                 path_ids[i, j] = np.argwhere(recombine_paths == i)[j][1]
         return path_ids
+
+    def get_n_splits(self) -> int:
+        """Return the number of splitting iterations in the cross-validator."""
+        return self.n_splits
 
     def split(
         self, X: npt.ArrayLike, y=None, groups=None
