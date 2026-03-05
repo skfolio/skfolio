@@ -42,7 +42,6 @@ class BaseCombinatorialCV(ABC):
         """Return the path id of each test sets in each split."""
         pass
 
-    @abstractmethod
     def get_n_splits(self) -> int:
         """Return the number of splitting iterations in the cross-validator."""
         pass
