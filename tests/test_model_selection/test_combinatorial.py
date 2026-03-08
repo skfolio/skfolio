@@ -396,7 +396,7 @@ def test_combinatorial_purged_cv_regression():
     X = np.random.randn(20, 5)
     cv = CombinatorialPurgedCV(n_folds=4, n_test_folds=2, purged_size=0, embargo_size=0)
     
-    for train, test in cv.split(X):
+    for _, test in cv.split(X):
         # test should be a list for multi-path backtesting
         assert isinstance(test, list), "split() should yield lists for multi-path backtesting"
         assert len(test) == cv.n_test_folds
