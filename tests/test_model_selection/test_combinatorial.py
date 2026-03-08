@@ -332,3 +332,76 @@ def test_cross_val_predict_and_grid_search(X):
     pred = cross_val_predict(model, X, cv=cv)
     assert isinstance(pred, Population)
     assert len(pred) == cv.n_test_paths
+
+
+def test_combinatorial_purged_cv_split_returns_lists():
+    """Test that split() yields lists of test indices for multi-path backtesting."""
+    X = np.random.randn(12, 2)
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=0, embargo_size=0)
+
+    splits = list(cv.split(X))
+
+    # Should have 3 splits
+    assert len(splits) == 3
+
+    for train, test in splits:
+        # test should be a list for multi-path backtesting
+        assert isinstance(test, list)
+        assert len(test) == 2  # 2 test folds
+
+        # Each test element should be an array
+        for test_array in test:
+            assert isinstance(test_array, np.ndarray)
+
+        # train should be an array
+        assert isinstance(train, np.ndarray)
+
+        # test arrays and train should be non-overlapping
+        test_concat = np.concatenate(test)
+        assert len(np.intersect1d(train, test_concat)) == 0
+
+
+def test_combinatorial_purged_cv_get_n_splits():
+    """Test that get_n_splits returns correct number of splits."""
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=0, embargo_size=0)
+
+    assert cv.get_n_splits() == cv.n_splits
+    assert cv.get_n_splits() == 3
+
+
+def test_cross_val_predict_concatenated_indices(X):
+    """Test that cross_val_predict correctly handles multi-path test indices."""
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=1, embargo_size=2)
+
+    model = Pipeline(
+        [("pre_selection", SelectKExtremes(k=10)), ("allocation", InverseVolatility())]
+    )
+
+    # cross_val_predict should handle list test indices gracefully
+    pred = cross_val_predict(model, X, cv=cv)
+
+    # Result should be a Population with correct number of paths
+    assert isinstance(pred, Population)
+    assert len(pred) == cv.n_test_paths
+
+    # Each path should be a MultiPeriodPortfolio
+    for portfolio in pred:
+        assert hasattr(portfolio, "name")
+        # Each portfolio should have correct number of folds
+        assert len(portfolio.portfolios) == cv.n_folds
+
+
+def test_combinatorial_purged_cv_regression():
+    """Regression test: ensure CombinatorialPurgedCV returns lists for multi-path."""
+    X = np.random.randn(20, 5)
+    cv = CombinatorialPurgedCV(n_folds=4, n_test_folds=2, purged_size=0, embargo_size=0)
+
+    for _, test in cv.split(X):
+        # test should be a list for multi-path backtesting
+        assert isinstance(test, list), (
+            "split() should yield lists for multi-path backtesting"
+        )
+        assert len(test) == cv.n_test_folds
+        # Should contain valid indices
+        for test_array in test:
+            assert np.all((test_array >= 0) & (test_array < len(X)))

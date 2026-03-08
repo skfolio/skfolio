@@ -263,6 +263,10 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
                 path_ids[i, j] = np.argwhere(recombine_paths == i)[j][1]
         return path_ids
 
+    def get_n_splits(self) -> int:
+        """Return the number of splitting iterations in the cross-validator."""
+        return self.n_splits
+
     def split(
         self, X: npt.ArrayLike, y=None, groups=None
     ) -> Iterator[tuple[np.ndarray, list[np.ndarray]]]:
