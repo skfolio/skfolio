@@ -1,0 +1,39 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+    "projectTitle": "skfolio",
+    "description": "skfolio is a Python library for portfolio optimization and risk management built on top of scikit-learn.",
+
+    "folders": [
+      "docs"
+    ],
+  
+    "excludeFolders": [
+      "tests",
+      "src",
+      "**/tests",
+      "*.test",
+      "__pycache__",
+      "*.egg-info",
+      "build",
+      "dist",
+      ".venv",
+      "venv",
+      "examples",
+      "notebooks"
+    ],
+  
+    "excludeFiles": [
+       "CONTRIBUTING.md",
+       "Dockerfile",
+       "CODE_OF_CONDUCT.md",
+       "MANIFEST.in",
+       "pyproject.toml",
+       "SECURITY.md"
+    ],
+
+    "rules": [
+      "Input data (X) should be asset price returns, not prices.",
+      "Follows scikit-learn API: use .fit(X, y) to train and .predict(X) to get weights.",
+      "Ensure data is pre-processed and does not contain NaNs before fitting."
+    ]
+  }
