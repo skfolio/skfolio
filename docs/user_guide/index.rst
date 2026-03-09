@@ -50,6 +50,7 @@ while reducing the risk of data leakage and overfitting.
     Clustering <cluster>
     Uncertainty Set <uncertainty_set>
     Pre-Selection <pre_selection>
+    Feature Extraction <feature_extraction>
     Model Selection <model_selection>
     Hyper-Parameters Tuning <hyper_parameters_tuning>
     Metadata Routing <metadata_routing>
