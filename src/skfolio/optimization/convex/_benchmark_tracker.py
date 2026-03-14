@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
@@ -287,7 +288,7 @@ class BenchmarkTracker(MeanRisk):
         X : array-like of shape (n_observations, n_assets)
            Price returns of the assets.
 
-        y : array-like of shape (n_observations, 1)
+        y : array-like of shape (n_observations, 1) or (n_observations,)
             Price returns of the benchmark.
 
         **fit_params : dict
@@ -310,9 +311,24 @@ class BenchmarkTracker(MeanRisk):
         if self.budget != 1.0:
             raise ValueError("Budget must be 1.0 for BenchmarkTracker")
 
+        y = np.asarray(y)
+        if y.ndim == 2 and y.shape[1] == 1:
+            y = y.ravel()
+        if y.ndim != 1:
+            raise ValueError(
+                "y (benchmark returns) must be 1-dimensional or a single-column "
+                f"DataFrame/array, got shape {y.shape}."
+            )
+
         X, y = skv.validate_data(self, X, y)
 
         excess_returns = X - y[:, np.newaxis]
+
+        # Wrap as DataFrame to preserve feature_names_in_ through the super().fit() call
+        if hasattr(self, "feature_names_in_") and self.feature_names_in_ is not None:
+            excess_returns = pd.DataFrame(
+                excess_returns, columns=self.feature_names_in_
+            )
 
         super().fit(excess_returns, y=None, **fit_params)
 
