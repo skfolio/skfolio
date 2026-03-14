@@ -43,7 +43,6 @@ def test_benchmark_tracker_vs_manual(X, benchmark_returns):
     np.testing.assert_almost_equal(model1.weights_, model2.weights_, decimal=6)
 
 
-@pytest.mark.filterwarnings("ignore:A column-vector y was passed")
 @pytest.mark.parametrize(
     "y_input",
     [
@@ -71,6 +70,37 @@ def test_benchmark_tracker_input_formats(X, y_input):
     assert portfolio.weights.shape == (X.shape[1],)
 
 
+def test_benchmark_tracker_dict_weights(X, benchmark_returns):
+    """Dict-based min/max weights require feature_names_in_ to survive the
+    internal excess-returns transformation."""
+    min_w = {name: 0.0 for name in X.columns}
+    max_w = {name: 0.5 for name in X.columns}
+
+    model = BenchmarkTracker(min_weights=min_w, max_weights=max_w)
+    model.fit(X, benchmark_returns)
+    portfolio = model.predict(X)
+
+    assert portfolio.weights.shape == (X.shape[1],)
+    np.testing.assert_array_less(portfolio.weights - 1e-6, 0.5)
+    assert hasattr(model, "feature_names_in_")
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns.to_numpy())
+
+
+def test_benchmark_tracker_dict_min_weights_with_dataframe_y(X, benchmark_returns):
+    """Dict min_weights must work when y is a single-column DataFrame."""
+    y_df = pd.DataFrame(
+        {"benchmark": benchmark_returns.values}, index=benchmark_returns.index
+    )
+    min_w = {name: 0.01 for name in X.columns}
+
+    model = BenchmarkTracker(min_weights=min_w)
+    model.fit(X, y_df)
+    portfolio = model.predict(X)
+
+    assert portfolio.weights.shape == (X.shape[1],)
+    np.testing.assert_array_less(0.01 - 1e-6, portfolio.weights)
+
+
 def test_benchmark_tracker_errors(X, benchmark_returns):
     model = BenchmarkTracker()
 
@@ -89,7 +119,8 @@ def test_benchmark_tracker_errors(X, benchmark_returns):
         }
     )
     with pytest.raises(
-        ValueError, match="y should be a 1d array, got an array of shape"
+        ValueError,
+        match=r"y \(benchmark returns\) must be 1-dimensional or a single-column DataFrame/array, got shape \(2263, 2\)\.",
     ):
         model.fit(X, multi_column_y)
 
