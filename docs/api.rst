@@ -581,6 +581,7 @@ Functions
     :toctree: generated/
     :template: function.rst
 
+    model_selection.batch_cross_val_predict
     model_selection.cross_val_predict
     model_selection.optimal_folds_number
 
