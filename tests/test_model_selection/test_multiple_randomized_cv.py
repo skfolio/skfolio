@@ -86,6 +86,90 @@ def test_get_n_splits_and_get_path_ids_before_split():
         cv.get_path_ids()
 
 
+def test_get_n_splits_no_window_size():
+    X = np.random.randn(10, 20)
+    wf = WalkForward(test_size=2, train_size=3)
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=3,
+        asset_subset_size=2,
+        random_state=42,
+    )
+    # pre-split: analytical
+    assert cv.get_n_splits(X) == 3 * wf.get_n_splits(X)
+    # post-split: exact from _path_ids
+    splits = list(cv.split(X))
+    assert cv.get_n_splits(X) == len(splits)
+    assert cv.get_n_splits() == len(splits)
+
+
+def test_get_n_splits_with_window_size_no_freq():
+    X = np.random.randn(20, 10)
+    wf = WalkForward(test_size=2, train_size=3)
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=2,
+        asset_subset_size=4,
+        window_size=8,
+        random_state=0,
+    )
+    # pre-split: analytical (non-freq WalkForward with window_size)
+    assert cv.get_n_splits(X) == 2 * wf.get_n_splits(X[:8])
+    # post-split: exact
+    splits = list(cv.split(X))
+    assert cv.get_n_splits() == len(splits)
+
+
+def test_get_n_splits_freq_no_window_size(X):
+    wf = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=2,
+        asset_subset_size=3,
+        window_size=None,
+        random_state=0,
+    )
+    # pre-split: analytical (freq but no window_size)
+    assert cv.get_n_splits(X) == 2 * wf.get_n_splits(X)
+    # post-split: exact
+    splits = list(cv.split(X))
+    assert cv.get_n_splits() == len(splits)
+
+
+def test_get_n_splits_freq_with_window_size(X):
+    wf = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=100,
+        asset_subset_size=5,
+        window_size=252 * 2,
+        random_state=1,
+    )
+    # pre-split: raises because freq + window_size
+    with pytest.raises(
+        ValueError,
+        match="When combining a frequency-based walk-forward with `window_size`",
+    ):
+        cv.get_n_splits(X)
+
+    # post-split: exact
+    splits = list(cv.split(X))
+    assert cv.get_n_splits() == len(splits)
+    assert cv.get_n_splits() == 305
+
+
+def test_get_n_splits_x_none():
+    wf = WalkForward(test_size=2, train_size=3)
+    cv = MultipleRandomizedCV(
+        walk_forward=wf,
+        n_subsamples=2,
+        asset_subset_size=2,
+        random_state=0,
+    )
+    with pytest.raises(ValueError, match="The 'X' parameter should not be None"):
+        cv.get_n_splits()
+
+
 def test_split_without_window_size_1():
     X = np.random.randn(10, 20)
     wf = WalkForward(test_size=2, train_size=3)

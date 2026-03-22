@@ -367,6 +367,8 @@ def test_combinatorial_purged_cv_get_n_splits():
 
     assert cv.get_n_splits() == cv.n_splits
     assert cv.get_n_splits() == 3
+    # scikit-learn compatible signature: X, y, groups are accepted but ignored
+    assert cv.get_n_splits(X=None, y=None, groups=None) == 3
 
 
 def test_cross_val_predict_concatenated_indices(X):
