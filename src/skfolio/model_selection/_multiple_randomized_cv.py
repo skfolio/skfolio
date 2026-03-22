@@ -303,6 +303,49 @@ class MultipleRandomizedCV:
                     asset_indices[i, :],
                 )
 
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        """Return the number of splitting iterations in the cross-validator.
+
+        When combining a frequency-based walk-forward with `window_size`, the exact
+        count depends on the random time slices drawn during `split`, so `split` must
+        be called first. In all other cases the count is computed directly from the
+        parameters and `X`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets. Required when the count can be pre-computed
+            (i.e. `window_size` is ``None`` or the inner walk-forward has no frequency).
+            Ignored after :meth:`split` has been called.
+
+        y : array-like of shape (n_observations, n_targets)
+            Always ignored, exists for compatibility.
+
+        groups : array-like of shape (n_observations,)
+            Always ignored, exists for compatibility.
+
+        Returns
+        -------
+        n_splits : int
+            Number of splitting iterations in the cross-validator.
+        """
+        if hasattr(self, "_path_ids"):
+            return len(self._path_ids)
+
+        if self.window_size is not None and self.walk_forward.freq is not None:
+            raise ValueError(
+                "When combining a frequency-based walk-forward with "
+                "`window_size`, the exact number of splits depends on the "
+                "random time slices. Call `split(X)` first."
+            )
+
+        if X is None:
+            raise ValueError("The 'X' parameter should not be None.")
+        X, y = sku.indexable(X, y)
+        if self.window_size is not None:
+            X, _ = safe_split(X, indices=np.arange(self.window_size), axis=0)
+        return self.n_subsamples * self.walk_forward.get_n_splits(X)
+
     def get_path_ids(self) -> np.ndarray:
         """Return the path id of each test sets in each split."""
         if not hasattr(self, "_path_ids"):

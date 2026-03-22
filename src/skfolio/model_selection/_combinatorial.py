@@ -263,8 +263,25 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
                 path_ids[i, j] = np.argwhere(recombine_paths == i)[j][1]
         return path_ids
 
-    def get_n_splits(self) -> int:
-        """Return the number of splitting iterations in the cross-validator."""
+    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        """Return the number of splitting iterations in the cross-validator.
+
+        Parameters
+        ----------
+        X : object
+            Always ignored, exists for compatibility.
+
+        y : object
+            Always ignored, exists for compatibility.
+
+        groups : object
+            Always ignored, exists for compatibility.
+
+        Returns
+        -------
+        n_splits : int
+            Number of splitting iterations in the cross-validator.
+        """
         return self.n_splits
 
     def split(
@@ -275,8 +292,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Training data, where `n_samples` is the number of samples
-            and `n_features` is the number of features.
+            Training data, where `n_samples` is the number of samples and `n_features`
+            is the number of features.
 
         y : array-like of shape (n_samples,), optional
             The (multi-)target variable
