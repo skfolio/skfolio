@@ -185,6 +185,16 @@ def test_slicing(population, multi_period_portfolio):
     assert mpp == multi_period_portfolio
 
 
+def test_population_returns(population):
+    df = population.returns_df()
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[1] == len(population)
+
+    df_no_tag = population.returns_df(use_tag_in_column_name=False)
+    assert isinstance(df_no_tag, pd.DataFrame)
+    assert df_no_tag.shape[1] == len(population)
+
+
 def test_population_cumulative_returns(population):
     assert isinstance(population.cumulative_returns_df(), pd.DataFrame)
     assert isinstance(
@@ -268,6 +278,7 @@ def test_population_failed_portfolio(small_population, failed_portfolio):
     pop[5] = failed_portfolio
     assert len(pop) == 10
 
+    assert not np.isnan(pop.returns_df()).all().all()
     assert not np.isnan(pop.cumulative_returns_df()).all().all()
     assert not np.isnan(pop.drawdowns_df()).all().all()
     fronts = pop.non_denominated_sort()

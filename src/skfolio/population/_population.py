@@ -153,6 +153,35 @@ class Population(list):
 
         return compounded.pop()
 
+    def returns_df(self, use_tag_in_column_name: bool = True) -> pd.DataFrame:
+        """DataFrame of returns for each portfolio in the population.
+
+        Parameters
+        ----------
+        use_tag_in_column_name : bool, default=True
+            Whether to include the portfolio tag in the DataFrame column names.
+            If True, each column name will use the portfolio name followed by its tag;
+            if False, only the portfolio name will be used.
+
+        Returns
+        -------
+        returns : DataFrame
+            Returns DataFrame where each column represents a portfolio's returns
+            time series.
+        """
+        returns = []
+        names = []
+        for ptf in self:
+            returns.append(ptf.returns_df)
+            names.append(
+                _ptf_name_with_tag(ptf) if use_tag_in_column_name else ptf.name
+            )
+        df = pd.concat(returns, axis=1, sort=False)
+        # Sort index because pd.concat unsort NaNs at the end
+        df.sort_index(inplace=True)
+        df.columns = deduplicate_names(names)
+        return df
+
     def cumulative_returns_df(
         self, use_tag_in_column_name: bool = True
     ) -> pd.DataFrame:
