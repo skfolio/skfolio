@@ -111,7 +111,6 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     fallback_chain_: list[tuple[str, str]] | None
     error_: str | list[str] | None
 
-    @abstractmethod
     def __init__(
         self,
         portfolio_params: dict | None = None,
