@@ -9,7 +9,7 @@ from skfolio.model_selection._combinatorial import (
     optimal_folds_number,
 )
 from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
-from skfolio.model_selection._validation import cross_val_predict
+from skfolio.model_selection._validation import batch_cross_val_predict, cross_val_predict
 from skfolio.model_selection._walk_forward import WalkForward
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "CombinatorialPurgedCV",
     "MultipleRandomizedCV",
     "WalkForward",
+    "batch_cross_val_predict",
     "cross_val_predict",
     "optimal_folds_number",
 ]

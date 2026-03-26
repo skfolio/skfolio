@@ -22,6 +22,9 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
+import time
+from datetime import timedelta
+from typing import Iterable, Sequence
 from sklearn.pipeline import Pipeline
 
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
@@ -33,7 +36,7 @@ from skfolio.utils.tools import fit_and_predict, safe_split
 
 
 def cross_val_predict(
-    estimator: skb.BaseEstimator | Pipeline,
+    estimator: skb.BaseEstimator | Pipeline | Iterable[skb.BaseEstimator | Pipeline],
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
     cv: sks.BaseCrossValidator
@@ -131,11 +134,26 @@ def cross_val_predict(
     portfolio_params :  dict, optional
         Additional portfolio parameters passed to `MultiPeriodPortfolio`.
 
-    Returns
-    -------
     predictions : MultiPeriodPortfolio | Population
         This is the result of calling `predict`
     """
+    if not isinstance(estimator, (skb.BaseEstimator, Pipeline)) and isinstance(
+        estimator, Iterable
+    ):
+        return batch_cross_val_predict(
+            estimators=estimator,
+            X=X,
+            y=y,
+            cv=cv,
+            n_jobs=n_jobs,
+            method=method,
+            verbose=verbose,
+            params=params,
+            pre_dispatch=pre_dispatch,
+            column_indices=column_indices,
+            portfolio_params=portfolio_params,
+        )
+
     params = {} if params is None else params
 
     X, y = safe_split(X, y, indices=column_indices, axis=1)
@@ -316,6 +334,170 @@ def cross_val_predict(
         )
 
     return pred
+
+
+def batch_cross_val_predict(
+    estimators: Iterable[skb.BaseEstimator | Pipeline],
+    X: npt.ArrayLike,
+    y: npt.ArrayLike = None,
+    cv: sks.BaseCrossValidator
+    | BaseCombinatorialCV
+    | MultipleRandomizedCV
+    | int
+    | None = None,
+    n_jobs: int | None = None,
+    method: str = "predict",
+    verbose: int = 0,
+    params: dict | None = None,
+    pre_dispatch: str = "2*n_jobs",
+    column_indices: np.ndarray | None = None,
+    portfolio_params: dict | None = None,
+) -> Population:
+    """Generate cross-validated `Portfolios` estimates for multiple estimators.
+
+    The data is split according to the `cv` parameter.
+    For each estimator, the optimization estimator is fitted on the training set and
+    portfolios are predicted on the corresponding test set.
+
+    For each estimator, the output is a :class:`~skfolio.portfolio.MultiPeriodPortfolio`
+    (or a :class:`~skfolio.population.Population` of multiple
+    :class:`~skfolio.portfolio.MultiPeriodPortfolio` for multi-path CV).
+
+    The final output is a :class:`~skfolio.population.Population` containing the
+    resulting portfolios of all estimators.
+
+    If the final estimator in the pipeline (or the estimator itself) declares
+    `needs_previous_weights=True`, the `previous_weights` are propagated from
+    one fold to the next for sequential CV strategies.
+
+    Parameters
+    ----------
+    estimators : Iterable[BaseEstimator | Pipeline]
+        Iterable of optimization estimators or pipelines to cross-validate.
+
+    X : array-like of shape (n_observations, n_assets)
+        Price returns of the assets.
+
+    y : array-like of shape (n_observations, n_targets), optional
+        Target data.
+
+    cv : int | cross-validation generator, optional
+        Determines the cross-validation splitting strategy.
+
+    n_jobs : int, optional
+        The number of jobs to run in parallel for `fit` of all `estimators`.
+        Note that this is NOT the number of parallel estimators, but the number
+        of parallel jobs within each `cross_val_predict` call.
+
+    method : str, default="predict"
+        Invokes the passed method name of the passed estimator.
+
+    verbose : int, default=0
+        The verbosity level.
+
+    params : dict, optional
+        Parameters to pass to the underlying estimator's ``fit`` and the CV splitter.
+
+    pre_dispatch : int or str, default='2*n_jobs'
+        Controls the number of jobs that get dispatched during parallel
+        execution.
+
+    column_indices : ndarray, optional
+        Indices of the `X` columns to cross-validate on.
+
+    portfolio_params : dict, optional
+        Additional portfolio parameters passed to `MultiPeriodPortfolio`.
+        If not provided, the `portfolio_params` attribute of each estimator
+        (if it exists) is used. If both are provided, `portfolio_params`
+        takes precedence.
+
+    Returns
+    -------
+    predictions : Population
+        A population of `MultiPeriodPortfolio` (or `Population` in case of
+        multi-path CV).
+    """
+    bt_list = []
+    total_start_time = time.time()
+    estimators = list(estimators)
+    n_estimators = len(estimators)
+
+    if verbose > 0:
+        cv_obj = sks.check_cv(cv, y)
+        n_splits = cv_obj.get_n_splits(X, y)
+        print(f"\nStarting batch backtesting with {n_estimators} portfolio designs...")
+        print(f"Cross-validation: {n_splits} splits")
+        print("=" * 70)
+
+    for i, estimator in enumerate(estimators, 1):
+        # Handle missing or None portfolio_params (fixes the original error)
+        name = None
+        if portfolio_params and "name" in portfolio_params:
+            name = portfolio_params["name"]
+
+        if name is None:
+            # Try to get name from estimator.portfolio_params
+            est_portfolio_params = getattr(
+                _get_last_step(estimator), "portfolio_params", {}
+            )
+            if est_portfolio_params and "name" in est_portfolio_params:
+                name = est_portfolio_params["name"]
+
+        if name is None:
+            name = f"Portfolio {i} ({type(_get_last_step(estimator)).__name__})"
+
+        if verbose > 0:
+            print(f"\n[{i}/{n_estimators}] Backtesting '{name}'...")
+            start_time = time.time()
+
+        try:
+            # We merge portfolio_params: priority to batch_cross_val_predict argument
+            current_portfolio_params = (
+                portfolio_params.copy() if portfolio_params else {}
+            )
+            if "name" not in current_portfolio_params:
+                current_portfolio_params["name"] = name
+
+            bt = cross_val_predict(
+                estimator,
+                X,
+                y=y,
+                cv=cv,
+                n_jobs=n_jobs,
+                method=method,
+                verbose=verbose,
+                params=params,
+                pre_dispatch=pre_dispatch,
+                column_indices=column_indices,
+                portfolio_params=current_portfolio_params,
+            )
+
+            if verbose > 0:
+                elapsed_time = time.time() - start_time
+                elapsed_str = str(timedelta(seconds=int(elapsed_time)))
+                print(f"Completed '{name}' in {elapsed_str}")
+
+            if isinstance(bt, Population):
+                bt_list.extend(bt)
+            else:
+                bt_list.append(bt)
+
+        except Exception as e:
+            if verbose > 0:
+                elapsed_time = time.time() - start_time
+                elapsed_str = str(timedelta(seconds=int(elapsed_time)))
+                print(f"Failed '{name}' after {elapsed_str}: {str(e)}")
+            raise
+
+    if verbose > 0:
+        total_elapsed = time.time() - total_start_time
+        total_elapsed_str = str(timedelta(seconds=int(total_elapsed)))
+        print("=" * 70)
+        print("Batch backtesting completed!")
+        print(f"Total time: {total_elapsed_str}")
+        print(f"Successfully processed {len(bt_list)} portfolios")
+
+    return Population(bt_list)
 
 
 def _routing_enabled() -> bool:
