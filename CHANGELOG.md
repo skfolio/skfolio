@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## Unreleased
+
+### Feature
+
+* feat(feature_extraction): add PPCA and PKPCA for dimensionality reduction
+
+Added new feature extraction module with Probabilistic PCA methods for dimensionality 
+reduction and noise filtering in portfolio optimization:
+
+- **PPCA (Probabilistic Principal Component Analysis)**: Linear dimensionality 
+  reduction with probabilistic framework, handles missing data and sparse matrices
+- **PKPCA (Probabilistic Kernel PCA)**: Non-linear extension with RBF kernel and 
+  Wishart process priors for capturing complex asset relationships
+- **Automatic dimension detection**: Adapts to data shape to extract cross-sectional 
+  or temporal dependencies
+- **Full scikit-learn compatibility**: Can be used in pipelines with optimization models
+- **Comprehensive documentation**: User guide, examples, and mathematical background
+- **Optional dependency**: Requires `gen_fex` package via `pip install 'skfolio[feature_extraction]'`
+
+These transformers are particularly useful for high-dimensional portfolio optimization 
+problems where dimensionality reduction can improve estimation quality and reduce 
+overfitting.
+
 ## v0.13.0 (2025-09-08)
 
 ### Breaking
