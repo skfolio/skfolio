@@ -318,7 +318,7 @@ Classes
 
     prior.EmpiricalPrior
     prior.BlackLitterman
-    prior.FactorModel
+    prior.TimeSeriesFactorModel
     prior.SyntheticData
     prior.EntropyPooling
     prior.OpinionPooling

@@ -17,7 +17,7 @@ distribution before optimization, unifying both **Frequentist**, **Bayesian** an
 
 1. Frequentist:
     * :class:`~skfolio.prior.EmpiricalPrior`
-    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.TimeSeriesFactorModel`
     * :class:`~skfolio.prior.SyntheticData`
 
 2. Bayesian:

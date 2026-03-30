@@ -16,7 +16,7 @@ distribution before optimization, unifying both **Frequentist**, **Bayesian** an
 
 1. Frequentist:
     * :class:`EmpiricalPrior`
-    * :class:`FactorModel`
+    * :class:`TimeSeriesFactorModel`
     * :class:`SyntheticData`
 
 2. Bayesian:
@@ -115,7 +115,7 @@ Tutorials:
 Factor Model
 ************
 
-The :class:`FactorModel` estimator estimates the :class:`ReturnDistribution` by fitting
+The :class:`TimeSeriesFactorModel` estimator estimates the :class:`ReturnDistribution` by fitting
 a factor model on asset returns alongside a specified :ref:`prior estimator <prior>`
 for the factor returns.
 
@@ -142,13 +142,13 @@ Tutorials:
 
     from skfolio.datasets import load_factors_dataset, load_sp500_dataset
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import FactorModel
+    from skfolio.prior import TimeSeriesFactorModel
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
     X, y = prices_to_returns(prices, factor_prices)
 
-    model = FactorModel()
+    model = TimeSeriesFactorModel()
     model.fit(X, y)
     print(model.return_distribution_)
 
@@ -187,7 +187,7 @@ Tutorials:
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio.prior import TimeSeriesFactorModel, SyntheticData
     from skfolio import RiskMeasure
    
     # Load historical prices and convert them to returns
@@ -381,7 +381,7 @@ Combining Multiple Prior Estimators
 ***********************************
 Prior estimators can be composed to build more sophisticated models. For example,
 you can create a Black & Litterman Factor Model by supplying :class:`BlackLitterman`
-as the prior estimator of the :class:`FactorModel` and impose views on the factors.
+as the prior estimator of the :class:`TimeSeriesFactorModel` and impose views on the factors.
 
 **Example:**
 
@@ -394,7 +394,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
     from skfolio.datasets import load_factors_dataset, load_sp500_dataset
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, FactorModel
+    from skfolio.prior import BlackLitterman, TimeSeriesFactorModel
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
@@ -406,7 +406,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
         "VLUE == 0.0006",
     ]
 
-    model = FactorModel(
+    model = TimeSeriesFactorModel(
         factor_prior_estimator=BlackLitterman(views=views),
     )
     model.fit(X, y)
@@ -416,7 +416,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
 **Example:**
 
-By combining :class:`SyntheticData` with :class:`FactorModel` you can generate
+By combining :class:`SyntheticData` with :class:`TimeSeriesFactorModel` you can generate
 synthetic data of your factors then project them to your assets.
 This is often used for factor stress test.
 
@@ -426,7 +426,7 @@ This is often used for factor stress test.
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio.prior import TimeSeriesFactorModel, SyntheticData
     from skfolio import RiskMeasure
 
     # Load historical prices and convert them to returns
@@ -442,7 +442,7 @@ This is often used for factor stress test.
         n_samples=10000,
         sample_args=dict(conditioning={"QUAL": -0.2}),
     )
-    factor_model = FactorModel(factor_prior_estimator=factor_prior)
+    factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
     model.fit(X, y)
     print(model.weights_)

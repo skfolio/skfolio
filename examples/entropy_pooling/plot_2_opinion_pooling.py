@@ -73,7 +73,7 @@ from skfolio.measures import (
 )
 from skfolio.optimization import HierarchicalRiskParity, RiskBudgeting
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EntropyPooling, FactorModel, OpinionPooling, SyntheticData
+from skfolio.prior import EntropyPooling, TimeSeriesFactorModel, OpinionPooling, SyntheticData
 from skfolio.utils.figure import plot_kde_distributions
 
 # Load stock price and factor data
@@ -179,7 +179,7 @@ factor_opinion_pooling = OpinionPooling(
     opinion_probabilities=[0.6, 0.4],
 )
 
-factor_model = FactorModel(factor_prior_estimator=factor_opinion_pooling)
+factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooling)
 
 model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
 
@@ -211,7 +211,7 @@ factor_opinion_pooling = OpinionPooling(
     opinion_probabilities=[0.6, 0.4],
 )
 
-factor_model = FactorModel(factor_prior_estimator=factor_opinion_pooling)
+factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooling)
 
 model = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model
@@ -287,7 +287,7 @@ factor_opinion_pooling = OpinionPooling(
     opinion_probabilities=[0.6, 0.4],
 )
 
-factor_model = FactorModel(factor_prior_estimator=factor_opinion_pooling)
+factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooling)
 
 factor_model.fit(X, factors)
 

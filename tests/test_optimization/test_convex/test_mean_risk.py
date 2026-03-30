@@ -25,7 +25,7 @@ from skfolio.prior import (
     BlackLitterman,
     EmpiricalPrior,
     EntropyPooling,
-    FactorModel,
+    TimeSeriesFactorModel,
 )
 from skfolio.uncertainty_set import (
     EmpiricalCovarianceUncertaintySet,
@@ -937,7 +937,7 @@ def test_turnover(X, y):
 
 
 def test_mean_risk_factor_model(X, y):
-    model = MeanRisk(prior_estimator=FactorModel())
+    model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
     portfolio = model.fit(X, y).predict(X)
     assert isinstance(portfolio, Portfolio)
 
@@ -948,12 +948,11 @@ def test_optimization_factor_black_litterman(X, y):
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=BlackLitterman(
                 views=np.asarray(factor_views), tau=1 / n_observations
             ),
             higham=True,
-            residual_variance=False,
         ),
     )
     model.fit(X, y)
@@ -991,44 +990,14 @@ def test_optimization_factor_black_litterman(X, y):
         n_assets,
     )
     np.testing.assert_almost_equal(
-        model.prior_estimator_.return_distribution_.covariance[:5, 15:],
+        model.prior_estimator_.return_distribution_.covariance[:5, :5],
         np.array(
             [
-                [
-                    1.25634529e-04,
-                    2.32021683e-04,
-                    1.95783005e-04,
-                    1.03417221e-04,
-                    1.80971856e-04,
-                ],
-                [
-                    1.41305357e-04,
-                    3.33556413e-04,
-                    2.47133368e-04,
-                    1.27595433e-04,
-                    2.35518998e-04,
-                ],
-                [
-                    1.22471913e-04,
-                    3.59441727e-04,
-                    2.05669219e-04,
-                    1.06975737e-04,
-                    2.70975567e-04,
-                ],
-                [
-                    1.24972237e-04,
-                    2.79875907e-04,
-                    1.97230854e-04,
-                    1.04532010e-04,
-                    2.19851561e-04,
-                ],
-                [
-                    1.12629723e-04,
-                    2.88745927e-04,
-                    1.81882528e-04,
-                    9.56316906e-05,
-                    2.23238864e-04,
-                ],
+                [0.00044344, 0.00039761, 0.00024235, 0.00024845, 0.00021688],
+                [0.00039761, 0.00128024, 0.0003177, 0.0003276, 0.00028277],
+                [0.00024235, 0.0003177, 0.00049654, 0.00028651, 0.00028871],
+                [0.00024845, 0.0003276, 0.00028651, 0.00062628, 0.00024543],
+                [0.00021688, 0.00028277, 0.00028871, 0.00024543, 0.00049143],
             ]
         ),
     )
@@ -1037,26 +1006,26 @@ def test_optimization_factor_black_litterman(X, y):
         model.weights_,
         np.array(
             [
-                1.62857662e-07,
-                4.37311645e-01,
-                1.70851913e-07,
-                1.74681445e-07,
-                1.82980089e-07,
-                2.27049027e-07,
-                1.81306482e-07,
-                1.41037623e-07,
-                1.74161120e-07,
-                1.17167647e-07,
-                1.25107214e-07,
-                1.86784735e-07,
-                1.76837448e-07,
-                1.32631685e-07,
-                1.27994694e-07,
-                1.41842812e-07,
-                5.62685258e-01,
-                1.73411036e-07,
-                2.88100847e-07,
-                2.12103015e-07,
+                9.16729164e-02,
+                1.77277262e-01,
+                1.70172527e-01,
+                3.33402550e-02,
+                4.84628936e-02,
+                1.01425549e-01,
+                4.13694132e-07,
+                2.13725264e-07,
+                1.11720241e-01,
+                1.75328175e-07,
+                1.87868329e-07,
+                2.91340039e-07,
+                1.25681964e-01,
+                1.95824210e-07,
+                2.01124146e-07,
+                2.04242817e-07,
+                7.56855734e-02,
+                4.36684911e-07,
+                5.30564316e-07,
+                6.45579682e-02,
             ]
         ),
     )

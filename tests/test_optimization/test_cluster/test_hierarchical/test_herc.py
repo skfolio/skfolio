@@ -6,7 +6,7 @@ from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalEqualRiskContribution
-from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel
+from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 
 
 @pytest.fixture(
@@ -94,7 +94,7 @@ def test_herc_empirical_prior(X):
 
 def test_herc_factor_model(X, y):
     model = HierarchicalEqualRiskContribution(
-        risk_measure=RiskMeasure.CVAR, prior_estimator=FactorModel()
+        risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
     model.fit(X, y)
     np.testing.assert_almost_equal(

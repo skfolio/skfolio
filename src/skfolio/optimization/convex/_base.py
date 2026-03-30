@@ -446,7 +446,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         When a fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-         and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome.
 
     raise_on_failure : bool, default=True
         Controls error handling when fitting fails.

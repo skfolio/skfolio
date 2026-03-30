@@ -19,7 +19,7 @@ from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.pre_selection import (
     SelectKExtremes,
 )
-from skfolio.prior import FactorModel
+from skfolio.prior import TimeSeriesFactorModel
 
 
 def assert_weights_dict_subset_equal(d1: dict, d2: dict, tol: float = 1e-15) -> None:
@@ -203,17 +203,18 @@ def test_predict_after_fallback_returns_portfolio(X):
 
 def test_fallback_factor_model(X, y):
     model = CustomOptimization(
-        fail=True, fallback=MeanRisk(prior_estimator=FactorModel())
+        fail=True, fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel())
     )
     model.fit(X, y)
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
         (
-            "CustomOptimization(fail=True, fallback=MeanRisk(prior_estimator=FactorModel()))",
+            "CustomOptimization(fail=True,\n                   "
+            "fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel()))",
             "CustomOptimization forced failure",
         ),
-        ("MeanRisk(prior_estimator=FactorModel())", "success"),
+        ("MeanRisk(prior_estimator=TimeSeriesFactorModel())", "success"),
     ]
     assert model.error_ is None
     assert model.n_features_in_ == 20

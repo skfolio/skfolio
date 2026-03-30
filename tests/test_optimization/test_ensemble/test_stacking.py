@@ -7,7 +7,7 @@ from skfolio import RiskMeasure
 from skfolio.model_selection import CombinatorialPurgedCV
 from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import MeanRisk, StackingOptimization
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 def test_stacking(X_medium):
@@ -54,7 +54,9 @@ def test_stacking_factor(X_medium, y_medium):
     estimators = [
         (
             "model1",
-            MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=FactorModel()),
+            MeanRisk(
+                risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
+            ),
         ),
         ("model2", MeanRisk(risk_measure=RiskMeasure.VARIANCE)),
     ]

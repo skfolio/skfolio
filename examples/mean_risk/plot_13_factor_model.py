@@ -3,7 +3,7 @@ r"""
 Factor Model
 ============
 
-This tutorial shows how to use the :class:`~skfolio.prior.FactorModel` estimator in
+This tutorial shows how to use the :class:`~skfolio.prior.TimeSeriesFactorModel` estimator in
 the :class:`~skfolio.optimization.MeanRisk` optimization.
 
 A :ref:`Prior Estimator <prior>` in `skfolio` fits a :class:`ReturnDistribution`
@@ -17,7 +17,7 @@ distribution before optimization, unifying both **Frequentist**, **Bayesian** an
 
 1. Frequentist:
     * :class:`~skfolio.prior.EmpiricalPrior`
-    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.TimeSeriesFactorModel`
     * :class:`~skfolio.prior.SyntheticData`
 
 2. Bayesian:
@@ -40,7 +40,7 @@ The :class:`~skfolio.prior.ReturnDistribution` is a dataclass containing:
     * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
     * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
 
-The `FactorModel` estimator estimates the `ReturnDistribution` by fitting
+The `TimeSeriesFactorModel` estimator estimates the `ReturnDistribution` by fitting
 a factor model on asset returns alongside a specified :ref:`prior estimator <prior>`
 for the factor returns.
 
@@ -55,7 +55,7 @@ To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the as
 returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
 array (more than one factor). This is for consistency with the scikit-learn API.
 
-In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `FactorModel`
+In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel`
 estimator.
 """
 
@@ -74,7 +74,7 @@ from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.moments import GerberCovariance, ShrunkMu
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EmpiricalPrior, FactorModel, LoadingMatrixRegression
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRegression
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -90,7 +90,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffl
 model_factor_1 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-    prior_estimator=FactorModel(),
+    prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="Factor Model 1"),
 )
 model_factor_1.fit(X_train, y_train)
@@ -108,7 +108,7 @@ model_factor_1.weights_
 model_factor_2 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-    prior_estimator=FactorModel(
+    prior_estimator=TimeSeriesFactorModel(
         loading_matrix_estimator=LoadingMatrixRegression(
             linear_regressor=RidgeCV(fit_intercept=False), n_jobs=-1
         )
@@ -128,7 +128,7 @@ model_factor_2.weights_
 model_factor_3 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-    prior_estimator=FactorModel(
+    prior_estimator=TimeSeriesFactorModel(
         factor_prior_estimator=EmpiricalPrior(
             mu_estimator=ShrunkMu(), covariance_estimator=GerberCovariance()
         )

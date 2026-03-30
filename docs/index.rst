@@ -320,7 +320,7 @@ Imports
         BlackLitterman,
         EmpiricalPrior,
         EntropyPooling,
-        FactorModel,
+        TimeSeriesFactorModel,
         OpinionPooling,
         SyntheticData,
      )
@@ -507,7 +507,7 @@ Factor Model
         X, factors, test_size=0.33, shuffle=False
     )
 
-    model = MeanRisk(prior_estimator=FactorModel())
+    model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
     model.fit(X_train, factors_train)
 
     print(model.weights_)
@@ -522,7 +522,7 @@ Factor Model & Covariance Detoning
 .. code-block:: python
 
     model = MeanRisk(
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(covariance_estimator=DetoneCovariance())
         )
     )
@@ -534,7 +534,7 @@ Black & Litterman Factor Model
     factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - TLT == 0.04", "VLUE == 0.06"]
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=BlackLitterman(views=factor_views),
         ),
     )
@@ -612,7 +612,7 @@ Minimum CVaR Optimization on Synthetic Factors
         n_samples=10_000,
         sample_args=dict(conditioning={"QUAL": -0.2}),
     )
-    factor_model = FactorModel(factor_prior_estimator=factor_prior)
+    factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
     model.fit(X, factors)
     print(model.weights_)

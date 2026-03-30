@@ -6,7 +6,7 @@ from skfolio.moments import ImpliedCovariance
 from skfolio.optimization.convex import (
     MaximumDiversification,
 )
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 def test_maximum_diversification(X):
@@ -20,7 +20,7 @@ def test_maximum_diversification(X):
 
 
 def test_maximum_diversification_factor(X, y):
-    model = MaximumDiversification(prior_estimator=FactorModel())
+    model = MaximumDiversification(prior_estimator=TimeSeriesFactorModel())
     model.fit(X, y)
     ptf = model.predict(X)
     diversification = (

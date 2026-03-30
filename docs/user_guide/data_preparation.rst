@@ -58,8 +58,9 @@ It is not uncommon to witness the following steps ([1]_, [2]_, [3]_):
 
 The above approach is incorrect. First, the square-root rule in (5) only applies under
 the assumption that the logarithmic returns are invariants (they behave identically and
-independently across time). It is approximately true for stocks, but it is not true for
-bonds nor most derivatives like options.
+independently across time). It is approximately true for stocks; long-term dependence
+requires additional care in optimization ([6]_). It is not true for bonds nor most
+derivatives like options.
 Secondly, even for stocks, the optimization (6) is ill-posed: :math:`w^T \mu`
 is not the expected return of the portfolio over the horizon and :math:`w^T \Sigma w`
 is not its variance.
