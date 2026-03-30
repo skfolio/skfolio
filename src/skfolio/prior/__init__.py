@@ -37,7 +37,7 @@ def __getattr__(name):
         new_name = _DEPRECATED_NAMES[name]
         warnings.warn(
             f"`{name}` has been renamed to `{new_name}` and will be removed "
-            "in version 0.10.0.",
+            "in version 1.0.0.",
             FutureWarning,
             stacklevel=2,
         )
