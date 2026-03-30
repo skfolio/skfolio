@@ -6,7 +6,7 @@ from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalRiskParity
-from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel
+from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 
 
 @pytest.fixture(scope="module")
@@ -99,7 +99,7 @@ def test_hrp_empirical_prior(X):
 
 def test_hrp_factor_model(X, y):
     model = HierarchicalRiskParity(
-        risk_measure=RiskMeasure.CVAR, prior_estimator=FactorModel()
+        risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
     model.fit(X, y)
     np.testing.assert_almost_equal(

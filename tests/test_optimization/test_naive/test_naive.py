@@ -6,7 +6,7 @@ from skfolio.moments import (
     ImpliedCovariance,
 )
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 class TestInverseVolatility:
@@ -18,7 +18,7 @@ class TestInverseVolatility:
         w /= sum(w)
         np.testing.assert_almost_equal(model.weights_, w)
 
-        model = InverseVolatility(prior_estimator=FactorModel())
+        model = InverseVolatility(prior_estimator=TimeSeriesFactorModel())
         model.fit(X, y)
 
     def test_metadata_routing(self, X, implied_vol):

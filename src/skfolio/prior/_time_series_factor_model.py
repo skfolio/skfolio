@@ -1,4 +1,4 @@
-"""Factor Model estimator."""
+"""Time-series factor model estimator."""
 
 # Copyright (c) 2023-2025
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
@@ -8,6 +8,9 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -145,49 +148,92 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         )
 
 
-class FactorModel(BasePrior):
-    """Factor Model estimator.
+class TimeSeriesFactorModel(BasePrior):
+    r"""Time-series factor model estimator.
 
-    The purpose of Factor Models is to impose a structure on financial variables and
-    their covariance matrix by explaining them through a small number of common factors.
-    This can help overcome estimation error by reducing the number of parameters,
-    i.e. the dimensionality of the estimation problem, making portfolio optimization
-    more robust against noise in the data. Factor Models also provide a decomposition of
-    financial risk into systematic and security-specific components.
+    The purpose of factor models is to impose a structure on financial
+    variables and their covariance matrix by explaining them through a small
+    number of common factors. This reduces the number of free parameters in
+    the estimation problem, making portfolio optimization more robust against
+    noise. Factor models also provide a decomposition of risk into systematic
+    and idiosyncratic components.
+
+    This estimator implements a time-series regression approach: for each
+    asset :math:`i`, the return is regressed on a common set of factor return
+    series:
+
+    .. math::
+
+        r_i(t) = \alpha_i + B_i \, f(t) + \epsilon_i(t)
+
+    where :math:`B_i` is the factor loadings (exposures), :math:`f(t)` is the
+    vector of factor returns, :math:`\alpha_i` is the intercept, and
+    :math:`\epsilon_i(t)` is the idiosyncratic return (residual).
+
+    The expected return vector is:
+
+    .. math::
+
+        \mu = B \, \mathbb{E}[f] + \alpha
+
+    and the covariance matrix is:
+
+    .. math::
+
+        \Sigma = B \, F \, B^\top + D
+
+    where :math:`F` is the factor covariance matrix and :math:`D` is the
+    diagonal matrix of idiosyncratic variances.
+
+    .. note::
+
+        This formulation assumes that the factors are tradable assets or portfolios
+        (e.g. long-short equity factors or ETF returns), so that the
+        factor sample mean is a valid estimate of the factor risk premium.
+        When factors are non-tradable variables (e.g. macroeconomic series),
+        sometimes called a *macroeconomic factor model* in the literature,
+        the sample mean no longer equals the risk premium and a two-pass
+        procedure such as Fama-MacBeth (1973) is required to estimate the
+        cross-sectional price of risk :math:`\lambda`. That procedure also
+        requires a large estimation universe in order to reliably identify the
+        factor risk premia.
 
     Parameters
     ----------
     loading_matrix_estimator : LoadingMatrixEstimator, optional
         Estimator of the loading matrix (betas) of the factors.
-        The default (`None`) is to use :class:`LoadingMatrixRegression` which fit the
-        factors using `LassoCV` on each asset separately.
+        The default (`None`) is to use :class:`LoadingMatrixRegression`
+        which fits the factors using `LassoCV` on each asset separately.
 
     factor_prior_estimator : BasePrior, optional
-        The factors :ref:`prior estimator <prior>`.
-        It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing
-        the estimation of factors expected returns and covariance matrix.
+        Estimator of the factor return distribution. It is used to estimate
+        the :class:`~skfolio.prior.ReturnDistribution` containing the factor
+        expected returns and covariance matrix.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
     residual_variance : bool, default=True
+        .. deprecated::
+            The `residual_variance` parameter is deprecated and will be
+            removed in a future version. Residual variance is always added.
+
         If this is set to True, the diagonal term of the residuals covariance
         (residuals variance) is added to the factor model covariance.
 
     higham : bool, default=False
-        If this is set to True, we use the Higham (2002) algorithm to find the
-        nearest covariance matrix that is positive semi-definite. It is more accurate
-        but slower than the default clipping method. For more information
-        see :func:`~skfolio.utils.stats.cov_nearest`.
+        If this is set to True, the Higham (2002) algorithm is used to find
+        the nearest positive semi-definite covariance matrix. It is more
+        accurate but slower than the default clipping method. For more
+        information see :func:`~skfolio.utils.stats.cov_nearest`.
 
     max_iteration : int, default=100
-        Only used when `higham` is set to True. Maximum number of iterations of the
-        Higham (2002) algorithm.
+        Only used when `higham` is set to True. Maximum number of iterations
+        of the Higham (2002) algorithm.
 
     Attributes
     ----------
     return_distribution_ : ReturnDistribution
-        Fitted :class:`~skfolio.prior.ReturnDistribution` to be used by the optimization
-        estimators, containing the assets distribution, moments estimation and cholesky
-        decomposition based on the factor model.
+        Fitted :class:`~skfolio.prior.ReturnDistribution` containing the
+        asset distribution and moments estimation based on the factor model.
 
     factor_prior_estimator_ : BasePrior
         Fitted `factor_prior_estimator`.
@@ -239,15 +285,14 @@ class FactorModel(BasePrior):
         )
         return router
 
-    # noinspection PyMethodOverriding, PyPep8Naming
     def fit(
         self,
         X: npt.ArrayLike,
         y: Any,
         factors: npt.ArrayLike | None = None,
         **fit_params,
-    ):
-        """Fit the Factor Model estimator.
+    ) -> TimeSeriesFactorModel:
+        """Fit the Time-series factor model estimator.
 
         Parameters
         ----------
@@ -269,10 +314,21 @@ class FactorModel(BasePrior):
 
         Returns
         -------
-        self : FactorModel
+        self : TimeSeriesFactorModel
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
+
+        # TODO: remove residual_variance parameter in next release
+        if not self.residual_variance:
+            warnings.warn(
+                "The `residual_variance` parameter of "
+                "`TimeSeriesFactorModel` is deprecated and will be removed "
+                "in a future version. Residual variance will always be "
+                "added to the factor model covariance.",
+                FutureWarning,
+                stacklevel=2,
+            )
 
         self.factor_prior_estimator_ = check_estimator(
             self.factor_prior_estimator,
@@ -285,27 +341,30 @@ class FactorModel(BasePrior):
             check_type=BaseLoadingMatrix,
         )
 
+        factor_returns = y
         if factors is not None:
-            y = factors
+            factor_returns = factors
 
         # Fitting prior estimator
         self.factor_prior_estimator_.fit(
-            X=y, **routed_params.factor_prior_estimator.fit
+            X=factor_returns, **routed_params.factor_prior_estimator.fit
         )
         factor_return_dist = self.factor_prior_estimator_.return_distribution_
 
         # Fitting loading matrix estimator
         self.loading_matrix_estimator_.fit(
-            X, y, **routed_params.loading_matrix_estimator.fit
+            X, factor_returns, **routed_params.loading_matrix_estimator.fit
         )
         loading_matrix = self.loading_matrix_estimator_.loading_matrix_
         intercepts = self.loading_matrix_estimator_.intercepts_
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X, y = skv.validate_data(self, X, y, multi_output=True)
+        X, factor_returns = skv.validate_data(
+            self, X, factor_returns, multi_output=True
+        )
         n_assets = X.shape[1]
-        n_factors = y.shape[1]
+        n_factors = factor_returns.shape[1]
 
         if loading_matrix.shape != (n_assets, n_factors):
             raise ValueError(
@@ -323,14 +382,15 @@ class FactorModel(BasePrior):
         mu = loading_matrix @ factor_return_dist.mu + intercepts
         covariance = loading_matrix @ factor_return_dist.covariance @ loading_matrix.T
         returns = factor_return_dist.returns @ loading_matrix.T + intercepts
+
         cholesky = loading_matrix @ np.linalg.cholesky(factor_return_dist.covariance)
 
         if self.residual_variance:
-            y_pred = y @ loading_matrix.T + intercepts
-            err = X - y_pred
-            err_cov = np.diag(sm.variance(err))
-            covariance += err_cov
-            cholesky = np.hstack((cholesky, np.sqrt(err_cov)))
+            factor_returns_pred = factor_returns @ loading_matrix.T + intercepts
+            idio_returns = X - factor_returns_pred
+            idio_var = sm.variance(idio_returns)
+            covariance[np.diag_indices_from(covariance)] += idio_var
+            cholesky = np.hstack((cholesky, np.sqrt(np.diag(idio_var))))
 
         covariance = cov_nearest(
             covariance, higham=self.higham, higham_max_iteration=self.max_iteration

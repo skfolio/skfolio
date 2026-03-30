@@ -12,7 +12,7 @@ from skfolio.optimization import (
     SchurComplementary,
 )
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EmpiricalPrior, FactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 @pytest.fixture(scope="module")
@@ -128,7 +128,7 @@ def test_schur_prior_estimator(X):
 
 
 def test_schur_factor_model(X, y):
-    model = SchurComplementary(prior_estimator=FactorModel())
+    model = SchurComplementary(prior_estimator=TimeSeriesFactorModel())
     model.fit(X, y)
     np.testing.assert_almost_equal(
         model.weights_,

@@ -3,7 +3,7 @@ import pytest
 from sklearn import config_context
 
 from skfolio.moments import ImpliedCovariance
-from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+from skfolio.prior import BlackLitterman, EmpiricalPrior, TimeSeriesFactorModel
 from skfolio.utils.equations import equations_to_matrix
 
 
@@ -603,7 +603,7 @@ def test_black_litterman_factor_model(X, y):
 
     model = BlackLitterman(
         views=views,
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=BlackLitterman(views=factor_views),
         ),
     )

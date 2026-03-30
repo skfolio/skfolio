@@ -7,9 +7,9 @@ from skfolio.optimization import MeanRisk
 from skfolio.prior import (
     EmpiricalPrior,
     EntropyPooling,
-    FactorModel,
     OpinionPooling,
     SyntheticData,
+    TimeSeriesFactorModel,
 )
 
 
@@ -143,7 +143,7 @@ def test_factor_model(X, y):
         estimators=[("expert_1", view_1), ("expert_2", view_2)],
         opinion_probabilities=[0.5, 0.2],
     )
-    model = FactorModel(factor_prior_estimator=opinion)
+    model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
 
     model.fit(X, y)
 
@@ -170,7 +170,7 @@ def test_factor_synthetic_data(X, y):
         prior_estimator=factor_synth,
     )
 
-    model = FactorModel(factor_prior_estimator=opinion)
+    model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
     model.fit(X, y)
 
     sw = model.return_distribution_.sample_weight

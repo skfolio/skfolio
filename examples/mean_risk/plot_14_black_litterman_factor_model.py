@@ -3,7 +3,7 @@ r"""
 Black & Litterman Factor Model
 ==============================
 
-This tutorial shows how to use the :class:`~skfolio.prior.FactorModel` estimator coupled
+This tutorial shows how to use the :class:`~skfolio.prior.TimeSeriesFactorModel` estimator coupled
 with the :class:`~skfolio.prior.BlackLitterman` estimator in the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
@@ -12,7 +12,7 @@ factors using the Black & Litterman Model.
 
 In the previous two tutorials, we introduced the Factor Model and the Black & Litterman
 separately. In this tutorial we show how we can merge them together by building a
-Maximum Sharpe Ratio portfolio using the `FactorModel` estimator.
+Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel` estimator.
 """
 
 # %%
@@ -28,7 +28,7 @@ from skfolio import Population, RiskMeasure
 from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import BlackLitterman, FactorModel
+from skfolio.prior import BlackLitterman, TimeSeriesFactorModel
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -62,7 +62,7 @@ factor_views = [
 model_bl_factor = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-    prior_estimator=FactorModel(
+    prior_estimator=TimeSeriesFactorModel(
         factor_prior_estimator=BlackLitterman(views=factor_views),
     ),
     portfolio_params=dict(name="Black & Litterman Factor Model"),
@@ -76,7 +76,7 @@ model_bl_factor.weights_
 model_factor = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-    prior_estimator=FactorModel(),
+    prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="Factor Model"),
 )
 model_factor.fit(X_train, y_train)
@@ -118,7 +118,7 @@ assets_views = [
 
 model = BlackLitterman(
     views=assets_views,
-    prior_estimator=FactorModel(
+    prior_estimator=TimeSeriesFactorModel(
         factor_prior_estimator=BlackLitterman(views=factor_views),
     ),
 )

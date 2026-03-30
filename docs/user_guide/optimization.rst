@@ -175,7 +175,7 @@ The available prior estimators are:
 
     * :class:`~skfolio.prior.EmpiricalPrior`
     * :class:`~skfolio.prior.BlackLitterman`
-    * :class:`~skfolio.prior.FactorModel`
+    * :class:`~skfolio.prior.TimeSeriesFactorModel`
 
 **Example:**
 
@@ -188,7 +188,7 @@ Minimum Variance portfolio using a Factor Model:
     from skfolio.datasets import load_factors_dataset, load_sp500_dataset
     from skfolio.optimization import MeanRisk
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import FactorModel
+    from skfolio.prior import TimeSeriesFactorModel
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
@@ -676,7 +676,7 @@ and :ref:`clustering estimator <cluster>` (both `skfolio` and `sklearn`)
 Nested Clusters Optimization with KMeans as the clustering algorithm, Kendall Distance
 as the distance estimator, Minimum Semi-Variance as the inner estimator, and CVaR Risk
 Parity as the outer (meta) estimator trained on the out-of-sample estimates from the
-    KFold cross-validation and run with parallelization:
+KFold cross-validation and run with parallelization:
 
 .. code-block:: python
 

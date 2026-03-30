@@ -4,7 +4,7 @@ from skfolio import RiskMeasure
 from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import MeanRisk
-from skfolio.prior import FactorModel, SyntheticData
+from skfolio.prior import SyntheticData, TimeSeriesFactorModel
 
 
 def test_synthetic_data(X):
@@ -19,7 +19,7 @@ def test_synthetic_data(X):
 
 
 def test_factor_synthetic_data(X, y):
-    model = FactorModel(
+    model = TimeSeriesFactorModel(
         factor_prior_estimator=SyntheticData(),
     )
     model.fit(X, y)
@@ -32,7 +32,7 @@ def test_factor_synthetic_data(X, y):
 
 
 def test_factor_stress_test(X, y):
-    model = FactorModel(
+    model = TimeSeriesFactorModel(
         factor_prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(
                 central_assets=["QUAL"], log_transform=True, n_jobs=-1, random_state=42

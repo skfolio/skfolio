@@ -71,7 +71,7 @@ class SyntheticData(BasePrior):
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.distribution import VineCopula
     >>> from skfolio.optimization import MeanRisk
-    >>> from skfolio.prior import FactorModel, SyntheticData
+    >>> from skfolio.prior import TimeSeriesFactorModel, SyntheticData
     >>> from skfolio import RiskMeasure
     >>>
     >>> # Load historical prices and convert them to returns
@@ -96,7 +96,7 @@ class SyntheticData(BasePrior):
     >>> print(model.weights_)
     >>>
     >>> # Minimum CVaR optimization on Stressed Factors
-    >>> factor_model = FactorModel(
+    >>> factor_model = TimeSeriesFactorModel(
     ...    factor_prior_estimator=SyntheticData(
     ...        distribution_estimator=VineCopula(
     ...            central_assets=["QUAL"],

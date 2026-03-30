@@ -270,6 +270,7 @@ show(fig)
 
 # %%
 # |
+#
 # Finally, let's inspect the first failed portfolio:
 failed_ptf = pred.failed_portfolios[0]
 print(failed_ptf.optimization_error)

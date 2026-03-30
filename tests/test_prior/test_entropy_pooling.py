@@ -7,7 +7,12 @@ import skfolio.measures as sm
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
 from skfolio.exceptions import GroupNotFoundError
 from skfolio.moments import ShrunkCovariance, ShrunkMu
-from skfolio.prior import EmpiricalPrior, EntropyPooling, FactorModel, SyntheticData
+from skfolio.prior import (
+    EmpiricalPrior,
+    EntropyPooling,
+    SyntheticData,
+    TimeSeriesFactorModel,
+)
 from skfolio.prior._entropy_pooling import (
     _extract_prior_assets,
     _parse_correlation_view,
@@ -1053,10 +1058,10 @@ def test_synthetic_data_prior(X, solver):
 
 
 def test_factor_entropy_pooling(X, y, solver):
-    ref = FactorModel()
+    ref = TimeSeriesFactorModel()
     ref.fit(X, y)
 
-    model = FactorModel(
+    model = TimeSeriesFactorModel(
         factor_prior_estimator=EntropyPooling(
             solver=solver,
             mean_views=["QUAL == 0.0005"],
@@ -1087,7 +1092,7 @@ def test_factor_synthetic_data_entropy_pooling(X, y, solver):
         prior_estimator=factor_synth,
         mean_views=["QUAL == 0.0005"],
     )
-    model = FactorModel(factor_prior_estimator=factor_view)
+    model = TimeSeriesFactorModel(factor_prior_estimator=factor_view)
     model.fit(X, y)
 
     sw = model.factor_prior_estimator_.return_distribution_.sample_weight

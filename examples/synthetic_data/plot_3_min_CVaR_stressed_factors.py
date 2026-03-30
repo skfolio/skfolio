@@ -46,7 +46,7 @@ from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import MeanRisk
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import FactorModel, SyntheticData
+from skfolio.prior import TimeSeriesFactorModel, SyntheticData
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -107,7 +107,7 @@ factor_prior = SyntheticData(
     n_samples=10_000,
     sample_args=dict(conditioning={"QUAL": -0.2}),
 )
-factor_model = FactorModel(factor_prior_estimator=factor_prior)
+factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
 
 model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
 model.fit(X_train, factors_train)

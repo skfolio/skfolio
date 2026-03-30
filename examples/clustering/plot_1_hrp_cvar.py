@@ -45,7 +45,7 @@ from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.distance import KendallDistance
 from skfolio.optimization import EqualWeighted, HierarchicalRiskParity
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import FactorModel
+from skfolio.prior import TimeSeriesFactorModel
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -150,10 +150,10 @@ model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 # containing the distribution estimate of asset returns.
 # The default is the :class:`~skfolio.prior.EmpiricalPrior` estimator.
 #
-# Let's create new model with the :class:`~skfolio.prior.FactorModel` estimator:
+# Let's create new model with the :class:`~skfolio.prior.TimeSeriesFactorModel` estimator:
 model4 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
-    prior_estimator=FactorModel(),
+    prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="HRP-CVaR-Factor-Model"),
 )
 model4.fit(X_train, y_train)
