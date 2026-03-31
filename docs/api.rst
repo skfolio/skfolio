@@ -806,3 +806,36 @@ Enum
     :template: class.rst
 
     distribution.CopulaRotation
+
+
+.. _feature_extraction_ref:
+
+:mod:`skfolio.feature_extraction`: Feature Extraction
+======================================================
+
+.. automodule:: skfolio.feature_extraction
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    feature_extraction.BaseFeatureExtractor
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    feature_extraction.PPCA
+    feature_extraction.PKPCA
