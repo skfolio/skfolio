@@ -45,6 +45,7 @@ while reducing the risk of data leakage and overfitting.
     Population <population>
     Prior <prior>
     Expected Returns <expected_returns>
+    Variance <variance>
     Covariance <covariance>
     Distance <distance>
     Clustering <cluster>

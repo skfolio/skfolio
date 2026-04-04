@@ -169,11 +169,17 @@ Available models
     * Denoising
     * Detoning
     * Exponentially Weighted
+    * Regime-Adjusted Exponentially Weighted
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
     * Shrunk Covariance
     * Graphical Lasso CV
     * Implied Covariance
+
+* Variance Estimator:
+    * Empirical
+    * Exponentially Weighted
+    * Regime-Adjusted Exponentially Weighted
 
 * Distance Estimator:
     * Pearson Distance
@@ -717,7 +723,7 @@ We would like to thank all contributors to our direct dependencies, such as
     * rsome
     * `Microprediction <https://github.com/microprediction>`_ (Peter Cotton)
     * `Portfolio Optimization Book <https://portfoliooptimizationbook.com/>`_ (Daniel P. Palomar)
-    * `quantresearch.org <https://quantresearch.org>`_ (Marcos López de Prado)
+    * *The Elements of Quantitative Investing* (Giuseppe Paleologo)
     * gautier.marti.ai (Gautier Marti)
 
 

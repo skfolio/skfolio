@@ -6,6 +6,7 @@
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +14,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.utils.stats import corr_to_cov
+from skfolio.utils.tools import apply_window_size
 
 
 class GerberCovariance(BaseCovariance):
@@ -116,7 +118,7 @@ class GerberCovariance(BaseCovariance):
         self.threshold = threshold
         self.psd_variant = psd_variant
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "GerberCovariance":
+    def fit(self, X: npt.ArrayLike, y=None) -> GerberCovariance:
         """Fit the Gerber covariance estimator.
 
         Parameters
@@ -133,8 +135,7 @@ class GerberCovariance(BaseCovariance):
            Fitted estimator.
         """
         X = skv.validate_data(self, X)
-        if self.window_size is not None:
-            X = X[-self.window_size :]
+        X = apply_window_size(X=X, window_size=self.window_size)
         if not (1 > self.threshold > 0):
             raise ValueError("The threshold must be between 0 and 1")
         n_observations = X.shape[0]

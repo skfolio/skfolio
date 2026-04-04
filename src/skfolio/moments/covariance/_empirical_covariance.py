@@ -7,11 +7,16 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
+import numbers
+
 import numpy as np
 import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
+from skfolio.utils.tools import apply_window_size
 
 
 class EmpiricalCovariance(BaseCovariance):
@@ -27,6 +32,14 @@ class EmpiricalCovariance(BaseCovariance):
         Normalization is by `(n_observations - ddof)`.
         Note that `ddof=1` will return the unbiased estimate, and `ddof=0`
         will return the simple average. The default value is `1`.
+
+    assume_centered : bool, default=False
+        If False (default), the data are mean-centered before computing the covariance.
+        This is the standard behavior when working with raw returns where the mean is
+        not guaranteed to be zero.
+        If True, the estimator assumes the input data are already centered. Use this
+        when you know the returns have zero mean, such as pre-demeaned data or
+        regression residuals.
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
@@ -53,6 +66,11 @@ class EmpiricalCovariance(BaseCovariance):
     covariance_ : ndarray of shape (n_assets, n_assets)
         Estimated covariance matrix.
 
+    location_ : ndarray of shape (n_assets,)
+        Estimated location, i.e. the estimated mean.
+        Use for compatibility with scikit-learn Covariance estimators and for
+        mahalanobis and score methods.
+
     n_features_in_ : int
         Number of assets seen during `fit`.
 
@@ -65,11 +83,13 @@ class EmpiricalCovariance(BaseCovariance):
         self,
         window_size: int | None = None,
         ddof: int = 1,
+        assume_centered: bool = False,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
     ):
         super().__init__(
+            assume_centered=assume_centered,
             nearest=nearest,
             higham=higham,
             higham_max_iteration=higham_max_iteration,
@@ -77,7 +97,7 @@ class EmpiricalCovariance(BaseCovariance):
         self.window_size = window_size
         self.ddof = ddof
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalCovariance":
+    def fit(self, X: npt.ArrayLike, y=None) -> EmpiricalCovariance:
         """Fit the empirical covariance estimator.
 
         Parameters
@@ -94,12 +114,27 @@ class EmpiricalCovariance(BaseCovariance):
             Fitted estimator.
         """
         X = skv.validate_data(self, X)
-        if self.window_size is not None:
-            X = X[-int(self.window_size) :]
-        covariance = np.cov(X, ddof=self.ddof, rowvar=False)
+        X = apply_window_size(X, window_size=self.window_size)
 
-        if covariance.ndim == 0:
-            covariance = covariance.reshape(1, 1)
+        n_observations, _ = X.shape
+
+        if not isinstance(self.ddof, numbers.Integral) or self.ddof < 0:
+            raise ValueError(f"ddof must be a non-negative integer, got {self.ddof}")
+        if self.ddof >= n_observations:
+            raise ValueError(
+                "ddof must be strictly less than the number of observations, "
+                f"got ddof={self.ddof} and n_observations={n_observations}"
+            )
+
+        if self.assume_centered:
+            self.location_ = np.zeros(X.shape[1])
+            covariance = (X.T @ X) / (n_observations - self.ddof)
+        else:
+            self.location_ = X.mean(axis=0)
+            covariance = np.cov(X, rowvar=False, ddof=self.ddof)
+            # np.cov returns a scalar when X has a single column (one asset).
+            if covariance.ndim == 0:
+                covariance = covariance.reshape(1, 1)
 
         self._set_covariance(covariance)
         return self

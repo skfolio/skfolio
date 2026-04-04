@@ -370,6 +370,39 @@ Classes
     moments.EquilibriumMu
     moments.ShrunkMuMethods
 
+.. _variance_ref:
+
+:mod:`skfolio.moments.variance`: Variance Estimators
+==================================================
+
+.. automodule:: skfolio.moments.variance
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    moments.BaseVariance
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    moments.EmpiricalVariance
+    moments.EWVariance
+    moments.RegimeAdjustedEWVariance
+
 .. _covariance_ref:
 
 :mod:`skfolio.moments.covariance`: Covariance Estimators
@@ -390,6 +423,18 @@ Base Class
 
     moments.BaseCovariance
 
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    moments.RegimeAdjustmentMethod
+    moments.RegimeAdjustmentTarget
+
 Classes
 -------
 .. currentmodule:: skfolio
@@ -409,6 +454,7 @@ Classes
     moments.ShrunkCovariance
     moments.GraphicalLassoCV
     moments.ImpliedCovariance
+    moments.RegimeAdjustedEWCovariance
 
 .. _distance_ref:
 
@@ -638,10 +684,22 @@ Functions
 
     preprocessing.prices_to_returns
 
-.. _stats_ref:
+.. _tools_ref:
 
-:mod:`skfolio.utils.stats`: Stats
+:mod:`skfolio.utils.tools`: Tools
 =================================
+
+Classes
+-------
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    tools.AutoEnum
+    tools.cached_property_slots
 
 Functions
 ---------
@@ -651,7 +709,48 @@ Functions
     :toctree: generated/
     :template: function.rst
 
+    tools.apply_window_size
+    tools.args_names
+    tools.bisection
+    tools.cache_method
+    tools.check_estimator
+    tools.deduplicate_names
+    tools.default_asset_names
+    tools.fit_and_predict
+    tools.fit_single_estimator
+    tools.format_measure
+    tools.get_feature_names
+    tools.half_life_to_decay_factor
+    tools.input_to_array
+    tools.optimal_rounding_decimals
+    tools.safe_indexing
+    tools.safe_split
+    tools.validate_input_list
+
+.. _stats_ref:
+
+:mod:`skfolio.utils.stats`: Stats
+=================================
+
+Enum
+----
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
     stats.NBinsMethod
+
+Functions
+---------
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
     stats.assert_is_distance
     stats.assert_is_square
     stats.assert_is_symmetric
@@ -661,7 +760,12 @@ Functions
     stats.corr_to_cov
     stats.cov_nearest
     stats.cov_to_corr
+    stats.cs_rank
+    stats.cs_rank_correlation
+    stats.cs_weighted_correlation
     stats.inverse_multiply
+    stats.inverse_volatility_weights
+    stats.safe_cholesky
     stats.is_cholesky_dec
     stats.minimize_relative_weight_deviation
     stats.multiply_by_inverse
@@ -670,7 +774,10 @@ Functions
     stats.rand_weights
     stats.rand_weights_dirichlet
     stats.sample_unique_subsets
+    stats.squared_mahalanobis_dist
+    stats.squared_standardized_euclidean_dist
     stats.symmetric_step_up_matrix
+    stats.symmetrize
 
 .. _univariate_distribution_ref:
 

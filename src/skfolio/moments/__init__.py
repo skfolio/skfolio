@@ -11,6 +11,9 @@ from skfolio.moments.covariance import (
     GraphicalLassoCV,
     ImpliedCovariance,
     LedoitWolf,
+    RegimeAdjustedEWCovariance,
+    RegimeAdjustmentMethod,
+    RegimeAdjustmentTarget,
     ShrunkCovariance,
 )
 from skfolio.moments.expected_returns import (
@@ -21,22 +24,35 @@ from skfolio.moments.expected_returns import (
     ShrunkMu,
     ShrunkMuMethods,
 )
+from skfolio.moments.variance import (
+    BaseVariance,
+    EWVariance,
+    EmpiricalVariance,
+    RegimeAdjustedEWVariance,
+)
 
 __all__ = [
     "OAS",
     "BaseCovariance",
     "BaseMu",
+    "BaseVariance",
     "DenoiseCovariance",
     "DetoneCovariance",
     "EWCovariance",
     "EWMu",
+    "EWVariance",
     "EmpiricalCovariance",
     "EmpiricalMu",
+    "EmpiricalVariance",
     "EquilibriumMu",
     "GerberCovariance",
     "GraphicalLassoCV",
     "ImpliedCovariance",
     "LedoitWolf",
+    "RegimeAdjustedEWCovariance",
+    "RegimeAdjustedEWVariance",
+    "RegimeAdjustmentMethod",
+    "RegimeAdjustmentTarget",
     "ShrunkCovariance",
     "ShrunkMu",
     "ShrunkMuMethods",

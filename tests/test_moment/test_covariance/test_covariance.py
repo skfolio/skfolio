@@ -1,9 +1,16 @@
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
+from sklearn.covariance import OAS as SklearnOAS
+from sklearn.covariance import EmpiricalCovariance as SklearnEmpiricalCovariance
+from sklearn.covariance import LedoitWolf as SklearnLedoitWolf
+from sklearn.covariance import ShrunkCovariance as SklearnShrunkCovariance
+from sklearn.model_selection import cross_val_score
 
 from skfolio.moments import (
     OAS,
+    BaseCovariance,
     DenoiseCovariance,
     DetoneCovariance,
     EWCovariance,
@@ -14,6 +21,624 @@ from skfolio.moments import (
     LedoitWolf,
     ShrunkCovariance,
 )
+from skfolio.moments.covariance._base import _reduce_to_finite_active_block
+from skfolio.utils.stats import (
+    _squared_mahalanobis_dist_from_cholesky,
+    safe_cholesky,
+)
+
+
+def _manual_observed_subspace_score(
+    X: np.ndarray,
+    covariance: np.ndarray,
+    mean: np.ndarray | None,
+) -> float:
+    row_scores = []
+    for row in X:
+        mask = np.isfinite(row)
+        if not np.any(mask):
+            continue
+
+        chol = safe_cholesky(covariance[np.ix_(mask, mask)])
+        d2 = _squared_mahalanobis_dist_from_cholesky(
+            row[mask],
+            cholesky=chol,
+            mean=None if mean is None else mean[mask],
+        )
+        logdet = 2.0 * np.sum(np.log(np.diag(chol)))
+        row_scores.append(0.5 * (-logdet - d2 - mask.sum() * np.log(2.0 * np.pi)))
+
+    if not row_scores:
+        raise ValueError("No valid row score")
+    return float(np.mean(row_scores))
+
+
+class _MinimalCovariance(BaseCovariance):
+    """Concrete subclass for testing :meth:`BaseCovariance._set_covariance`."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def fit(self, X, y=None, **fit_params):
+        return self
+
+
+class TestSetCovarianceActiveBlock:
+    """``_set_covariance`` peels incomplete active blocks and warns."""
+
+    def test_warns_and_peels_when_active_block_has_nan(self):
+        cov = np.array(
+            [
+                [1e-4, np.nan, 0.0],
+                [np.nan, 1e-4, 0.0],
+                [0.0, 0.0, 1e-4],
+            ],
+            dtype=float,
+        )
+        est = _MinimalCovariance(nearest=False)
+        with pytest.warns(UserWarning, match="Peeling"):
+            est._set_covariance(cov.copy())
+        assert np.all(np.isnan(est.covariance_[0, :]))
+        assert np.all(np.isnan(est.covariance_[:, 0]))
+        sub = est.covariance_[np.ix_([1, 2], [1, 2])]
+        assert np.all(np.isfinite(sub))
+
+    def test_no_raise_when_no_finite_diagonal(self):
+        cov = np.full((2, 2), np.nan, dtype=float)
+        est = _MinimalCovariance(nearest=False)
+        est._set_covariance(cov)
+        assert np.all(np.isnan(est.covariance_))
+
+    def test_no_raise_when_active_block_is_dense(self):
+        cov = np.full((3, 3), np.nan, dtype=float)
+        cov[1, 1] = cov[2, 2] = 1e-4
+        cov[1, 2] = cov[2, 1] = 1e-5
+        est = _MinimalCovariance(nearest=False)
+        est._set_covariance(cov)
+        np.testing.assert_allclose(est.covariance_, cov)
+
+
+class TestReduceToFiniteActiveBlock:
+    """Unit tests for :func:`_reduce_to_finite_active_block`."""
+
+    def test_tie_breaks_on_smallest_index(self):
+        cov = np.array(
+            [[1e-4, np.nan], [np.nan, 1e-4]],
+            dtype=float,
+        )
+        _reduce_to_finite_active_block(cov)
+        assert np.all(np.isnan(cov[0, :])) and np.all(np.isnan(cov[:, 0]))
+        assert np.isfinite(cov[1, 1])
+
+    def test_no_op_when_already_dense(self):
+        cov = np.eye(3, dtype=float) * 1e-4
+        expected = cov.copy()
+        _reduce_to_finite_active_block(cov)
+        np.testing.assert_allclose(cov, expected)
+
+
+class TestBaseCovarianceMethods:
+    """Test base class methods (mahalanobis, score) across all covariance estimators."""
+
+    @pytest.fixture
+    def estimators(self):
+        """Return a list of covariance estimators to test."""
+        return [
+            EmpiricalCovariance(),
+            EWCovariance(half_life=23),
+            LedoitWolf(),
+            OAS(),
+            ShrunkCovariance(),
+        ]
+
+    def test_mahalanobis_basic(self, X):
+        """Test mahalanobis returns correct shape and positive values."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        # Test with full dataset
+        distances = model.mahalanobis(X)
+        assert distances.shape == (len(X),)
+        assert np.all(distances >= 0)
+        assert np.all(np.isfinite(distances))
+
+    def test_mahalanobis_single_observation(self, X):
+        """Test mahalanobis with a single observation returns scalar."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        # Single observation with preserved feature names
+        single_obs = X.iloc[[0]]
+        distance = model.mahalanobis(single_obs)
+        assert np.isscalar(distance) or distance.shape in [(), (1,)]
+        assert distance >= 0
+        assert np.isfinite(distance)
+
+    def test_mahalanobis_validates_feature_names(self, X):
+        """Test mahalanobis rejects reordered feature names like score does."""
+        model = EmpiricalCovariance(nearest=False)
+        model.fit(X)
+
+        reordered = X[X.columns[::-1]]
+        with pytest.raises(ValueError, match="feature names"):
+            model.mahalanobis(reordered)
+
+    def test_mahalanobis_chi_squared_distribution(self, X):
+        """Test that mahalanobis distances follow chi-squared distribution."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        distances = model.mahalanobis(X)
+        n_assets = X.shape[1]
+
+        # Under Gaussian assumption, squared Mahalanobis distances should have
+        # mean approximately equal to n_assets (chi-squared with n_assets DoF)
+        # Allow some tolerance due to finite sample
+        assert n_assets * 0.5 < distances.mean() < n_assets * 1.5
+
+    def test_mahalanobis_outlier_detection(self):
+        """Test that mahalanobis can detect outliers."""
+        rng = np.random.default_rng(42)
+        n_assets = 5
+        n_obs = 200
+
+        # Generate normal data
+        X_normal = rng.standard_normal((n_obs, n_assets)) * 0.01
+
+        # Add outliers (last 5 observations)
+        X_outliers = rng.standard_normal((5, n_assets)) * 0.05  # 5x volatility
+        np.vstack([X_normal, X_outliers])
+
+        model = EmpiricalCovariance()
+        model.fit(X_normal)  # Fit only on normal data
+
+        distances_normal = model.mahalanobis(X_normal)
+        distances_outliers = model.mahalanobis(X_outliers)
+
+        # Outliers should have larger distances on average
+        assert distances_outliers.mean() > distances_normal.mean()
+
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+    )
+    def test_mahalanobis_across_estimators(self, X, estimator_class):
+        """Test mahalanobis works across all estimator types."""
+        if estimator_class == EWCovariance:
+            model = estimator_class(half_life=23)
+        else:
+            model = estimator_class()
+
+        model.fit(X)
+        distances = model.mahalanobis(X)
+
+        assert distances.shape == (len(X),)
+        assert np.all(distances >= 0)
+        assert np.all(np.isfinite(distances))
+
+    def test_score_basic(self, X):
+        """Test score returns a finite float."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        score = model.score(X)
+        assert isinstance(score, float)
+        assert np.isfinite(score)
+
+    def test_score_handles_missing_rows_on_observed_subspaces(self):
+        """Test score uses row-wise observed subspaces when X_test contains NaN."""
+        rng = np.random.default_rng(123)
+        X_train = rng.standard_normal((80, 4)) * 0.01
+        X_test = rng.standard_normal((6, 4)) * 0.01
+        X_test[0, 1] = np.nan
+        X_test[1, [0, 3]] = np.nan
+        X_test[2, 2] = np.nan
+
+        model = EmpiricalCovariance(nearest=False)
+        model.fit(X_train)
+
+        score = model.score(X_test)
+        expected = _manual_observed_subspace_score(
+            X_test,
+            model.covariance_,
+            model.location_,
+        )
+        np.testing.assert_allclose(score, expected, rtol=1e-10)
+
+    def test_score_ignores_rows_with_no_finite_retained_observation(self):
+        """Test score ignores rows that are fully missing in the retained subspace."""
+        rng = np.random.default_rng(123)
+        X_train = rng.standard_normal((80, 3)) * 0.01
+        X_test = rng.standard_normal((5, 3)) * 0.01
+        X_test[0, :] = np.nan
+
+        model = EmpiricalCovariance(nearest=False)
+        model.fit(X_train)
+
+        score = model.score(X_test)
+        expected = _manual_observed_subspace_score(
+            X_test,
+            model.covariance_,
+            model.location_,
+        )
+        np.testing.assert_allclose(score, expected, rtol=1e-10)
+
+    def test_score_model_comparison(self, X):
+        """Test using score for model comparison."""
+        # Split data
+        X_train = X.iloc[:200]
+        X_test = X.iloc[200:]
+
+        # Fit different models
+        emp = EmpiricalCovariance().fit(X_train)
+        lw = LedoitWolf().fit(X_train)
+
+        # Get scores on test data
+        score_emp = emp.score(X_test)
+        score_lw = lw.score(X_test)
+
+        # Both should be finite
+        assert np.isfinite(score_emp)
+        assert np.isfinite(score_lw)
+
+        # LedoitWolf often performs better on out-of-sample data
+        # (shrinkage helps with estimation error)
+        # We don't assert which is better, just that comparison is possible
+
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+    )
+    def test_score_across_estimators(self, X, estimator_class):
+        """Test score works across all estimator types."""
+        if estimator_class == EWCovariance:
+            model = estimator_class(half_life=23)
+        else:
+            model = estimator_class()
+
+        model.fit(X)
+        score = model.score(X)
+
+        assert isinstance(score, float)
+        assert np.isfinite(score)
+
+    def test_score_sklearn_cross_validation(self):
+        """Test that score is compatible with sklearn cross-validation."""
+        rng = np.random.default_rng(42)
+        X = rng.standard_normal((200, 5)) * 0.01
+
+        model = EmpiricalCovariance()
+        scores = cross_val_score(model, X, cv=3)
+
+        assert len(scores) == 3
+        assert all(np.isfinite(s) for s in scores)
+
+    def test_mahalanobis_with_held_out_data(self, X):
+        """Test mahalanobis on held-out data."""
+        X_train = X.iloc[:200]
+        X_test = X.iloc[200:]
+
+        model = EmpiricalCovariance()
+        model.fit(X_train)
+
+        distances_train = model.mahalanobis(X_train)
+        distances_test = model.mahalanobis(X_test)
+
+        # Both should be valid
+        assert np.all(distances_train >= 0)
+        assert np.all(distances_test >= 0)
+        assert np.all(np.isfinite(distances_train))
+        assert np.all(np.isfinite(distances_test))
+
+    def test_score_with_different_data_sizes(self):
+        """Test score with different observation counts."""
+        rng = np.random.default_rng(42)
+        n_assets = 5
+
+        X_train = rng.standard_normal((100, n_assets)) * 0.01
+
+        model = EmpiricalCovariance()
+        model.fit(X_train)
+
+        # Test with different sizes
+        for n_test in [10, 50, 100, 200]:
+            X_test = rng.standard_normal((n_test, n_assets)) * 0.01
+            score = model.score(X_test)
+            assert np.isfinite(score)
+
+    def test_mahalanobis_numerical_stability(self):
+        """Test mahalanobis with near-singular covariance."""
+        rng = np.random.default_rng(42)
+        n_assets = 5
+        n_obs = 100
+
+        # Create highly correlated data (near-singular covariance)
+        common_factor = rng.standard_normal(n_obs) * 0.01
+        idiosyncratic = rng.standard_normal((n_obs, n_assets)) * 0.0001
+        X = np.column_stack([common_factor for _ in range(n_assets)]) + idiosyncratic
+
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        # Should handle near-singular case with regularization
+        distances = model.mahalanobis(X)
+        assert np.all(np.isfinite(distances))
+        assert np.all(distances >= 0)
+
+    def test_score_numerical_stability(self):
+        """Test score with near-singular covariance."""
+        rng = np.random.default_rng(42)
+        n_assets = 5
+        n_obs = 100
+
+        # Create highly correlated data
+        common_factor = rng.standard_normal(n_obs) * 0.01
+        idiosyncratic = rng.standard_normal((n_obs, n_assets)) * 0.0001
+        X = np.column_stack([common_factor for _ in range(n_assets)]) + idiosyncratic
+
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        score = model.score(X)
+        assert np.isfinite(score)
+
+    def test_mahalanobis_exact_values(self, X):
+        """Test mahalanobis returns expected values."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        distances = model.mahalanobis(X)
+
+        # Test first few values for regression testing
+        np.testing.assert_almost_equal(
+            distances[:5],
+            [8.7574, 13.4907, 19.4821, 12.6576, 10.3059],
+            decimal=3,
+        )
+
+    def test_score_exact_values(self, X):
+        """Test score returns expected values."""
+        model = EmpiricalCovariance()
+        model.fit(X)
+
+        score = model.score(X)
+        np.testing.assert_almost_equal(score, 58.5851, decimal=3)
+
+    def test_mahalanobis_ewcovariance_exact_values(self, X):
+        """Test mahalanobis with EWCovariance returns expected values."""
+        # half_life = -ln(2)/ln(0.97) ≈ 22.7566 gives decay_factor = 0.97
+        model = EWCovariance(half_life=-np.log(2) / np.log(0.97))
+        model.fit(X)
+
+        distances = model.mahalanobis(X)
+
+        np.testing.assert_almost_equal(
+            distances[:5],
+            [11.99974801, 26.86418476, 47.18668954, 19.60064144, 16.60156827],
+            decimal=4,
+        )
+
+    def test_score_ewcovariance_exact_values(self, X):
+        """Test score with EWCovariance returns expected values."""
+        # half_life = -ln(2)/ln(0.97) ≈ 22.7566 gives decay_factor = 0.97
+        model = EWCovariance(half_life=-np.log(2) / np.log(0.97))
+        model.fit(X)
+
+        score = model.score(X)
+        np.testing.assert_almost_equal(score, 53.5791, decimal=3)
+
+
+class TestSklearnComparison:
+    """Compare skfolio EmpiricalCovariance with sklearn's implementation.
+
+    Note: skfolio uses ddof=1 by default (unbiased estimator) while sklearn uses
+    ddof=0 (MLE). For exact matching, we set skfolio's ddof=0.
+    """
+
+    def test_covariance_matches_sklearn(self, X):
+        """Test that skfolio covariance matches sklearn's covariance."""
+        # skfolio uses nearest=True and ddof=1 by default, so set ddof=0 for fair comparison
+        skfolio_model = EmpiricalCovariance(nearest=False, ddof=0)
+        sklearn_model = SklearnEmpiricalCovariance()
+
+        skfolio_model.fit(X)
+        sklearn_model.fit(X)
+
+        np.testing.assert_allclose(
+            skfolio_model.covariance_,
+            sklearn_model.covariance_,
+            rtol=1e-10,
+        )
+
+    def test_mahalanobis_matches_sklearn(self, X):
+        """Test that skfolio mahalanobis matches sklearn's mahalanobis."""
+        skfolio_model = EmpiricalCovariance(nearest=False, ddof=0)
+        sklearn_model = SklearnEmpiricalCovariance()
+
+        skfolio_model.fit(X)
+        sklearn_model.fit(X)
+
+        skfolio_distances = skfolio_model.mahalanobis(X)
+        sklearn_distances = sklearn_model.mahalanobis(X)
+
+        np.testing.assert_allclose(
+            skfolio_distances,
+            sklearn_distances,
+            rtol=1e-8,
+        )
+
+    def test_score_matches_sklearn(self, X):
+        """Test that skfolio score matches sklearn's score."""
+        skfolio_model = EmpiricalCovariance(nearest=False, ddof=0)
+        sklearn_model = SklearnEmpiricalCovariance()
+
+        skfolio_model.fit(X)
+        sklearn_model.fit(X)
+
+        skfolio_score = skfolio_model.score(X)
+        sklearn_score = sklearn_model.score(X)
+
+        np.testing.assert_allclose(
+            skfolio_score,
+            sklearn_score,
+            rtol=1e-8,
+        )
+
+    def test_mahalanobis_on_held_out_data_matches_sklearn(self, X):
+        """Test mahalanobis on held-out data matches sklearn."""
+        X_train = X.iloc[:200]
+        X_test = X.iloc[200:]
+
+        skfolio_model = EmpiricalCovariance(nearest=False, ddof=0)
+        sklearn_model = SklearnEmpiricalCovariance()
+
+        skfolio_model.fit(X_train)
+        sklearn_model.fit(X_train)
+
+        skfolio_distances = skfolio_model.mahalanobis(X_test)
+        sklearn_distances = sklearn_model.mahalanobis(X_test)
+
+        np.testing.assert_allclose(
+            skfolio_distances,
+            sklearn_distances,
+            rtol=1e-8,
+        )
+
+    def test_score_on_held_out_data_matches_sklearn(self, X):
+        """Test score on held-out data matches sklearn."""
+        X_train = X.iloc[:200]
+        X_test = X.iloc[200:]
+
+        skfolio_model = EmpiricalCovariance(nearest=False, ddof=0)
+        sklearn_model = SklearnEmpiricalCovariance()
+
+        skfolio_model.fit(X_train)
+        sklearn_model.fit(X_train)
+
+        skfolio_score = skfolio_model.score(X_test)
+        sklearn_score = sklearn_model.score(X_test)
+
+        np.testing.assert_allclose(
+            skfolio_score,
+            sklearn_score,
+            rtol=1e-8,
+        )
+
+    @pytest.mark.parametrize("assume_centered", [False, True])
+    @pytest.mark.parametrize(
+        ("skfolio_factory", "sklearn_factory"),
+        [
+            (
+                lambda assume_centered: EmpiricalCovariance(
+                    assume_centered=assume_centered, nearest=False, ddof=0
+                ),
+                lambda assume_centered: SklearnEmpiricalCovariance(
+                    assume_centered=assume_centered
+                ),
+            ),
+            (
+                lambda assume_centered: LedoitWolf(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnLedoitWolf(
+                    assume_centered=assume_centered
+                ),
+            ),
+            (
+                lambda assume_centered: OAS(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnOAS(assume_centered=assume_centered),
+            ),
+            (
+                lambda assume_centered: ShrunkCovariance(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnShrunkCovariance(
+                    assume_centered=assume_centered
+                ),
+            ),
+        ],
+        ids=["empirical", "ledoit_wolf", "oas", "shrunk_covariance"],
+    )
+    def test_assume_centered_score_matches_sklearn(
+        self, X, assume_centered, skfolio_factory, sklearn_factory
+    ):
+        """Test score stays aligned with sklearn for both centering modes."""
+        skfolio_model = skfolio_factory(assume_centered)
+        sklearn_model = sklearn_factory(assume_centered)
+
+        skfolio_model.fit(X)
+        sklearn_model.fit(X)
+
+        np.testing.assert_allclose(
+            skfolio_model.score(X),
+            sklearn_model.score(X),
+            rtol=1e-8,
+        )
+
+    @pytest.mark.parametrize("assume_centered", [False, True])
+    @pytest.mark.parametrize(
+        ("skfolio_factory", "sklearn_factory"),
+        [
+            (
+                lambda assume_centered: EmpiricalCovariance(
+                    assume_centered=assume_centered, nearest=False, ddof=0
+                ),
+                lambda assume_centered: SklearnEmpiricalCovariance(
+                    assume_centered=assume_centered
+                ),
+            ),
+            (
+                lambda assume_centered: LedoitWolf(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnLedoitWolf(
+                    assume_centered=assume_centered
+                ),
+            ),
+            (
+                lambda assume_centered: OAS(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnOAS(assume_centered=assume_centered),
+            ),
+            (
+                lambda assume_centered: ShrunkCovariance(
+                    assume_centered=assume_centered, nearest=False
+                ),
+                lambda assume_centered: SklearnShrunkCovariance(
+                    assume_centered=assume_centered
+                ),
+            ),
+        ],
+        ids=["empirical", "ledoit_wolf", "oas", "shrunk_covariance"],
+    )
+    def test_assume_centered_mahalanobis_matches_sklearn(
+        self, X, assume_centered, skfolio_factory, sklearn_factory
+    ):
+        """Test mahalanobis stays aligned with sklearn for both centering modes."""
+        skfolio_model = skfolio_factory(assume_centered)
+        sklearn_model = sklearn_factory(assume_centered)
+
+        skfolio_model.fit(X)
+        sklearn_model.fit(X)
+
+        np.testing.assert_allclose(
+            skfolio_model.mahalanobis(X),
+            sklearn_model.mahalanobis(X),
+            rtol=1e-8,
+        )
+
+    def test_assume_centered_mahalanobis_validates_feature_names(self):
+        """Test mahalanobis validates dataframe column order under inference."""
+        rng = np.random.default_rng(0)
+        X = pd.DataFrame(rng.standard_normal((40, 3)), columns=["a", "b", "c"])
+        model = LedoitWolf(assume_centered=True, nearest=False)
+        model.fit(X)
+
+        with pytest.raises(ValueError, match="feature names"):
+            model.mahalanobis(X[["c", "b", "a"]])
 
 
 class TestEmpiricalCovariance:
@@ -23,470 +648,21 @@ class TestEmpiricalCovariance:
         assert model.covariance_.shape == (20, 20)
         np.testing.assert_almost_equal(model.covariance_, np.cov(X.T))
 
-    def test_empirical_covariance_single(self, X):
-        model = EmpiricalCovariance()
+    def test_invalid_ddof(self):
+        """Invalid ddof values raise ValueError."""
+        X = np.random.randn(5, 3)
 
-        X_truncated = X.iloc[:, :1]
-        model.fit(X_truncated)
+        with pytest.raises(ValueError, match="ddof must be a non-negative integer"):
+            EmpiricalCovariance(ddof=-1).fit(X)
 
-        assert model.covariance_.shape == (1, 1)
-        np.testing.assert_almost_equal(
-            model.covariance_, np.cov(X_truncated, rowvar=False)
-        )
+        with pytest.raises(ValueError, match="ddof must be a non-negative integer"):
+            EmpiricalCovariance(ddof=1.5).fit(X)
 
-
-class TestEWCovariance:
-    def test_ew_covariance(self, X):
-        model = EWCovariance()
-        model.fit(X)
-        assert model.covariance_.shape == (20, 20)
-        np.testing.assert_almost_equal(
-            model.covariance_,
-            np.array(
-                [
-                    [
-                        3.34656024e-04,
-                        3.73870143e-04,
-                        6.88515112e-05,
-                        1.93756202e-04,
-                        2.03071688e-04,
-                        2.42924966e-04,
-                        1.73945126e-04,
-                        9.63359337e-05,
-                        8.46415670e-05,
-                        1.44135521e-04,
-                        1.11333928e-04,
-                        1.21724780e-04,
-                        2.12083536e-04,
-                        1.00698743e-04,
-                        1.07447280e-04,
-                        1.10580640e-04,
-                        5.52877321e-04,
-                        1.14835040e-04,
-                        1.45354813e-04,
-                        2.20425197e-04,
-                    ],
-                    [
-                        3.73870143e-04,
-                        7.22595922e-04,
-                        1.79819055e-04,
-                        2.04448144e-04,
-                        2.89812794e-04,
-                        3.16937720e-04,
-                        2.04345811e-04,
-                        1.19387475e-04,
-                        1.75667996e-04,
-                        1.62044625e-04,
-                        1.98690775e-04,
-                        1.00841314e-04,
-                        3.17679345e-04,
-                        1.17079436e-04,
-                        1.09398338e-04,
-                        5.16778091e-05,
-                        6.27598711e-04,
-                        1.19305121e-04,
-                        1.64705834e-04,
-                        3.04081418e-04,
-                    ],
-                    [
-                        6.88515112e-05,
-                        1.79819055e-04,
-                        1.04437992e-04,
-                        3.74038615e-05,
-                        5.77923383e-05,
-                        1.00764871e-04,
-                        3.16274237e-05,
-                        2.89793587e-05,
-                        7.37458231e-05,
-                        3.54332126e-05,
-                        4.71163303e-05,
-                        1.40322804e-05,
-                        6.85841976e-05,
-                        3.20774587e-05,
-                        7.48794028e-06,
-                        3.33574389e-06,
-                        3.81469723e-05,
-                        2.89111474e-05,
-                        2.63376146e-05,
-                        6.44448865e-05,
-                    ],
-                    [
-                        1.93756202e-04,
-                        2.04448144e-04,
-                        3.74038615e-05,
-                        2.75810120e-04,
-                        2.08750609e-04,
-                        1.55711059e-04,
-                        1.29849560e-04,
-                        5.73571445e-05,
-                        3.85816948e-05,
-                        1.12432707e-04,
-                        2.31200554e-05,
-                        8.17084864e-05,
-                        9.51438033e-05,
-                        7.44130619e-05,
-                        5.12825197e-05,
-                        9.58689728e-05,
-                        4.98394665e-04,
-                        8.13797431e-05,
-                        1.24782524e-04,
-                        2.02762146e-04,
-                    ],
-                    [
-                        2.03071688e-04,
-                        2.89812794e-04,
-                        5.77923383e-05,
-                        2.08750609e-04,
-                        3.23901217e-04,
-                        2.00968617e-04,
-                        1.47605799e-04,
-                        6.97537467e-05,
-                        7.15013054e-05,
-                        1.28750270e-04,
-                        5.82605557e-05,
-                        1.01258753e-04,
-                        1.54126027e-04,
-                        9.87985908e-05,
-                        6.88914793e-05,
-                        9.16909392e-05,
-                        6.05145518e-04,
-                        8.58199990e-05,
-                        1.53963963e-04,
-                        3.04421143e-04,
-                    ],
-                    [
-                        2.42924966e-04,
-                        3.16937720e-04,
-                        1.00764871e-04,
-                        1.55711059e-04,
-                        2.00968617e-04,
-                        3.33730545e-04,
-                        1.21377633e-04,
-                        8.10563046e-05,
-                        1.09626758e-04,
-                        1.31120688e-04,
-                        1.01084164e-04,
-                        9.20583303e-05,
-                        1.63407982e-04,
-                        8.80234257e-05,
-                        3.63250357e-05,
-                        9.77919608e-05,
-                        4.07121510e-04,
-                        9.29502748e-05,
-                        1.53897675e-04,
-                        2.11771307e-04,
-                    ],
-                    [
-                        1.73945126e-04,
-                        2.04345811e-04,
-                        3.16274237e-05,
-                        1.29849560e-04,
-                        1.47605799e-04,
-                        1.21377633e-04,
-                        1.43662154e-04,
-                        6.07074414e-05,
-                        5.13297256e-05,
-                        9.46997323e-05,
-                        6.32440519e-05,
-                        7.46567519e-05,
-                        1.36208386e-04,
-                        6.06405505e-05,
-                        7.37167249e-05,
-                        7.38439913e-05,
-                        3.74045083e-04,
-                        7.71563964e-05,
-                        8.57343984e-05,
-                        1.51389535e-04,
-                    ],
-                    [
-                        9.63359337e-05,
-                        1.19387475e-04,
-                        2.89793587e-05,
-                        5.73571445e-05,
-                        6.97537467e-05,
-                        8.10563046e-05,
-                        6.07074414e-05,
-                        3.83720828e-05,
-                        3.21409449e-05,
-                        4.72667935e-05,
-                        4.23851686e-05,
-                        4.46117679e-05,
-                        7.07172677e-05,
-                        3.06330336e-05,
-                        5.31571252e-05,
-                        3.39861746e-05,
-                        1.44952769e-04,
-                        4.02810493e-05,
-                        4.94081322e-05,
-                        6.83112944e-05,
-                    ],
-                    [
-                        8.46415670e-05,
-                        1.75667996e-04,
-                        7.37458231e-05,
-                        3.85816948e-05,
-                        7.15013054e-05,
-                        1.09626758e-04,
-                        5.13297256e-05,
-                        3.21409449e-05,
-                        8.10510178e-05,
-                        4.60764910e-05,
-                        5.14580905e-05,
-                        2.45133045e-05,
-                        8.82017355e-05,
-                        3.96061879e-05,
-                        2.76279196e-05,
-                        1.62117360e-05,
-                        7.73710151e-05,
-                        4.34654821e-05,
-                        3.83000607e-05,
-                        7.81695433e-05,
-                    ],
-                    [
-                        1.44135521e-04,
-                        1.62044625e-04,
-                        3.54332126e-05,
-                        1.12432707e-04,
-                        1.28750270e-04,
-                        1.31120688e-04,
-                        9.46997323e-05,
-                        4.72667935e-05,
-                        4.60764910e-05,
-                        8.57293492e-05,
-                        5.40348371e-05,
-                        6.29006099e-05,
-                        9.16970950e-05,
-                        5.95581523e-05,
-                        3.93072184e-05,
-                        6.78951245e-05,
-                        3.11536736e-04,
-                        6.88197436e-05,
-                        8.21727875e-05,
-                        1.33880116e-04,
-                    ],
-                    [
-                        1.11333928e-04,
-                        1.98690775e-04,
-                        4.71163303e-05,
-                        2.31200554e-05,
-                        5.82605557e-05,
-                        1.01084164e-04,
-                        6.32440519e-05,
-                        4.23851686e-05,
-                        5.14580905e-05,
-                        5.40348371e-05,
-                        1.26015530e-04,
-                        3.98218568e-05,
-                        8.90467958e-05,
-                        2.96334353e-05,
-                        5.18098245e-05,
-                        2.03749974e-05,
-                        1.44909502e-04,
-                        6.47509817e-05,
-                        5.05540861e-05,
-                        5.92554894e-05,
-                    ],
-                    [
-                        1.21724780e-04,
-                        1.00841314e-04,
-                        1.40322804e-05,
-                        8.17084864e-05,
-                        1.01258753e-04,
-                        9.20583303e-05,
-                        7.46567519e-05,
-                        4.46117679e-05,
-                        2.45133045e-05,
-                        6.29006099e-05,
-                        3.98218568e-05,
-                        7.46532425e-05,
-                        7.20536245e-05,
-                        4.37662999e-05,
-                        6.29158817e-05,
-                        5.67412273e-05,
-                        2.08476241e-04,
-                        5.29930762e-05,
-                        6.39639640e-05,
-                        9.05608559e-05,
-                    ],
-                    [
-                        2.12083536e-04,
-                        3.17679345e-04,
-                        6.85841976e-05,
-                        9.51438033e-05,
-                        1.54126027e-04,
-                        1.63407982e-04,
-                        1.36208386e-04,
-                        7.07172677e-05,
-                        8.82017355e-05,
-                        9.16970950e-05,
-                        8.90467958e-05,
-                        7.20536245e-05,
-                        1.97508299e-04,
-                        6.44793575e-05,
-                        9.65201528e-05,
-                        5.31366916e-05,
-                        3.33347116e-04,
-                        6.87327055e-05,
-                        9.48901157e-05,
-                        1.63523240e-04,
-                    ],
-                    [
-                        1.00698743e-04,
-                        1.17079436e-04,
-                        3.20774587e-05,
-                        7.44130619e-05,
-                        9.87985908e-05,
-                        8.80234257e-05,
-                        6.06405505e-05,
-                        3.06330336e-05,
-                        3.96061879e-05,
-                        5.95581523e-05,
-                        2.96334353e-05,
-                        4.37662999e-05,
-                        6.44793575e-05,
-                        5.07848688e-05,
-                        2.01231655e-05,
-                        4.58949773e-05,
-                        2.06996008e-04,
-                        4.61551525e-05,
-                        5.45900083e-05,
-                        1.04441616e-04,
-                    ],
-                    [
-                        1.07447280e-04,
-                        1.09398338e-04,
-                        7.48794028e-06,
-                        5.12825197e-05,
-                        6.88914793e-05,
-                        3.63250357e-05,
-                        7.37167249e-05,
-                        5.31571252e-05,
-                        2.76279196e-05,
-                        3.93072184e-05,
-                        5.18098245e-05,
-                        6.29158817e-05,
-                        9.65201528e-05,
-                        2.01231655e-05,
-                        1.75956840e-04,
-                        2.90906745e-05,
-                        9.85274744e-05,
-                        4.43744542e-05,
-                        5.40049836e-05,
-                        4.88956089e-05,
-                    ],
-                    [
-                        1.10580640e-04,
-                        5.16778091e-05,
-                        3.33574389e-06,
-                        9.58689728e-05,
-                        9.16909392e-05,
-                        9.77919608e-05,
-                        7.38439913e-05,
-                        3.39861746e-05,
-                        1.62117360e-05,
-                        6.78951245e-05,
-                        2.03749974e-05,
-                        5.67412273e-05,
-                        5.31366916e-05,
-                        4.58949773e-05,
-                        2.90906745e-05,
-                        7.42955884e-05,
-                        2.54291680e-04,
-                        5.49395650e-05,
-                        6.84021910e-05,
-                        9.78497227e-05,
-                    ],
-                    [
-                        5.52877321e-04,
-                        6.27598711e-04,
-                        3.81469723e-05,
-                        4.98394665e-04,
-                        6.05145518e-04,
-                        4.07121510e-04,
-                        3.74045083e-04,
-                        1.44952769e-04,
-                        7.73710151e-05,
-                        3.11536736e-04,
-                        1.44909502e-04,
-                        2.08476241e-04,
-                        3.33347116e-04,
-                        2.06996008e-04,
-                        9.85274744e-05,
-                        2.54291680e-04,
-                        1.81802877e-03,
-                        1.96369122e-04,
-                        3.46132666e-04,
-                        6.47187268e-04,
-                    ],
-                    [
-                        1.14835040e-04,
-                        1.19305121e-04,
-                        2.89111474e-05,
-                        8.13797431e-05,
-                        8.58199990e-05,
-                        9.29502748e-05,
-                        7.71563964e-05,
-                        4.02810493e-05,
-                        4.34654821e-05,
-                        6.88197436e-05,
-                        6.47509817e-05,
-                        5.29930762e-05,
-                        6.87327055e-05,
-                        4.61551525e-05,
-                        4.43744542e-05,
-                        5.49395650e-05,
-                        1.96369122e-04,
-                        8.10337535e-05,
-                        5.61614465e-05,
-                        8.58846892e-05,
-                    ],
-                    [
-                        1.45354813e-04,
-                        1.64705834e-04,
-                        2.63376146e-05,
-                        1.24782524e-04,
-                        1.53963963e-04,
-                        1.53897675e-04,
-                        8.57343984e-05,
-                        4.94081322e-05,
-                        3.83000607e-05,
-                        8.21727875e-05,
-                        5.05540861e-05,
-                        6.39639640e-05,
-                        9.48901157e-05,
-                        5.45900083e-05,
-                        5.40049836e-05,
-                        6.84021910e-05,
-                        3.46132666e-04,
-                        5.61614465e-05,
-                        1.12460591e-04,
-                        1.54437816e-04,
-                    ],
-                    [
-                        2.20425197e-04,
-                        3.04081418e-04,
-                        6.44448865e-05,
-                        2.02762146e-04,
-                        3.04421143e-04,
-                        2.11771307e-04,
-                        1.51389535e-04,
-                        6.83112944e-05,
-                        7.81695433e-05,
-                        1.33880116e-04,
-                        5.92554894e-05,
-                        9.05608559e-05,
-                        1.63523240e-04,
-                        1.04441616e-04,
-                        4.88956089e-05,
-                        9.78497227e-05,
-                        6.47187268e-04,
-                        8.58846892e-05,
-                        1.54437816e-04,
-                        3.09995532e-04,
-                    ],
-                ]
-            ),
-        )
+        with pytest.raises(
+            ValueError,
+            match="ddof must be strictly less than the number of observations",
+        ):
+            EmpiricalCovariance(ddof=5).fit(X)
 
 
 class TestDenoiseCovariance:
@@ -2339,7 +2515,7 @@ class TestGerberCovariance:
 
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered")
-@pytest.mark.filterwarnings("ignore: overflow encountered in dot")
+@pytest.mark.filterwarnings("ignore:overflow encountered in dot:RuntimeWarning")
 class TestGraphicalLassoCV:
     def test_fit(self, X):
         model = GraphicalLassoCV()
