@@ -1,0 +1,45 @@
+# Normalize text files in Git
+* text=auto
+
+# Source code and config: always LF
+*.py   text eol=lf
+*.pyi  text eol=lf
+*.pyx  text eol=lf
+*.pxd  text eol=lf
+*.toml text eol=lf
+*.cfg  text eol=lf
+*.ini  text eol=lf
+*.txt  text eol=lf
+*.md   text eol=lf
+*.rst  text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+*.sh   text eol=lf
+*.bash text eol=lf
+
+# Packaging / build / CI
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+Makefile text eol=lf
+*.mk text eol=lf
+*.github/** text eol=lf
+
+# Windows-specific scripts
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Common binary assets: no text normalization
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.whl  binary
+*.gz   binary
+*.zip  binary
+*.ttf  binary
+*.woff binary
+*.woff2 binary
