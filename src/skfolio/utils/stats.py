@@ -1,7 +1,7 @@
-"""Tools module."""
+"""Stats module."""
 
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -17,6 +17,7 @@ from enum import auto
 import cvxpy as cp
 import numpy as np
 import scipy.cluster.hierarchy as sch
+import scipy.linalg as sla
 import scipy.optimize as sco
 import scipy.sparse.linalg as scl
 import scipy.spatial.distance as scd
@@ -36,7 +37,11 @@ __all__ = [
     "corr_to_cov",
     "cov_nearest",
     "cov_to_corr",
+    "cs_rank",
+    "cs_rank_correlation",
+    "cs_weighted_correlation",
     "inverse_multiply",
+    "inverse_volatility_weights",
     "is_cholesky_dec",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
@@ -44,9 +49,17 @@ __all__ = [
     "n_bins_knuth",
     "rand_weights",
     "rand_weights_dirichlet",
+    "safe_cholesky",
     "sample_unique_subsets",
+    "squared_mahalanobis_dist",
+    "squared_standardized_euclidean_dist",
     "symmetric_step_up_matrix",
+    "symmetrize",
 ]
+
+_NUMERICAL_THRESHOLD = 1e-12
+_MAX_RIDGE_TRIES = 3
+_RIDGE_ESCALATION_FACTOR = 10.0
 
 
 class NBinsMethod(AutoEnum):
@@ -800,3 +813,461 @@ def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
         m += mj / n1
 
     return m
+
+
+def symmetrize(matrix: np.ndarray, where: np.ndarray | None = None) -> None:
+    r"""In-place symmetrization: :math:`M \leftarrow (M + M^T) / 2`.
+
+    When `where` is provided, only the sub-block indexed by the mask is
+    symmetrized, leaving the rest of the matrix untouched. This is useful for
+    matrices that contain NaN rows/columns where a full transpose would
+    propagate NaNs into the finite block.
+
+    Parameters
+    ----------
+    matrix : ndarray of shape (n, n)
+        Square matrix to symmetrize in-place.
+
+    where : ndarray of shape (n,) or None, default=None
+        Boolean mask indicating which rows/columns to include. If `None`,
+        the full matrix is symmetrized.
+    """
+    if where is None or np.all(where):
+        matrix[:] = 0.5 * (matrix + matrix.T)
+    elif np.any(where):
+        idx = np.where(where)[0]
+        ix = np.ix_(idx, idx)
+        matrix[ix] = 0.5 * (matrix[ix] + matrix[ix].T)
+
+
+def safe_cholesky(
+    covariance: np.ndarray,
+    ridge_scale: float = _NUMERICAL_THRESHOLD,
+    max_tries: int = _MAX_RIDGE_TRIES,
+) -> np.ndarray:
+    r"""Compute a Cholesky factor :math:`L` from covariance :math:`\Sigma`.
+
+    Fast path: try plain Cholesky on the input as-is.
+    Fallback: symmetrize and add ridge :math:`\lambda I` with escalation until SPD:
+
+    .. math:: \Sigma_{reg} = (\Sigma + \Sigma^T)/2 + \lambda I \approx L L^T
+
+    Parameters
+    ----------
+    covariance : ndarray of shape (n_assets, n_assets)
+        Covariance matrix :math:`\Sigma`.
+
+    ridge_scale : float, default=1e-12
+        Relative ridge size, as a fraction of the average absolute covariance
+        diagonal. If that scale is zero, a positive numerical floor is used.
+
+    max_tries : int, default=3
+        Maximum number of ridge escalations before raising an error.
+
+    Returns
+    -------
+    chol : ndarray of shape (n_assets, n_assets)
+        Lower triangular Cholesky factor :math:`L` such that
+        :math:`\Sigma \approx L L^T`.
+
+    Raises
+    ------
+    ValueError
+        If Cholesky decomposition fails after all retry attempts.
+    """
+    covariance = np.asarray(covariance)
+
+    # Fast path: try plain Cholesky on the raw covariance
+    try:
+        return sla.cholesky(covariance, lower=True, check_finite=False)
+    except sla.LinAlgError:
+        pass
+
+    # Symmetrize and apply ridge escalation
+    cov = 0.5 * (covariance + covariance.T)
+    base_diag_scale = float(np.mean(np.abs(np.diag(cov))))
+    if base_diag_scale > 0.0 and np.isfinite(base_diag_scale):
+        scale = base_diag_scale
+    else:
+        scale = max(float(np.max(np.abs(cov))), 1.0)
+    ridge = max(ridge_scale * scale, np.finfo(float).eps * scale)
+
+    for _ in range(max_tries):
+        cov_reg = cov.copy()
+        cov_reg[np.diag_indices_from(cov_reg)] += ridge
+        try:
+            return sla.cholesky(cov_reg, lower=True, check_finite=False)
+        except sla.LinAlgError:
+            ridge *= _RIDGE_ESCALATION_FACTOR
+
+    raise ValueError(
+        f"Cholesky failed after {max_tries} attempts; "
+        f"last ridge={ridge / _RIDGE_ESCALATION_FACTOR:.3e}."
+    )
+
+
+def squared_standardized_euclidean_dist(
+    returns: np.ndarray, covariance: np.ndarray
+) -> float:
+    r"""Squared standardized Euclidean distance.
+
+    .. math:: d^2 = \sum_i (r_i\,/\,\sigma_i)^2
+
+    This is the squared Mahalanobis distance using only the diagonal of the
+    covariance matrix (ignoring correlations).
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_assets,)
+        Asset return vector.
+
+    covariance : ndarray of shape (n_assets, n_assets)
+        Covariance matrix.
+
+    Returns
+    -------
+    float
+        Sum of squared standardized returns (non-negative).
+        Under correct calibration: :math:`\mathbb{E}[d^2] = n_{\text{assets}}`.
+    """
+    std = np.sqrt(np.maximum(np.diag(covariance), _NUMERICAL_THRESHOLD))
+    return float(np.sum((returns / std) ** 2))
+
+
+def _squared_mahalanobis_dist_from_cholesky(
+    X: np.ndarray, cholesky: np.ndarray, mean: np.ndarray | None = None
+) -> np.ndarray | float:
+    r"""Squared Mahalanobis distance from a pre-computed Cholesky factor.
+
+    .. math:: d^2 = (r - \mu)^\top \Sigma^{-1} (r - \mu)
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_observations, n_assets) or (n_assets,)
+        Price returns of the assets. If 1-D, treated as a single observation and a
+        scalar is returned.
+
+    cholesky : ndarray of shape (n_assets, n_assets)
+        Lower triangular Cholesky factor :math:`L` such that
+        :math:`\Sigma = L L^\top`.
+
+    mean : ndarray of shape (n_assets,), optional
+        Mean vector :math:`\mu` subtracted from each row.  If `None`, data
+        are assumed already centred.
+
+    Returns
+    -------
+    d2 : ndarray of shape (n_observations,) or float
+        Squared Mahalanobis distances (non-negative).
+    """
+    X = np.asarray(X)
+    is_1d = X.ndim == 1
+    X = np.atleast_2d(X)
+    _, n_assets = X.shape
+
+    if cholesky.shape != (n_assets, n_assets):
+        raise ValueError(
+            f"cholesky shape {cholesky.shape} is incompatible with "
+            f"returns shape {X.shape}."
+        )
+
+    if mean is not None:
+        mean = np.asarray(mean)
+        if mean.ndim != 1 or mean.shape[0] != n_assets:
+            raise ValueError(
+                f"mean must be 1D of length {n_assets}, got shape {mean.shape}."
+            )
+        X = X - mean
+
+    y = sla.solve_triangular(cholesky, X.T, lower=True, check_finite=False)
+    d2 = np.maximum(np.sum(y * y, axis=0), 0.0)
+
+    if is_1d:
+        return float(d2[0])
+    return d2
+
+
+def squared_mahalanobis_dist(
+    X: np.ndarray,
+    covariance: np.ndarray,
+    mean: np.ndarray | None = None,
+    ridge_scale: float = _NUMERICAL_THRESHOLD,
+    max_tries: int = _MAX_RIDGE_TRIES,
+) -> np.ndarray | float:
+    r"""Squared Mahalanobis distance via Cholesky decomposition.
+
+    .. math:: d^2 = (r - \mu)^\top \Sigma^{-1} (r - \mu)
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_observations, n_assets) or (n_assets,)
+        Price returns of the assets. If 1-D, treated as a single observation and a
+        scalar is returned.
+
+    covariance : ndarray of shape (n_assets, n_assets)
+        Covariance matrix :math:`\Sigma`.
+
+    mean : ndarray of shape (n_assets,), optional
+        Mean vector :math:`\mu` subtracted from each row.  If `None`, data
+        are assumed already centred.
+
+    ridge_scale : float, default=1e-12
+        Relative ridge size, as a fraction of the average covariance diagonal.
+
+    max_tries : int, default=3
+        Maximum number of ridge escalations before raising an error.
+
+    Returns
+    -------
+    d2 : ndarray of shape (n_observations,) or float
+        Squared Mahalanobis distances (non-negative).
+    """
+    chol = safe_cholesky(covariance, ridge_scale=ridge_scale, max_tries=max_tries)
+    return _squared_mahalanobis_dist_from_cholesky(X, cholesky=chol, mean=mean)
+
+
+def cs_weighted_correlation(
+    a: np.ndarray,
+    b: np.ndarray,
+    weights: np.ndarray | None = None,
+    axis: int = 0,
+    min_count: int = 3,
+    eps: float = 1e-12,
+) -> float | np.ndarray:
+    r"""Weighted cross-sectional Pearson correlation.
+
+    Computes the weighted Pearson correlation between *a* and *b* along `axis`.
+    All other dimensions are treated as independent batch dimensions over which the
+    computation is vectorized.
+
+    For vectors :math:`a` and :math:`b` with weights :math:`w`:
+
+    .. math::
+
+        \rho = \frac{
+            \sum_n w_n \,(a_n - \bar a)\,(b_n - \bar b)
+        }{
+            \sqrt{\sum_n w_n \,(a_n - \bar a)^2}\;
+            \sqrt{\sum_n w_n \,(b_n - \bar b)^2}
+        }
+
+    where :math:`\bar a = \sum_n w_n a_n / \sum_n w_n` (and likewise for :math:`\bar b`).
+
+    Parameters
+    ----------
+    a : ndarray
+        First array.
+
+    b : ndarray
+        Second array, broadcastable to the same shape as *a*.
+
+    weights : ndarray or None, default=None
+        Non-negative weights, broadcastable to *a* along `axis`.
+        `None` uses equal weights.
+
+    axis : int, default=0
+        The cross-sectional axis along which correlation is computed.
+
+    min_count : int, default=3
+        Minimum number of jointly finite observations along `axis`.
+        Slices with fewer valid pairs return `NaN`.
+
+    eps : float, default=1e-12
+        Denominator threshold below which `NaN` is returned to guard against
+        near-constant vectors.
+
+    Returns
+    -------
+    corr : float or ndarray
+        Scalar when inputs are 1D, otherwise an array with `axis`
+        removed.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    try:
+        shape = np.broadcast_shapes(a.shape, b.shape)
+    except ValueError:
+        raise ValueError(
+            f"`a` and `b` must be broadcastable, got shapes {a.shape} and {b.shape}."
+        ) from None
+
+    a = np.broadcast_to(a, shape)
+    b = np.broadcast_to(b, shape)
+    if axis < -a.ndim or axis >= a.ndim:
+        raise np.AxisError(axis, a.ndim)
+    axis = axis % a.ndim
+
+    valid = np.isfinite(a) & np.isfinite(b)
+    n_valid = valid.sum(axis=axis)
+
+    if weights is not None:
+        w = np.asarray(weights, dtype=float)
+        if w.ndim == 1:
+            if w.shape[0] != shape[axis]:
+                raise ValueError(
+                    f"`weights` length must match the size of `axis`, got "
+                    f"{w.shape[0]} and {shape[axis]}."
+                )
+            w_shape = [1] * a.ndim
+            w_shape[axis] = shape[axis]
+            w = w.reshape(w_shape)
+        else:
+            while w.ndim < a.ndim:
+                w = w[..., np.newaxis]
+        w = np.broadcast_to(w, shape).copy()
+        w[~valid] = 0.0
+        w_sum = w.sum(axis=axis)
+    else:
+        w_sum = n_valid.astype(float)
+
+    a = a.copy()
+    a[~valid] = 0.0
+    b = b.copy()
+    b[~valid] = 0.0
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        if weights is not None:
+            a_mean = (w * a).sum(axis=axis) / w_sum
+            b_mean = (w * b).sum(axis=axis) / w_sum
+        else:
+            a_mean = a.sum(axis=axis) / w_sum
+            b_mean = b.sum(axis=axis) / w_sum
+
+    a -= np.expand_dims(a_mean, axis=axis)
+    b -= np.expand_dims(b_mean, axis=axis)
+    a[~valid] = 0.0
+    b[~valid] = 0.0
+
+    if weights is not None:
+        cov_ab = (w * a * b).sum(axis=axis)
+        var_a = (w * a**2).sum(axis=axis)
+        var_b = (w * b**2).sum(axis=axis)
+    else:
+        cov_ab = (a * b).sum(axis=axis)
+        var_a = (a**2).sum(axis=axis)
+        var_b = (b**2).sum(axis=axis)
+
+    denom = np.sqrt(var_a * var_b)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        corr = np.where(denom > eps, cov_ab / denom, np.nan)
+
+    corr = np.where(n_valid >= min_count, corr, np.nan)
+
+    return float(corr) if corr.ndim == 0 else corr
+
+
+def cs_rank(a: np.ndarray, axis: int = 0) -> np.ndarray:
+    """Cross-sectional rank along an axis.
+
+    Ranks are 1-based. `NaN` values remain `NaN` and are excluded from the ranking
+    (i.e. only finite values receive ranks).
+
+    Parameters
+    ----------
+    a : ndarray
+        Input array.
+
+    axis : int, default=0
+        Axis along which to rank.
+
+    Returns
+    -------
+    ranks : ndarray
+        Same shape as *a*, dtype `float64`.
+    """
+    a = np.asarray(a, dtype=float)
+    valid = np.isfinite(a)
+    a_filled = np.where(valid, a, np.inf)
+    order = np.argsort(np.argsort(a_filled, axis=axis), axis=axis)
+    ranks = order.astype(float) + 1.0
+    ranks[~valid] = np.nan
+    return ranks
+
+
+def cs_rank_correlation(
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: int = 0,
+    min_count: int = 3,
+    eps: float = 1e-12,
+) -> float | np.ndarray:
+    r"""Cross-sectional Spearman rank correlation.
+
+    Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
+    then computes their Pearson correlation via :func:`cs_weighted_correlation`
+    (unweighted).
+
+    Parameters
+    ----------
+    a : ndarray
+        First array.
+
+    b : ndarray
+        Second array, same shape as *a*.
+
+    axis : int, default=0
+        The cross-sectional axis along which correlation is computed.
+
+    min_count : int, default=3
+        Minimum number of jointly finite observations along `axis`.
+
+    eps : float, default=1e-12
+        Denominator threshold below which `NaN` is returned.
+
+    Returns
+    -------
+    corr : float or ndarray
+        Scalar when inputs are 1D, otherwise an array with `axis`
+        removed.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    try:
+        shape = np.broadcast_shapes(a.shape, b.shape)
+    except ValueError:
+        raise ValueError(
+            f"`a` and `b` must be broadcastable, got shapes {a.shape} and {b.shape}."
+        ) from None
+
+    a = np.broadcast_to(a, shape)
+    b = np.broadcast_to(b, shape)
+    valid = np.isfinite(a) & np.isfinite(b)
+
+    if np.all(valid):
+        a_rank = cs_rank(a, axis=axis)
+        b_rank = cs_rank(b, axis=axis)
+    else:
+        a_rank = cs_rank(np.where(valid, a, np.nan), axis=axis)
+        b_rank = cs_rank(np.where(valid, b, np.nan), axis=axis)
+
+    return cs_weighted_correlation(
+        a_rank,
+        b_rank,
+        axis=axis,
+        min_count=min_count,
+        eps=eps,
+    )
+
+
+def inverse_volatility_weights(covariance: np.ndarray) -> np.ndarray:
+    r"""Inverse-volatility portfolio weights from a covariance matrix.
+
+    Computes weights proportional to the inverse standard deviation:
+    :math:`w_i \propto 1/\sigma_i`, normalized to sum to 1.
+
+    Parameters
+    ----------
+    covariance : ndarray of shape (n, n)
+        Covariance matrix.
+
+    Returns
+    -------
+    w : ndarray of shape (n,)
+        Normalized weights summing to 1.
+    """
+    std = np.sqrt(np.maximum(np.diag(covariance), _NUMERICAL_THRESHOLD))
+    w = 1.0 / std
+    return w / w.sum()

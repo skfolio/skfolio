@@ -1,6 +1,6 @@
 """Tools module."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <delatte.hugo@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -11,7 +11,7 @@ import warnings
 from collections.abc import Callable, Iterator
 from enum import Enum
 from functools import wraps
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -22,6 +22,7 @@ import sklearn.base as skb
 
 __all__ = [
     "AutoEnum",
+    "apply_window_size",
     "args_names",
     "bisection",
     "cache_method",
@@ -33,6 +34,7 @@ __all__ = [
     "fit_single_estimator",
     "format_measure",
     "get_feature_names",
+    "half_life_to_decay_factor",
     "input_to_array",
     "optimal_rounding_decimals",
     "safe_indexing",
@@ -145,7 +147,10 @@ def _make_indexable(iterable):
 
 
 def _check_method_params(
-    X: npt.ArrayLike, params: dict, indices: np.ndarray = None, axis: int = 0
+    X: npt.ArrayLike,
+    params: dict,
+    indices: np.ndarray | slice | None = None,
+    axis: int = 0,
 ):
     """Check and validate the parameters passed to a specific
     method like `fit`.
@@ -158,8 +163,9 @@ def _check_method_params(
     params : dict
         Dictionary containing the parameters passed to the method.
 
-    indices : ndarray of shape (n_samples,), default=None
-        Indices to be selected if the parameter has the same size as `X`.
+    indices : ndarray, slice, or None, default=None
+        Indices or slice to be selected if the parameter has the same size
+        as `X`.
 
     axis : int, default=0
         The axis along which `X` will be sub-sampled. `axis=0` will select
@@ -188,7 +194,9 @@ def _check_method_params(
 
 
 def safe_indexing(
-    X: npt.ArrayLike | pd.DataFrame, indices: npt.ArrayLike | None, axis: int = 0
+    X: npt.ArrayLike | pd.DataFrame,
+    indices: npt.ArrayLike | slice | None,
+    axis: int = 0,
 ):
     """Return rows, items or columns of X using indices.
 
@@ -197,9 +205,10 @@ def safe_indexing(
     X : array-like
         Data from which to sample rows.
 
-    indices : array-like, optional
-        Indices of rows or columns.
-        The default (`None`) is to select the entire data.
+    indices : array-like, slice, or None
+        Indices, slice, or None. When ``None``, the entire data is returned.
+        When a ``slice``, standard Python slicing is used (zero-copy for
+        NumPy arrays and :class:`~skfolio.containers.AssetPanel`).
 
     axis : int, default=0
         The axis along which `X` will be sub-sampled. `axis=0` will select
@@ -212,6 +221,10 @@ def safe_indexing(
     """
     if indices is None:
         return X
+    if isinstance(indices, slice):
+        if axis == 0:
+            return X[indices]
+        return X[:, indices]
     if hasattr(X, "iloc"):
         return X.take(indices, axis=axis)
     if axis == 0:
@@ -222,7 +235,7 @@ def safe_indexing(
 def safe_split(
     X: npt.ArrayLike,
     y: npt.ArrayLike | None = None,
-    indices: np.ndarray | None = None,
+    indices: np.ndarray | slice | None = None,
     axis: int = 0,
 ):
     """Create subset of dataset.
@@ -326,7 +339,7 @@ def args_names(func: object) -> list[str]:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None,
+    estimator: skb.BaseEstimator | None | Literal["passthrough"],
     default: skb.BaseEstimator | None,
     check_type: Any,
 ):
@@ -356,6 +369,38 @@ def check_estimator(
     return sk.clone(estimator)
 
 
+def _validate_mask(
+    X: np.ndarray,
+    mask: npt.ArrayLike | None,
+    name: str,
+) -> np.ndarray | None:
+    """Validate a boolean mask aligned with `X`.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_observations, n_assets)
+        Reference data array.
+
+    mask : array-like of shape (n_observations, n_assets) or None
+        User-provided mask.
+
+    name : str
+        Mask name used in error messages.
+
+    Returns
+    -------
+    mask : ndarray of shape (n_observations, n_assets) or None
+        Validated boolean mask, or None if no mask was provided.
+    """
+    if mask is None:
+        return None
+
+    mask = np.asarray(mask, dtype=bool)
+    if mask.shape != X.shape:
+        raise ValueError(f"{name} shape {mask.shape} does not match X shape {X.shape}.")
+    return mask
+
+
 def input_to_array(
     items: dict | npt.ArrayLike,
     n_assets: int,
@@ -363,9 +408,16 @@ def input_to_array(
     dim: int,
     assets_names: np.ndarray | None,
     name: str,
+    investable_mask: np.ndarray | None = None,
 ) -> np.ndarray:
     """Convert a collection of items (array-like or dictionary) into
     a numpy array and verify its shape.
+
+    When `investable_mask` is provided, dictionary inputs are resolved against
+    the full `assets_names` and then subsetted, while array inputs sized to the
+    full universe are sliced down to the investable assets.  This allows callers
+    to pass user-facing parameters (keyed by asset name or sized for the full
+    universe) and transparently obtain arrays sized for the investable subset.
 
     Parameters
     ----------
@@ -373,8 +425,8 @@ def input_to_array(
         Items to verify and convert to array.
 
     n_assets : int
-        Expected number of assets.
-        Used to verify the shape of the converted array.
+        Expected number of assets in the **output** array (i.e. the investable
+        count when `investable_mask` is provided).
 
     fill_value : Any
         When `items` is a dictionary, elements that are not in `asset_names` are filled
@@ -385,10 +437,17 @@ def input_to_array(
         Possible values are `1` or `2`.
 
     assets_names : ndarray, optional
-        Asset names used when `items` is a dictionary.
+        Asset names used when `items` is a dictionary.  When `investable_mask`
+        is provided, this must contain the **full-universe** names.
 
     name : str
         Name of the items used for error messages.
+
+    investable_mask : ndarray of shape (n_full_assets,), optional
+        Boolean mask selecting investable assets from the full universe.
+        When provided, dictionary inputs are first resolved against the full
+        universe then sliced, and array-like inputs sized to the full universe
+        are sliced along the last axis.
 
     Returns
     -------
@@ -403,12 +462,13 @@ def input_to_array(
                 f"If `{name}` is provided as a dictionary, you must input `X` as a"
                 " DataFrame with assets names in columns"
             )
+        full_names = assets_names
         if dim == 1:
-            arr = np.array([items.get(asset, fill_value) for asset in assets_names])
+            arr = np.array([items.get(asset, fill_value) for asset in full_names])
         else:
             # add assets and convert dict to ordered array
             arr = {}
-            for asset in assets_names:
+            for asset in full_names:
                 elem = items.get(asset)
                 if elem is None:
                     elem = [asset]
@@ -418,13 +478,14 @@ def input_to_array(
                     elem = [asset, *elem]
                 arr[asset] = elem
             arr = (
-                pd.DataFrame.from_dict(arr, orient="index")
-                .loc[assets_names]
-                .to_numpy()
-                .T
+                pd.DataFrame.from_dict(arr, orient="index").loc[full_names].to_numpy().T
             )
+        if investable_mask is not None:
+            arr = arr[..., investable_mask]
     else:
         arr = np.asarray(items)
+        if investable_mask is not None and arr.shape[-1] == len(investable_mask):
+            arr = arr[..., investable_mask]
 
     if arr.ndim != dim:
         raise ValueError(f"`{name}` must be a {dim}D array, got a {arr.ndim}D array")
@@ -579,10 +640,11 @@ def fit_single_estimator(
     X: npt.ArrayLike,
     y: npt.ArrayLike | None,
     fit_params: dict,
-    indices: np.ndarray | None = None,
+    indices: np.ndarray | slice | None = None,
     axis: int = 0,
+    method: str = "fit",
 ):
-    """Function used to fit an estimator within a job.
+    """Fit (or partial-fit) an estimator on a subset of the data.
 
     Parameters
     ----------
@@ -596,15 +658,18 @@ def fit_single_estimator(
         The target array if provided.
 
     fit_params : dict
-        Parameters that will be passed to `estimator.fit`.
+        Parameters that will be passed to the estimator method.
 
-    indices : ndarray of int, optional
-        Rows or columns to select from X and y.
+    indices : ndarray, slice, or None, default=None
+        Rows or columns to select from X, y, and fit_params.
         The default (`None`) is to select the entire data.
 
     axis : int, default=0
         The axis along which `X` will be sub-sampled. `axis=0` will select
         rows while `axis=1` will select columns.
+
+    method : str, default="fit"
+        Estimator method to call (e.g. ``"fit"`` or ``"partial_fit"``).
 
     Returns
     -------
@@ -615,7 +680,7 @@ def fit_single_estimator(
     fit_params = _check_method_params(X, params=fit_params, indices=indices, axis=axis)
 
     X, y = safe_split(X, y, indices=indices, axis=axis)
-    estimator.fit(X, y, **fit_params)
+    getattr(estimator, method)(X, y, **fit_params)
     return estimator
 
 
@@ -793,3 +858,91 @@ def get_feature_names(X):
     # Only feature names of all strings are supported
     if len(types) == 1 and types[0] == "str":
         return feature_names
+
+
+def half_life_to_decay_factor(half_life: float) -> float:
+    r"""Convert half-life to exponential decay factor.
+
+    The decay factor (:math:`\lambda`) determines how much weight is given to past
+    observations in exponentially weighted calculations. It is computed from the
+    half-life using:
+
+    .. math::
+
+        \lambda = 2^{-1/\text{half-life}}
+
+    Parameters
+    ----------
+    half_life : float
+        Half-life in number of observations. This is the number of observations
+        for the weight to decay to 50%. Must be positive.
+
+    Returns
+    -------
+    decay_factor : float
+        The exponential decay factor (:math:`\lambda`), satisfying
+        :math:`0 < \lambda < 1`.
+
+    Examples
+    --------
+    >>> half_life_to_decay_factor(40)
+    0.9828...
+    """
+    if half_life <= 0:
+        raise ValueError(f"half_life must be positive, got {half_life}")
+    return 2.0 ** (-1.0 / half_life)
+
+
+def apply_window_size(X: np.ndarray, window_size: int | None) -> np.ndarray:
+    """Return the last `window_size` observations from the array X.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Input array from which to extract the last observations.
+        Can be 1D or 2D.
+
+    window_size : int or None
+        Number of observations to keep from the end of X.
+        If None, returns X unchanged.
+
+    Returns
+    -------
+    X_windowed : ndarray
+        The last `window_size` rows of X. If `window_size` is None,
+        returns the original array unchanged.
+
+    Raises
+    ------
+    ValueError
+        If `window_size` is not a positive integer or cannot be converted to int.
+    ValueError
+        If `window_size` exceeds the number of observations in X.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]])
+    >>> apply_window_size(X, window_size=3)
+    array([[ 5,  6],
+           [ 7,  8],
+           [ 9, 10]])
+    """
+    if window_size is None:
+        return X
+
+    try:
+        window_size = int(window_size)
+    except (TypeError, ValueError):
+        raise ValueError(
+            "window_size must be an integer or convertible to int."
+        ) from None
+
+    if window_size <= 0:
+        raise ValueError("window_size must be a positive integer.")
+
+    n_observations = len(X)
+    if window_size >= n_observations:
+        return X
+
+    return X[-window_size:]

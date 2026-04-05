@@ -7,6 +7,8 @@
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy.typing as npt
 import sklearn.covariance as skc
 
@@ -119,7 +121,7 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
             block_size=block_size,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "LedoitWolf":
+    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> LedoitWolf:
         """Fit the Ledoit-Wolf shrunk covariance model to X.
 
         Parameters

@@ -12,6 +12,7 @@ import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.expected_returns._base import BaseMu
+from skfolio.utils.tools import apply_window_size
 
 
 class EmpiricalMu(BaseMu):
@@ -58,7 +59,6 @@ class EmpiricalMu(BaseMu):
             Fitted estimator.
         """
         X = skv.validate_data(self, X)
-        if self.window_size is not None:
-            X = X[-self.window_size :]
+        X = apply_window_size(X, window_size=self.window_size)
         self.mu_ = np.mean(X, axis=0)
         return self

@@ -41,6 +41,7 @@ from skfolio.utils.stats import (
     is_cholesky_dec,
     multiply_by_inverse,
     symmetric_step_up_matrix,
+    symmetrize,
 )
 from skfolio.utils.tools import bisection, check_estimator
 
@@ -799,5 +800,5 @@ def _schur_augmentation(
     r = np.eye(n_a) - gamma * multiply_by_inverse(b, d) @ m.T
     a_aug = inverse_multiply(r, a_aug)
     # make it symmetric
-    a_aug = (a_aug + a_aug.T) / 2.0
+    symmetrize(a_aug)
     return a_aug

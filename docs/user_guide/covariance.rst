@@ -18,6 +18,7 @@ assets returns and stores the covariance in its `covariance_` attribute.
 Available estimators are:
     * :class:`EmpiricalCovariance`
     * :class:`EWCovariance`
+    * :class:`RegimeAdjustedEWCovariance`
     * :class:`GerberCovariance`
     * :class:`DenoiseCovariance`
     * :class:`DetoneCovariance`
@@ -25,6 +26,14 @@ Available estimators are:
     * :class:`OAS`
     * :class:`ShrunkCovariance`
     * :class:`GraphicalLassoCV`
+    * :class:`ImpliedCovariance`
+
+For online learning and streaming workflows, :class:`EWCovariance` and
+:class:`RegimeAdjustedEWCovariance` support incremental updates with
+`partial_fit`. They also support NaN-aware updates with `active_mask`, which
+helps distinguish active assets with missing returns, for example on holidays,
+from structurally inactive assets such as pre-listing or post-delisting
+periods.
 
 **Example:**
 

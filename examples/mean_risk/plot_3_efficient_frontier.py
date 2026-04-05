@@ -4,7 +4,7 @@ Efficient Frontier
 ==================
 
 This tutorial uses the :class:`~skfolio.optimization.MeanRisk` optimization to find an
-ensemble of portfolios belonging to the Mean-Variance efficient frontier (pareto font).
+ensemble of portfolios belonging to the Mean-Variance efficient frontier (pareto front).
 """
 
 # %%

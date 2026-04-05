@@ -4,11 +4,13 @@ import numpy as np
 import pytest
 
 from skfolio.utils.tools import (
+    apply_window_size,
     args_names,
     bisection,
     deduplicate_names,
     default_asset_names,
     format_measure,
+    half_life_to_decay_factor,
     input_to_array,
     safe_indexing,
     safe_split,
@@ -224,3 +226,130 @@ def test_validate_input_list_raise():
         _ = validate_input_list(
             items, n_assets, assets_names=assets_names, name="test_assets"
         )
+
+
+class TestApplyWindowSize:
+    """Tests for apply_window_size function."""
+
+    def test_returns_last_n_observations_2d(self):
+        """Test that the function returns the last window_size rows for a 2D array."""
+        X = np.array([[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]])
+        result = apply_window_size(X, window_size=3)
+        expected = np.array([[5, 6], [7, 8], [9, 10]])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_returns_last_n_observations_1d(self):
+        """Test that the function returns the last window_size elements for a 1D array."""
+        X = np.array([1, 2, 3, 4, 5])
+        result = apply_window_size(X, window_size=2)
+        expected = np.array([4, 5])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_window_size_none_returns_full_array(self):
+        """Test that window_size=None returns the original array unchanged."""
+        X = np.array([[1, 2], [3, 4], [5, 6]])
+        result = apply_window_size(X, window_size=None)
+        np.testing.assert_array_equal(result, X)
+
+    def test_window_size_equals_length_returns_full_array(self):
+        """Test that window_size equal to array length returns the full array."""
+        X = np.array([[1, 2], [3, 4], [5, 6]])
+        result = apply_window_size(X, window_size=3)
+        np.testing.assert_array_equal(result, X)
+
+    def test_window_size_one_returns_last_row(self):
+        """Test that window_size=1 returns only the last row."""
+        X = np.array([[1, 2], [3, 4], [5, 6]])
+        result = apply_window_size(X, window_size=1)
+        expected = np.array([[5, 6]])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_window_size_float_converted_to_int(self):
+        """Test that a float window_size is converted to int."""
+        X = np.array([1, 2, 3, 4, 5])
+        result = apply_window_size(X, window_size=3.0)
+        expected = np.array([3, 4, 5])
+        np.testing.assert_array_equal(result, expected)
+
+    def test_window_size_larger_than_observations(self):
+        """Test that ValueError is raised when window_size exceeds array length."""
+        X = np.array([[1, 2], [3, 4]])
+        apply_window_size(X, window_size=5)
+
+    def test_raises_error_window_size_zero(self):
+        """Test that ValueError is raised when window_size is zero."""
+        X = np.array([1, 2, 3])
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            apply_window_size(X, window_size=0)
+
+    def test_raises_error_window_size_negative(self):
+        """Test that ValueError is raised when window_size is negative."""
+        X = np.array([1, 2, 3])
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            apply_window_size(X, window_size=-1)
+
+    def test_raises_error_window_size_invalid_type(self):
+        """Test that ValueError is raised when window_size cannot be converted to int."""
+        X = np.array([1, 2, 3])
+        with pytest.raises(ValueError, match="must be an integer or convertible"):
+            apply_window_size(X, window_size="invalid")
+
+    def test_raises_error_window_size_list(self):
+        """Test that ValueError is raised when window_size is a list."""
+        X = np.array([1, 2, 3])
+        with pytest.raises(ValueError, match="must be an integer or convertible"):
+            apply_window_size(X, window_size=[1, 2])
+
+
+class TestHalfLifeToDecayFactor:
+    """Tests for half_life_to_decay_factor function."""
+
+    def test_known_values(self):
+        """Test conversion with known half-life to decay factor values."""
+        # half_life = 40 -> decay_factor ≈ 0.9828
+        np.testing.assert_almost_equal(half_life_to_decay_factor(40), 0.9828, decimal=4)
+        # half_life = 23 -> decay_factor ≈ 0.9703
+        np.testing.assert_almost_equal(half_life_to_decay_factor(23), 0.9703, decimal=4)
+        # half_life = 11 -> decay_factor ≈ 0.9390
+        np.testing.assert_almost_equal(half_life_to_decay_factor(11), 0.9390, decimal=4)
+        # half_life = 6 -> decay_factor ≈ 0.8909
+        np.testing.assert_almost_equal(half_life_to_decay_factor(6), 0.8909, decimal=4)
+
+    def test_formula_correctness(self):
+        """Test that the formula λ = 2^(-1/half_life) is correctly implemented."""
+        for half_life in [1, 5, 10, 20, 50, 100]:
+            expected = 2.0 ** (-1.0 / half_life)
+            result = half_life_to_decay_factor(half_life)
+            np.testing.assert_almost_equal(result, expected)
+
+    def test_half_life_one_gives_half_decay(self):
+        """Test that half_life=1 gives decay_factor=0.5 (weight halves each period)."""
+        np.testing.assert_almost_equal(half_life_to_decay_factor(1), 0.5)
+
+    def test_large_half_life_approaches_one(self):
+        """Test that large half-life values give decay factors close to 1."""
+        result = half_life_to_decay_factor(1000)
+        assert 0.999 < result < 1.0
+
+    def test_small_half_life_approaches_zero(self):
+        """Test that small half-life values give decay factors closer to 0."""
+        result = half_life_to_decay_factor(0.1)
+        assert 0.0 < result < 0.1
+
+    def test_raises_error_zero_half_life(self):
+        """Test that ValueError is raised when half_life is zero."""
+        with pytest.raises(ValueError, match="must be positive"):
+            half_life_to_decay_factor(0)
+
+    def test_raises_error_negative_half_life(self):
+        """Test that ValueError is raised when half_life is negative."""
+        with pytest.raises(ValueError, match="must be positive"):
+            half_life_to_decay_factor(-10)
+
+    def test_inverse_relationship(self):
+        """Test that decay_factor from half_life can be inverted back."""
+        for half_life in [5, 10, 20, 40, 100]:
+            decay_factor = half_life_to_decay_factor(half_life)
+            # Inverse formula: half_life = -ln(2) / ln(decay_factor)
+            recovered_half_life = -np.log(2) / np.log(decay_factor)
+            np.testing.assert_almost_equal(recovered_half_life, half_life)

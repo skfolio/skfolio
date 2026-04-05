@@ -20,6 +20,12 @@ Available estimators are:
     * :class:`EquilibriumMu`
     * :class:`ShrunkMu`
 
+For online learning and streaming workflows, :class:`EWMu` supports
+incremental updates with `partial_fit`. It also supports NaN-aware updates with
+`active_mask`, which helps distinguish active assets with missing returns, for
+example on holidays, from structurally inactive assets such as pre-listing or
+post-delisting periods.
+
 **Example:**
 
 .. code-block:: python
