@@ -131,7 +131,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     This estimator also supports separate half life for variance and correlation.
     Lower half life for variance allows the model to adapt faster to volatility shifts,
     while higher half life for correlation enables more stable estimation of
-    co-movements, which typically require more data for reliable inference and reduce
+    co-movements, which typically require more data for reliable inference and reduces
     estimation noise. This choice also aligns with empirical evidence that volatility
     tends to mean-revert faster than correlation. Using a lower (more responsive) decay
     factor for variance can capture this behavior.

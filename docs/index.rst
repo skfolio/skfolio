@@ -724,6 +724,7 @@ We would like to thank all contributors to our direct dependencies, such as
     * `Microprediction <https://github.com/microprediction>`_ (Peter Cotton)
     * `Portfolio Optimization Book <https://portfoliooptimizationbook.com/>`_ (Daniel P. Palomar)
     * *The Elements of Quantitative Investing* (Giuseppe Paleologo)
+    * `quantresearch.org <https://quantresearch.org>`_ (Marcos López de Prado)
     * gautier.marti.ai (Gautier Marti)
 
 

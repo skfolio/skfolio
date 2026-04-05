@@ -276,9 +276,10 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         """Perform a sanity check on the covariance matrix by verifying that all
         finite diagonal elements are strictly positive.
 
-        NaN diagonal entries (e.g., from assets not yet active or still in
-        warm-up) are skipped. The goal is to early detect corrupted asset data
-        (with zero variance) that would lead to optimization errors.
+        NaN diagonal entries (e.g. from assets that are not yet active or still in a
+        warm-up period) are skipped. This check is intended to detect corrupted asset
+        data early (zero or negative variance entries) that can lead to optimization
+        errors.
         """
         diag = np.diag(covariance)
         finite_mask = np.isfinite(diag)
@@ -413,10 +414,12 @@ def _reduce_to_finite_active_block(covariance: np.ndarray) -> None:
     r"""Drop assets until the finite-diagonal set has a fully finite submatrix.
 
     Pairwise updates can leave :math:`\Sigma_{ii}` and :math:`\Sigma_{jj}` finite while
-    :math:`\Sigma_{ij}` stays NaN when no observation has both returns. Assets are
-    removed greedily by largest count of non-finite entries to other currently active
-    indices. On ties, the asset with the smallest global index is removed first. Each
-    removed asset gets a full NaN row and column.
+    :math:`\Sigma_{ij}` stays NaN when the two return series do not yet have enough
+    contemporaneous observations to estimate their covariance, especially when one or
+    both assets have only recently entered the universe. Assets are removed greedily by
+    largest count of non-finite entries to other currently active indices. On ties, the
+    asset with the smallest global index is removed first. Each removed asset gets a
+    full NaN row and column.
 
     Parameters
     ----------
