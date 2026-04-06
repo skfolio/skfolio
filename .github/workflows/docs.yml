@@ -47,7 +47,7 @@ jobs:
         run: uv run sphinx-build . _build
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Documentation Site Artifact
         uses: actions/upload-pages-artifact@v4
