@@ -55,13 +55,13 @@ def online_predict(
     params: dict | None = None,
     portfolio_params: dict | None = None,
 ) -> MultiPeriodPortfolio:
-    r"""Generate out-of-sample portfolios using online (incremental) learning.
+    r"""Generate out-of-sample portfolios using online learning.
 
     Walks forward through the data, updating the estimator incrementally via
     `partial_fit` and predicting on each subsequent test window. Unlike
     :func:`~skfolio.model_selection.cross_val_predict`, which clones the estimator for
     each fold, this function maintains a single stateful estimator that accumulates
-     knowledge over time.
+    knowledge over time.
 
     The algorithm:
 

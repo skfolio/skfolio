@@ -245,13 +245,13 @@ class EmpiricalPrior(BasePrior):
 
         # Transform log moments to linear if needed
         if self.is_log_normal:
-            mu = mu * self.investment_horizon
-            covariance = covariance * self.investment_horizon
+            mu *= self.investment_horizon
+            covariance *= self.investment_horizon
 
             # Convert to linear returns distribution
             mu = np.exp(mu + 0.5 * np.diag(covariance))
             covariance = np.outer(mu, mu) * (np.exp(covariance) - 1)
-            mu = mu - 1
+            mu -= 1
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.

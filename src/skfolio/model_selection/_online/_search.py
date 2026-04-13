@@ -392,7 +392,8 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         X : array-like of shape (n_observations, n_assets)
             Price returns.
 
-        y : ignored
+        y : Ignored
+            Present for scikit-learn API compatibility.
 
         Returns
         -------
@@ -636,8 +637,8 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     """Online randomized search on hyper parameters.
 
     Each sampled parameter combination is evaluated by running a full online
-    walk-forward pass. Unlike :class:`OnlineGridSearch`, not all parameter values are
-    tried out but a fixed number of parameter settings is sampled from the specified
+    walk-forward pass. Unlike :class:`OnlineGridSearch`, not all parameters are tried
+    out, but a fixed number of parameter settings are sampled from the specified
     distributions. The number of parameter settings that are tried is given by `n_iter`.
 
     If all parameters are presented as a list, sampling without replacement is

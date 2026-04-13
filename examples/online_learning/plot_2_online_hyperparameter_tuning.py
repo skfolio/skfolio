@@ -12,8 +12,8 @@ The online approach is equivalent to combining scikit-learn's
 (or :class:`~sklearn.model_selection.RandomizedSearchCV`) with
 :class:`~skfolio.model_selection.WalkForward` using `expand_train=True`, but instead of
 refitting every candidate from scratch at each split, it calls `partial_fit` to
-incrementally update the estimator, which is significantly faster for estimators that
-support it.
+incrementally update the estimator. This is significantly faster for estimators that
+support this method.
 """
 
 # %%

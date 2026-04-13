@@ -417,7 +417,7 @@ def portfolio_variance_qlike_loss(
     y=None,
     portfolio_weights: npt.ArrayLike | None = None,
 ) -> float:
-    r"""QLIKE loss for a projected portfolio variance forecast.
+    r"""QLIKE loss for a projected portfolio variance forecast [1]_.
 
     Let :math:`r_t` be the one-period realized return vector at time :math:`t`
     and :math:`w^\top r_t` the corresponding one-period portfolio return for
@@ -444,7 +444,7 @@ def portfolio_variance_qlike_loss(
 
     When multiple portfolios are provided (2D weights), the QLIKE is computed
     independently for each and the mean is returned. This lets one summary
-    score evaluate several portfolio directions at once [1]_.
+    score evaluate several portfolio directions at once.
 
     Parameters
     ----------
@@ -466,7 +466,8 @@ def portfolio_variance_qlike_loss(
     Returns
     -------
     float
-        Mean portfolio QLIKE loss. Lower values are better.
+        Mean portfolio QLIKE loss. Lower values are better; in expectation, the loss
+        is minimized by the true conditional portfolio variance forecast.
 
     See Also
     --------
@@ -478,9 +479,8 @@ def portfolio_variance_qlike_loss(
 
     References
     ----------
-    .. [1] Patton, A. J. (2011). "Volatility forecast comparison using
-        imperfect volatility proxies." Journal of Econometrics, 160(1),
-        246-256.
+    .. [1] "Volatility forecast comparison using imperfect volatility proxies"
+        Journal of Econometrics. Patton, A. J. (2011).
     """
     cov = _get_covariance(estimator)
     result = _prepare_active_subset(cov, X_test)
@@ -512,7 +512,7 @@ def exceedance_rate(
 
     The reference threshold assumes Gaussian standardized returns. In practice,
     the rate is sensitive not only to covariance misspecification but also to
-    heavy tails, regime shifts, and non-Gaussian standardized returns.  It is
+    heavy tails, regime shifts, and non-Gaussian standardized returns. It is
     best used as a comparative metric across estimators rather than as
     an absolute calibration test.
 
@@ -591,18 +591,13 @@ def qlike_loss(
     Returns
     -------
     float
-        Mean QLIKE loss. Lower values are better.
+        Mean QLIKE loss. Lower values are better; in expectation, the loss is minimized
+        by the true conditional variance forecast.
 
     See Also
     --------
     portfolio_variance_qlike_loss : Multivariate QLIKE loss projected onto
         portfolio weights.
-
-    References
-    ----------
-    .. [1] Patton, A. J. (2011). "Volatility forecast comparison using
-        imperfect volatility proxies." Journal of Econometrics, 160(1),
-        246-256.
     """
     returns = np.asarray(returns)
     forecast_variance = np.asarray(forecast_variance)

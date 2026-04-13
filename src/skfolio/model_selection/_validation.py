@@ -328,7 +328,7 @@ def _route_params(
 
     callee : str
         Estimator method that will receive the routed parameters. Use `"fit"` for batch
-        evaluation and `"partial_fit"` for online (incremental) evaluation.
+        evaluation and `"partial_fit"` for online evaluation.
 
     cv : cross-validator or None, default=None
         Cross-validation splitter. When provided, parameters are also routed to the
@@ -379,7 +379,7 @@ def _route_params(
                     f"{estimator.__class__.__name__}. Call"
                     f" `.{request_method}({{metadata}}=True)` on the estimator"
                     f" for each metadata in {unrequested_params} that you want"
-                    " to use and `metadata=False` for not using it. See the"
+                    " to use and `metadata=False` if you are not using it. See the"
                     " Metadata Routing User guide"
                     " <https://scikit-learn.org/stable/metadata_routing.html>"
                     " for more information."

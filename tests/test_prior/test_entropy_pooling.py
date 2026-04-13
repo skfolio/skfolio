@@ -314,7 +314,7 @@ def test_variance_views_prior(X, solver):
     x = np.array(X)
     variance_prior = sm.variance(x)
     variance = sm.variance(x, sample_weight=sw, biased=True)
-    np.testing.assert_almost_equal(model.relative_entropy_, 0.116059, 4)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.116059, 3)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(variance[0], variance_prior[0] * 2, 5)

@@ -142,7 +142,7 @@ comparison.plot_calibration(diagnostics=["bias"])
 # ==========
 # Let's now plot the QLIKE loss. It compares the forecast portfolio variance
 # with the realized sum of squared portfolio returns over the evaluation
-# window, so lower values indicate better portfolio variance forecasts.
+# window, with lower values indicating better portfolio variance forecasts.
 # Because STVU rescales the forecast toward realized risk, we generally
 # expect it to achieve a lower QLIKE.
 comparison.plot_qlike_loss()

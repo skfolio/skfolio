@@ -254,7 +254,7 @@ class CovarianceForecastEvaluation:
           :attr:`bias_statistic` and :meth:`bias_statistic_summary`.
 
         * For QLIKE loss, there is no fixed numeric target. Accordingly,
-        `mad_from_target` is NaN and `target` is `"lower is better"`.
+          `mad_from_target` is NaN and `target` is `"lower is better"`.
 
         Returns
         -------
@@ -500,7 +500,7 @@ class CovarianceForecastEvaluation:
 class CovarianceForecastComparison:
     r"""Side-by-side comparison of covariance forecast evaluations.
 
-    Aggregates multiple :class:`CovarianceForecastEvaluation` instances and  provides
+    Aggregates multiple :class:`CovarianceForecastEvaluation` instances and provides
     combined summary tables and overlay plots for comparing estimator performance.
 
     Parameters
@@ -565,8 +565,7 @@ class CovarianceForecastComparison:
 
         Returns a DataFrame with metrics as rows and a column-level
         MultiIndex `(estimator, stat)` where stat is one of `mean`,
-        `median`, `std`, `p5`, `p95`, `mad_from_target`,
-        `target`.
+        `median`, `std`, `p5`, `p95`, `mad_from_target`, `target`.
 
         Returns
         -------

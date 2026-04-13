@@ -251,6 +251,7 @@ class WalkForward(sks.BaseCrossValidator):
         *,
         expand_train: bool | None = None,
     ):
+        # TODO: expend_train is depreciated and replaced by expand_train, remove in next version
         if expand_train is not None and expend_train is not None:
             if expand_train != expend_train:
                 raise ValueError(
