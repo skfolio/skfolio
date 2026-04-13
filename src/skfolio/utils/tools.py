@@ -8,7 +8,7 @@
 # Grisel Licensed under BSD 3 clause.
 
 import warnings
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from enum import Enum
 from functools import wraps
 from typing import Any, Literal
@@ -19,9 +19,11 @@ import pandas as pd
 import scipy.sparse as sp
 import sklearn as sk
 import sklearn.base as skb
+from sklearn.utils import Bunch
 
 __all__ = [
     "AutoEnum",
+    "_call_estimator",
     "apply_window_size",
     "args_names",
     "bisection",
@@ -176,7 +178,7 @@ def _check_method_params(
     method_params_validated : dict
         Validated parameters. We ensure that the values support indexing.
     """
-    # noinspection PyUnresolvedReferences
+    # TODO don't raise, check scikit-learn
     n_observations = X.shape[0]
     method_params_validated = {}
     for param_key, param_value in params.items():
@@ -946,3 +948,79 @@ def apply_window_size(X: np.ndarray, window_size: int | None) -> np.ndarray:
         return X
 
     return X[-window_size:]
+
+
+def _call_estimator(
+    estimator: Any,
+    method: str,
+    X: npt.ArrayLike,
+    y: npt.ArrayLike | None = None,
+    *,
+    routed_params: Bunch | None = None,
+    extra_params: Mapping[str, Any] | None = None,
+) -> Any:
+    """Call an estimator method with routed and extra parameters.
+
+    Parameters
+    ----------
+    estimator : Any
+        Estimator exposing the method named by `method`.
+
+    method : str
+        Method name to call on `estimator`.
+
+    X : array-like
+        Input data forwarded as the first positional argument.
+
+    y : array-like, optional
+        Target data forwarded as the second positional argument.
+
+    routed_params : Bunch, optional
+        Processed metadata routing payload exposing an attribute named after
+        `method`. That attribute must be a mapping of keyword arguments to
+        forward to the estimator method.
+
+    extra_params : mapping, optional
+        Additional keyword arguments passed directly to the estimator method.
+        These parameters must not overlap with those coming from
+        `routed_params`.
+
+    Returns
+    -------
+    object
+        Output returned by the estimator method.
+
+    Raises
+    ------
+    TypeError
+        If `estimator` does not implement `method`.
+
+    ValueError
+        If the same keyword argument is provided both through metadata routing
+        and `extra_params`.
+    """
+    method_caller = getattr(estimator, method, None)
+    if method_caller is None or not callable(method_caller):
+        estimator_name = type(estimator).__name__
+        if method == "partial_fit":
+            raise TypeError(
+                f"{estimator_name} does not implement partial_fit. "
+                "This meta-estimator can only use partial_fit with "
+                "sub-estimators that support incremental learning. "
+                "Use a compatible estimator with partial_fit, or call fit instead."
+            )
+        raise TypeError(f"{estimator_name} does not implement {method!r}.")
+
+    routed: Mapping[str, Any] = (
+        {} if routed_params is None else getattr(routed_params, method)
+    )
+    extra_params = {} if extra_params is None else extra_params
+
+    overlap = routed.keys() & extra_params.keys()
+    if overlap:
+        raise ValueError(
+            f"Conflicting parameters for {method!r}: {sorted(overlap)} "
+            "were provided both through metadata routing and extra_params."
+        )
+
+    return method_caller(X, y, **routed, **extra_params)

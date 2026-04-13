@@ -9,6 +9,19 @@ Model Selection
 The Model Selection module extends `sklearn.model_selection` by adding additional
 methods tailored for portfolio selection.
 
+Online Learning
+***************
+
+In addition to fold-based cross-validation utilities,
+`skfolio.model_selection` provides stateful online utilities for estimators
+that support `partial_fit`. These utilities update a single estimator through
+time instead of fitting an independent clone on each split, which is
+particularly useful for exponentially weighted moments and portfolio optimizers
+built on top of them.
+
+See :ref:`online_learning` for the full workflow and the differences between
+online evaluation and standard cross-validation.
+
 .. _cross_validation:
 
 Cross-Validation Prediction

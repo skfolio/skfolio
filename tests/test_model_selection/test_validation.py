@@ -1,7 +1,9 @@
 """Test Validation module."""
 
 import numpy as np
+import pytest
 import sklearn.model_selection as sks
+import sklearn.utils as sku
 from sklearn import config_context
 from sklearn.model_selection import KFold
 from sklearn.pipeline import Pipeline
@@ -13,7 +15,10 @@ from skfolio.model_selection import (
     WalkForward,
     cross_val_predict,
 )
+from skfolio.model_selection import _validation as msv
+from skfolio.model_selection._validation import _route_params
 from skfolio.moments import (
+    EWCovariance,
     ImpliedCovariance,
 )
 from skfolio.optimization import InverseVolatility, MeanRisk, ObjectiveFunction
@@ -83,6 +88,54 @@ def test_meta_data_routing_cross_validation(X, implied_vol):
         cv = KFold()
 
         _ = cross_val_predict(model, X, params={"implied_vol": implied_vol}, cv=cv)
+
+
+def test_route_params_partial_fit_error_message(X):
+    active_mask = np.ones(X.shape, dtype=bool)
+
+    with config_context(enable_metadata_routing=True):
+        with pytest.raises(
+            Exception,
+            match="online_score",
+        ) as exc_info:
+            _route_params(
+                EWCovariance(),
+                params={"active_mask": active_mask},
+                owner="online_score",
+                callee="partial_fit",
+            )
+
+    message = str(exc_info.value)
+    assert "set_partial_fit_request" in message
+    assert "set_fit_request" not in message
+
+
+def test_route_params_raises_on_unexpected_estimator_payload(monkeypatch):
+    malformed = sku.Bunch(estimator=sku.Bunch(unexpected={"foo": "bar"}))
+
+    monkeypatch.setattr(msv, "_routing_enabled", lambda: True)
+    monkeypatch.setattr(msv.skm, "process_routing", lambda *args, **kwargs: malformed)
+
+    with pytest.raises(
+        RuntimeError,
+        match="unexpected estimator payload",
+    ):
+        _route_params(
+            MeanRisk(),
+            params={"foo": np.array([1.0])},
+            owner="cross_val_predict",
+            callee="fit",
+        )
+
+
+def test_cross_val_predict_non_portfolio_estimator_raises(X):
+    model = ImpliedCovariance()
+
+    with pytest.raises(
+        TypeError,
+        match=(r"skfolio's `cross_val_predict` only supports"),
+    ):
+        cross_val_predict(model, X, cv=KFold())
 
 
 def test_optim_with_previous_weights_walk_forward(X):
