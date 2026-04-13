@@ -2209,10 +2209,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def get_metadata_routing(self):
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            method_mapping=skm.MethodMapping()
+            .add(caller="fit", callee="fit")
+            .add(caller="partial_fit", callee="partial_fit"),
         )
         return router
 
@@ -2431,8 +2432,3 @@ def _solve(
             " information"
         )
         raise cp.SolverError(error) from None
-        # elif n_optimizations > 1:
-        #     warnings.warn(error, stacklevel=2)
-        #
-        # problem_values = None
-        # weights = np.full(w.shape, np.nan, dtype=float)

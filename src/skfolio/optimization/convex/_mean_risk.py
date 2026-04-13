@@ -23,9 +23,10 @@ from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
-from skfolio.utils.tools import args_names, check_estimator
+from skfolio.utils.tools import _call_estimator, args_names, check_estimator
 
 _NON_ANNUALIZED_RISK_MEASURES = [rm for rm in RiskMeasure if not rm.is_annualized]
+_FITTED_ATTR = "weights_"
 
 
 class MeanRisk(ConvexOptimization):
@@ -780,42 +781,6 @@ class MeanRisk(ConvexOptimization):
         self.max_ulcer_index = max_ulcer_index
         self.max_gini_mean_difference = max_gini_mean_difference
 
-    def _validation(self) -> None:
-        """Validate the input parameters."""
-        if not isinstance(self.risk_measure, RiskMeasure):
-            raise TypeError("risk_measure must be of type `RiskMeasure`")
-        if not isinstance(self.objective_function, ObjectiveFunction):
-            raise TypeError("objective_function must be of type `ObjectiveFunction`")
-        if self.efficient_frontier_size is not None:
-            if self.efficient_frontier_size <= 1:
-                raise ValueError(
-                    "`efficient_frontier_size` must be strictly greater than one"
-                )
-            if self.objective_function != ObjectiveFunction.MINIMIZE_RISK:
-                raise ValueError(
-                    "`efficient_frontier_size` must be used only with "
-                    "`objective_function = ObjectiveFunction.MINIMIZE_RISK`"
-                )
-
-    def get_metadata_routing(self):
-        router = (
-            super()
-            .get_metadata_routing()
-            .add(
-                prior_estimator=self.prior_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-            .add(
-                mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-            .add(
-                covariance_uncertainty_set_estimator=self.covariance_uncertainty_set_estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-        )
-        return router
-
     def fit(
         self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
     ) -> MeanRisk:
@@ -830,26 +795,132 @@ class MeanRisk(ConvexOptimization):
             Price returns of factors or a target benchmark.
             The default is `None`.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : MeanRisk
            Fitted estimator.
         """
-        routed_params = skm.process_routing(self, "fit", **fit_params)
+        self._reset()
+        return self._fit(X, y, method="fit", **fit_params)
+
+    def partial_fit(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+    ) -> MeanRisk:
+        """Incrementally fit the Mean-Risk Optimization estimator.
+
+        This method allows for streaming/online updates. The prior estimator and any
+        configured uncertainty set estimators must implement `partial_fit` (e.g.,
+        priors using exponentially weighted moments or online factor models).
+
+        The optimization problem is solved fresh on each call using the updated
+        moments from the prior estimator.
+
+        .. note::
+
+            ``fallback`` and ``efficient_frontier_size`` are not supported with
+            ``partial_fit`` because they require cloning or fallback estimators
+            that would not have learned from previous observations.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+           Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : MeanRisk
+           Fitted estimator.
+        """
+        return self._fit(X, y, method="partial_fit", **fit_params)
+
+    def get_metadata_routing(self):
+        router = (
+            super()
+            .get_metadata_routing()
+            .add(
+                mu_uncertainty_set_estimator=self.mu_uncertainty_set_estimator,
+                method_mapping=skm.MethodMapping()
+                .add(caller="fit", callee="fit")
+                .add(caller="partial_fit", callee="partial_fit"),
+            )
+            .add(
+                covariance_uncertainty_set_estimator=self.covariance_uncertainty_set_estimator,
+                method_mapping=skm.MethodMapping()
+                .add(caller="fit", callee="fit")
+                .add(caller="partial_fit", callee="partial_fit"),
+            )
+        )
+        return router
+
+    def _fit(
+        self,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike | None = None,
+        method: str = "fit",
+        **fit_params,
+    ) -> MeanRisk:
+        """Core fitting logic shared by fit and partial_fit.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+           Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        method : str, default="fit"
+            Either "fit" or "partial_fit".
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+
+        Returns
+        -------
+        self : MeanRisk
+           Fitted estimator.
+        """
+        routed_params = skm.process_routing(self, method, **fit_params)
+
+        first_call = not hasattr(self, _FITTED_ATTR)
 
         # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
+        _ = skv.validate_data(self, X, skip_check_array=True, reset=first_call)
 
-        # Validate
-        self._validation()
-        # Used to avoid adding multiple times similar constrains linked to identical
-        # risk models
-        self.prior_estimator_ = check_estimator(
-            self.prior_estimator,
-            default=EmpiricalPrior(),
-            check_type=BasePrior,
+        if first_call:
+            self._validate_params(method=method)
+            self._initialize()
+
+        if method == "partial_fit":
+            self._validate_partial_fit_estimators()
+
+        # Fit or partial_fit the prior estimator
+        _call_estimator(
+            self.prior_estimator_,
+            method,
+            X,
+            y,
+            routed_params=routed_params.prior_estimator,
         )
-        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
         return_distribution = self.prior_estimator_.return_distribution_
         _, n_assets = return_distribution.returns.shape
 
@@ -929,14 +1000,15 @@ class MeanRisk(ConvexOptimization):
             factor = cp.Constant(1)
 
         # Mu uncertainty set
-        if self.mu_uncertainty_set_estimator is None:
+        if self.mu_uncertainty_set_estimator_ is None:
             mu_uncertainty_set = cp.Constant(0)
         else:
-            self.mu_uncertainty_set_estimator_ = sk.clone(
-                self.mu_uncertainty_set_estimator
-            )
-            self.mu_uncertainty_set_estimator_.fit(
-                X, y, **routed_params.mu_uncertainty_set_estimator.fit
+            _call_estimator(
+                self.mu_uncertainty_set_estimator_,
+                method,
+                X,
+                y,
+                routed_params=routed_params.mu_uncertainty_set_estimator,
             )
             mu_uncertainty_set = self._cvx_mu_uncertainty_set(
                 mu_uncertainty_set=self.mu_uncertainty_set_estimator_.uncertainty_set_,
@@ -993,7 +1065,8 @@ class MeanRisk(ConvexOptimization):
 
         parameters_values = []
 
-        # Efficient frontier
+        # Efficient frontier (only for fit, not partial_fit, already validated
+        # in _validate_params)
         if self.efficient_frontier_size is not None:
             # We find the lower and upper bounds of the expected returns.
             model: MeanRisk = sk.clone(self)
@@ -1039,7 +1112,7 @@ class MeanRisk(ConvexOptimization):
                 # Add covariance uncertainty set if provided
                 if (
                     r_m == RiskMeasure.VARIANCE
-                    and self.covariance_uncertainty_set_estimator is not None
+                    and self.covariance_uncertainty_set_estimator_ is not None
                 ):
                     risk_func = self._worst_case_variance_risk
                 else:
@@ -1063,13 +1136,12 @@ class MeanRisk(ConvexOptimization):
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
-                        self.covariance_uncertainty_set_estimator_ = sk.clone(
-                            self.covariance_uncertainty_set_estimator
-                        )
-                        self.covariance_uncertainty_set_estimator_.fit(
+                        _call_estimator(
+                            self.covariance_uncertainty_set_estimator_,
+                            method,
                             X,
                             y,
-                            **routed_params.covariance_uncertainty_set_estimator.fit,
+                            routed_params=routed_params.covariance_uncertainty_set_estimator,
                         )
                         args[arg_name] = (
                             self.covariance_uncertainty_set_estimator_.uncertainty_set_
@@ -1189,6 +1261,82 @@ class MeanRisk(ConvexOptimization):
         )
 
         return self
+
+    def _validate_params(self, method: str) -> None:
+        """Validate the input parameters."""
+        if not isinstance(self.risk_measure, RiskMeasure):
+            raise TypeError("risk_measure must be of type `RiskMeasure`")
+        if not isinstance(self.objective_function, ObjectiveFunction):
+            raise TypeError("objective_function must be of type `ObjectiveFunction`")
+        if self.efficient_frontier_size is not None:
+            if self.efficient_frontier_size <= 1:
+                raise ValueError(
+                    "`efficient_frontier_size` must be strictly greater than one"
+                )
+            if self.objective_function != ObjectiveFunction.MINIMIZE_RISK:
+                raise ValueError(
+                    "`efficient_frontier_size` must be used only with "
+                    "`objective_function = ObjectiveFunction.MINIMIZE_RISK`"
+                )
+
+        # Validate partial_fit support
+        if method == "partial_fit":
+            if self.efficient_frontier_size is not None:
+                raise ValueError(
+                    "`efficient_frontier_size` is not supported with `partial_fit`."
+                )
+
+            if self.fallback is not None:
+                raise ValueError(
+                    "`fallback` is not supported with `partial_fit` because fallback "
+                    "estimators would not have learned from previous observations."
+                )
+
+    def _validate_partial_fit_estimators(self) -> None:
+        """Validate incremental support for stateful sub-estimators."""
+        estimators = [
+            ("prior_estimator", self.prior_estimator_),
+            ("mu_uncertainty_set_estimator", self.mu_uncertainty_set_estimator_),
+            (
+                "covariance_uncertainty_set_estimator",
+                self.covariance_uncertainty_set_estimator_,
+            ),
+        ]
+
+        for name, estimator in estimators:
+            if estimator is None:
+                continue
+            method_caller = getattr(estimator, "partial_fit", None)
+            if method_caller is None or not callable(method_caller):
+                raise TypeError(
+                    "`MeanRisk.partial_fit` requires "
+                    f"`{name}={type(estimator).__name__}()` to implement "
+                    "`partial_fit`."
+                )
+
+    def _initialize(self):
+        self.prior_estimator_ = check_estimator(
+            self.prior_estimator,
+            default=EmpiricalPrior(),
+            check_type=BasePrior,
+        )
+
+        self.mu_uncertainty_set_estimator_ = check_estimator(
+            self.mu_uncertainty_set_estimator,
+            default=None,
+            check_type=BaseMuUncertaintySet,
+        )
+
+        self.covariance_uncertainty_set_estimator_ = check_estimator(
+            self.covariance_uncertainty_set_estimator,
+            default=None,
+            check_type=BaseCovarianceUncertaintySet,
+        )
+
+    def _reset(self) -> None:
+        """Reset fitted state."""
+        if hasattr(self, _FITTED_ATTR):
+            delattr(self, _FITTED_ATTR)
 
 
 def _optimal_homogenization_factor(mu: np.ndarray) -> float:
