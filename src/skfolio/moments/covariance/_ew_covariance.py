@@ -189,6 +189,12 @@ class EWCovariance(BaseCovariance):
        Names of features seen during `fit`. Defined only when `X`
        has feature names that are all strings.
 
+    See Also
+    --------
+    :ref:`sphx_glr_auto_examples_online_learning_plot_1_online_covariance_forecast_evaluation.py`
+        Online covariance forecast evaluation with `EWCovariance` and
+        `RegimeAdjustedEWCovariance`.
+
     Examples
     --------
     >>> import numpy as np

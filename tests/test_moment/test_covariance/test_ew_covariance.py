@@ -609,15 +609,30 @@ class TestInference:
         with pytest.raises(ValueError, match="feature names"):
             model.mahalanobis(X[columns[::-1]])
 
-    def test_mahalanobis_raises_on_nan_in_retained_subspace(self, X_synth):
-        """mahalanobis rejects NaN on assets retained by the fitted mask."""
+    def test_mahalanobis_handles_nan_in_retained_subspace(self, X_synth):
+        """mahalanobis computes on observed subspace when X_test has NaN."""
         model = EWCovariance(half_life=10, min_observations=1)
         model.fit(X_synth)
 
         X_test = X_synth.copy()
         X_test[0, 0] = np.nan
-        with pytest.raises(ValueError, match="inference subspace"):
-            model.mahalanobis(X_test)
+        X_test[1, [1, 3]] = np.nan
+
+        distances = model.mahalanobis(X_test)
+        assert distances.shape == (len(X_test),)
+        assert np.all(np.isfinite(distances))
+        assert np.all(distances >= 0)
+
+    def test_mahalanobis_all_nan_row_returns_nan(self, X_synth):
+        """mahalanobis returns NaN for rows with no finite retained observation."""
+        model = EWCovariance(half_life=10, min_observations=1)
+        model.fit(X_synth)
+
+        X_test = X_synth[:5].copy()
+        X_test[0, :] = np.nan
+        distances = model.mahalanobis(X_test)
+        assert np.isnan(distances[0])
+        assert np.all(np.isfinite(distances[1:]))
 
 
 # ---------------------------------------------------------------------------
