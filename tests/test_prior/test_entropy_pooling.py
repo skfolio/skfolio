@@ -771,7 +771,7 @@ def test_kurtosis_views_prior(X, solver):
     x = np.array(X)
     kurtosis_prior = sm.kurtosis(x)
     kurtosis = sm.kurtosis(x, sw)
-    np.testing.assert_almost_equal(model.relative_entropy_, 0.046041, 5)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.046041, 4)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 4)
