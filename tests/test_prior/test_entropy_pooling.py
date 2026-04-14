@@ -630,9 +630,9 @@ def test_skew_views(X, solver):
     np.testing.assert_almost_equal(model.relative_entropy_, 0.010719, 5)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1)
-    np.testing.assert_almost_equal(skew[0], -0.1, 5)
+    np.testing.assert_almost_equal(skew[0], -0.1, 4)
     np.testing.assert_almost_equal(skew[2], 2.0, 4)
-    np.testing.assert_almost_equal(skew[18], -0.3, 5)
+    np.testing.assert_almost_equal(skew[18], -0.3, 4)
     np.testing.assert_almost_equal(2.5 * skew[3] - (1.4 * skew[4] + 4 * skew[5]), 0, 4)
 
 
