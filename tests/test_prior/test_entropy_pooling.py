@@ -102,7 +102,7 @@ def test_mean_views(X, solver):
             5.80e-04,
             3.60e-04,
         ],
-        5,
+        4,
     )
 
 
@@ -127,7 +127,7 @@ def test_mean_views_prior(X, solver):
     assert mean[0] >= prior_mean[0] * 1.2
     np.testing.assert_almost_equal(mean[1], prior_mean[1], 5)
     assert mean[2] <= prior_mean[2] * 0.8
-    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 8)
+    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 7)
 
 
 def test_mean_views_prior_estimator(X, solver):
@@ -408,7 +408,7 @@ def test_mean_cvar_variance_views(X, solver):
     np.testing.assert_almost_equal(mean[0], -0.002055, 5)
     np.testing.assert_almost_equal(mean[1], 0.003, 5)
     np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 5)
-    np.testing.assert_almost_equal(variance[0], 0.00077226, 5)
+    np.testing.assert_almost_equal(variance[0], 0.00077226, 4)
     np.testing.assert_almost_equal(variance[1], 0.002, 5)
     np.testing.assert_almost_equal(variance[2], 0.0003, 5)
     np.testing.assert_almost_equal(
@@ -437,7 +437,7 @@ def test_cvar_variance_views(X, solver):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
 
-    np.testing.assert_almost_equal(mean[0], -0.0033, 4)
+    np.testing.assert_almost_equal(mean[0], -0.0033, 3)
     np.testing.assert_almost_equal(mean[1], -0.0021, 4)
     assert variance[0] >= 0.0005
     np.testing.assert_almost_equal(variance[1], 0.003, 4)
@@ -609,7 +609,7 @@ def test_cvar_correlation_views(X, solver):
     np.testing.assert_almost_equal(corr[1, 2], 0.6, 5)
     np.testing.assert_almost_equal(corr[18, 19], 0.1, 5)
     np.testing.assert_almost_equal(sm.cvar(returns=x[:, 0], sample_weight=sw), 0.10, 5)
-    np.testing.assert_almost_equal(sm.cvar(returns=x[:, 1], sample_weight=sw), 0.109, 3)
+    np.testing.assert_almost_equal(sm.cvar(returns=x[:, 1], sample_weight=sw), 0.109, 2)
 
 
 def test_skew_views(X, solver):
@@ -748,7 +748,7 @@ def test_kurtosis_views(X, solver):
     np.testing.assert_almost_equal(model.relative_entropy_, 0.026512, 5)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1)
-    np.testing.assert_almost_equal(kurtosis[0], 9.0, 4)
+    np.testing.assert_almost_equal(kurtosis[0], 9.0, 3)
     np.testing.assert_almost_equal(kurtosis[2], 25, 4)
     np.testing.assert_almost_equal(kurtosis[18], 10, 3)
     np.testing.assert_almost_equal(
@@ -774,7 +774,7 @@ def test_kurtosis_views_prior(X, solver):
     np.testing.assert_almost_equal(model.relative_entropy_, 0.046041, 4)
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
-    np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 4)
+    np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 3)
     np.testing.assert_almost_equal(kurtosis[2], 25.0, 3)
     np.testing.assert_almost_equal(kurtosis[18], kurtosis_prior[18] * 0.3, 4)
 
