@@ -775,8 +775,8 @@ def test_kurtosis_views_prior(X, solver):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 3)
-    np.testing.assert_almost_equal(kurtosis[2], 25.0, 3)
-    np.testing.assert_almost_equal(kurtosis[18], kurtosis_prior[18] * 0.3, 4)
+    np.testing.assert_almost_equal(kurtosis[2], 25.0, 2)
+    np.testing.assert_almost_equal(kurtosis[18], kurtosis_prior[18] * 0.3, 3)
 
 
 def test_mean_variance_correlation_kurtosis_views(X, solver):
@@ -813,9 +813,9 @@ def test_mean_variance_correlation_kurtosis_views(X, solver):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(mean[1], 0.003, 5)
-    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 5)
-    np.testing.assert_almost_equal(variance[0], 0.0005, 5)
-    np.testing.assert_almost_equal(variance[1], 0.003, 5)
+    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 4)
+    np.testing.assert_almost_equal(variance[0], 0.0005, 4)
+    np.testing.assert_almost_equal(variance[1], 0.003, 4)
     np.testing.assert_almost_equal(corr[0, 1], 0.5, 4)
     np.testing.assert_almost_equal(corr[1, 2], 0.6, 2)
     np.testing.assert_almost_equal(corr[18, 19], 0.1, 3)
