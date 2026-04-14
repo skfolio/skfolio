@@ -335,11 +335,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 ptf_kwargs[param] = getattr(self, param)
 
         # If 'name' is not provided in the portfolio arguments, we use the first
-        # 500 characters of the optimization estimator's name
         name = ptf_kwargs.pop("name", type(self).__name__)
 
-        # Add fallback chain
-        ptf_kwargs["fallback_chain"] = self.fallback_chain_
+        # Add fallback chain (partial_fit doesn't set fallback_chain_)
+        ptf_kwargs["fallback_chain"] = getattr(self, "fallback_chain_", None)
 
         # If weights are None and raise_on_failure is False, we return a FailedPortfolio
         if self.weights_ is None:

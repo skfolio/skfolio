@@ -14,7 +14,7 @@ from skfolio import (
     RiskMeasure,
 )
 from skfolio.model_selection import cross_val_predict
-from skfolio.moments import EmpiricalMu, ImpliedCovariance
+from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
     EqualWeighted,
     MeanRisk,
@@ -1906,3 +1906,41 @@ def test_target_weights_manual_calculation(X):
     np.testing.assert_almost_equal(
         manual_tracking_error, model.problem_values_["risk"], decimal=5
     )
+
+
+def _make_online_mean_risk(**kwargs):
+    return MeanRisk(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(half_life=40),
+            covariance_estimator=EWCovariance(half_life=40),
+        ),
+        **kwargs,
+    )
+
+
+class TestPartialFit:
+    def test_produces_valid_weights(self, X):
+        """partial_fit produces weights that sum to the budget."""
+        model = _make_online_mean_risk()
+        model.partial_fit(X)
+
+        assert model.weights_.shape == (X.shape[1],)
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+    def test_fit_then_partial_fit(self, X):
+        """fit followed by partial_fit updates the model."""
+        X_arr = np.asarray(X)
+        split = len(X_arr) // 2
+
+        model = _make_online_mean_risk()
+        model.fit(X_arr[:split])
+        weights_after_fit = model.weights_.copy()
+
+        model.partial_fit(X_arr[split:])
+        assert not np.array_equal(model.weights_, weights_after_fit)
+
+    def test_default_prior_raises(self, X):
+        """partial_fit raises when prior lacks partial_fit support."""
+        model = MeanRisk()
+        with pytest.raises(TypeError, match="partial_fit"):
+            model.partial_fit(np.asarray(X))

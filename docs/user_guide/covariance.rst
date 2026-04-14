@@ -34,6 +34,8 @@ For online learning and streaming workflows, :class:`EWCovariance` and
 helps distinguish active assets with missing returns, for example on holidays,
 from structurally inactive assets such as pre-listing or post-delisting
 periods.
+See :ref:`online_learning` for the full online workflow, including covariance
+forecast evaluation and online hyper-parameter tuning.
 
 **Example:**
 

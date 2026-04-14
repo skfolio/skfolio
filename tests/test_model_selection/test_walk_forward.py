@@ -353,7 +353,7 @@ def test_walk_forward_with_period(
         freq_offset=freq_offset,
         previous=previous,
         reduce_test=reduce_test,
-        expend_train=expend_train,
+        expand_train=expend_train,
         purged_size=purged_size,
     )
     assert_split_equal_dates(X_small.index, cv.split(X_small), expected)
@@ -443,7 +443,7 @@ def test_walk_forward_without_period():
     X = np.random.randn(12, 2)
 
     cv = WalkForward(
-        test_size=4, train_size=1, purged_size=1, reduce_test=True, expend_train=True
+        test_size=4, train_size=1, purged_size=1, reduce_test=True, expand_train=True
     )
     assert_split_equal(
         cv.split(X),
@@ -456,7 +456,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 3
 
     cv = WalkForward(
-        test_size=4, train_size=1, purged_size=1, reduce_test=False, expend_train=True
+        test_size=4, train_size=1, purged_size=1, reduce_test=False, expand_train=True
     )
     assert_split_equal(
         cv.split(X),
@@ -468,7 +468,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 2
 
     cv = WalkForward(
-        test_size=4, train_size=1, purged_size=1, reduce_test=True, expend_train=False
+        test_size=4, train_size=1, purged_size=1, reduce_test=True, expand_train=False
     )
     assert_split_equal(
         cv.split(X),
@@ -481,7 +481,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 3
 
     cv = WalkForward(
-        test_size=4, train_size=1, purged_size=1, reduce_test=False, expend_train=False
+        test_size=4, train_size=1, purged_size=1, reduce_test=False, expand_train=False
     )
     assert_split_equal(
         cv.split(X),
@@ -493,7 +493,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 2
 
     cv = WalkForward(
-        test_size=4, train_size=2, purged_size=1, reduce_test=True, expend_train=True
+        test_size=4, train_size=2, purged_size=1, reduce_test=True, expand_train=True
     )
     assert_split_equal(
         cv.split(X),
@@ -506,7 +506,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 3
 
     cv = WalkForward(
-        test_size=4, train_size=2, purged_size=0, reduce_test=True, expend_train=True
+        test_size=4, train_size=2, purged_size=0, reduce_test=True, expand_train=True
     )
     assert_split_equal(
         cv.split(X),
@@ -519,7 +519,7 @@ def test_walk_forward_without_period():
     assert cv.get_n_splits(X) == 3
 
     cv = WalkForward(
-        test_size=6, train_size=3, purged_size=0, reduce_test=True, expend_train=True
+        test_size=6, train_size=3, purged_size=0, reduce_test=True, expand_train=True
     )
     assert_split_equal(
         cv.split(X),
@@ -694,7 +694,7 @@ def test_cross_val_predict_and_grid_search(
         freq_offset=freq_offset,
         previous=previous,
         reduce_test=reduce_test,
-        expend_train=expend_train,
+        expand_train=expend_train,
         purged_size=purged_size,
     )
 
@@ -711,3 +711,21 @@ def test_cross_val_predict_and_grid_search(
     )
     gs.fit(X_medium)
     assert gs.best_estimator_
+
+
+def test_expend_train_deprecated_alias():
+    with pytest.warns(FutureWarning, match="expend_train"):
+        cv = WalkForward(test_size=2, train_size=3, expend_train=True)
+
+    split = list(cv.split(np.arange(8)[:, None]))
+    assert np.array_equal(split[0][0], np.array([0, 1, 2]))
+
+
+def test_conflicting_expand_train_arguments():
+    with pytest.raises(ValueError, match="must match"):
+        WalkForward(
+            test_size=2,
+            train_size=3,
+            expend_train=False,
+            expand_train=True,
+        )

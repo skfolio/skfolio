@@ -234,9 +234,12 @@ Available models
     * Walk Forward
     * Combinatorial Purged Cross-Validation
     * Multiple Randomized Cross-Validation
+    * Covariance Forecast Evaluation
+    * Online Predict and Online Score 
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
+    * Online Grid Search and Online Randomized Search
 
 * Risk Measures:
     * Variance

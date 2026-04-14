@@ -9,6 +9,7 @@
 # Grisel Licensed under BSD 3 clause.
 
 import datetime as dt
+import warnings
 from collections.abc import Iterator
 
 import numpy as np
@@ -96,12 +97,16 @@ class WalkForward(sks.BaseCrossValidator):
         or period end is not in the `DatetimeIndex`, the previous observation is used;
         otherwise, the next observation is used (default).
 
-    expend_train : bool, default=False
+    expand_train : bool, default=False
         If set to `True`, each subsequent training set after the first one will
         use all past observations.
         The default is `False`.
 
-    reduce_test : bool, default=False
+    expend_train : bool, optional
+        Deprecated alias for `expand_train`. If provided, a `FutureWarning`
+        is raised.
+
+        reduce_test : bool, default=False
         If set to `True`, the last train/test split will be returned even if the
         test set is partial (i.e., it contains fewer observations than `test_size`),
         otherwise, it will be ignored.
@@ -199,7 +204,7 @@ class WalkForward(sks.BaseCrossValidator):
     Fold 1:
       Train: index=[2 3 4]
       Test:  index=[5]
-    >>> cv = WalkForward(test_size=2, train_size=3, expend_train=True, reduce_test=True)
+    >>> cv = WalkForward(test_size=2, train_size=3, expand_train=True, reduce_test=True)
     >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
     ...     print(f"Fold {i}:")
     ...     print(f"  Train: index={train_index}")
@@ -240,16 +245,36 @@ class WalkForward(sks.BaseCrossValidator):
         freq: str | pd.offsets.BaseOffset | None = None,
         freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
         previous: bool = False,
-        expend_train: bool = False,
+        expend_train: bool | None = None,
         reduce_test: bool = False,
         purged_size: int = 0,
+        *,
+        expand_train: bool | None = None,
     ):
+        # TODO: expend_train is depreciated and replaced by expand_train, remove in next version
+        if expand_train is not None and expend_train is not None:
+            if expand_train != expend_train:
+                raise ValueError(
+                    "`expand_train` and `expend_train` must match when both are "
+                    "provided."
+                )
+        if expend_train is not None:
+            warnings.warn(
+                "`expend_train` is deprecated and will be removed in a future "
+                "release. Use `expand_train` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        if expand_train is None:
+            expand_train = False if expend_train is None else expend_train
+
         self.test_size = test_size
         self.train_size = train_size
         self.freq = freq
         self.freq_offset = freq_offset
         self.previous = previous
-        self.expend_train = expend_train
+        self.expand_train = expand_train
+        self.expend_train = expand_train
         self.reduce_test = reduce_test
         self.purged_size = purged_size
 
@@ -291,7 +316,7 @@ class WalkForward(sks.BaseCrossValidator):
                 train_size=self.train_size,
                 test_size=self.test_size,
                 purged_size=self.purged_size,
-                expend_train=self.expend_train,
+                expand_train=self.expand_train,
                 reduce_test=self.reduce_test,
             )
 
@@ -308,7 +333,7 @@ class WalkForward(sks.BaseCrossValidator):
                 freq_offset=self.freq_offset,
                 previous=self.previous,
                 purged_size=self.purged_size,
-                expend_train=self.expend_train,
+                expand_train=self.expand_train,
                 reduce_test=self.reduce_test,
                 ts_index=X.index,
             )
@@ -320,7 +345,7 @@ class WalkForward(sks.BaseCrossValidator):
             freq_offset=self.freq_offset,
             previous=self.previous,
             purged_size=self.purged_size,
-            expend_train=self.expend_train,
+            expand_train=self.expand_train,
             reduce_test=self.reduce_test,
             ts_index=X.index,
         )
@@ -397,9 +422,46 @@ def _split_without_period(
     train_size: int,
     test_size: int,
     purged_size: int,
-    expend_train: bool,
+    expand_train: bool,
     reduce_test: bool,
 ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+    """Generate walk-forward splits for index-based data.
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of observations in the dataset.
+
+    train_size : int
+        Number of observations in each rolling training window.
+
+    test_size : int
+        Number of observations in each test window.
+
+    purged_size : int
+        Number of observations removed between the training and test windows.
+
+    expand_train : bool
+        If `True`, training always starts at index 0. Otherwise, a rolling
+        training window of fixed length is used.
+
+    reduce_test : bool
+        If `True`, keep the final split even when the last test window is
+        shorter than `test_size`.
+
+    Yields
+    ------
+    train_indices : ndarray
+        Training indices for the current split.
+
+    test_indices : ndarray
+        Test indices for the current split.
+
+    Raises
+    ------
+    ValueError
+        If there are not enough observations for at least one split.
+    """
     if train_size + purged_size >= n_samples:
         raise ValueError(
             f"The sum of `train_size={train_size}` with `purged_size={purged_size}` "
@@ -415,7 +477,7 @@ def _split_without_period(
             return
         test_end = test_start + test_size
         train_end = test_start - purged_size
-        if expend_train:
+        if expand_train:
             train_start = 0
         else:
             train_start = train_end - train_size
@@ -440,10 +502,54 @@ def _split_from_period_without_train_offset(
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
-    expend_train: bool,
+    expand_train: bool,
     reduce_test: bool,
     ts_index,
 ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+    """Generate calendar-based splits with integer training periods.
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of observations in the dataset.
+
+    train_size : int
+        Number of calendar periods included in each training window.
+
+    test_size : int
+        Number of calendar periods included in each test window.
+
+    freq : str
+        Calendar frequency used to define rebalancing dates.
+
+    freq_offset : pandas DateOffset or datetime timedelta, optional
+        Offset applied to each rebalancing date.
+
+    previous : bool
+        If `True`, align missing dates to the previous observation. Otherwise,
+        use the next observation.
+
+    purged_size : int
+        Number of observations removed from the end of each training window.
+
+    expand_train : bool
+        If `True`, training always starts at index 0.
+
+    reduce_test : bool
+        If `True`, keep the final split even when the last test window is
+        partial.
+
+    ts_index : DatetimeIndex
+        Datetime index of the input data.
+
+    Yields
+    ------
+    train_indices : ndarray
+        Training indices for the current split.
+
+    test_indices : ndarray
+        Test indices for the current split.
+    """
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:
@@ -469,7 +575,7 @@ def _split_from_period_without_train_offset(
             test_indices = np.arange(
                 idx[i + train_size], idx[i + train_size + test_size]
             )
-        if expend_train:
+        if expand_train:
             train_start = 0
         else:
             train_start = idx[i]
@@ -487,10 +593,54 @@ def _split_from_period_with_train_offset(
     freq_offset: pd.offsets.BaseOffset | dt.timedelta | None,
     previous: bool,
     purged_size: int,
-    expend_train: bool,
+    expand_train: bool,
     reduce_test: bool,
     ts_index,
 ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+    """Generate calendar-based splits with date-offset training windows.
+
+    Parameters
+    ----------
+    n_samples : int
+        Number of observations in the dataset.
+
+    train_size : pandas DateOffset or datetime timedelta
+        Lookback offset used to determine the start of each training window.
+
+    test_size : int
+        Number of calendar periods included in each test window.
+
+    freq : str
+        Calendar frequency used to define rebalancing dates.
+
+    freq_offset : pandas DateOffset or datetime timedelta, optional
+        Offset applied to each rebalancing date.
+
+    previous : bool
+        If `True`, align missing dates to the previous observation. Otherwise,
+        use the next observation.
+
+    purged_size : int
+        Number of observations removed between train and test windows.
+
+    expand_train : bool
+        If `True`, training always starts at index 0.
+
+    reduce_test : bool
+        If `True`, keep the final split even when the last test window is
+        partial.
+
+    ts_index : DatetimeIndex
+        Datetime index of the input data.
+
+    Yields
+    ------
+    train_indices : ndarray
+        Training indices for the current split.
+
+    test_indices : ndarray
+        Test indices for the current split.
+    """
     start = ts_index[0]
     end = ts_index[-1]
     if freq_offset is not None:
@@ -520,7 +670,7 @@ def _split_from_period_with_train_offset(
         else:
             test_indices = np.arange(idx[i], idx[i + test_size] - purged_size)
 
-        if expend_train:
+        if expand_train:
             train_start = 0
         else:
             train_start = train_idx[i]
@@ -531,6 +681,21 @@ def _split_from_period_with_train_offset(
 
 
 def _special_div(a: int, b: int) -> int:
-    """Returns ⌊a/b⌋, but if a is evenly divisible by b, returns ⌊a/b⌋ - 1."""
+    """Compute a division adjusted for exact multiples.
+
+    Parameters
+    ----------
+    a : int
+        Dividend.
+
+    b : int
+        Divisor.
+
+    Returns
+    -------
+    q : int
+        Value equal to `floor(a / b)`, except that exact multiples return
+        `floor(a / b) - 1`.
+    """
     q, r = divmod(a, b)
     return q - (1 if r == 0 else 0)

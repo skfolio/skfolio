@@ -129,7 +129,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
 
         .. math::
 
-            \text{hac_var}_i = r_{i,t}^2 + 2 \sum_{j=1}^{L} w_j \cdot r_{i,t} \cdot r_{i,t-j}
+            \text{hac\_var}_i = r_{i,t}^2 + 2 \sum_{j=1}^{L} w_j \cdot r_{i,t} \cdot r_{i,t-j}
 
         where :math:`w_j = 1 - j/(L+1)` is the Bartlett kernel weight.
 
@@ -221,7 +221,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     n_features_in_ : int
         Number of assets seen during `fit`.
 
-    feature_names_in_ : ndarray of shape (n_features_in_,)
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of features seen during `fit`. Defined only when `X`
         has feature names that are all strings.
 

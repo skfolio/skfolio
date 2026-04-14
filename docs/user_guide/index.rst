@@ -53,6 +53,7 @@ while reducing the risk of data leakage and overfitting.
     Pre-Selection <pre_selection>
     Model Selection <model_selection>
     Hyper-Parameters Tuning <hyper_parameters_tuning>
+    Online Learning <online_learning>
     Metadata Routing <metadata_routing>
     Datasets <datasets>
     Data Preparation <data_preparation>

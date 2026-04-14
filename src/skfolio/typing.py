@@ -33,12 +33,14 @@ __all__ = [
     "ParametersValues",
     "Result",
     "RiskResult",
+    "Scoring",
     "Tags",
     "Target",
 ]
 
 Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure
 CvxMeasure = PerfMeasure | RiskMeasure | RatioMeasure
+Scoring: TypeAlias = Callable | dict[str, Callable] | Measure | None
 MultiInput = float | dict[str, float] | npt.ArrayLike
 Groups = dict[str, list[str]] | np.ndarray | list[list[str]]
 LinearConstraints = np.ndarray | list[str]

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import warnings
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
@@ -31,9 +32,12 @@ from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
 from skfolio.utils.tools import fit_and_predict, safe_split
 
+if TYPE_CHECKING:
+    from skfolio.optimization._base import BaseOptimization
+
 
 def cross_val_predict(
-    estimator: skb.BaseEstimator | Pipeline,
+    estimator: BaseOptimization | Pipeline,
     X: npt.ArrayLike,
     y: npt.ArrayLike = None,
     cv: sks.BaseCrossValidator
@@ -76,7 +80,8 @@ def cross_val_predict(
     Parameters
     ----------
     estimator : BaseEstimator | Pipeline
-        Estimator or pipeline whose last step is an optimization estimator.
+        Portfolio optimization estimator or pipeline whose last step is an optimization
+        estimator.
 
     X : array-like of shape (n_observations, n_assets)
         Price returns of the assets.
@@ -106,7 +111,7 @@ def cross_val_predict(
         The verbosity level.
 
     params : dict, optional
-        Parameters to pass to the underlying estimator's ``fit`` and the CV splitter.
+        Parameters to pass to the underlying estimator's `fit` and the CV splitter.
 
     pre_dispatch : int or str, default='2*n_jobs'
         Controls the number of jobs that get dispatched during parallel
@@ -136,53 +141,23 @@ def cross_val_predict(
     predictions : MultiPeriodPortfolio | Population
         This is the result of calling `predict`
     """
-    params = {} if params is None else params
+    if not _is_portfolio_optimization_estimator(estimator):
+        raise TypeError(
+            "skfolio's `cross_val_predict` only supports portfolio optimization "
+            "estimators. For non-portfolio optimization estimators, use "
+            "`sklearn.model_selection.cross_val_predict`."
+        )
 
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
 
-    if _routing_enabled():
-        # For estimators, a MetadataRouter is created in get_metadata_routing
-        # methods. For these router methods, we create the router to use
-        # `process_routing` on it.
-        # noinspection PyTypeChecker
-        router = (
-            skm.MetadataRouter(owner="cross_validate")
-            .add(
-                splitter=cv,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
-            )
-            .add(
-                estimator=estimator,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-            )
-        )
-        try:
-            routed_params = skm.process_routing(router, "fit", **params)
-        except ske.UnsetMetadataPassedError as e:
-            # The default exception would mention `fit` since in the above
-            # `process_routing` code, we pass `fit` as the caller. However,
-            # the user is not calling `fit` directly, so we change the message
-            # to make it more suitable for this case.
-            unrequested_params = sorted(e.unrequested_params)
-            raise ske.UnsetMetadataPassedError(
-                message=(
-                    f"{unrequested_params} are passed to `cross_val_predict` but are"
-                    " not explicitly set as requested or not requested for"
-                    f" cross_validate's estimator: {estimator.__class__.__name__} Call"
-                    " `.set_fit_request({{metadata}}=True)` on the estimator for"
-                    f" each metadata in {unrequested_params} that you want to use and"
-                    " `metadata=False` for not using it. See the Metadata Routing User"
-                    " guide <https://scikit-learn.org/stable/metadata_routing.html>"
-                    " for more information."
-                ),
-                unrequested_params=e.unrequested_params,
-                routed_params=e.routed_params,
-            ) from None
-    else:
-        routed_params = sku.Bunch()
-        routed_params.splitter = sku.Bunch(split={})
-        routed_params.estimator = sku.Bunch(fit=params)
+    routed_params = _route_params(
+        estimator,
+        params,
+        cv=cv,
+        owner="cross_val_predict",
+        callee="fit",
+    )
 
     cv = sks.check_cv(cv, y)
     splits = list(cv.split(X, y, **routed_params.splitter.split))
@@ -268,7 +243,7 @@ def cross_val_predict(
                 y,
                 train=train,
                 test=test,
-                fit_params=routed_params.estimator.fit,
+                fit_params=routed_params.estimator_params,
                 method=method,
                 column_indices=column_indices[0] if column_indices else None,
             )
@@ -330,6 +305,123 @@ def _routing_enabled() -> bool:
     return sk.get_config().get("enable_metadata_routing", False)
 
 
+def _route_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    params: dict | None = None,
+    *,
+    owner: str,
+    callee: str,
+    cv: object | None = None,
+) -> sku.Bunch:
+    """Build routed parameter bunches for an estimator method.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        The estimator (or pipeline) to route parameters for.
+
+    params : dict, optional
+        Raw parameters from the caller.
+
+    owner : str
+        Name of the calling function, used in error messages.
+
+    callee : str
+        Estimator method that will receive the routed parameters. Use `"fit"` for batch
+        evaluation and `"partial_fit"` for online evaluation.
+
+    cv : cross-validator or None, default=None
+        Cross-validation splitter. When provided, parameters are also routed to the
+        splitter's `split` method and the result includes `routed_params.splitter.split`.
+
+    Returns
+    -------
+    routed_params : Bunch
+        Routed parameters with `.estimator_params` attribute and, when `cv` is provided,
+        `.splitter.split`.
+
+    Raises
+    ------
+    RuntimeError
+        If metadata routing returns an unexpected non-empty internal payload for the
+        requested estimator or splitter method.
+    """
+    params = params or {}
+
+    if _routing_enabled():
+        # For estimators, a MetadataRouter is created in get_metadata_routing
+        # methods. For these router methods, we create the router to use
+        # `process_routing` on it.
+        router = skm.MetadataRouter(owner=owner)
+        if cv is not None:
+            router.add(
+                splitter=cv,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
+            )
+        router.add(
+            estimator=estimator,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
+        )
+        request_method = f"set_{callee}_request"
+        try:
+            routed_params = skm.process_routing(router, "fit", **params)
+        except ske.UnsetMetadataPassedError as e:
+            # The default exception would mention `fit` since in the above
+            # `process_routing` code, we pass `fit` as the caller. However,
+            # the user is not calling `fit` directly, so we change the message
+            # to make it more suitable for this case.
+            unrequested_params = sorted(e.unrequested_params)
+            raise ske.UnsetMetadataPassedError(
+                message=(
+                    f"{unrequested_params} are passed to `{owner}` but are"
+                    " not explicitly set as requested or not requested for"
+                    f" {owner}'s estimator: "
+                    f"{estimator.__class__.__name__}. Call"
+                    f" `.{request_method}({{metadata}}=True)` on the estimator"
+                    f" for each metadata in {unrequested_params} that you want"
+                    " to use and `metadata=False` if you are not using it. See the"
+                    " Metadata Routing User guide"
+                    " <https://scikit-learn.org/stable/metadata_routing.html>"
+                    " for more information."
+                ),
+                unrequested_params=e.unrequested_params,
+                routed_params=e.routed_params,
+            ) from None
+        estimator = getattr(routed_params, "estimator", None)
+        if estimator is None:
+            routed_params.estimator_params = {}
+        elif hasattr(estimator, callee):
+            routed_params.estimator_params = getattr(estimator, callee)
+        elif len(estimator) == 0:
+            routed_params.estimator_params = {}
+        else:
+            raise RuntimeError(
+                "Metadata routing returned an unexpected estimator payload for "
+                f"`{owner}` and callee `{callee}`."
+            )
+
+        if cv is not None:
+            splitter = getattr(routed_params, "splitter", None)
+            if splitter is None:
+                routed_params.splitter = sku.Bunch(split={})
+            elif hasattr(splitter, "split"):
+                pass
+            elif len(splitter) == 0:
+                routed_params.splitter = sku.Bunch(split={})
+            else:
+                raise RuntimeError(
+                    "Metadata routing returned an unexpected splitter payload for "
+                    f"`{owner}`."
+                )
+    else:
+        routed_params = sku.Bunch()
+        routed_params.estimator_params = params
+        if cv is not None:
+            routed_params.splitter = sku.Bunch(split={})
+
+    return routed_params
+
+
 def _asset_names_enabled(X: npt.ArrayLike) -> bool:
     """Return whether X is a DataFrame and its column names are transferred inside
     a Pipeline.
@@ -361,6 +453,29 @@ def _get_last_step(estimator: skb.BaseEstimator | Pipeline) -> skb.BaseEstimator
     return estimator
 
 
+def _is_portfolio_optimization_estimator(
+    estimator: skb.BaseEstimator | Pipeline,
+) -> bool:
+    """Return whether the estimator or the last pipeline step is a portfolio
+    optimization estimator.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator or Pipeline
+        Estimator to inspect. If a `Pipeline` is provided, its last step is
+        inspected.
+
+    Returns
+    -------
+    is_portfolio_optimization_estimator : bool
+        `True` when `estimator` itself is a portfolio optimization estimator,
+        or, for a `Pipeline`, when its last step is one.
+    """
+    from skfolio.optimization._base import BaseOptimization
+
+    return isinstance(_get_last_step(estimator), BaseOptimization)
+
+
 def _run_path(
     estimator: skb.BaseEstimator | Pipeline,
     X: npt.ArrayLike,
@@ -388,14 +503,14 @@ def _run_path(
         Optional target data (e.g., factor returns).
 
     routed_params : Bunch
-        Fit parameters after metadata routing (``routed_params.estimator.fit``).
+        Fit parameters after metadata routing (`routed_params.estimator_params`).
 
     method : str
-        Estimator method to call on the test fold (e.g. ``"predict"``).
+        Estimator method to call on the test fold (e.g. `"predict"`).
 
     path_splits : list of tuple
-        Sequence of ``(train_idx, test_idx[, column_indices])`` describing one
-        path of folds. ``column_indices`` can be ``None``.
+        Sequence of `(train_idx, test_idx[, column_indices])` describing one
+        path of folds. `column_indices` can be `None`.
 
     Returns
     -------
@@ -415,7 +530,7 @@ def _run_path(
             y,
             train=train,
             test=test,
-            fit_params=routed_params.estimator.fit,
+            fit_params=routed_params.estimator_params,
             method=method,
             column_indices=column_indices[0] if column_indices else None,
         )

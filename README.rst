@@ -111,23 +111,6 @@ Dependencies
 - joblib (>= |JoblibMinVersion|)
 - plotly (>= |PlotlyMinVersion|)
 
-Docker
-~~~~~~
-
-You can also spin up a reproducible JupyterLab environment using Docker:
-
-Build the image::
-
-    docker build -t skfolio-jupyterlab .
-
-Run the container::
-
-    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
-
-Browse:
-
-Open localhost:8888/lab and start using `skfolio`
-
 Key Concepts
 ~~~~~~~~~~~~
 Since the development of modern portfolio theory by Markowitz (1952), mean-variance
@@ -252,9 +235,12 @@ Available models
     * Walk Forward
     * Combinatorial Purged Cross-Validation
     * Multiple Randomized Cross-Validation
+    * Covariance Forecast Evaluation
+    * Online Predict and Online Score
 
 * Hyper-Parameter Tuning:
     * Compatible with all `sklearn` methods (GridSearchCV, RandomizedSearchCV)
+    * Online Grid Search and Online Randomized Search
 
 * Risk Measures:
     * Variance
@@ -740,6 +726,23 @@ Opinion Pooling
 
     opinion_pooling.fit(X)
 
+
+Docker
+~~~~~~
+
+You can also spin up a reproducible JupyterLab environment using Docker:
+
+Build the image::
+
+    docker build -t skfolio-jupyterlab .
+
+Run the container::
+
+    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
+
+Browse:
+
+Open localhost:8888/lab and start using `skfolio`
 
 Recognition
 ~~~~~~~~~~~

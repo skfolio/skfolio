@@ -150,6 +150,12 @@ class EWMu(BaseMu):
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
 
+    See Also
+    --------
+    :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
+        Online evaluation of portfolio optimization using `MeanRisk` with
+        `EWMu` and exponentially weighted covariance estimators.
+
     Examples
     --------
     >>> from skfolio.datasets import load_sp500_dataset

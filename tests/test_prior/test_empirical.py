@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from sklearn import config_context
 
-from skfolio.moments import ImpliedCovariance
+from skfolio.moments import EWCovariance, EWMu, ImpliedCovariance
 from skfolio.prior import EmpiricalPrior
 
 
@@ -137,3 +137,84 @@ def test_metadata_routing(X, implied_vol):
 
     # noinspection PyUnresolvedReferences
     assert model.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+@pytest.mark.parametrize("max_history", [1.5, True])
+def test_max_history_validation(X, max_history):
+    model = EmpiricalPrior(max_history=max_history)
+
+    with pytest.raises(ValueError, match="`max_history` must be a positive integer"):
+        model.fit(X)
+
+
+def _make_ew_prior(**kwargs):
+    return EmpiricalPrior(
+        mu_estimator=EWMu(half_life=40),
+        covariance_estimator=EWCovariance(half_life=40),
+        **kwargs,
+    )
+
+
+class TestPartialFit:
+    def test_equivalence_with_fit(self, X):
+        """Streaming partial_fit matches a single fit on the same data."""
+        X_arr = np.asarray(X)
+        split = len(X_arr) // 2
+
+        ref = _make_ew_prior()
+        ref.fit(X_arr)
+
+        stream = _make_ew_prior()
+        stream.partial_fit(X_arr[:split])
+        stream.partial_fit(X_arr[split:])
+
+        np.testing.assert_array_almost_equal(
+            stream.return_distribution_.mu, ref.return_distribution_.mu
+        )
+        np.testing.assert_array_almost_equal(
+            stream.return_distribution_.covariance,
+            ref.return_distribution_.covariance,
+        )
+
+    def test_returns_accumulation(self, X):
+        """partial_fit accumulates raw returns across calls."""
+        X_arr = np.asarray(X)
+        split = len(X_arr) // 2
+
+        model = _make_ew_prior()
+        model.partial_fit(X_arr[:split])
+        assert model.return_distribution_.returns.shape[0] == split
+
+        model.partial_fit(X_arr[split:])
+        np.testing.assert_array_almost_equal(model.return_distribution_.returns, X_arr)
+
+    def test_max_history(self, X):
+        """max_history caps the stored returns."""
+        X_arr = np.asarray(X)
+        cap = 50
+
+        model = _make_ew_prior(max_history=cap)
+        model.partial_fit(X_arr)
+
+        assert model.return_distribution_.returns.shape[0] == cap
+        np.testing.assert_array_almost_equal(
+            model.return_distribution_.returns, X_arr[-cap:]
+        )
+
+    def test_fit_resets_after_partial_fit(self, X):
+        """fit() resets all accumulated state from prior partial_fit calls."""
+        X_arr = np.asarray(X)
+
+        model = _make_ew_prior()
+        model.partial_fit(X_arr)
+        model.partial_fit(X_arr)
+        assert model.return_distribution_.returns.shape[0] == 2 * len(X_arr)
+
+        model.fit(X_arr)
+        assert model.return_distribution_.returns.shape[0] == len(X_arr)
+
+    def test_non_incremental_estimator_raises(self, X):
+        """partial_fit raises when sub-estimators lack partial_fit."""
+        model = EmpiricalPrior()
+        with pytest.raises(TypeError, match="partial_fit"):
+            model.partial_fit(np.asarray(X))

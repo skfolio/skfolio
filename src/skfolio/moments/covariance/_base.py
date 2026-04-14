@@ -6,6 +6,7 @@
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
 from __future__ import annotations
 
 import warnings
@@ -220,8 +221,12 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             Observations for which to compute the squared Mahalanobis distance.
             Each row represents one observation. If 1D, treated as a single
             observation. Assets with non-finite fitted variance are excluded from
-            inference. Inside the retained inference subspace, the observations
-            must be finite.
+            inference. After this asset-level filtering, each row is evaluated
+            using the remaining available values only, covering row-level missing
+            values such as market holidays or pre/post-listing. When rows have
+            different observation patterns, the returned distances follow
+            :math:`\chi^2` distributions with different degrees of freedom.
+            Rows with no finite retained observation return NaN.
 
         Returns
         -------
@@ -265,12 +270,16 @@ class BaseCovariance(skb.BaseEstimator, ABC):
                 mean = mean[mask]
         else:
             covariance = self.covariance_
-        if not np.isfinite(X_test).all():
-            raise ValueError(
-                "X_test contains non-finite values in the fitted inference subspace."
-            )
-        distances = squared_mahalanobis_dist(X_test, covariance, mean=mean)
-        return float(distances[0]) if is_1d else distances
+        if np.isfinite(X_test).all():
+            distances = squared_mahalanobis_dist(X_test, covariance, mean=mean)
+            return float(distances[0]) if is_1d else distances
+
+        distances = _mahalanobis_observed_subspaces(X_test, covariance, mean)
+        if np.all(np.isnan(distances)):
+            raise ValueError("X_test has no row with any finite retained observation.")
+        if is_1d:
+            return float(distances[0])
+        return distances
 
     def _sanity_check(self, covariance: np.ndarray) -> None:
         """Perform a sanity check on the covariance matrix by verifying that all
@@ -372,6 +381,39 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.covariance_ = covariance
 
 
+def _group_rows_by_observation_pattern(
+    observed: np.ndarray,
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Group row indices by their observation pattern.
+
+    Parameters
+    ----------
+    observed : ndarray of shape (n_observations, n_assets)
+        Boolean mask of finite entries.
+
+    Returns
+    -------
+    list of (row_indices, observed_column_indices)
+        One entry per unique observation pattern. Groups where no column is
+        observed are omitted.
+    """
+    packed = np.ascontiguousarray(np.packbits(observed, axis=1))
+    keys = packed.view(np.dtype((np.void, packed.shape[1]))).ravel()
+    _, inverse = np.unique(keys, return_inverse=True)
+    order = np.argsort(inverse)
+    sorted_inverse = inverse[order]
+    split_idx = np.flatnonzero(np.diff(sorted_inverse)) + 1
+    raw_groups = np.split(order, split_idx)
+
+    groups: list[tuple[np.ndarray, np.ndarray]] = []
+    for row_idx in raw_groups:
+        obs_idx = np.flatnonzero(observed[row_idx[0]])
+        if obs_idx.size == 0:
+            continue
+        groups.append((row_idx, obs_idx))
+    return groups
+
+
 def _score_observed_subspaces(
     X: np.ndarray,
     covariance: np.ndarray,
@@ -385,19 +427,8 @@ def _score_observed_subspaces(
     observed = np.isfinite(X)
     row_scores = np.full(X.shape[0], np.nan, dtype=float)
     log_2pi = np.log(2.0 * np.pi)
-    packed = np.ascontiguousarray(np.packbits(observed, axis=1))
-    keys = packed.view(np.dtype((np.void, packed.shape[1]))).ravel()
-    _, inverse = np.unique(keys, return_inverse=True)
-    order = np.argsort(inverse)
-    sorted_inverse = inverse[order]
-    split_idx = np.flatnonzero(np.diff(sorted_inverse)) + 1
-    row_groups = np.split(order, split_idx)
 
-    for row_idx in row_groups:
-        obs_idx = np.flatnonzero(observed[row_idx[0]])
-        if obs_idx.size == 0:
-            continue
-
+    for row_idx, obs_idx in _group_rows_by_observation_pattern(observed):
         chol = safe_cholesky(covariance=covariance[np.ix_(obs_idx, obs_idx)])
         d2 = _squared_mahalanobis_dist_from_cholesky(
             X[np.ix_(row_idx, obs_idx)],
@@ -408,6 +439,33 @@ def _score_observed_subspaces(
         row_scores[row_idx] = 0.5 * (-logdet - d2 - obs_idx.size * log_2pi)
 
     return row_scores
+
+
+def _mahalanobis_observed_subspaces(
+    X: np.ndarray,
+    covariance: np.ndarray,
+    mean: np.ndarray | None,
+) -> np.ndarray:
+    r"""Compute row-wise squared Mahalanobis distances on observed subspaces.
+
+    Each row is evaluated on the marginal distribution of its finite
+    coordinates. Rows with no finite coordinate return NaN.
+
+    When rows have different observation patterns the returned distances
+    follow :math:`\chi^2` distributions with different degrees of freedom.
+    """
+    observed = np.isfinite(X)
+    distances = np.full(X.shape[0], np.nan, dtype=float)
+
+    for row_idx, obs_idx in _group_rows_by_observation_pattern(observed):
+        d2 = squared_mahalanobis_dist(
+            X[np.ix_(row_idx, obs_idx)],
+            covariance[np.ix_(obs_idx, obs_idx)],
+            mean=None if mean is None else mean[obs_idx],
+        )
+        distances[row_idx] = d2
+
+    return distances
 
 
 def _reduce_to_finite_active_block(covariance: np.ndarray) -> None:

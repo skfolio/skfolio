@@ -155,6 +155,16 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/metadata_routing/plot_1_implied_volatility": (
         "Routing implied volatility data into optimization models"
     ),
+    # Online Learning
+    "auto_examples/online_learning/plot_1_online_covariance_forecast_evaluation": (
+        "Evaluating online covariance forecasts with walk-forward calibration diagnostics"
+    ),
+    "auto_examples/online_learning/plot_2_online_hyperparameter_tuning": (
+        "Tuning online covariance estimators with grid and randomized search"
+    ),
+    "auto_examples/online_learning/plot_3_online_portfolio_optimization_evaluation": (
+        "Online evaluation of portfolio optimization"
+    ),
 }
 
 EXAMPLE_LAST_UPDATED = {
@@ -210,6 +220,10 @@ EXAMPLE_LAST_UPDATED = {
     "auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "2023-12-18",
     # Metadata Routing
     "auto_examples/metadata_routing/plot_1_implied_volatility": "2023-12-18",
+    # Online Learning
+    "auto_examples/online_learning/plot_1_online_covariance_forecast_evaluation": "2026-04-09",
+    "auto_examples/online_learning/plot_2_online_hyperparameter_tuning": "2026-04-09",
+    "auto_examples/online_learning/plot_3_online_portfolio_optimization_evaluation": "2026-04-09",
 }
 
 # Map old *docname* (no .rst/.html) -> new URL (root-relative or absolute)
@@ -380,9 +394,10 @@ ORDER_OF_EXAMPLES = {
     "distributionally_robust_cvar": 7,
     "ensemble": 8,
     "model_selection": 9,
-    "pre_selection": 10,
-    "metadata_routing": 11,
-    "data_preparation": 12,
+    "online_learning": 10,
+    "pre_selection": 11,
+    "metadata_routing": 12,
+    "data_preparation": 13,
 }
 
 # -- sphinxext-opengraph ----------------------------------------------------

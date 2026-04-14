@@ -25,6 +25,8 @@ incremental updates with `partial_fit`. It also supports NaN-aware updates with
 `active_mask`, which helps distinguish active assets with missing returns, for
 example on holidays, from structurally inactive assets such as pre-listing or
 post-delisting periods.
+See :ref:`online_learning` for the full online workflow, including online
+portfolio optimization evaluation with incremental moments.
 
 **Example:**
 

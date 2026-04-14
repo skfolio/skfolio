@@ -263,7 +263,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
         .. math::
 
-            \text{hac_outer} = r_t r_t^T + \sum_{j=1}^{L} w_j (r_t r_{t-j}^T + r_{t-j} r_t^T)
+            r_t r_t^T + \sum_{j=1}^{L} w_j (r_t r_{t-j}^T + r_{t-j} r_t^T)
 
         where :math:`w_j = 1 - j/(L+1)` is the Bartlett kernel weight.
 
@@ -394,7 +394,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     n_features_in_ : int
         Number of assets seen during `fit`.
 
-    feature_names_in_ : ndarray of shape (n_features_in_,)
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of features seen during `fit`. Defined only when `X`
         has feature names that are all strings.
 
@@ -437,6 +437,18 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     .. [5] "An Introduction to Multivariate Statistical Analysis", Wiley,
         Anderson (2003).
+
+    See Also
+    --------
+    :ref:`sphx_glr_auto_examples_online_learning_plot_1_online_covariance_forecast_evaluation.py`
+        Online covariance forecast evaluation with `EWCovariance` and
+        `RegimeAdjustedEWCovariance`.
+    :ref:`sphx_glr_auto_examples_online_learning_plot_2_online_hyperparameter_tuning.py`
+        Online covariance hyperparameter tuning with
+        `RegimeAdjustedEWCovariance`.
+    :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
+        Online evaluation of portfolio optimization using `MeanRisk` with
+        exponentially weighted moments.
 
     Examples
     --------
