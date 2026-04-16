@@ -586,6 +586,38 @@ Classes
     pre_selection.SelectComplete
     pre_selection.SelectNonExpiring
 
+.. _linear_model_ref:
+
+:mod:`skfolio.linear_model`: Cross-sectional linear models
+==========================================================
+
+.. automodule:: skfolio.linear_model
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    linear_model.BaseCSLinearModel
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    linear_model.CSLinearRegression
+    linear_model.CSLinearRegressorWrapper
+
 .. _model_selection_ref:
 
 :mod:`skfolio.model_selection`: Model Selection
