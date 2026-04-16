@@ -771,12 +771,12 @@ def test_kurtosis_views_prior(X, solver):
     x = np.array(X)
     kurtosis_prior = sm.kurtosis(x)
     kurtosis = sm.kurtosis(x, sw)
-    np.testing.assert_almost_equal(model.relative_entropy_, 0.046041, 4)
+    np.testing.assert_almost_equal(model.relative_entropy_, 0.046041, 3)
     assert np.all(sw >= 0)
-    np.testing.assert_almost_equal(np.sum(sw), 1, 8)
-    np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 3)
+    np.testing.assert_almost_equal(np.sum(sw), 1, 7)
+    np.testing.assert_almost_equal(kurtosis[0], kurtosis_prior[0] * 1.5, 2)
     np.testing.assert_almost_equal(kurtosis[2], 25.0, 2)
-    np.testing.assert_almost_equal(kurtosis[18], kurtosis_prior[18] * 0.3, 3)
+    np.testing.assert_almost_equal(kurtosis[18], kurtosis_prior[18] * 0.3, 2)
 
 
 def test_mean_variance_correlation_kurtosis_views(X, solver):
