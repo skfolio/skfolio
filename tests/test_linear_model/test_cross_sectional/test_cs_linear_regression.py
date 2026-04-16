@@ -89,7 +89,7 @@ def sklearn_reference(X, y, weights, fit_intercept=True):
 
 @pytest.mark.parametrize(
     "n_observations,n_assets,n_factors",
-    [(8, 40, 5), (5, 25, 3), (10, 50, 7), (20, 20, 30)],
+    [(8, 40, 5), (5, 25, 3), (10, 50, 7), (20, 120, 30)],
 )
 @pytest.mark.parametrize("fit_intercept", [True, False])
 def test_equivalence_to_sklearn(n_observations, n_assets, n_factors, fit_intercept):
@@ -122,6 +122,34 @@ def test_equivalence_to_sklearn(n_observations, n_assets, n_factors, fit_interce
         assert np.isnan(score)
     else:
         assert_allclose(score, score_ref, atol=1e-8, rtol=1e-6)
+
+
+@pytest.mark.parametrize("fit_intercept", [True, False])
+def test_underdetermined_system_returns_finite_outputs(fit_intercept):
+    """Underdetermined systems must fit and predict without non-finite outputs."""
+    n_observations = 4
+    n_assets = 20
+    n_factors = 30
+    rng = np.random.default_rng(1234)
+    beta_true = rng.normal(size=(n_observations, n_factors))
+    X = rng.normal(size=(n_observations, n_assets, n_factors))
+    y = (X @ beta_true[..., None])[..., 0] + 0.01 * rng.normal(
+        size=(n_observations, n_assets)
+    )
+    weights = np.ones((n_observations, n_assets))
+    model = CSLinearRegression(fit_intercept=fit_intercept)
+    model.fit(X, y, cs_weights=weights)
+
+    y_pred = model.predict(X)
+    score = model.score(X, y, cs_weights=weights)
+
+    assert model.coef_.shape == (n_observations, n_factors)
+    assert model.intercept_.shape == (n_observations,)
+    assert_allclose(model.n_valid_assets_, np.full(n_observations, n_assets))
+    assert np.all(np.isfinite(model.coef_))
+    assert np.all(np.isfinite(model.intercept_))
+    assert np.all(np.isfinite(y_pred))
+    assert np.isfinite(score)
 
 
 def test_predict_matches_manual():
