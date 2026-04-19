@@ -724,6 +724,36 @@ Functions
 :mod:`skfolio.preprocessing`: Preprocessing
 ===========================================
 
+.. automodule:: skfolio.preprocessing
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    preprocessing.BaseCSTransformer
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    preprocessing.CSGaussianRankScaler
+    preprocessing.CSPercentileRankScaler
+    preprocessing.CSStandardScaler
+    preprocessing.CSTanhShrinker
+    preprocessing.CSWinsorizer
+
 Functions
 ---------
 .. currentmodule:: skfolio
