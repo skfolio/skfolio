@@ -3,11 +3,11 @@
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+# Gini mean difference and OWA GMD weights features are derived
+# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
 from __future__ import annotations
 
-# Gini mean difference and OWA GMD weights features are derived
-# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 import warnings
 
 import numpy as np

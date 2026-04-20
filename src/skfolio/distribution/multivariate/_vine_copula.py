@@ -5,8 +5,6 @@
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
-
 # This is a novel implementation of R-vine that is fully OOP based on graph theory with
 # new features to also capture C-like and clustered dependency structures.
 #
@@ -26,6 +24,9 @@ from __future__ import annotations
 #  to capture clustered or C-like dependency structures, allowing for more nuanced
 #  representation of hierarchical relationships among assets and improving conditional
 #  sampling.
+
+from __future__ import annotations
+
 import contextlib
 import numbers
 import warnings

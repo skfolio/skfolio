@@ -6,6 +6,7 @@
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
 from __future__ import annotations
 
 import numpy as np
