@@ -34,7 +34,7 @@ class CSStandardScaler(BaseCSTransformer):
     universe.
 
     When `cs_weights` is provided, weighted means and unbiased equal-weighted standard
-    deviations are estimated only on the estimation universe, defined bfy
+    deviations are estimated only on the estimation universe, defined by
     `cs_weights > 0`. Assets outside that universe still receive standardized values
     relative to the estimation universe. For this estimator, `cs_weights` is used to
     define the estimation universe and to compute the cross-sectional mean, while the

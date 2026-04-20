@@ -22,8 +22,8 @@ def _safe_divide(
 ) -> np.ndarray:
     """Return an element-wise division with safe zero handling.
 
-    Division is performed only where the denominator is non-zero. All other ntries are
-    set to zero. Any non-finite intermediate is coerced to zero so he returned array is
+    Division is performed only where the denominator is non-zero. All other entries are
+    set to zero. Any non-finite intermediate is coerced to zero so the returned array is
     always finite.
     """
     numerator = np.asarray(numerator, dtype=np.float64)
@@ -266,8 +266,8 @@ def _group_key_midrank_percentile(
     1. A single dense ranking of all values (estimation and queried) maps floats to
        small non-negative integers where ties share the same rank.
     2. A composite integer key `group_key * stride + rank` encodes both the group
-       membership and the rank. Sorting estimation samples by this composite key
-       once produces an array that is correctly ordered within each group, so a
+       membership and the rank. After sorting the estimation samples by this composite
+       key, the resulting array is correctly ordered within each group, so a
        single global :func:`numpy.searchsorted` resolves the per-group `count_lt`
        and `count_le` for every queried value at once.
     """
