@@ -51,6 +51,7 @@ while reducing the risk of data leakage and overfitting.
     Clustering <cluster>
     Uncertainty Set <uncertainty_set>
     Pre-Selection <pre_selection>
+    Cross-Sectional Transformers <cross_sectional_transformers>
     Model Selection <model_selection>
     Hyper-Parameters Tuning <hyper_parameters_tuning>
     Online Learning <online_learning>
