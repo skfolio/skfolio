@@ -1,13 +1,14 @@
 """Hierarchical Clustering estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from enum import auto
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.cluster.hierarchy as sch
 import scipy.spatial.distance as scd
@@ -15,6 +16,7 @@ import sklearn.base as skb
 import sklearn.utils.validation as skv
 from plotly.figure_factory import create_dendrogram
 
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import assert_is_distance, compute_optimal_n_clusters
 from skfolio.utils.tools import AutoEnum, default_asset_names
 
@@ -152,9 +154,9 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
     """
 
     n_clusters_: int
-    labels_: np.ndarray
-    linkage_matrix_: np.ndarray
-    condensed_distance_: np.ndarray
+    labels_: FloatArray
+    linkage_matrix_: FloatArray
+    condensed_distance_: FloatArray
 
     def __init__(
         self,
@@ -164,7 +166,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         self.max_clusters = max_clusters
         self.linkage_method = linkage_method
 
-    def fit(self, X: npt.ArrayLike, y: None = None) -> "HierarchicalClustering":
+    def fit(self, X: ArrayLike, y: None = None) -> HierarchicalClustering:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 
         Parameters

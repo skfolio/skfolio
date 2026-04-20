@@ -1,7 +1,7 @@
 """Base Convex Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -15,7 +15,6 @@ from enum import auto
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
 import numpy as np
-import numpy.typing as npt
 import scipy as sc
 import scipy.sparse.linalg as scl
 import sklearn.utils.metadata_routing as skm
@@ -26,6 +25,7 @@ from skfolio._constants import _ParamKey
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -1485,7 +1485,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        y: np.ndarray,
+        y: FloatArray,
         factor: skt.Factor,
     ) -> cp.Expression:
         """Expression of the portfolio tracking error.
@@ -2218,7 +2218,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
         pass
 
 
@@ -2229,10 +2229,10 @@ def _mip_weight_constraints_no_short_threshold(
     scale_constraints: cp.Constant,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    max_weights: np.ndarray | None,
-    groups: np.ndarray | None,
-    min_weights: np.ndarray | None,
-    threshold_long: np.ndarray | None,
+    max_weights: FloatArray | None,
+    groups: FloatArray | None,
+    min_weights: FloatArray | None,
+    threshold_long: FloatArray | None,
 ) -> list[cp.Expression]:
     """
     Create a list of MIP constraints for cardinality and threshold conditions
@@ -2302,13 +2302,13 @@ def _mip_weight_constraints_threshold_short(
     w: cp.Variable,
     factor: skt.Factor,
     scale_constraints: cp.Constant,
-    max_weights: np.ndarray,
-    min_weights: np.ndarray,
-    threshold_long: np.ndarray,
-    threshold_short: np.ndarray,
+    max_weights: FloatArray,
+    min_weights: FloatArray,
+    threshold_long: FloatArray,
+    threshold_short: FloatArray,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    groups: np.ndarray | None,
+    groups: FloatArray | None,
 ) -> list[cp.Expression]:
     """
     Create a list of MIP constraints for cardinality and threshold constraints

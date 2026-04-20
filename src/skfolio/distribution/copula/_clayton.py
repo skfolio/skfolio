@@ -1,12 +1,13 @@
 """Bivariate Clayton Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.stats as st
 import sklearn.utils.validation as skv
 
@@ -20,6 +21,7 @@ from skfolio.distribution.copula._utils import (
     _select_rotation_itau,
     _select_theta_and_rotation_mle,
 )
+from skfolio.typing import ArrayLike, FloatArray
 
 # Clayton copula with a theta of 0.0 is just the independence copula, so we chose a
 # lower bound of 1e-4. After 50, the copula is already imposing very high tail
@@ -175,7 +177,7 @@ class ClaytonCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "ClaytonCopula":
+    def fit(self, X: ArrayLike, y=None) -> ClaytonCopula:
         r"""Fit the Bivariate Clayton Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -224,7 +226,7 @@ class ClaytonCopula(BaseBivariateCopula):
 
         return self
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate Clayton copula.
 
         Parameters
@@ -247,8 +249,8 @@ class ClaytonCopula(BaseBivariateCopula):
         return cdf
 
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate Clayton copula
         with respect to a specified margin.
 
@@ -291,8 +293,8 @@ class ClaytonCopula(BaseBivariateCopula):
         return p
 
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function.
 
@@ -343,7 +345,7 @@ class ClaytonCopula(BaseBivariateCopula):
         )
         return u
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         r"""Compute the log-likelihood of each sample (log-pdf) under the model.
 
         For Clayton, the PDF is given by:
@@ -392,7 +394,7 @@ class ClaytonCopula(BaseBivariateCopula):
         )
 
 
-def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
+def _neg_log_likelihood(theta: float, X: FloatArray) -> float:
     """Negative log-likelihood function for the Clayton copula.
 
     Parameters
@@ -413,7 +415,7 @@ def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
     return -np.sum(_base_sample_scores(X=X, theta=theta))
 
 
-def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
+def _base_sample_scores(X: FloatArray, theta: float) -> FloatArray:
     r"""Compute the log-likelihood of each sample (log-pdf) under the bivariate Clayton
     copula.
 
@@ -448,7 +450,7 @@ def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
     return log_density
 
 
-def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
+def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     r"""Bivariate Clayton CDF (unrotated).
 
     .. math::
@@ -459,8 +461,8 @@ def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
 
 
 def _base_partial_derivative(
-    X: np.ndarray, first_margin: bool, theta: float
-) -> np.ndarray:
+    X: FloatArray, first_margin: bool, theta: float
+) -> FloatArray:
     r"""
     Compute the partial derivative (h-function) for the unrotated Clayton copula.
 
@@ -499,8 +501,8 @@ def _base_partial_derivative(
 
 
 def _base_inverse_partial_derivative(
-    X: np.ndarray, first_margin: bool, theta: float
-) -> np.ndarray:
+    X: FloatArray, first_margin: bool, theta: float
+) -> FloatArray:
     r"""
     Compute the inverse partial derivative for the unrotated Clayton copula,
     i.e. solve for u in h(u|v)=p.

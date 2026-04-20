@@ -139,7 +139,6 @@ holding_period = 60
 fitting_period = 60
 cv = WalkForward(train_size=fitting_period, test_size=holding_period)
 
-
 # %%
 # As explained above, we transform the fix TC into a daily cost by dividing the TC by
 # the expected investment duration:

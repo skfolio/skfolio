@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
@@ -11,7 +13,7 @@ def gaussian_data():
 
     Returns
     -------
-    np.ndarray
+    FloatArray
         Array of shape (n_samples, 1) with data drawn from N(0, 1).
     """
     np.random.seed(42)

@@ -1,13 +1,12 @@
 """Online covariance forecast evaluation."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.utils as sku
@@ -25,16 +24,17 @@ from skfolio.model_selection._online._validation import (
     _validate_online_estimator,
     _validate_sizes,
 )
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import safe_indexing
 
 
 def online_covariance_forecast_evaluation(
     estimator: skb.BaseEstimator | Pipeline,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
     warmup_size: int = 252,
     test_size: int = 1,
-    portfolio_weights: npt.ArrayLike | None = None,
+    portfolio_weights: ArrayLike | None = None,
     purged_size: int = 0,
     params: dict | None = None,
 ) -> CovarianceForecastEvaluation:
@@ -185,8 +185,8 @@ def online_covariance_forecast_evaluation(
     squared_mahalanobis_distances: list[float] = []
     mahalanobis_calibration_ratios: list[float] = []
     diagonal_calibration_ratios: list[float] = []
-    portfolio_standardized_returns: list[np.ndarray] = []
-    portfolio_variance_qlike_losses: list[np.ndarray] = []
+    portfolio_standardized_returns: list[FloatArray] = []
+    portfolio_variance_qlike_losses: list[FloatArray] = []
     valid_asset_counts: list[int] = []
 
     for test_slice in _online_walk_forward(

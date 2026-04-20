@@ -1,14 +1,16 @@
 """Pre-selection DropZeroVariance module."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Author: Vincent Maladiere <maladiere.vincent@gmail.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy as np
-import numpy.typing as npt
+from __future__ import annotations
+
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
+
+from skfolio.typing import ArrayLike, BoolArray
 
 
 class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
@@ -39,12 +41,12 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
         has assets names that are all strings.
     """
 
-    to_keep_: np.ndarray
+    to_keep_: BoolArray
 
     def __init__(self, threshold: float = 1e-8):
         self.threshold = threshold
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y=None):
         """Fit the transformer on some assets.
 
         Parameters

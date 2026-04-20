@@ -1,5 +1,7 @@
 """Tests for EmpiricalVariance estimator."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 

@@ -1,6 +1,6 @@
 """Base Variance Estimator."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
+
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class BaseVariance(skb.BaseEstimator, ABC):
@@ -58,8 +58,8 @@ class BaseVariance(skb.BaseEstimator, ABC):
     arguments (no ``*args`` or ``**kwargs``).
     """
 
-    variance_: np.ndarray
-    location_: np.ndarray
+    variance_: FloatArray
+    location_: FloatArray
 
     def __init__(self, assume_centered: bool = False):
         self.assume_centered = assume_centered
@@ -67,7 +67,7 @@ class BaseVariance(skb.BaseEstimator, ABC):
     @abstractmethod
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
     ):
         pass

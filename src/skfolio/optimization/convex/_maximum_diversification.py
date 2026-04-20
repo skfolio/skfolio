@@ -1,13 +1,12 @@
 """Maximum Diversification Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
@@ -15,6 +14,7 @@ from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
+from skfolio.typing import ArrayLike
 
 
 class MaximumDiversification(MeanRisk):
@@ -475,7 +475,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> MaximumDiversification:
         """Fit the Maximum Diversification Optimization estimator.
 

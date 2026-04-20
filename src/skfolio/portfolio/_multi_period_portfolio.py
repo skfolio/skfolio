@@ -3,9 +3,11 @@
 `MultiPeriodPortfolio` is a list of `Portfolio`.
 """
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
@@ -18,6 +20,7 @@ import skfolio.typing as skt
 from skfolio.portfolio._base import BasePortfolio
 from skfolio.portfolio._failed_portfolio import FailedPortfolio
 from skfolio.portfolio._portfolio import Portfolio
+from skfolio.typing import FloatArray
 from skfolio.utils.tools import deduplicate_names
 
 
@@ -339,7 +342,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
-        sample_weight: np.ndarray | None = None,
+        sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1,
@@ -467,7 +470,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             fitness_measures=self.fitness_measures,
         )
 
-    def __mul__(self, other: numbers.Number | list[numbers.Number] | np.ndarray):
+    def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         if np.isscalar(other):
             portfolios = [p * other for p in self]
         else:
@@ -478,7 +481,7 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     __rmul__ = __mul__
 
-    def __floordiv__(self, other: numbers.Number | list[numbers.Number] | np.ndarray):
+    def __floordiv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         if np.isscalar(other):
             portfolios = [p // other for p in self]
         else:
@@ -487,7 +490,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
         )
 
-    def __truediv__(self, other: numbers.Number | list[numbers.Number] | np.ndarray):
+    def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
@@ -619,7 +622,7 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
-    ) -> np.ndarray | pd.DataFrame:
+    ) -> FloatArray | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure for each
         portfolio.
 

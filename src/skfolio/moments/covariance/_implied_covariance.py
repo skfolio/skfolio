@@ -1,14 +1,15 @@
 """Implied Covariance Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.linear_model as skl
@@ -19,6 +20,7 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
 from skfolio.utils.tools import (
     check_estimator,
@@ -167,11 +169,11 @@ class ImpliedCovariance(BaseCovariance):
     """
 
     prior_covariance_estimator_: BaseCovariance
-    pred_realised_vols_: np.ndarray
+    pred_realised_vols_: FloatArray
     linear_regressors_: list
-    coefs_: np.ndarray
-    intercepts_: np.ndarray
-    r2_scores_: np.ndarray
+    coefs_: FloatArray
+    intercepts_: FloatArray
+    r2_scores_: FloatArray
 
     def __init__(
         self,
@@ -208,8 +210,8 @@ class ImpliedCovariance(BaseCovariance):
         return router
 
     def fit(
-        self, X: npt.ArrayLike, y=None, implied_vol: npt.ArrayLike = None, **fit_params
-    ) -> "ImpliedCovariance":
+        self, X: ArrayLike, y=None, implied_vol: ArrayLike = None, **fit_params
+    ) -> ImpliedCovariance:
         """Fit the implied covariance estimator.
 
         Parameters
@@ -329,8 +331,8 @@ class ImpliedCovariance(BaseCovariance):
     def _predict_realised_vols(
         self,
         linear_regressor: skb.BaseEstimator,
-        returns: np.ndarray,
-        implied_vol: np.ndarray,
+        returns: FloatArray,
+        implied_vol: FloatArray,
         window_size: int,
     ) -> None:
         n_observations, n_assets = returns.shape
@@ -383,8 +385,8 @@ class ImpliedCovariance(BaseCovariance):
 
 
 def _compute_realised_vol(
-    returns: np.ndarray, window_size: int, ddof: int = 1
-) -> np.ndarray:
+    returns: FloatArray, window_size: int, ddof: int = 1
+) -> FloatArray:
     """Create the realised volatilities samples for the regression model."""
     n_observations, n_assets = returns.shape
     chunks = n_observations // window_size
@@ -399,7 +401,7 @@ def _compute_realised_vol(
     )
 
 
-def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarray:
+def _compute_implied_vol(implied_vol: FloatArray, window_size: int) -> FloatArray:
     """Create the implied volatilities samples for the regression model."""
     n_observations, _ = implied_vol.shape
     chunks = n_observations // window_size
@@ -410,7 +412,7 @@ def _compute_implied_vol(implied_vol: np.ndarray, window_size: int) -> np.ndarra
     ]
 
 
-def check_implied_vol(implied_vol: npt.ArrayLike, X: npt.ArrayLike) -> np.ndarray:
+def check_implied_vol(implied_vol: ArrayLike, X: ArrayLike) -> FloatArray:
     """Validate implied volatilities.
 
     Parameters

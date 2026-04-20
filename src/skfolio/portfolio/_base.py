@@ -1,7 +1,7 @@
 """Base Portfolio module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 # The Portfolio class contains more than 40 measures than can be computationally
@@ -37,6 +37,8 @@
 #       the class attributes with the argument name preceded by the measure name and
 #       separated by '_'.
 
+from __future__ import annotations
+
 import warnings
 from abc import abstractmethod
 from collections.abc import Callable
@@ -57,6 +59,7 @@ from skfolio.measures import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
     args_names,
@@ -485,15 +488,15 @@ class BasePortfolio:
 
     def __init__(
         self,
-        returns: np.ndarray | list,
-        observations: np.ndarray | list,
+        returns: FloatArray | list,
+        observations: FloatArray | list,
         name: str | None = None,
         tag: str | None = None,
         annualized_factor: float = 252.0,
         fitness_measures: list[skt.Measure] | None = None,
         risk_free_rate: float = 0.0,
         compounded: bool = False,
-        sample_weight: np.ndarray | None = None,
+        sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1.0,
@@ -611,7 +614,7 @@ class BasePortfolio:
                     f"`{type(self).__name__}` object has no attribute '{name}'"
                 ) from None
 
-    def __array__(self) -> np.ndarray:
+    def __array__(self) -> FloatArray:
         return self.returns
 
     # Private methods
@@ -630,7 +633,7 @@ class BasePortfolio:
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
-    ) -> np.ndarray | pd.DataFrame:
+    ) -> FloatArray | pd.DataFrame:
         """Compute the contribution of each asset to a given measure."""
         pass
 
@@ -668,7 +671,7 @@ class BasePortfolio:
         return self._sample_weight
 
     @sample_weight.setter
-    def sample_weight(self, value: np.ndarray | None) -> None:
+    def sample_weight(self, value: FloatArray | None) -> None:
         if value is not None:
             value = np.asarray(value)
             if value.ndim != 1:
@@ -683,7 +686,7 @@ class BasePortfolio:
 
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
-    def fitness(self) -> np.ndarray:
+    def fitness(self) -> FloatArray:
         """Portfolio fitness."""
         res = []
         for measure in self.fitness_measures:
@@ -695,7 +698,7 @@ class BasePortfolio:
         return np.array(res)
 
     @cached_property_slots
-    def cumulative_returns(self) -> np.ndarray:
+    def cumulative_returns(self) -> FloatArray:
         """Portfolio cumulative returns array.
         Non-compounded (arithmetic) cumulative returns start at 0.
         Compounded (geometric) cumulative returns are expressed as a wealth index,
@@ -706,7 +709,7 @@ class BasePortfolio:
         )
 
     @cached_property_slots
-    def drawdowns(self) -> np.ndarray:
+    def drawdowns(self) -> FloatArray:
         """Portfolio drawdowns array."""
         return mt.get_drawdowns(returns=self.returns, compounded=self.compounded)
 
@@ -820,7 +823,7 @@ class BasePortfolio:
         return value
 
     def dominates(
-        self, other: "BasePortfolio", idx: slice | np.ndarray | None = None
+        self, other: BasePortfolio, idx: slice | IntArray | None = None
     ) -> bool:
         """Portfolio domination.
 
@@ -978,7 +981,7 @@ class BasePortfolio:
         return pd.Series(summary)
 
     def plot_cumulative_returns(
-        self, log_scale: bool = False, idx: slice | np.ndarray | None = None
+        self, log_scale: bool = False, idx: slice | IntArray | None = None
     ) -> go.Figure:
         """Plot the Portfolio cumulative returns.
         Non-compounded (arithmetic) cumulative returns start at 0.
@@ -1034,7 +1037,7 @@ class BasePortfolio:
             fig.update_yaxes(type="log")
         return fig
 
-    def plot_drawdowns(self, idx: slice | np.ndarray | None = None) -> go.Figure:
+    def plot_drawdowns(self, idx: slice | IntArray | None = None) -> go.Figure:
         """Plot the Portfolio drawdowns.
 
         Parameters
@@ -1067,7 +1070,7 @@ class BasePortfolio:
         fig.update_yaxes(tickformat=".1%")
         return fig
 
-    def plot_returns(self, idx: slice | np.ndarray | None = None) -> go.Figure:
+    def plot_returns(self, idx: slice | IntArray | None = None) -> go.Figure:
         """Plot the Portfolio returns.
 
         Parameters

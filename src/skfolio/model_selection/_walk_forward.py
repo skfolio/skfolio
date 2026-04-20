@@ -1,22 +1,25 @@
 """Walk Forward cross-validator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import datetime as dt
 import warnings
 from collections.abc import Iterator
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn.model_selection as sks
 import sklearn.utils as sku
+
+from skfolio.typing import ArrayLike, IntArray
 
 
 class WalkForward(sks.BaseCrossValidator):
@@ -279,8 +282,8 @@ class WalkForward(sks.BaseCrossValidator):
         self.purged_size = purged_size
 
     def split(
-        self, X: npt.ArrayLike, y=None, groups=None
-    ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+        self, X: ArrayLike, y=None, groups=None
+    ) -> Iterator[tuple[IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
         Parameters
@@ -424,7 +427,7 @@ def _split_without_period(
     purged_size: int,
     expand_train: bool,
     reduce_test: bool,
-) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate walk-forward splits for index-based data.
 
     Parameters
@@ -505,7 +508,7 @@ def _split_from_period_without_train_offset(
     expand_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with integer training periods.
 
     Parameters
@@ -596,7 +599,7 @@ def _split_from_period_with_train_offset(
     expand_train: bool,
     reduce_test: bool,
     ts_index,
-) -> Iterator[tuple[np.ndarray, np.ndarray]]:
+) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with date-offset training windows.
 
     Parameters

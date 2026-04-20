@@ -1,5 +1,7 @@
 """Test Distance module."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn import config_context

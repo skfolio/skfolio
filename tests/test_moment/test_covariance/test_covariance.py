@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,6 +24,7 @@ from skfolio.moments import (
     ShrunkCovariance,
 )
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
+from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
     safe_cholesky,
@@ -29,9 +32,9 @@ from skfolio.utils.stats import (
 
 
 def _manual_observed_subspace_score(
-    X: np.ndarray,
-    covariance: np.ndarray,
-    mean: np.ndarray | None,
+    X: FloatArray,
+    covariance: FloatArray,
+    mean: FloatArray | None,
 ) -> float:
     row_scores = []
     for row in X:

@@ -1,11 +1,13 @@
 """Tools module."""
 
 # Copyright (c) 2023-2026
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
+from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterator, Mapping
@@ -14,12 +16,13 @@ from functools import wraps
 from typing import Any, Literal
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.sparse as sp
 import sklearn as sk
 import sklearn.base as skb
 from sklearn.utils import Bunch
+
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
 
 __all__ = [
     "AutoEnum",
@@ -149,9 +152,9 @@ def _make_indexable(iterable):
 
 
 def _check_method_params(
-    X: npt.ArrayLike,
+    X: ArrayLike,
     params: dict,
-    indices: np.ndarray | slice | None = None,
+    indices: IntArray | slice | None = None,
     axis: int = 0,
 ):
     """Check and validate the parameters passed to a specific
@@ -196,8 +199,8 @@ def _check_method_params(
 
 
 def safe_indexing(
-    X: npt.ArrayLike | pd.DataFrame,
-    indices: npt.ArrayLike | slice | None,
+    X: ArrayLike | pd.DataFrame,
+    indices: ArrayLike | slice | None,
     axis: int = 0,
 ):
     """Return rows, items or columns of X using indices.
@@ -235,9 +238,9 @@ def safe_indexing(
 
 
 def safe_split(
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
-    indices: np.ndarray | slice | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
+    indices: IntArray | slice | None = None,
     axis: int = 0,
 ):
     """Create subset of dataset.
@@ -372,10 +375,10 @@ def check_estimator(
 
 
 def _validate_mask(
-    X: np.ndarray,
-    mask: npt.ArrayLike | None,
+    X: FloatArray,
+    mask: ArrayLike | None,
     name: str,
-) -> np.ndarray | None:
+) -> BoolArray | None:
     """Validate a boolean mask aligned with `X`.
 
     Parameters
@@ -404,14 +407,14 @@ def _validate_mask(
 
 
 def input_to_array(
-    items: dict | npt.ArrayLike,
+    items: dict | ArrayLike,
     n_assets: int,
     fill_value: Any,
     dim: int,
-    assets_names: np.ndarray | None,
+    assets_names: ObjArray | None,
     name: str,
-    investable_mask: np.ndarray | None = None,
-) -> np.ndarray:
+    investable_mask: BoolArray | None = None,
+) -> FloatArray:
     """Convert a collection of items (array-like or dictionary) into
     a numpy array and verify its shape.
 
@@ -423,7 +426,7 @@ def input_to_array(
 
     Parameters
     ----------
-    items : np.ndarray | dict | list
+    items : FloatArray | dict | list
         Items to verify and convert to array.
 
     n_assets : int
@@ -510,7 +513,7 @@ def input_to_array(
 def validate_input_list(
     items: list[int | str],
     n_assets: int,
-    assets_names: np.ndarray[str] | None,
+    assets_names: ObjArray | None,
     name: str,
     raise_if_string_missing: bool = True,
 ) -> list[int]:
@@ -617,7 +620,7 @@ def optimal_rounding_decimals(x: float) -> int:
     return min(6, max(int(-np.log10(abs(x))) + 2, 2))
 
 
-def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:
+def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
     """Generator to bisect a list of array.
 
     Parameters
@@ -639,10 +642,10 @@ def bisection(x: list[np.ndarray]) -> Iterator[list[np.ndarray, np.ndarray]]:
 
 def fit_single_estimator(
     estimator: Any,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     fit_params: dict,
-    indices: np.ndarray | slice | None = None,
+    indices: IntArray | slice | None = None,
     axis: int = 0,
     method: str = "fit",
 ):
@@ -688,14 +691,14 @@ def fit_single_estimator(
 
 def fit_and_predict(
     estimator: Any,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
-    train: np.ndarray,
-    test: np.ndarray | list[np.ndarray],
+    X: ArrayLike,
+    y: ArrayLike | None,
+    train: IntArray,
+    test: IntArray | list[IntArray],
     fit_params: dict,
     method: str,
-    column_indices: np.ndarray | None = None,
-) -> npt.ArrayLike | list[npt.ArrayLike]:
+    column_indices: IntArray | None = None,
+) -> ArrayLike | list[ArrayLike]:
     """Fit the estimator and predict values for a given dataset split.
 
     Parameters
@@ -760,7 +763,7 @@ def fit_and_predict(
     return predictions
 
 
-def default_asset_names(n_assets: int) -> np.ndarray:
+def default_asset_names(n_assets: int) -> ObjArray:
     """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`.
 
     Parameters
@@ -776,7 +779,7 @@ def default_asset_names(n_assets: int) -> np.ndarray:
     return np.asarray([f"x{i}" for i in range(n_assets)], dtype=object)
 
 
-def deduplicate_names(names: npt.ArrayLike) -> list[str]:
+def deduplicate_names(names: ArrayLike) -> list[str]:
     """Rename duplicated names by appending "_{duplicate_nb}" at the end.
 
     This function is inspired by the pandas function `_maybe_dedup_names`.
@@ -895,7 +898,7 @@ def half_life_to_decay_factor(half_life: float) -> float:
     return 2.0 ** (-1.0 / half_life)
 
 
-def apply_window_size(X: np.ndarray, window_size: int | None) -> np.ndarray:
+def apply_window_size(X: ArrayLike, window_size: int | None) -> ArrayLike:
     """Return the last `window_size` observations from the array X.
 
     Parameters
@@ -953,8 +956,8 @@ def apply_window_size(X: np.ndarray, window_size: int | None) -> np.ndarray:
 def _call_estimator(
     estimator: Any,
     method: str,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
     *,
     routed_params: Bunch | None = None,
     extra_params: Mapping[str, Any] | None = None,

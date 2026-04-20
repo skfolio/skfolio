@@ -1,18 +1,19 @@
 """Naive estimators."""
 
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike
 from skfolio.utils.stats import rand_weights_dirichlet
 from skfolio.utils.tools import check_estimator
 
@@ -118,7 +119,7 @@ class InverseVolatility(BaseOptimization):
         return router
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> InverseVolatility:
         """Fit the Inverse Volatility estimator.
 
@@ -234,7 +235,7 @@ class EqualWeighted(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> EqualWeighted:
+    def fit(self, X: ArrayLike, y=None) -> EqualWeighted:
         """Fit the Equal Weighted estimator.
 
         Parameters
@@ -332,7 +333,7 @@ class Random(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y=None):
         """Fit the Random Weighted estimator.
 
         Parameters

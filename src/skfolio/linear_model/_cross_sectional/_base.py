@@ -9,10 +9,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.utils.validation import check_is_fitted
 
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 from skfolio.utils.validation import validate_cross_sectional_data
 
 
@@ -46,10 +46,10 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         weight) for each observation.
     """
 
-    coef_: np.ndarray
-    intercept_: np.ndarray
+    coef_: FloatArray
+    intercept_: FloatArray
     n_features_in_: int
-    n_valid_assets_: np.ndarray
+    n_valid_assets_: IntArray
 
     def __init__(self, fit_intercept: bool = False) -> None:
         self.fit_intercept = fit_intercept
@@ -57,9 +57,9 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
     @abstractmethod
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike,
+        cs_weights: ArrayLike | None = None,
     ):
         """Fit one cross-sectional linear model per observation.
 
@@ -82,7 +82,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         """
         pass
 
-    def predict(self, X: npt.ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> FloatArray:
         r"""Predict using the cross-sectional linear model.
 
         For each observation :math:`t` and asset :math:`i`, the prediction is
@@ -122,9 +122,9 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
 
     def score(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike,
+        cs_weights: ArrayLike | None = None,
     ) -> float:
         r"""Return the mean coefficient of determination across observations.
 
@@ -203,10 +203,10 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
 
 
 def _validate_positive_weight_pairs(
-    X: np.ndarray,
-    y: np.ndarray,
-    cs_weights: np.ndarray,
-) -> np.ndarray:
+    X: FloatArray,
+    y: FloatArray,
+    cs_weights: FloatArray,
+) -> BoolArray:
     """Validate positive-weight pairs and return the fit mask.
 
     Each `(observation, asset)` pair with positive `cs_weights` must have all

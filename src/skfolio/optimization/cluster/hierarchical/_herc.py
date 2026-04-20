@@ -1,14 +1,13 @@
 """Hierarchical Equal Risk Contribution estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Weight constraints is a novel implementation, see docstring for more details.
 
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
@@ -22,6 +21,7 @@ from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike
 from skfolio.utils.stats import minimize_relative_weight_deviation
 from skfolio.utils.tools import check_estimator
 
@@ -358,7 +358,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         self.solver_params = solver_params
 
     def fit(
-        self, X: npt.ArrayLike, y: None = None, **fit_params
+        self, X: ArrayLike, y: None = None, **fit_params
     ) -> HierarchicalEqualRiskContribution:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 

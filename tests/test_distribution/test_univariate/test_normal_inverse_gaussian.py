@@ -6,6 +6,8 @@ This test suite creates synthetic data using SciPy's norminvgauss distribution
 scoring, sampling, CDF/PPF, and plotting function as expected.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from scipy.stats import norminvgauss

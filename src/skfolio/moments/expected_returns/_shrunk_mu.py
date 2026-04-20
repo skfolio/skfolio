@@ -1,22 +1,24 @@
 """Shrinkage Expected Returns (Mu) Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 from enum import auto
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance import BaseCovariance, EmpiricalCovariance
 from skfolio.moments.expected_returns._base import BaseMu
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import AutoEnum, check_estimator
 
 
@@ -127,7 +129,7 @@ class ShrunkMu(BaseMu):
     """
 
     covariance_estimator_: BaseCovariance
-    mu_target_: np.ndarray
+    mu_target_: FloatArray
     alpha_: float
     beta_: float
 
@@ -149,7 +151,7 @@ class ShrunkMu(BaseMu):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "ShrunkMu":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> ShrunkMu:
         """Fit the ShrunkMu estimator model.
 
         Parameters

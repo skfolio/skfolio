@@ -82,7 +82,6 @@ In this tutorial, we will:
     4. Perform stress tests using Entropy Pooling.
 """
 
-
 # %%
 # Data Loading and Preparation
 # ============================
@@ -220,7 +219,6 @@ print(f"Relative Entropy : {entropy_pooling.relative_entropy_:.2f}")
 print(
     f"Effective Number of Scenarios : {entropy_pooling.effective_number_of_scenarios_:.0f}"
 )
-
 
 # %%
 # The Effective Number of Scenarios quantifies how concentrated or diverse the
@@ -448,7 +446,6 @@ pop_summary.loc[
 
 # %%
 population.plot_returns_distribution(percentile_cutoff=0.0500)
-
 
 # %%
 # Conclusion

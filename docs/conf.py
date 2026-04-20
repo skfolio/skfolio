@@ -6,6 +6,8 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
 # -- Path setup --------------------------------------------------------------
+from __future__ import annotations
+
 import datetime as dt
 import json
 import os
@@ -302,7 +304,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # -- Project information -----------------------------------------------------
 
 project = "skfolio"
-copyright = "2025, skfolio developers (BSD License)"
+copyright = "2026, skfolio developers (BSD License)"
 author = "Hugo Delatte"
 
 # -- SEO meta tags ------------------------------------------------------------

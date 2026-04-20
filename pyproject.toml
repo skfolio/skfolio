@@ -6,12 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "skfolio"
 version = "0.19.0"
 maintainers = [
-    { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+    { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
     { name = "Carlo Nicolini", email = "c.nicolini@ipazia.com" }
 ]
 authors = [
-    { name = "Hugo Delatte", email = "delatte.hugo@gmail.com" },
+    { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
 ]
 description = "Portfolio optimization built on top of scikit-learn"
 readme = "README.rst"

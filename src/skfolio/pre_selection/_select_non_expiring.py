@@ -1,10 +1,12 @@
 """pre-selection estimators module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Implementation derived from:
 # Conway-Yu https://github.com/skfolio/skfolio/discussions/60
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import datetime as dt
 
@@ -13,6 +15,8 @@ import pandas as pd
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
+
+from skfolio.typing import BoolArray
 
 
 class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
@@ -88,7 +92,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     2023-01-04      4      7
     """
 
-    to_keep_: np.ndarray
+    to_keep_: BoolArray
 
     def __init__(
         self,
@@ -98,7 +102,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         self.expiration_dates = expiration_dates
         self.expiration_lookahead = expiration_lookahead
 
-    def fit(self, X: pd.DataFrame, y=None) -> "SelectNonExpiring":
+    def fit(self, X: pd.DataFrame, y=None) -> SelectNonExpiring:
         """Run the SelectNonExpiring transformer and get the appropriate assets.
 
         Parameters
@@ -140,7 +144,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
 
         return self
 
-    def _get_support_mask(self) -> np.ndarray:
+    def _get_support_mask(self) -> BoolArray:
         skv.check_is_fitted(self)
         return self.to_keep_
 

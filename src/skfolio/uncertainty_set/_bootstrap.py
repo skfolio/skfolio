@@ -1,19 +1,21 @@
 """Bootstrap Uncertainty Set estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.stats as st
 import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -107,8 +109,8 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         self.seed = seed
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
-    ) -> "BootstrapMuUncertaintySet":
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+    ) -> BootstrapMuUncertaintySet:
         """Fit the Bootstrap Mu Uncertainty set estimator.
 
         Parameters
@@ -248,8 +250,8 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self.seed = seed
 
     def fit(
-        self, X: npt.ArrayLike, y=None, **fit_params
-    ) -> "BootstrapCovarianceUncertaintySet":
+        self, X: ArrayLike, y=None, **fit_params
+    ) -> BootstrapCovarianceUncertaintySet:
         """Fit the Bootstrap Covariance Uncertainty set estimator.
 
         Parameters

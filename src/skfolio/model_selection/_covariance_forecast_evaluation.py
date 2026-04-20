@@ -1,6 +1,6 @@
 """Covariance forecast evaluation."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -10,7 +10,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -27,6 +26,7 @@ from skfolio.metrics._covariance import (
 )
 from skfolio.model_selection._validation import _route_params
 from skfolio.model_selection._walk_forward import WalkForward
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.stats import inverse_volatility_weights, squared_mahalanobis_dist
 from skfolio.utils.tools import fit_single_estimator, safe_indexing
 
@@ -170,19 +170,19 @@ class CovarianceForecastEvaluation:
     >>> evaluation.plot_calibration()  # doctest: +SKIP
     """
 
-    observations: np.ndarray
+    observations: FloatArray
     horizon: int
-    squared_mahalanobis_distance: np.ndarray
-    mahalanobis_calibration_ratio: np.ndarray
-    diagonal_calibration_ratio: np.ndarray
-    portfolio_standardized_return: np.ndarray
-    portfolio_variance_qlike_loss: np.ndarray
-    n_valid_assets: np.ndarray
+    squared_mahalanobis_distance: FloatArray
+    mahalanobis_calibration_ratio: FloatArray
+    diagonal_calibration_ratio: FloatArray
+    portfolio_standardized_return: FloatArray
+    portfolio_variance_qlike_loss: FloatArray
+    n_valid_assets: IntArray
     n_portfolios: int
     name: str | None = None
 
     @property
-    def bias_statistic(self) -> np.ndarray:
+    def bias_statistic(self) -> FloatArray:
         r"""Per-portfolio bias statistic.
 
         Computed as the sample standard deviation of the portfolio
@@ -796,12 +796,12 @@ class CovarianceForecastComparison:
 
 def covariance_forecast_evaluation(
     estimator: skb.BaseEstimator | Pipeline,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
     train_size: int = 252,
     test_size: int = 1,
     expand_train: bool = False,
-    portfolio_weights: npt.ArrayLike | None = None,
+    portfolio_weights: ArrayLike | None = None,
     purged_size: int = 0,
     params: dict | None = None,
 ) -> CovarianceForecastEvaluation:
@@ -960,8 +960,8 @@ def covariance_forecast_evaluation(
     squared_mahalanobis_distances: list[float] = []
     mahalanobis_calibration_ratios: list[float] = []
     diagonal_calibration_ratios: list[float] = []
-    portfolio_standardized_returns: list[np.ndarray] = []
-    portfolio_variance_qlike_losses: list[np.ndarray] = []
+    portfolio_standardized_returns: list[FloatArray] = []
+    portfolio_variance_qlike_losses: list[FloatArray] = []
     active_asset_counts: list[int] = []
 
     for train_idx, test_idx in cv.split(X, y):
@@ -1017,8 +1017,8 @@ def covariance_forecast_evaluation(
 
 
 def _normalize_portfolio_weights(
-    portfolio_weights: npt.ArrayLike | None,
-) -> np.ndarray | None:
+    portfolio_weights: ArrayLike | None,
+) -> FloatArray | None:
     """Normalize portfolio weights for portfolio-level diagnostics.
 
     Parameters
@@ -1039,8 +1039,8 @@ def _normalize_portfolio_weights(
 
 
 def _compute_step_diagnostics(
-    covariance: np.ndarray, X_test: np.ndarray, portfolio_weights: np.ndarray | None
-) -> tuple[float, float, float, np.ndarray, np.ndarray, int] | None:
+    covariance: FloatArray, X_test: FloatArray, portfolio_weights: FloatArray | None
+) -> tuple[float, float, float, FloatArray, FloatArray, int] | None:
     """Compute all per-step calibration diagnostics for one evaluation window.
 
     Parameters
@@ -1129,8 +1129,8 @@ def _compute_step_diagnostics(
 
 
 def _rolling(
-    arr: np.ndarray,
-    observations: np.ndarray,
+    arr: FloatArray,
+    observations: FloatArray,
     window: int,
     stats_type: str = "mean",
 ) -> pd.Series:
@@ -1162,8 +1162,8 @@ def _rolling(
 
 
 def _exceedance_indicators(
-    squared_distances: np.ndarray, n_valid_assets: np.ndarray, confidence_level: float
-) -> np.ndarray:
+    squared_distances: FloatArray, n_valid_assets: IntArray, confidence_level: float
+) -> FloatArray:
     """Compute exceedance indicators against chi-squared thresholds.
 
     Parameters
@@ -1193,7 +1193,7 @@ def _exceedance_indicators(
 
 
 def _rolling_portfolio_band(
-    arr: np.ndarray, observations: np.ndarray, window: int, stats_type: str = "mean"
+    arr: FloatArray, observations: FloatArray, window: int, stats_type: str = "mean"
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
     """Compute rolling portfolio statistics and cross-portfolio bands.
 
@@ -1234,10 +1234,7 @@ def _rolling_portfolio_band(
     )
 
 
-def _median_portfolio_stats(
-    arr: np.ndarray,
-    stats_func: Callable,
-) -> dict[str, object]:
+def _median_portfolio_stats(arr: FloatArray, stats_func: Callable) -> dict[str, object]:
     """Aggregate per-portfolio summary statistics by their median.
 
     Computes `stats_type` independently for each portfolio column, then
@@ -1361,7 +1358,7 @@ def _build_calibration_series(
     return series_map, bands
 
 
-def _base_stats(arr: np.ndarray) -> dict[str, object]:
+def _base_stats(arr: FloatArray) -> dict[str, object]:
     """Compute common summary statistics for a 1D array.
 
     Parameters
@@ -1384,7 +1381,7 @@ def _base_stats(arr: np.ndarray) -> dict[str, object]:
     }
 
 
-def _ratio_stats(arr: np.ndarray) -> dict[str, object]:
+def _ratio_stats(arr: FloatArray) -> dict[str, object]:
     """Compute summary statistics for a calibration ratio.
 
     Parameters
@@ -1404,7 +1401,7 @@ def _ratio_stats(arr: np.ndarray) -> dict[str, object]:
     return stats
 
 
-def _centered_stats(arr: np.ndarray) -> dict[str, object]:
+def _centered_stats(arr: FloatArray) -> dict[str, object]:
     """Compute summary statistics for a centered diagnostic.
 
     Parameters
@@ -1424,7 +1421,7 @@ def _centered_stats(arr: np.ndarray) -> dict[str, object]:
     return stats
 
 
-def _loss_stats(arr: np.ndarray) -> dict[str, object]:
+def _loss_stats(arr: FloatArray) -> dict[str, object]:
     """Compute summary statistics for a loss function.
 
     Parameters

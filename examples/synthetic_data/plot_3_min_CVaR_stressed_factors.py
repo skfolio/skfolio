@@ -64,7 +64,6 @@ print(f"X_test: {X_test.shape}")
 print(f"factors_train: {factors_train.shape}")
 print(f"factors_test: {factors_test.shape}")
 
-
 # %%
 # Minimize CVaR on Synthetic Data
 # ===============================

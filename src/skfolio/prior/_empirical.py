@@ -1,7 +1,7 @@
 """Empirical Prior estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 from __future__ import annotations
@@ -9,12 +9,12 @@ from __future__ import annotations
 import numbers
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
 from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.typing import ArrayLike, ObjArray
 from skfolio.utils._array_buffer import _ArrayBuffer
 from skfolio.utils.tools import _call_estimator, check_estimator
 
@@ -94,7 +94,7 @@ class EmpiricalPrior(BasePrior):
     mu_estimator_: BaseMu
     covariance_estimator_: BaseCovariance
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     def __init__(
         self,
@@ -110,7 +110,7 @@ class EmpiricalPrior(BasePrior):
         self.investment_horizon = investment_horizon
         self.max_history = max_history
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
         """Fit the Empirical Prior estimator.
 
         Parameters
@@ -136,7 +136,7 @@ class EmpiricalPrior(BasePrior):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: npt.ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def partial_fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
         """Incrementally fit the Empirical Prior estimator.
 
         This method allows for streaming/online updates to the prior estimate.
@@ -185,7 +185,7 @@ class EmpiricalPrior(BasePrior):
         )
         return router
 
-    def _fit(self, X: npt.ArrayLike, y, method: str, **fit_params) -> EmpiricalPrior:
+    def _fit(self, X: ArrayLike, y, method: str, **fit_params) -> EmpiricalPrior:
         """Core fitting logic shared by fit and partial_fit.
 
         Parameters

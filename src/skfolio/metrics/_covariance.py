@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import scipy.stats as sst
 import sklearn.base as skb
 
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import inverse_volatility_weights, squared_mahalanobis_dist
 
 __all__ = [
@@ -30,7 +30,7 @@ _NUMERICAL_THRESHOLD = 1e-12
 
 def mahalanobis_calibration_ratio(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
 ) -> float:
     r"""Mahalanobis calibration ratio.
@@ -100,7 +100,7 @@ def mahalanobis_calibration_ratio(
 
 def diagonal_calibration_ratio(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
 ) -> float:
     r"""Diagonal calibration ratio based on marginal variances.
@@ -172,9 +172,9 @@ def diagonal_calibration_ratio(
 
 def portfolio_variance_calibration_ratio(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
-    portfolio_weights: npt.ArrayLike | None = None,
+    portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration ratio.
 
@@ -256,7 +256,7 @@ def portfolio_variance_calibration_ratio(
 
 def mahalanobis_calibration_loss(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
 ) -> float:
     r"""Mahalanobis calibration loss.
@@ -306,7 +306,7 @@ def mahalanobis_calibration_loss(
 
 def diagonal_calibration_loss(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
 ) -> float:
     r"""Diagonal calibration loss.
@@ -353,9 +353,9 @@ def diagonal_calibration_loss(
 
 def portfolio_variance_calibration_loss(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
-    portfolio_weights: npt.ArrayLike | None = None,
+    portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration loss.
 
@@ -413,9 +413,9 @@ def portfolio_variance_calibration_loss(
 
 def portfolio_variance_qlike_loss(
     estimator: skb.BaseEstimator,
-    X_test: npt.ArrayLike,
+    X_test: ArrayLike,
     y=None,
-    portfolio_weights: npt.ArrayLike | None = None,
+    portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""QLIKE loss for a projected portfolio variance forecast [1]_.
 
@@ -501,7 +501,7 @@ def portfolio_variance_qlike_loss(
 
 
 def exceedance_rate(
-    squared_distances: npt.ArrayLike,
+    squared_distances: ArrayLike,
     n_features: int,
     confidence_level: float,
 ) -> float:
@@ -562,8 +562,8 @@ def exceedance_rate(
 
 
 def qlike_loss(
-    returns: npt.ArrayLike,
-    forecast_variance: npt.ArrayLike,
+    returns: ArrayLike,
+    forecast_variance: ArrayLike,
 ) -> float:
     r"""QLIKE loss for univariate variance forecasts.
 
@@ -608,10 +608,10 @@ def qlike_loss(
 
 
 def _resolve_weights(
-    active_covariance: np.ndarray,
-    portfolio_weights: npt.ArrayLike | None,
-    active_asset_indices: np.ndarray,
-) -> np.ndarray:
+    active_covariance: FloatArray,
+    portfolio_weights: ArrayLike | None,
+    active_asset_indices: FloatArray,
+) -> FloatArray:
     """Compute normalized weights on the active asset subset if portfolio weights are
     provided; otherwise, compute inverse-volatility weights.
 
@@ -645,9 +645,9 @@ def _resolve_weights(
 
 
 def _aggregated_return_and_effective_covariance(
-    active_returns: np.ndarray,
-    active_covariance: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    active_returns: FloatArray,
+    active_covariance: FloatArray,
+) -> tuple[FloatArray, FloatArray]:
     r"""Compute the aggregated return and effective (Hadamard-scaled) covariance.
 
     When all entries are finite this reduces to `(X.sum(0), h * cov)`.
@@ -688,9 +688,9 @@ def _aggregated_return_and_effective_covariance(
 
 
 def _prepare_active_subset(
-    covariance: np.ndarray,
-    X_test: npt.ArrayLike,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, int] | None:
+    covariance: FloatArray,
+    X_test: ArrayLike,
+) -> tuple[FloatArray, FloatArray, FloatArray, int] | None:
     r"""Subset covariance and returns to jointly active assets.
 
     An asset is jointly active when its covariance diagonal is finite (available in the
@@ -734,7 +734,7 @@ def _prepare_active_subset(
     return active_cov, active_returns, active_asset_indices, n_active_assets
 
 
-def _get_covariance(estimator: skb.BaseEstimator) -> np.ndarray:
+def _get_covariance(estimator: skb.BaseEstimator) -> FloatArray:
     """Extract the covariance matrix from a covariance or prior estimator.
 
     Supports :class:`~skfolio.moments.BaseCovariance` (`estimator.covariance_`)

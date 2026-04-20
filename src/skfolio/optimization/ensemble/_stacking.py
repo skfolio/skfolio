@@ -1,7 +1,7 @@
 """Stacking Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
@@ -12,7 +12,6 @@ from __future__ import annotations
 from copy import deepcopy
 
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 import sklearn.model_selection as sks
 import sklearn.utils as sku
@@ -25,6 +24,7 @@ from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex import MeanRisk
+from skfolio.typing import ArrayLike
 from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
@@ -294,7 +294,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         return router
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> StackingOptimization:
         """Fit the Stacking Optimization estimator.
 

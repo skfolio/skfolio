@@ -48,7 +48,6 @@ In this tutorial, we will:
     4. Perform stress tests using Opinion Pooling.
 """
 
-
 # %%
 # Data Loading and Preparation
 # ============================

@@ -1,14 +1,17 @@
 """Pre-selection DropCorrelated module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
+
+from skfolio.typing import ArrayLike, BoolArray
 
 
 class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
@@ -52,13 +55,13 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         has assets names that are all strings.
     """
 
-    to_keep_: np.ndarray
+    to_keep_: BoolArray
 
     def __init__(self, threshold: float = 0.95, absolute: bool = False):
         self.threshold = threshold
         self.absolute = absolute
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y=None):
         """Run the correlation transformer and get the appropriate assets.
 
         Parameters

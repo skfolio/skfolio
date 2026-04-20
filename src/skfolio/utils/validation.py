@@ -9,9 +9,10 @@ from __future__ import annotations
 from typing import Literal
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
+
+from skfolio.typing import ArrayLike, FloatArray
 
 __all__ = ["validate_cross_sectional_data"]
 
@@ -19,13 +20,13 @@ __all__ = ["validate_cross_sectional_data"]
 def validate_cross_sectional_data(
     _estimator,
     /,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | Literal["no_validation"] | None = "no_validation",
-    cs_weights: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | Literal["no_validation"] | None = "no_validation",
+    cs_weights: ArrayLike | None = None,
     *,
     reset: bool = True,
     copy: bool = False,
-) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> FloatArray | tuple[FloatArray, FloatArray, FloatArray]:
     """Validate cross-sectional data.
 
     This helper follows the design of scikit-learn's `validate_data` and is specialized

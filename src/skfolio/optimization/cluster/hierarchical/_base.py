@@ -1,7 +1,7 @@
 """Base Hierarchical Clustering Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -13,7 +13,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
@@ -23,6 +22,7 @@ from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization
 from skfolio.portfolio import Portfolio
 from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import input_to_array
 
 
@@ -288,11 +288,11 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     def _clean_input(
         self,
-        value: float | dict | np.ndarray | list,
+        value: float | dict | FloatArray | list,
         n_assets: int,
         fill_value: Any,
         name: str,
-    ) -> np.ndarray:
+    ) -> FloatArray:
         """Convert input to cleaned 1D array
          value : float, dict, array-like or None.
             Input value to clean and convert.
@@ -334,7 +334,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     def _risk(
         self,
-        weights: np.ndarray,
+        weights: FloatArray,
         return_distribution: ReturnDistribution,
     ) -> float:
         """Compute the risk measure of a theoretical portfolio defined by the weights
@@ -372,7 +372,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
             risk = getattr(ptf, str(self.risk_measure.value))
         return risk
 
-    def _unitary_risks(self, return_distribution: ReturnDistribution) -> np.ndarray:
+    def _unitary_risks(self, return_distribution: ReturnDistribution) -> FloatArray:
         """Compute the vector of risk measure for each single assets.
 
         Parameters
@@ -392,7 +392,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         ]
         return np.array(risks)
 
-    def _convert_weights_bounds(self, n_assets: int) -> tuple[np.ndarray, np.ndarray]:
+    def _convert_weights_bounds(self, n_assets: int) -> tuple[FloatArray, FloatArray]:
         """Convert the input weights lower and upper bounds to two 1D arrays.
 
         Parameters
@@ -469,5 +469,5 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: None = None, **fit_params):
+    def fit(self, X: ArrayLike, y: None = None, **fit_params):
         pass

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -20,6 +22,7 @@ from skfolio.pre_selection import (
     SelectKExtremes,
 )
 from skfolio.prior import TimeSeriesFactorModel
+from skfolio.typing import FloatArray
 
 
 def assert_weights_dict_subset_equal(d1: dict, d2: dict, tol: float = 1e-15) -> None:
@@ -36,7 +39,7 @@ class CustomOptimization(BaseOptimization):
         fail: bool = False,
         portfolio_params: dict | None = None,
         fallback=None,
-        previous_weights: np.ndarray | None = None,
+        previous_weights: FloatArray | None = None,
         raise_on_failure: bool = True,
     ):
         super().__init__(

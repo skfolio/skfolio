@@ -1,7 +1,7 @@
 """Scorer module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-import numpy.typing as npt
-
 import skfolio.typing as skt
 from skfolio.measures import BaseMeasure
 from skfolio.portfolio import Portfolio
+from skfolio.typing import ArrayLike
 
 __all__ = ["make_scorer"]
 
@@ -61,7 +60,7 @@ class _PortfolioScorer(_BaseScorer):
     Created by :func:`make_scorer` with `response_method="predict"`.
     """
 
-    def __call__(self, estimator, X_test: npt.ArrayLike, y=None) -> float:
+    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
         """Compute the score of the estimator prediction on X.
 
         Parameters
@@ -95,7 +94,7 @@ class _EstimatorScorer(_BaseScorer):
     Created by :func:`make_scorer` with `response_method=None`.
     """
 
-    def __call__(self, estimator, X_test: npt.ArrayLike, y=None) -> float:
+    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
         """Score a fitted non-predictor estimator against test data.
 
         Parameters

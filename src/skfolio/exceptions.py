@@ -3,9 +3,11 @@ The :mod:`skfolio.exceptions` module includes all custom warnings and error
 classes used across skfolio.
 """
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 __all__ = [
     "DuplicateGroupsError",

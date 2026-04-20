@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
+
+from skfolio.typing import ArrayLike, FloatArray
 
 __all__ = ["BaseCSTransformer"]
 
@@ -44,10 +44,10 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
 
     def fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
-        cs_weights: npt.ArrayLike | None = None,
-        cs_groups: npt.ArrayLike | None = None,
+        cs_weights: ArrayLike | None = None,
+        cs_groups: ArrayLike | None = None,
     ):
         """Fit the transformer.
 
@@ -85,10 +85,10 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     @abstractmethod
     def transform(
         self,
-        X: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
-        cs_groups: npt.ArrayLike | None = None,
-    ) -> np.ndarray:
+        X: ArrayLike,
+        cs_weights: ArrayLike | None = None,
+        cs_groups: ArrayLike | None = None,
+    ) -> FloatArray:
         """Transform `X` observation by observation.
 
         Parameters
@@ -111,11 +111,11 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
 
     def fit_transform(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
-        cs_weights: npt.ArrayLike | None = None,
-        cs_groups: npt.ArrayLike | None = None,
-    ) -> np.ndarray:
+        cs_weights: ArrayLike | None = None,
+        cs_groups: ArrayLike | None = None,
+    ) -> FloatArray:
         """Fit to `X` and return the transformed values.
 
         Parameters

@@ -1,35 +1,44 @@
 """Custom typing module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, TypeAlias, Union
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, Union
 
 import cvxpy as cp
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 
-from skfolio.measures import ExtraRiskMeasure, PerfMeasure, RatioMeasure, RiskMeasure
-
 if TYPE_CHECKING:
+    from skfolio.measures import (
+        ExtraRiskMeasure,
+        PerfMeasure,
+        RatioMeasure,
+        RiskMeasure,
+    )
     from skfolio.optimization._base import BaseOptimization
 
 __all__ = [
+    "ArrayLike",
+    "BoolArray",
     "CvxMeasure",
     "ExpressionFunction",
     "Factor",
     "Fallback",
+    "FloatArray",
     "Groups",
     "Inequality",
+    "IntArray",
     "LinearConstraints",
     "Measure",
     "MultiInput",
     "Names",
+    "ObjArray",
     "ParametersValues",
     "Result",
     "RiskResult",
@@ -38,27 +47,35 @@ __all__ = [
     "Target",
 ]
 
-Measure = PerfMeasure | RiskMeasure | ExtraRiskMeasure | RatioMeasure
-CvxMeasure = PerfMeasure | RiskMeasure | RatioMeasure
+# Numpy
+ArrayLike: TypeAlias = npt.ArrayLike
+BoolArray: TypeAlias = npt.NDArray[np.bool_]
+FloatArray: TypeAlias = npt.NDArray[np.floating]
+IntArray: TypeAlias = npt.NDArray[np.integer]
+ObjArray: TypeAlias = npt.NDArray[np.object_]
+
+# Skfolio
+Measure: TypeAlias = Union[
+    "PerfMeasure", "RiskMeasure", "ExtraRiskMeasure", "RatioMeasure"
+]
+CvxMeasure: TypeAlias = Union["PerfMeasure", "RiskMeasure", "RatioMeasure"]
 Scoring: TypeAlias = Callable | dict[str, Callable] | Measure | None
-MultiInput = float | dict[str, float] | npt.ArrayLike
-Groups = dict[str, list[str]] | np.ndarray | list[list[str]]
-LinearConstraints = np.ndarray | list[str]
-Inequality = np.ndarray | list
-Target = float | np.ndarray
-ParametersValues = list[tuple[cp.Parameter, float | np.ndarray]]
+MultiInput = float | dict[str, float] | ArrayLike
+Groups = dict[str, list[str]] | IntArray | ObjArray | list[list[str]]
+LinearConstraints = FloatArray | list[str]
+Inequality = FloatArray | list
+Target = float | FloatArray
+ParametersValues = list[tuple[cp.Parameter, float | FloatArray]]
 Factor = cp.Variable | cp.Constant
-Result = np.ndarray | tuple[float | tuple[float, float] | np.ndarray, np.ndarray]
+Result = FloatArray | tuple[float | tuple[float, float] | FloatArray, FloatArray]
 RiskResult = tuple[cp.Expression | cp.Variable, list[cp.Expression | cp.SOC | cp.PSD]]
-ExpressionFunction = Callable[[cp.Variable, any], cp.Expression]
+ExpressionFunction = Callable[[cp.Variable, Any], cp.Expression]
 Figure = go.Figure
+Names = str | list[str]
+Tags = str | list[str]
 Fallback: TypeAlias = Union[
     "BaseOptimization",
     list[Union["BaseOptimization", Literal["previous_weights"]]],
     Literal["previous_weights"],
     None,
 ]
-
-# Population
-Names = str | list[str]
-Tags = str | list[str]

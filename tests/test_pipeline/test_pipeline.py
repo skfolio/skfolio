@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 from sklearn import config_context, set_config
 from sklearn.model_selection import train_test_split

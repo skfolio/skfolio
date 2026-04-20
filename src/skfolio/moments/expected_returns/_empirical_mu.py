@@ -1,17 +1,19 @@
 """Empirical Expected Returns (Mu) Estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.expected_returns._base import BaseMu
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import apply_window_size
 
 
@@ -42,7 +44,7 @@ class EmpiricalMu(BaseMu):
     def __init__(self, window_size: int | None = None):
         self.window_size = window_size
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "EmpiricalMu":
+    def fit(self, X: ArrayLike, y=None) -> EmpiricalMu:
         """Fit the Mu Empirical estimator model.
 
         Parameters

@@ -1,5 +1,7 @@
 """Tests for validation utilities."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 import sklearn.utils.validation as skv

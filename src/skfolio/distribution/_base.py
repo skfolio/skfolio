@@ -1,17 +1,19 @@
 """Base Distribution Estimator."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import auto
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import AutoEnum
 
 
@@ -56,7 +58,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None) -> "BaseDistribution":
+    def fit(self, X: ArrayLike, y=None) -> BaseDistribution:
         """Fit the univariate distribution model.
 
         Parameters
@@ -75,7 +77,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -105,7 +107,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         pass
 
-    def score(self, X: npt.ArrayLike, y=None):
+    def score(self, X: ArrayLike, y=None):
         """Compute the total log-likelihood under the model.
 
         Parameters
@@ -123,7 +125,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         return np.sum(self.score_samples(X))
 
-    def aic(self, X: npt.ArrayLike) -> float:
+    def aic(self, X: ArrayLike) -> float:
         r"""Compute the Akaike Information Criterion (AIC) for the model given data X.
 
         The AIC is defined as:
@@ -161,7 +163,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         log_likelihood = self.score(X)
         return 2 * (self.n_params - log_likelihood)
 
-    def bic(self, X: npt.ArrayLike) -> float:
+    def bic(self, X: ArrayLike) -> float:
         r"""Compute the Bayesian Information Criterion (BIC) for the model given data X.
 
         The BIC is defined as:

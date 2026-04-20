@@ -1,18 +1,20 @@
 """Base Multivariate Distribution Estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 import sklearn.utils as sku
 
 from skfolio.distribution._base import BaseDistribution
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class BaseMultivariateDist(BaseDistribution, ABC):
@@ -45,7 +47,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None) -> "BaseMultivariateDist":
+    def fit(self, X: ArrayLike, y=None) -> BaseMultivariateDist:
         """Fit the multivariate distribution model.
 
         Parameters
@@ -64,7 +66,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         pass
 
     @abstractmethod
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the distribution
         model.
 
@@ -84,9 +86,9 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     def sample(
         self,
         n_samples: int = 1,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
         | None = None,
-    ) -> np.ndarray:
+    ) -> FloatArray:
         """Generate random samples from the distribution model.
 
         Parameters
@@ -123,8 +125,8 @@ class BaseMultivariateDist(BaseDistribution, ABC):
 
     def plot_scatter_matrix(
         self,
-        X: npt.ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        X: ArrayLike | None = None,
+        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
         | None = None,
         n_samples: int = 1000,
         title: str = "Scatter Matrix",

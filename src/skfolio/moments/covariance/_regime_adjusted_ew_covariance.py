@@ -12,11 +12,11 @@ from collections import deque
 from enum import auto
 
 import numpy as np
-import numpy.typing as npt
 import scipy.special as scs
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 from skfolio.utils.stats import (
     corr_to_cov,
     inverse_volatility_weights,
@@ -505,7 +505,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         regime_half_life: float | None = None,
         regime_target: RegimeAdjustmentTarget = RegimeAdjustmentTarget.PORTFOLIO,
         regime_method: RegimeAdjustmentMethod = RegimeAdjustmentMethod.FIRST_MOMENT,
-        regime_portfolio_weights: npt.ArrayLike | None = None,
+        regime_portfolio_weights: ArrayLike | None = None,
         regime_multiplier_clip: tuple[float, float] | None = (0.7, 1.6),
         regime_min_observations: int | None = None,
         min_observations: int | None = None,
@@ -533,11 +533,11 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     def fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
-        estimation_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
+        estimation_mask: ArrayLike | None = None,
     ) -> RegimeAdjustedEWCovariance:
         """Fit the Regime-Adjusted Exponentially Weighted Covariance estimator.
 
@@ -592,11 +592,11 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     def partial_fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
-        estimation_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
+        estimation_mask: ArrayLike | None = None,
     ) -> RegimeAdjustedEWCovariance:
         """Incrementally fit the Regime-Adjusted EW Covariance estimator.
 
@@ -847,7 +847,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         else:
             self._return_buffer = None
 
-    def _bias_correct_covariance(self) -> np.ndarray:
+    def _bias_correct_covariance(self) -> FloatArray:
         """Return a bias-corrected output covariance.
 
         For the direct path, applies the congruence transform to the raw
@@ -905,7 +905,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         covariance[ix] = corr_to_cov(corr, std_bc)
         return covariance
 
-    def _get_bias_corrected_cov_for_regime(self, regime_idx: np.ndarray) -> np.ndarray:
+    def _get_bias_corrected_cov_for_regime(self, regime_idx: IntArray) -> FloatArray:
         """Return a bias-corrected covariance submatrix for STVU computation.
 
         This helper is used only for STVU calibration, not for the final
@@ -936,9 +936,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     def _process_return_row(
         self,
-        returns: np.ndarray,
-        active_row: np.ndarray,
-        estimation_row: np.ndarray | None = None,
+        returns: FloatArray,
+        active_row: BoolArray,
+        estimation_row: BoolArray | None = None,
     ) -> None:
         r"""Update internal states with a single observation.
 
@@ -1017,9 +1017,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     def _update_regime(
         self,
-        ret: np.ndarray,
-        valid: np.ndarray,
-        estimation_row: np.ndarray | None = None,
+        ret: FloatArray,
+        valid: BoolArray,
+        estimation_row: BoolArray | None = None,
     ) -> None:
         """Compute STVU statistic using bias-corrected covariance and update
         regime state. Only ready assets participate.
@@ -1129,9 +1129,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     def _update_var_corr(
         self,
-        outer_product: np.ndarray,
-        valid: np.ndarray,
-        pair_valid: np.ndarray,
+        outer_product: FloatArray,
+        valid: BoolArray,
+        pair_valid: BoolArray,
     ) -> None:
         """Pairwise update of separate variance and correlation (DCC-style).
 
@@ -1188,7 +1188,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 np.fill_diagonal(corr, 1.0)
                 self._cov[ix] = corr_to_cov(corr, std_active)
 
-    def _compute_hac_outer(self, ret: np.ndarray) -> np.ndarray:
+    def _compute_hac_outer(self, ret: FloatArray) -> FloatArray:
         """Compute HAC-adjusted outer product using Newey-West (Bartlett kernel).
 
         Parameters

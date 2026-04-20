@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import timeit
 import tracemalloc
@@ -19,6 +21,7 @@ from skfolio import (
 from skfolio.datasets import load_sp500_dataset
 from skfolio.portfolio._base import _MEASURES
 from skfolio.preprocessing import prices_to_returns
+from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
 from skfolio.utils.tools import args_names
 
@@ -32,7 +35,7 @@ def X() -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def weights() -> np.ndarray:
+def weights() -> FloatArray:
     weights = np.array(
         [
             0.12968013,
@@ -61,7 +64,7 @@ def weights() -> np.ndarray:
 
 
 @pytest.fixture
-def portfolio(X: pd.DataFrame, weights: np.ndarray) -> Portfolio:
+def portfolio(X: pd.DataFrame, weights: FloatArray) -> Portfolio:
     portfolio = Portfolio(X=X, weights=weights, annualized_factor=252)
     return portfolio
 
@@ -85,7 +88,7 @@ def annualized_factor(request):
     return request.param
 
 
-def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array:
+def _portfolio_returns(asset_returns: FloatArray, weights: FloatArray) -> FloatArray:
     r"""
     Compute the portfolio returns from its assets returns and weights.
     """

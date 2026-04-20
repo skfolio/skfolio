@@ -101,7 +101,6 @@ population.plot_cumulative_returns()
 fig = population.plot_composition()
 show(fig)
 
-
 # %%
 # Going Further
 # =============

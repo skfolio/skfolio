@@ -7,12 +7,12 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 
 from skfolio.linear_model._cross_sectional._base import (
     BaseCSLinearModel,
     _validate_positive_weight_pairs,
 )
+from skfolio.typing import ArrayLike
 from skfolio.utils.validation import validate_cross_sectional_data
 
 
@@ -97,9 +97,9 @@ class CSLinearRegression(BaseCSLinearModel):
 
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike,
+        cs_weights: ArrayLike | None = None,
     ) -> CSLinearRegression:
         """Fit the cross-sectional regression model.
 

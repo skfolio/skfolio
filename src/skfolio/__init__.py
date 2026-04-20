@@ -1,7 +1,9 @@
 """skfolio package."""
 
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
 import importlib.metadata
 
 from skfolio.measures import (

@@ -160,7 +160,6 @@ model4.fit(X_train, y_train)
 
 model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
-
 # %%
 # To compare the models, we use an equal weighted benchmark using
 # the :class:`~skfolio.optimization.EqualWeighted` estimator:

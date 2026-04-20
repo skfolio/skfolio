@@ -1,12 +1,13 @@
 """Opinion Pooling estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Vincent Maladière, Matteo Manzi, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.special as scs
 import scipy.special as sp
@@ -18,6 +19,7 @@ import sklearn.utils.validation as skv
 
 import skfolio.measures as sm
 from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
@@ -217,10 +219,10 @@ class OpinionPooling(BasePrior, BaseComposition):
 
     estimators_: list[BasePrior]
     named_estimators_: dict[str, BasePrior]
-    opinion_probabilities_: np.ndarray
+    opinion_probabilities_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     def __init__(
         self,
@@ -331,7 +333,7 @@ class OpinionPooling(BasePrior, BaseComposition):
             )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "OpinionPooling":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> OpinionPooling:
         """Fit the Opinion Pooling estimator.
 
         Parameters
@@ -433,7 +435,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         )
         return self
 
-    def _validate_opinion_probabilities(self) -> np.ndarray:
+    def _validate_opinion_probabilities(self) -> FloatArray:
         """Validate `opinion_probabilities`."""
         n_opinions = len(self.estimators)
         if self.opinion_probabilities is None:
@@ -459,8 +461,8 @@ class OpinionPooling(BasePrior, BaseComposition):
         return opinion_probabilities
 
     def _compute_robust_opinion_probabilities(
-        self, opinion_probabilities: np.ndarray, sample_weights: np.ndarray
-    ) -> np.ndarray:
+        self, opinion_probabilities: FloatArray, sample_weights: FloatArray
+    ) -> FloatArray:
         """Compute the robust `opinion_probabilities` using KL-divergence."""
         if self.divergence_penalty < 0:
             raise ValueError("`divergence_penalty` cannot be negative")

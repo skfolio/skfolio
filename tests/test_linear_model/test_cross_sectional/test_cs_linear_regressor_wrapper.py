@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pytest
 from numpy.testing import assert_allclose
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import HuberRegressor, Lasso, LinearRegression
 
 from skfolio.linear_model import CSLinearRegressorWrapper
+from skfolio.typing import ArrayLike, FloatArray
 
 
 def make_data(
@@ -18,7 +18,7 @@ def make_data(
     n_factors: int = 4,
     seed: int = 123,
     noise: float = 0.05,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[FloatArray, FloatArray, FloatArray]:
     """Generate synthetic cross-sectional data."""
     rng = np.random.default_rng(seed)
 
@@ -39,9 +39,9 @@ class MissingFitInterceptRegressor(BaseEstimator, RegressorMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray,
-        sample_weight: npt.ArrayLike | None = None,
+        X: FloatArray,
+        y: FloatArray,
+        sample_weight: ArrayLike | None = None,
     ) -> MissingFitInterceptRegressor:
         self.coef_ = np.zeros(X.shape[1], dtype=float)
         self.intercept_ = 0.0
@@ -56,9 +56,9 @@ class MissingCoefRegressor(BaseEstimator, RegressorMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray,
-        sample_weight: npt.ArrayLike | None = None,
+        X: FloatArray,
+        y: FloatArray,
+        sample_weight: ArrayLike | None = None,
     ) -> MissingCoefRegressor:
         self.intercept_ = 0.0
         return self
@@ -72,20 +72,20 @@ class MissingInterceptRegressor(BaseEstimator, RegressorMixin):
 
     def fit(
         self,
-        X: np.ndarray,
-        y: np.ndarray,
-        sample_weight: npt.ArrayLike | None = None,
+        X: FloatArray,
+        y: FloatArray,
+        sample_weight: ArrayLike | None = None,
     ) -> MissingInterceptRegressor:
         self.coef_ = np.zeros(X.shape[1], dtype=float)
         return self
 
 
 def sklearn_reference(
-    X: np.ndarray,
-    y: np.ndarray,
-    weights: np.ndarray,
+    X: FloatArray,
+    y: FloatArray,
+    weights: FloatArray,
     fit_intercept: bool,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray, float]:
     """Fit one sklearn regression per observation."""
     n_observations, _, n_factors = X.shape
     coef = np.zeros((n_observations, n_factors))

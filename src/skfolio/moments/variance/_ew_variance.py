@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.variance._base import BaseVariance
+from skfolio.typing import ArrayLike, BoolArray, FloatArray
 from skfolio.utils.tools import (
     _validate_mask,
     apply_window_size,
@@ -207,10 +207,10 @@ class EWVariance(BaseVariance):
 
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWVariance:
         """Fit the Exponentially Weighted Variance estimator.
 
@@ -241,10 +241,10 @@ class EWVariance(BaseVariance):
 
     def partial_fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWVariance:
         """Incrementally fit the Exponentially Weighted Variance estimator.
 
@@ -346,7 +346,7 @@ class EWVariance(BaseVariance):
         else:
             self.location_ = np.full(n_assets, np.nan)
 
-    def _process_return_row(self, returns: np.ndarray, active_row: np.ndarray) -> None:
+    def _process_return_row(self, returns: FloatArray, active_row: BoolArray) -> None:
         """Update internal EWMA state with a single observation.
 
         Only assets with valid returns are updated; all others are frozen.
@@ -394,7 +394,7 @@ class EWVariance(BaseVariance):
                 self._decay * self._var[valid_idx] + (1.0 - self._decay) * squared
             )
 
-    def _process_batch_no_nan(self, X: np.ndarray) -> None:
+    def _process_batch_no_nan(self, X: FloatArray) -> None:
         """Vectorized EWMA update for the common case: no NaN, no
         active_mask, and assume_centered=True.
 
@@ -410,7 +410,7 @@ class EWVariance(BaseVariance):
         self._obs_count += n_obs
         self._is_active[:] = True
 
-    def _bias_correct_variance(self) -> np.ndarray:
+    def _bias_correct_variance(self) -> FloatArray:
         r"""Return a bias-corrected copy of the internal EWMA state.
 
         Divides each asset's raw accumulator by :math:`(1 - \lambda^{n_i})`

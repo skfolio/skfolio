@@ -1,12 +1,13 @@
 """Bivariate Gaussian Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as so
 import scipy.special as sp
 import scipy.stats as st
@@ -14,6 +15,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.distribution.copula._base import _RHO_BOUNDS, BaseBivariateCopula
 from skfolio.distribution.copula._utils import _apply_margin_swap
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class GaussianCopula(BaseBivariateCopula):
@@ -143,7 +145,7 @@ class GaussianCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "GaussianCopula":
+    def fit(self, X: ArrayLike, y=None) -> GaussianCopula:
         r"""Fit the Bivariate Gaussian Copula.
 
         If `itau` is True, estimates :math:`\rho` using Kendall's tau inversion.
@@ -191,7 +193,7 @@ class GaussianCopula(BaseBivariateCopula):
 
         return self
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate Gaussian copula.
 
         Parameters
@@ -216,8 +218,8 @@ class GaussianCopula(BaseBivariateCopula):
         return cdf
 
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate Gaussian
         copula.
 
@@ -259,8 +261,8 @@ class GaussianCopula(BaseBivariateCopula):
         return p
 
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
@@ -313,7 +315,7 @@ class GaussianCopula(BaseBivariateCopula):
         u = sp.ndtr(u_inv)
         return u
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -349,7 +351,7 @@ class GaussianCopula(BaseBivariateCopula):
         return f"{self.__class__.__name__}(rho={self.rho_:0.3f})"
 
 
-def _neg_log_likelihood(rho: float, X: np.ndarray) -> float:
+def _neg_log_likelihood(rho: float, X: FloatArray) -> float:
     """Negative log-likelihood function for optimization.
 
     Parameters
@@ -370,7 +372,7 @@ def _neg_log_likelihood(rho: float, X: np.ndarray) -> float:
     return -np.sum(_base_sample_scores(X=X, rho=rho))
 
 
-def _base_sample_scores(X: np.ndarray, rho: float) -> np.ndarray:
+def _base_sample_scores(X: FloatArray, rho: float) -> FloatArray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Gaussian copula model.
 

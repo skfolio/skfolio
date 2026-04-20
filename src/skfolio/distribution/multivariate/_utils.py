@@ -1,22 +1,24 @@
 """Utils module for multivariate distribution."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import auto
 from functools import cached_property
 from itertools import combinations
-from typing import Union
 
 import numpy as np
 import scipy.sparse.csgraph as ssc
 import scipy.stats as st
 import sklearn.feature_selection as sf
 
+from skfolio.typing import FloatArray
 from skfolio.utils.tools import AutoEnum
 
 
@@ -62,7 +64,7 @@ class EdgeCondSets:
         """Union of conditioned and conditioning sets."""
         return set(self.conditioned) | self.conditioning
 
-    def __add__(self, other: "EdgeCondSets") -> "EdgeCondSets":
+    def __add__(self, other: EdgeCondSets) -> EdgeCondSets:
         """Combine two EdgeCondSets, merging conditioned and conditioning sets."""
         if not isinstance(other, self.__class__):
             raise TypeError(
@@ -102,13 +104,13 @@ class BaseNode(ABC):
         The Tree containing this Node.
     """
 
-    def __init__(self, ref: Union[int, "Edge"]):
+    def __init__(self, ref: int | Edge):
         self._ref = ref
         self.edges: set[Edge] = set()
         self.tree: Tree | None = None  # Reference to the Tree containing this Node
 
     @property
-    def ref(self) -> Union[int, "Edge"]:
+    def ref(self) -> int | Edge:
         """Return the reference of this node (read-only)."""
         return self._ref
 
@@ -146,7 +148,7 @@ class RootNode(BaseNode):
     """
 
     def __init__(
-        self, ref: int, central: bool, pseudo_values: np.ndarray | None = None
+        self, ref: int, central: bool, pseudo_values: FloatArray | None = None
     ):
         super().__init__(ref=ref)
         self.central = central
@@ -175,13 +177,13 @@ class ChildNode(BaseNode):
         The Tree containing this Node.
     """
 
-    def __init__(self, ref: "Edge"):
+    def __init__(self, ref: Edge):
         super().__init__(ref=ref)
         # pointer from Edge to Node
         ref.ref_node = self
         self._central: bool | None = None
-        self._u: np.ndarray | None = None
-        self._v: np.ndarray | None = None
+        self._u: FloatArray | None = None
+        self._v: FloatArray | None = None
         self._u_count: int = 0
         self._v_count: int = 0
         self._u_count_total: int = 0
@@ -202,7 +204,7 @@ class ChildNode(BaseNode):
         return self._central
 
     @property
-    def u(self) -> np.ndarray:
+    def u(self) -> FloatArray:
         """Get the first margin value (u) for the node.
 
         It is obtained by computing the partial derivative of the copula with respect
@@ -241,11 +243,11 @@ class ChildNode(BaseNode):
         return value
 
     @u.setter
-    def u(self, value: np.ndarray) -> None:
+    def u(self, value: FloatArray) -> None:
         self._u = value
 
     @property
-    def v(self) -> np.ndarray:
+    def v(self) -> FloatArray:
         """Get the second margin value (v) for the node.
 
         It is obtained by computing the partial derivative of the copula with respect
@@ -284,7 +286,7 @@ class ChildNode(BaseNode):
         return value
 
     @v.setter
-    def v(self, value: np.ndarray):
+    def v(self, value: FloatArray):
         self._v = value
 
     def get_var(self, is_left: bool) -> int:
@@ -403,7 +405,7 @@ class Edge:
         self.node1.edges.add(self)
         self.node2.edges.add(self)
 
-    def get_X(self) -> np.ndarray:
+    def get_X(self) -> FloatArray:
         """Retrieve the bivariate pseudo-observation data associated with the edge.
 
         For a root edge, this returns the pseudo-values from node1 and node2.
@@ -425,7 +427,7 @@ class Edge:
         X = np.stack([u, v]).T
         return X
 
-    def shared_node_is_left(self, other: "Edge") -> tuple[bool, bool]:
+    def shared_node_is_left(self, other: Edge) -> tuple[bool, bool]:
         """Determine the ordering of shared nodes between this edge and another edge.
 
         If the two edges share one node, this method indicates for each edge whether the
@@ -457,7 +459,7 @@ class Edge:
         # self.node1 == other.node2
         raise ValueError("Edges are not correctly ordered")
 
-    def share_one_node(self, other: "Edge") -> bool:
+    def share_one_node(self, other: Edge) -> bool:
         """Check whether two edges share exactly one node.
 
         Parameters

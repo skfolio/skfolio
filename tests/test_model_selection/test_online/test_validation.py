@@ -1,5 +1,7 @@
 """Test online_predict and online_score modules."""
 
+from __future__ import annotations
+
 from functools import partial
 
 import numpy as np
@@ -25,6 +27,7 @@ from skfolio.model_selection import (
 from skfolio.moments import EWCovariance, EWMu, RegimeAdjustedEWCovariance
 from skfolio.optimization import InverseVolatility, MeanRisk, ObjectiveFunction
 from skfolio.prior import EmpiricalPrior
+from skfolio.typing import BoolArray
 from skfolio.uncertainty_set import (
     EmpiricalCovarianceUncertaintySet,
     EmpiricalMuUncertaintySet,
@@ -75,7 +78,7 @@ def _make_inactive_block(
 
 def _make_estimation_mask(
     X, start: int, stop: int, assets: tuple[int, ...] = (0, 1)
-) -> np.ndarray:
+) -> BoolArray:
     """Create an estimation mask that excludes some assets on a block."""
     estimation_mask = np.ones(X.shape, dtype=bool)
     estimation_mask[start:stop, list(assets)] = False

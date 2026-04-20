@@ -1,12 +1,13 @@
 """Bivariate Copula Selection."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.stats as st
 import sklearn as sk
 
@@ -18,10 +19,11 @@ from skfolio.distribution.copula._gumbel import GumbelCopula
 from skfolio.distribution.copula._independent import IndependentCopula
 from skfolio.distribution.copula._joe import JoeCopula
 from skfolio.distribution.copula._student_t import StudentTCopula
+from skfolio.typing import ArrayLike
 
 
 def select_bivariate_copula(
-    X: npt.ArrayLike,
+    X: ArrayLike,
     copula_candidates: list[BaseBivariateCopula] | None = None,
     selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
     independence_level: float = 0.05,

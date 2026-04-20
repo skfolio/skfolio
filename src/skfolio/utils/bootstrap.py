@@ -1,17 +1,21 @@
 """Bootstrap module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
+
+from skfolio.typing import FloatArray
 
 __all__ = ["stationary_bootstrap"]
 
 
-def optimal_block_size(x: np.ndarray) -> float:
+def optimal_block_size(x: FloatArray) -> float:
     """Compute the optimal block size for a single series using Politis & White
     algorithm [1]_.
 
@@ -66,11 +70,11 @@ def optimal_block_size(x: np.ndarray) -> float:
 
 
 def stationary_bootstrap(
-    returns: np.ndarray,
+    returns: FloatArray,
     n_bootstrap_samples: int,
     block_size: float | None = None,
     seed: int | None = None,
-) -> np.ndarray:
+) -> FloatArray:
     """Create `n_bootstrap_samples` samples from a multivariate return series via
     stationary bootstrapping.
 

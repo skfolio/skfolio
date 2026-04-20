@@ -1,14 +1,16 @@
 """Johnson SU Estimator."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy.typing as npt
+from __future__ import annotations
+
 import scipy.stats as st
 
 from skfolio.distribution.univariate._base import BaseUnivariateDist
+from skfolio.typing import ArrayLike
 
 
 class JohnsonSU(BaseUnivariateDist):
@@ -119,7 +121,7 @@ class JohnsonSU(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"a": self.a_, "b": self.b_, "loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "JohnsonSU":
+    def fit(self, X: ArrayLike, y=None) -> JohnsonSU:
         """Fit the univariate Johnson SU distribution model.
 
         Parameters

@@ -1,9 +1,12 @@
 """Benchmark Tracker estimator."""
 
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
+# SPDX-License-Identifier: BSD-3-Clause
+
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn.utils.validation as skv
 
@@ -12,6 +15,7 @@ from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
+from skfolio.typing import ArrayLike
 
 
 class BenchmarkTracker(MeanRisk):
@@ -280,7 +284,7 @@ class BenchmarkTracker(MeanRisk):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params) -> BenchmarkTracker:
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params) -> BenchmarkTracker:
         """Fit the Return-Based Tracker estimator.
 
         Parameters

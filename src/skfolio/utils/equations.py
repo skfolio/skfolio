@@ -1,20 +1,22 @@
 """Equation module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import re
 import warnings
 
 import numpy as np
-import numpy.typing as npt
 
 from skfolio.exceptions import (
     DuplicateGroupsError,
     EquationToMatrixError,
     GroupNotFoundError,
 )
+from skfolio.typing import ArrayLike, FloatArray, ObjArray
 
 __all__ = ["equations_to_matrix", "group_cardinalities_to_matrix"]
 
@@ -30,12 +32,12 @@ _SUB_ADD_OPERATOR_SIGNS = {"+": 1, "-": -1}
 
 
 def equations_to_matrix(
-    groups: npt.ArrayLike,
-    equations: npt.ArrayLike,
+    groups: ArrayLike,
+    equations: ArrayLike,
     sum_to_one: bool = False,
     raise_if_group_missing: bool = False,
     names: tuple[str, str] = ("groups", "equations"),
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
     """Convert a list of linear equations into the left and right matrices of the
     inequality A <= B and equality A == B.
 
@@ -141,10 +143,10 @@ def equations_to_matrix(
 
 
 def group_cardinalities_to_matrix(
-    groups: npt.ArrayLike,
+    groups: ArrayLike,
     group_cardinalities: dict[str, int],
     raise_if_group_missing: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[FloatArray, FloatArray]:
     """Convert a list of linear equations into the left and right matrices of the
     inequality A <= B and equality A == B.
 
@@ -198,7 +200,7 @@ def group_cardinalities_to_matrix(
     )
 
 
-def _validate_groups(groups: npt.ArrayLike, name: str = "groups") -> np.ndarray:
+def _validate_groups(groups: ArrayLike, name: str = "groups") -> ObjArray:
     """Validate groups by checking its dim and if group names don't appear in multiple
     levels and convert to numpy array.
 
@@ -232,9 +234,7 @@ def _validate_groups(groups: npt.ArrayLike, name: str = "groups") -> np.ndarray:
     return groups
 
 
-def _validate_equations(
-    equations: npt.ArrayLike, name: str = "equations"
-) -> np.ndarray:
+def _validate_equations(equations: ArrayLike, name: str = "equations") -> ObjArray:
     """Validate equations by checking its dim and convert to numpy array.
 
     Parameters
@@ -256,7 +256,7 @@ def _validate_equations(
     return equations
 
 
-def _matching_array(values: np.ndarray, key: str, sum_to_one: bool) -> np.ndarray:
+def _matching_array(values: ObjArray, key: str, sum_to_one: bool) -> FloatArray:
     """Takes in a 2D array of strings, a key string, and a boolean flag.
     It returns a 1D array where the value is 1 if there is a match between the key and
     any value in the 2D array, and 0 otherwise. The returned array can be scaled to
@@ -378,10 +378,10 @@ def _split_equation_string(string: str) -> list[str]:
 
 
 def _string_to_equation(
-    groups: np.ndarray,
+    groups: ObjArray,
     string: str,
     sum_to_one: bool,
-) -> tuple[np.ndarray, float, bool]:
+) -> tuple[FloatArray, float, bool]:
     """Convert a string to a left 1D-array and right float of the form:
     `groups @ left <= right` or `groups @ left == right` and return whether it's an
     equality or inequality.

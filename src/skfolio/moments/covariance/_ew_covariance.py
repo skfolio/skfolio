@@ -12,10 +12,10 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
+from skfolio.typing import ArrayLike, BoolArray, FloatArray
 from skfolio.utils.stats import symmetrize
 from skfolio.utils.tools import (
     _validate_mask,
@@ -250,10 +250,10 @@ class EWCovariance(BaseCovariance):
 
     def fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWCovariance:
         """Fit the Exponentially Weighted Covariance estimator.
 
@@ -283,10 +283,10 @@ class EWCovariance(BaseCovariance):
 
     def partial_fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWCovariance:
         """Incrementally fit the Exponentially Weighted Covariance estimator.
 
@@ -429,7 +429,7 @@ class EWCovariance(BaseCovariance):
         else:
             self.location_ = np.full(n_assets, np.nan)
 
-    def _process_return_row(self, returns: np.ndarray, active_row: np.ndarray) -> None:
+    def _process_return_row(self, returns: FloatArray, active_row: BoolArray) -> None:
         """Update internal EWMA state with a single observation.
 
         Only the subblock indexed by assets with valid returns is touched;
@@ -478,7 +478,7 @@ class EWCovariance(BaseCovariance):
             ix = np.ix_(valid_idx, valid_idx)
             self._cov[ix] = self._decay * self._cov[ix] + (1.0 - self._decay) * outer
 
-    def _process_batch_no_nan(self, X: np.ndarray) -> None:
+    def _process_batch_no_nan(self, X: FloatArray) -> None:
         """Vectorized EWMA update for the common case: no NaN, no active_mask,
         and assume_centered=True.
 
@@ -494,7 +494,7 @@ class EWCovariance(BaseCovariance):
         self._obs_count += n_obs
         self._is_active[:] = True
 
-    def _bias_correct_covariance(self) -> np.ndarray:
+    def _bias_correct_covariance(self) -> FloatArray:
         """Return a bias-corrected copy of the internal EWMA state.
 
         Applies a per-asset congruence transform that removes the downward
