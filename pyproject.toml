@@ -102,7 +102,7 @@ version_toml = [
 ]
 branch = "main"
 allow_zero_version = true
-major_on_zero = false
+major_on_zero = true
 tag_format = "v{version}"
 upload_to_pypi = false
 upload_to_vcs_release = true
