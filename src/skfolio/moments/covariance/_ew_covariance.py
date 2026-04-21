@@ -9,8 +9,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -145,12 +143,6 @@ class EWCovariance(BaseCovariance):
 
         The default (`None`) uses all available data.
 
-    alpha : float, optional
-        .. deprecated:: 0.17.0
-            `alpha` is deprecated and will be removed in a future version.
-            Use `half_life` instead. Note: `alpha = 1 - decay_factor` and
-            `half_life = -ln(2) / ln(1 - alpha)`.
-
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
         matrix that is positive definite and with a Cholesky decomposition than can be
@@ -228,11 +220,10 @@ class EWCovariance(BaseCovariance):
 
     def __init__(
         self,
-        half_life: float | None = None,
+        half_life: float = 40,
         assume_centered: bool = True,
         min_observations: int | None = None,
         window_size: int | None = None,
-        alpha: float | None = None,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -246,7 +237,6 @@ class EWCovariance(BaseCovariance):
         self.half_life = half_life
         self.min_observations = min_observations
         self.window_size = window_size
-        self.alpha = alpha
 
     def fit(
         self,
@@ -360,29 +350,9 @@ class EWCovariance(BaseCovariance):
 
     def _validate_params(self) -> None:
         """Validate parameters."""
-        if self.alpha is not None and self.half_life is not None:
+        if self.half_life <= 0:
             raise ValueError(
-                "Cannot specify both 'alpha' and 'half_life'. "
-                "Use 'half_life' (alpha is deprecated)."
-            )
-
-        if self.alpha is not None:
-            warnings.warn(
-                "The 'alpha' parameter is deprecated and will be removed in "
-                "a future version. Use 'half_life' instead. "
-                "Conversion: half_life = -ln(2) / ln(1 - alpha).",
-                FutureWarning,
-                stacklevel=4,
-            )
-            if not (0.0 < self.alpha < 1.0):
-                raise ValueError(
-                    f"alpha must satisfy 0 < alpha < 1 (got {self.alpha})."
-                )
-
-        half_life = self._get_half_life()
-        if half_life <= 0:
-            raise ValueError(
-                f"half_life must be positive (got {half_life}). "
+                f"half_life must be positive (got {self.half_life}). "
                 f"Typical values: 10-100 observations."
             )
 
@@ -391,26 +361,14 @@ class EWCovariance(BaseCovariance):
                 f"window_size must be a positive integer, got {self.window_size}"
             )
 
-        self._half_life = half_life
-
         if self.min_observations is None:
-            self._min_observations = max(1, int(half_life))
+            self._min_observations = max(1, int(self.half_life))
         else:
             if self.min_observations < 1:
                 raise ValueError(
                     f"min_observations must be >= 1, got {self.min_observations}"
                 )
             self._min_observations = self.min_observations
-
-    def _get_half_life(self) -> float:
-        """Get the effective half-life, handling deprecated alpha."""
-        if self.alpha is not None:
-            decay_factor = 1.0 - self.alpha
-            return -np.log(2) / np.log(decay_factor)
-        elif self.half_life is not None:
-            return self.half_life
-        else:
-            return 40.0
 
     def _initialize(self) -> None:
         """Initialize internal state.
@@ -420,7 +378,7 @@ class EWCovariance(BaseCovariance):
         only at output time.
         """
         n_assets = self.n_features_in_
-        self._decay = half_life_to_decay_factor(self._half_life)
+        self._decay = half_life_to_decay_factor(self.half_life)
         self._cov = np.zeros((n_assets, n_assets))
         self._is_active = np.ones(n_assets, dtype=bool)
         self._obs_count = np.zeros(n_assets, dtype=int)
