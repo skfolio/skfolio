@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import warnings
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -211,14 +210,6 @@ class TimeSeriesFactorModel(BasePrior):
         expected returns and covariance matrix.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
-    residual_variance : bool, default=True
-        .. deprecated::
-            The `residual_variance` parameter is deprecated and will be
-            removed in a future version. Residual variance is always added.
-
-        If this is set to True, the diagonal term of the residuals covariance
-        (residuals variance) is added to the factor model covariance.
-
     higham : bool, default=False
         If this is set to True, the Higham (2002) algorithm is used to find
         the nearest positive semi-definite covariance matrix. It is more
@@ -258,13 +249,11 @@ class TimeSeriesFactorModel(BasePrior):
         self,
         loading_matrix_estimator: BaseLoadingMatrix | None = None,
         factor_prior_estimator: BasePrior | None = None,
-        residual_variance: bool = True,
         higham: bool = False,
         max_iteration: int = 100,
     ):
         self.loading_matrix_estimator = loading_matrix_estimator
         self.factor_prior_estimator = factor_prior_estimator
-        self.residual_variance = residual_variance
         self.higham = higham
         self.max_iteration = max_iteration
 
@@ -318,17 +307,6 @@ class TimeSeriesFactorModel(BasePrior):
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
-
-        # TODO: remove residual_variance parameter in next release
-        if not self.residual_variance:
-            warnings.warn(
-                "The `residual_variance` parameter of "
-                "`TimeSeriesFactorModel` is deprecated and will be removed "
-                "in a future version. Residual variance will always be "
-                "added to the factor model covariance.",
-                FutureWarning,
-                stacklevel=2,
-            )
 
         self.factor_prior_estimator_ = check_estimator(
             self.factor_prior_estimator,
@@ -384,13 +362,11 @@ class TimeSeriesFactorModel(BasePrior):
         returns = factor_return_dist.returns @ loading_matrix.T + intercepts
 
         cholesky = loading_matrix @ np.linalg.cholesky(factor_return_dist.covariance)
-
-        if self.residual_variance:
-            factor_returns_pred = factor_returns @ loading_matrix.T + intercepts
-            idio_returns = X - factor_returns_pred
-            idio_var = sm.variance(idio_returns)
-            covariance[np.diag_indices_from(covariance)] += idio_var
-            cholesky = np.hstack((cholesky, np.sqrt(np.diag(idio_var))))
+        factor_returns_pred = factor_returns @ loading_matrix.T + intercepts
+        idio_returns = X - factor_returns_pred
+        idio_var = sm.variance(idio_returns)
+        covariance[np.diag_indices_from(covariance)] += idio_var
+        cholesky = np.hstack((cholesky, np.sqrt(np.diag(idio_var))))
 
         covariance = cov_nearest(
             covariance, higham=self.higham, higham_max_iteration=self.max_iteration

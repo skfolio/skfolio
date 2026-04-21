@@ -196,7 +196,7 @@ Minimum Variance portfolio using a Factor Model:
     X, y = prices_to_returns(prices, factor_prices)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
 
-    model = MeanRisk(prior_estimator=FactorModel())
+    model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
     model.fit(X_train, y_train)
     print(model.weights_)
 
@@ -230,7 +230,7 @@ aversion of 2 and a denoised prior covariance matrix:
     from skfolio.moments import DenoiseCovariance, EquilibriumMu
     from skfolio.optimization import MeanRisk, ObjectiveFunction
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+    from skfolio.prior import BlackLitterman, EmpiricalPrior, TimeSeriesFactorModel
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
@@ -244,7 +244,7 @@ aversion of 2 and a denoised prior covariance matrix:
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=BlackLitterman(
                 prior_estimator=EmpiricalPrior(
                     mu_estimator=EquilibriumMu(risk_aversion=2),

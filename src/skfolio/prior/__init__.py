@@ -24,22 +24,3 @@ __all__ = [
     "SyntheticData",
     "TimeSeriesFactorModel",
 ]
-
-_DEPRECATED_NAMES = {
-    "FactorModel": "TimeSeriesFactorModel",
-}
-
-
-def __getattr__(name):
-    if name in _DEPRECATED_NAMES:
-        import warnings
-
-        new_name = _DEPRECATED_NAMES[name]
-        warnings.warn(
-            f"`{name}` has been renamed to `{new_name}` and will be removed "
-            "in version 1.0.0.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        return globals()[new_name]
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

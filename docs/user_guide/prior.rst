@@ -490,10 +490,10 @@ This can be achieved by combining :class:`EntropyPooling` with :class:`Synthetic
 **Example:**
 
 Instead of applying extreme Entropy Pooling views directly to asset returns, we can
-embed it within a Factor Model.
+embed it within a time-series factor model.
 This allows us to impose views on factor data such at the quality factor "QUAL".
 This can be achieved by combining :class:`EntropyPooling` with :class:`SyntheticData`
-and with :class:`FactorModel`:
+and with :class:`TimeSeriesFactorModel`:
 
 .. code-block:: python
 
@@ -501,7 +501,7 @@ and with :class:`FactorModel`:
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio.prior import SyntheticData, TimeSeriesFactorModel
     from skfolio import RiskMeasure
 
     # Load historical prices and convert them to returns
