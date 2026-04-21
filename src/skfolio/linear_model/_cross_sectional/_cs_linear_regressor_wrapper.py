@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.utils.parallel as skp
@@ -16,6 +15,7 @@ from skfolio.linear_model._cross_sectional._base import (
     BaseCSLinearModel,
     _validate_positive_weight_pairs,
 )
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.validation import validate_cross_sectional_data
 
 
@@ -102,9 +102,9 @@ class CSLinearRegressorWrapper(BaseCSLinearModel):
 
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike,
+        cs_weights: ArrayLike | None = None,
     ) -> CSLinearRegressorWrapper:
         """Fit one wrapped regressor per observation.
 
@@ -169,12 +169,12 @@ class CSLinearRegressorWrapper(BaseCSLinearModel):
 
 def _fit_regressor_for_observation(
     regressor: skb.BaseEstimator,
-    X: np.ndarray,
-    y: np.ndarray,
-    cs_weights: np.ndarray,
-    is_valid: np.ndarray,
+    X: FloatArray,
+    y: FloatArray,
+    cs_weights: FloatArray,
+    is_valid: FloatArray,
     observation_idx: int,
-) -> tuple[np.ndarray, float]:
+) -> tuple[FloatArray, float]:
     """Fit one cloned regressor for a single observation.
 
     The selected observation defines one cross-section across assets. Only

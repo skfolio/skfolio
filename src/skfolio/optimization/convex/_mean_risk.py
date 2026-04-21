@@ -1,7 +1,7 @@
 """Mean Risk Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # The optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -12,7 +12,6 @@ import warnings
 
 import cvxpy as cp
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.utils.metadata_routing as skm
@@ -22,6 +21,7 @@ import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
 from skfolio.utils.tools import _call_estimator, args_names, check_estimator
 
@@ -781,9 +781,7 @@ class MeanRisk(ConvexOptimization):
         self.max_ulcer_index = max_ulcer_index
         self.max_gini_mean_difference = max_gini_mean_difference
 
-    def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
-    ) -> MeanRisk:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params) -> MeanRisk:
         """Fit the Mean-Risk Optimization estimator.
 
         Parameters
@@ -811,7 +809,7 @@ class MeanRisk(ConvexOptimization):
         return self._fit(X, y, method="fit", **fit_params)
 
     def partial_fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> MeanRisk:
         """Incrementally fit the Mean-Risk Optimization estimator.
 
@@ -872,8 +870,8 @@ class MeanRisk(ConvexOptimization):
 
     def _fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
         method: str = "fit",
         **fit_params,
     ) -> MeanRisk:
@@ -1339,7 +1337,7 @@ class MeanRisk(ConvexOptimization):
             delattr(self, _FITTED_ATTR)
 
 
-def _optimal_homogenization_factor(mu: np.ndarray) -> float:
+def _optimal_homogenization_factor(mu: FloatArray) -> float:
     """
     Compute the optimal homogenization factor for ratio optimization based on expected
     returns.

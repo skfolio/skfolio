@@ -1,14 +1,15 @@
 """Covariance Denoising Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as sco
 import sklearn.neighbors as skn
 import sklearn.utils.metadata_routing as skm
@@ -16,6 +17,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
+from skfolio.typing import ArrayLike
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
 from skfolio.utils.tools import check_estimator
 
@@ -104,7 +106,7 @@ class DenoiseCovariance(BaseCovariance):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "DenoiseCovariance":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> DenoiseCovariance:
         """Fit the Covariance Denoising estimator.
 
         Parameters

@@ -1,12 +1,14 @@
 """Combinatorial module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
+from __future__ import annotations
 
 import itertools
 import math
@@ -16,13 +18,13 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
 import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 import skfolio.typing as skt
+from skfolio.typing import ArrayLike, IntArray
 
 _MAX_COMBINATIONS = 100_000
 
@@ -34,11 +36,11 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: npt.ArrayLike, y=None) -> tuple[np.ndarray, list[np.ndarray]]:
+    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]:
         pass
 
     @abstractmethod
-    def get_path_ids(self) -> np.ndarray:
+    def get_path_ids(self) -> IntArray:
         """Return the path id of each test sets in each split."""
         pass
 
@@ -161,7 +163,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     """
 
     if TYPE_CHECKING:
-        index_train_test_: np.ndarray
+        index_train_test_: IntArray
 
     def __init__(
         self,
@@ -230,14 +232,14 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         return _n_test_paths(n_folds=self.n_folds, n_test_folds=self.n_test_folds)
 
     @property
-    def test_set_index(self) -> np.ndarray:
+    def test_set_index(self) -> IntArray:
         """Location of each test set."""
         return np.array(
             list(itertools.combinations(np.arange(self.n_folds), self.n_test_folds))
         ).reshape(-1, self.n_test_folds)
 
     @property
-    def binary_train_test_sets(self) -> np.ndarray:
+    def binary_train_test_sets(self) -> IntArray:
         """Identify training and test folds for each combinations by assigning `0` to
         training folds and `1` to test folds.
         """
@@ -248,13 +250,13 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         return folds_train_test
 
     @property
-    def recombined_paths(self) -> np.ndarray:
+    def recombined_paths(self) -> IntArray:
         """Recombine each test path by returning the test set location in each split."""
         return np.argwhere(self.binary_train_test_sets == 1)[:, 1].reshape(
             self.n_folds, -1
         )
 
-    def get_path_ids(self) -> np.ndarray:
+    def get_path_ids(self) -> IntArray:
         """Return the path id of each test sets in each split."""
         recombine_paths = self.recombined_paths
         path_ids = np.zeros((self.n_splits, self.n_test_folds), dtype=int)
@@ -285,8 +287,8 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         return self.n_splits
 
     def split(
-        self, X: npt.ArrayLike, y=None, groups=None
-    ) -> Iterator[tuple[np.ndarray, list[np.ndarray]]]:
+        self, X: ArrayLike, y=None, groups=None
+    ) -> Iterator[tuple[IntArray, list[IntArray]]]:
         """Generate indices to split data into training and test set.
 
         Parameters

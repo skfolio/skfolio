@@ -84,7 +84,6 @@ show(fig)
 # clusters. For example, the link representing the cluster containing Assets HD and WMT
 # has a distance of 0.5 (called cophenetic distance).
 
-
 # %%
 # When `heatmap` is set to True, the heatmap of the reordered distance matrix is
 # displayed below the dendrogram and clusters are outlined with yellow squares:

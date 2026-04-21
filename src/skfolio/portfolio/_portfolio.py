@@ -4,21 +4,23 @@ It needs to be homogeneous to the convex optimization problems meaning that `Por
 is the dot product of the assets weights with the assets returns.
 """
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import numbers
 from typing import ClassVar
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 
 import skfolio.typing as skt
 from skfolio._constants import _ParamKey
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
+from skfolio.typing import ArrayLike, FloatArray, IntArray, ObjArray
 from skfolio.utils.tools import (
     args_names,
     cached_property_slots,
@@ -470,7 +472,7 @@ class Portfolio(BasePortfolio):
 
     def __init__(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         weights: skt.MultiInput | None,
         previous_weights: skt.MultiInput | None = None,
         transaction_costs: skt.MultiInput | None = None,
@@ -481,7 +483,7 @@ class Portfolio(BasePortfolio):
         annualized_factor: float = 252,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
-        sample_weight: np.ndarray | None = None,
+        sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1,
@@ -734,12 +736,12 @@ class Portfolio(BasePortfolio):
 
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
-    def nonzero_assets(self) -> np.ndarray:
+    def nonzero_assets(self) -> ObjArray:
         """Invested asset :math:`abs(weights) > 0.001%`."""
         return self.assets[self.nonzero_assets_index]
 
     @cached_property_slots
-    def nonzero_assets_index(self) -> np.ndarray:
+    def nonzero_assets_index(self) -> IntArray:
         """Indices of invested asset :math:`abs(weights) > 0.001%`."""
         return np.flatnonzero(
             np.isnan(self.weights) | (abs(self.weights) > _ZERO_THRESHOLD)
@@ -833,7 +835,7 @@ class Portfolio(BasePortfolio):
 
     # Public methods
     def expected_returns_from_assets(
-        self, assets_expected_returns: np.ndarray
+        self, assets_expected_returns: FloatArray
     ) -> float:
         """Compute the Portfolio expected returns from the assets expected returns,
         weights, management costs and transaction fees.
@@ -852,7 +854,7 @@ class Portfolio(BasePortfolio):
             self.weights @ assets_expected_returns.T - self.total_cost - self.total_fee
         )
 
-    def variance_from_assets(self, assets_covariance: np.ndarray) -> float:
+    def variance_from_assets(self, assets_covariance: FloatArray) -> float:
         """Compute the Portfolio variance expectation from the assets covariance and
         weights.
 
@@ -870,7 +872,7 @@ class Portfolio(BasePortfolio):
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = False
-    ) -> np.ndarray | pd.DataFrame:
+    ) -> FloatArray | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure.
 
         Parameters
@@ -972,7 +974,7 @@ class Portfolio(BasePortfolio):
 
 
 def _get_risk(
-    args: dict, weights: np.ndarray, measure: skt.Measure, i: int, h: float
+    args: dict, weights: FloatArray, measure: skt.Measure, i: int, h: float
 ) -> float:
     """Get the Portfolio risk measure when the weight of asset `i` is increased by `h`."""
     assert "weights" not in args
@@ -983,8 +985,8 @@ def _get_risk(
 
 def _compute_contribution(
     args: dict,
-    weights: np.ndarray,
-    assets: np.ndarray,
+    weights: FloatArray,
+    assets: FloatArray,
     measure: skt.Measure,
     h: float,
     drop_zero_weights: bool,

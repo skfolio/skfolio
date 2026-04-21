@@ -1,16 +1,18 @@
 """Empirical Variance Estimator."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import numbers
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.variance._base import BaseVariance
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import apply_window_size
 
 
@@ -83,9 +85,9 @@ class EmpiricalVariance(BaseVariance):
 
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
-    ) -> "EmpiricalVariance":
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+    ) -> EmpiricalVariance:
         """Fit the empirical variance estimator.
 
         Parameters

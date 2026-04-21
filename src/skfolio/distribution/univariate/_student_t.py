@@ -1,14 +1,16 @@
 """Univariate Student's t Estimation."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy.typing as npt
+from __future__ import annotations
+
 import scipy.stats as st
 
 from skfolio.distribution.univariate._base import BaseUnivariateDist
+from skfolio.typing import ArrayLike
 
 
 class StudentT(BaseUnivariateDist):
@@ -116,7 +118,7 @@ class StudentT(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "StudentT":
+    def fit(self, X: ArrayLike, y=None) -> StudentT:
         """Fit the univariate Student's t distribution model.
 
         Parameters

@@ -153,7 +153,6 @@ prices = prices[["AMD", "BAC", "HD", "JPM", "LLY", "CVX"]]
 X = prices_to_returns(prices)
 print(X.tail())
 
-
 # %%
 # Vine Copula
 # ===========
@@ -244,7 +243,6 @@ copula.plot_tail_concentration(U)
 # %%
 # We notice that the model properly captured the fat tail dependencies.
 
-
 # %%
 # Conditional Sampling
 # ====================
@@ -331,7 +329,6 @@ summary.loc[
 # %%
 population.plot_returns_distribution(percentile_cutoff=0.1)
 
-
 # %%
 # Advanced Stress Testing
 # =======================
@@ -351,7 +348,6 @@ for tree in vine.trees_:
             edge.copula.dof_ *= 0.8
 
 samples = vine.sample(n_samples=1000)
-
 
 # %%
 # Conclusion

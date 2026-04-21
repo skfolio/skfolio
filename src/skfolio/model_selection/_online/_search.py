@@ -1,6 +1,6 @@
 """Online hyperparameter search module."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -18,7 +18,6 @@ from collections.abc import Callable, Iterable
 from typing import Any, Literal
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
@@ -37,6 +36,7 @@ from skfolio.model_selection._online._validation import (
     _validate_sizes,
 )
 from skfolio.model_selection._validation import _is_portfolio_optimization_estimator
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 __all__ = ["OnlineGridSearch", "OnlineRandomizedSearch"]
 
@@ -179,7 +179,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         Whether or not the estimator is a portfolio estimator (from BaseOptimization).
     """
 
-    cv_results_: dict[str, np.ndarray]
+    cv_results_: dict[str, FloatArray]
     best_estimator_: skb.BaseEstimator
     best_score_: float
     best_params_: dict
@@ -237,8 +237,8 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
 
     def fit(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None = None,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
         **fit_params,
     ):
         """Run the online search over all candidate parameter combinations.
@@ -369,7 +369,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
             else:
                 self.best_estimator_ = best_candidate
 
-    def predict(self, X: npt.ArrayLike):
+    def predict(self, X: ArrayLike):
         """Predict using the best estimator found during search.
 
         Parameters
@@ -384,7 +384,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         skv.check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict(X)
 
-    def score(self, X: npt.ArrayLike, y=None):
+    def score(self, X: ArrayLike, y=None):
         """Score using the best estimator found during search.
 
         Parameters
@@ -892,8 +892,8 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
 def _evaluate_candidate(
     estimator: skb.BaseEstimator,
     candidate_params: dict[str, Any],
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     *,
     scoring: skt.Scoring,
     routed_params: sku.Bunch,
@@ -957,7 +957,7 @@ def _evaluate_candidate(
     return result
 
 
-def _rank_scores(scores: np.ndarray) -> np.ndarray:
+def _rank_scores(scores: FloatArray) -> IntArray:
     """Rank scores in descending order (1 = best / highest).
 
     NaN values are assigned the worst rank (tied last).

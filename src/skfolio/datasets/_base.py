@@ -1,12 +1,14 @@
 """Datasets module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
+
+from __future__ import annotations
 
 import gzip
 import os

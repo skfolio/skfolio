@@ -1,7 +1,7 @@
 """Risk Budgeting Optimization estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Some optimization features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import cvxpy as cp
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
@@ -19,6 +18,7 @@ import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import args_names, check_estimator
 
 
@@ -414,7 +414,7 @@ class RiskBudgeting(ConvexOptimization):
     def __init__(
         self,
         risk_measure: RiskMeasure = RiskMeasure.VARIANCE,
-        risk_budget: np.ndarray | None = None,
+        risk_budget: FloatArray | None = None,
         prior_estimator: BasePrior | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -478,7 +478,7 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> RiskBudgeting:
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> RiskBudgeting:
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters

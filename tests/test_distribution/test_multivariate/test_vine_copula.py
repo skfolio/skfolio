@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import tracemalloc
 
 import numpy as np

@@ -1,15 +1,14 @@
 """FailedPortfolio sentinel class."""
 
-
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy as np
-import numpy.typing as npt
+from __future__ import annotations
 
 import skfolio.typing as skt
 from skfolio.portfolio._portfolio import Portfolio
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class FailedPortfolio(Portfolio):
@@ -153,7 +152,7 @@ class FailedPortfolio(Portfolio):
 
     def __init__(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         name: str | None = None,
         tag: str | None = None,
         optimization_error: str | None = None,
@@ -165,7 +164,7 @@ class FailedPortfolio(Portfolio):
         annualized_factor: float = 252,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
-        sample_weight: np.ndarray | None = None,
+        sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
         entropic_risk_measure_theta: float = 1,

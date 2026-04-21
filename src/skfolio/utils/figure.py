@@ -1,8 +1,10 @@
 """Figure module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import numpy as np
 import pandas as pd
@@ -10,10 +12,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as st
 
+from skfolio.typing import ArrayLike, FloatArray
+
 
 def plot_kde_distributions(
     X: pd.DataFrame,
-    sample_weight: np.ndarray | None = None,
+    sample_weight: FloatArray | None = None,
     percentile_cutoff: float | None = None,
     title: str = "Distribution of Asset Returns",
     unweighted_suffix: str = "",
@@ -107,8 +111,8 @@ def plot_kde_distributions(
 
 
 def kde_trace(
-    x: np.ndarray,
-    sample_weight: np.ndarray | None,
+    x: ArrayLike,
+    sample_weight: FloatArray | None,
     percentile_cutoff: float | None,
     name: str,
     line_color: str,

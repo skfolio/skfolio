@@ -1,9 +1,11 @@
 """Bivariate Copula Utils."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import operator
 import warnings
@@ -11,10 +13,11 @@ from collections.abc import Callable
 from enum import Enum
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.optimize as so
 import scipy.stats as st
+
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class CopulaRotation(Enum):
@@ -49,7 +52,7 @@ class CopulaRotation(Enum):
         return self.value
 
 
-def compute_pseudo_observations(X: npt.ArrayLike) -> np.ndarray:
+def compute_pseudo_observations(X: ArrayLike) -> FloatArray:
     """
     Compute pseudo-observations by ranking each column of the data and scaling the
     ranks.
@@ -83,7 +86,7 @@ def compute_pseudo_observations(X: npt.ArrayLike) -> np.ndarray:
     return pseudo_observations
 
 
-def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.ndarray:
+def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArray:
     """
     Compute empirical tail concentration for the two variables in X.
     This function computes the concentration at each quantile provided.
@@ -127,7 +130,7 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
     if not np.all((quantiles >= 0) & (quantiles <= 1)):
         raise ValueError("quantiles must be between 0.0 and 1.0.")
 
-    def func(q: np.ndarray, is_lower: bool) -> np.ndarray:
+    def func(q: FloatArray, is_lower: bool) -> FloatArray:
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
         count = np.count_nonzero(cond, axis=0).astype(float)
@@ -145,8 +148,8 @@ def empirical_tail_concentration(X: npt.ArrayLike, quantiles: np.ndarray) -> np.
 
 
 def plot_tail_concentration(
-    tail_concentration_dict: dict[str, npt.ArrayLike],
-    quantiles: np.ndarray,
+    tail_concentration_dict: dict[str, ArrayLike],
+    quantiles: ArrayLike,
     title: str = "Empirical Tail Dependencies",
     smoothing: float | None = 0.5,
 ) -> go.Figure:
@@ -235,7 +238,7 @@ def plot_tail_concentration(
 
 
 def _select_rotation_itau(
-    func: Callable, X: np.ndarray, theta: float
+    func: Callable, X: FloatArray, theta: float
 ) -> CopulaRotation:
     """
     Select the optimal copula rotation based on a provided function.
@@ -270,7 +273,7 @@ def _select_rotation_itau(
 
 
 def _select_theta_and_rotation_mle(
-    func: Callable, X: np.ndarray, bounds: tuple[float, float], tolerance: float = 1e-4
+    func: Callable, X: FloatArray, bounds: tuple[float, float], tolerance: float = 1e-4
 ) -> tuple[float, CopulaRotation]:
     """
     Select the optimal copula parameter theta and rotation using maximum likelihood
@@ -338,7 +341,7 @@ def _select_theta_and_rotation_mle(
     return best["theta"], best["rotation"]
 
 
-def _apply_copula_rotation(X: npt.ArrayLike, rotation: CopulaRotation) -> np.ndarray:
+def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray:
     r"""Apply a bivariate copula rotation using the standard (clockwise) convention.
 
     The transformations are defined as follows:
@@ -380,7 +383,7 @@ def _apply_copula_rotation(X: npt.ArrayLike, rotation: CopulaRotation) -> np.nda
     return X
 
 
-def _apply_margin_swap(X: np.ndarray, first_margin: bool) -> np.ndarray:
+def _apply_margin_swap(X: FloatArray, first_margin: bool) -> FloatArray:
     """
     Swap the columns of X if first_margin is False.
 
@@ -407,8 +410,8 @@ def _apply_margin_swap(X: np.ndarray, first_margin: bool) -> np.ndarray:
 
 
 def _apply_rotation_cdf(
-    func: Callable, X: np.ndarray, rotation: CopulaRotation, **kwargs
-) -> np.ndarray:
+    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs
+) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding CDF values.
 
@@ -451,11 +454,11 @@ def _apply_rotation_cdf(
 
 def _apply_rotation_partial_derivatives(
     func: Callable,
-    X: np.ndarray,
+    X: FloatArray,
     rotation: CopulaRotation,
     first_margin: bool,
     **kwargs,
-) -> np.ndarray:
+) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding partial derivatives.
 

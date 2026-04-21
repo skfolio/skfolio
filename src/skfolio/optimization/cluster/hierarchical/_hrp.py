@@ -1,7 +1,7 @@
 """Hierarchical Risk Parity Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # The risk measure generalization and constraint features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -9,7 +9,6 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
@@ -23,6 +22,7 @@ from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import bisection, check_estimator
 
 
@@ -319,9 +319,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(
-        self, X: npt.ArrayLike, y: None = None, **fit_params
-    ) -> HierarchicalRiskParity:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> HierarchicalRiskParity:
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters
@@ -440,11 +438,11 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
 def _apply_weight_constraints_to_split_factor(
     alpha: float,
-    max_weights: np.ndarray,
-    min_weights: np.ndarray,
-    weights: np.ndarray,
-    left_cluster: np.ndarray,
-    right_cluster: np.ndarray,
+    max_weights: FloatArray,
+    min_weights: FloatArray,
+    weights: FloatArray,
+    left_cluster: FloatArray,
+    right_cluster: FloatArray,
 ) -> float:
     """
     Apply weight constraints to the split factor alpha of the ,Hierarchical Tree
@@ -461,7 +459,7 @@ def _apply_weight_constraints_to_split_factor(
     max_weights : ndarray of shape (n_assets,)
         The weight upper bound 1D array.
 
-    weights : np.ndarray of shape (n_assets,)
+    weights : FloatArray of shape (n_assets,)
         The assets weights.
 
     left_cluster : ndarray of shape (n_left_cluster,)

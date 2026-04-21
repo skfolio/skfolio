@@ -52,14 +52,12 @@ bench = RiskBudgeting(
 bench.fit(X_train)
 bench.weights_
 
-
 # %%
 # Prediction
 # ==========
 # We predict the model and the benchmark on the test set:
 ptf_model_test = model.predict(X_test)
 ptf_bench_test = bench.predict(X_test)
-
 
 # %%
 # Analysis

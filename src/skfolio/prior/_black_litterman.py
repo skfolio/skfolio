@@ -1,20 +1,22 @@
 """Black & Litterman estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # PyPortfolioOpt, Copyright (c) 2018 Robert Andrew Martin, Licensed under MIT Licence.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
 from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array
 
@@ -117,20 +119,20 @@ class BlackLitterman(BasePrior):
         Idzorek T, 2007.
     """
 
-    groups_: np.ndarray
-    views_: np.ndarray
-    picking_matrix_: np.ndarray
+    groups_: ObjArray
+    views_: ObjArray
+    picking_matrix_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     def __init__(
         self,
-        views: npt.ArrayLike,
-        groups: dict[str, list[str]] | npt.ArrayLike | None = None,
+        views: ArrayLike,
+        groups: dict[str, list[str]] | ArrayLike | None = None,
         prior_estimator: BasePrior | None = None,
         tau: float = 0.05,
-        view_confidences: npt.ArrayLike | None = None,
+        view_confidences: ArrayLike | None = None,
         risk_free_rate: float = 0,
     ):
         self.views = views
@@ -148,7 +150,7 @@ class BlackLitterman(BasePrior):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "BlackLitterman":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> BlackLitterman:
         """Fit the Black & Litterman estimator.
 
         Parameters

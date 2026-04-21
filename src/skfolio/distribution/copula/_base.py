@@ -1,14 +1,15 @@
 """Base Bivariate Copula Estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
@@ -18,6 +19,7 @@ from skfolio.distribution.copula._utils import (
     empirical_tail_concentration,
     plot_tail_concentration,
 )
+from skfolio.typing import ArrayLike, FloatArray
 
 UNIFORM_MARGINAL_EPSILON = 1e-9
 _RHO_BOUNDS = (-0.999, 0.999)
@@ -41,7 +43,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     def __init__(self, random_state: int | None = None):
         super().__init__(random_state=random_state)
 
-    def _validate_X(self, X: npt.ArrayLike, reset: bool) -> np.ndarray:
+    def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
         """Validate the input data.
 
         Parameters
@@ -102,7 +104,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None) -> "BaseBivariateCopula":
+    def fit(self, X: ArrayLike, y=None) -> BaseBivariateCopula:
         """Fit the copula model.
 
         Parameters
@@ -123,7 +125,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         pass
 
     @abstractmethod
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate copula.
 
         Parameters
@@ -142,8 +144,8 @@ class BaseBivariateCopula(BaseDistribution, ABC):
 
     @abstractmethod
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate copula
         with respect to a specified margin.
 
@@ -174,8 +176,8 @@ class BaseBivariateCopula(BaseDistribution, ABC):
 
     @abstractmethod
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
@@ -223,7 +225,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         pass
 
     @abstractmethod
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -266,7 +268,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         X[:, 1] = self.inverse_partial_derivative(X, first_margin=True)
         return X
 
-    def tail_concentration(self, quantiles: np.ndarray) -> np.ndarray:
+    def tail_concentration(self, quantiles: ArrayLike) -> FloatArray:
         """
         Compute the tail concentration function for a set of quantiles.
 
@@ -315,7 +317,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         return concentration
 
     def plot_tail_concentration(
-        self, X: npt.ArrayLike | None = None, title: str | None = None
+        self, X: ArrayLike | None = None, title: str | None = None
     ) -> go.Figure:
         """
         Plot the tail concentration function.

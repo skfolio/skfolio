@@ -1,16 +1,18 @@
 """Oracle Approximating Shrinkage Covariance Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
-import numpy.typing as npt
+from __future__ import annotations
+
 import sklearn.covariance as skc
 
 from skfolio.moments.covariance._base import BaseCovariance
+from skfolio.typing import ArrayLike
 
 
 class OAS(BaseCovariance, skc.OAS):
@@ -94,7 +96,7 @@ class OAS(BaseCovariance, skc.OAS):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "OAS":
+    def fit(self, X: ArrayLike, y=None) -> OAS:
         """Fit the Oracle Approximating Shrinkage covariance model to X.
 
         Parameters

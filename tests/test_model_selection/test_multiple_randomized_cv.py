@@ -1,5 +1,7 @@
 """Test Multiple Randomized CV."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn.pipeline import Pipeline

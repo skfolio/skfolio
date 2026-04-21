@@ -1,19 +1,20 @@
 """Base Uncertainty estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.prior import BasePrior
+from skfolio.typing import ArrayLike, FloatArray
 
 
 # frozen=True with eq=False will lead to an id-based hashing which is needed for
@@ -44,7 +45,7 @@ class UncertaintySet:
     """
 
     k: float
-    sigma: np.ndarray
+    sigma: FloatArray
 
 
 class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
@@ -73,7 +74,7 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+    def fit(self, X: ArrayLike, y=None, **fit_params):
         pass
 
 
@@ -94,7 +95,7 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
     def __init__(self, prior_estimator: BasePrior | None = None):
         self.prior_estimator = prior_estimator
 
-    def _validate_X_y(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):
+    def _validate_X_y(self, X: ArrayLike, y: ArrayLike | None = None):
         """Validate X and y if provided.
 
         Parameters
@@ -128,5 +129,5 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+    def fit(self, X: ArrayLike, y=None, **fit_params):
         pass

@@ -1,7 +1,7 @@
 """Schur Complementary Allocation estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
@@ -19,7 +19,6 @@ import math
 from collections.abc import Callable
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 import sklearn.utils.metadata_routing as skm
@@ -35,6 +34,7 @@ from skfolio.optimization.cluster.hierarchical._hrp import (
     _apply_weight_constraints_to_split_factor,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import (
     cov_nearest,
     inverse_multiply,
@@ -338,7 +338,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
-    def fit(self, X: npt.ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
         """Fit the Schur Complementary estimator.
 
         Parameters
@@ -434,13 +434,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
 def _compute_monotonic_weights(
     max_gamma: float,
-    sorted_assets: np.ndarray,
-    covariance: np.ndarray,
-    max_weights: np.ndarray,
-    min_weights: np.ndarray,
+    sorted_assets: FloatArray,
+    covariance: FloatArray,
+    max_weights: FloatArray,
+    min_weights: FloatArray,
     step: float = 0.1,
     tol: float = 1e-4,
-) -> tuple[np.ndarray, float]:
+) -> tuple[FloatArray, float]:
     """
     Finds the gamma value corresponding to the turning point where portfolio risk
     (variance) stops decreasing monotonically.
@@ -456,16 +456,16 @@ def _compute_monotonic_weights(
      max_gamma : float
         Maximum gamma value to sweep up to.
 
-     sorted_assets : np.ndarray
+     sorted_assets : FloatArray
         Array of ordered asset indices.
 
-     covariance : np.ndarray
+     covariance : FloatArray
         Covariance matrix of asset returns.
 
-     max_weights : np.ndarray
+     max_weights : FloatArray
         Maximum allowable weights for each asset.
 
-     min_weights : np.ndarray
+     min_weights : FloatArray
         Minimum allowable weights for each asset.
 
      step : float, default=0.1
@@ -477,7 +477,7 @@ def _compute_monotonic_weights(
 
     Returns
     -------
-     weights : np.ndarray
+     weights : FloatArray
         Asset weights at the identified turning point.
 
      effective_gamma : float
@@ -494,7 +494,7 @@ def _compute_monotonic_weights(
         )
         return weights, 0.0
 
-    def objective(x: float) -> tuple[float, np.ndarray | None]:
+    def objective(x: float) -> tuple[float, FloatArray | None]:
         w = _compute_weights(
             gamma=x,
             sorted_assets=sorted_assets,
@@ -569,7 +569,7 @@ def _binary_search(
     high_gamma: float,
     low_variance: float,
     tol: float = 1e-4,
-) -> tuple[np.ndarray, float]:
+) -> tuple[FloatArray, float]:
     """
     Performs a binary search to locate the turning point in the interval
     [low_gamma, high_gamma] where portfolio variance stops decreasing monotonically.
@@ -583,7 +583,7 @@ def _binary_search(
     ----------
     objective : callable
         A function that takes a float gamma value and returns a tuple:
-        (variance: float, weights: np.ndarray).
+        (variance: float, weights: FloatArray).
 
     low_gamma : float
         Lower bound of the gamma search interval.
@@ -600,7 +600,7 @@ def _binary_search(
 
     Returns
     -------
-    weights : np.ndarray
+    weights : FloatArray
         Asset weights corresponding to the turning point gamma.
 
     gamma : float
@@ -638,12 +638,12 @@ def _binary_search(
 
 def _compute_weights(
     gamma: float,
-    sorted_assets: np.ndarray,
-    covariance: np.ndarray,
-    max_weights: np.ndarray,
-    min_weights: np.ndarray,
+    sorted_assets: FloatArray,
+    covariance: FloatArray,
+    max_weights: FloatArray,
+    min_weights: FloatArray,
     force_spd: bool = False,
-) -> np.ndarray | None:
+) -> FloatArray | None:
     """
     Core Schur-complement allocation recursion.
 
@@ -735,7 +735,7 @@ def _compute_weights(
     return weights
 
 
-def _naive_portfolio_variance(covariance: np.ndarray) -> float:
+def _naive_portfolio_variance(covariance: FloatArray) -> float:
     """Portfolio variance of an inverse variance allocation.
 
     Parameters
@@ -755,8 +755,8 @@ def _naive_portfolio_variance(covariance: np.ndarray) -> float:
 
 
 def _schur_augmentation(
-    a: np.ndarray, b: np.ndarray, d: np.ndarray, gamma: float
-) -> np.ndarray:
+    a: FloatArray, b: FloatArray, d: FloatArray, gamma: float
+) -> FloatArray:
     """Compute an augmented covariance matrix `A` inspired by the
     Schur complement [1]_.
 

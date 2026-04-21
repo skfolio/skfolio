@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 
 from skfolio.preprocessing import CSStandardScaler
+from skfolio.typing import FloatArray, IntArray
 
 
 @pytest.fixture
@@ -13,7 +16,7 @@ def grouped_inputs():
 
 
 def _assert_standardized_estimation_universe(
-    transformed: np.ndarray, cs_weights: np.ndarray
+    transformed: FloatArray, cs_weights: FloatArray
 ) -> None:
     est_mask = np.isfinite(transformed) & (cs_weights > 0)
 
@@ -29,7 +32,7 @@ def _assert_standardized_estimation_universe(
         np.testing.assert_allclose(equal_weighted_std, 1.0, atol=1e-12)
 
 
-def _eqw_bessel_std_around(values: np.ndarray, mean: float) -> float:
+def _eqw_bessel_std_around(values: FloatArray, mean: float) -> float:
     """sqrt(sum((values - mean)^2) / (N - 1)) on a 1D estimation slice.
 
     Mirrors `_masked_equal_weighted_std` exactly: equal-weighted, Bessel-
@@ -43,12 +46,12 @@ def _eqw_bessel_std_around(values: np.ndarray, mean: float) -> float:
 
 
 def _reference_transform(
-    X: np.ndarray,
-    cs_weights: np.ndarray | None = None,
-    cs_groups: np.ndarray | None = None,
+    X: FloatArray,
+    cs_weights: FloatArray | None = None,
+    cs_groups: IntArray | None = None,
     min_group_size: int = 8,
     atol: float = 1e-12,
-) -> np.ndarray:
+) -> FloatArray:
     """Plain per-row, per-group reference used for property tests.
 
     Mirrors the documented contract: weighted mean and unbiased equal-weighted

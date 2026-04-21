@@ -1,6 +1,6 @@
 """Online model validation module."""
 
-# Copyright (c) 2023-2025
+# Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
@@ -15,7 +15,6 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
@@ -33,6 +32,7 @@ from skfolio.model_selection._validation import (
 )
 from skfolio.model_selection._walk_forward import WalkForward
 from skfolio.portfolio import MultiPeriodPortfolio
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import fit_single_estimator
 
 if TYPE_CHECKING:
@@ -43,8 +43,8 @@ __all__ = ["online_predict", "online_score"]
 
 def online_predict(
     estimator: BaseOptimization,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
     warmup_size: int = 252,
     test_size: int = 1,
     freq: str | pd.offsets.BaseOffset | None = None,
@@ -198,8 +198,8 @@ def online_predict(
 
 def online_score(
     estimator: skb.BaseEstimator,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None = None,
+    X: ArrayLike,
+    y: ArrayLike | None = None,
     warmup_size: int = 252,
     test_size: int = 1,
     freq: str | pd.offsets.BaseOffset | None = None,
@@ -211,7 +211,7 @@ def online_score(
     params: dict | None = None,
     per_step: bool = False,
     portfolio_params: dict | None = None,
-) -> float | dict[str, float] | np.ndarray | dict[str, np.ndarray]:
+) -> float | dict[str, float] | FloatArray | dict[str, FloatArray]:
     r"""Score an online estimator using walk-forward evaluation.
 
     Walks forward through the data, updating the estimator incrementally via
@@ -307,7 +307,7 @@ def online_score(
     -------
     score : float | dict[str, float] | ndarray | dict[str, ndarray]
         By default, an aggregate `float` (or `dict` for multi-metric).
-        When `per_step=True`, a `np.ndarray` of per-step scores (or
+        When `per_step=True`, a `FloatArray` of per-step scores (or
         `dict` thereof).
 
     Raises
@@ -416,8 +416,8 @@ def online_score(
 
 def _online_walk_forward(
     estimator: skb.BaseEstimator,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     warmup_size: int,
     test_size: int,
     routed_params: sku.Bunch,
@@ -550,8 +550,8 @@ def _online_walk_forward(
 
 def _online_predict(
     estimator: skb.BaseEstimator,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     routed_params: sku.Bunch,
     *,
     warmup_size: int,
@@ -610,8 +610,8 @@ def _online_predict(
 
 def _online_score(
     estimator: skb.BaseEstimator,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     scoring,
     routed_params: sku.Bunch,
     *,
@@ -623,7 +623,7 @@ def _online_score(
     purged_size: int = 0,
     reduce_test: bool = False,
     refit_last: bool = False,
-) -> np.ndarray | dict[str, np.ndarray]:
+) -> FloatArray | dict[str, FloatArray]:
     """Per-step scoring for non-predictor estimators.
 
     Returns per-step score arrays. Operates on an already-cloned, validated estimator.
@@ -672,8 +672,8 @@ def _online_score(
 
 def _evaluate_online(
     estimator: skb.BaseEstimator,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     *,
     scoring,
     routed_params: sku.Bunch,

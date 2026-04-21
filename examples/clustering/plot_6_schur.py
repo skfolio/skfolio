@@ -221,7 +221,6 @@ random_search.fit(X_train)
 schur = random_search.best_estimator_
 schur
 
-
 # %%
 # In practice, it's recommended to increase `n_iter` to sample more parameter
 # combinations, then plot those samples to ensure adequate search-space coverage and
@@ -254,7 +253,6 @@ print(summary.loc[["Annualized Sharpe Ratio", "CDaR Ratio at 95%"]])
 # returns under the given rebalancing scheme and parameter set. While easy
 # to compute, it may understate the variability and uncertainty of real-world
 # performance compared to resampling-based methods.
-
 
 # %%
 # Multiple Randomized Cross-Validation
@@ -299,7 +297,6 @@ population_mc.plot_distribution(
 population_mc.plot_distribution(
     measure_list=[RatioMeasure.CDAR_RATIO], tag_list=["MVP", "Schur"]
 )
-
 
 # %%
 for pred in [pred_mvo_mc, pred_schur_mc]:

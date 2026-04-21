@@ -1,15 +1,19 @@
 """Fast non-dominated sorting module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
+
+from skfolio.typing import FloatArray
 
 __all__ = ["dominate", "non_denominated_sort"]
 
 
-def dominate(fitness_1: np.ndarray, fitness_2: np.ndarray) -> bool:
+def dominate(fitness_1: FloatArray, fitness_2: FloatArray) -> bool:
     """Compute the domination of two fitness arrays.
 
     Domination of `fitness_1` over `fitness_2` means that each objective (value) of
@@ -41,7 +45,7 @@ def dominate(fitness_1: np.ndarray, fitness_2: np.ndarray) -> bool:
 
 
 def non_denominated_sort(
-    fitnesses: np.ndarray, first_front_only: bool
+    fitnesses: FloatArray, first_front_only: bool
 ) -> list[list[int]]:
     """Fast non-dominated sorting.
 

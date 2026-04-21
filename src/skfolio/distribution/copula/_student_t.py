@@ -1,12 +1,13 @@
 """Bivariate Student's t Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as so
 import scipy.special as sp
 import scipy.stats as st
@@ -14,6 +15,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.distribution.copula._base import _RHO_BOUNDS, BaseBivariateCopula
 from skfolio.distribution.copula._utils import _apply_margin_swap
+from skfolio.typing import ArrayLike, FloatArray
 
 # Student's t copula with dof less than 2.0 is so extremely heavy-tailed that even the
 # mean (and many moments) of the distribution do not exist. So Impractical in practice,
@@ -162,7 +164,7 @@ class StudentTCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "StudentTCopula":
+    def fit(self, X: ArrayLike, y=None) -> StudentTCopula:
         r"""Fit the Bivariate Student's t Copula.
 
         If `itau` is True, it uses a Kendall-based two-step method:
@@ -242,7 +244,7 @@ class StudentTCopula(BaseBivariateCopula):
 
         return self
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate Student-t copula.
 
         Parameters
@@ -268,8 +270,8 @@ class StudentTCopula(BaseBivariateCopula):
         return cdf
 
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate Student's t
         copula.
 
@@ -321,8 +323,8 @@ class StudentTCopula(BaseBivariateCopula):
         return p
 
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
@@ -380,7 +382,7 @@ class StudentTCopula(BaseBivariateCopula):
         u = sp.stdtr(self.dof_, u_inv)
         return u
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -418,7 +420,7 @@ class StudentTCopula(BaseBivariateCopula):
         return f"{self.__class__.__name__}(rho={self.rho_:0.3f}, dof={self.dof_:0.2f})"
 
 
-def _neg_log_likelihood(dof: float, rho: float, X: np.ndarray) -> float:
+def _neg_log_likelihood(dof: float, rho: float, X: FloatArray) -> float:
     """Negative log-likelihood function for optimization.
 
     Parameters
@@ -442,7 +444,7 @@ def _neg_log_likelihood(dof: float, rho: float, X: np.ndarray) -> float:
     return -np.sum(_sample_scores(X=X, rho=rho, dof=dof))
 
 
-def _sample_scores(X: np.ndarray, rho: float, dof: float) -> np.ndarray:
+def _sample_scores(X: FloatArray, rho: float, dof: float) -> FloatArray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Gaussian copula model.
 

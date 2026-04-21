@@ -1,12 +1,13 @@
 """Bivariate Joe Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as so
 import scipy.special as sp
 import scipy.stats as st
@@ -22,6 +23,7 @@ from skfolio.distribution.copula._utils import (
     _select_rotation_itau,
     _select_theta_and_rotation_mle,
 )
+from skfolio.typing import ArrayLike, FloatArray
 
 # Joe copula with a theta of 1.0 is just the independence copula, so we chose a lower
 # bound of 1.005. After 20, the copula is already imposing very high tail dependence
@@ -180,7 +182,7 @@ class JoeCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "JoeCopula":
+    def fit(self, X: ArrayLike, y=None) -> JoeCopula:
         r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -240,7 +242,7 @@ class JoeCopula(BaseBivariateCopula):
 
         return self
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate Joe copula.
 
         Parameters
@@ -263,8 +265,8 @@ class JoeCopula(BaseBivariateCopula):
         return cdf
 
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate Joe copula
         with respect to a specified margin.
 
@@ -311,8 +313,8 @@ class JoeCopula(BaseBivariateCopula):
         return p
 
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function [1]_.
 
@@ -370,7 +372,7 @@ class JoeCopula(BaseBivariateCopula):
         )
         return u
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -415,7 +417,7 @@ class JoeCopula(BaseBivariateCopula):
         )
 
 
-def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
+def _neg_log_likelihood(theta: float, X: FloatArray) -> float:
     """Negative log-likelihood function for optimization.
 
     Parameters
@@ -436,7 +438,7 @@ def _neg_log_likelihood(theta: float, X: np.ndarray) -> float:
     return -np.sum(_base_sample_scores(X=X, theta=theta))
 
 
-def _base_sample_scores(X: np.ndarray, theta: float) -> np.ndarray:
+def _base_sample_scores(X: FloatArray, theta: float) -> FloatArray:
     """Compute the log-likelihood of each sample (log-pdf) under the bivariate
     Joe copula model.
 
@@ -507,7 +509,7 @@ def _tau_diff(theta: float, tau_empirical: float) -> float:
     return tau_theoretical - tau_empirical
 
 
-def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
+def _base_cdf(X: FloatArray, theta: float) -> FloatArray:
     """Bivariate Joe CDF (unrotated)."""
     z = np.power(1 - X, theta)
     cdf = 1.0 - np.power(np.sum(z, axis=1) - np.prod(z, axis=1), 1.0 / theta)
@@ -515,8 +517,8 @@ def _base_cdf(X: np.ndarray, theta: float) -> np.ndarray:
 
 
 def _base_partial_derivative(
-    X: np.ndarray, first_margin: bool, theta: float
-) -> np.ndarray:
+    X: FloatArray, first_margin: bool, theta: float
+) -> FloatArray:
     r"""Compute the h-function (partial derivative) for the bivariate unrotated
     Joe copula with respect to a specified margin.
 
@@ -547,8 +549,8 @@ def _base_partial_derivative(
 
 
 def _base_inverse_partial_derivative(
-    X: np.ndarray, first_margin: bool, theta: float
-) -> np.ndarray:
+    X: FloatArray, first_margin: bool, theta: float
+) -> FloatArray:
     r"""Compute the inverse of the bivariate copula's partial derivative, commonly
     known as the inverse h-function.
 

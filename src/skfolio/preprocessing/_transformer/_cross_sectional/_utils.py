@@ -9,8 +9,9 @@ from __future__ import annotations
 import numbers
 
 import numpy as np
-import numpy.typing as npt
 from sklearn.utils import check_array
+
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
 
 # Scaling constant for MAD under normality (MAD multiplied by this value is consistent
 # with the STD).
@@ -18,8 +19,8 @@ _MAD_CONSISTENCY = 1.4826022185056018
 
 
 def _safe_divide(
-    numerator: np.ndarray | float, denominator: np.ndarray | float
-) -> np.ndarray:
+    numerator: FloatArray | float, denominator: FloatArray | float
+) -> FloatArray:
     """Return an element-wise division with safe zero handling.
 
     Division is performed only where the denominator is non-zero. All other entries are
@@ -37,8 +38,8 @@ def _safe_divide(
 
 
 def _cs_weighted_mean(
-    X: np.ndarray, cs_weights: np.ndarray | None, estimation_mask: np.ndarray
-) -> np.ndarray:
+    X: FloatArray, cs_weights: FloatArray | None, estimation_mask: BoolArray
+) -> FloatArray:
     """Return the cross-sectional weighted mean for each observation.
 
     The weighted product is computed in place only at estimation entries, avoiding
@@ -56,8 +57,8 @@ def _cs_weighted_mean(
 
 
 def _cs_equal_weighted_std(
-    X: np.ndarray, mean: np.ndarray | float, estimation_mask: np.ndarray
-) -> np.ndarray:
+    X: FloatArray, mean: FloatArray | float, estimation_mask: BoolArray
+) -> FloatArray:
     """Return the cross-sectional equal-weighted standard deviation around `mean`."""
     # `np.subtract(out=, where=)` skips the subtraction where estimation_mask is False,
     # which also avoids `NaN` propagation when X is non-finite outside the mask.
@@ -74,13 +75,13 @@ def _cs_equal_weighted_std(
 
 
 def _cs_recenter_rescale(
-    X: np.ndarray,
-    finite_mask: np.ndarray,
-    cs_weights: np.ndarray | None,
-    estimation_mask: np.ndarray,
+    X: FloatArray,
+    finite_mask: BoolArray,
+    cs_weights: FloatArray | None,
+    estimation_mask: BoolArray,
     atol: float,
     scale: bool,
-) -> np.ndarray:
+) -> FloatArray:
     """Return `X` recentered and optionally rescaled on the estimation universe.
 
     The output is recentered to weighted mean zero and, when `scale` is True,
@@ -110,8 +111,8 @@ def _cs_recenter_rescale(
 
 
 def _validate_cs_weights(
-    X: np.ndarray, cs_weights: npt.ArrayLike | None
-) -> np.ndarray | None:
+    X: FloatArray, cs_weights: ArrayLike | None
+) -> FloatArray | None:
     """Validate `cs_weights` against `X`."""
     if cs_weights is None:
         return None
@@ -124,8 +125,8 @@ def _validate_cs_weights(
 
 
 def _prepare_cs_estimation_inputs(
-    X: np.ndarray, cs_weights: np.ndarray | None
-) -> tuple[np.ndarray | None, np.ndarray, np.ndarray]:
+    X: FloatArray, cs_weights: FloatArray | None
+) -> tuple[FloatArray | None, BoolArray, BoolArray]:
     """Return the effective weights, the finite mask, and the estimation mask.
 
     When `cs_weights` is provided, non-finite entries of `X` receive zero weight.
@@ -145,8 +146,8 @@ def _prepare_cs_estimation_inputs(
 
 
 def _mask_non_estimation_values(
-    X: np.ndarray, cs_weights: np.ndarray | None
-) -> np.ndarray:
+    X: FloatArray, cs_weights: FloatArray | None
+) -> FloatArray:
     """Mask values outside the estimation universe with NaN.
 
     When `cs_weights` is `None`, the validated `X` is returned unchanged.
@@ -163,7 +164,7 @@ def _mask_non_estimation_values(
     return masked_X
 
 
-def _global_group_keys(n_observations: int, n_assets: int) -> np.ndarray:
+def _global_group_keys(n_observations: int, n_assets: int) -> IntArray:
     """Return the global cross-sectional group key for each entry.
 
     The output is a contiguous 2D array. Downstream consumers ravel it once and a
@@ -175,8 +176,8 @@ def _global_group_keys(n_observations: int, n_assets: int) -> np.ndarray:
 
 
 def _validate_and_normalize_groups(
-    X: np.ndarray, cs_groups: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, int]:
+    X: FloatArray, cs_groups: ArrayLike
+) -> tuple[IntArray, BoolArray, int]:
     """Validate `cs_groups` and map labels to contiguous non-negative ids.
 
     Missing entries, encoded as `-1`, are routed to a dedicated dummy id placed after
@@ -238,7 +239,7 @@ def _validate_and_normalize_groups(
     return group_ids, missing_group_mask, n_groups
 
 
-def _cs_group_keys(group_ids: np.ndarray, n_groups: int) -> np.ndarray:
+def _cs_group_keys(group_ids: IntArray, n_groups: int) -> IntArray:
     """Return the composite group key for each observation-group pair."""
     n_observations = group_ids.shape[0]
     observation_ids = np.arange(n_observations, dtype=np.int64)[:, None]
@@ -246,12 +247,12 @@ def _cs_group_keys(group_ids: np.ndarray, n_groups: int) -> np.ndarray:
 
 
 def _group_key_midrank_percentile(
-    X: np.ndarray,
-    estimation_mask: np.ndarray,
-    group_keys: np.ndarray,
+    X: FloatArray,
+    estimation_mask: BoolArray,
+    group_keys: IntArray,
     n_group_keys: int,
-    finite_mask: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
+    finite_mask: BoolArray | None = None,
+) -> tuple[FloatArray, IntArray]:
     r"""Return percentile ranks by composite group key with midrank ties.
 
     For each finite value, the percentile is computed within its composite group key
@@ -340,12 +341,12 @@ def _group_key_midrank_percentile(
 
 
 def _cs_percentile_rank(
-    X: np.ndarray,
-    finite_mask: np.ndarray,
-    estimation_mask: np.ndarray,
-    cs_groups: npt.ArrayLike | None,
+    X: FloatArray,
+    finite_mask: BoolArray,
+    estimation_mask: BoolArray,
+    cs_groups: ArrayLike | None,
     min_group_size: int,
-) -> np.ndarray:
+) -> FloatArray:
     """Return cross-sectional percentile ranks with optional grouped fallback.
 
     When `cs_groups` is `None`, ranks are computed over the full cross-section.

@@ -151,7 +151,6 @@ fig = population_train.plot_measures(
 )
 show(fig)
 
-
 # %%
 # |
 #

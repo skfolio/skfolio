@@ -4,8 +4,8 @@ This module defines the abstract `BaseOptimization` estimator that all
 optimization algorithms in skfolio should inherit from.
 """
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
@@ -21,7 +21,6 @@ from functools import wraps
 from typing import Any, Literal
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
@@ -33,6 +32,7 @@ from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.prior import ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.tools import input_to_array
 
 
@@ -104,9 +104,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
     """
 
-    weights_: np.ndarray
+    weights_: FloatArray
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
     error_: str | list[str] | None
@@ -132,9 +132,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return
 
         @wraps(original_fit)
-        def _wrapped_fit(
-            self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
-        ):
+        def _wrapped_fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
             self.fallback_ = None
             self.fallback_chain_ = None
             self.error_ = None
@@ -166,8 +164,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
     def _run_fallback_chain(
         self,
-        X: npt.ArrayLike,
-        y: npt.ArrayLike | None,
+        X: ArrayLike,
+        y: ArrayLike | None,
         primary_error: Exception,
         **fit_params,
     ) -> None:
@@ -281,10 +279,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             raise
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         pass
 
-    def predict(self, X: npt.ArrayLike | ReturnDistribution) -> Portfolio | Population:
+    def predict(self, X: ArrayLike | ReturnDistribution) -> Portfolio | Population:
         """Predict the `Portfolio` or a `Population` of portfolios on `X`.
 
         Optimization estimators can return a 1D or a 2D array of `weights`.
@@ -371,9 +369,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 )
         return population
 
-    def score(
-        self, X: npt.ArrayLike | ReturnDistribution, y: npt.ArrayLike = None
-    ) -> float:
+    def score(self, X: ArrayLike | ReturnDistribution, y: ArrayLike = None) -> float:
         """Prediction score using the Sharpe Ratio.
         If the prediction is a single `Portfolio`, the score is its Sharpe Ratio.
         If the prediction is a `Population`, the score is the mean Sharpe Ratio
@@ -450,11 +446,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
     def _clean_input(
         self,
-        value: float | dict | npt.ArrayLike | None,
+        value: float | dict | ArrayLike | None,
         n_assets: int,
         fill_value: Any,
         name: str,
-    ) -> float | np.ndarray:
+    ) -> float | FloatArray:
         """Convert input to a cleaned float or 1D ndarray.
 
         Parameters
@@ -492,7 +488,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             name=name,
         )
 
-    def _clean_previous_weights(self, n_assets: int) -> np.ndarray:
+    def _clean_previous_weights(self, n_assets: int) -> FloatArray:
         """Return validated previous weights as a 1D array of length `n_assets`.
 
         Converts `previous_weights` to a numpy array using `_clean_input`, accepting

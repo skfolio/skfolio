@@ -1,7 +1,7 @@
 """Vine Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
@@ -25,13 +25,14 @@
 #  representation of hierarchical relationships among assets and improving conditional
 #  sampling.
 
+from __future__ import annotations
+
 import contextlib
 import numbers
 import warnings
 from collections import deque
 
 import numpy as np
-import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
 import sklearn.utils as sku
@@ -64,6 +65,7 @@ from skfolio.distribution.univariate import (
     StudentT,
     select_univariate_dist,
 )
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
 from skfolio.utils.figure import kde_trace
 from skfolio.utils.tools import input_to_array, validate_input_list
 
@@ -251,10 +253,10 @@ class VineCopula(BaseMultivariateDist):
     trees_: list[Tree]
     marginal_distributions_: list[BaseUnivariateDist]
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
     central_assets_: set[int | str]
 
-    _log_transform: np.ndarray
+    _log_transform: BoolArray
 
     def __init__(
         self,
@@ -262,7 +264,7 @@ class VineCopula(BaseMultivariateDist):
         marginal_candidates: list[BaseUnivariateDist] | None = None,
         copula_candidates: list[BaseBivariateCopula] | None = None,
         max_depth: int | None = 4,
-        log_transform: bool | dict[str, bool] | npt.ArrayLike = False,
+        log_transform: bool | dict[str, bool] | ArrayLike = False,
         central_assets: list[int | str] | None = None,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
         selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
@@ -296,7 +298,7 @@ class VineCopula(BaseMultivariateDist):
 
         return k
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "VineCopula":
+    def fit(self, X: ArrayLike, y=None) -> VineCopula:
         """
         Fit the Vine Copula model to the data.
 
@@ -461,7 +463,7 @@ class VineCopula(BaseMultivariateDist):
         self.trees_ = trees
         return self
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         r"""Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -514,9 +516,9 @@ class VineCopula(BaseMultivariateDist):
     def sample(
         self,
         n_samples: int = 1,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
         | None = None,
-    ) -> np.ndarray:
+    ) -> FloatArray:
         """Generate random samples from the vine copula.
 
         This method generates `n_samples` from the fitted vine copula model. The
@@ -650,7 +652,7 @@ class VineCopula(BaseMultivariateDist):
         for edge in self.trees_[-1].edges:
             edge.ref_node.clear_cache(clear_count=clear_count)
 
-    def _conditioning_count(self) -> np.ndarray:
+    def _conditioning_count(self) -> IntArray:
         """Compute cumulative counts of conditioning set occurrences in the vine.
 
         Returns
@@ -676,9 +678,9 @@ class VineCopula(BaseMultivariateDist):
     def _init_conditioning(
         self,
         n_samples: int,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike],
+        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike],
     ) -> tuple[
-        np.random.RandomState, set[int], dict[int, float], dict[int, np.ndarray]
+        np.random.RandomState, set[int], dict[int, float], dict[int, FloatArray]
     ]:
         """
         Initialised conditioning variables used in the conditioning sampling.
@@ -718,7 +720,7 @@ class VineCopula(BaseMultivariateDist):
         conditioning_clean : dict[int, float]
             The cleaned conditioning dictionary.
 
-        uniform_cond_samples : dict[int, np.ndarray]
+        uniform_cond_samples : dict[int, FloatArray]
             The uniform conditioning samples corresponding to the `conditioning`.
         """
         rng = sku.check_random_state(self.random_state)
@@ -991,8 +993,8 @@ class VineCopula(BaseMultivariateDist):
 
     def plot_marginal_distributions(
         self,
-        X: npt.ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | npt.ArrayLike]
+        X: ArrayLike | None = None,
+        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
         | None = None,
         subset: list[int | str] | None = None,
         n_samples: int = 500,
@@ -1141,7 +1143,7 @@ class VineCopula(BaseMultivariateDist):
 
 
 def _is_left_branch(
-    edge: Edge, conditioning_vars: set[int], conditioning_counts: np.ndarray
+    edge: Edge, conditioning_vars: set[int], conditioning_counts: IntArray
 ) -> bool:
     """
     Determine whether the left branch should be followed during the elimination ordering
@@ -1155,7 +1157,7 @@ def _is_left_branch(
     conditioning_vars : set[int]
         Set of asset indices with conditioning samples.
 
-    conditioning_counts : np.ndarray
+    conditioning_counts : IntArray
         Array of conditioning counts for each asset.
 
     Returns
@@ -1247,8 +1249,8 @@ def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_s
 
 
 def _inverse_partial_derivative(
-    edge: Edge, X: np.ndarray, is_count: bool
-) -> np.ndarray:
+    edge: Edge, X: FloatArray, is_count: bool
+) -> FloatArray:
     """Inverse partial derivative of an Edge copula."""
     if is_count:
         return np.array([np.nan])

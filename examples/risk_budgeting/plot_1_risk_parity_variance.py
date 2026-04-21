@@ -68,7 +68,6 @@ ptf_bench_test = bench.predict(X_test)
 # %%
 # The `predict` method returns a :class:`~skfolio.portfolio.Portfolio` object.
 
-
 # %%
 # Analysis
 # ========

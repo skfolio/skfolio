@@ -1,21 +1,24 @@
 """Module that includes all Measures functions used across `skfolio`."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Gini mean difference and OWA GMD weights features are derived
 # from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import warnings
 
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as sco
+
+from skfolio.typing import ArrayLike, FloatArray
 
 
 def mean(
-    returns: npt.ArrayLike, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the mean.
 
     Parameters
@@ -48,10 +51,10 @@ def mean(
 
 
 def mean_absolute_deviation(
-    returns: npt.ArrayLike,
-    min_acceptable_return: float | np.ndarray | None = None,
-    sample_weight: np.ndarray | None = None,
-) -> float | np.ndarray:
+    returns: ArrayLike,
+    min_acceptable_return: float | FloatArray | None = None,
+    sample_weight: FloatArray | None = None,
+) -> float | FloatArray:
     """Compute the mean absolute deviation (MAD).
 
     Parameters
@@ -88,10 +91,10 @@ def mean_absolute_deviation(
 
 
 def first_lower_partial_moment(
-    returns: npt.ArrayLike,
-    min_acceptable_return: float | np.ndarray | None = None,
-    sample_weight: np.ndarray | None = None,
-) -> float | np.ndarray:
+    returns: ArrayLike,
+    min_acceptable_return: float | FloatArray | None = None,
+    sample_weight: FloatArray | None = None,
+) -> float | FloatArray:
     """Compute the first lower partial moment.
 
     The first lower partial moment is the mean of the returns below a minimum
@@ -131,10 +134,10 @@ def first_lower_partial_moment(
 
 
 def variance(
-    returns: npt.ArrayLike,
+    returns: ArrayLike,
     biased: bool = False,
-    sample_weight: np.ndarray | None = None,
-) -> float | np.ndarray:
+    sample_weight: FloatArray | None = None,
+) -> float | FloatArray:
     """Compute the variance (second moment).
 
     Parameters
@@ -178,11 +181,11 @@ def variance(
 
 
 def semi_variance(
-    returns: npt.ArrayLike,
-    min_acceptable_return: float | np.ndarray | None = None,
-    sample_weight: np.ndarray | None = None,
+    returns: ArrayLike,
+    min_acceptable_return: float | FloatArray | None = None,
+    sample_weight: FloatArray | None = None,
     biased: bool = False,
-) -> float | np.ndarray:
+) -> float | FloatArray:
     """Compute the semi-variance (second lower partial moment).
 
     The semi-variance is the variance of the returns below a minimum acceptable return.
@@ -234,10 +237,10 @@ def semi_variance(
 
 
 def standard_deviation(
-    returns: npt.ArrayLike,
-    sample_weight: np.ndarray | None = None,
+    returns: ArrayLike,
+    sample_weight: FloatArray | None = None,
     biased: bool = False,
-) -> float | np.ndarray:
+) -> float | FloatArray:
     """Compute the standard-deviation (square root of the second moment).
 
     Parameters
@@ -269,11 +272,11 @@ def standard_deviation(
 
 
 def semi_deviation(
-    returns: npt.ArrayLike,
-    min_acceptable_return: float | np.ndarray | None = None,
-    sample_weight: np.ndarray | None = None,
+    returns: ArrayLike,
+    min_acceptable_return: float | FloatArray | None = None,
+    sample_weight: FloatArray | None = None,
     biased: bool = False,
-) -> float | np.ndarray:
+) -> float | FloatArray:
     """Compute the semi deviation (square root of the second lower partial moment).
 
     Parameters
@@ -316,8 +319,8 @@ def semi_deviation(
 
 
 def third_central_moment(
-    returns: npt.ArrayLike, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the third central moment.
 
     Parameters
@@ -348,8 +351,8 @@ def third_central_moment(
 
 
 def skew(
-    returns: npt.ArrayLike, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the Skew.
 
     The Skew is a measure of the lopsidedness of the distribution.
@@ -384,8 +387,8 @@ def skew(
 
 
 def fourth_central_moment(
-    returns: npt.ArrayLike, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the Fourth central moment.
 
     Parameters
@@ -416,8 +419,8 @@ def fourth_central_moment(
 
 
 def kurtosis(
-    returns: npt.ArrayLike, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the Kurtosis.
 
     The Kurtosis is a measure of the heaviness of the tail of the distribution.
@@ -451,8 +454,8 @@ def kurtosis(
 
 
 def fourth_lower_partial_moment(
-    returns: npt.ArrayLike, min_acceptable_return: float | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, min_acceptable_return: float | None = None
+) -> float | FloatArray:
     """Compute the fourth lower partial moment.
 
     The Fourth Lower Partial Moment is a measure of the heaviness of the downside tail
@@ -488,7 +491,7 @@ def fourth_lower_partial_moment(
     return mean(np.maximum(0, min_acceptable_return - returns) ** 4)
 
 
-def worst_realization(returns: npt.ArrayLike) -> float | np.ndarray:
+def worst_realization(returns: ArrayLike) -> float | FloatArray:
     """Compute the worst realization (worst return).
 
     Parameters
@@ -516,8 +519,8 @@ def worst_realization(returns: npt.ArrayLike) -> float | np.ndarray:
 
 
 def value_at_risk(
-    returns: npt.ArrayLike, beta: float = 0.95, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the historical value at risk (VaR).
     The VaR is the maximum loss at a given confidence level (beta).
 
@@ -554,7 +557,7 @@ def value_at_risk(
             else np.full(returns.shape[1], np.nan, dtype=float)
         )
 
-    def _func(arr: np.ndarray) -> float:
+    def _func(arr: FloatArray) -> float:
         size = arr.shape[0]
         if size == 0:
             return np.nan
@@ -594,8 +597,8 @@ def value_at_risk(
 
 
 def cvar(
-    returns: npt.ArrayLike, beta: float = 0.95, sample_weight: np.ndarray | None = None
-) -> float | np.ndarray:
+    returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
+) -> float | FloatArray:
     """Compute the historical CVaR (conditional value at risk).
 
     The CVaR (or Tail VaR) represents the mean shortfall at a specified confidence
@@ -634,7 +637,7 @@ def cvar(
             else np.full(returns.shape[1], np.nan, dtype=float)
         )
 
-    def _func(arr: np.ndarray) -> float:
+    def _func(arr: FloatArray) -> float:
         size = arr.shape[0]
         if size == 0:
             return np.nan
@@ -692,11 +695,11 @@ def cvar(
 
 
 def entropic_risk_measure(
-    returns: npt.ArrayLike,
+    returns: ArrayLike,
     theta: float = 1,
     beta: float = 0.95,
-    sample_weight: np.ndarray | None = None,
-) -> float | np.ndarray:
+    sample_weight: FloatArray | None = None,
+) -> float | FloatArray:
     """Compute the entropic risk measure.
 
     The entropic risk measure is a risk measure which depends on the risk aversion
@@ -735,7 +738,7 @@ def entropic_risk_measure(
     )
 
 
-def evar(returns: npt.ArrayLike, beta: float = 0.95) -> float:
+def evar(returns: ArrayLike, beta: float = 0.95) -> float:
     """Compute the EVaR (entropic value at risk) and its associated risk aversion.
 
     The EVaR is a coherent risk measure which is an upper bound for the VaR and the
@@ -774,8 +777,8 @@ def evar(returns: npt.ArrayLike, beta: float = 0.95) -> float:
 
 
 def get_cumulative_returns(
-    returns: npt.ArrayLike, compounded: bool = False, base: float = 1.0
-) -> np.ndarray:
+    returns: ArrayLike, compounded: bool = False, base: float = 1.0
+) -> FloatArray:
     """Compute the cumulative returns from a series of returns.
 
     Parameters
@@ -828,7 +831,7 @@ def get_cumulative_returns(
     return cumulative_returns
 
 
-def get_drawdowns(returns: npt.ArrayLike, compounded: bool = False) -> np.ndarray:
+def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
     """Compute the drawdowns' series from the returns.
 
     Parameters
@@ -879,7 +882,7 @@ def get_drawdowns(returns: npt.ArrayLike, compounded: bool = False) -> np.ndarra
     return drawdowns
 
 
-def drawdown_at_risk(drawdowns: np.ndarray, beta: float = 0.95) -> float | np.ndarray:
+def drawdown_at_risk(drawdowns: FloatArray, beta: float = 0.95) -> float | FloatArray:
     """Compute the Drawdown at risk.
 
     The Drawdown at risk is the maximum drawdown at a given confidence level (beta).
@@ -902,7 +905,7 @@ def drawdown_at_risk(drawdowns: np.ndarray, beta: float = 0.95) -> float | np.nd
     return value_at_risk(returns=drawdowns, beta=beta)
 
 
-def max_drawdown(drawdowns: np.ndarray) -> float | np.ndarray:
+def max_drawdown(drawdowns: FloatArray) -> float | FloatArray:
     """Compute the maximum drawdown.
 
     Parameters
@@ -920,7 +923,7 @@ def max_drawdown(drawdowns: np.ndarray) -> float | np.ndarray:
     return drawdown_at_risk(drawdowns=drawdowns, beta=1)
 
 
-def average_drawdown(drawdowns: np.ndarray) -> float | np.ndarray:
+def average_drawdown(drawdowns: FloatArray) -> float | FloatArray:
     """Compute the average drawdown.
 
     Parameters
@@ -938,7 +941,7 @@ def average_drawdown(drawdowns: np.ndarray) -> float | np.ndarray:
     return cdar(drawdowns=drawdowns, beta=0)
 
 
-def cdar(drawdowns: np.ndarray, beta: float = 0.95) -> float | np.ndarray:
+def cdar(drawdowns: FloatArray, beta: float = 0.95) -> float | FloatArray:
     """Compute the historical CDaR (conditional drawdown at risk).
 
     Parameters
@@ -960,7 +963,7 @@ def cdar(drawdowns: np.ndarray, beta: float = 0.95) -> float | np.ndarray:
     return cvar(returns=drawdowns, beta=beta)
 
 
-def edar(drawdowns: np.ndarray, beta: float = 0.95) -> float:
+def edar(drawdowns: FloatArray, beta: float = 0.95) -> float:
     """Compute the EDaR (entropic drawdown at risk).
 
     The EDaR is a coherent risk measure which is an upper bound for the DaR and the
@@ -983,7 +986,7 @@ def edar(drawdowns: np.ndarray, beta: float = 0.95) -> float:
     return evar(returns=drawdowns, beta=beta)
 
 
-def ulcer_index(drawdowns: np.ndarray) -> float | np.ndarray:
+def ulcer_index(drawdowns: FloatArray) -> float | FloatArray:
     """Compute the Ulcer index.
 
     Parameters
@@ -1001,7 +1004,7 @@ def ulcer_index(drawdowns: np.ndarray) -> float | np.ndarray:
     return np.sqrt(mean(np.power(drawdowns, 2)))
 
 
-def owa_gmd_weights(n_observations: int) -> np.ndarray:
+def owa_gmd_weights(n_observations: int) -> FloatArray:
     """Compute the OWA weights used for the Gini mean difference (GMD) computation.
 
     Parameters
@@ -1019,7 +1022,7 @@ def owa_gmd_weights(n_observations: int) -> np.ndarray:
     )
 
 
-def gini_mean_difference(returns: npt.ArrayLike) -> float | np.ndarray:
+def gini_mean_difference(returns: ArrayLike) -> float | FloatArray:
     """Compute the Gini mean difference (GMD).
 
     The GMD is the expected absolute difference between two realisations.
@@ -1069,7 +1072,7 @@ def gini_mean_difference(returns: npt.ArrayLike) -> float | np.ndarray:
     return out
 
 
-def effective_number_assets(weights: np.ndarray) -> float:
+def effective_number_assets(weights: FloatArray) -> float:
     r"""Compute the effective number of assets, defined as the inverse of the
     Herfindahl index.
 
@@ -1096,7 +1099,7 @@ def effective_number_assets(weights: np.ndarray) -> float:
     return 1.0 / (np.power(weights, 2).sum())
 
 
-def correlation(X: np.ndarray, sample_weight: np.ndarray | None = None) -> np.ndarray:
+def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatArray:
     """Compute the correlation matrix.
 
     Parameters

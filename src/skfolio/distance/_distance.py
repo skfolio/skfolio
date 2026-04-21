@@ -1,11 +1,12 @@
 """Distance Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import scipy.spatial.distance as scd
 import scipy.stats as sct
@@ -15,6 +16,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.distance._base import BaseDistance
 from skfolio.moments import BaseCovariance, GerberCovariance
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import (
     NBinsMethod,
     cov_to_corr,
@@ -70,7 +72,7 @@ class PearsonDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "PearsonDistance":
+    def fit(self, X: ArrayLike, y=None) -> PearsonDistance:
         """Fit the Pearson Distance estimator.
 
         Parameters
@@ -142,7 +144,7 @@ class KendallDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "KendallDistance":
+    def fit(self, X: ArrayLike, y=None) -> KendallDistance:
         """Fit the Kendall estimator.
 
         Parameters
@@ -214,7 +216,7 @@ class SpearmanDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "SpearmanDistance":
+    def fit(self, X: ArrayLike, y=None) -> SpearmanDistance:
         """Fit the Spearman estimator.
 
         Parameters
@@ -310,7 +312,7 @@ class CovarianceDistance(BaseDistance):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "CovarianceDistance":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> CovarianceDistance:
         """Fit the Covariance Distance estimator.
 
         Parameters
@@ -383,7 +385,7 @@ class DistanceCorrelation(BaseDistance):
         self.threshold = threshold
 
     @staticmethod
-    def _dcorr(x: np.ndarray, y: np.ndarray):
+    def _dcorr(x: FloatArray, y: FloatArray):
         """Calculate the distance correlation between two variables."""
         x = scd.squareform(scd.pdist(x.reshape(-1, 1)))
         y = scd.squareform(scd.pdist(y.reshape(-1, 1)))
@@ -394,7 +396,7 @@ class DistanceCorrelation(BaseDistance):
         )
         return value
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "DistanceCorrelation":
+    def fit(self, X: ArrayLike, y=None) -> DistanceCorrelation:
         """Fit the Distance Correlation estimator.
 
         Parameters
@@ -487,7 +489,7 @@ class MutualInformation(BaseDistance):
         self.n_bins = n_bins
         self.normalize = normalize
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "MutualInformation":
+    def fit(self, X: ArrayLike, y=None) -> MutualInformation:
         """Fit the Mutual Information estimator.
 
         Parameters
@@ -547,8 +549,8 @@ class MutualInformation(BaseDistance):
 
 
 def _corr_to_distance(
-    corr: np.ndarray, absolute: bool, power: float
-) -> tuple[np.ndarray, np.ndarray]:
+    corr: FloatArray, absolute: bool, power: float
+) -> tuple[FloatArray, FloatArray]:
     r"""Transform a correlation matrix to a codependence and distance matrix.
 
     Some widely used distances are:
@@ -572,7 +574,7 @@ def _corr_to_distance(
 
     Returns
     -------
-    codependence, distance : tuple[np.ndarray, np.ndarray]
+    codependence, distance : tuple[FloatArray, FloatArray]
         Codependence and distance matrices.
     """
     bounds = np.array([-1, 0, 1])

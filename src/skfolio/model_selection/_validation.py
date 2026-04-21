@@ -1,7 +1,7 @@
 """Model validation module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # scikit-portfolio, Copyright (c) 2022, Carlo Nicolini, Licensed under MIT Licence.
@@ -15,7 +15,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 import sklearn.base as skb
 import sklearn.exceptions as ske
@@ -30,6 +29,7 @@ from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
 from skfolio.model_selection._walk_forward import WalkForward
 from skfolio.population import Population
 from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
+from skfolio.typing import ArrayLike, IntArray
 from skfolio.utils.tools import fit_and_predict, safe_split
 
 if TYPE_CHECKING:
@@ -38,8 +38,8 @@ if TYPE_CHECKING:
 
 def cross_val_predict(
     estimator: BaseOptimization | Pipeline,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike = None,
+    X: ArrayLike,
+    y: ArrayLike = None,
     cv: sks.BaseCrossValidator
     | BaseCombinatorialCV
     | MultipleRandomizedCV
@@ -50,7 +50,7 @@ def cross_val_predict(
     verbose: int = 0,
     params: dict | None = None,
     pre_dispatch: str = "2*n_jobs",
-    column_indices: np.ndarray | None = None,
+    column_indices: IntArray | None = None,
     portfolio_params: dict | None = None,
 ) -> MultiPeriodPortfolio | Population:
     """Generate cross-validated `Portfolios` estimates.
@@ -422,7 +422,7 @@ def _route_params(
     return routed_params
 
 
-def _asset_names_enabled(X: npt.ArrayLike) -> bool:
+def _asset_names_enabled(X: ArrayLike) -> bool:
     """Return whether X is a DataFrame and its column names are transferred inside
     a Pipeline.
     """
@@ -478,11 +478,11 @@ def _is_portfolio_optimization_estimator(
 
 def _run_path(
     estimator: skb.BaseEstimator | Pipeline,
-    X: npt.ArrayLike,
-    y: npt.ArrayLike | None,
+    X: ArrayLike,
+    y: ArrayLike | None,
     routed_params: sku.Bunch,
     method: str,
-    path_splits: list[tuple[np.ndarray, np.ndarray, np.ndarray | None]],
+    path_splits: list[tuple[IntArray, IntArray, IntArray | None]],
 ) -> list[Portfolio]:
     """Run sequential fit/predict along a single path of ordered splits.
 

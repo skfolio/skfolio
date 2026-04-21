@@ -1,11 +1,12 @@
 """Pre-selection SelectNonDominated module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
@@ -13,6 +14,7 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
+from skfolio.typing import ArrayLike, BoolArray
 
 
 class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
@@ -67,7 +69,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         B.Y. Qu and Q.Zhou (2017).
     """
 
-    to_keep_: np.ndarray
+    to_keep_: BoolArray
 
     def __init__(
         self,
@@ -79,7 +81,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self.threshold = threshold
         self.fitness_measures = fitness_measures
 
-    def fit(self, X: npt.ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y=None):
         """Run the Non Dominated transformer and get the appropriate assets.
 
         Parameters

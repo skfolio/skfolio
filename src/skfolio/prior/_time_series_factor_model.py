@@ -1,7 +1,7 @@
 """Time-series factor model estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -15,7 +15,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.linear_model as skl
 import sklearn.multioutput as skmo
@@ -25,6 +24,7 @@ import sklearn.utils.validation as skv
 import skfolio.measures as sm
 from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.stats import cov_nearest
 from skfolio.utils.tools import check_estimator
 
@@ -39,11 +39,11 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     arguments (no ``*args`` or ``**kwargs``).
     """
 
-    loading_matrix_: np.ndarray
-    intercepts_: np.ndarray
+    loading_matrix_: FloatArray
+    intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params):
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
         pass
 
 
@@ -98,7 +98,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y: npt.ArrayLike, **fit_params):
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
         """Fit the Loading Matrix Regression Estimator.
 
         Parameters
@@ -252,7 +252,7 @@ class TimeSeriesFactorModel(BasePrior):
     factor_prior_estimator_: BasePrior
     loading_matrix_estimator_: BaseLoadingMatrix
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     def __init__(
         self,
@@ -287,9 +287,9 @@ class TimeSeriesFactorModel(BasePrior):
 
     def fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y: Any,
-        factors: npt.ArrayLike | None = None,
+        factors: ArrayLike | None = None,
         **fit_params,
     ) -> TimeSeriesFactorModel:
         """Fit the Time-series factor model estimator.

@@ -1,19 +1,21 @@
 """Multiple Randomized CV."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credit: Daniel Palomar
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import math
 from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils as sku
 
 from skfolio.model_selection._walk_forward import WalkForward
+from skfolio.typing import ArrayLike, IntArray
 from skfolio.utils.stats import sample_unique_subsets
 from skfolio.utils.tools import safe_split
 
@@ -210,8 +212,8 @@ class MultipleRandomizedCV:
         self.random_state = random_state
 
     def split(
-        self, X: npt.ArrayLike, y=None
-    ) -> Iterator[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        self, X: ArrayLike, y=None
+    ) -> Iterator[tuple[IntArray, IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
         Parameters
@@ -346,7 +348,7 @@ class MultipleRandomizedCV:
             X, _ = safe_split(X, indices=np.arange(self.window_size), axis=0)
         return self.n_subsamples * self.walk_forward.get_n_splits(X)
 
-    def get_path_ids(self) -> np.ndarray:
+    def get_path_ids(self) -> IntArray:
         """Return the path id of each test sets in each split."""
         if not hasattr(self, "_path_ids"):
             raise ValueError("Before calling `get_path_ids()` you must call `split(X)`")

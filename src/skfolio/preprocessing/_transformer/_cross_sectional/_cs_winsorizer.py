@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
 
@@ -16,6 +15,7 @@ from skfolio.preprocessing._transformer._cross_sectional._utils import (
     _mask_non_estimation_values,
     _validate_cs_weights,
 )
+from skfolio.typing import ArrayLike, FloatArray
 
 __all__ = ["CSWinsorizer"]
 
@@ -91,10 +91,10 @@ class CSWinsorizer(BaseCSTransformer):
 
     def transform(
         self,
-        X: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
-        cs_groups: npt.ArrayLike | None = None,
-    ) -> np.ndarray:
+        X: ArrayLike,
+        cs_weights: ArrayLike | None = None,
+        cs_groups: ArrayLike | None = None,
+    ) -> FloatArray:
         r"""Winsorize each observation to low/high percentiles.
 
         Parameters

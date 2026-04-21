@@ -1,14 +1,16 @@
 """Base Distance Estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
+
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class BaseDistance(skb.BaseEstimator, ABC):
@@ -29,15 +31,15 @@ class BaseDistance(skb.BaseEstimator, ABC):
         Distance matrix.
     """
 
-    codependence_: np.ndarray
-    distance_: np.ndarray
+    codependence_: FloatArray
+    distance_: FloatArray
 
     @abstractmethod
     def __init__(self):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None) -> "BaseDistance":
+    def fit(self, X: ArrayLike, y=None) -> BaseDistance:
         """Fit the Distance estimator.
 
         Parameters

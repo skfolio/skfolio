@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from skfolio.preprocessing import CSPercentileRankScaler
+from skfolio.typing import FloatArray, IntArray
 
 
-def _midrank_percentile(sample: np.ndarray, query: float) -> float:
+def _midrank_percentile(sample: FloatArray, query: float) -> float:
     """Reference midrank percentile of `query` against `sample`, clipped to [0.5/n, 1 - 0.5/n]."""
     n = sample.size
     num_below = float((sample < query).sum())
@@ -15,11 +18,11 @@ def _midrank_percentile(sample: np.ndarray, query: float) -> float:
 
 
 def _reference_transform(
-    X: np.ndarray,
-    cs_weights: np.ndarray | None = None,
-    cs_groups: np.ndarray | None = None,
+    X: FloatArray,
+    cs_weights: FloatArray | None = None,
+    cs_groups: IntArray | None = None,
     min_group_size: int = 8,
-) -> np.ndarray:
+) -> FloatArray:
     """Plain per-row, per-group reference used for property tests."""
     X = np.asarray(X, dtype=float)
     n_obs, _ = X.shape

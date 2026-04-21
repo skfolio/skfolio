@@ -1,12 +1,13 @@
 """Univariate Distribution Selection."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn as sk
 
 from skfolio.distribution._base import SelectionCriterion
@@ -14,10 +15,11 @@ from skfolio.distribution.univariate._base import BaseUnivariateDist
 from skfolio.distribution.univariate._gaussian import Gaussian
 from skfolio.distribution.univariate._johnson_su import JohnsonSU
 from skfolio.distribution.univariate._student_t import StudentT
+from skfolio.typing import ArrayLike
 
 
 def select_univariate_dist(
-    X: npt.ArrayLike,
+    X: ArrayLike,
     distribution_candidates: list[BaseUnivariateDist] | None = None,
     selection_criterion: SelectionCriterion = SelectionCriterion.AIC,
 ) -> BaseUnivariateDist:

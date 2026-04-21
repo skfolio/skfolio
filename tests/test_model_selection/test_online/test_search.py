@@ -1,5 +1,7 @@
 """Tests for online_score portfolio scoring and OnlineGridSearch / OnlineRandomizedSearch."""
 
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn import config_context

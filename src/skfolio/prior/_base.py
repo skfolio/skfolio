@@ -1,15 +1,17 @@
 """Base Prior estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
+
+from skfolio.typing import ArrayLike, FloatArray
 
 
 # frozen=True with eq=False will lead to an id-based hashing which is needed for
@@ -41,11 +43,11 @@ class ReturnDistribution:
         Sample weights for each observation. If None, equal weights are assumed.
     """
 
-    mu: np.ndarray
-    covariance: np.ndarray
-    returns: np.ndarray
-    cholesky: np.ndarray | None = None
-    sample_weight: np.ndarray | None = None
+    mu: FloatArray
+    covariance: FloatArray
+    returns: FloatArray
+    cholesky: FloatArray | None = None
+    sample_weight: FloatArray | None = None
 
 
 class BasePrior(skb.BaseEstimator, ABC):
@@ -65,5 +67,5 @@ class BasePrior(skb.BaseEstimator, ABC):
         pass
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params):
+    def fit(self, X: ArrayLike, y=None, **fit_params):
         pass

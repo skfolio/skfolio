@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,11 +16,12 @@ from skfolio import (
 )
 from skfolio.datasets import load_sp500_dataset
 from skfolio.preprocessing import prices_to_returns
+from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
 from skfolio.utils.tools import args_names
 
 
-def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array:
+def _portfolio_returns(asset_returns: FloatArray, weights: FloatArray) -> FloatArray:
     r"""
     Compute the portfolio returns from its assets returns and weights.
     """
@@ -29,7 +32,7 @@ def _portfolio_returns(asset_returns: np.ndarray, weights: np.array) -> np.array
     return returns
 
 
-def _dominate(fitness_1: np.ndarray, fitness_2: np.ndarray) -> bool:
+def _dominate(fitness_1: FloatArray, fitness_2: FloatArray) -> bool:
     return np.all(fitness_1 >= fitness_2) and np.any(fitness_1 > fitness_2)
 
 

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from skfolio.typing import FloatArray
+
 
 class _ArrayBuffer:
     """Pre-allocated buffer that grows geometrically for amortized O(1) appends.
@@ -22,11 +24,11 @@ class _ArrayBuffer:
     __slots__ = ("_buffer", "_size")
 
     def __init__(self):
-        self._buffer: np.ndarray | None = None
+        self._buffer: FloatArray | None = None
         self._size: int = 0
 
     @property
-    def array(self) -> np.ndarray | None:
+    def array(self) -> FloatArray | None:
         """Read-only view of the valid region, or `None` if empty."""
         if self._buffer is None:
             return None
@@ -34,7 +36,7 @@ class _ArrayBuffer:
         view.flags.writeable = False
         return view
 
-    def append(self, values: np.ndarray) -> None:
+    def append(self, values: FloatArray) -> None:
         """Append *values* along axis 0.
 
         First call allocates an exact-fit buffer (optimal for batch mode).

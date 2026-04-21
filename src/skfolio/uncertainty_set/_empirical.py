@@ -1,19 +1,21 @@
 """Empirical Uncertainty Set estimators."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # scikit-learn, Copyright (c) 2007-2010 David Cournapeau, Fabian Pedregosa, Olivier
 # Grisel Licensed under BSD 3 clause.
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import scipy.stats as st
 import sklearn.utils.metadata_routing as skm
 
 from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.typing import ArrayLike
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -106,8 +108,8 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         self.n_eff = n_eff
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
-    ) -> "EmpiricalMuUncertaintySet":
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+    ) -> EmpiricalMuUncertaintySet:
         """Fit the Empirical Mu Uncertainty set estimator.
 
         Parameters
@@ -240,8 +242,8 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self.n_eff = n_eff
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
-    ) -> "EmpiricalCovarianceUncertaintySet":
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+    ) -> EmpiricalCovarianceUncertaintySet:
         """Fit the Empirical Covariance Uncertainty set estimator.
 
         Parameters

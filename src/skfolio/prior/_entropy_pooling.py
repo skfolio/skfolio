@@ -1,9 +1,11 @@
 """Entropy Pooling estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Vincent Maladière, Matteo Manzi, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import operator
 import re
@@ -13,7 +15,6 @@ from typing import TYPE_CHECKING
 
 import cvxpy as cp
 import numpy as np
-import numpy.typing as npt
 import scipy.optimize as sco
 import scipy.sparse.linalg as scl
 import scipy.special as scs
@@ -31,6 +32,7 @@ from skfolio.measures import (
 )
 from skfolio.prior._base import BasePrior, ReturnDistribution
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
@@ -420,15 +422,15 @@ class EntropyPooling(BasePrior):
     effective_number_of_scenarios_: float
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     if TYPE_CHECKING:
-        _returns: np.ndarray
-        _prior_sample_weight: np.ndarray
-        _groups: np.ndarray
-        _is_fixed_mean: np.ndarray
-        _is_fixed_variance: np.ndarray
-        _constraints: dict[str, list[np.ndarray] | None]
+        _returns: FloatArray
+        _prior_sample_weight: FloatArray
+        _groups: ObjArray
+        _is_fixed_mean: BoolArray
+        _is_fixed_variance: BoolArray
+        _constraints: dict[str, list[FloatArray] | None]
 
     def __init__(
         self,
@@ -467,7 +469,7 @@ class EntropyPooling(BasePrior):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "EntropyPooling":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> EntropyPooling:
         """Fit the Entropy Pooling estimator.
 
         Parameters
@@ -586,7 +588,7 @@ class EntropyPooling(BasePrior):
 
         return self
 
-    def _add_constraint(self, a: np.ndarray, b: np.ndarray, name: str) -> None:
+    def _add_constraint(self, a: FloatArray, b: FloatArray, name: str) -> None:
         """Add the left matrix `a` and right vector `b` of linear equality constraints
         `x @ a == b` and linear inequality constraints `x @ a <= b` to the
         `_constraints` dict.
@@ -632,7 +634,7 @@ class EntropyPooling(BasePrior):
             if a.size != 0:
                 self._add_constraint(a=self._returns @ a.T, b=b, name=name)
 
-    def _add_variance_views(self, mean: np.ndarray) -> None:
+    def _add_variance_views(self, mean: FloatArray) -> None:
         """Add variance view constraints to the optimization problem.
 
         Parameters
@@ -658,7 +660,7 @@ class EntropyPooling(BasePrior):
 
         self._fix_mean(fix=fix, mean=mean)
 
-    def _add_skew_views(self, mean: np.ndarray, variance: np.ndarray) -> None:
+    def _add_skew_views(self, mean: FloatArray, variance: FloatArray) -> None:
         """Add skew view constraints to the optimization problem.
 
         Parameters
@@ -695,7 +697,7 @@ class EntropyPooling(BasePrior):
         self._fix_mean(fix=fix, mean=mean)
         self._fix_variance(fix=fix, mean=mean, variance=variance)
 
-    def _add_kurtosis_views(self, mean: np.ndarray, variance: np.ndarray) -> None:
+    def _add_kurtosis_views(self, mean: FloatArray, variance: FloatArray) -> None:
         """Add kurtosis view constraints to the optimization problem.
 
         Parameters
@@ -779,7 +781,7 @@ class EntropyPooling(BasePrior):
                     name=name,
                 )
 
-    def _add_correlation_views(self, mean: np.ndarray, variance: np.ndarray) -> None:
+    def _add_correlation_views(self, mean: FloatArray, variance: FloatArray) -> None:
         """Add correlation view constraints to the optimization problem.
 
         Parameters
@@ -839,7 +841,7 @@ class EntropyPooling(BasePrior):
         self._fix_mean(fix=fix, mean=mean)
         self._fix_variance(fix=fix, mean=mean, variance=variance)
 
-    def _solve_with_cvar(self) -> np.ndarray:
+    def _solve_with_cvar(self) -> FloatArray:
         """Solve the entropy pooling problem handling CVaR view constraints.
 
         CVaR view constraints cannot be directly expressed as linear functions of the
@@ -906,7 +908,7 @@ class EntropyPooling(BasePrior):
                 )
             raise ValueError(msg)
 
-        def func(etas: list[float]) -> tuple[np.ndarray, float]:
+        def func(etas: list[float]) -> tuple[FloatArray, float]:
             """Solve the EP with CVaR constraints for a given list of etas (VaR levels).
 
             Parameters
@@ -990,7 +992,7 @@ class EntropyPooling(BasePrior):
         sample_weight = func(res)[0]
         return sample_weight
 
-    def _solve(self) -> np.ndarray:
+    def _solve(self) -> FloatArray:
         """Solve the base entropy pooling problem.
         Dispatch either to the EP dual (TNC) solver or the EP primal (CVXPY) solver
         based on the `solver` parameter.
@@ -1008,7 +1010,7 @@ class EntropyPooling(BasePrior):
             return self._solve_dual()
         return self._solve_primal()
 
-    def _solve_dual(self) -> np.ndarray:
+    def _solve_dual(self) -> FloatArray:
         r"""Solves the entropic-pooling dual via SciPy's Truncated Newton
         Constrained method. By exploiting the smooth Fenchel dual and its
         closed-form gradient, it operates in :math:`\mathbb{R}^k` (the number of
@@ -1060,7 +1062,7 @@ class EntropyPooling(BasePrior):
         a = np.hstack(a)
         b = np.hstack(b)
 
-        def func(x: np.ndarray) -> tuple[float, np.ndarray]:
+        def func(x: FloatArray) -> tuple[float, FloatArray]:
             """Computes the Fenchel dual of the entropic-pooling problem in its
             unnormalized form.
 
@@ -1119,7 +1121,7 @@ class EntropyPooling(BasePrior):
         sample_weight /= sample_weight.sum()
         return sample_weight
 
-    def _solve_primal(self) -> np.ndarray:
+    def _solve_primal(self) -> FloatArray:
         """Solve the base entropy-pooling problem in its primal form by minimizing KL
         divergence to the prior.
 
@@ -1242,7 +1244,7 @@ class EntropyPooling(BasePrior):
 
         return a_eq, b_eq, a_ineq, b_ineq
 
-    def _fix_mean(self, fix: np.ndarray, mean: np.ndarray) -> None:
+    def _fix_mean(self, fix: FloatArray, mean: FloatArray) -> None:
         """Add constraints to fix the mean for assets where view constraints have been
         applied.
 
@@ -1265,7 +1267,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_mean |= fix
 
     def _fix_variance(
-        self, fix: np.ndarray, mean: np.ndarray, variance: np.ndarray
+        self, fix: FloatArray, mean: FloatArray, variance: FloatArray
     ) -> None:
         """Add constraints to fix the variance for assets where view constraints have
         been applied.
@@ -1281,7 +1283,7 @@ class EntropyPooling(BasePrior):
         mean : ndarray of shape (n_assets,)
             Fixed mean values used for the linearization of the variance.
 
-        variance : np.ndarray
+        variance : FloatArray
             Fixed variance values.
         """
         fix &= ~self._is_fixed_variance

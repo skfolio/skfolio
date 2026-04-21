@@ -1,15 +1,17 @@
 """Bivariate Independent Copula Estimation."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.distribution.copula._base import BaseBivariateCopula
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class IndependentCopula(BaseBivariateCopula):
@@ -48,7 +50,7 @@ class IndependentCopula(BaseBivariateCopula):
     def __init__(self, random_state: int | None = None):
         super().__init__(random_state=random_state)
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "IndependentCopula":
+    def fit(self, X: ArrayLike, y=None) -> IndependentCopula:
         """Fit the Bivariate Independent Copula.
 
         Provided for compatibility with the API.
@@ -71,7 +73,7 @@ class IndependentCopula(BaseBivariateCopula):
         _ = self._validate_X(X, reset=True)
         return self
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the CDF of the bivariate Independent copula.
 
         Parameters
@@ -92,8 +94,8 @@ class IndependentCopula(BaseBivariateCopula):
         return cdf
 
     def partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the h-function (partial derivative) for the bivariate Independent
         copula.
 
@@ -110,7 +112,7 @@ class IndependentCopula(BaseBivariateCopula):
 
         Returns
         -------
-        np.ndarray
+        FloatArray
             Array of h-function values for each observation in X.
         """
         skv.check_is_fitted(self)
@@ -119,8 +121,8 @@ class IndependentCopula(BaseBivariateCopula):
         return h
 
     def inverse_partial_derivative(
-        self, X: npt.ArrayLike, first_margin: bool = False
-    ) -> np.ndarray:
+        self, X: ArrayLike, first_margin: bool = False
+    ) -> FloatArray:
         r"""Compute the inverse of the bivariate copula's partial derivative, commonly
         known as the inverse h-function.
 
@@ -162,7 +164,7 @@ class IndependentCopula(BaseBivariateCopula):
         u = X[:, 1] if first_margin else X[:, 0]
         return u
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters

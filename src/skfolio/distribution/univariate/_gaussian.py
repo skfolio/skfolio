@@ -1,14 +1,16 @@
 """Univariate Gaussian Estimation."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
 
-import numpy.typing as npt
+from __future__ import annotations
+
 import scipy.stats as st
 
 from skfolio.distribution.univariate._base import BaseUnivariateDist
+from skfolio.typing import ArrayLike
 
 
 class Gaussian(BaseUnivariateDist):
@@ -104,7 +106,7 @@ class Gaussian(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "Gaussian":
+    def fit(self, X: ArrayLike, y=None) -> Gaussian:
         """Fit the univariate Gaussian distribution model.
 
         Parameters

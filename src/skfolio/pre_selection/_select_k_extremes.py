@@ -1,11 +1,12 @@
 """Pre-selection SelectKExtremes module."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
+from __future__ import annotations
+
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
@@ -14,6 +15,7 @@ import skfolio.typing as skt
 from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
+from skfolio.typing import ArrayLike, BoolArray
 
 
 class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
@@ -48,7 +50,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
        has feature names that are all strings.
     """
 
-    to_keep_: np.ndarray
+    to_keep_: BoolArray
 
     def __init__(
         self,
@@ -60,7 +62,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         self.measure = measure
         self.highest = highest
 
-    def fit(self, X: npt.ArrayLike, y=None) -> "SelectKExtremes":
+    def fit(self, X: ArrayLike, y=None) -> SelectKExtremes:
         """Run the SelectKExtremes transformer and get the appropriate assets.
 
         Parameters

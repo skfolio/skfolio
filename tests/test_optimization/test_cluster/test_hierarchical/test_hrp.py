@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import pytest
 from sklearn import clone, config_context
@@ -7,6 +9,7 @@ from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalRiskParity
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
+from skfolio.typing import FloatArray
 
 
 @pytest.fixture(scope="module")
@@ -269,7 +272,7 @@ def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
         assert np.all(model.weights_ - max_weights <= 1e-8)
 
 
-def _random_weights_bounds(n_assets: int) -> tuple[np.ndarray, np.ndarray]:
+def _random_weights_bounds(n_assets: int) -> tuple[FloatArray, FloatArray]:
     raw_min = np.random.rand(n_assets)
     min_total_target = np.random.rand()
     min_weights = raw_min / raw_min.sum() * min_total_target

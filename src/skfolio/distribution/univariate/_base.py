@@ -1,21 +1,23 @@
 """Base Univariate Estimator."""
 
-# Copyright (c) 2025
+# Copyright (c) 2023-2026
 # Authors: The skfolio developers
 # Credits: Matteo Manzi, Vincent Maladière, Carlo Nicolini
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.stats as st
 import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.distribution._base import BaseDistribution
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class BaseUnivariateDist(BaseDistribution, ABC):
@@ -52,7 +54,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         return f"{self.__class__.__name__}({params})"
 
     @abstractmethod
-    def fit(self, X: npt.ArrayLike, y=None) -> "BaseUnivariateDist":
+    def fit(self, X: ArrayLike, y=None) -> BaseUnivariateDist:
         """Fit the univariate distribution model.
 
         Parameters
@@ -71,7 +73,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         """
         pass
 
-    def _validate_X(self, X: npt.ArrayLike, reset: bool) -> np.ndarray:
+    def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
         """Validate and convert the input data X.
 
         Parameters
@@ -96,7 +98,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
             )
         return X
 
-    def score_samples(self, X: npt.ArrayLike) -> np.ndarray:
+    def score_samples(self, X: ArrayLike) -> FloatArray:
         """Compute the log-likelihood of each sample (log-pdf) under the model.
 
         Parameters
@@ -136,7 +138,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         )
         return sample
 
-    def cdf(self, X: npt.ArrayLike) -> np.ndarray:
+    def cdf(self, X: ArrayLike) -> FloatArray:
         """Compute the cumulative distribution function (CDF) for the given data.
 
         Parameters
@@ -152,7 +154,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         skv.check_is_fitted(self)
         return self._scipy_model.cdf(X, **self._scipy_params)
 
-    def ppf(self, X: npt.ArrayLike) -> np.ndarray:
+    def ppf(self, X: ArrayLike) -> FloatArray:
         """Compute the percent point function (inverse of the CDF) for the given
          probabilities.
 
@@ -170,7 +172,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         return self._scipy_model.ppf(X, **self._scipy_params)
 
     def plot_pdf(
-        self, X: npt.ArrayLike | None = None, title: str | None = None
+        self, X: ArrayLike | None = None, title: str | None = None
     ) -> go.Figure:
         """Plot the probability density function (PDF).
 
@@ -251,7 +253,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         )
         return fig
 
-    def qq_plot(self, X: npt.ArrayLike, title: str | None = None) -> go.Figure:
+    def qq_plot(self, X: ArrayLike, title: str | None = None) -> go.Figure:
         """Plot the empirical quantiles of the sample X versus the quantiles of the
         fitted model.
 

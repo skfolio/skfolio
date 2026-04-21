@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import numbers
 
-import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
 
@@ -19,6 +17,7 @@ from skfolio.preprocessing._transformer._cross_sectional._utils import (
     _prepare_cs_estimation_inputs,
     _validate_cs_weights,
 )
+from skfolio.typing import ArrayLike, FloatArray
 
 __all__ = ["CSPercentileRankScaler"]
 
@@ -119,10 +118,10 @@ class CSPercentileRankScaler(BaseCSTransformer):
 
     def transform(
         self,
-        X: npt.ArrayLike,
-        cs_weights: npt.ArrayLike | None = None,
-        cs_groups: npt.ArrayLike | None = None,
-    ) -> np.ndarray:
+        X: ArrayLike,
+        cs_weights: ArrayLike | None = None,
+        cs_groups: ArrayLike | None = None,
+    ) -> FloatArray:
         r"""Transform values into cross-sectional percentile ranks.
 
         Parameters

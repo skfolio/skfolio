@@ -47,7 +47,6 @@ returns = prices_to_returns(prices)
 # `shuffle=False` preserves chronological order, crucial for time-series data.
 X_train, X_test = train_test_split(returns, test_size=0.33, shuffle=False)
 
-
 # %%
 # Portfolio Construction
 # ======================
@@ -69,7 +68,6 @@ model_bench = Pipeline(
         ("optimization", optimization),
     ]
 )
-
 
 # %%
 # Rebalancing Strategy
@@ -138,7 +136,6 @@ population.plot_cumulative_returns()
 # %%
 # Display a summary of key performance metrics.
 population.summary()
-
 
 # %%
 # Multiple Randomized Cross-Validation

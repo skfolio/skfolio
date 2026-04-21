@@ -58,7 +58,6 @@ for tag, investment_horizon in [
     )
     population.extend(model.fit_predict(X))
 
-
 # %%
 # Let's plot the efficient frontier:
 fig = population.plot_measures(

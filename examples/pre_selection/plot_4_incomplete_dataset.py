@@ -38,7 +38,6 @@ hyperparameter tuning tools like `GridSearchCV`.
 # We’ll convert these prices to returns and split the dataset into 3 rebalancing
 # periods of 4 days each.
 
-
 import datetime as dt
 
 import matplotlib.image as mpi
@@ -134,7 +133,6 @@ df
 # 2024-01-11:
 df = pred.returns_df
 df
-
 
 # %%
 # Step-by-Step Fitting with `WalkForward`

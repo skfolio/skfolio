@@ -1,7 +1,7 @@
 """Nested Clusters Optimization estimator."""
 
-# Copyright (c) 2023-2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
@@ -13,7 +13,6 @@ from __future__ import annotations
 from copy import deepcopy
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
@@ -29,6 +28,7 @@ from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex import MeanRisk
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 
@@ -268,7 +268,7 @@ class NestedClustersOptimization(BaseOptimization):
         return router
 
     def fit(
-        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> NestedClustersOptimization:
         """Fit the Nested Clusters Optimization estimator.
 

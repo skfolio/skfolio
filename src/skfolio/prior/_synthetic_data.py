@@ -1,13 +1,14 @@
 """Synthetic Data Prior estimator."""
 
-# Copyright (c) 2025
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import inspect
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -15,6 +16,7 @@ import sklearn.utils.validation as skv
 from skfolio.distribution import VineCopula
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.typing import ArrayLike, ObjArray
 from skfolio.utils.tools import check_estimator
 
 
@@ -123,7 +125,7 @@ class SyntheticData(BasePrior):
     distribution_estimator_: skb.BaseEstimator
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: np.ndarray
+    feature_names_in_: ObjArray
 
     def __init__(
         self,
@@ -143,7 +145,7 @@ class SyntheticData(BasePrior):
         )
         return router
 
-    def fit(self, X: npt.ArrayLike, y=None, **fit_params) -> "SyntheticData":
+    def fit(self, X: ArrayLike, y=None, **fit_params) -> SyntheticData:
         """Fit the Synthetic Data estimator.
 
         Parameters

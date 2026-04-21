@@ -1,13 +1,14 @@
 """Stats module."""
 
-
 # Copyright (c) 2023-2026
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
 # Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
 # Statsmodels, Copyright (C) 2006, Jonathan E. Taylor, Licensed under BSD 3 clause.
+
+from __future__ import annotations
 
 import math
 import random
@@ -24,6 +25,7 @@ import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
 
+from skfolio.typing import BoolArray, FloatArray, IntArray
 from skfolio.utils.tools import AutoEnum
 
 __all__ = [
@@ -78,7 +80,7 @@ class NBinsMethod(AutoEnum):
     KNUTH = auto()
 
 
-def n_bins_freedman(x: np.ndarray) -> int:
+def n_bins_freedman(x: FloatArray) -> int:
     """Compute the optimal histogram bin size using the Freedman-Diaconis rule [1]_.
 
     Parameters
@@ -107,7 +109,7 @@ def n_bins_freedman(x: np.ndarray) -> int:
     return round(n_bins)
 
 
-def n_bins_knuth(x: np.ndarray) -> int:
+def n_bins_knuth(x: FloatArray) -> int:
     """Compute the optimal histogram bin size using Knuth's rule [1]_.
 
     Parameters
@@ -128,7 +130,7 @@ def n_bins_knuth(x: np.ndarray) -> int:
     x = np.sort(x)
     n = len(x)
 
-    def func(y: np.ndarray) -> float:
+    def func(y: FloatArray) -> float:
         y = y[0]
         if y <= 0:
             return np.inf
@@ -164,7 +166,7 @@ def rand_weights_dirichlet(n: int) -> np.array:
     return np.random.dirichlet(np.ones(n))
 
 
-def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> np.ndarray:
+def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> FloatArray:
     """Produces n random weights that sum to one from a uniform distribution
     (non-uniform distribution over a simplex).
 
@@ -193,7 +195,7 @@ def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> np.ndarray:
     return k / k.sum()
 
 
-def is_cholesky_dec(x: np.ndarray) -> bool:
+def is_cholesky_dec(x: FloatArray) -> bool:
     """Returns True if Cholesky decomposition can be computed.
     The matrix must be Hermitian (symmetric if real-valued) and positive-definite.
     No checking is performed to verify whether the matrix is Hermitian or not.
@@ -216,7 +218,7 @@ def is_cholesky_dec(x: np.ndarray) -> bool:
         return False
 
 
-def is_positive_definite(x: np.ndarray) -> bool:
+def is_positive_definite(x: FloatArray) -> bool:
     """Returns True if the matrix is positive definite.
 
     Parameters
@@ -232,7 +234,7 @@ def is_positive_definite(x: np.ndarray) -> bool:
     return np.all(np.linalg.eigvals(x) > 0)
 
 
-def assert_is_square(x: np.ndarray) -> None:
+def assert_is_square(x: FloatArray) -> None:
     """Raises an error if the matrix is not square.
 
     Parameters
@@ -248,7 +250,7 @@ def assert_is_square(x: np.ndarray) -> None:
         raise ValueError("The matrix must be square")
 
 
-def assert_is_symmetric(x: np.ndarray) -> None:
+def assert_is_symmetric(x: FloatArray) -> None:
     """Raises an error if the matrix is not symmetric.
 
     Parameters
@@ -265,7 +267,7 @@ def assert_is_symmetric(x: np.ndarray) -> None:
         raise ValueError("The matrix must be symmetric")
 
 
-def assert_is_distance(x: np.ndarray) -> None:
+def assert_is_distance(x: FloatArray) -> None:
     """Raises an error if the matrix is not a distance matrix.
 
     Parameters
@@ -284,7 +286,7 @@ def assert_is_distance(x: np.ndarray) -> None:
         )
 
 
-def cov_to_corr(cov: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def cov_to_corr(cov: FloatArray) -> tuple[FloatArray, FloatArray]:
     """Convert a covariance matrix to a correlation matrix.
 
     Parameters
@@ -304,7 +306,7 @@ def cov_to_corr(cov: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return corr, std
 
 
-def corr_to_cov(corr: np.ndarray, std: np.ndarray):
+def corr_to_cov(corr: FloatArray, std: FloatArray):
     """Convert a correlation matrix to a covariance matrix given its
     standard-deviation vector.
 
@@ -333,7 +335,7 @@ _CLIPPING_VALUE = 1e-13
 
 
 def cov_nearest(
-    cov: np.ndarray,
+    cov: FloatArray,
     higham: bool = False,
     higham_max_iteration: int = 100,
     warn: bool = False,
@@ -448,7 +450,7 @@ def commutation_matrix(x):
     return k
 
 
-def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray) -> int:
+def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray) -> int:
     r"""Compute the optimal number of clusters based on Two-Order Difference to Gap
     Statistic [1]_.
 
@@ -520,12 +522,12 @@ def compute_optimal_n_clusters(distance: np.ndarray, linkage_matrix: np.ndarray)
 
 
 def minimize_relative_weight_deviation(
-    weights: np.ndarray,
-    min_weights: np.ndarray,
-    max_weights: np.ndarray,
+    weights: FloatArray,
+    min_weights: FloatArray,
+    max_weights: FloatArray,
     solver: str = "CLARABEL",
     solver_params: dict | None = None,
-) -> np.ndarray:
+) -> FloatArray:
     r"""
     Apply weight constraints to an initial array of weights by minimizing the relative
     weight deviation of the final weights from the initial weights.
@@ -603,7 +605,7 @@ def minimize_relative_weight_deviation(
     return w.value
 
 
-def combination_by_index(idx: int, n: int, k: int) -> np.ndarray:
+def combination_by_index(idx: int, n: int, k: int) -> IntArray:
     """
     Retrieve the k-combination at a given lexicographic position without enumerating
     all combinations.
@@ -675,7 +677,7 @@ def combination_by_index(idx: int, n: int, k: int) -> np.ndarray:
 
 def sample_unique_subsets(
     n: int, k: int, n_subsets: int, random_state: int | None = None
-) -> np.ndarray:
+) -> IntArray:
     """
     Generate unique k-element subsets from a universe of size n using combinatorial
     unranking.
@@ -736,7 +738,7 @@ def sample_unique_subsets(
     return subsets
 
 
-def inverse_multiply(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def inverse_multiply(a: FloatArray, b: FloatArray) -> FloatArray:
     """Multiply the inverse of matrix a by matrix b.
     We use np.linalg.solve as it tends to produce more accurate results than
     np.linalg.inv.
@@ -760,7 +762,7 @@ def inverse_multiply(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return np.linalg.solve(a, b)
 
 
-def multiply_by_inverse(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def multiply_by_inverse(a: FloatArray, b: FloatArray) -> FloatArray:
     """Multiply matrix a by the inverse of matrix b.
     We use np.linalg.solve as it tends to produce more accurate results than
     np.linalg.inv.
@@ -781,7 +783,7 @@ def multiply_by_inverse(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return inverse_multiply(b.T, a.T).T
 
 
-def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
+def symmetric_step_up_matrix(n1: int, n2: int) -> FloatArray:
     """Compute the Symmetric step-up matrix M such that `M @ np.ones(n2) = np.ones(n1)`.
 
     Parameters
@@ -815,7 +817,7 @@ def symmetric_step_up_matrix(n1: int, n2: int) -> np.ndarray:
     return m
 
 
-def symmetrize(matrix: np.ndarray, where: np.ndarray | None = None) -> None:
+def symmetrize(matrix: FloatArray, where: BoolArray | None = None) -> None:
     r"""In-place symmetrization: :math:`M \leftarrow (M + M^T) / 2`.
 
     When `where` is provided, only the sub-block indexed by the mask is
@@ -841,10 +843,10 @@ def symmetrize(matrix: np.ndarray, where: np.ndarray | None = None) -> None:
 
 
 def safe_cholesky(
-    covariance: np.ndarray,
+    covariance: FloatArray,
     ridge_scale: float = _NUMERICAL_THRESHOLD,
     max_tries: int = _MAX_RIDGE_TRIES,
-) -> np.ndarray:
+) -> FloatArray:
     r"""Compute a Cholesky factor :math:`L` from covariance :math:`\Sigma`.
 
     Fast path: try plain Cholesky on the input as-is.
@@ -907,7 +909,7 @@ def safe_cholesky(
 
 
 def squared_standardized_euclidean_dist(
-    returns: np.ndarray, covariance: np.ndarray
+    returns: FloatArray, covariance: FloatArray
 ) -> float:
     r"""Squared standardized Euclidean distance.
 
@@ -935,8 +937,8 @@ def squared_standardized_euclidean_dist(
 
 
 def _squared_mahalanobis_dist_from_cholesky(
-    X: np.ndarray, cholesky: np.ndarray, mean: np.ndarray | None = None
-) -> np.ndarray | float:
+    X: FloatArray, cholesky: FloatArray, mean: FloatArray | None = None
+) -> FloatArray | float:
     r"""Squared Mahalanobis distance from a pre-computed Cholesky factor.
 
     .. math:: d^2 = (r - \mu)^\top \Sigma^{-1} (r - \mu)
@@ -988,12 +990,12 @@ def _squared_mahalanobis_dist_from_cholesky(
 
 
 def squared_mahalanobis_dist(
-    X: np.ndarray,
-    covariance: np.ndarray,
-    mean: np.ndarray | None = None,
+    X: FloatArray,
+    covariance: FloatArray,
+    mean: FloatArray | None = None,
     ridge_scale: float = _NUMERICAL_THRESHOLD,
     max_tries: int = _MAX_RIDGE_TRIES,
-) -> np.ndarray | float:
+) -> FloatArray | float:
     r"""Squared Mahalanobis distance via Cholesky decomposition.
 
     .. math:: d^2 = (r - \mu)^\top \Sigma^{-1} (r - \mu)
@@ -1027,13 +1029,13 @@ def squared_mahalanobis_dist(
 
 
 def cs_weighted_correlation(
-    a: np.ndarray,
-    b: np.ndarray,
-    weights: np.ndarray | None = None,
+    a: FloatArray,
+    b: FloatArray,
+    weights: FloatArray | None = None,
     axis: int = 0,
     min_count: int = 3,
     eps: float = 1e-12,
-) -> float | np.ndarray:
+) -> float | FloatArray:
     r"""Weighted cross-sectional Pearson correlation.
 
     Computes the weighted Pearson correlation between *a* and *b* along `axis`.
@@ -1158,7 +1160,7 @@ def cs_weighted_correlation(
     return float(corr) if corr.ndim == 0 else corr
 
 
-def cs_rank(a: np.ndarray, axis: int = 0) -> np.ndarray:
+def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     """Cross-sectional rank along an axis.
 
     Ranks are 1-based. `NaN` values remain `NaN` and are excluded from the ranking
@@ -1187,12 +1189,12 @@ def cs_rank(a: np.ndarray, axis: int = 0) -> np.ndarray:
 
 
 def cs_rank_correlation(
-    a: np.ndarray,
-    b: np.ndarray,
+    a: FloatArray,
+    b: FloatArray,
     axis: int = 0,
     min_count: int = 3,
     eps: float = 1e-12,
-) -> float | np.ndarray:
+) -> float | FloatArray:
     r"""Cross-sectional Spearman rank correlation.
 
     Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
@@ -1252,7 +1254,7 @@ def cs_rank_correlation(
     )
 
 
-def inverse_volatility_weights(covariance: np.ndarray) -> np.ndarray:
+def inverse_volatility_weights(covariance: FloatArray) -> FloatArray:
     r"""Inverse-volatility portfolio weights from a covariance matrix.
 
     Computes weights proportional to the inverse standard deviation:

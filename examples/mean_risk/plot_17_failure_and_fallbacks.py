@@ -63,7 +63,6 @@ prices = prices["2010":]
 X = prices_to_returns(prices)
 X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 
-
 # %%
 # Fallback
 # ========
@@ -93,7 +92,6 @@ print(model.fallback_chain_)
 # The fallback audit trail is also propagated to the predicted portfolio:
 portfolio = model.predict(X_test)
 assert portfolio.fallback_chain == model.fallback_chain_
-
 
 # %%
 # Multiple fallbacks
@@ -170,7 +168,6 @@ print(pred.n_fallback_portfolios)
 # which contain the fallback statistics:
 print(pred.summary().iloc[-4:])
 
-
 # %%
 # Failure handling
 # ================
@@ -211,7 +208,6 @@ class CustomOptimization(BaseOptimization):
         self.weights_ = rand_weights(n_assets)
         return self
 
-
 # %%
 # By default, as with all scikit-learn estimators, failures raise an error during `fit`:
 model = CustomOptimization(always_fail=True)
@@ -219,7 +215,6 @@ try:
     model.fit(X_train)
 except RuntimeError as err:
     print(err)
-
 
 # %%
 # By setting `raise_on_failure=False`, a warning is emitted instead of raising an error,
@@ -243,7 +238,6 @@ print(portfolio.optimization_error)
 # where failures occur deterministically on even-start windows:
 model = CustomOptimization(raise_on_failure=False)
 pred = cross_val_predict(model, X, cv=walk_forward)
-
 
 # %%
 # `cross_val_predict` completed without interruption.

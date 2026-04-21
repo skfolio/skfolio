@@ -2,9 +2,11 @@
 A population is a collection of portfolios.
 """
 
-# failure_proba
-# Author: Hugo Delatte <delatte.hugo@gmail.com>
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
+
+from __future__ import annotations
 
 import inspect
 from typing import Any
@@ -16,8 +18,9 @@ import plotly.graph_objects as go
 import scipy.interpolate as sci
 
 import skfolio.typing as skt
-from skfolio.measures import RatioMeasure
+from skfolio.measures import BaseMeasure, RatioMeasure
 from skfolio.portfolio import BasePortfolio, FailedPortfolio, MultiPeriodPortfolio
+from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.figure import kde_trace
 from skfolio.utils.sorting import non_denominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
@@ -46,7 +49,7 @@ class Population(list):
 
     def __getitem__(
         self, indices: int | list[int] | slice
-    ) -> "BasePortfolio | Population":
+    ) -> BasePortfolio | Population:
         item = super().__getitem__(indices)
         if isinstance(item, list):
             return self.__class__(item)
@@ -55,7 +58,7 @@ class Population(list):
     def __setitem__(self, index: int, item: BasePortfolio) -> None:
         super().__setitem__(index, self._validate_item(item))
 
-    def __add__(self, other: BasePortfolio) -> "Population":
+    def __add__(self, other: BasePortfolio) -> Population:
         if not isinstance(other, Population):
             raise TypeError(
                 f"Cannot add a Population with an object of type {type(other)}"
@@ -77,7 +80,7 @@ class Population(list):
         else:
             super().extend(self._validate_item(item) for item in other)
 
-    def set_portfolio_params(self, **params: Any) -> "Population":
+    def set_portfolio_params(self, **params: Any) -> Population:
         """Set the parameters of all the portfolios.
 
         Parameters
@@ -282,7 +285,7 @@ class Population(list):
 
     def filter(
         self, names: skt.Names | None = None, tags: skt.Tags | None = None
-    ) -> "Population":
+    ) -> Population:
         """Filter the Population of portfolios by names and tags.
         If both names and tags are provided, the intersection is returned.
 
@@ -325,7 +328,7 @@ class Population(list):
     def measures(
         self,
         measure: skt.Measure,
-    ) -> np.ndarray:
+    ) -> FloatArray:
         """Vector of portfolios measures for each portfolio from the
         population.
 
@@ -379,7 +382,7 @@ class Population(list):
         """
         return np.nanstd(self.measures(measure=measure), axis=0)
 
-    def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> "Population":
+    def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> Population:
         """Sort the population by a given portfolio measure.
 
         Parameters
@@ -754,7 +757,7 @@ class Population(list):
     def plot_cumulative_returns(
         self,
         log_scale: bool = False,
-        idx: slice | np.ndarray | None = None,
+        idx: slice | IntArray | None = None,
         use_tag_in_legend: bool = True,
     ) -> go.Figure:
         """Plot the cumulative returns of the population's portfolios.
@@ -821,7 +824,7 @@ class Population(list):
 
     def plot_drawdowns(
         self,
-        idx: slice | np.ndarray | None = None,
+        idx: slice | IntArray | None = None,
         use_tag_in_legend: bool = True,
     ) -> go.Figure:
         """Plot the drawdowns of the population's portfolios.
@@ -995,13 +998,13 @@ class Population(list):
 
         columns = list(hover_data)
         columns.append("name")
-        if isinstance(color_scale, skt.Measure):
+        if isinstance(color_scale, BaseMeasure):
             hover_data[color_scale] = num_fmt
 
         if color_scale is not None and color_scale not in columns:
             columns.append(color_scale)
 
-        col_values = [e.value if isinstance(e, skt.Measure) else e for e in columns]
+        col_values = [e.value if isinstance(e, BaseMeasure) else e for e in columns]
         res = [
             [portfolio.__getattribute__(attr) for attr in col_values]
             for portfolio in self

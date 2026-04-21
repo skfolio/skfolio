@@ -9,10 +9,10 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.validation as skv
 
 from skfolio.moments.expected_returns._base import BaseMu
+from skfolio.typing import ArrayLike, BoolArray, FloatArray
 from skfolio.utils.tools import (
     _validate_mask,
     apply_window_size,
@@ -201,10 +201,10 @@ class EWMu(BaseMu):
 
     def fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWMu:
         """Fit the EWMu estimator model.
 
@@ -235,10 +235,10 @@ class EWMu(BaseMu):
 
     def partial_fit(
         self,
-        X: npt.ArrayLike,
+        X: ArrayLike,
         y=None,
         *,
-        active_mask: npt.ArrayLike | None = None,
+        active_mask: ArrayLike | None = None,
     ) -> EWMu:
         """Incrementally fit the EWMu estimator.
 
@@ -369,7 +369,7 @@ class EWMu(BaseMu):
         self._is_active = np.ones(n_assets, dtype=bool)
         self._obs_count = np.zeros(n_assets, dtype=int)
 
-    def _process_return_row(self, returns: np.ndarray, active_row: np.ndarray) -> None:
+    def _process_return_row(self, returns: FloatArray, active_row: BoolArray) -> None:
         """Update internal EWMA state with a single observation.
 
         Only assets with valid returns are updated; all others are frozen.
@@ -406,7 +406,7 @@ class EWMu(BaseMu):
                 + (1.0 - self._decay) * returns[valid_idx]
             )
 
-    def _process_batch_no_nan(self, X: np.ndarray) -> None:
+    def _process_batch_no_nan(self, X: FloatArray) -> None:
         """Vectorized EWMA update for the common case: no NaN and no
         active_mask.
 
@@ -422,7 +422,7 @@ class EWMu(BaseMu):
         self._obs_count += n_obs
         self._is_active[:] = True
 
-    def _bias_correct_mu(self) -> np.ndarray:
+    def _bias_correct_mu(self) -> FloatArray:
         r"""Return a bias-corrected copy of the internal EWMA state.
 
         Divides each asset's raw accumulator by :math:`(1 - \lambda^{n_i})`
