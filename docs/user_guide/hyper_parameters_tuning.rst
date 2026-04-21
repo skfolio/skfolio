@@ -278,12 +278,12 @@ In the below example, we search the optimal parameter `alpha` of the nested esti
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(alpha=0.2)),
+        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(half_life=40)),
     )
 
     print(model.get_params(deep=True))
 
-    param_grid = {"prior_estimator__mu_estimator__alpha": [0.001, 0.01, 0.01, 0.1]}
+    param_grid = {"prior_estimator__mu_estimator__half_life": [10, 20, 30, 40]}
 
     grid_search = GridSearchCV(
         estimator=model,

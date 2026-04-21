@@ -478,7 +478,7 @@ Grid Search on embedded parameters
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         risk_measure=RiskMeasure.VARIANCE,
-        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(alpha=0.2)),
+        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(half_life=40)),
     )
 
     print(model.get_params(deep=True))
@@ -493,7 +493,7 @@ Grid Search on embedded parameters
                 RiskMeasure.CVAR,
                 RiskMeasure.VARIANCE.CDAR,
             ],
-            "prior_estimator__mu_estimator__alpha": [0.05, 0.1, 0.2, 0.5],
+            "prior_estimator__mu_estimator__half_life": [10, 20, 30, 40],
         },
     )
     gs.fit(X)

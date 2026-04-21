@@ -41,7 +41,7 @@ def _generate(split, index):
 
 
 @pytest.mark.parametrize(
-    "test_size,train_size,freq,freq_offset,previous,reduce_test,expend_train,purged_size,expected",
+    "test_size,train_size,freq,freq_offset,previous,reduce_test,expand_train,purged_size,expected",
     [
         (
             2,
@@ -344,7 +344,7 @@ def test_walk_forward_with_period(
     freq_offset,
     previous,
     reduce_test,
-    expend_train,
+    expand_train,
     purged_size,
     expected,
 ):
@@ -355,7 +355,7 @@ def test_walk_forward_with_period(
         freq_offset=freq_offset,
         previous=previous,
         reduce_test=reduce_test,
-        expand_train=expend_train,
+        expand_train=expand_train,
         purged_size=purged_size,
     )
     assert_split_equal_dates(X_small.index, cv.split(X_small), expected)
@@ -534,7 +534,7 @@ def test_walk_forward_without_period():
 
 
 @pytest.mark.parametrize(
-    "test_size,train_size,freq,freq_offset,previous,reduce_test,expend_train,purged_size",
+    "test_size,train_size,freq,freq_offset,previous,reduce_test,expand_train,purged_size",
     [
         (
             2,
@@ -686,7 +686,7 @@ def test_cross_val_predict_and_grid_search(
     freq_offset,
     previous,
     reduce_test,
-    expend_train,
+    expand_train,
     purged_size,
 ):
     cv = WalkForward(
@@ -696,7 +696,7 @@ def test_cross_val_predict_and_grid_search(
         freq_offset=freq_offset,
         previous=previous,
         reduce_test=reduce_test,
-        expand_train=expend_train,
+        expand_train=expand_train,
         purged_size=purged_size,
     )
 
@@ -715,19 +715,6 @@ def test_cross_val_predict_and_grid_search(
     assert gs.best_estimator_
 
 
-def test_expend_train_deprecated_alias():
-    with pytest.warns(FutureWarning, match="expend_train"):
-        cv = WalkForward(test_size=2, train_size=3, expend_train=True)
-
-    split = list(cv.split(np.arange(8)[:, None]))
-    assert np.array_equal(split[0][0], np.array([0, 1, 2]))
-
-
-def test_conflicting_expand_train_arguments():
-    with pytest.raises(ValueError, match="must match"):
-        WalkForward(
-            test_size=2,
-            train_size=3,
-            expend_train=False,
-            expand_train=True,
-        )
+def test_expend_train_removed():
+    with pytest.raises(TypeError, match="expend_train"):
+        WalkForward(test_size=2, train_size=3, expend_train=True)
