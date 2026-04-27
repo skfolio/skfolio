@@ -36,6 +36,7 @@ from skfolio.utils.stats import (
     rand_weights,
     rand_weights_dirichlet,
     safe_cholesky,
+    safe_divide,
     sample_unique_subsets,
     squared_mahalanobis_dist,
     squared_standardized_euclidean_dist,
@@ -525,6 +526,16 @@ class TestCovToCorr:
         assert isinstance(corr, np.ndarray)
         assert isinstance(std, np.ndarray)
 
+    def test_zero_variance_returns_nan_off_diagonal_and_unit_diagonal(self):
+        cov = np.array([[0.0, 0.0], [0.0, 4.0]])
+
+        corr, std = cov_to_corr(cov)
+
+        np.testing.assert_allclose(std, np.array([0.0, 2.0]))
+        np.testing.assert_allclose(np.diag(corr), 1.0)
+        assert np.isnan(corr[0, 1])
+        assert np.isnan(corr[1, 0])
+
     #  Should raise a ValueError when given a 1D ndarray as input
     def test_1d_input(self):
         # Arrange
@@ -565,6 +576,39 @@ class TestCorrToCov:
 
         with pytest.raises(ValueError):
             corr_to_cov(corr, std)
+
+
+class TestSafeDivide:
+    def test_scalar_division(self):
+        assert safe_divide(6.0, 2.0) == 3.0
+
+    def test_zero_denominator_uses_fill_value(self):
+        assert np.isnan(safe_divide(1.0, 0.0, np.nan))
+
+    def test_near_zero_denominator_uses_fill_value(self):
+        assert np.isnan(safe_divide(1.0, 1e-14, np.nan, atol=1e-12))
+
+    def test_array_broadcasting(self):
+        result = safe_divide(
+            np.array([1.0, 2.0, 3.0]),
+            np.array([1.0, 0.0, 2.0]),
+            np.nan,
+        )
+        expected = np.array([1.0, np.nan, 1.5])
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_non_finite_outputs_use_fill_value(self):
+        result = safe_divide(
+            np.array([np.nan, np.inf, 4.0]),
+            np.array([2.0, 2.0, 0.0]),
+            -1.0,
+        )
+        expected = np.array([-1.0, -1.0, -1.0])
+        np.testing.assert_allclose(result, expected)
+
+    def test_negative_atol_raises(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            safe_divide(1.0, 1.0, atol=-1e-12)
 
     #  Should raise a ValueError when the input correlation matrix is not a
     #  2D array

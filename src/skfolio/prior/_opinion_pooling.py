@@ -18,7 +18,8 @@ import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
 import skfolio.measures as sm
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
+from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator

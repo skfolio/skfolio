@@ -12,29 +12,11 @@ import numpy as np
 from sklearn.utils import check_array
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
+from skfolio.utils.stats import safe_divide
 
 # Scaling constant for MAD under normality (MAD multiplied by this value is consistent
 # with the STD).
 _MAD_CONSISTENCY = 1.4826022185056018
-
-
-def _safe_divide(
-    numerator: FloatArray | float, denominator: FloatArray | float
-) -> FloatArray:
-    """Return an element-wise division with safe zero handling.
-
-    Division is performed only where the denominator is non-zero. All other entries are
-    set to zero. Any non-finite intermediate is coerced to zero so the returned array is
-    always finite.
-    """
-    numerator = np.asarray(numerator, dtype=np.float64)
-    denominator = np.asarray(denominator, dtype=np.float64)
-    quotient = np.zeros(
-        np.broadcast_shapes(numerator.shape, denominator.shape), dtype=np.float64
-    )
-    np.divide(numerator, denominator, out=quotient, where=denominator != 0)
-    np.nan_to_num(quotient, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
-    return quotient
 
 
 def _cs_weighted_mean(
@@ -53,7 +35,7 @@ def _cs_weighted_mean(
     np.multiply(cs_weights, X, out=weighted_X, where=estimation_mask)
     weighted_sum = weighted_X.sum(axis=1, keepdims=True)
     total_weight = np.sum(cs_weights, axis=1, keepdims=True)
-    return _safe_divide(weighted_sum, total_weight)
+    return safe_divide(weighted_sum, total_weight)
 
 
 def _cs_equal_weighted_std(
@@ -67,7 +49,7 @@ def _cs_equal_weighted_std(
     sample_size = np.sum(estimation_mask, axis=1, keepdims=True)
     degrees_of_freedom = np.maximum(sample_size - 1.0, 0.0)
     return np.sqrt(
-        _safe_divide(
+        safe_divide(
             np.sum(residuals * residuals, axis=1, keepdims=True),
             degrees_of_freedom,
         )

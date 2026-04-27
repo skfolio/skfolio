@@ -1634,17 +1634,17 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
             CVXPY Expression and Constraints of the Standard Deviation risk measure.
         """
-        v = cp.Variable(
-            nonneg=True
-        )  # nonneg=True instead of constraint v>=0 is preferred for better DCP analysis
-        if return_distribution.cholesky is not None:
-            z = return_distribution.cholesky
-        else:
-            z = np.linalg.cholesky(return_distribution.covariance)
+        # nonneg=True instead of constraint v>=0 is preferred for better DCP analysis
+        v = cp.Variable(nonneg=True)
+        scale = self._scale_constraints
+        sqrt = return_distribution.covariance_sqrt
+
+        terms = [component.T @ w for component in sqrt.components]
+        if sqrt.diagonal is not None:
+            terms.append(cp.multiply(sqrt.diagonal, w))
+
         risk = v
-        constraints = [
-            cp.SOC(v * self._scale_constraints, z.T @ w * self._scale_constraints)
-        ]
+        constraints = [cp.SOC(v * scale, cp.hstack(terms) * scale)]
         return risk, constraints
 
     def _variance_risk(

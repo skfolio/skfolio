@@ -30,8 +30,9 @@ from skfolio.measures import (
     PerfMeasure,
     RiskMeasure,
 )
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array

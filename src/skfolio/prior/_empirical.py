@@ -13,7 +13,8 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
+from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike, ObjArray
 from skfolio.utils._array_buffer import _ArrayBuffer
 from skfolio.utils.tools import _call_estimator, check_estimator

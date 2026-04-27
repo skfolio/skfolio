@@ -17,11 +17,11 @@ from skfolio.preprocessing._transformer._cross_sectional._utils import (
     _cs_recenter_rescale,
     _cs_weighted_mean,
     _prepare_cs_estimation_inputs,
-    _safe_divide,
     _validate_and_normalize_groups,
     _validate_cs_weights,
 )
 from skfolio.typing import ArrayLike, FloatArray
+from skfolio.utils.stats import safe_divide
 
 __all__ = ["CSStandardScaler"]
 
@@ -239,7 +239,7 @@ class CSStandardScaler(BaseCSTransformer):
             weights=np.where(estimation_group_flat, bincount_weights_flat, 0.0),
             minlength=n_group_keys,
         )
-        mean_group = _safe_divide(weighted_X_sum, weight_sum)
+        mean_group = safe_divide(weighted_X_sum, weight_sum)
         mean_per_cell = mean_group[group_keys]
 
         # Unbiased equal-weighted group std on the estimation universe.
@@ -257,7 +257,7 @@ class CSStandardScaler(BaseCSTransformer):
         # Clip ddof so empty or single-element group keys do not produce a negative
         # denominator under `_safe_divide`.
         ddof_group = np.maximum(group_counts - 1.0, 0.0)
-        std_group = np.sqrt(_safe_divide(sum_squared_residuals, ddof_group))
+        std_group = np.sqrt(safe_divide(sum_squared_residuals, ddof_group))
         std_per_cell = std_group[group_keys]
 
         # Decide fallback at (row, group) level and broadcast once.

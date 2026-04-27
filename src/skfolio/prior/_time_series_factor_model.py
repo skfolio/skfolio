@@ -21,11 +21,12 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.measures as sm
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.prior._model import FactorModel, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.stats import cov_nearest
-from skfolio.utils.tools import check_estimator
+from skfolio.utils.tools import check_estimator, get_feature_names
 
 
 class BaseLoadingMatrix(skb.BaseEstimator, ABC):
@@ -70,7 +71,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
     Attributes
     ----------
     loading_matrix_ : ndarray of shape (n_assets, n_factors)
-        The loading matrix.
+        The asset-by-factor loading (exposure) matrix.
 
     intercepts_: ndarray of shape (n_assets,)
         The intercepts.
@@ -323,6 +324,9 @@ class TimeSeriesFactorModel(BasePrior):
         if factors is not None:
             factor_returns = factors
 
+        observations = X.index
+        factor_names = get_feature_names(factor_returns)
+
         # Fitting prior estimator
         self.factor_prior_estimator_.fit(
             X=factor_returns, **routed_params.factor_prior_estimator.fit
@@ -361,12 +365,10 @@ class TimeSeriesFactorModel(BasePrior):
         covariance = loading_matrix @ factor_return_dist.covariance @ loading_matrix.T
         returns = factor_return_dist.returns @ loading_matrix.T + intercepts
 
-        cholesky = loading_matrix @ np.linalg.cholesky(factor_return_dist.covariance)
         factor_returns_pred = factor_returns @ loading_matrix.T + intercepts
         idio_returns = X - factor_returns_pred
         idio_var = sm.variance(idio_returns)
         covariance[np.diag_indices_from(covariance)] += idio_var
-        cholesky = np.hstack((cholesky, np.sqrt(np.diag(idio_var))))
 
         covariance = cov_nearest(
             covariance, higham=self.higham, higham_max_iteration=self.max_iteration
@@ -376,7 +378,21 @@ class TimeSeriesFactorModel(BasePrior):
             mu=mu,
             covariance=covariance,
             returns=returns,
-            cholesky=cholesky,
             sample_weight=factor_return_dist.sample_weight,
+            factor_model=FactorModel(
+                observations=observations,
+                asset_names=self.feature_names_in_,
+                factor_names=factor_names,
+                factor_families=None,
+                loading_matrix=loading_matrix,
+                exposures=None,
+                factor_covariance=factor_return_dist.covariance,
+                factor_mu=factor_return_dist.mu,
+                factor_returns=factor_returns,
+                idio_covariance=idio_var,
+                idio_variances=None,
+                idio_mu=None,
+                idio_returns=idio_returns,
+            ),
         )
         return self

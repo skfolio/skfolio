@@ -14,8 +14,9 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
+from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, ObjArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array

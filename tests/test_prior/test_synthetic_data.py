@@ -17,7 +17,6 @@ def test_synthetic_data(X):
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
     assert res.returns.shape == (1000, 20)
-    assert res.cholesky is None
 
 
 def test_factor_synthetic_data(X, y):
@@ -30,7 +29,6 @@ def test_factor_synthetic_data(X, y):
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
     assert res.returns.shape == (1000, 20)
-    assert res.cholesky is not None
 
 
 def test_factor_stress_test(X, y):
@@ -49,7 +47,6 @@ def test_factor_stress_test(X, y):
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
     assert res.returns.shape == (10000, 20)
-    assert res.cholesky is not None
     np.testing.assert_almost_equal(
         res.returns[:5, :5],
         [

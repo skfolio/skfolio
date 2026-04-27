@@ -52,6 +52,7 @@ __all__ = [
     "rand_weights",
     "rand_weights_dirichlet",
     "safe_cholesky",
+    "safe_divide",
     "sample_unique_subsets",
     "squared_mahalanobis_dist",
     "squared_standardized_euclidean_dist",
@@ -62,6 +63,50 @@ __all__ = [
 _NUMERICAL_THRESHOLD = 1e-12
 _MAX_RIDGE_TRIES = 3
 _RIDGE_ESCALATION_FACTOR = 10.0
+
+
+def safe_divide(
+    numerator: float | FloatArray,
+    denominator: float | FloatArray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> float | FloatArray:
+    """Safely divide arrays or scalars.
+
+    Division is performed elementwise where `abs(denominator) > atol`. Elsewhere and for
+    any non-finite output produced by the division,`fill_value` is returned.
+
+    Parameters
+    ----------
+    numerator : float or ndarray
+        Numerator values.
+
+    denominator : float or ndarray
+        Denominator values.
+
+    fill_value : float, default=0.0
+        Replacement value where safe division cannot produce a valid finite result.
+
+    atol : float, default=0.0
+        Absolute tolerance below which the denominator is treated as zero.
+
+    Returns
+    -------
+    out : float or ndarray
+        Safe division result.
+    """
+    if atol < 0:
+        raise ValueError("`atol` must be non-negative.")
+
+    fill_value = float(fill_value)
+    numerator = np.asarray(numerator)
+    denominator = np.asarray(denominator)
+    out = np.full(np.broadcast(numerator, denominator).shape, fill_value, dtype=float)
+    valid = np.abs(denominator) > atol
+    np.divide(numerator, denominator, out=out, where=valid)
+    np.nan_to_num(out, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
+    return float(out) if out.ndim == 0 else out
 
 
 class NBinsMethod(AutoEnum):
@@ -302,7 +347,8 @@ def cov_to_corr(cov: FloatArray) -> tuple[FloatArray, FloatArray]:
     if cov.ndim != 2:
         raise ValueError(f"`cov` must be a 2D array, got a {cov.ndim}D array")
     std = np.sqrt(np.diag(cov))
-    corr = cov / std / std[:, None]
+    corr = safe_divide(cov, np.outer(std, std), fill_value=np.nan)
+    np.fill_diagonal(corr, 1.0)
     return corr, std
 
 

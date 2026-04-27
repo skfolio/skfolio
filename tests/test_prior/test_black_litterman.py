@@ -105,7 +105,6 @@ def test_black_litterman(X):
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
     np.testing.assert_almost_equal(res.returns, np.asarray(X))
-    assert res.cholesky is None
     np.testing.assert_almost_equal(
         res.mu,
         np.array(

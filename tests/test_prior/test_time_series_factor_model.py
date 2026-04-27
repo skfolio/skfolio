@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 import pytest
 from sklearn import config_context
@@ -12,6 +10,7 @@ from skfolio.prior import (
     LoadingMatrixRegression,
     TimeSeriesFactorModel,
 )
+from skfolio.utils.stats import safe_cholesky
 
 
 def test_factor_model(X, y):
@@ -19,10 +18,19 @@ def test_factor_model(X, y):
     model.fit(X, y)
     assert model.return_distribution_
     assert model.return_distribution_.mu.shape == (20,)
+    sqrt = model.return_distribution_.covariance_sqrt
+    reconstructed = sum(component @ component.T for component in sqrt.components)
+    if sqrt.diagonal is not None:
+        reconstructed = reconstructed + np.diag(sqrt.diagonal**2)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        reconstructed,
         model.return_distribution_.covariance,
         15,
+    )
+    assert model.return_distribution_.factor_model.loading_matrix.shape == (20, 5)
+    np.testing.assert_equal(
+        model.return_distribution_.factor_model.factor_names,
+        ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"],
     )
 
     model = TimeSeriesFactorModel(
@@ -32,8 +40,9 @@ def test_factor_model(X, y):
     )
     model.fit(X, y)
     assert model.return_distribution_
+    chol = safe_cholesky(model.return_distribution_.covariance)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        chol @ chol.T,
         model.return_distribution_.covariance,
         15,
     )

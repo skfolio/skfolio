@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from skfolio.optimization._base import BaseOptimization
 
 __all__ = [
+    "AnyArray",
     "ArrayLike",
     "BoolArray",
     "CvxMeasure",
@@ -53,6 +54,7 @@ BoolArray: TypeAlias = npt.NDArray[np.bool_]
 FloatArray: TypeAlias = npt.NDArray[np.floating]
 IntArray: TypeAlias = npt.NDArray[np.integer]
 ObjArray: TypeAlias = npt.NDArray[np.object_]
+AnyArray: TypeAlias = npt.NDArray[Any]
 
 # Skfolio
 Measure: TypeAlias = Union[

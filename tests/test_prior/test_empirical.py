@@ -55,7 +55,6 @@ def test_empirical_prior(X):
         ),
     )
     np.testing.assert_almost_equal(res.returns, np.asarray(X))
-    assert res.cholesky is None
 
 
 def test_empirical_prior_log_normal(X):
@@ -123,7 +122,6 @@ def test_empirical_prior_log_normal_investment_horizon(X):
         ),
     )
     np.testing.assert_almost_equal(res.returns, np.asarray(X))
-    assert res.cholesky is None
 
 
 def test_metadata_routing(X, implied_vol):
