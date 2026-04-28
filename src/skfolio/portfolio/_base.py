@@ -967,6 +967,8 @@ class BasePortfolio:
             except AttributeError:
                 key = str(e)
             if e.is_ratio or e in [
+                RiskMeasure.VARIANCE,
+                RiskMeasure.SEMI_VARIANCE,
                 ExtraRiskMeasure.ENTROPIC_RISK_MEASURE,
                 RiskMeasure.ULCER_INDEX,
             ]:

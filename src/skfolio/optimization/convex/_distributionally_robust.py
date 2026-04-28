@@ -389,7 +389,9 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
+        _ = skv.validate_data(
+            self, X, skip_check_array=True, ensure_all_finite="allow-nan"
+        )
 
         # Used to avoid adding multiple times similar constrains linked to identical
         # risk models
@@ -399,7 +401,9 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
         n_observations, n_assets = return_distribution.returns.shape
 
         # set solvers params

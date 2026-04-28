@@ -516,8 +516,10 @@ class MaximumDiversification(MeanRisk):
 
         def func(w, obj):
             """Weighted volatilities."""
-            covariance = obj.prior_estimator_.return_distribution_.covariance
-            return np.sqrt(np.diag(covariance)) @ w
+            dist = obj.prior_estimator_.return_distribution_
+            if obj.investable_mask_ is not None:
+                dist = dist.investable_subset(slim=True)
+            return np.sqrt(np.diag(dist.covariance)) @ w
 
         self.overwrite_expected_return = func
         super().fit(X, y, **fit_params)

@@ -324,7 +324,7 @@ class BenchmarkTracker(MeanRisk):
                 f"DataFrame/array, got shape {y.shape}."
             )
 
-        X, y = skv.validate_data(self, X, y)
+        X, y = skv.validate_data(self, X, y, ensure_all_finite="allow-nan")
 
         excess_returns = X - y[:, np.newaxis]
 

@@ -584,6 +584,206 @@ def test_mean_risk_set_params():
     assert params["prior_estimator__mu_estimator__window_size"] == 30
 
 
+def test_mean_risk_non_investable_nan_assets_get_zero_weight(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    assert model.prior_estimator_.return_distribution_.n_assets == X.shape[1]
+    assert model.prior_estimator_.return_distribution_.n_investable_assets == 3
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_almost_equal(model.weights_[~investable_mask], 0)
+    np.testing.assert_almost_equal(model.weights_.sum(), 1)
+
+    ref = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        prior_estimator=fixed_return_distribution_prior(
+            mu=mu[investable_mask],
+            covariance=covariance[np.ix_(investable_mask, investable_mask)],
+        ),
+    )
+    ref.fit(X.loc[:, investable_mask])
+    np.testing.assert_allclose(model.weights_[investable_mask], ref.weights_)
+
+
+def test_mean_risk_full_universe_constraints_ignore_non_investable_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        min_weights={"B": 0.45, "C": 0.99},
+        max_weights=np.array([1.0, 0.6, 0.0, 1.0]),
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+
+    assert model.weights_.shape == (X.shape[1],)
+    np.testing.assert_allclose(model.weights_[2], 0)
+    assert model.weights_[1] >= 0.45 - 1e-8
+    assert model.weights_[1] <= 0.6 + 1e-8
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+
+
+def test_mean_risk_multiple_optimizations_expand_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        min_return=[0.012, 0.018],
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+
+    assert model.weights_.shape == (2, X.shape[1])
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[:, 2], 0)
+    np.testing.assert_allclose(model.weights_.sum(axis=1), 1)
+
+
+def test_mean_risk_predict_with_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+    portfolio = model.predict(X)
+
+    assert isinstance(portfolio, Portfolio)
+    np.testing.assert_almost_equal(model.weights_[~investable_mask], 0)
+    assert np.isfinite(portfolio.returns).all()
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
+
+    X_missing_invested = X.copy()
+    X_missing_invested.iloc[0, 0] = np.nan
+    portfolio = model.predict(X_missing_invested)
+    assert np.isnan(portfolio.returns[0])
+    assert np.isfinite(portfolio.returns[1:]).all()
+
+
+def test_mean_risk_predict_population_with_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MINIMIZE_RISK,
+        risk_measure=RiskMeasure.VARIANCE,
+        min_return=[0.012, 0.018],
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+    population = model.predict(X)
+
+    assert isinstance(population, Population)
+    assert model.weights_.shape == (2, X.shape[1])
+    np.testing.assert_allclose(model.weights_[:, 2], 0)
+    for portfolio in population:
+        assert portfolio.weights.shape == (X.shape[1],)
+        assert np.isfinite(portfolio.returns).all()
+
+
+def test_mean_risk_cross_val_predict_with_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+
+    prediction_mpp = cross_val_predict(
+        MeanRisk(
+            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+            risk_measure=RiskMeasure.VARIANCE,
+            prior_estimator=fixed_return_distribution_prior(
+                mu=mu, covariance=covariance
+            ),
+        ),
+        X,
+        cv=sks.KFold(n_splits=3),
+        n_jobs=None,
+    )
+
+    assert isinstance(prediction_mpp, MultiPeriodPortfolio)
+    assert np.asarray(prediction_mpp).shape == (X.shape[0],)
+    assert np.isfinite(prediction_mpp.returns).all()
+    for portfolio in prediction_mpp:
+        assert portfolio.weights.shape == (X.shape[1],)
+        np.testing.assert_almost_equal(portfolio.weights[2], 0)
+
+
+def test_mean_risk_with_ew_moments_and_active_mask_nan_assets():
+    X = pd.DataFrame(
+        [
+            [0.010, 0.020, 0.015, 0.030],
+            [0.020, 0.010, 0.010, 0.010],
+            [0.000, 0.030, 0.020, 0.020],
+            [0.010, 0.010, 0.025, 0.040],
+            [0.030, 0.020, np.nan, 0.010],
+            [0.020, 0.000, np.nan, 0.030],
+        ],
+        columns=["A", "B", "C", "D"],
+    )
+    active_mask = np.ones(X.shape, dtype=bool)
+    active_mask[-2:, 2] = False
+    investable_mask = np.array([True, True, False, True])
+
+    with config_context(enable_metadata_routing=True):
+        model = MeanRisk(
+            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+            risk_measure=RiskMeasure.VARIANCE,
+            prior_estimator=EmpiricalPrior(
+                mu_estimator=EWMu(half_life=3, min_observations=1).set_fit_request(
+                    active_mask=True
+                ),
+                covariance_estimator=EWCovariance(
+                    half_life=3, min_observations=1, nearest=False
+                ).set_fit_request(active_mask=True),
+            ),
+        )
+        model.fit(X, active_mask=active_mask)
+
+    return_distribution = model.prior_estimator_.return_distribution_
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    assert return_distribution.mu.shape == (X.shape[1],)
+    assert return_distribution.covariance.shape == (X.shape[1], X.shape[1])
+    assert np.isnan(return_distribution.mu[2])
+    assert np.isnan(return_distribution.covariance[2]).all()
+    assert np.isnan(return_distribution.covariance[:, 2]).all()
+
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[2], 0)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+
+    portfolio = model.predict(X)
+    assert np.isfinite(portfolio.returns).all()
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
+
+
 def test_mean_risk_cross_val_predict(X):
     prediction_mpp = cross_val_predict(
         MeanRisk(), X, cv=sks.KFold(n_splits=5), n_jobs=None

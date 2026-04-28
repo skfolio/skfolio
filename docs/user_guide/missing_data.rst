@@ -50,11 +50,11 @@ asset that is not in the universe, represented by the absence of a row.
 The drawback is that most estimators do not directly consume raw long-format data.
 When they do, it is often after transformations that must be aware of the time
 dimension, such as cross-sectional z-scores. This means that many estimators would need
-to handle pivoting, reindexing and asset alignment internally before the data can be
-used. These transformations add overhead and complexity, and they increase the risk of
-indexing mistakes, either on the time index, which can introduce look-ahead bias, or on
-the asset index. They also make cross-validation and hyper-parameter tuning more
-complex, because the whole workflow must often remain time-aware.
+to handle date group-by, pivoting, reindexing and asset alignment internally before the
+data can be used. These transformations add overhead and complexity, and they increase
+the risk of indexing mistakes, either on the time index, which can introduce look-ahead
+bias, or on the asset index. They also make cross-validation and hyper-parameter tuning
+more complex, because the whole workflow must often remain time-aware.
 
 `skfolio` is opinionated and follows the wide format convention.
 
@@ -63,9 +63,9 @@ that are not present at a given date are represented by NaNs. For example, if an
 index universe changes by about 2% per year, a 10-year history carries roughly 20%
 additional cells for assets that were not present during the full period. In return,
 wide format keeps the data in the 2D representation expected by estimators. This allows
-vectorized implementations to operate on already-aligned arrays, avoids repeated pivoting and
-reindexing, simplifies cross-validation and hyper-parameter tuning, and reduces
-asset-alignment errors.
+vectorized implementations to operate on already-aligned arrays, avoids repeated date
+group-by, pivoting and reindexing, simplifies cross-validation and hyper-parameter
+tuning, and reduces asset-alignment errors.
 
 Because wide format can encode distinct data states with the same NaN marker,
 `skfolio` uses explicit conventions to distinguish:

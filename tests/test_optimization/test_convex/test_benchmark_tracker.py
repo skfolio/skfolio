@@ -141,6 +141,34 @@ def test_benchmark_tracker_dict_min_weights_with_dataframe_y(X, benchmark_return
     np.testing.assert_array_less(0.01 - 1e-6, portfolio.weights)
 
 
+def test_benchmark_tracker_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+    benchmark_returns = pd.Series(np.full(len(X), 0.005), index=X.index)
+
+    model = BenchmarkTracker(
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X, benchmark_returns)
+
+    return_distribution = model.prior_estimator_.return_distribution_
+    assert return_distribution.n_assets == X.shape[1]
+    assert return_distribution.n_investable_assets == np.count_nonzero(investable_mask)
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns.to_numpy())
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[~investable_mask], 0)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+
+    portfolio = model.predict(X)
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
+
+
 def test_benchmark_tracker_errors(X, benchmark_returns):
     model = BenchmarkTracker()
 

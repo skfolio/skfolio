@@ -509,7 +509,9 @@ class RiskBudgeting(ConvexOptimization):
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
+        _ = skv.validate_data(
+            self, X, skip_check_array=True, ensure_all_finite="allow-nan"
+        )
 
         if not isinstance(self.risk_measure, RiskMeasure):
             raise TypeError("risk_measure must be of type `RiskMeasure`")
@@ -522,7 +524,9 @@ class RiskBudgeting(ConvexOptimization):
             check_type=BasePrior,
         )
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
         _, n_assets = return_distribution.returns.shape
 
         # set solvers params

@@ -506,7 +506,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             full_weights[investable_mask] = weights
         else:
             full_weights = np.zeros(
-                (weights.shape[:-1], n_full_universe), dtype=weights.dtype
+                (*weights.shape[:-1], n_full_universe), dtype=weights.dtype
             )
             full_weights[..., investable_mask] = weights
         return full_weights
