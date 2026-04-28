@@ -256,7 +256,7 @@ class EmpiricalPrior(BasePrior):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X = skv.validate_data(self, X, ensure_all_finite=True, reset=first_call)
+        X = skv.validate_data(self, X, ensure_all_finite="allow-nan", reset=first_call)
 
         # Accumulate returns with amortized O(1) appends
         if first_call:

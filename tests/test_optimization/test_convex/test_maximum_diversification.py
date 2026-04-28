@@ -33,6 +33,38 @@ def test_maximum_diversification_factor(X, y):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
+def test_maximum_diversification_factor_constraint(X, y):
+    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+    model = MaximumDiversification(
+        prior_estimator=TimeSeriesFactorModel(),
+        linear_constraints=["Momentum == 0"],
+    )
+    model.fit(X, factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_maximum_diversification_factor_family_constraint(X, y):
+    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = MaximumDiversification(
+        prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+        linear_constraints=["style <= -0.05"],
+    )
+    model.fit(X, factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
+
+
 def test_metadata_routing(X, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = MaximumDiversification(

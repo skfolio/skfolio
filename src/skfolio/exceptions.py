@@ -12,6 +12,7 @@ from __future__ import annotations
 __all__ = [
     "DuplicateGroupsError",
     "EquationToMatrixError",
+    "FactorNotFoundError",
     "GroupNotFoundError",
     "NonPositiveVarianceError",
     "OptimizationError",
@@ -33,6 +34,10 @@ class EquationToMatrixError(Exception):
 
 class GroupNotFoundError(Exception):
     """Group name not found in the groups."""
+
+
+class FactorNotFoundError(Exception):
+    """Factor name not found in factor_groups or loading_matrix not provided."""
 
 
 class DuplicateGroupsError(Exception):

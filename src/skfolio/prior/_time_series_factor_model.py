@@ -211,6 +211,12 @@ class TimeSeriesFactorModel(BasePrior):
         expected returns and covariance matrix.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
+    factor_families : array-like of shape (n_factors,), optional
+        Family label for each factor. When provided, the labels are stored in the
+        :class:`~skfolio.prior.FactorModel` and can be used by downstream diagnostics,
+        plots and optimization constraints referencing factor families. The default
+        (`None`) means that no family labels are attached to the factors.
+
     higham : bool, default=False
         If this is set to True, the Higham (2002) algorithm is used to find
         the nearest positive semi-definite covariance matrix. It is more
@@ -250,11 +256,13 @@ class TimeSeriesFactorModel(BasePrior):
         self,
         loading_matrix_estimator: BaseLoadingMatrix | None = None,
         factor_prior_estimator: BasePrior | None = None,
+        factor_families: ArrayLike | None = None,
         higham: bool = False,
         max_iteration: int = 100,
     ):
         self.loading_matrix_estimator = loading_matrix_estimator
         self.factor_prior_estimator = factor_prior_estimator
+        self.factor_families = factor_families
         self.higham = higham
         self.max_iteration = max_iteration
 
@@ -347,6 +355,20 @@ class TimeSeriesFactorModel(BasePrior):
         )
         n_assets = X.shape[1]
         n_factors = factor_returns.shape[1]
+        factor_families = None
+
+        if self.factor_families is not None:
+            factor_families = np.asarray(self.factor_families, dtype=object)
+            if factor_families.ndim != 1:
+                raise ValueError(
+                    "`factor_families` must be a 1D array of shape "
+                    f"({n_factors},), got {factor_families.ndim}D array."
+                )
+            if factor_families.shape[0] != n_factors:
+                raise ValueError(
+                    f"`factor_families` must have length {n_factors}, got "
+                    f"{factor_families.shape[0]}."
+                )
 
         if loading_matrix.shape != (n_assets, n_factors):
             raise ValueError(
@@ -383,7 +405,7 @@ class TimeSeriesFactorModel(BasePrior):
                 observations=observations,
                 asset_names=self.feature_names_in_,
                 factor_names=factor_names,
-                factor_families=None,
+                factor_families=factor_families,
                 loading_matrix=loading_matrix,
                 exposures=None,
                 factor_covariance=factor_return_dist.covariance,

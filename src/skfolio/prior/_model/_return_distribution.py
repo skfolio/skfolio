@@ -102,23 +102,20 @@ class ReturnDistribution:
     def investable_mask(self) -> BoolArray | None:
         """Boolean mask where `True` marks investable assets.
 
-        The mask is inferred as the intersection of finite `mu` values and a
-        finite diagonal in `covariance`. Returns `None` when all assets are
-        investable.
+        The mask is inferred as the intersection of finite `mu` values and a finite
+        diagonal in `covariance`. Returns `None` when all assets are investable.
 
         Raises
         ------
         ValueError
-            If no asset is investable (all `NaN` in `mu` and/or
-            `covariance`).
+            If no asset is investable (all `NaN` in `mu` and/or `covariance`).
         """
         mask = np.isfinite(self.mu) & np.isfinite(np.diag(self.covariance))
         if not mask.any():
             raise ValueError(
-                "All assets are non-investable (NaN in `mu` and/or "
-                "`covariance` for every asset). Ensure that the moment "
-                "estimators have received enough observations or that the "
-                "universe contains at least one active asset."
+                "All assets are non-investable (NaN in `mu` and/or `covariance` for "
+                "every asset). Ensure that the moment estimators have received enough "
+                "observations or that the universe contains at least one active asset."
             )
         if mask.all():
             return None

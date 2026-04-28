@@ -48,6 +48,24 @@ def test_factor_model(X, y):
     )
 
 
+def test_factor_model_with_factor_families(X, y):
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = TimeSeriesFactorModel(factor_families=factor_families)
+    model.fit(X, y)
+
+    np.testing.assert_array_equal(
+        model.return_distribution_.factor_model.factor_families,
+        factor_families,
+    )
+
+
+def test_factor_model_factor_families_length_error(X, y):
+    model = TimeSeriesFactorModel(factor_families=["style", "quality"])
+
+    with pytest.raises(ValueError, match=r"`factor_families` must have length 5"):
+        model.fit(X, y)
+
+
 def test_black_litterman_factor_model(X, y):
     factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - USMV== 0.04", "VLUE == 0.06 "]
     n_observations = X.shape[0]

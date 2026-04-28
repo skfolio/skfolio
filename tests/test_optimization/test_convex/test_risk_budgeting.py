@@ -9,7 +9,7 @@ from skfolio.moments import ImpliedCovariance
 from skfolio.optimization.convex import (
     RiskBudgeting,
 )
-from skfolio.prior import EmpiricalPrior
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 @pytest.fixture(scope="module")
@@ -137,6 +137,38 @@ def test_risk_budgeting_groups(X, groups, linear_constraints):
             ]
         ),
     )
+
+
+def test_risk_budgeting_factor_constraint(X, y):
+    factor_returns = y.loc[X.index].rename(columns={"MTUM": "Momentum"})
+    model = RiskBudgeting(
+        prior_estimator=TimeSeriesFactorModel(),
+        linear_constraints=["Momentum == 0"],
+    )
+    model.fit(X, factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_risk_budgeting_factor_family_constraint(X, y):
+    factor_returns = y.loc[X.index].rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = RiskBudgeting(
+        prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+        linear_constraints=["style <= -0.05"],
+    )
+    model.fit(X, factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
 
 
 @pytest.mark.filterwarnings("ignore:The EVaR problem will be relaxed")

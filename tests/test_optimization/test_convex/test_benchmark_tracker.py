@@ -3,9 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn import config_context
 
 from skfolio.measures import RiskMeasure
 from skfolio.optimization import BenchmarkTracker, MeanRisk, ObjectiveFunction
+from skfolio.prior import TimeSeriesFactorModel
 
 
 @pytest.fixture
@@ -43,6 +45,42 @@ def test_benchmark_tracker_vs_manual(X, benchmark_returns):
     model2.fit(excess_returns)
 
     np.testing.assert_almost_equal(model1.weights_, model2.weights_, decimal=6)
+
+
+def test_benchmark_tracker_factor_constraint(X, y, benchmark_returns):
+    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+    with config_context(enable_metadata_routing=True):
+        model = BenchmarkTracker(
+            prior_estimator=TimeSeriesFactorModel().set_fit_request(factors=True),
+            linear_constraints=["Momentum == 0"],
+        )
+        model.fit(X, benchmark_returns, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_benchmark_tracker_factor_family_constraint(X, y, benchmark_returns):
+    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    with config_context(enable_metadata_routing=True):
+        model = BenchmarkTracker(
+            prior_estimator=TimeSeriesFactorModel(
+                factor_families=factor_families
+            ).set_fit_request(factors=True),
+            linear_constraints=["style <= -0.05"],
+        )
+        model.fit(X, benchmark_returns, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
 
 
 @pytest.mark.parametrize(

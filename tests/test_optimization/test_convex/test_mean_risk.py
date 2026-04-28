@@ -1946,3 +1946,125 @@ class TestPartialFit:
         model = MeanRisk()
         with pytest.raises(TypeError, match="partial_fit"):
             model.partial_fit(np.asarray(X))
+
+
+class TestFactorConstraints:
+    """Tests for factor exposure constraints in MeanRisk optimization."""
+
+    @pytest.mark.parametrize(
+        "constraints,factor_indices,check_type,expected",
+        [
+            # Single factor upper bound
+            (
+                ["MTUM <= -0.05"],
+                [0],
+                "less_than",
+                -0.05,
+            ),
+            # Single factor lower bound (binding)
+            (
+                ["MTUM >= 0.9"],
+                [0],
+                "almost_equal",
+                0.9,
+            ),
+            # Single factor equality
+            (
+                ["MTUM == 0"],
+                [0],
+                "almost_equal",
+                0.0,
+            ),
+        ],
+        ids=[
+            "upper_bound",
+            "lower_bound",
+            "equality",
+        ],
+    )
+    def test_single_factor_constraint(
+        self, X, y, constraints, factor_indices, check_type, expected
+    ):
+        """Test single factor exposure constraints."""
+        model = MeanRisk(
+            prior_estimator=TimeSeriesFactorModel(),
+            linear_constraints=constraints,
+        )
+        model.fit(X, y)
+
+        weights = model.weights_
+        loading_matrix = (
+            model.prior_estimator_.return_distribution_.factor_model.loading_matrix
+        )
+        exposure = weights @ loading_matrix[:, factor_indices]
+
+        if check_type == "less_than":
+            assert exposure < expected
+        elif check_type == "almost_equal":
+            np.testing.assert_almost_equal(exposure, expected)
+
+    def test_factor_range_constraint(self, X, y):
+        """Test factor exposure bounded within a range."""
+        model = MeanRisk(
+            prior_estimator=TimeSeriesFactorModel(),
+            linear_constraints=["MTUM <= -0.05", "MTUM >= -0.06"],
+        )
+        model.fit(X, y)
+
+        weights = model.weights_
+        loading_matrix = (
+            model.prior_estimator_.return_distribution_.factor_model.loading_matrix
+        )
+        exposure = (weights @ loading_matrix[:, [0]]).item()
+
+        assert -0.06 <= exposure <= -0.05
+
+    def test_combined_factors_constraint(self, X, y):
+        """Test constraint on sum of multiple factor exposures."""
+        model = MeanRisk(
+            prior_estimator=TimeSeriesFactorModel(),
+            linear_constraints=["MTUM + SIZE == 0"],
+        )
+        model.fit(X, y)
+
+        weights = model.weights_
+        loading_matrix = (
+            model.prior_estimator_.return_distribution_.factor_model.loading_matrix
+        )
+        combined_exposure = (weights @ loading_matrix[:, [0, 2]]).sum()
+
+        np.testing.assert_almost_equal(combined_exposure, 0.0)
+
+    def test_factor_family_constraint(self, X, y):
+        """Test constraint on a factor family exposure."""
+        factor_families = ["style", "quality", "style", "defensive", "style"]
+        model = MeanRisk(
+            prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+            linear_constraints=["style == 0"],
+        )
+        model.fit(X, y)
+
+        factor_model = model.prior_estimator_.return_distribution_.factor_model
+        style_mask = factor_model.factor_families == "style"
+        family_exposure = (
+            model.weights_ @ factor_model.loading_matrix[:, style_mask]
+        ).sum()
+
+        np.testing.assert_almost_equal(family_exposure, 0.0)
+
+    def test_factor_family_inequality_constraint(self, X, y):
+        """Test inequality constraint on a factor family exposure."""
+        factor_families = ["style", "quality", "style", "defensive", "style"]
+        model = MeanRisk(
+            prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+            linear_constraints=["style <= -0.05"],
+        )
+        model.fit(X, y)
+
+        factor_model = model.prior_estimator_.return_distribution_.factor_model
+        style_mask = factor_model.factor_families == "style"
+        family_exposure = (
+            model.weights_ @ factor_model.loading_matrix[:, style_mask]
+        ).sum()
+
+        assert family_exposure <= -0.05

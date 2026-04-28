@@ -320,26 +320,37 @@ class ConvexOptimization(BaseOptimization, ABC):
         The default (`None`) means that no uncertainty set is used.
 
     linear_constraints : array-like of shape (n_constraints,), optional
-        Linear constraints.
-        The linear constraints must match any of following patterns:
+        Linear constraints on portfolio weights or factor exposures.
 
-            * `"ref1 >= a"`
-            * `"ref1 == b"`
-            * `"ref1 >= ref1"`
-            * `"a * ref1 + b * ref2 + c <= d * ref3"`
+        Constraint names can reference:
 
-        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
-        in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` method is a DataFrame with these
-        assets names in columns.
+            * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
+            * Group names: sums of weights in groups defined by `groups`
+            * Factor names: portfolio factor exposure (requires factor model prior)
+            * Factor families: sum of portfolio exposures to all factors in one family.
+
+        Supported equation patterns include:
+
+            * `"name <= value"` or `"name >= value"`
+            * `"name == value"`
+            * `"a * name1 + b * name2 <= c * name3 + d"`
 
         For example:
 
-            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
-            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
-            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight >= 10%
+            * `"SX5E + SPX >= 0.2"` --> sum of SX5E and SPX weights >= 20%
+            * `"US == 0.7"` --> sum of weights in US group == 70%
+            * `"Equity == 3 * Bond"` --> sum of weights in Equity group == 3x sum of weights in Bond group
+            * `"Momentum <= 0.30"` --> portfolio Momentum exposure <= 30%
+            * `"style <= 0.50"` --> sum of all style factor exposures (Momentum, Value, Size, etc.) <= 50%
+
+        Factor constraints require a prior estimator (e.g.
+        :class:`~skfolio.prior.TimeSeriesFactorModel`,
+        :class:`~skfolio.prior.CharacteristicsFactorModel`)
+        that provides `loading_matrix`, `factor_names` and optionally `factor_families`
+        in its :class:`~skfolio.prior.FactorModel`.
+
+        Asset, group, factor, and factor family names must be unique.
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -667,19 +678,27 @@ class ConvexOptimization(BaseOptimization, ABC):
         w: cp.Variable,
         factor: skt.Factor,
         allow_negative_weights: bool = True,
+        return_distribution: ReturnDistribution | None = None,
     ) -> list[cpc.Constraint]:
         """Compute weight constraints from input parameters.
 
         Parameters
         ----------
         n_assets : int
-            Number of assets.
+            Number of investable assets.
 
         w : cvxpy Variable
             The CVXPY Variable representing assets weights.
 
         factor : cvxpy Variable | cvxpy Constant
             Cvxpy variable or constant.
+
+        allow_negative_weights : bool, default=True
+            Whether to allow negative weights.
+
+        return_distribution : ReturnDistribution, optional
+            The return distribution containing the factor model data (loading_matrix,
+            factor_names, factor_families) for factor constraints.
 
         Returns
         -------
@@ -694,6 +713,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         threshold_long = self.threshold_long
         threshold_short = self.threshold_short
         groups = self.groups
+        assets_names = getattr(self, "feature_names_in_", None)
+        investable_mask = getattr(self, "investable_mask_", None)
 
         if min_weights is not None:
             min_weights = self._clean_input(
@@ -737,11 +758,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                 n_assets=n_assets,
                 fill_value="",
                 dim=2,
-                assets_names=(
-                    self.feature_names_in_
-                    if hasattr(self, "feature_names_in_")
-                    else None
-                ),
+                assets_names=assets_names,
+                investable_mask=investable_mask,
                 name="groups",
             )
 
@@ -891,16 +909,39 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         if self.linear_constraints is not None:
             if groups is None:
-                if not hasattr(self, "feature_names_in_"):
+                if assets_names is None:
                     raise ValueError(
                         "If `linear_constraints` is provided you must provide either"
                         " `groups` or `X` as a DataFrame with asset names in columns"
                     )
-                groups = np.asarray([self.feature_names_in_])
+                if investable_mask is None:
+                    groups = np.asarray([assets_names])
+                else:
+                    groups = np.asarray([assets_names[investable_mask]])
+
+            # Extract factor info from return_distribution for factor constraints
+            loading_matrix = None
+            factor_groups = None
+            if return_distribution is not None:
+                factor_model = return_distribution.factor_model
+                if factor_model is not None:
+                    loading_matrix = factor_model.loading_matrix
+                    if factor_model.factor_families is not None:
+                        factor_groups = np.array(
+                            [
+                                factor_model.factor_names,
+                                factor_model.factor_families,
+                            ]
+                        )
+                    else:
+                        factor_groups = np.array([factor_model.factor_names])
+
             a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
                 groups=groups,
                 equations=self.linear_constraints,
                 raise_if_group_missing=False,
+                loading_matrix=loading_matrix,
+                factor_groups=factor_groups,
             )
             if len(a_eq) != 0:
                 constraints.append(
@@ -928,6 +969,14 @@ class ConvexOptimization(BaseOptimization, ABC):
                     "`right_inequality` must be a 1D array, got"
                     f" {right_inequality.ndim}D array"
                 )
+            if investable_mask is not None:
+                n_total_assets = len(investable_mask)
+                if left_inequality.shape[1] != n_total_assets:
+                    raise ValueError(
+                        "`left_inequality` must be of shape (n_inequalities, n_total_assets) "
+                        f"with n_total_assets={n_total_assets}, got {left_inequality.shape[1]}"
+                    )
+                left_inequality = left_inequality[:, investable_mask]
             if left_inequality.shape[1] != n_assets:
                 raise ValueError(
                     "`left_inequality` must be of shape (n_inequalities, n_assets) "
@@ -1113,7 +1162,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             for parameter, values in parameters_values:
                 parameter.value = values[0]
 
-            self.weights_, self.problem_values_ = _solve(
+            weights, self.problem_values_ = _solve(
                 w=w,
                 factor=factor,
                 expressions=expressions,
@@ -1123,6 +1172,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 risk_measure=self.risk_measure,
                 scale_objective=self._scale_objective,
             )
+            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
         else:
             all_weights = []
             all_problem_values = []
@@ -1162,7 +1212,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 raise cp.SolverError(
                     f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
                 )
-            self.weights_ = all_weights
+            self.weights_ = self._expand_weights_to_full_universe(weights=all_weights)
             self.problem_values_ = all_problem_values
             self.error_ = all_errors
 
@@ -1333,7 +1383,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Parameters
         ----------
         n_assets : int
-            The number of assets.
+            The number of investable assets.
 
         w : cvxpy Variable
             The CVXPY Variable representing assets weights.

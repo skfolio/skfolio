@@ -14,6 +14,7 @@ import numpy as np
 from skfolio.exceptions import (
     DuplicateGroupsError,
     EquationToMatrixError,
+    FactorNotFoundError,
     GroupNotFoundError,
 )
 from skfolio.typing import ArrayLike, FloatArray, ObjArray
@@ -37,9 +38,14 @@ def equations_to_matrix(
     sum_to_one: bool = False,
     raise_if_group_missing: bool = False,
     names: tuple[str, str] = ("groups", "equations"),
+    loading_matrix: ArrayLike | None = None,
+    factor_groups: ArrayLike | None = None,
 ) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
     """Convert a list of linear equations into the left and right matrices of the
     inequality A <= B and equality A == B.
+
+    Supports both asset group constraints and factor exposure constraints when
+    `loading_matrix` and `factor_groups` are provided.
 
     Parameters
     ----------
@@ -69,6 +75,9 @@ def equations_to_matrix(
         The second expression means that the sum of all assets in "group_1" should be
         less or equal to "number" times the sum of all assets in "group_2".
 
+        When `loading_matrix` and `factor_groups` are provided, factor names and
+        factor families can also be used in equations for factor exposure constraints.
+
         For example:
 
              equations = [
@@ -77,6 +86,8 @@ def equations_to_matrix(
                 "Europe >= 0.5 * Japan",
                 "Japan == 1",
                 "3*SPX + 5*SX5E == 2*TLT + 3",
+                "Momentum <= 0.3",  # Factor exposure constraint
+                "style <= 0.5",     # Factor family constraint
             ]
 
     sum_to_one : bool
@@ -92,20 +103,61 @@ def equations_to_matrix(
         The group and equation names used in error messages.
         The default is `('groups', 'equations')`.
 
+    loading_matrix : array-like of shape (n_assets, n_factors), optional
+        The factor loading matrix where each column represents a factor's exposure
+        across assets. Required when using factor constraints.
+
+    factor_groups : array-like of shape (n_factor_groups, n_factors), optional
+        2D array of factor groups, similar to `groups` but for factors.
+
+        For example:
+
+             factor_groups = np.array(
+                [
+                    ["Momentum", "Value", "Size"],  # factor names
+                    ["style", "style", "style"],    # factor families
+                ]
+            )
+
     Returns
     -------
     left_equality: ndarray of shape (n_equations_equality, n_assets)
     right_equality: ndarray of shape (n_equations_equality,)
-        The left and right matrices of the inequality A <= B.
+        The left and right matrices of the equality A = B.
 
     left_inequality: ndarray of shape (n_equations_inequality, n_assets)
     right_inequality: ndarray of shape (n_equations_inequality,)
-        The left and right matrices of the equality A == B.
+        The left and right matrices of the inequality A <= B.
     """
     groups = _validate_groups(groups, name=names[0])
     equations = _validate_equations(equations, name=names[1])
 
     _, n_assets = groups.shape
+
+    # Validate and convert loading_matrix and factor_groups
+    if loading_matrix is not None:
+        loading_matrix = np.asarray(loading_matrix)
+        if loading_matrix.ndim != 2:
+            raise ValueError(
+                f"`loading_matrix` must be a 2D array, got {loading_matrix.ndim}D array"
+            )
+        if loading_matrix.shape[0] != n_assets:
+            raise ValueError(
+                f"`loading_matrix` must have {n_assets} rows (n_assets), "
+                f"got {loading_matrix.shape[0]}"
+            )
+
+    if factor_groups is not None:
+        factor_groups = _validate_groups(factor_groups, name="factor_groups")
+        if loading_matrix is None:
+            raise ValueError(
+                "`loading_matrix` must be provided when `factor_groups` is provided"
+            )
+        if factor_groups.shape[1] != loading_matrix.shape[1]:
+            raise ValueError(
+                f"`factor_groups` columns ({factor_groups.shape[1]}) must match "
+                f"`loading_matrix` columns ({loading_matrix.shape[1]})"
+            )
 
     a_equality = []
     b_equality = []
@@ -119,6 +171,8 @@ def equations_to_matrix(
                 groups=groups,
                 string=string,
                 sum_to_one=sum_to_one,
+                loading_matrix=loading_matrix,
+                factor_groups=factor_groups,
             )
             if is_inequality:
                 a_inequality.append(left)
@@ -130,6 +184,9 @@ def equations_to_matrix(
             if raise_if_group_missing:
                 raise
             warnings.warn(str(e), stacklevel=2)
+        except FactorNotFoundError:
+            # Always raise for factor constraints
+            raise
     return (
         np.array(a_equality, dtype=float)
         if a_equality
@@ -288,6 +345,85 @@ def _matching_array(values: ObjArray, key: str, sum_to_one: bool) -> FloatArray:
     return arr / s
 
 
+def _matching_array_with_factors(
+    groups: ObjArray,
+    key: str,
+    sum_to_one: bool,
+    loading_matrix: FloatArray | None,
+    factor_groups: FloatArray | None,
+) -> FloatArray:
+    """Match key in groups or factor_groups and return coefficient array.
+
+    For asset groups, returns a binary selector (1 if asset in group, 0 otherwise).
+    For factors, returns the corresponding loading vector(s) from loading_matrix.
+
+    Parameters
+    ----------
+    groups : ndarray of shape (n_group_levels, n_assets)
+        2D array of asset groups.
+
+    key : str
+        String to match in groups or factor_groups.
+
+    sum_to_one : bool
+        If True, the result is scaled to sum to one (applied only to asset groups, not factor exposures).
+
+    loading_matrix : ndarray of shape (n_assets, n_factors) or None
+        Factor loading matrix.
+
+    factor_groups : ndarray of shape (n_factor_group_levels, n_factors) or None
+        2D array of factor groups.
+
+    Returns
+    -------
+    arr : ndarray of shape (n_assets,)
+        Coefficient array for the constraint.
+
+    Raises
+    ------
+    DuplicateGroupsError
+        If key exists in both groups and factor_groups.
+    FactorNotFoundError
+        If key is in factor_groups but loading_matrix is None.
+    GroupNotFoundError
+        If key is not found in either groups or factor_groups.
+    """
+    group_names = set(groups.flatten())
+    in_groups = key in group_names
+
+    in_factors = False
+    if factor_groups is not None:
+        factor_names = set(factor_groups.flatten())
+        in_factors = key in factor_names
+
+    # Check for collision
+    if in_groups and in_factors:
+        raise DuplicateGroupsError(
+            f"'{key}' exists in both asset groups and factor_groups. "
+            "Names must be unique across groups and factor_groups."
+        )
+
+    if in_groups:
+        # Original behavior: binary selector
+        arr = np.any(groups == key, axis=0).astype(float)
+        if sum_to_one:
+            arr = arr / arr.sum()
+        return arr
+
+    if in_factors:
+        if loading_matrix is None:
+            raise FactorNotFoundError(
+                f"Factor '{key}' found in factor_groups but loading_matrix is None."
+            )
+        # Sum loading vectors for all matching factors
+        factor_match = np.any(factor_groups == key, axis=0)
+        arr = loading_matrix[:, factor_match].sum(axis=1)
+        return arr
+
+    # Not found anywhere
+    raise GroupNotFoundError(f"Unable to find '{key}' in groups or factor_groups")
+
+
 def _comparison_operator_sign(operator: str) -> int:
     """Convert the operators '>=', "==" and '<=' into the corresponding integer
     values -1, 1 and 1, respectively.
@@ -381,6 +517,8 @@ def _string_to_equation(
     groups: ObjArray,
     string: str,
     sum_to_one: bool,
+    loading_matrix: FloatArray | None = None,
+    factor_groups: FloatArray | None = None,
 ) -> tuple[FloatArray, float, bool]:
     """Convert a string to a left 1D-array and right float of the form:
     `groups @ left <= right` or `groups @ left == right` and return whether it's an
@@ -397,6 +535,12 @@ def _string_to_equation(
     sum_to_one : bool
         If this is set to True, the 1D-array is scaled to have a sum of one.
 
+    loading_matrix : ndarray of shape (n_assets, n_factors) or None
+        Factor loading matrix for factor constraints.
+
+    factor_groups : ndarray of shape (n_factor_group_levels, n_factors) or None
+        2D array of factor groups.
+
     Returns
     -------
     left : 1D-array of shape (n_assets,)
@@ -408,9 +552,12 @@ def _string_to_equation(
 
     iterator = iter(_split_equation_string(string))
     group_names = set(groups.flatten())
+    factor_group_names = (
+        set(factor_groups.flatten()) if factor_groups is not None else set()
+    )
 
-    def is_group(name: str) -> bool:
-        return name in group_names
+    def is_group_or_factor(name: str) -> bool:
+        return name in group_names or name in factor_group_names
 
     left = np.zeros(n)
     right = 0
@@ -450,14 +597,20 @@ def _string_to_equation(
             raise EquationToMatrixError(
                 f"{err_msg}: the character '{e}' is wrongly positioned"
             )
-        if is_group(e):
-            arr = _matching_array(values=groups, key=e, sum_to_one=sum_to_one)
+        if is_group_or_factor(e):
+            arr = _matching_array_with_factors(
+                groups=groups,
+                key=e,
+                sum_to_one=sum_to_one,
+                loading_matrix=loading_matrix,
+                factor_groups=factor_groups,
+            )
             # next can only be a '*' or an ['-', '+', '>=', '<=', '==', '='] or None
             e = next(iterator, None)
             if e is None or e in _NON_MUL_OPERATORS:
                 left += sign * arr
             elif e in _MUL_OPERATORS:
-                # next can only a number
+                # next can only be a number
                 e = next(iterator, None)
                 try:
                     number = float(e)
@@ -483,13 +636,19 @@ def _string_to_equation(
             # next can only be a '*' or an operator or None
             e = next(iterator, None)
             if e in _MUL_OPERATORS:
-                # next can only a group
+                # next can only be a group or factor
                 e = next(iterator, None)
-                if not is_group(e):
+                if not is_group_or_factor(e):
                     raise EquationToMatrixError(
                         f"{err_msg}: the character '{e}' is wrongly positioned"
                     )
-                arr = _matching_array(values=groups, key=e, sum_to_one=sum_to_one)
+                arr = _matching_array_with_factors(
+                    groups=groups,
+                    key=e,
+                    sum_to_one=sum_to_one,
+                    loading_matrix=loading_matrix,
+                    factor_groups=factor_groups,
+                )
                 left += number * sign * arr
                 e = next(iterator, None)
             elif e is None or e in _NON_MUL_OPERATORS:
