@@ -8,6 +8,7 @@ Data Preparation
 
 Most `fit` methods of `skfolio` estimators take the assets returns as input `X`.
 Therefore, the choice of methodology to convert prices to returns is left to the user.
+For datasets with missing returns or a changing asset universe, see :ref:`missing_data`.
 
 There are two different notions of return:
 

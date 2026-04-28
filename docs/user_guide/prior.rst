@@ -41,6 +41,11 @@ The :class:`ReturnDistribution` is a dataclass containing:
     * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
     * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
 
+When native NaN-aware moment estimators are used, a prior can keep the full asset
+universe in `return_distribution_` while non-investable assets are represented by NaNs
+in :math:`\mu`, :math:`\Sigma`, or both. See :ref:`missing_data` for the full
+missing-data and investability convention.
+
 .. note::
 
     The posterior of one model can serve as the prior for another. In skfolio,

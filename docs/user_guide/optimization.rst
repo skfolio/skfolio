@@ -171,6 +171,10 @@ the estimation of assets     expected returns, covariance matrix, returns and Ch
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
 
+When the prior follows the native NaN-aware convention, compatible optimizers solve the
+optimization problem on the investable subset and expand `weights_` back to the full
+input universe. See :ref:`missing_data` for details.
+
 The available prior estimators are:
 
     * :class:`~skfolio.prior.EmpiricalPrior`

@@ -17,6 +17,11 @@ Examples of supported estimators include
 optimizers such as :class:`~skfolio.optimization.MeanRisk` when they embed
 incremental moment estimators through a prior estimator.
 
+Online learning is also where native NaN-aware estimators are especially useful:
+they can update from available observations while preserving estimator state. Pipeline
+based pre-selection and imputation are not currently available in `skfolio` online
+learning workflows. See :ref:`missing_data` for details.
+
 
 How Online Evaluation Works
 ***************************
