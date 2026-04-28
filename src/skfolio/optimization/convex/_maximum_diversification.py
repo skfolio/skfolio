@@ -394,6 +394,32 @@ class MaximumDiversification(MeanRisk):
     -----
     All estimators should specify all parameters as explicit keyword arguments in
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
+
+    Examples
+    --------
+    For a complete tutorial on maximum diversification optimization, see the
+    :ref:`maximum_diversification_examples` gallery.
+
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.optimization import MaximumDiversification
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Maximum diversification optimization
+    >>> model = MaximumDiversification()
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> portfolio = model.predict(X)
+    >>> print(portfolio.diversification)
+    >>>
+    >>> # Maximum diversification with an upper weight constraint
+    >>> model = MaximumDiversification(max_weights=0.20)
+    >>> model.fit(X)
+    >>> print(model.weights_)
     """
 
     def __init__(
