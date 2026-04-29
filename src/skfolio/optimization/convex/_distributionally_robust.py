@@ -294,7 +294,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     >>> model.fit(X)
     >>> print(model.weights_)
     >>>
-    >>> # Increasing the radius makes the model more conservative
+    >>> # Increasing the radius increases the uncertainty around the distribution, which brings the weights closer to equal weighting
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.10)
     >>> model.fit(X)
     >>> print(model.weights_)
