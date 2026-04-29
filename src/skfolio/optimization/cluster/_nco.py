@@ -215,7 +215,8 @@ class NestedClustersOptimization(BaseOptimization):
     >>> prices = load_sp500_dataset()
     >>> X = prices_to_returns(prices)
     >>>
-    >>> Maximize the Sharpe ratio within each cluster and minimize the CVaR computed from the out-of-sample predicted returns of the clusters
+    >>> # Maximize the Sharpe ratio within each cluster and minimize the CVaR 
+    >>> # computed from the out-of-sample predicted returns of the clusters
     >>> inner_estimator = MeanRisk(
     ...     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
     ...     risk_measure=RiskMeasure.STANDARD_DEVIATION,
