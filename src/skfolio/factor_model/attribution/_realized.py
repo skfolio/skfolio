@@ -21,7 +21,7 @@ from skfolio.factor_model.attribution._model import (
     FamilyBreakdown,
 )
 from skfolio.factor_model.attribution._utils import _cov_with_centered, _validate_no_nan
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import safe_divide
 
 __all__ = ["realized_factor_attribution", "rolling_realized_factor_attribution"]
@@ -647,9 +647,9 @@ def _validate_attribution_inputs(
     exposures: FloatArray,
     weights: FloatArray,
     idio_returns: FloatArray,
-    factor_names: ObjArray,
-    asset_names: ObjArray,
-    factor_families: ObjArray | None,
+    factor_names: StrArray,
+    asset_names: StrArray,
+    factor_families: StrArray | None,
 ) -> None:
     """Validate shapes and consistency of attribution inputs."""
     if factor_returns.ndim != 2:
@@ -776,9 +776,9 @@ def _realized_factor_attribution_core(
     exposures: FloatArray,
     weights: FloatArray,
     idio_returns: FloatArray,
-    asset_names: ObjArray,
-    factor_names: ObjArray,
-    factor_families: ObjArray | None,
+    asset_names: StrArray,
+    factor_names: StrArray,
+    factor_families: StrArray | None,
     annualized_factor: float,
     compute_asset_breakdowns: bool,
     regression_weights: FloatArray | None = None,
@@ -987,7 +987,7 @@ def _realized_factor_attribution_core(
 
 def _compute_realized_family_breakdown(
     factors: FactorBreakdown,
-    factor_families: ObjArray,
+    factor_families: StrArray,
     ptf_factor: FloatArray,
     is_static: bool,
     per_family_uncertainty: FloatArray | None = None,
@@ -1046,8 +1046,8 @@ def _compute_realized_assets(
     ptf_ret_centered: FloatArray,
     total_vol: float,
     total_mu: float,
-    asset_names: ObjArray,
-    factor_names: ObjArray,
+    asset_names: StrArray,
+    factor_names: StrArray,
     exposure_is_static: bool,
     weights_is_static: bool,
     annualized_factor: float,
@@ -1162,7 +1162,7 @@ def _compute_attribution_uncertainty(
     ptf_factor: FloatArray,
     regression_weights: FloatArray,
     idio_variances: FloatArray,
-    factor_families: ObjArray | None,
+    factor_families: StrArray | None,
     annualized_factor: float,
     family_constraint_basis: FamilyConstraintBasis | None = None,
 ) -> tuple[float, FloatArray, FloatArray | None]:
@@ -1370,7 +1370,7 @@ def _stack_dataclass(items: list):
                     [getattr(item, fname) for item in items], axis=0
                 )
         else:
-            # ObjArray (names, family) or other: take from first element
+            # StrArray (names, family) or other: take from first element
             kwargs[fname] = first_val
 
     return cls(**kwargs)

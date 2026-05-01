@@ -18,7 +18,7 @@ from skfolio.factor_model.attribution._utils import (
     _format_decimal,
     _format_percent,
 )
-from skfolio.typing import AnyArray, FloatArray, ObjArray
+from skfolio.typing import AnyArray, FloatArray, StrArray
 
 __all__ = ["AssetBreakdown", "BaseBreakdown", "FactorBreakdown", "FamilyBreakdown"]
 
@@ -52,7 +52,7 @@ class BaseBreakdown(ABC):
         Percentage of total portfolio return.
     """
 
-    names: ObjArray
+    names: StrArray
     vol_contrib: FloatArray
     pct_total_variance: FloatArray
     mu_contrib: FloatArray
@@ -208,7 +208,7 @@ class BaseBreakdown(ABC):
 
     def _to_dict(
         self, is_realized: bool, name: str
-    ) -> dict[str, FloatArray | ObjArray]:
+    ) -> dict[str, FloatArray | StrArray]:
         """Convert breakdown to dictionary for DataFrame construction.
 
         Parameters
@@ -291,7 +291,7 @@ class FactorBreakdown(BaseBreakdown):
         return estimation uncertainty. `None` when uncertainty is not computed.
     """
 
-    family: ObjArray | None
+    family: StrArray | None
 
     # Exposure
     exposure: FloatArray

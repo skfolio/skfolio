@@ -17,7 +17,7 @@ import sklearn.base as skb
 import sklearn.utils.validation as skv
 
 from skfolio.exceptions import NonPositiveVarianceError
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
     cov_nearest,
@@ -85,7 +85,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
     covariance_: FloatArray
     location_: FloatArray
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,

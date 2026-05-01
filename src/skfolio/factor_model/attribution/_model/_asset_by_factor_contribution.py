@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from skfolio.factor_model.attribution._utils import _format_percent
-from skfolio.typing import FloatArray, ObjArray
+from skfolio.typing import FloatArray, StrArray
 
 __all__ = ["AssetByFactorContribution"]
 
@@ -44,8 +44,8 @@ class AssetByFactorContribution:
         Return contribution for each asset-factor pair.
     """
 
-    asset_names: ObjArray
-    factor_names: ObjArray
+    asset_names: StrArray
+    factor_names: StrArray
     vol_contrib: FloatArray
     mu_contrib: FloatArray
 

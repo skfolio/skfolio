@@ -65,7 +65,7 @@ from skfolio.distribution.univariate import (
     StudentT,
     select_univariate_dist,
 )
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.figure import kde_trace
 from skfolio.utils.tools import input_to_array, validate_input_list
 
@@ -253,7 +253,7 @@ class VineCopula(BaseMultivariateDist):
     trees_: list[Tree]
     marginal_distributions_: list[BaseUnivariateDist]
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
     central_assets_: set[int | str]
 
     _log_transform: BoolArray

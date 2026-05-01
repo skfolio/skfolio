@@ -17,7 +17,7 @@ from skfolio.moments import EquilibriumMu
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array
 
@@ -120,12 +120,12 @@ class BlackLitterman(BasePrior):
         Idzorek T, 2007.
     """
 
-    groups_: ObjArray
-    views_: ObjArray
+    groups_: StrArray
+    views_: StrArray
     picking_matrix_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,

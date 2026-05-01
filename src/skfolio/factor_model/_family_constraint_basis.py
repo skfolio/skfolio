@@ -12,7 +12,7 @@ from functools import cached_property
 
 import numpy as np
 
-from skfolio.typing import FloatArray, ObjArray
+from skfolio.typing import FloatArray, StrArray
 
 __all__ = [
     "ConstrainedFamily",
@@ -188,7 +188,7 @@ class FamilyConstraintBasis:
         """Reduced-basis column index arrays per constrained family."""
         return [np.arange(s.start, s.stop) for s in self._family_reduced_slices]
 
-    def reduced_factor_names(self, full_factor_names: ObjArray) -> ObjArray:
+    def reduced_factor_names(self, full_factor_names: StrArray) -> StrArray:
         """Return factor names ordered in the reduced basis.
 
         The returned names align with reduced-basis outputs from methods such as
@@ -749,8 +749,8 @@ def compute_family_constraint_basis(
     constrained_families: list[tuple[str, str | None]],
     factor_exposures: FloatArray,
     benchmark_weights: FloatArray,
-    factor_names: ObjArray,
-    factor_families: ObjArray,
+    factor_names: StrArray,
+    factor_families: StrArray,
     tol: float = 1e-10,
 ) -> tuple[FamilyConstraintBasis, list[tuple[str, str]]]:
     r"""Build the compact basis for the requested constrained families.

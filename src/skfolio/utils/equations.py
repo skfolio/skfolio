@@ -17,7 +17,7 @@ from skfolio.exceptions import (
     FactorNotFoundError,
     GroupNotFoundError,
 )
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 __all__ = ["equations_to_matrix", "group_cardinalities_to_matrix"]
 
@@ -257,7 +257,7 @@ def group_cardinalities_to_matrix(
     )
 
 
-def _validate_groups(groups: ArrayLike, name: str = "groups") -> ObjArray:
+def _validate_groups(groups: ArrayLike, name: str = "groups") -> StrArray:
     """Validate groups by checking its dim and if group names don't appear in multiple
     levels and convert to numpy array.
 
@@ -291,7 +291,7 @@ def _validate_groups(groups: ArrayLike, name: str = "groups") -> ObjArray:
     return groups
 
 
-def _validate_equations(equations: ArrayLike, name: str = "equations") -> ObjArray:
+def _validate_equations(equations: ArrayLike, name: str = "equations") -> StrArray:
     """Validate equations by checking its dim and convert to numpy array.
 
     Parameters
@@ -313,7 +313,7 @@ def _validate_equations(equations: ArrayLike, name: str = "equations") -> ObjArr
     return equations
 
 
-def _matching_array(values: ObjArray, key: str, sum_to_one: bool) -> FloatArray:
+def _matching_array(values: StrArray, key: str, sum_to_one: bool) -> FloatArray:
     """Takes in a 2D array of strings, a key string, and a boolean flag.
     It returns a 1D array where the value is 1 if there is a match between the key and
     any value in the 2D array, and 0 otherwise. The returned array can be scaled to
@@ -346,7 +346,7 @@ def _matching_array(values: ObjArray, key: str, sum_to_one: bool) -> FloatArray:
 
 
 def _matching_array_with_factors(
-    groups: ObjArray,
+    groups: StrArray,
     key: str,
     sum_to_one: bool,
     loading_matrix: FloatArray | None,
@@ -514,7 +514,7 @@ def _split_equation_string(string: str) -> list[str]:
 
 
 def _string_to_equation(
-    groups: ObjArray,
+    groups: StrArray,
     string: str,
     sum_to_one: bool,
     loading_matrix: FloatArray | None = None,

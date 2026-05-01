@@ -32,7 +32,7 @@ from skfolio.typing import (
     BoolArray,
     FloatArray,
     IntArray,
-    ObjArray,
+    StrArray,
 )
 from skfolio.utils.stats import (
     cov_to_corr,
@@ -167,10 +167,10 @@ class FactorModel:
         where constrained families are full-rank.
     """
 
-    observations: ObjArray  # (n_observations,)
-    asset_names: ObjArray  # (n_assets,)
-    factor_names: ObjArray  # (n_factors,)
-    factor_families: ObjArray | None  # (n_factors,)
+    observations: StrArray  # (n_observations,)
+    asset_names: StrArray  # (n_assets,)
+    factor_names: StrArray  # (n_factors,)
+    factor_families: StrArray | None  # (n_factors,)
 
     loading_matrix: FloatArray  # (n_assets, n_factors)
     exposures: FloatArray | None  # (n_observations, n_assets, n_factors)
@@ -2540,7 +2540,7 @@ class FactorModel:
         )
 
     @property
-    def _reduced_factor_names(self) -> ObjArray:
+    def _reduced_factor_names(self) -> StrArray:
         """Factor names aligned with reduced-basis computations.
 
         Returns the reduced-basis names when a family-constraint basis is present,
@@ -2774,7 +2774,7 @@ class FactorModel:
         factors: list[str] | None,
         families: str | list[str] | None,
         reduced_basis: bool = False,
-    ) -> tuple[slice | list[int], ObjArray | list[str]]:
+    ) -> tuple[slice | list[int], StrArray | list[str]]:
         """Resolve a factor subset from explicit names or family labels.
 
         Parameters
@@ -3066,7 +3066,7 @@ def _heatmap(
 
 def _add_family_outlines(
     fig: go.Figure,
-    families: ObjArray | None,
+    families: StrArray | None,
     idx: slice | list[int],
 ) -> None:
     """Draw rectangles around contiguous family blocks on a heatmap."""
@@ -3183,7 +3183,7 @@ def _lag1_autocorr(x: FloatArray) -> FloatArray:
 
 
 def _selector_to_positions(
-    selector: ArrayLike | slice | None, labels: ObjArray, *, axis_name: str
+    selector: ArrayLike | slice | None, labels: StrArray, *, axis_name: str
 ) -> IntArray:
     """Resolve an axis selector to positional indices.
 

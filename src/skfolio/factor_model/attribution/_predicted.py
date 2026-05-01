@@ -19,7 +19,7 @@ from skfolio.factor_model.attribution._model import (
     FamilyBreakdown,
 )
 from skfolio.factor_model.attribution._utils import _validate_no_nan
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import assert_is_square, safe_divide
 
 __all__ = ["predicted_factor_attribution"]
@@ -547,7 +547,7 @@ def predicted_factor_attribution(
 
 
 def _compute_predicted_family_breakdown(
-    factors: FactorBreakdown, factor_families: ObjArray
+    factors: FactorBreakdown, factor_families: StrArray
 ) -> FamilyBreakdown:
     """Compute family-level breakdown for predicted attribution."""
     unique_families, _ = np.unique(factor_families, return_inverse=True)
@@ -591,8 +591,8 @@ def _compute_predicted_assets(
     factor_cov_with_ptf: FloatArray,
     total_vol: float,
     total_mu: float,
-    asset_names: ObjArray,
-    factor_names: ObjArray,
+    asset_names: StrArray,
+    factor_names: StrArray,
 ) -> tuple[AssetBreakdown, AssetByFactorContribution]:
     """Compute asset-level attribution for predicted attribution."""
     n_assets = len(weights)

@@ -15,7 +15,7 @@ import sklearn.utils.validation as skv
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
 from skfolio.prior._base import BasePrior
 from skfolio.prior._model import ReturnDistribution
-from skfolio.typing import ArrayLike, ObjArray
+from skfolio.typing import ArrayLike, StrArray
 from skfolio.utils._array_buffer import _ArrayBuffer
 from skfolio.utils.tools import _call_estimator, check_estimator
 
@@ -95,7 +95,7 @@ class EmpiricalPrior(BasePrior):
     mu_estimator_: BaseMu
     covariance_estimator_: BaseCovariance
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,

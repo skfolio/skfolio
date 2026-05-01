@@ -20,10 +20,10 @@ non-synchronous trading bias or imputation bias.
 Data Representation
 ===================
 
-Input data such as asset returns is commonly represented in one of two forms.
+Asset data (e.g. prices, returns) is commonly represented in either wide or long format.
 
-The first is a **wide format**: a rectangular matrix indexed by date, with one column per
-asset. Missing returns are represented as NaNs:
+In **wide format**, observations index the rows and assets index the columns.
+Missingness is represented as NaNs:
 
 .. code-block:: text
 
@@ -31,8 +31,8 @@ asset. Missing returns are represented as NaNs:
     2024-01-01    0.01    0.02    NaN
     2024-01-02   -0.01    NaN     0.03
 
-The second is a **long format**: one row per `(date, asset)` pair. Missingness can be
-represented either by a NaN value or by the absence of a row:
+In **long format**, each row represents a `(date, asset)` pair. Missingness can be
+represented either by a NaN or by the absence of a row:
 
 .. code-block:: text
 
@@ -42,30 +42,40 @@ represented either by a NaN value or by the absence of a row:
     2024-01-02    AAPL    -0.01
     2024-01-02    BMW      0.03
 
-Both representations have trade-offs. Long format can be more memory efficient when
-the universe changes composition through time. It can also naturally distinguish a
-missing return for an asset that belongs to the universe, represented by a NaN, from an
-asset that is not in the universe, represented by the absence of a row.
+Both representations have trade-offs and serve different purposes.
 
-The drawback is that most estimators do not directly consume raw long-format data.
-When they do, it is often after transformations that must be aware of the time
-dimension, such as cross-sectional z-scores. This means that many estimators would need
-to handle date group-by, pivoting, reindexing and asset alignment internally before the
-data can be used. These transformations add overhead and complexity, and they increase
-the risk of indexing mistakes, either on the time index, which can introduce look-ahead
-bias, or on the asset index. They also make cross-validation and hyper-parameter tuning
-more complex, because the whole workflow must often remain time-aware.
+Long format is often convenient for storage, database queries, joins, filtering and can
+be more memory efficient when the universe changes through time. It can also naturally
+distinguish a missing return for an asset that belongs to the universe, represented by
+a NaN, from an asset that is not in the universe, represented by the absence of a row.
+
+The drawback is that most estimators do not directly consume long-format data.
+When they do (e.g. ML alpha prediction with one row per `(date, asset)` observation and
+one column per feature), they often sit in the middle of the pipeline.
+Before them, the data usually needs time-aware and/or cross-sectional transformation
+(e.g. cross-sectional z-scores, ranking, winsorization, factor neutralization)
+After them, their outputs usually need to be time and asset aligned again for risk
+estimation, portfolio optimization and evaluation.
+
+For this reason, the full pipeline is often better represented by wide arrays, even
+when one intermediate estimator uses long-format data internally. Otherwise, many
+steps would need to handle date group-by, pivoting, reindexing and asset alignment
+internally before the data can be used. These transformations add overhead and
+complexity and they increase the risk of indexing mistakes, either on the time index,
+which can introduce look-ahead bias, or on the asset index. They also make
+cross-validation and hyper-parameter tuning more complex, because the whole workflow
+must often remain time-aware.
 
 `skfolio` is opinionated and follows the wide format convention.
 
 Wide format may use more memory when the universe changes through time, because assets
-that are not present at a given date are represented by NaNs. For example, if an
-index universe changes by about 2% per year, a 10-year history carries roughly 20%
+that are not present at a given date are represented by NaNs. For example, if an index
+universe changes by about 2% per year, a 10-year history carries roughly 20%
 additional cells for assets that were not present during the full period. In return,
-wide format keeps the data in the 2D representation expected by estimators. This allows
-vectorized implementations to operate on already-aligned arrays, avoids repeated date
-group-by, pivoting and reindexing, simplifies cross-validation and hyper-parameter
-tuning, and reduces asset-alignment errors.
+wide format keeps the data in a dense `date × asset` representation expected by most
+estimators. This allows vectorized implementations to operate on already-aligned arrays,
+avoids repeated date group-by, pivoting and reindexing, simplifies cross-validation and
+hyper-parameter tuning, and reduces asset-alignment errors.
 
 Because wide format can encode distinct data states with the same NaN marker,
 `skfolio` uses explicit conventions to distinguish:
@@ -76,8 +86,9 @@ Because wide format can encode distinct data states with the same NaN marker,
 
 `skfolio` provides two main ways to handle missing data:
 
-* make the input finite before fitting, using pre-selection, imputation, or both via a scikit-learn `Pipeline`;
-* use estimators that handle NaNs natively when they support it.
+* make the input finite before fitting, using pre-selection, imputation, or both via a
+  scikit-learn `Pipeline`
+* use estimators that handle NaNs natively when they support it
 
 Pre-Selection and Imputation
 ============================
@@ -139,11 +150,11 @@ by compatible estimators and by optimizers that consume their outputs.
 
 For this approach, `skfolio` separates three concepts:
 
-* missing observations in `X` (e.g. holidays);
-* universe membership through time (e.g. new listings, delistings, defaults or
-  expirations);
+* missing observations in `X` (e.g. holidays)
+* universe membership through time (e.g. new listings, delistings, defaults,
+  expirations)
 * investability at optimization time (e.g. an asset that has entered the universe but
-  has not yet accumulated enough data for stable moment estimation).
+  has not yet accumulated enough data for stable moment estimation)
 
 Universe Membership
 -------------------
@@ -157,8 +168,8 @@ shape as `X`:
 
 It indicates whether asset :math:`i` belongs to the universe at observation :math:`t`.
 
-If `active_mask=True` and `X` is NaN, the asset remains in the universe but its return
-is missing for that observation (e.g. holiday). NaN-aware estimators handle this
+If `active_mask=True` and `X` is NaN, the asset remains in the universe but its
+return is missing for that observation (e.g. holiday). NaN-aware estimators handle this
 according to their own rule (e.g. skipping the missing pairwise update or freezing the
 current estimate).
 

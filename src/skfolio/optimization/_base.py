@@ -32,7 +32,7 @@ from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.prior import ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.tools import input_to_array
 
 
@@ -106,7 +106,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
     weights_: FloatArray
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
     error_: str | list[str] | None

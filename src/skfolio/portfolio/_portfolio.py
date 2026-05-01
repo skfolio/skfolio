@@ -20,7 +20,7 @@ import skfolio.typing as skt
 from skfolio._constants import _ParamKey
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
-from skfolio.typing import ArrayLike, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
     args_names,
     cached_property_slots,
@@ -736,7 +736,7 @@ class Portfolio(BasePortfolio):
 
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
-    def nonzero_assets(self) -> ObjArray:
+    def nonzero_assets(self) -> StrArray:
         """Invested asset :math:`abs(weights) > 0.001%`."""
         return self.assets[self.nonzero_assets_index]
 

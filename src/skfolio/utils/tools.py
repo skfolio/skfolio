@@ -22,7 +22,7 @@ import sklearn as sk
 import sklearn.base as skb
 from sklearn.utils import Bunch
 
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 
 __all__ = [
     "AutoEnum",
@@ -411,7 +411,7 @@ def input_to_array(
     n_assets: int,
     fill_value: Any,
     dim: int,
-    assets_names: ObjArray | None,
+    assets_names: StrArray | None,
     name: str,
     investable_mask: BoolArray | None = None,
 ) -> FloatArray:
@@ -513,7 +513,7 @@ def input_to_array(
 def validate_input_list(
     items: list[int | str],
     n_assets: int,
-    assets_names: ObjArray | None,
+    assets_names: StrArray | None,
     name: str,
     raise_if_string_missing: bool = True,
 ) -> list[int]:
@@ -763,7 +763,7 @@ def fit_and_predict(
     return predictions
 
 
-def default_asset_names(n_assets: int) -> ObjArray:
+def default_asset_names(n_assets: int) -> StrArray:
     """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`.
 
     Parameters

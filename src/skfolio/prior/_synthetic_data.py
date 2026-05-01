@@ -16,7 +16,7 @@ import sklearn.utils.validation as skv
 from skfolio.distribution import VineCopula
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, ObjArray
+from skfolio.typing import ArrayLike, StrArray
 from skfolio.utils.tools import check_estimator
 
 
@@ -125,7 +125,7 @@ class SyntheticData(BasePrior):
     distribution_estimator_: skb.BaseEstimator
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,

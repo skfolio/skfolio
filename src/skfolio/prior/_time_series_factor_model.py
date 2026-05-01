@@ -24,7 +24,7 @@ import skfolio.measures as sm
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import FactorModel, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import cov_nearest
 from skfolio.utils.tools import check_estimator, get_feature_names
 
@@ -250,7 +250,7 @@ class TimeSeriesFactorModel(BasePrior):
     factor_prior_estimator_: BasePrior
     loading_matrix_estimator_: BaseLoadingMatrix
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,

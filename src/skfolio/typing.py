@@ -39,11 +39,12 @@ __all__ = [
     "Measure",
     "MultiInput",
     "Names",
-    "ObjArray",
     "ParametersValues",
     "Result",
     "RiskResult",
     "Scoring",
+    "StrArray",
+    "StrArray",
     "Tags",
     "Target",
 ]
@@ -54,6 +55,7 @@ BoolArray: TypeAlias = npt.NDArray[np.bool_]
 FloatArray: TypeAlias = npt.NDArray[np.floating]
 IntArray: TypeAlias = npt.NDArray[np.integer]
 ObjArray: TypeAlias = npt.NDArray[np.object_]
+StrArray: TypeAlias = npt.NDArray[np.str_]
 AnyArray: TypeAlias = npt.NDArray[Any]
 
 # Skfolio
@@ -63,7 +65,7 @@ Measure: TypeAlias = Union[
 CvxMeasure: TypeAlias = Union["PerfMeasure", "RiskMeasure", "RatioMeasure"]
 Scoring: TypeAlias = Callable | dict[str, Callable] | Measure | None
 MultiInput = float | dict[str, float] | ArrayLike
-Groups = dict[str, list[str]] | IntArray | ObjArray | list[list[str]]
+Groups = dict[str, list[str]] | IntArray | StrArray | list[list[str]]
 LinearConstraints = FloatArray | list[str]
 Inequality = FloatArray | list
 Target = float | FloatArray

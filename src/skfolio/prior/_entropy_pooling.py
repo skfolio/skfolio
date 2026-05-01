@@ -33,7 +33,7 @@ from skfolio.measures import (
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import ReturnDistribution
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
@@ -423,12 +423,12 @@ class EntropyPooling(BasePrior):
     effective_number_of_scenarios_: float
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     if TYPE_CHECKING:
         _returns: FloatArray
         _prior_sample_weight: FloatArray
-        _groups: ObjArray
+        _groups: StrArray
         _is_fixed_mean: BoolArray
         _is_fixed_variance: BoolArray
         _constraints: dict[str, list[FloatArray] | None]
