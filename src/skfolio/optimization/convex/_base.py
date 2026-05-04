@@ -15,8 +15,7 @@ from enum import auto
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
 import numpy as np
-import scipy as sc
-import scipy.sparse.linalg as scl
+import scipy.sparse.linalg as sla
 import sklearn.utils.metadata_routing as skm
 from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
@@ -29,6 +28,7 @@ from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
+    CompactCovarianceUncertaintySet,
     UncertaintySet,
 )
 from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
@@ -1240,8 +1240,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression of the uncertainty set of expected returns.
         """
-        return mu_uncertainty_set.k * cp.pnorm(
-            sc.linalg.sqrtm(mu_uncertainty_set.sigma) @ w, 2
+        return mu_uncertainty_set.radius * cp.pnorm(
+            mu_uncertainty_set.geometry.T @ w, mu_uncertainty_set.dual_norm
         )
 
     @cache_method("_cvx_cache")
@@ -1724,19 +1724,19 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _worst_case_variance_risk(
         self,
         return_distribution: ReturnDistribution,
-        covariance_uncertainty_set: UncertaintySet,
+        covariance_uncertainty_set: UncertaintySet | CompactCovarianceUncertaintySet,
         w: cp.Variable,
         factor: skt.Factor,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Worst Case Variance.
+        r"""Expression and Constraints of the Worst Case Variance.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
            asset returns distribution DataModel.
 
-        covariance_uncertainty_set : UncertaintySet
-             :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
+        covariance_uncertainty_set : UncertaintySet | CompactCovarianceUncertaintySet
+             :ref:`Covariance Uncertainty set <uncertainty_set_estimator>`.
 
         w : cvxpy Variable
            The CVXPY Variable representing assets weights.
@@ -1750,6 +1750,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
            CVXPY Expression and Constraints the Worst Case Variance.
         """
+        if isinstance(covariance_uncertainty_set, CompactCovarianceUncertaintySet):
+            risk, constraints = self._variance_risk(return_distribution, w)
+            residual = cp.multiply(covariance_uncertainty_set.metric_sqrt, w)
+            rank = covariance_uncertainty_set.basis.shape[1]
+            if rank > 0:
+                z = cp.Variable(rank)
+                residual = residual - covariance_uncertainty_set.basis @ z
+            risk += covariance_uncertainty_set.radius * cp.sum_squares(residual)
+            return risk, constraints
+
         n_assets = return_distribution.returns.shape[1]
         x = cp.Variable((n_assets, n_assets), symmetric=True)
         y = cp.Variable((n_assets, n_assets), symmetric=True)
@@ -1758,12 +1768,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         z1 = cp.vstack([x, w_reshaped.T])
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
-        risk = covariance_uncertainty_set.k * cp.pnorm(
-            sc.linalg.sqrtm(covariance_uncertainty_set.sigma)
+        risk = covariance_uncertainty_set.radius * cp.pnorm(
+            covariance_uncertainty_set.geometry.T
             @ (cp.vec(x, order="F") + cp.vec(y, order="F")),
-            2,
+            covariance_uncertainty_set.dual_norm,
         ) + cp.trace(return_distribution.covariance @ (x + y))
-        # semi-definite positive constraints
         constraints = [
             cp.hstack([z1, z2]) * self._scale_constraints >> 0,
             y * self._scale_constraints >> 0,
@@ -2472,7 +2481,7 @@ def _solve(
                 stacklevel=2,
             )
         return weights, problem_values
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, sla.ArpackNoConvergence):
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:
             params_string = f" with parameters {params_string}"

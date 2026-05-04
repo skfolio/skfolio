@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import scipy as sc
 from sklearn import config_context
 
 from skfolio.moments import ImpliedCovariance
@@ -41,14 +40,16 @@ class TestEmpiricalMuUncertaintySet:
                 0.98177423,
             ]
         )
-        c1 = model.uncertainty_set_.k * np.linalg.norm(
-            sc.linalg.sqrtm(model.uncertainty_set_.sigma) @ w, 2
+        c1 = model.uncertainty_set_.radius * np.linalg.norm(
+            model.uncertainty_set_.geometry @ w, 2
         )
         np.testing.assert_almost_equal(c1, 0.007086160726324358)
 
-        np.testing.assert_almost_equal(model.uncertainty_set_.k, 5.604501123581913)
+        np.testing.assert_almost_equal(model.uncertainty_set_.radius, 5.604501123581913)
         np.testing.assert_almost_equal(
-            model.uncertainty_set_.sigma[:10, :10],
+            (model.uncertainty_set_.geometry @ model.uncertainty_set_.geometry.T)[
+                :10, :10
+            ],
             np.array(
                 [
                     [
@@ -205,16 +206,20 @@ class TestEmpiricalMuUncertaintySet:
         model.fit(X)
         assert model.n_eff_ == 10
 
-        assert not np.allclose(ref.uncertainty_set_.sigma, model.uncertainty_set_.sigma)
+        assert not np.allclose(
+            ref.uncertainty_set_.geometry, model.uncertainty_set_.geometry
+        )
 
 
 class TestEmpiricalCovarianceUncertaintySet:
     def test_fit(self, X):
         model = EmpiricalCovarianceUncertaintySet()
         model.fit(X)
-        np.testing.assert_almost_equal(model.uncertainty_set_.k, 21.15732657569969)
+        np.testing.assert_almost_equal(model.uncertainty_set_.radius, 21.15732657569969)
         np.testing.assert_almost_equal(
-            model.uncertainty_set_.sigma[:10, :10],
+            (model.uncertainty_set_.geometry @ model.uncertainty_set_.geometry.T)[
+                :10, :10
+            ],
             np.array(
                 [
                     [
@@ -372,4 +377,6 @@ class TestEmpiricalCovarianceUncertaintySet:
         model.fit(X)
         assert model.n_eff_ == 10
 
-        assert not np.allclose(ref.uncertainty_set_.sigma, model.uncertainty_set_.sigma)
+        assert not np.allclose(
+            ref.uncertainty_set_.geometry, model.uncertainty_set_.geometry
+        )

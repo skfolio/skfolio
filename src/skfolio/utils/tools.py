@@ -13,6 +13,7 @@ import warnings
 from collections.abc import Callable, Iterator, Mapping
 from enum import Enum
 from functools import wraps
+from inspect import signature
 from typing import Any, Literal
 
 import numpy as np
@@ -1027,3 +1028,31 @@ def _call_estimator(
         )
 
     return method_caller(X, y, **routed, **extra_params)
+
+
+def _filter_supported_params(estimator, method: str, **kwargs):
+    """Return keyword arguments accepted by an estimator method.
+
+    This helper is used for internally generated parameters that should be passed only
+    to estimators whose method signature explicitly accepts them. Parameters with value
+    `None` are omitted.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator exposing the method named by `method`.
+
+    method : str
+        Method name whose signature is inspected.
+
+    **kwargs : dict
+        Candidate keyword arguments.
+
+    Returns
+    -------
+    filtered : dict
+        Keyword arguments whose names are accepted by the estimator method and whose
+        values are not `None`.
+    """
+    params = signature(getattr(estimator, method)).parameters
+    return {k: v for k, v in kwargs.items() if k in params and v is not None}

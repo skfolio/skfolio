@@ -17,9 +17,11 @@ class TestBootstrapMuUncertaintySet:
     def test_fit(self, X):
         model = BootstrapMuUncertaintySet()
         model.fit(X)
-        np.testing.assert_almost_equal(model.uncertainty_set_.k, 5.604501123581913)
+        np.testing.assert_almost_equal(model.uncertainty_set_.radius, 5.604501123581913)
         np.testing.assert_almost_equal(
-            model.uncertainty_set_.sigma[:10, :10],
+            (model.uncertainty_set_.geometry @ model.uncertainty_set_.geometry.T)[
+                :10, :10
+            ],
             np.array(
                 [
                     [
@@ -172,9 +174,11 @@ class TestBootstrapCovarianceUncertaintySet:
     def test_fit(self, X):
         model = BootstrapCovarianceUncertaintySet()
         model.fit(X)
-        np.testing.assert_almost_equal(model.uncertainty_set_.k, 21.15732657569969)
+        np.testing.assert_almost_equal(model.uncertainty_set_.radius, 21.15732657569969)
         np.testing.assert_almost_equal(
-            model.uncertainty_set_.sigma[:10, :10],
+            (model.uncertainty_set_.geometry @ model.uncertainty_set_.geometry.T)[
+                :10, :10
+            ],
             np.array(
                 [
                     [

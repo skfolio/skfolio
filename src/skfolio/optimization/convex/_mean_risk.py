@@ -23,7 +23,12 @@ from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunct
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
-from skfolio.utils.tools import _call_estimator, args_names, check_estimator
+from skfolio.utils.tools import (
+    _call_estimator,
+    _filter_supported_params,
+    args_names,
+    check_estimator,
+)
 
 _NON_ANNUALIZED_RISK_MEASURES = [rm for rm in RiskMeasure if not rm.is_annualized]
 _FITTED_ATTR = "weights_"
@@ -1027,6 +1032,11 @@ class MeanRisk(ConvexOptimization):
                 X,
                 y,
                 routed_params=routed_params.mu_uncertainty_set_estimator,
+                extra_params=_filter_supported_params(
+                    self.mu_uncertainty_set_estimator_,
+                    method,
+                    return_distribution=return_distribution,
+                ),
             )
             mu_uncertainty_set = self._cvx_mu_uncertainty_set(
                 mu_uncertainty_set=self.mu_uncertainty_set_estimator_.uncertainty_set_,
@@ -1163,6 +1173,11 @@ class MeanRisk(ConvexOptimization):
                             X,
                             y,
                             routed_params=routed_params.covariance_uncertainty_set_estimator,
+                            extra_params=_filter_supported_params(
+                                self.covariance_uncertainty_set_estimator_,
+                                method,
+                                return_distribution=return_distribution,
+                            ),
                         )
                         args[arg_name] = (
                             self.covariance_uncertainty_set_estimator_.uncertainty_set_

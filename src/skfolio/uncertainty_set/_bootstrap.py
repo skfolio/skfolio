@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.linalg as sla
 import scipy.stats as st
 import sklearn.utils.metadata_routing as skm
 
@@ -19,8 +20,8 @@ from skfolio.typing import ArrayLike
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
-    UncertaintySet,
 )
+from skfolio.uncertainty_set._model import UncertaintySet
 from skfolio.utils.bootstrap import stationary_bootstrap
 from skfolio.utils.tools import check_estimator
 
@@ -28,34 +29,43 @@ from skfolio.utils.tools import check_estimator
 class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
     r"""Bootstrap Mu Uncertainty set.
 
-    Compute the expected returns ellipsoidal uncertainty set using circular bootstrap:
+    Compute the expected returns ellipsoidal uncertainty set using stationary bootstrap:
 
-    .. math:: U_{\mu}=\left\{\mu\,|\left(\mu-\hat{\mu}\right)S^{-1}\left(\mu-\hat{\mu}\right)^{T}\leq\kappa^{2}\right\}
+    .. math::
 
-    The size of the ellipsoid  :math:`\kappa` (confidence region), is computed using:
+        U_{\mu}
+        =
+        \left\{
+            \mu :
+            (\mu - \hat{\mu})^\top S^{-1}(\mu - \hat{\mu})
+            \le \kappa^2
+        \right\}.
 
-    .. math:: \kappa^2 = \chi^2_{n\_assets} (\beta)
+    The radius of the ellipsoid :math:`\kappa` (confidence region) is computed using:
 
-    with :math:`\chi^2_{n\_assets}(\beta)` the inverse cumulative distribution function
-    of the chi-squared distribution with `n_assets` degrees of freedom at the
-    :math:`\beta` confidence level.
+    .. math:: \kappa^2 = \chi^2_{n_{\text{assets}}}(\beta)
 
-    The Shape of the ellipsoid :math:`S` is computed using stationary bootstrap with
-    the option to force the non-diagonal elements of the covariance matrix to zero.
+    with :math:`\chi^2_{n_{\text{assets}}}(\beta)` the inverse cumulative distribution
+    function of the chi-squared distribution with :math:`n_{\text{assets}}` degrees of
+    freedom at the :math:`\beta` confidence level.
+
+    The shape matrix :math:`S` of the ellipsoid is computed using stationary bootstrap,
+    with the option to retain only its diagonal. The estimator stores the square-root
+    factor as the linear geometry map:math:`L = S^{1/2}`.
 
     Parameters
     ----------
     prior_estimator : BasePrior, optional
-        The :ref:`prior estimator <prior>` used to estimate the assets covariance
-        matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
+        The :ref:`prior estimator <prior>` used to estimate the assets return
+        distribution. The default (`None`) is to use
+        :class:`~skfolio.prior.EmpiricalPrior`.
 
     confidence_level : float , default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
-        If this is set to True, the non-diagonal elements of the covariance matrix are
-        set to zero.
+        If `True`, only the diagonal of the ellipsoid shape matrix is retained.
 
     n_bootstrap_samples : int, default=1000
         Number of bootstrap samples to generate. The default value is `1000`.
@@ -125,7 +135,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -146,7 +156,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         mu = self.prior_estimator_.return_distribution_.mu
         returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
-        k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
+        radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
         samples = stationary_bootstrap(
             returns=returns,
             block_size=self.block_size,
@@ -154,49 +164,61 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
             seed=self.seed,
         )
         mus = np.mean(samples, axis=1)
-        covs = np.zeros((self.n_bootstrap_samples, n_assets, n_assets))
-        for i in range(self.n_bootstrap_samples):
-            covs[i] = np.cov(samples[i].T)
-
-        sigma = np.cov((mus - mu).T)
+        deviations = mus - mu
         if self.diagonal:
-            sigma = np.diag(np.diag(sigma))
+            geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
+        else:
+            geometry = sla.sqrtm(np.cov(deviations, rowvar=False)).real
 
-        self.uncertainty_set_ = UncertaintySet(k=k, sigma=sigma)
+        self.uncertainty_set_ = UncertaintySet(radius=radius, geometry=geometry, norm=2)
         return self
 
 
 class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     r"""Bootstrap Covariance Uncertainty set.
 
-    Compute the covariance ellipsoidal uncertainty set using circular bootstrap:
+    Compute the covariance ellipsoidal uncertainty set using stationary bootstrap:
 
-    .. math:: U_{\Sigma}=\left\{\Sigma\,|\left(\text{vec}(\Sigma)-\text{vec}(\hat{\Sigma})\right)S^{-1}\left(\text{vec}(\Sigma)-\text{vec}(\hat{\Sigma})\right)^{T}\leq k^{2}\,,\,\Sigma\succeq 0\right\}
+    .. math::
 
-    The size of the ellipsoid :math:`\kappa` (confidence region), is computed using:
+        U_{\Sigma}
+        =
+        \left\{
+            \Sigma :
+            d^\top S^{-1} d \le \kappa^2,
+            \Sigma \succeq 0
+        \right\},
+        \quad
+        d =
+        \operatorname{vec}(\Sigma) - \operatorname{vec}(\hat{\Sigma}).
 
-    .. math:: \kappa^2 = \chi^2_{n\_assets^2} (\beta)
+    The radius of the ellipsoid :math:`\kappa` (confidence region) is computed using:
 
-    with :math:`\chi^2_{n\_assets^2}(\beta)` the inverse cumulative distribution
-    function of the chi-squared distribution with `n_assets` degrees of freedom at the
-    :math:`\beta` confidence level.
+    .. math:: \kappa^2 = \chi^2_{n_{\text{assets}}^2}(\beta)
 
-    The Shape of the ellipsoid :math:`S` is computed using stationary bootstrap with the
-    option to force the non-diagonal elements of the covariance matrix to zero.
+    with :math:`\chi^2_{n_{\text{assets}}^2}(\beta)` the inverse cumulative
+    distribution function of the chi-squared distribution with :math:`n_{\text{assets}}^2`
+    degrees of freedom at the :math:`\beta` confidence level.
+
+    The shape matrix :math:`S` of the ellipsoid is the covariance matrix of the
+    bootstrapped vectorized covariance estimator. If `diagonal` is `True`, only the
+    diagonal of :math:`S` is retained and the linear geometry map :math:`L` is built
+    directly from it. Otherwise, the estimator stores a full square-root factor
+    :math:`L = S^{1/2}`.
 
     Parameters
     ----------
     prior_estimator : BasePrior, optional
-        The :ref:`prior estimator <prior>` used to estimate the assets covariance
-        matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
+        The :ref:`prior estimator <prior>` used to estimate the assets return
+        distribution. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
     confidence_level : float , default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
-        If this is set to True, the non-diagonal elements of the covariance matrix are
-        set to zero.
+        If `True`, only the diagonal of the ellipsoid shape matrix in vectorized
+        covariance space is retained.
 
     n_bootstrap_samples : int, default=1000
         Number of bootstrap samples to generate. The default value is `1000`.
@@ -206,7 +228,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         using Politis & White algorithm for all individual assets.
 
     seed : int, optional
-        Random seed used to initialize the pseudo-random number generator
+        Random seed used to initialize the pseudo-random number generator.
 
     Attributes
     ----------
@@ -266,13 +288,13 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
         Returns
         -------
-        self : EmpiricalCovarianceUncertaintySet
+        self : BootstrapCovarianceUncertaintySet
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -284,10 +306,9 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         )
         # fitting estimators
         self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        covariance = self.prior_estimator_.return_distribution_.covariance
         returns = self.prior_estimator_.return_distribution_.returns
         n_assets = returns.shape[1]
-        k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
+        radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
 
         samples = stationary_bootstrap(
             returns=returns,
@@ -295,17 +316,14 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
             n_bootstrap_samples=self.n_bootstrap_samples,
             seed=self.seed,
         )
-        covs = np.zeros((self.n_bootstrap_samples, n_assets, n_assets))
-        for i in range(self.n_bootstrap_samples):
-            covs[i] = np.cov(samples[i].T)
+        deviations = np.empty((self.n_bootstrap_samples, n_assets**2))
+        for i, sample in enumerate(samples):
+            deviations[i] = np.cov(sample.T).ravel(order="F")
 
-        sigma = np.cov(
-            (covs - covariance)
-            .reshape((self.n_bootstrap_samples, n_assets**2), order="F")
-            .T
-        )
         if self.diagonal:
-            sigma = np.diag(np.diag(sigma))
+            geometry = np.diag(np.sqrt(np.var(deviations, axis=0, ddof=1)))
+        else:
+            geometry = sla.sqrtm(np.cov(deviations, rowvar=False)).real
 
-        self.uncertainty_set_ = UncertaintySet(k=k, sigma=sigma)
+        self.uncertainty_set_ = UncertaintySet(radius=radius, geometry=geometry, norm=2)
         return self

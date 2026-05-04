@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from enum import auto
 from functools import cached_property
 from typing import Literal, NamedTuple
 
@@ -15,8 +16,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import scipy.linalg as sc_linalg
-from scipy import stats as sp_stats
+import scipy.stats as scs
 
 from skfolio.factor_model._family_constraint_basis import FamilyConstraintBasis
 from skfolio.factor_model.attribution import (
@@ -41,20 +41,29 @@ from skfolio.utils.stats import (
     safe_cholesky,
     safe_divide,
 )
+from skfolio.utils.tools import AutoEnum
 
-__all__ = ["FactorModel"]
+__all__ = ["CSWeighting", "FactorModel"]
+
+
+class CSWeighting(AutoEnum):
+    """Cross-sectional weighting."""
+
+    BENCHMARK = auto()
+    REGRESSION = auto()
+    INVERSE_IDIO_VARIANCE = auto()
+    IDENTITY = auto()
 
 
 @dataclass(frozen=True, eq=False)
 class FactorModel:
     r"""Factor model decomposition of asset returns.
 
-    Holds the loading matrix, factor moments and idiosyncratic covariance,
-    together with the optional time series of exposures, factor returns
-    and idiosyncratic returns. Exposes a factor-structured covariance
-    square root, the factor-orthogonal residual covariance and basis,
-    plus cross-sectional regression diagnostics, idiosyncratic-calibration
-    metrics and factor attribution when the relevant fields are populated.
+    Holds the loading matrix, factor moments and idiosyncratic covariance, together with
+    the optional time series of exposures, factor returns and idiosyncratic returns.
+    Exposes a factor-structured covariance square root, plus cross-sectional regression
+    diagnostics, idiosyncratic-calibration metrics and factor attribution when the
+    relevant fields are populated.
 
     Produced by factor-model prior estimators:
 
@@ -203,7 +212,7 @@ class FactorModel:
         families: str | list[str] | None = None,
         annualization_factor: float = 252.0,
         stability_step: int = 21,
-        stability_weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        stability_cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
         t_stat_threshold: float = 2.0,
     ) -> pd.DataFrame:
         r"""Summary statistics for the factor model.
@@ -241,8 +250,9 @@ class FactorModel:
             stability coefficient (e.g., 21 for approximately monthly stability with
             daily data).
 
-        stability_weighting : "benchmark", "regression", or None, default="benchmark"
-            Cross-sectional weights for the stability computation.
+        stability_cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
+            Cross-sectional weights for the stability computation. Falls back
+            to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         t_stat_threshold : float, default=2.0
             Absolute t-statistic threshold for the exceedance rate.
@@ -326,7 +336,7 @@ class FactorModel:
             is_constant = np.nanmax(cs_var, axis=0) < 1e-12
             if n_observations > stability_step:
                 stability_ts = self._exposure_stability(
-                    exposures, step=stability_step, weighting=stability_weighting
+                    exposures, step=stability_step, cs_weighting=stability_cs_weighting
                 )
                 stability_ts[:, is_constant] = 1.0
                 stability = np.nanmedian(stability_ts, axis=0)
@@ -448,89 +458,6 @@ class FactorModel:
         return CovarianceSqrt(
             components=(systematic, safe_cholesky(self.idio_covariance)),
         )
-
-    @cached_property
-    def orthogonal_inflation(self) -> FloatArray:
-        r"""Factor-orthogonal covariance inflation matrix.
-
-        Symmetric positive semi-definite matrix used to inflate the asset covariance in
-        directions the factor model cannot reach,
-        :math:`\Sigma \mapsto \Sigma + \tau\, M`, with closed form
-
-        .. math::
-
-            M \;=\; W^{-1} \;-\; B\,(B^\top W B)^{-1} B^\top
-                \;=\; W^{-1/2}\,(I - P)\,W^{-1/2},
-
-        where :math:`B` is the loading matrix, :math:`P` is the orthogonal projector
-        onto the whitened loading :math:`W^{1/2} B`, and :math:`W` is the regression
-        weighting matrix: the last observation of `regression_weights` when available,
-        otherwise the inverse idiosyncratic variance :math:`D^{-1}`.
-
-        For any portfolio :math:`w`, :math:`w^\top M w` is the squared content of
-        :math:`w` in the factor-orthogonal subspace: zero on factor-mimicking portfolios
-        :math:`w = W B \alpha`, positive otherwise. With the default :math:`W = D^{-1}`,
-        :math:`M = D - B(B^\top D^{-1} B)^{-1} B^\top`.
-
-        Returns
-        -------
-        M : ndarray of shape (n_assets, n_assets)
-            Positive semi-definite matrix with rank at most
-            :math:`n_{\mathrm{assets}} - n_{\mathrm{factors\_effective}}`.
-        """
-        weight_inv_sqrt, projector = self._orthogonal_projector
-        m = weight_inv_sqrt @ projector @ weight_inv_sqrt
-        m = (m + m.T) / 2.0
-        eigvals, eigvecs = np.linalg.eigh(m)
-        eigvals = np.maximum(eigvals, 0.0)
-        m = eigvecs @ np.diag(eigvals) @ eigvecs.T
-        return m
-
-    @cached_property
-    def orthogonal_basis(self) -> FloatArray:
-        r"""Orthonormal basis of the orthogonal complement of the factor span.
-
-        Returns a matrix :math:`G \in \mathbb{R}^{n_{\mathrm{assets}} \times r}` whose
-        columns form an orthonormal basis (:math:`G^\top G = I`) of the subspace of
-        portfolios that are :math:`W`-orthogonal to the factor loadings:
-
-        .. math::
-
-            \{\, w \in \mathbb{R}^{n_{\mathrm{assets}}} \;:\;
-                B^\top W w = 0 \,\},
-
-        where :math:`B` is the loading matrix and :math:`W` is the regression weighting
-        matrix: the last observation of `regression_weights` when available, otherwise
-        the inverse idiosyncratic variance :math:`D^{-1}`.
-
-        Equivalently, every column of :math:`G` is :math:`W`-orthogonal to every column
-        of :math:`B`, so portfolios of the form :math:`G\beta` carry no factor exposure
-        under the regression weighting.
-
-        Returns
-        -------
-        G : ndarray of shape (n_assets, rank)
-            Orthonormal columns spanning the orthogonal complement of the factor span,
-            with `rank <= n_assets - n_factors_reduced`.
-        """
-        weight_inv_sqrt, projector = self._orthogonal_projector
-        n_assets = weight_inv_sqrt.shape[0]
-
-        ortho = weight_inv_sqrt @ projector
-        gram = ortho.T @ ortho
-        eigvals, eigvecs = np.linalg.eigh(gram)
-
-        abs_tol = n_assets * np.finfo(float).eps
-        rel_tol = n_assets * np.max(np.abs(eigvals)) * np.finfo(float).eps
-        keep = eigvals > max(abs_tol, rel_tol)
-
-        if not np.any(keep):
-            basis = np.zeros((n_assets, 0))
-        else:
-            basis = ortho @ eigvecs[:, keep]
-            basis, _ = np.linalg.qr(basis, mode="reduced")
-
-        return basis
 
     def select_assets(
         self, assets: ArrayLike | slice | None = None, slim: bool = False
@@ -1072,7 +999,7 @@ class FactorModel:
         -------
         fig : go.Figure
         """
-        expected_rate = 2 * sp_stats.norm.sf(threshold)
+        expected_rate = 2 * scs.norm.sf(threshold)
         return _plot_single_ts(
             self.idio_tail_rate(threshold=threshold),
             title=title or f"abs(standardized idio returns) > {threshold}",
@@ -1588,7 +1515,7 @@ class FactorModel:
         self,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
-        weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
     ) -> FloatArray:
         """Time-average pairwise correlation matrix of factor exposures.
 
@@ -1606,11 +1533,9 @@ class FactorModel:
             Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
-        weighting : "benchmark", "regression", or None, default="benchmark"
-            Cross-sectional weights for the correlation computation. `"benchmark"` uses
-            benchmark weights, `"regression"`  uses regression weights, and `None` uses
-            equal weights. Falls back to equal weights when the requested weights are
-            not stored.
+        cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
+            Cross-sectional weights for the correlation computation. Falls back
+            to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         Returns
         -------
@@ -1620,7 +1545,11 @@ class FactorModel:
         self._require("exposures", "exposure_correlation")
         factor_indices, _ = self._resolve_factor_subset(factors, families)
         exposures = self.exposures[:, :, factor_indices]
-        weights = self._resolve_weighting(weighting)
+        weights = self._resolve_cs_weighting(
+            cs_weighting,
+            latest=False,
+            fallback_cs_weighting=CSWeighting.IDENTITY,
+        )
         n_observations, _, n_factors = exposures.shape
 
         pairwise_corr = np.full((n_observations, n_factors, n_factors), np.nan)
@@ -1975,7 +1904,7 @@ class FactorModel:
         self,
         factors: list[str] | None = None,
         families: str | list[str] | None = "style",
-        weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
         title: str | None = None,
     ) -> go.Figure:
         """Cross-sectional standard deviation of exposures over time.
@@ -1996,11 +1925,9 @@ class FactorModel:
             Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
-        weighting : "benchmark", "regression", or None, default="benchmark"
-            Cross-sectional weights for the std computation. `"benchmark"` uses
-            benchmark weights, `"regression"` uses regression weights, and `None` uses
-            equal weights. Falls back to equal weights when the requested weights are
-            not stored.
+        cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
+            Cross-sectional weights for the std computation. Falls back to
+            `CSWeighting.IDENTITY` with a warning when unavailable.
 
         title : str, optional
             Custom figure title.
@@ -2013,7 +1940,9 @@ class FactorModel:
 
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
         selected_exposures = self.exposures[:, :, factor_indices]
-        weights = self._resolve_weighting(weighting)
+        weights = self._resolve_cs_weighting(
+            cs_weighting, latest=False, fallback_cs_weighting=CSWeighting.IDENTITY
+        )
 
         finite_mask = np.isfinite(selected_exposures)
         if weights is None:
@@ -2048,7 +1977,7 @@ class FactorModel:
         factors: list[str] | None = None,
         families: str | list[str] | None = "style",
         step: int = 21,
-        weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
         title: str | None = None,
     ) -> go.Figure:
         r"""Weighted cross-sectional correlation of exposures between observation
@@ -2079,11 +2008,9 @@ class FactorModel:
             Number of observations between the two cross-sections being compared (e.g.,
             21 for approximately monthly stability with daily data).
 
-        weighting : "benchmark", "regression", or None, default="benchmark"
-            Cross-sectional weights for the correlation computation. `"benchmark"` uses
-            benchmark weights, `"regression"` uses regression weights, and `None` uses
-            equal weights. Falls back to equal weights when the requested weights are
-            not stored.
+        cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
+            Cross-sectional weights for the correlation computation. Falls back
+            to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         title : str, optional
             Custom figure title.
@@ -2103,7 +2030,9 @@ class FactorModel:
                 f"step={step}. Need at least {step + 1}."
             )
 
-        stability = self._exposure_stability(exposures, step=step, weighting=weighting)
+        stability = self._exposure_stability(
+            exposures, step=step, cs_weighting=cs_weighting
+        )
         df = pd.DataFrame(
             stability, index=self.observations[step:], columns=factor_names
         )
@@ -2120,7 +2049,7 @@ class FactorModel:
         self,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
-        weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
         title: str | None = None,
     ) -> go.Figure:
         """Time-average pairwise correlation heatmap of factor exposures.
@@ -2138,11 +2067,9 @@ class FactorModel:
             Factor families to include.  `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
-        weighting : "benchmark", "regression", or None, default="benchmark"
-            Cross-sectional weights for the correlation computation. `"benchmark"` uses
-            benchmark weights, `"regression"` uses regression weights, and `None` uses
-            equal weights. Falls back to equal weights when the requested weights are
-            not stored.
+        cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
+            Cross-sectional weights for the correlation computation. Falls back
+            to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         title : str, optional
             Custom figure title.
@@ -2153,7 +2080,7 @@ class FactorModel:
         """
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
         corr_avg = self.exposure_correlation(
-            factors=factors, families=families, weighting=weighting
+            factors=factors, families=families, cs_weighting=cs_weighting
         )
         fig = _heatmap(
             corr_avg,
@@ -2388,63 +2315,6 @@ class FactorModel:
 
     # Private helpers
     @cached_property
-    def _orthogonal_projector(self) -> tuple[FloatArray, FloatArray]:
-        r"""Whitened projector onto the orthogonal complement of the factor span.
-
-        Builds the shared block :math:`(W^{-1/2},\; I - P)` consumed by
-        :attr:`orthogonal_inflation` and :attr:`orthogonal_basis`.
-
-        The whitened loading matrix is :math:`\tilde B = W^{1/2} B`, where :math:`W` is
-        the regression weighting matrix:
-
-        * When `regression_weights` is provided, :math:`W` is the diagonal matrix built
-          from its last observation (most recent cross-sectional calibration).
-        * Otherwise, :math:`W = D^{-1}` is the inverse idiosyncratic variance: diagonal
-          when `idio_covariance` is stored as a vector,
-          and :math:`(\Sigma_u^{1/2})^{-1}` via the matrix square root when stored as a
-          full matrix.
-
-        :math:`P` is the orthogonal projector (in the standard inner product) onto
-        :math:`\mathrm{col}(\tilde B)`, computed from :math:`\tilde B`. :math:`I - P`
-        therefore projects onto the orthogonal complement of the whitened factor span.
-        Mapping back through :math:`W^{-1/2}` recovers the :math:`W`-orthogonal
-        complement in original asset coordinates.
-
-        Returns
-        -------
-        weight_inv_sqrt : ndarray of shape (n_assets, n_assets)
-            :math:`W^{-1/2}`. Maps quantities from whitened back to original asset
-            coordinates.
-
-        projector : ndarray of shape (n_assets, n_assets)
-            :math:`I - P`.
-        """
-        loading = self.effective_loading_matrix
-        n_assets = loading.shape[0]
-
-        regression_weights = (
-            None if self.regression_weights is None else self.regression_weights[-1]
-        )
-
-        if regression_weights is not None:
-            weight_inv_sqrt = np.diag(1.0 / np.sqrt(regression_weights))
-            whitened_loading = np.diag(np.sqrt(regression_weights)) @ loading
-        elif self.idio_covariance.ndim == 1:
-            weight_inv_sqrt = np.diag(np.sqrt(self.idio_covariance))
-            whitened_loading = np.diag(1.0 / np.sqrt(self.idio_covariance)) @ loading
-        else:
-            idio_sqrt = sc_linalg.sqrtm(self.idio_covariance).real
-            weight_inv_sqrt = idio_sqrt
-            whitened_loading = sc_linalg.inv(idio_sqrt) @ loading
-
-        orthonormal_factor_basis, _ = np.linalg.qr(whitened_loading, mode="reduced")
-        projector = (
-            np.eye(n_assets) - orthonormal_factor_basis @ orthonormal_factor_basis.T
-        )
-
-        return weight_inv_sqrt, projector
-
-    @cached_property
     def _gram_diagnostics(self) -> _GramDiagnostics:
         r"""Per-observation t-statistics, VIF, and condition number.
 
@@ -2558,15 +2428,75 @@ class FactorModel:
             return self.family_constraint_basis.n_factors_reduced
         return len(self.factor_names)
 
-    def _resolve_weighting(
-        self, weighting: Literal["benchmark", "regression"] | None
+    def _resolve_cs_weighting(
+        self,
+        cs_weighting: CSWeighting,
+        *,
+        latest: bool,
+        fallback_cs_weighting: CSWeighting | None = None,
     ) -> FloatArray | None:
-        """Return the requested weight array, or `None` for equal weights."""
-        if weighting == "benchmark":
-            return self.benchmark_weights
-        if weighting == "regression":
-            return self.regression_weights
-        return None
+        """Return cross-sectional weights, or `None` for equal weights."""
+        if not isinstance(cs_weighting, CSWeighting):
+            raise TypeError("`cs_weighting` must be a `CSWeighting`.")
+        if fallback_cs_weighting is not None and not isinstance(
+            fallback_cs_weighting, CSWeighting
+        ):
+            raise TypeError("`fallback_cs_weighting` must be a `CSWeighting`.")
+        if fallback_cs_weighting == cs_weighting:
+            fallback_cs_weighting = None
+
+        if cs_weighting == CSWeighting.IDENTITY:
+            return None
+
+        if cs_weighting == CSWeighting.BENCHMARK:
+            weights = self.benchmark_weights
+            name = "benchmark_weights"
+        elif cs_weighting == CSWeighting.REGRESSION:
+            weights = self.regression_weights
+            name = "regression_weights"
+        else:
+            if latest:
+                if self.idio_covariance.ndim == 1:
+                    idio_variance = self.idio_covariance
+                else:
+                    idio_variance = np.diag(self.idio_covariance)
+            else:
+                idio_variance = self.idio_variances
+                if idio_variance is None:
+                    raise ValueError(
+                        "`cs_weighting=CSWeighting.INVERSE_IDIO_VARIANCE` with "
+                        "`latest=False` requires `idio_variances`."
+                    )
+            if np.any(idio_variance <= 0):
+                raise ValueError(
+                    "Idiosyncratic variances must be positive for "
+                    "`cs_weighting=CSWeighting.INVERSE_IDIO_VARIANCE`."
+                )
+            weights = 1.0 / idio_variance
+            name = "idio_covariance" if latest else "idio_variances"
+
+        if weights is None:
+            if fallback_cs_weighting is not None:
+                warnings.warn(
+                    f"`cs_weighting=CSWeighting.{cs_weighting.name}` requires "
+                    f"`{name}`, which is not available. Falling back to "
+                    f"`CSWeighting.{fallback_cs_weighting.name}`.",
+                    stacklevel=2,
+                )
+                return self._resolve_cs_weighting(fallback_cs_weighting, latest=latest)
+            raise ValueError(
+                f"`cs_weighting=CSWeighting.{cs_weighting.name}` requires `{name}`."
+            )
+
+        weights = np.asarray(weights, dtype=float)
+        if latest and weights.ndim == 2:
+            weights = weights[-1]
+        elif not latest and weights.ndim == 1:
+            weights = np.broadcast_to(
+                weights, (len(self.observations), len(self.asset_names))
+            )
+
+        return weights
 
     def _ic(
         self,
@@ -2665,7 +2595,7 @@ class FactorModel:
         self,
         exposures: FloatArray,
         step: int = 21,
-        weighting: Literal["benchmark", "regression"] | None = "benchmark",
+        cs_weighting: CSWeighting = CSWeighting.BENCHMARK,
     ) -> FloatArray:
         r"""Weighted cross-sectional correlation of exposures between observation
         :math:`t` and :math:`t + \text{step}`.
@@ -2678,21 +2608,21 @@ class FactorModel:
         step : int, default=21
             Number of observations between the two cross-sections.
 
-        weighting : "benchmark", "regression", or None, default="benchmark"
+        cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
             Cross-sectional weights passed to :func:`cs_weighted_correlation`.
+            Falls back to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         Returns
         -------
         stability : ndarray of shape (n_observations - step, n_selected_factors)
         """
-        weights = self._resolve_weighting(weighting)
+        weights = self._resolve_cs_weighting(
+            cs_weighting, latest=False, fallback_cs_weighting=CSWeighting.IDENTITY
+        )
         if weights is not None:
             weights = weights[:-step]
         return cs_weighted_correlation(
-            exposures[:-step],
-            exposures[step:],
-            weights=weights,
-            axis=1,
+            exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
     def _attribution_inputs(

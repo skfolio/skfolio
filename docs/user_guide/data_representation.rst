@@ -1,28 +1,22 @@
+.. _asset_data_representation:
 .. _missing_data:
 
-************
-Missing Data
-************
+*************************
+Asset Data Representation
+*************************
 
-Financial datasets often contain missing returns and changing asset universes. Over a
-given history, assets can:
+The choice of data structure, data container and missing-data handling matters
+for portfolio workflows, cross-sectional factor models and alpha pipelines. This page discusses the main
+choices, their trade-offs and the convention used by `skfolio`.
 
-* enter the investment universe (e.g. new listing)
-* leave the investment universe (e.g. delisting, default, expiry)
-* remain in the universe while having missing observations on some dates (e.g.
-  holidays, trading interruptions, missing quotes)
+Wide and Long Format
+====================
 
-Each source of missingness has different modelling implications. The right treatment
-depends on the modelling choice and on what the downstream estimators support. A poor
-choice can introduce bias, including universe-selection bias, survivorship bias,
-non-synchronous trading bias or imputation bias.
+Asset data (e.g. market data, fundamental data) can be represented in either wide
+or long format.
 
-Data Representation
-===================
-
-Asset data (e.g. prices, returns) is commonly represented in either wide or long format.
-
-In **wide format**, observations index the rows and assets index the columns.
+In **wide format**, each field is stored as a date-by-asset matrix, with dates as
+rows and assets as columns. A single field (e.g. returns) is a 2D table.
 Missingness is represented as NaNs:
 
 .. code-block:: text
@@ -31,58 +25,102 @@ Missingness is represented as NaNs:
     2024-01-01    0.01    0.02    NaN
     2024-01-02   -0.01    NaN     0.03
 
-In **long format**, each row represents a `(date, asset)` pair. Missingness can be
-represented either by a NaN or by the absence of a row:
+In **long format**, each row represents a `(date, asset)` pair. For a single field
+(e.g. returns), the values are stored in one column. Missingness can be represented
+either by a NaN or by the absence of a row:
 
 .. code-block:: text
 
-    date          asset   return
+    date          asset   returns
     2024-01-01    AAPL     0.01
     2024-01-01    MSFT     0.02
     2024-01-02    AAPL    -0.01
     2024-01-02    BMW      0.03
 
+With several fields, long format keeps the same `(date, asset)` rows and adds one
+column per field:
+
+.. code-block:: text
+
+    date          asset   returns   volume   industry
+    2024-01-01    AAPL      0.01      1200    tech
+    2024-01-01    MSFT      0.02       900    tech
+    2024-01-02    AAPL     -0.01       NaN    tech
+    2024-01-02    BMW       0.03       700    auto
+
+In wide format, the multi-field case is less direct and discussed below.
+
 Both representations have trade-offs and serve different purposes.
 
-Long format is often convenient for storage, database queries, joins, filtering and can
-be more memory efficient when the universe changes through time. It can also naturally
-distinguish a missing return for an asset that belongs to the universe, represented by
-a NaN, from an asset that is not in the universe, represented by the absence of a row.
+Long format is often convenient for storage, database queries, joins, filtering and are
+more memory efficient when the universe changes through time. It can also naturally
+distinguish a missing data for an asset that belongs to the universe (e.g. holidays),
+represented by a NaN, from an asset that is not in the universe (e.g. delisting),
+represented by the absence of a row.
 
-The drawback is that most estimators do not directly consume long-format data.
-When they do (e.g. ML alpha prediction with one row per `(date, asset)` observation and
-one column per feature), they often sit in the middle of the pipeline.
-Before them, the data usually needs time-aware and/or cross-sectional transformation
-(e.g. cross-sectional z-scores, ranking, winsorization, factor neutralization)
-After them, their outputs usually need to be time and asset aligned again for risk
-estimation, portfolio optimization and evaluation.
+The drawback is that most estimators in an end-to-end quant pipeline do not directly
+consume long-format data. When they do (e.g. ML alpha prediction treating each
+`(date, asset)` pair as one sample with one column per feature), they often sit in
+the middle of the pipeline. Before them, the data usually needs time-aware and/or
+cross-sectional transformations (e.g. cross-sectional z-scores, ranking,
+winsorization, time-series estimates, factor neutralization). After them, their
+outputs usually need to be time and asset aligned again for risk estimation,
+portfolio optimization and evaluation. Many steps would need to handle date group-by,
+pivoting, reindexing and asset alignment internally before the data can be used. These
+transformations add overhead and code complexity and they increase the risk of indexing
+mistakes, either on the time index, which can introduce look-ahead bias, or on the asset
+index. They also make cross-validation and hyper-parameter tuning more complex when the
+whole workflow must remain time-aware.
 
-For this reason, the full pipeline is often better represented by wide arrays, even
-when one intermediate estimator uses long-format data internally. Otherwise, many
-steps would need to handle date group-by, pivoting, reindexing and asset alignment
-internally before the data can be used. These transformations add overhead and
-complexity and they increase the risk of indexing mistakes, either on the time index,
-which can introduce look-ahead bias, or on the asset index. They also make
-cross-validation and hyper-parameter tuning more complex, because the whole workflow
-must often remain time-aware.
-
-`skfolio` is opinionated and follows the wide format convention.
-
-Wide format may use more memory when the universe changes through time, because assets
-that are not present at a given date are represented by NaNs. For example, if an index
-universe changes by about 2% per year, a 10-year history carries roughly 20%
-additional cells for assets that were not present during the full period. In return,
+On the contrary, wide format uses more memory when the universe changes through time,
+because assets that are not present at a given date are represented by NaNs. For example,
+if an universe changes by about 2% per year, a 10-year history carries roughly 20%
+additional entries for assets that were not present during the full period. In return,
 wide format keeps the data in a dense `date × asset` representation expected by most
-estimators. This allows vectorized implementations to operate on already-aligned arrays,
-avoids repeated date group-by, pivoting and reindexing, simplifies cross-validation and
-hyper-parameter tuning, and reduces asset-alignment errors.
+transformers and estimators. This allows vectorized implementations to operate on
+already-aligned arrays, avoids repeated date group-by, pivoting and reindexing,
+simplifies cross-validation and hyper-parameter tuning and reduces asset-alignment
+errors.
+
+
+`skfolio` is opinionated and follows the wide-format convention because it often provides
+a worthwhile trade-off: higher memory usage, which is cheap for typical use cases,
+in exchange for improved computational efficiency, simpler code and clearer temporal
+and asset alignment.
+
+One challenge is representing the multi-field case in wide format. Several choices
+are possible, such as a 3D array, xarray object, DataFrame with MultiIndex columns,
+or dictionary of 2D arrays. However, these choices are not optimal for portfolio workflows:
+they either lack field metadata, require repeated expensive reindexing, don't handle
+zero-copy views or expose a suboptimal API for this use case.
+
+For this reason, `skfolio` developed :class:`~skfolio.containers.AssetPanel`, a
+dedicated container for aligned cross-sectional asset data. It keeps the wide layout,
+stores field metadata, supports categorical and tensor fields, and keeps masks
+aligned with the data. See :class:`~skfolio.containers.AssetPanel` for details.
+
+Missing Data and Changing Universes
+===================================
+
+Financial datasets often contain missing returns and changing asset universes. Over a
+given history, assets can:
+
+* enter the investment universe (e.g. new listing)
+* leave the investment universe (e.g. delisting, default, expiry)
+* remain in the universe while having missing data on some dates (e.g. holidays,
+trading interruptions, missing quotes)
+
+Each source of missingness has different modelling implications. The right treatment
+depends on the modelling choice and on what the downstream estimators support. A poor
+choice can introduce bias, including universe-selection bias, survivorship bias,
+non-synchronous trading bias or imputation bias.
 
 Because wide format can encode distinct data states with the same NaN marker,
 `skfolio` uses explicit conventions to distinguish:
 
-* missing observations for assets that belong to the universe
-* assets that are outside the universe at a given date
-* assets that are in the universe but not yet investable
+* missing data for assets that belong to the universe (e.g. holidays)
+* assets that are outside the universe at a given date (e.g. new listing, delisting)
+* assets that are in the universe but not yet investable (e.g. not enough estimation data)
 
 `skfolio` provides two main ways to handle missing data:
 

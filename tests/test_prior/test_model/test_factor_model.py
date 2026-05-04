@@ -12,7 +12,7 @@ from skfolio.factor_model._family_constraint_basis import (
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.prior import FactorModel, ReturnDistribution
+from skfolio.prior import CSWeighting, FactorModel, ReturnDistribution
 from skfolio.utils.stats import cs_weighted_correlation
 
 
@@ -229,7 +229,7 @@ class TestDataFrameAccessors:
 
 class TestSummary:
     def test_shape_and_columns(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert isinstance(df, pd.DataFrame)
         assert df.shape[0] == 4
         assert set(df.columns) == _SUMMARY_COLUMNS
@@ -239,46 +239,50 @@ class TestSummary:
             factor_model_no_ts.summary()
 
     def test_annualized_stats(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert df["annualized_vol"].gt(0).all()
         assert df["annualized_sharpe"].notna().all()
 
     def test_autocorrelation_in_range(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert (df["autocorrelation"] >= -1.0).all()
         assert (df["autocorrelation"] <= 1.0).all()
 
     def test_mean_abs_t_stat_positive(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         valid = df["mean_abs_t_stat"].dropna()
         assert (valid >= 0).all()
 
     def test_t_stat_exceedance_rate_in_unit_interval(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         valid = df["t_stat_exceedance_rate"].dropna()
         assert (valid >= 0).all()
         assert (valid <= 1).all()
 
     def test_custom_t_stat_threshold(self, factor_model):
-        df_low = factor_model.summary(t_stat_threshold=1.0)
-        df_high = factor_model.summary(t_stat_threshold=3.0)
+        df_low = factor_model.summary(
+            t_stat_threshold=1.0, stability_cs_weighting=CSWeighting.IDENTITY
+        )
+        df_high = factor_model.summary(
+            t_stat_threshold=3.0, stability_cs_weighting=CSWeighting.IDENTITY
+        )
         valid_low = df_low["t_stat_exceedance_rate"].dropna()
         valid_high = df_high["t_stat_exceedance_rate"].dropna()
         assert (valid_low >= valid_high).all()
 
     def test_mean_vif_at_least_one(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         valid = df["mean_vif"].dropna()
         assert (valid >= 1.0 - 1e-6).all()
 
     def test_stability_in_correlation_range(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         valid = df["stability"].dropna()
         assert (valid >= -1.0).all()
         assert (valid <= 1.0).all()
 
     def test_coverage_in_unit_interval(self, factor_model):
-        df = factor_model.summary()
+        df = factor_model.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert (df["coverage"] >= 0).all()
         assert (df["coverage"] <= 1).all()
 
@@ -315,7 +319,7 @@ class TestSummary:
             idio_variances=None,
             regression_weights=reg_w,
         )
-        df = fm.summary()
+        df = fm.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert (df["coverage"] == 1.0).all()
 
         fm_no_w = FactorModel(
@@ -333,18 +337,27 @@ class TestSummary:
             idio_returns=ir,
             idio_variances=None,
         )
-        assert (fm_no_w.summary()["coverage"] == 1.0).all()
+        assert (
+            fm_no_w.summary(stability_cs_weighting=CSWeighting.IDENTITY)["coverage"]
+            == 1.0
+        ).all()
 
     def test_custom_stability_step(self, factor_model):
-        df = factor_model.summary(stability_step=5)
+        df = factor_model.summary(
+            stability_step=5, stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert df["stability"].notna().any()
 
     def test_step_too_large_returns_nan_stability(self, factor_model):
-        df = factor_model.summary(stability_step=100)
+        df = factor_model.summary(
+            stability_step=100, stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert df["stability"].isna().all()
 
     def test_families_filter(self, factor_model_with_families):
-        df = factor_model_with_families.summary(families="style")
+        df = factor_model_with_families.summary(
+            families="style", stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert df.shape[0] == 3
         assert list(df.index) == ["factor_0", "factor_1", "factor_2"]
 
@@ -357,23 +370,31 @@ class TestSummary:
             self,
             exposures,
             step=21,
-            weighting="benchmark",
+            cs_weighting=CSWeighting.BENCHMARK,
         ):
             captured["n_factors"] = exposures.shape[2]
             return np.zeros((exposures.shape[0] - step, exposures.shape[2]))
 
         monkeypatch.setattr(FactorModel, "_exposure_stability", fake_exposure_stability)
 
-        factor_model.summary(factors=["factor_0", "factor_2"])
+        factor_model.summary(
+            factors=["factor_0", "factor_2"],
+            stability_cs_weighting=CSWeighting.IDENTITY,
+        )
 
         assert captured["n_factors"] == 2
 
     def test_families_none_returns_all(self, factor_model_with_families):
-        df = factor_model_with_families.summary(families=None)
+        df = factor_model_with_families.summary(
+            families=None, stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert df.shape[0] == 5
 
     def test_families_list(self, factor_model_with_families):
-        df = factor_model_with_families.summary(families=["style", "country"])
+        df = factor_model_with_families.summary(
+            families=["style", "country"],
+            stability_cs_weighting=CSWeighting.IDENTITY,
+        )
         assert df.shape[0] == 4
 
     def test_families_unknown_raises(self, factor_model_with_families):
@@ -385,16 +406,26 @@ class TestSummary:
             factor_model.summary(families="style")
 
     def test_stability_weighting(self, factor_model_with_weights):
-        df_bmk = factor_model_with_weights.summary(stability_weighting="benchmark")
-        df_eq = factor_model_with_weights.summary(stability_weighting=None)
+        df_bmk = factor_model_with_weights.summary(
+            stability_cs_weighting=CSWeighting.BENCHMARK
+        )
+        df_eq = factor_model_with_weights.summary(
+            stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert not np.allclose(
             df_bmk["stability"].values,
             df_eq["stability"].values,
             atol=1e-6,
         )
 
+    def test_stability_default_warns_when_benchmark_missing(self, factor_model):
+        with pytest.warns(UserWarning, match="Falling back"):
+            factor_model.summary()
+
     def test_gram_diagnostics_with_basis(self, factor_model_with_basis):
-        df = factor_model_with_basis.summary(families=None)
+        df = factor_model_with_basis.summary(
+            families=None, stability_cs_weighting=CSWeighting.IDENTITY
+        )
         assert df.shape[0] == 5
         gram_names = set(factor_model_with_basis._reduced_factor_names)
         for name in df.index:
@@ -729,20 +760,27 @@ class TestPlotFactorVolatilities:
 # ------------------------------------------------------------------
 class TestPlotExposureDispersion:
     def test_returns_figure(self, factor_model):
-        fig = factor_model.plot_exposure_dispersion(families=None)
+        with pytest.warns(UserWarning, match="Falling back"):
+            fig = factor_model.plot_exposure_dispersion(families=None)
         assert isinstance(fig, go.Figure)
 
     def test_factor_subset(self, factor_model):
-        fig = factor_model.plot_exposure_dispersion(factors=["factor_0", "factor_1"])
+        fig = factor_model.plot_exposure_dispersion(
+            factors=["factor_0", "factor_1"], cs_weighting=CSWeighting.IDENTITY
+        )
         assert len(fig.data) == 2
 
     def test_families_filter(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_exposure_dispersion(families="style")
+        fig = factor_model_with_families.plot_exposure_dispersion(
+            families="style", cs_weighting=CSWeighting.IDENTITY
+        )
         assert len(fig.data) == 3
 
     def test_factors_overrides_families(self, factor_model_with_families):
         fig = factor_model_with_families.plot_exposure_dispersion(
-            factors=["factor_3"], families="style"
+            factors=["factor_3"],
+            families="style",
+            cs_weighting=CSWeighting.IDENTITY,
         )
         assert len(fig.data) == 1
 
@@ -767,8 +805,12 @@ class TestPlotExposureDispersion:
             benchmark_weights=benchmark_weights,
         )
 
-        fig_bmk = fm.plot_exposure_dispersion(families=None, weighting="benchmark")
-        fig_eq = fm.plot_exposure_dispersion(families=None, weighting=None)
+        fig_bmk = fm.plot_exposure_dispersion(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
+        fig_eq = fm.plot_exposure_dispersion(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
 
         for trace_bmk, trace_eq in zip(fig_bmk.data, fig_eq.data, strict=True):
             np.testing.assert_allclose(trace_bmk.y, trace_eq.y, atol=1e-12)
@@ -776,15 +818,20 @@ class TestPlotExposureDispersion:
 
 class TestPlotExposureStability:
     def test_returns_figure(self, factor_model):
-        fig = factor_model.plot_exposure_stability(families=None)
+        with pytest.warns(UserWarning, match="Falling back"):
+            fig = factor_model.plot_exposure_stability(families=None)
         assert isinstance(fig, go.Figure)
 
     def test_factor_subset(self, factor_model):
-        fig = factor_model.plot_exposure_stability(factors=["factor_0", "factor_1"])
+        fig = factor_model.plot_exposure_stability(
+            factors=["factor_0", "factor_1"], cs_weighting=CSWeighting.IDENTITY
+        )
         assert len(fig.data) == 2
 
     def test_custom_step(self, factor_model):
-        fig = factor_model.plot_exposure_stability(families=None, step=5)
+        fig = factor_model.plot_exposure_stability(
+            families=None, step=5, cs_weighting=CSWeighting.IDENTITY
+        )
         assert isinstance(fig, go.Figure)
 
     def test_step_too_large_raises(self, factor_model):
@@ -792,7 +839,9 @@ class TestPlotExposureStability:
             factor_model.plot_exposure_stability(families=None, step=100)
 
     def test_with_regression_weights(self, factor_model_with_weights):
-        fig = factor_model_with_weights.plot_exposure_stability(families=None)
+        fig = factor_model_with_weights.plot_exposure_stability(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         assert isinstance(fig, go.Figure)
 
     def test_requires_exposures(self, factor_model_no_ts):
@@ -800,35 +849,46 @@ class TestPlotExposureStability:
             factor_model_no_ts.plot_exposure_stability()
 
     def test_families_filter(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_exposure_stability(families="style")
+        fig = factor_model_with_families.plot_exposure_stability(
+            families="style", cs_weighting=CSWeighting.IDENTITY
+        )
         assert len(fig.data) == 3
 
 
 class TestPlotExposureCorrelation:
     def test_returns_figure(self, factor_model):
-        fig = factor_model.plot_exposure_correlation(families=None)
+        with pytest.warns(UserWarning, match="Falling back"):
+            fig = factor_model.plot_exposure_correlation(families=None)
         assert isinstance(fig, go.Figure)
 
     def test_factor_subset(self, factor_model):
-        fig = factor_model.plot_exposure_correlation(factors=["factor_0", "factor_1"])
+        fig = factor_model.plot_exposure_correlation(
+            factors=["factor_0", "factor_1"], cs_weighting=CSWeighting.IDENTITY
+        )
         assert isinstance(fig, go.Figure)
 
     def test_families_filter(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_exposure_correlation(families="style")
+        fig = factor_model_with_families.plot_exposure_correlation(
+            families="style", cs_weighting=CSWeighting.IDENTITY
+        )
         assert isinstance(fig, go.Figure)
 
     def test_family_outlines(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_exposure_correlation()
+        fig = factor_model_with_families.plot_exposure_correlation(
+            cs_weighting=CSWeighting.IDENTITY
+        )
         rects = [s for s in fig.layout.shapes if s.type == "rect"]
         assert len(rects) == 3
 
     def test_no_outline_single_family(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_exposure_correlation(families="style")
+        fig = factor_model_with_families.plot_exposure_correlation(
+            families="style", cs_weighting=CSWeighting.IDENTITY
+        )
         rects = [s for s in fig.layout.shapes if s.type == "rect"]
         assert len(rects) == 0
 
     def test_no_outline_without_families(self, factor_model):
-        fig = factor_model.plot_exposure_correlation()
+        fig = factor_model.plot_exposure_correlation(cs_weighting=CSWeighting.IDENTITY)
         assert len(fig.layout.shapes) == 0
 
     def test_no_outline_non_contiguous_families(self):
@@ -836,25 +896,32 @@ class TestPlotExposureCorrelation:
             n_factors=4,
             factor_families=["style", "industry", "style", "industry"],
         )
-        fig = fm.plot_exposure_correlation()
+        fig = fm.plot_exposure_correlation(cs_weighting=CSWeighting.IDENTITY)
         assert len(fig.layout.shapes) == 0
 
     def test_plot_matches_exposure_correlation(self, factor_model):
-        fig = factor_model.plot_exposure_correlation(families=None)
+        fig = factor_model.plot_exposure_correlation(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         z = np.asarray(fig.data[0].z, dtype=float)
-        expected = factor_model.exposure_correlation(families=None)
+        expected = factor_model.exposure_correlation(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
 
 class TestExposureCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
-        corr = factor_model.exposure_correlation(families=None)
+        with pytest.warns(UserWarning, match="Falling back"):
+            corr = factor_model.exposure_correlation(families=None)
         assert corr.shape == (len(factor_model.factor_names),) * 2
         np.testing.assert_allclose(corr, corr.T, atol=1e-12)
         np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-12)
 
     def test_factor_subset(self, factor_model):
-        corr = factor_model.exposure_correlation(factors=["factor_0", "factor_1"])
+        corr = factor_model.exposure_correlation(
+            factors=["factor_0", "factor_1"], cs_weighting=CSWeighting.IDENTITY
+        )
         assert corr.shape == (2, 2)
 
     def test_requires_exposures(self, factor_model_no_ts):
@@ -886,7 +953,9 @@ class TestExposureCorrelation:
             ]
         )
 
-        corr = fm.exposure_correlation(families=None, weighting="benchmark")
+        corr = fm.exposure_correlation(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
 
         np.testing.assert_allclose(corr[0, 1], expected, atol=1e-12)
         np.testing.assert_allclose(corr[1, 0], expected, atol=1e-12)
@@ -988,22 +1057,38 @@ class TestPlotIdioVolResidualDependence:
 
 
 class TestWeightingParameter:
-    """Verify that the `weighting` parameter correctly selects benchmark,
-    regression, or equal weights for exposure diagnostics."""
+    """Verify that `cs_weighting` selects the expected exposure weights."""
 
-    def test_resolve_weighting_benchmark(self, factor_model_with_weights):
+    def test_resolve_cs_weighting_benchmark(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        w = fm._resolve_weighting("benchmark")
+        w = fm._resolve_cs_weighting(CSWeighting.BENCHMARK, latest=False)
         assert w is fm.benchmark_weights
 
-    def test_resolve_weighting_regression(self, factor_model_with_weights):
+    def test_resolve_cs_weighting_regression(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        w = fm._resolve_weighting("regression")
+        w = fm._resolve_cs_weighting(CSWeighting.REGRESSION, latest=False)
         assert w is fm.regression_weights
 
-    def test_resolve_weighting_none(self, factor_model_with_weights):
+    def test_resolve_cs_weighting_identity(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        assert fm._resolve_weighting(None) is None
+        assert fm._resolve_cs_weighting(CSWeighting.IDENTITY, latest=False) is None
+
+    def test_resolve_cs_weighting_inverse_idio_variance_panel(self, factor_model):
+        weights = factor_model._resolve_cs_weighting(
+            CSWeighting.INVERSE_IDIO_VARIANCE, latest=False
+        )
+        np.testing.assert_allclose(weights, 1.0 / factor_model.idio_variances)
+
+    def test_resolve_cs_weighting_inverse_idio_variance_latest(self, factor_model):
+        weights = factor_model._resolve_cs_weighting(
+            CSWeighting.INVERSE_IDIO_VARIANCE, latest=True
+        )
+        np.testing.assert_allclose(weights, 1.0 / factor_model.idio_covariance)
+
+    def test_resolve_cs_weighting_inverse_idio_variance_panel_requires_series(self):
+        fm = _make_factor_model(with_time_series=False)
+        with pytest.raises(ValueError, match="idio_variances"):
+            fm._resolve_cs_weighting(CSWeighting.INVERSE_IDIO_VARIANCE, latest=False)
 
     @pytest.mark.parametrize("field_name", ["benchmark_weights", "regression_weights"])
     @pytest.mark.parametrize("bad_value", [np.nan, np.inf, -1.0])
@@ -1019,14 +1104,29 @@ class TestWeightingParameter:
         with pytest.raises(ValueError, match=field_name):
             replace(fm, **{field_name: weights})
 
-    def test_resolve_weighting_fallback_when_missing(self, factor_model):
-        assert factor_model._resolve_weighting("benchmark") is None
-        assert factor_model._resolve_weighting("regression") is None
+    def test_resolve_cs_weighting_raises_when_missing(self, factor_model):
+        with pytest.raises(ValueError, match="benchmark_weights"):
+            factor_model._resolve_cs_weighting(CSWeighting.BENCHMARK, latest=False)
+        with pytest.raises(ValueError, match="regression_weights"):
+            factor_model._resolve_cs_weighting(CSWeighting.REGRESSION, latest=False)
+
+    def test_resolve_cs_weighting_fallback_warns(self, factor_model):
+        with pytest.warns(UserWarning, match="Falling back"):
+            weights = factor_model._resolve_cs_weighting(
+                CSWeighting.BENCHMARK,
+                latest=False,
+                fallback_cs_weighting=CSWeighting.IDENTITY,
+            )
+        assert weights is None
 
     def test_correlation_weighted_vs_equal(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        fig_bmk = fm.plot_exposure_correlation(families=None, weighting="benchmark")
-        fig_eq = fm.plot_exposure_correlation(families=None, weighting=None)
+        fig_bmk = fm.plot_exposure_correlation(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
+        fig_eq = fm.plot_exposure_correlation(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         z_bmk = np.array(fig_bmk.data[0].z)
         z_eq = np.array(fig_eq.data[0].z)
         assert z_bmk.shape == z_eq.shape
@@ -1038,14 +1138,20 @@ class TestWeightingParameter:
 
     def test_correlation_symmetric(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        fig = fm.plot_exposure_correlation(families=None, weighting="benchmark")
+        fig = fm.plot_exposure_correlation(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
         z = np.array(fig.data[0].z)
         np.testing.assert_allclose(z, z.T, atol=1e-10)
 
     def test_dispersion_weighted_vs_equal(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        fig_bmk = fm.plot_exposure_dispersion(families=None, weighting="benchmark")
-        fig_eq = fm.plot_exposure_dispersion(families=None, weighting=None)
+        fig_bmk = fm.plot_exposure_dispersion(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
+        fig_eq = fm.plot_exposure_dispersion(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         y_bmk = np.array(fig_bmk.data[0].y, dtype=float)
         y_eq = np.array(fig_eq.data[0].y, dtype=float)
         assert not np.allclose(y_bmk, y_eq, atol=1e-6), (
@@ -1056,8 +1162,12 @@ class TestWeightingParameter:
 
     def test_stability_weighted_vs_equal(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        fig_bmk = fm.plot_exposure_stability(families=None, weighting="benchmark")
-        fig_eq = fm.plot_exposure_stability(families=None, weighting=None)
+        fig_bmk = fm.plot_exposure_stability(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
+        fig_eq = fm.plot_exposure_stability(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
         y_bmk = np.array(fig_bmk.data[0].y, dtype=float)
         y_eq = np.array(fig_eq.data[0].y, dtype=float)
         assert not np.allclose(y_bmk, y_eq, atol=1e-6), (
@@ -1066,13 +1176,15 @@ class TestWeightingParameter:
 
     def test_stability_regression_weighting(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        fig = fm.plot_exposure_stability(families=None, weighting="regression")
+        fig = fm.plot_exposure_stability(
+            families=None, cs_weighting=CSWeighting.REGRESSION
+        )
         assert isinstance(fig, go.Figure)
 
     def test_summary_stability_weighting(self, factor_model_with_weights):
         fm = factor_model_with_weights
-        df_bmk = fm.summary(stability_weighting="benchmark")
-        df_eq = fm.summary(stability_weighting=None)
+        df_bmk = fm.summary(stability_cs_weighting=CSWeighting.BENCHMARK)
+        df_eq = fm.summary(stability_cs_weighting=CSWeighting.IDENTITY)
         assert not np.allclose(
             df_bmk["stability"].values,
             df_eq["stability"].values,
@@ -1959,169 +2071,3 @@ class TestEffectiveLoadingMatrix:
         )
         reduced = fm.effective_loading_matrix
         assert reduced.shape == (n_assets, n_factors - 1)
-
-
-# ---------------------------------------------------------------------------
-# FactorModel.orthogonal_inflation
-# ---------------------------------------------------------------------------
-class TestOrthogonalInflation:
-    def test_is_psd(self):
-        rng = np.random.default_rng(7)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        eigvals = np.linalg.eigvalsh(fm.orthogonal_inflation)
-        assert np.all(eigvals >= -1e-14)
-
-    def test_is_symmetric(self):
-        rng = np.random.default_rng(8)
-        n, k = 6, 2
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        m = fm.orthogonal_inflation
-        np.testing.assert_array_almost_equal(m, m.T)
-
-    def test_rank(self):
-        n, k = 10, 3
-        rng = np.random.default_rng(9)
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        rank = np.linalg.matrix_rank(fm.orthogonal_inflation, tol=1e-10)
-        assert rank == n - k
-
-    def test_full_idio_matrix(self):
-        rng = np.random.default_rng(10)
-        n, k = 5, 2
-        loading = rng.standard_normal((n, k))
-        a = rng.standard_normal((n, n))
-        idio_full = a @ a.T + np.eye(n) * 0.1
-        fm = _make_minimal_factor_model(loading, idio_full)
-
-        m = fm.orthogonal_inflation
-        assert m.shape == (n, n)
-        eigvals = np.linalg.eigvalsh(m)
-        assert np.all(eigvals >= -1e-14)
-
-    def test_factor_portfolio_zero_penalty_d_fallback(self):
-        rng = np.random.default_rng(11)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        d_inv = np.diag(1.0 / idio)
-        w_factor = d_inv @ loading[:, 0]
-        w_factor /= np.linalg.norm(w_factor)
-        penalty = w_factor @ fm.orthogonal_inflation @ w_factor
-        np.testing.assert_almost_equal(penalty, 0, decimal=10)
-
-    def test_with_regression_weights(self):
-        rng = np.random.default_rng(12)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        reg_w = rng.uniform(0.5, 5.0, size=(1, n))
-        fm = _make_minimal_factor_model(loading, idio, regression_weights=reg_w)
-
-        eigvals = np.linalg.eigvalsh(fm.orthogonal_inflation)
-        assert np.all(eigvals >= -1e-14)
-
-    def test_regression_weights_vs_fallback_differ(self):
-        rng = np.random.default_rng(14)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        reg_w = rng.uniform(0.5, 5.0, size=(1, n))
-
-        fm_d = _make_minimal_factor_model(loading, idio)
-        fm_w = _make_minimal_factor_model(loading, idio, regression_weights=reg_w)
-
-        assert not np.allclose(
-            fm_d.orthogonal_inflation, fm_w.orthogonal_inflation, atol=1e-8
-        )
-
-    def test_is_cached(self):
-        rng = np.random.default_rng(15)
-        n, k = 6, 2
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        m1 = fm.orthogonal_inflation
-        m2 = fm.orthogonal_inflation
-        assert m1 is m2
-
-
-# ---------------------------------------------------------------------------
-# FactorModel.orthogonal_basis
-# ---------------------------------------------------------------------------
-class TestOrthogonalBasis:
-    def test_shape(self):
-        rng = np.random.default_rng(20)
-        n, k = 10, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        assert fm.orthogonal_basis.shape == (n, n - k)
-
-    def test_columns_are_orthonormal(self):
-        rng = np.random.default_rng(21)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        g = fm.orthogonal_basis
-        np.testing.assert_array_almost_equal(g.T @ g, np.eye(g.shape[1]))
-
-    def test_orthogonal_to_loading_d_fallback(self):
-        r"""Without regression_weights, :math:`G^\top D^{-1} B \approx 0`."""
-        rng = np.random.default_rng(22)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        d_inv = np.diag(1.0 / idio)
-        cross = fm.orthogonal_basis.T @ d_inv @ loading
-        np.testing.assert_array_almost_equal(cross, 0, decimal=10)
-
-    def test_orthogonal_to_loading_w_weighted(self):
-        r"""With regression_weights, :math:`G^\top W B \approx 0`."""
-        rng = np.random.default_rng(23)
-        n, k = 8, 3
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        reg_w = rng.uniform(0.5, 5.0, size=(1, n))
-        fm = _make_minimal_factor_model(loading, idio, regression_weights=reg_w)
-
-        w_diag = np.diag(reg_w[0])
-        cross = fm.orthogonal_basis.T @ w_diag @ loading
-        np.testing.assert_array_almost_equal(cross, 0, decimal=10)
-
-    def test_empty_when_full_rank(self):
-        rng = np.random.default_rng(24)
-        n = 5
-        loading = rng.standard_normal((n, n))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        assert fm.orthogonal_basis.shape == (n, 0)
-
-    def test_is_cached(self):
-        rng = np.random.default_rng(25)
-        n, k = 6, 2
-        loading = rng.standard_normal((n, k))
-        idio = rng.uniform(0.01, 0.1, size=n)
-        fm = _make_minimal_factor_model(loading, idio)
-
-        b1 = fm.orthogonal_basis
-        b2 = fm.orthogonal_basis
-        assert b1 is b2
