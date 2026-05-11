@@ -52,12 +52,12 @@ def concat(
     >>> panel_1 = AssetPanel(
     ...     fields={"returns": [[0.01, 0.02]]},
     ...     observations=["2024-01-01"],
-    ...     assets=["A", "B"],
+    ...     asset_names=["A", "B"],
     ... )
     >>> panel_2 = AssetPanel(
     ...     fields={"returns": [[0.03, 0.04]]},
     ...     observations=["2024-01-02"],
-    ...     assets=["A", "B"],
+    ...     asset_names=["A", "B"],
     ... )
     >>> concat([panel_1, panel_2])
     AssetPanel(n_observations=2, n_assets=2, n_fields=1)
@@ -102,7 +102,7 @@ def concat(
     return AssetPanel(
         fields=fields,
         observations=observations,
-        assets=reference_panel.assets.copy(),
+        asset_names=reference_panel.asset_names.copy(),
         active_mask=np.concatenate([panel.active_mask for panel in panel_list], axis=0),
         estimation_mask=np.concatenate(
             [panel.estimation_mask for panel in panel_list],
@@ -116,7 +116,7 @@ def _validate_concat_schema(
     *, reference_panel: AssetPanel, panel: AssetPanel, position: int
 ) -> None:
     """Validate non-concatenated axes and field schema for one panel."""
-    if not np.array_equal(panel.assets, reference_panel.assets):
+    if not np.array_equal(panel.asset_names, reference_panel.asset_names):
         raise ValueError(
             "All panels must have identical assets for observation-axis concat; "
             f"panel at position {position} differs."
@@ -153,6 +153,11 @@ def _validate_field_schema(
         raise TypeError(
             f"Field '{name}' has dtype {field.values.dtype} in panel at position "
             f"{position}; expected {reference_field.values.dtype}."
+        )
+    if field.inactive_policy != reference_field.inactive_policy:
+        raise ValueError(
+            f"Field '{name}' has inactive_policy={field.inactive_policy!r} in panel "
+            f"at position {position}; expected {reference_field.inactive_policy!r}."
         )
 
     if isinstance(reference_field, FieldCategorical):

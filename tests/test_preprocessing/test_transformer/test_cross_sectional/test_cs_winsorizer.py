@@ -57,13 +57,29 @@ class TestRegression:
         )
         assert np.isnan(transformed[0, 1])
 
-    def test_all_nan_row_raises(self):
+    def test_all_nan_row_returns_nan(self):
         X = np.array(
             [[1.0, np.nan, 3.0, 4.0, 100.0], [np.nan, np.nan, np.nan, np.nan, np.nan]]
         )
 
-        with pytest.raises(ValueError, match="estimation asset"):
-            CSWinsorizer(low=0.2, high=0.8).fit_transform(X)
+        transformed = CSWinsorizer(low=0.2, high=0.8).fit_transform(X)
+
+        expected_first_row = np.array([2.2, np.nan, 3.0, 4.0, 42.4])
+        np.testing.assert_allclose(
+            transformed[0, [0, 2, 3, 4]],
+            expected_first_row[[0, 2, 3, 4]],
+            rtol=1e-6,
+        )
+        assert np.isnan(transformed[0, 1])
+        assert np.all(np.isnan(transformed[1]))
+
+    def test_empty_estimation_universe_returns_nan(self):
+        X = np.array([[1.0, 2.0, 3.0, 4.0]])
+        cs_weights = np.zeros_like(X)
+
+        transformed = CSWinsorizer().fit_transform(X, cs_weights=cs_weights)
+
+        assert np.all(np.isnan(transformed))
 
 
 class TestProperties:

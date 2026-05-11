@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
@@ -13,6 +15,7 @@ from sklearn.utils.validation import FLOAT_DTYPES
 from skfolio.preprocessing._transformer._cross_sectional._base import BaseCSTransformer
 from skfolio.preprocessing._transformer._cross_sectional._utils import (
     _MAD_CONSISTENCY,
+    _mask_empty_cross_sections,
     _mask_non_estimation_values,
     _validate_cs_weights,
 )
@@ -153,9 +156,8 @@ class CSTanhShrinker(BaseCSTransformer):
         Raises
         ------
         ValueError
-            If `knee` is not finite or `<= 0`, `atol` is not finite or `< 0`, `X` is not
-            a non-empty 2D array, `cs_weights` is invalid, or any observation has no
-            estimation asset.
+            If `knee` is not finite or `<= 0`, `atol` is not finite or `< 0`, `X` is
+            not a non-empty 2D array, or `cs_weights` is invalid.
         """
         self._validate_params()
         X = skv.validate_data(
@@ -164,9 +166,13 @@ class CSTanhShrinker(BaseCSTransformer):
         cs_weights = _validate_cs_weights(X=X, cs_weights=cs_weights)
 
         X_estimation = _mask_non_estimation_values(X=X, cs_weights=cs_weights)
-
-        median = np.nanmedian(X_estimation, axis=1, keepdims=True)
-        mad = np.nanmedian(np.abs(X_estimation - median), axis=1, keepdims=True)
+        has_estimation_asset = np.isfinite(X_estimation).any(axis=1)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="All-NaN slice encountered", category=RuntimeWarning
+            )
+            median = np.nanmedian(X_estimation, axis=1, keepdims=True)
+            mad = np.nanmedian(np.abs(X_estimation - median), axis=1, keepdims=True)
 
         scale = _MAD_CONSISTENCY * mad
         half_width = scale * self.knee
@@ -177,4 +183,7 @@ class CSTanhShrinker(BaseCSTransformer):
         # NaNs in X propagate through tanh and are preserved.
         safe_hw = np.where(shrinkable, half_width, 1.0)
         z = (X - median) / safe_hw
-        return np.where(shrinkable, median + half_width * np.tanh(z), X)
+        return _mask_empty_cross_sections(
+            np.where(shrinkable, median + half_width * np.tanh(z), X),
+            has_estimation_asset,
+        )

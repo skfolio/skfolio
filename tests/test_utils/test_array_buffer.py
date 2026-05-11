@@ -13,6 +13,35 @@ class TestArrayBufferInit:
         assert len(g) == 0
         assert g.array is None
 
+    def test_init_with_values(self):
+        data = np.arange(12.0).reshape(3, 4)
+        g = _ArrayBuffer(data)
+        assert len(g) == 3
+        npt.assert_array_equal(g.array, data)
+
+    def test_init_with_values_copies_input(self):
+        data = np.array([[1.0, 2.0]])
+        g = _ArrayBuffer(data)
+        data[0, 0] = 99.0
+        npt.assert_array_equal(g.array, np.array([[1.0, 2.0]]))
+
+    def test_init_with_1d_input_preserves_shape(self):
+        g = _ArrayBuffer(np.array([1.0, 2.0, 3.0]))
+        assert len(g) == 3
+        assert g.array.shape == (3,)
+        npt.assert_array_equal(g.array, [1.0, 2.0, 3.0])
+
+    def test_init_with_empty_input(self):
+        g = _ArrayBuffer(np.empty((0, 2)))
+        assert len(g) == 0
+        assert g.array is None
+
+    def test_init_with_values_then_append(self):
+        g = _ArrayBuffer(np.array([[1.0, 2.0]]))
+        g.append(np.array([[3.0, 4.0]]))
+        assert len(g) == 2
+        npt.assert_array_equal(g.array, np.array([[1.0, 2.0], [3.0, 4.0]]))
+
     def test_repr_empty(self):
         g = _ArrayBuffer()
         assert repr(g) == "_ArrayBuffer(empty)"
@@ -92,11 +121,18 @@ class TestArrayBufferAppend:
         with pytest.raises(ValueError, match="dtype mismatch"):
             g.append(np.array([[1.5, 2.5]], dtype=np.float64))
 
-    def test_1d_input_promoted_to_2d(self):
+    def test_1d_input_preserves_shape(self):
         g = _ArrayBuffer()
         g.append(np.array([1.0, 2.0, 3.0]))
-        assert g.array.shape == (1, 3)
-        npt.assert_array_equal(g.array, [[1.0, 2.0, 3.0]])
+        assert len(g) == 3
+        assert g.array.shape == (3,)
+        npt.assert_array_equal(g.array, [1.0, 2.0, 3.0])
+
+    def test_1d_chunks_append_along_axis_0(self):
+        g = _ArrayBuffer(np.arange(99))
+        g.append(np.arange(99, 199))
+        assert len(g) == 199
+        npt.assert_array_equal(g.array, np.arange(199))
 
 
 class TestArrayBufferView:

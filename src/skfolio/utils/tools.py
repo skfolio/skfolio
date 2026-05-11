@@ -23,6 +23,7 @@ import sklearn as sk
 import sklearn.base as skb
 from sklearn.utils import Bunch
 
+from skfolio._constants import _PASSTHROUGH
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 
 __all__ = [
@@ -33,6 +34,7 @@ __all__ = [
     "bisection",
     "cache_method",
     "cached_property_slots",
+    "call_asset_panel_transform",
     "check_estimator",
     "deduplicate_names",
     "default_asset_names",
@@ -49,6 +51,29 @@ __all__ = [
 ]
 
 GenericAlias = type(list[int])
+
+
+def call_asset_panel_transform(
+    estimator: skb.BaseEstimator,
+    X: ArrayLike,
+    fit_params: dict,
+    *,
+    method: str,
+) -> FloatArray:
+    """Call an `AssetPanel` transformer with validated fit parameters.
+
+    Metadata routing for descriptors and factor exposures uses the existing `fit`
+    bucket. The selected execution method (`fit_transform` or
+    `partial_fit_transform`) is passed explicitly.
+    """
+    fit_params = fit_params if fit_params is not None else {}
+    fit_params = _check_method_params(X, params=fit_params)
+    return _call_estimator(
+        estimator,
+        method=method,
+        X=X,
+        extra_params=fit_params,
+    )
 
 
 class AutoEnum(str, Enum):
@@ -354,7 +379,7 @@ def check_estimator(
 
     Parameters
     ----------
-    estimator : BaseEstimator, optional
+    estimator : BaseEstimator | "passthrough", optional
         Estimator.
 
     default : BaseEstimator, optional
@@ -365,11 +390,13 @@ def check_estimator(
 
     Returns
     -------
-    estimator : Estimator
+    estimator : Estimator | "passthrough"
         The checked estimator or the default.
     """
     if estimator is None:
         return default
+    if estimator == _PASSTHROUGH:
+        return _PASSTHROUGH
     if not isinstance(estimator, check_type):
         raise TypeError(f"Expected type {check_type}, got {type(estimator)}")
     return sk.clone(estimator)
@@ -1012,6 +1039,14 @@ def _call_estimator(
                 "This meta-estimator can only use partial_fit with "
                 "sub-estimators that support incremental learning. "
                 "Use a compatible estimator with partial_fit, or call fit instead."
+            )
+        if method == "partial_fit_transform":
+            raise TypeError(
+                f"{estimator_name} does not implement partial_fit_transform. "
+                "This meta-estimator can only use partial_fit_transform with "
+                "sub-estimators that support online transformation. "
+                "Use a compatible estimator with partial_fit_transform, or call "
+                "fit_transform instead."
             )
         raise TypeError(f"{estimator_name} does not implement {method!r}.")
 

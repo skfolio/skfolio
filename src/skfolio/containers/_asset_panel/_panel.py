@@ -24,6 +24,7 @@ from skfolio.containers._asset_panel._fields import (
     Field2D,
     Field3D,
     FieldCategorical,
+    InactivePolicy,
     _as_observation_array,
     _as_pickle_safe_array,
     _validate_unique_labels,
@@ -34,7 +35,6 @@ from skfolio.containers._asset_panel._utils import (
     _format_observation_range,
     _materialize_selector,
     _normalize_positional_selector,
-    _positions_from_labels,
     _positions_from_unique_labels,
     _raise_if_raw_replaces_typed_field,
     _selector_length,
@@ -92,7 +92,7 @@ class AssetPanel(_BaseAssetPanel):
         Object-dtype datetime-like labels are converted with NumPy, object-dtype string
         labels are converted to strings and mixed object labels are rejected.
 
-    assets : ndarray of shape (n_assets,)
+    asset_names : ndarray of shape (n_assets,)
         Unique asset labels. Object-dtype labels are converted to strings.
 
     active_mask : boolean ndarray of shape (n_observations, n_assets), optional
@@ -183,7 +183,7 @@ class AssetPanel(_BaseAssetPanel):
     ...         "market_cap": np.random.lognormal(size=(n_observations, n_assets)),
     ...     },
     ...     observations=observations,
-    ...     assets=assets,
+    ...     asset_names=assets,
     ... )
     >>> panel.add_categorical_field(
     ...     name="industry",
@@ -272,7 +272,7 @@ class AssetPanel(_BaseAssetPanel):
 
     fields: dict[str, BaseField]
     observations: AnyArray
-    assets: StrArray | list[str]
+    asset_names: StrArray | list[str]
     active_mask: BoolArray | None = None
     estimation_mask: BoolArray | None = None
 
@@ -291,7 +291,7 @@ class AssetPanel(_BaseAssetPanel):
             _validate_field_name(name)
 
         self.observations = _as_observation_array(self.observations)
-        self.assets = _as_pickle_safe_array(self.assets)
+        self.asset_names = _as_pickle_safe_array(self.asset_names)
         expected_shape = (self.n_observations, self.n_assets)
         if self.active_mask is None:
             self.active_mask = np.ones(expected_shape, dtype=np.bool_)
@@ -306,14 +306,14 @@ class AssetPanel(_BaseAssetPanel):
         """Validate axis labels."""
         if self.observations.ndim != 1:
             raise ValueError("observations must be a 1D array.")
-        if self.assets.ndim != 1:
+        if self.asset_names.ndim != 1:
             raise ValueError("assets must be a 1D array.")
         if self.observations.shape != (self.n_observations,):
             raise ValueError(f"observations must have shape ({self.n_observations},).")
-        if self.assets.shape != (self.n_assets,):
+        if self.asset_names.shape != (self.n_assets,):
             raise ValueError(f"assets must have shape ({self.n_assets},).")
         _validate_unique_labels(self.observations, name="observations")
-        _validate_unique_labels(self.assets, name="assets")
+        _validate_unique_labels(self.asset_names, name="assets")
 
         self._validate_masks_shape_and_type()
         self._enforce_estimation_mask_subset()
@@ -370,7 +370,8 @@ class AssetPanel(_BaseAssetPanel):
 
         value : BaseField or array-like
             Field object or raw 2D array with shape (n_observations, n_assets).
-            When `value` is a raw float array, entries outside `active_mask` must be NaN.
+            Raw arrays use `inactive_policy=InactivePolicy.MISSING`, so floating
+            entries outside `active_mask` must be NaN.
         """
         _validate_field_name(name)
         if name in self.fields:
@@ -415,9 +416,8 @@ class AssetPanel(_BaseAssetPanel):
     def edit_masks(self, *, _validate: bool = True) -> Generator[None, None, None]:
         """Temporarily make masks editable.
 
-        On exit, `estimation_mask` is re-enforced as a subset of `active_mask`, float
-        values outside the active universe are set to NaN and both masks are locked
-        again.
+        On exit, `estimation_mask` is re-enforced as a subset of `active_mask`,
+        field inactive policies are applied, and both masks are locked again.
 
         Parameters
         ----------
@@ -436,7 +436,7 @@ class AssetPanel(_BaseAssetPanel):
             yield
         finally:
             self._enforce_estimation_mask_subset()
-            self._mask_inactive_float_values()
+            self._apply_inactive_field_policies()
             self._lock_masks()
 
         if _validate:
@@ -543,56 +543,10 @@ class AssetPanel(_BaseAssetPanel):
         if assets is None:
             return AssetPanelView(owner=self, observation_selector=observation_selector)
 
-        asset_selector = _positions_from_unique_labels(self.assets, assets)
+        asset_selector = _positions_from_unique_labels(self.asset_names, assets)
         return self._subset(
             observation_selector=observation_selector, asset_selector=asset_selector
         )
-
-    def sel_3d(self, name: str, *, labels: Any = None, groups: Any = None) -> AnyArray:
-        """Select entries from the third axis of a 3D field by label.
-
-        Exactly one of `labels` or `groups` must be provided. Selecting a single label
-        returns a 2D array with shape (n_observations, n_assets). Selecting multiple
-        labels or any group returns a 3D array whose first two axes are unchanged.
-
-        Parameters
-        ----------
-        name : str
-            Name of a `Field3D`.
-
-        labels : scalar, iterable, or None, optional
-            Third-axis labels to select.
-
-        groups : scalar, iterable, or None, optional
-            Third-axis group labels to select. The field must define `third_axis_groups`.
-
-        Returns
-        -------
-        values : ndarray
-            Selected values. A scalar `labels` selection returns 2D values. All other
-            selections return 3D values.
-        """
-        has_labels = labels is not None
-        has_groups = groups is not None
-        if has_labels == has_groups:
-            raise ValueError("Exactly one of labels or groups must be provided.")
-
-        field = self.get_field(name)
-        if not isinstance(field, Field3D):
-            raise TypeError(f"Field '{name}' is not a Field3D.")
-
-        if has_labels:
-            selector = _positions_from_unique_labels(field.third_axis_labels, labels)
-            positions = _materialize_selector(len(field.third_axis_labels), selector)
-            if isinstance(labels, (str, bytes)) or np.isscalar(labels):
-                return field.values[:, :, int(positions[0])]
-            return field.values[:, :, positions]
-
-        if field.third_axis_groups is None:
-            raise ValueError(f"Field '{name}' does not define third-axis groups.")
-        selector = _positions_from_labels(field.third_axis_groups, groups)
-        positions = _materialize_selector(len(field.third_axis_groups), selector)
-        return field.values[:, :, positions]
 
     def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:
         """Return a panel with selected labels removed.
@@ -626,7 +580,7 @@ class AssetPanel(_BaseAssetPanel):
         else:
             drop_positions = _materialize_selector(
                 self.n_assets,
-                _positions_from_unique_labels(self.assets, assets),
+                _positions_from_unique_labels(self.asset_names, assets),
             )
             keep = np.ones(self.n_assets, dtype=np.bool_)
             keep[drop_positions] = False
@@ -735,83 +689,6 @@ class AssetPanel(_BaseAssetPanel):
             output_format=output_format,
             decode_categoricals=decode_categoricals,
         )
-
-    def add_categorical_field(
-        self, name: str, values: ArrayLike, *, levels: StrArray | list[str] | list[Any]
-    ) -> AssetPanel:
-        """Add or replace a 2D categorical field.
-
-        This is a convenience wrapper around assigning a `FieldCategorical`. The field
-        values must be integer codes with shape (n_observations, n_assets). Code -1 is
-        reserved for missing values. Code 0 selects `levels[0]`, code 1 selects
-        `levels[1]` and so on.
-
-        Parameters
-        ----------
-        name : str
-            Field name.
-
-        values : array-like of integers, shape (n_observations, n_assets)
-            Integer category codes.
-
-        levels : array-like of shape (n_levels,)
-            Category labels selected by codes 0, 1 and so on.
-
-        Returns
-        -------
-        self : AssetPanel
-            The modified panel.
-        """
-        self[name] = FieldCategorical(values, levels=levels)
-        return self
-
-    def add_3d_field(
-        self,
-        name: str,
-        values: ArrayLike,
-        *,
-        third_axis_name: str,
-        third_axis_labels: StrArray | list[str] | list[Any],
-        third_axis_groups: StrArray | list[str] | list[Any] | None = None,
-    ) -> AssetPanel:
-        """Add or replace a numeric 3D field.
-
-        This is a convenience wrapper around assigning a `Field3D`. The first two axes
-        of `values` must be observations and assets with shape
-        (n_observations, n_assets). The third axis stores a homogeneous block such as
-        factors.
-
-        Parameters
-        ----------
-        name : str
-            Field name.
-
-        values : array-like of shape (n_observations, n_assets, n_third_axis)
-            Numeric 3D values.
-
-        third_axis_name : str
-            Name describing what the third axis represents (e.g. "factor")
-
-        third_axis_labels : array-like of shape (n_third_axis,)
-            Labels for entries along the third axis such as factor names (e.g. "size",
-            "momentum")
-
-        third_axis_groups : array-like of shape (n_third_axis,), optional
-            Optional group label for each third-axis entry such factor families (e.g.
-            "style", "industry")
-
-        Returns
-        -------
-        self : AssetPanel
-            The modified panel.
-        """
-        self[name] = Field3D(
-            values,
-            third_axis_name=third_axis_name,
-            third_axis_labels=third_axis_labels,
-            third_axis_groups=third_axis_groups,
-        )
-        return self
 
     def describe(self, *, by: str | None = None) -> pd.DataFrame:
         """Return a structured missingness summary.
@@ -1243,7 +1120,7 @@ class AssetPanel(_BaseAssetPanel):
         return AssetPanel(
             fields={name: field.copy(deep=deep) for name, field in self.fields.items()},
             observations=self.observations.copy() if deep else self.observations,
-            assets=self.assets.copy() if deep else self.assets,
+            asset_names=self.asset_names.copy() if deep else self.asset_names,
             active_mask=self.active_mask.copy(),
             estimation_mask=self.estimation_mask.copy(),
             _validate_on_init=False,
@@ -1292,7 +1169,7 @@ class AssetPanel(_BaseAssetPanel):
         third_axis_dir = path / "third_axis"
 
         np.save(path / "observations.npy", _as_pickle_safe_array(self.observations))
-        np.save(path / "assets.npy", _as_pickle_safe_array(self.assets))
+        np.save(path / "assets.npy", _as_pickle_safe_array(self.asset_names))
 
         active_mask_storage = "all_true"
         if not self.active_mask.all():
@@ -1311,6 +1188,7 @@ class AssetPanel(_BaseAssetPanel):
                 "type": type(field).__name__,
                 "dtype": str(field.values.dtype),
                 "shape": list(field.values.shape),
+                "inactive_policy": field.inactive_policy.value,
             }
 
             if isinstance(field, FieldCategorical):
@@ -1429,13 +1307,23 @@ class AssetPanel(_BaseAssetPanel):
                 mmap_mode=mmap_mode,
             )
             field_type = entry["type"]
+            inactive_policy = InactivePolicy(
+                entry.get("inactive_policy", InactivePolicy.MISSING.value)
+            )
             if field_type == "Field2D":
-                loaded_fields[name] = Field2D(values)
+                loaded_fields[name] = Field2D(
+                    values,
+                    inactive_policy=inactive_policy,
+                )
             elif field_type == "FieldCategorical":
                 levels = _as_pickle_safe_array(
                     np.load(levels_dir / f"{name}.npy", allow_pickle=False)
                 )
-                loaded_fields[name] = FieldCategorical(values, levels=levels)
+                loaded_fields[name] = FieldCategorical(
+                    values,
+                    levels=levels,
+                    inactive_policy=inactive_policy,
+                )
             elif field_type == "Field3D":
                 labels = _as_pickle_safe_array(
                     np.load(third_axis_dir / f"{name}_labels.npy", allow_pickle=False)
@@ -1453,6 +1341,7 @@ class AssetPanel(_BaseAssetPanel):
                     third_axis_name=entry["third_axis_name"],
                     third_axis_labels=labels,
                     third_axis_groups=groups,
+                    inactive_policy=inactive_policy,
                 )
             else:
                 raise ValueError(f"Unsupported field type '{field_type}'.")
@@ -1460,7 +1349,7 @@ class AssetPanel(_BaseAssetPanel):
         return cls(
             fields=loaded_fields,
             observations=observations,
-            assets=assets,
+            asset_names=assets,
             active_mask=active_mask,
             estimation_mask=estimation_mask,
             _validate_on_init=False,
@@ -1520,13 +1409,23 @@ class AssetPanel(_BaseAssetPanel):
             active_mask=self.active_mask,
         )
 
-    def _mask_inactive_float_values(self) -> None:
-        """Set floating-point field values outside `active_mask` to NaN."""
+    def _apply_inactive_field_policies(self) -> None:
+        """Apply each field's inactive policy outside `active_mask`."""
         out = ~self.active_mask
         if not out.any():
             return
         for field in self.fields.values():
-            if np.issubdtype(field.values.dtype, np.floating):
+            if field.inactive_policy == InactivePolicy.IGNORE:
+                continue
+            if field.inactive_policy == InactivePolicy.ZERO:
+                if isinstance(field, Field3D):
+                    field.values[out, :] = 0
+                else:
+                    field.values[out] = 0
+                continue
+            if isinstance(field, FieldCategorical):
+                field.values[out] = MISSING_CATEGORY_CODE
+            elif np.issubdtype(field.values.dtype, np.floating):
                 if isinstance(field, Field3D):
                     field.values[out, :] = np.nan
                 else:
@@ -1555,7 +1454,7 @@ class AssetPanel(_BaseAssetPanel):
         return AssetPanel(
             fields=new_fields,
             observations=self.observations[observation_selector],
-            assets=self.assets[asset_selector],
+            asset_names=self.asset_names[asset_selector],
             active_mask=self.active_mask[observation_selector, :][:, asset_selector],
             estimation_mask=(
                 self.estimation_mask[observation_selector, :][:, asset_selector]

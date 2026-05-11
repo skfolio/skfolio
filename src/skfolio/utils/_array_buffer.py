@@ -17,15 +17,17 @@ class _ArrayBuffer:
     Avoids the O(N^2) cost of repeated `np.concatenate` when accumulating
     arrays one slice (or small batch) at a time along axis 0.
 
-    The buffer starts empty; shape and dtype are inferred from the first
-    :meth:`append` call.
+    The buffer starts empty unless initial values are provided; shape and dtype
+    are inferred from the first :meth:`append` call.
     """
 
     __slots__ = ("_buffer", "_size")
 
-    def __init__(self):
+    def __init__(self, values: FloatArray | None = None):
         self._buffer: FloatArray | None = None
         self._size: int = 0
+        if values is not None:
+            self.append(values)
 
     @property
     def array(self) -> FloatArray | None:
@@ -45,7 +47,6 @@ class _ArrayBuffer:
         values = np.asarray(values)
         if values.shape[0] == 0:
             return
-        values = np.atleast_2d(values)
         n_new = values.shape[0]
         if self._buffer is None:
             self._buffer = values.copy()

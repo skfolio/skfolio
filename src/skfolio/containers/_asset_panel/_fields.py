@@ -7,13 +7,15 @@
 from __future__ import annotations
 
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dataclasses import fields as dataclass_fields
+from enum import auto
 from typing import Any
 
 import numpy as np
 
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, StrArray
+from skfolio.utils.tools import AutoEnum
 
 __all__ = [
     "MISSING_CATEGORY_CODE",
@@ -21,9 +23,18 @@ __all__ = [
     "Field2D",
     "Field3D",
     "FieldCategorical",
+    "InactivePolicy",
 ]
 
 MISSING_CATEGORY_CODE: int = -1
+
+
+class InactivePolicy(AutoEnum):
+    """Validation policy for values outside an `AssetPanel` active universe."""
+
+    MISSING = auto()
+    ZERO = auto()
+    IGNORE = auto()
 
 
 @dataclass(slots=True)
@@ -41,9 +52,18 @@ class BaseField(ABC):
     """
 
     values: AnyArray
+    inactive_policy: InactivePolicy = field(
+        default=InactivePolicy.MISSING,
+        kw_only=True,
+    )
 
     def __post_init__(self) -> None:
         self.values = np.asarray(self.values)
+        if not isinstance(self.inactive_policy, InactivePolicy):
+            raise TypeError(
+                "`inactive_policy` must be an InactivePolicy, "
+                f"got {self.inactive_policy!r}."
+            )
         if self.values.ndim < 2:
             raise ValueError("Field values must have at least two dimensions.")
 
@@ -71,6 +91,16 @@ class BaseField(ABC):
     def n_assets(self) -> int:
         """Number of assets."""
         return int(self.values.shape[1])
+
+    @property
+    def is_categorical(self) -> bool:
+        """Whether or not the field is a categorical field."""
+        return isinstance(self, FieldCategorical)
+
+    @property
+    def is_3d(self) -> bool:
+        """Whether or not the field is a 3D field."""
+        return isinstance(self, Field3D)
 
     @property
     def missing_mask(self) -> BoolArray:
@@ -103,11 +133,11 @@ class BaseField(ABC):
             Field instance of the same concrete class.
         """
         kwargs = {}
-        for field in dataclass_fields(self):
-            value = getattr(self, field.name)
+        for f in dataclass_fields(self):
+            value = getattr(self, f.name)
             if deep and isinstance(value, np.ndarray):
                 value = value.copy()
-            kwargs[field.name] = value
+            kwargs[f.name] = value
         return type(self)(**kwargs)
 
     def with_values(self, values: ArrayLike) -> BaseField:
@@ -179,6 +209,11 @@ class FieldCategorical(Field2D):
 
     def __post_init__(self) -> None:
         Field2D.__post_init__(self)
+        if self.inactive_policy == InactivePolicy.ZERO:
+            raise ValueError(
+                "`inactive_policy=InactivePolicy.ZERO` is not supported for "
+                "FieldCategorical because 0 is a valid category code."
+            )
         self.levels = _as_pickle_safe_array(self.levels)
         if not np.issubdtype(self.values.dtype, np.integer):
             raise ValueError(

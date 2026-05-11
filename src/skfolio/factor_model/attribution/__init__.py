@@ -1,5 +1,9 @@
 """Factor-based volatility and return attribution."""
 
+# Copyright (c) 2023-2026
+# Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
+# SPDX-License-Identifier: BSD-3-Clause
+
 from skfolio.factor_model.attribution._model import (
     AssetBreakdown,
     AssetByFactorContribution,

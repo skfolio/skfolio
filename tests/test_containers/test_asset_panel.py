@@ -16,6 +16,7 @@ from skfolio.containers import (
     Field2D,
     Field3D,
     FieldCategorical,
+    InactivePolicy,
     concat,
 )
 
@@ -34,18 +35,30 @@ def _conform_to_universe(fields, active_mask):
     for name, field in fields.items():
         if isinstance(field, FieldCategorical):
             result[name] = field.copy(deep=True)
+            if field.inactive_policy == InactivePolicy.MISSING:
+                result[name].values[out] = MISSING_CATEGORY_CODE
+            elif field.inactive_policy == InactivePolicy.IGNORE:
+                pass
             continue
 
         if isinstance(field, Field3D):
             values = field.values.copy()
-            if np.issubdtype(values.dtype, np.floating):
+            if field.inactive_policy == InactivePolicy.ZERO:
+                values[out, :] = 0
+            elif field.inactive_policy == InactivePolicy.MISSING and np.issubdtype(
+                values.dtype, np.floating
+            ):
                 values[out, :] = np.nan
             result[name] = field.with_values(values)
             continue
 
         if isinstance(field, Field2D):
             values = field.values.copy()
-            if np.issubdtype(values.dtype, np.floating):
+            if field.inactive_policy == InactivePolicy.ZERO:
+                values[out] = 0
+            elif field.inactive_policy == InactivePolicy.MISSING and np.issubdtype(
+                values.dtype, np.floating
+            ):
                 values[out] = np.nan
             result[name] = field.with_values(values)
             continue
@@ -101,7 +114,7 @@ def _make_full_panel(*, observations=None) -> AssetPanel:
     return AssetPanel(
         fields=_conform_to_universe(fields, active_mask),
         observations=OBSERVATIONS.copy() if observations is None else observations,
-        assets=ASSETS.copy(),
+        asset_names=ASSETS.copy(),
         active_mask=active_mask,
         estimation_mask=estimation_mask,
     )
@@ -112,7 +125,7 @@ def _assert_panels_equal(left: AssetPanel, right: AssetPanel) -> None:
     assert left.n_assets == right.n_assets
     assert left.n_fields == right.n_fields
     np.testing.assert_array_equal(left.observations, right.observations)
-    np.testing.assert_array_equal(left.assets, right.assets)
+    np.testing.assert_array_equal(left.asset_names, right.asset_names)
     np.testing.assert_array_equal(left.active_mask, right.active_mask)
     np.testing.assert_array_equal(left.estimation_mask, right.estimation_mask)
 
@@ -120,6 +133,7 @@ def _assert_panels_equal(left: AssetPanel, right: AssetPanel) -> None:
     for name, right_field in right.fields.items():
         left_field = left.fields[name]
         assert type(left_field) is type(right_field)
+        assert left_field.inactive_policy == right_field.inactive_policy
         np.testing.assert_array_equal(left_field.values, right_field.values)
         assert left_field.values.dtype == right_field.values.dtype
 
@@ -143,6 +157,15 @@ def _assert_panels_equal(left: AssetPanel, right: AssetPanel) -> None:
 
 
 class TestFields:
+    def test_inactive_policy_defaults_to_missing(self):
+        field = Field2D(np.ones((2, 3)))
+
+        assert field.inactive_policy == InactivePolicy.MISSING
+
+    def test_inactive_policy_must_use_enum(self):
+        with pytest.raises(TypeError, match="InactivePolicy"):
+            Field2D(np.ones((2, 3)), inactive_policy="missing")
+
     def test_field_2d_rejects_wrong_ndim(self):
         with pytest.raises(ValueError, match="2D"):
             Field2D(np.ones((2, 3, 4)))
@@ -173,6 +196,14 @@ class TestFields:
     def test_categorical_requires_unique_levels(self):
         with pytest.raises(ValueError, match="unique"):
             FieldCategorical(np.array([[0, 1]], dtype=np.int32), levels=["A", "A"])
+
+    def test_categorical_rejects_zero_inactive_policy(self):
+        with pytest.raises(ValueError, match="ZERO"):
+            FieldCategorical(
+                np.array([[0, 1]], dtype=np.int32),
+                levels=["A", "B"],
+                inactive_policy=InactivePolicy.ZERO,
+            )
 
     def test_categorical_decode_always_preserves_missing_codes(self):
         field = FieldCategorical(
@@ -272,13 +303,13 @@ class TestPanelConstruction:
         panel = AssetPanel(
             fields={"x": np.ones((2, 2))},
             observations=np.array(["t0", "t1"], dtype=object),
-            assets=np.array(["A", "B"], dtype=object),
+            asset_names=np.array(["A", "B"], dtype=object),
         )
 
         assert panel.observations.dtype != object
-        assert panel.assets.dtype != object
+        assert panel.asset_names.dtype != object
         np.testing.assert_array_equal(panel.observations, ["t0", "t1"])
-        np.testing.assert_array_equal(panel.assets, ["A", "B"])
+        np.testing.assert_array_equal(panel.asset_names, ["A", "B"])
 
     def test_numpy_observation_dtype_is_preserved(self):
         observations = np.array(["2024-01-01", "2024-01-02"], dtype="datetime64[D]")
@@ -286,7 +317,7 @@ class TestPanelConstruction:
         panel = AssetPanel(
             fields={"x": np.ones((2, 2))},
             observations=observations,
-            assets=np.array(["A", "B"]),
+            asset_names=np.array(["A", "B"]),
         )
 
         assert panel.observations.dtype == observations.dtype
@@ -296,7 +327,7 @@ class TestPanelConstruction:
         panel = AssetPanel(
             fields={"x": np.ones((2, 2))},
             observations=[date(2024, 1, 1), date(2024, 1, 2)],
-            assets=np.array(["A", "B"]),
+            asset_names=np.array(["A", "B"]),
         )
 
         assert np.issubdtype(panel.observations.dtype, np.datetime64)
@@ -310,7 +341,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((2, 2))},
                 observations=np.array([date(2024, 1, 1), "2024-01-02"], dtype=object),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
             )
 
     def test_duplicate_observations_and_assets_raise(self):
@@ -318,14 +349,14 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((2, 2))},
                 observations=np.array(["t0", "t0"]),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
             )
 
         with pytest.raises(ValueError, match="assets must be unique"):
             AssetPanel(
                 fields={"x": np.ones((2, 2))},
                 observations=np.array(["t0", "t1"]),
-                assets=np.array(["A", "A"]),
+                asset_names=np.array(["A", "A"]),
             )
 
     def test_typed_fields_keep_metadata(self):
@@ -396,21 +427,23 @@ class TestPanelConstruction:
 
     def test_empty_fields_raise(self):
         with pytest.raises(ValueError, match="fields"):
-            AssetPanel(fields={}, observations=np.arange(2), assets=np.array(["A"]))
+            AssetPanel(
+                fields={}, observations=np.arange(2), asset_names=np.array(["A"])
+            )
 
     def test_axis_shape_mismatch_raises(self):
         with pytest.raises(ValueError, match="observations"):
             AssetPanel(
                 fields={"x": np.ones((3, 2))},
                 observations=np.arange(4),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
             )
 
         with pytest.raises(ValueError, match="assets"):
             AssetPanel(
                 fields={"x": np.ones((3, 2))},
                 observations=np.arange(3),
-                assets=np.array(["A"]),
+                asset_names=np.array(["A"]),
             )
 
     def test_mask_shape_and_dtype_mismatch_raise(self):
@@ -418,7 +451,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((3, 2))},
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
                 active_mask=np.ones((3, 3), dtype=np.bool_),
             )
 
@@ -426,7 +459,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((3, 2))},
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
                 estimation_mask=np.ones((3, 2), dtype=int),
             )
 
@@ -442,7 +475,7 @@ class TestPanelConstruction:
                     "x": _conform_to_universe({"x": np.ones((3, 2))}, active_mask)["x"]
                 },
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
                 active_mask=active_mask,
             )
 
@@ -450,7 +483,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((3, 2))},
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
                 estimation_mask=estimation_mask,
             )
 
@@ -459,7 +492,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.ones((3, 2)), "y": np.ones((3, 3))},
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
             )
 
     @pytest.mark.parametrize(
@@ -478,7 +511,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={name: np.ones((3, 2))},
                 observations=np.arange(3),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
             )
 
     def test_float_values_outside_active_universe_raise(self):
@@ -488,7 +521,7 @@ class TestPanelConstruction:
             AssetPanel(
                 fields={"x": np.array([[1.0, 2.0], [3.0, 4.0]])},
                 observations=np.arange(2),
-                assets=np.array(["A", "B"]),
+                asset_names=np.array(["A", "B"]),
                 active_mask=active_mask,
             )
 
@@ -498,28 +531,116 @@ class TestPanelConstruction:
         panel = AssetPanel(
             fields={"x": np.array([[np.nan, 2.0], [3.0, 4.0]])},
             observations=np.arange(2),
-            assets=np.array(["A", "B"]),
+            asset_names=np.array(["A", "B"]),
             active_mask=active_mask,
         )
 
         assert np.isnan(panel["x"][0, 0])
 
-    def test_categorical_values_outside_active_universe_are_accepted(self):
+    def test_zero_policy_accepts_zero_values_outside_active_universe(self):
+        active_mask = np.array([[False, True], [True, True]])
+
+        panel = AssetPanel(
+            fields={
+                "weights": Field2D(
+                    np.array([[0.0, 2.0], [3.0, 4.0]]),
+                    inactive_policy=InactivePolicy.ZERO,
+                )
+            },
+            observations=np.arange(2),
+            asset_names=np.array(["A", "B"]),
+            active_mask=active_mask,
+        )
+
+        assert panel.fields["weights"].inactive_policy == InactivePolicy.ZERO
+        assert panel["weights"][0, 0] == 0.0
+
+    def test_zero_policy_rejects_non_zero_values_outside_active_universe(self):
+        active_mask = np.array([[False, True], [True, True]])
+
+        with pytest.raises(ValueError, match="non-zero"):
+            AssetPanel(
+                fields={
+                    "weights": Field2D(
+                        np.array([[1.0, 2.0], [3.0, 4.0]]),
+                        inactive_policy=InactivePolicy.ZERO,
+                    )
+                },
+                observations=np.arange(2),
+                asset_names=np.array(["A", "B"]),
+                active_mask=active_mask,
+            )
+
+    def test_ignore_policy_skips_inactive_value_validation(self):
+        active_mask = np.array([[False, True], [True, True]])
+
+        panel = AssetPanel(
+            fields={
+                "raw": Field2D(
+                    np.array([[1.0, 2.0], [3.0, 4.0]]),
+                    inactive_policy=InactivePolicy.IGNORE,
+                )
+            },
+            observations=np.arange(2),
+            asset_names=np.array(["A", "B"]),
+            active_mask=active_mask,
+        )
+
+        assert panel["raw"][0, 0] == 1.0
+
+    def test_3d_zero_policy_accepts_zero_values_outside_active_universe(self):
+        active_mask = np.array([[False, True], [True, True]])
+        values = np.ones((2, 2, 2))
+        values[0, 0, :] = 0.0
+
+        panel = AssetPanel(
+            fields={
+                "weights": Field3D(
+                    values,
+                    third_axis_name="factor",
+                    third_axis_labels=["a", "b"],
+                    inactive_policy=InactivePolicy.ZERO,
+                )
+            },
+            observations=np.arange(2),
+            asset_names=np.array(["A", "B"]),
+            active_mask=active_mask,
+        )
+
+        np.testing.assert_array_equal(panel["weights"][0, 0, :], 0.0)
+
+    def test_categorical_missing_codes_outside_active_universe_are_accepted(self):
         active_mask = np.array([[False, True], [True, True]])
 
         panel = AssetPanel(
             fields={
                 "sector": FieldCategorical(
-                    np.array([[0, 1], [1, 0]], dtype=np.int32),
+                    np.array([[MISSING_CATEGORY_CODE, 1], [1, 0]], dtype=np.int32),
                     levels=["A", "B"],
                 ),
             },
             observations=np.arange(2),
-            assets=np.array(["A", "B"]),
+            asset_names=np.array(["A", "B"]),
             active_mask=active_mask,
         )
 
-        assert panel["sector"][0, 0] == 0
+        assert panel["sector"][0, 0] == MISSING_CATEGORY_CODE
+
+    def test_categorical_values_outside_active_universe_raise_by_default(self):
+        active_mask = np.array([[False, True], [True, True]])
+
+        with pytest.raises(ValueError, match="non-missing code"):
+            AssetPanel(
+                fields={
+                    "sector": FieldCategorical(
+                        np.array([[0, 1], [1, 0]], dtype=np.int32),
+                        levels=["A", "B"],
+                    ),
+                },
+                observations=np.arange(2),
+                asset_names=np.array(["A", "B"]),
+                active_mask=active_mask,
+            )
 
 
 class TestPanelAccessAndMutation:
@@ -587,14 +708,35 @@ class TestPanelAccessAndMutation:
         assert panel["exposures"].shape == (N_OBS, N_ASSETS, 2)
         assert panel.fields["exposures"].third_axis_name == "factor"
 
+    def test_add_2d_field_convenience(self):
+        panel = _make_panel()
+        values = np.zeros((N_OBS, N_ASSETS))
+
+        result = panel.add_2d_field(
+            "weights",
+            values,
+            inactive_policy=InactivePolicy.ZERO,
+        )
+
+        assert result is panel
+        assert isinstance(panel.fields["weights"], Field2D)
+        assert panel.fields["weights"].inactive_policy == InactivePolicy.ZERO
+        np.testing.assert_array_equal(panel["weights"], values)
+
     def test_add_categorical_field_convenience(self):
         panel = _make_panel()
         codes = np.zeros((N_OBS, N_ASSETS), dtype=np.int32)
 
-        result = panel.add_categorical_field("industry", codes, levels=["energy"])
+        result = panel.add_categorical_field(
+            "industry",
+            codes,
+            levels=["energy"],
+            inactive_policy=InactivePolicy.IGNORE,
+        )
 
         assert result is panel
         assert isinstance(panel.fields["industry"], FieldCategorical)
+        assert panel.fields["industry"].inactive_policy == InactivePolicy.IGNORE
         np.testing.assert_array_equal(panel["industry"], codes)
         np.testing.assert_array_equal(panel.fields["industry"].levels, ["energy"])
 
@@ -608,10 +750,12 @@ class TestPanelAccessAndMutation:
             third_axis_name="factor",
             third_axis_labels=["size", "momentum"],
             third_axis_groups=["style", "style"],
+            inactive_policy=InactivePolicy.IGNORE,
         )
 
         assert result is panel
         assert isinstance(panel.fields["factor_exposure"], Field3D)
+        assert panel.fields["factor_exposure"].inactive_policy == InactivePolicy.IGNORE
         np.testing.assert_array_equal(panel["factor_exposure"], values)
         assert panel.fields["factor_exposure"].third_axis_name == "factor"
         np.testing.assert_array_equal(
@@ -653,6 +797,7 @@ class TestPanelAccessAndMutation:
     def test_setitem_allows_explicit_typed_replacement(self):
         panel = _make_full_panel()
         codes = np.zeros((N_OBS, N_ASSETS), dtype=np.int32)
+        codes[~panel.active_mask] = MISSING_CATEGORY_CODE
 
         panel["sector"] = FieldCategorical(codes, levels=["Only"])
 
@@ -741,7 +886,7 @@ class TestSelectionAndDrop:
         selected = panel.isel(observations=slice(2, 8), assets=[1, 3])
 
         assert isinstance(selected, AssetPanel)
-        np.testing.assert_array_equal(selected.assets, ASSETS[[1, 3]])
+        np.testing.assert_array_equal(selected.asset_names, ASSETS[[1, 3]])
         assert selected["momentum"].shape == (6, 2)
         assert selected["exposures"].shape == (6, 2, 3)
         np.testing.assert_array_equal(
@@ -773,7 +918,7 @@ class TestSelectionAndDrop:
             assets=["MSFT", "AMZN"],
         )
 
-        np.testing.assert_array_equal(selected.assets, ["MSFT", "AMZN"])
+        np.testing.assert_array_equal(selected.asset_names, ["MSFT", "AMZN"])
         np.testing.assert_array_equal(selected.observations, observations[2:6])
 
     def test_sel_unknown_labels_raise(self):
@@ -842,7 +987,7 @@ class TestSelectionAndDrop:
         dropped = panel.drop(observations=[0, 1], assets=["AAPL"])
 
         np.testing.assert_array_equal(dropped.observations, OBSERVATIONS[2:])
-        np.testing.assert_array_equal(dropped.assets, ASSETS[1:])
+        np.testing.assert_array_equal(dropped.asset_names, ASSETS[1:])
         assert dropped["exposures"].shape == (N_OBS - 2, N_ASSETS - 1, 3)
 
     def test_drop_cannot_remove_all_observations_or_assets(self):
@@ -867,6 +1012,35 @@ class TestMasksAndUniverse:
         assert np.isnan(panel["x"][0, 0])
         assert not panel.active_mask.flags.writeable
         assert not panel.estimation_mask.flags.writeable
+
+    def test_edit_masks_applies_zero_and_ignore_inactive_policies(self):
+        panel = _make_panel(
+            fields={
+                "missing": np.ones((3, 2)),
+                "zero": Field2D(
+                    np.ones((3, 2)),
+                    inactive_policy=InactivePolicy.ZERO,
+                ),
+                "ignored": Field2D(
+                    np.ones((3, 2)),
+                    inactive_policy=InactivePolicy.IGNORE,
+                ),
+                "sector": FieldCategorical(
+                    np.zeros((3, 2), dtype=np.int32),
+                    levels=["A"],
+                ),
+            },
+            observations=np.arange(3),
+            assets=np.array(["A", "B"]),
+        )
+
+        with panel.edit_masks():
+            panel.active_mask[0, 0] = False
+
+        assert np.isnan(panel["missing"][0, 0])
+        assert panel["zero"][0, 0] == 0.0
+        assert panel["ignored"][0, 0] == 1.0
+        assert panel["sector"][0, 0] == MISSING_CATEGORY_CODE
 
     def test_direct_mask_mutation_raises(self):
         panel = _make_panel()
@@ -977,7 +1151,7 @@ class TestMasksAndUniverse:
         panel = AssetPanel(
             fields={"sector": FieldCategorical(codes, levels=["A", "B"])},
             observations=np.arange(3),
-            assets=np.array(["A", "B"]),
+            asset_names=np.array(["A", "B"]),
         )
 
         removed = panel.align_active_mask_to("sector")
@@ -1226,7 +1400,7 @@ class TestFill:
 
 
 class TestDataFrameDescribeInfo:
-    def test_to_dataframe_single_field_matches_old_field_to_dataframe_shape(self):
+    def test_to_dataframe_single_field(self):
         panel = _make_full_panel()
 
         df = panel.to_dataframe(fields="momentum")
@@ -1360,7 +1534,7 @@ class TestView:
         view = panel[2:8]
 
         np.testing.assert_array_equal(view.observations, OBSERVATIONS[2:8])
-        np.testing.assert_array_equal(view.assets, ASSETS)
+        np.testing.assert_array_equal(view.asset_names, ASSETS)
         np.testing.assert_array_equal(view.active_mask, panel.active_mask[2:8])
         np.testing.assert_array_equal(view.estimation_mask, panel.estimation_mask[2:8])
         assert len(view) == 6
@@ -1389,6 +1563,15 @@ class TestView:
             field.third_axis_labels,
             panel.fields["exposures"].third_axis_labels,
         )
+
+    def test_view_sel_3d_uses_sliced_field_values(self):
+        panel = _make_full_panel()
+        view = panel[2:8]
+
+        values = view.sel_3d("exposures", labels="size")
+
+        assert values.shape == (6, N_ASSETS)
+        np.testing.assert_array_equal(values, panel["exposures"][2:8, :, 1])
 
     def test_nested_slice_view_composes_selectors(self):
         panel = _make_panel()
@@ -1488,6 +1671,63 @@ class TestView:
         del view["z"]
         assert "z" not in view
 
+    def test_view_add_typed_field_conveniences_create_local_fields(self):
+        panel = _make_panel()
+        view = panel[5:10]
+        weights = np.zeros((5, N_ASSETS))
+        codes = np.zeros((5, N_ASSETS), dtype=np.int32)
+        exposures = np.ones((5, N_ASSETS, 2))
+
+        result = view.add_2d_field(
+            "weights",
+            weights,
+            inactive_policy=InactivePolicy.ZERO,
+        )
+        view.add_categorical_field(
+            "industry",
+            codes,
+            levels=["energy"],
+            inactive_policy=InactivePolicy.IGNORE,
+        )
+        view.add_3d_field(
+            "factor_exposure",
+            exposures,
+            third_axis_name="factor",
+            third_axis_labels=["size", "momentum"],
+            third_axis_groups=["style", "style"],
+            inactive_policy=InactivePolicy.IGNORE,
+        )
+
+        assert result is view
+        assert "weights" not in panel
+        assert isinstance(view.fields["weights"], Field2D)
+        assert view.fields["weights"].inactive_policy == InactivePolicy.ZERO
+        np.testing.assert_array_equal(view["weights"], weights)
+        assert isinstance(view.fields["industry"], FieldCategorical)
+        np.testing.assert_array_equal(view.fields["industry"].levels, ["energy"])
+        assert isinstance(view.fields["factor_exposure"], Field3D)
+        np.testing.assert_array_equal(
+            view.fields["factor_exposure"].third_axis_labels,
+            ["size", "momentum"],
+        )
+
+    def test_view_sel_3d_supports_local_fields(self):
+        panel = _make_panel()
+        view = panel[5:10]
+        values = np.arange(5 * N_ASSETS * 2, dtype=float).reshape(5, N_ASSETS, 2)
+        view.add_3d_field(
+            "scenario",
+            values,
+            third_axis_name="scenario",
+            third_axis_labels=["base", "stress"],
+            third_axis_groups=["macro", "macro"],
+        )
+
+        selected = view.sel_3d("scenario", groups="macro")
+
+        np.testing.assert_array_equal(selected, values)
+        assert "scenario" not in panel
+
     def test_view_cannot_delete_owner_field(self):
         panel = _make_panel()
         view = panel[5:10]
@@ -1574,7 +1814,7 @@ class TestCopy:
 
         assert panel["x"][0, 0] != 999.0
         assert copied.observations is not panel.observations
-        assert copied.assets is not panel.assets
+        assert copied.asset_names is not panel.asset_names
 
 
 class TestConcat:
@@ -1589,7 +1829,7 @@ class TestConcat:
             result.observations,
             np.concatenate([left.observations, right.observations]),
         )
-        np.testing.assert_array_equal(result.assets, left.assets)
+        np.testing.assert_array_equal(result.asset_names, left.asset_names)
         np.testing.assert_array_equal(
             result.active_mask,
             np.concatenate([left.active_mask, right.active_mask], axis=0),
@@ -1661,6 +1901,20 @@ class TestConcat:
         right = _make_panel(fields={"x": np.ones((N_OBS, N_ASSETS), dtype=np.float64)})
 
         with pytest.raises(TypeError, match="dtype"):
+            concat([left, right])
+
+    def test_concat_requires_matching_inactive_policy(self):
+        left = _make_panel(fields={"x": np.ones((N_OBS, N_ASSETS))})
+        right = _make_panel(
+            fields={
+                "x": Field2D(
+                    np.ones((N_OBS, N_ASSETS)),
+                    inactive_policy=InactivePolicy.IGNORE,
+                )
+            }
+        )
+
+        with pytest.raises(ValueError, match="inactive_policy"):
             concat([left, right])
 
     def test_concat_requires_matching_categorical_levels(self):
@@ -1763,14 +2017,14 @@ class TestPersistence:
                 ),
             },
             observations=np.array(["t0", "t1"], dtype=object),
-            assets=np.array(["A", "B"], dtype=object),
+            asset_names=np.array(["A", "B"], dtype=object),
         )
 
         panel.save(tmp_path / "panel")
         loaded = AssetPanel.load(tmp_path / "panel")
 
         assert loaded.observations.dtype != object
-        assert loaded.assets.dtype != object
+        assert loaded.asset_names.dtype != object
         assert loaded.fields["sector"].levels.dtype != object
         assert loaded.fields["exposures"].third_axis_labels.dtype != object
         assert loaded.fields["exposures"].third_axis_groups.dtype != object
@@ -1850,6 +2104,26 @@ class TestPersistence:
         with pytest.raises((TypeError, ValueError)):
             loaded["momentum"][0, 0] = 999.0
 
+    def test_save_load_preserves_inactive_policy(self, tmp_path):
+        panel = _make_panel(
+            fields={
+                "weights": Field2D(
+                    np.ones((N_OBS, N_ASSETS)),
+                    inactive_policy=InactivePolicy.ZERO,
+                ),
+                "raw": Field2D(
+                    np.ones((N_OBS, N_ASSETS)),
+                    inactive_policy=InactivePolicy.IGNORE,
+                ),
+            }
+        )
+
+        panel.save(tmp_path / "panel")
+        loaded = AssetPanel.load(tmp_path / "panel")
+
+        assert loaded.fields["weights"].inactive_policy == InactivePolicy.ZERO
+        assert loaded.fields["raw"].inactive_policy == InactivePolicy.IGNORE
+
     def test_metadata_content_uses_new_field_types(self, tmp_path):
         panel = _make_full_panel()
 
@@ -1859,6 +2133,9 @@ class TestPersistence:
 
         assert metadata["version"] == 1
         assert metadata["fields"]["momentum"]["type"] == "Field2D"
+        assert metadata["fields"]["momentum"]["inactive_policy"] == "missing"
         assert metadata["fields"]["sector"]["type"] == "FieldCategorical"
+        assert metadata["fields"]["sector"]["inactive_policy"] == "missing"
         assert metadata["fields"]["exposures"]["type"] == "Field3D"
+        assert metadata["fields"]["exposures"]["inactive_policy"] == "missing"
         assert metadata["fields"]["exposures"]["third_axis_name"] == "factor"

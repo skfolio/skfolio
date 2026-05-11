@@ -194,14 +194,24 @@ class AssetPanelView(_BaseAssetPanel):
         )
 
     @property
+    def n_observations(self) -> int:
+        """Number of observations in the view."""
+        return _selector_length(self.owner.n_observations, self.observation_selector)
+
+    @property
+    def n_assets(self) -> int:
+        """Number of assets."""
+        return self.owner.n_assets
+
+    @property
     def observations(self) -> AnyArray:
         """Observation labels selected by the view."""
         return self.owner.observations[self.observation_selector]
 
     @property
-    def assets(self) -> StrArray:
+    def asset_names(self) -> StrArray:
         """Asset labels."""
-        return self.owner.assets
+        return self.owner.asset_names
 
     @property
     def active_mask(self) -> BoolArray:
@@ -222,16 +232,6 @@ class AssetPanelView(_BaseAssetPanel):
         sliced arrays for fields that are not accessed.
         """
         return _ViewFieldMapping(self)
-
-    @property
-    def n_observations(self) -> int:
-        """Number of observations in the view."""
-        return _selector_length(self.owner.n_observations, self.observation_selector)
-
-    @property
-    def n_assets(self) -> int:
-        """Number of assets."""
-        return self.owner.n_assets
 
     def keys(self) -> Iterable[str]:
         """Return field names visible from the view.

@@ -166,10 +166,21 @@ class TestValidation:
         without_groups = shrinker.fit_transform(X)
         np.testing.assert_array_equal(with_groups, without_groups)
 
-    def test_all_nan_row_raises(self):
+    def test_all_nan_row_returns_nan(self):
         X = np.array(
             [[1.0, 2.0, 3.0, 4.0, 100.0], [np.nan, np.nan, np.nan, np.nan, np.nan]]
         )
 
-        with pytest.raises(ValueError, match="estimation asset"):
-            CSTanhShrinker().fit_transform(X)
+        out = CSTanhShrinker().fit_transform(X)
+
+        expected_first_row = CSTanhShrinker().fit_transform(X[[0]])[0]
+        np.testing.assert_allclose(out[0], expected_first_row, rtol=1e-12)
+        assert np.all(np.isnan(out[1]))
+
+    def test_empty_estimation_universe_returns_nan(self):
+        X = np.array([[1.0, 2.0, 3.0, 4.0]])
+        cs_weights = np.zeros_like(X)
+
+        out = CSTanhShrinker().fit_transform(X, cs_weights=cs_weights)
+
+        assert np.all(np.isnan(out))

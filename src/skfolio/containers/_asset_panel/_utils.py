@@ -15,10 +15,12 @@ import numpy as np
 import pandas as pd
 
 from skfolio.containers._asset_panel._fields import (
+    MISSING_CATEGORY_CODE,
     BaseField,
     Field2D,
     Field3D,
     FieldCategorical,
+    InactivePolicy,
 )
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
@@ -100,16 +102,56 @@ def _validate_field_against_axes(
             f"Field '{name}' has shape {field.values.shape}; expected "
             f"({expected_shape[0]}, {expected_shape[1]}, ...)."
         )
-    if not np.issubdtype(field.values.dtype, np.floating):
+    if field.inactive_policy == InactivePolicy.IGNORE:
         return
+
     if isinstance(field, Field3D):
-        n_bad = int(np.isfinite(field.values[~active_mask, :]).sum())
+        inactive_values = field.values[~active_mask, :]
     else:
-        n_bad = int(np.isfinite(field.values[~active_mask]).sum())
+        inactive_values = field.values[~active_mask]
+    if inactive_values.size == 0:
+        return
+
+    if field.inactive_policy == InactivePolicy.ZERO:
+        n_bad = int(np.count_nonzero(inactive_values != 0))
+        if n_bad:
+            raise ValueError(
+                f"Field '{name}' has {n_bad:,} non-zero value(s) where active_mask "
+                "is False. Fields with inactive_policy=InactivePolicy.ZERO must be "
+                "zero outside the active universe."
+            )
+        return
+
+    if isinstance(field, FieldCategorical):
+        n_bad = int(np.count_nonzero(inactive_values != MISSING_CATEGORY_CODE))
+        if n_bad:
+            raise ValueError(
+                f"Field '{name}' has {n_bad:,} non-missing code(s) where active_mask "
+                "is False. Categorical fields with "
+                "inactive_policy=InactivePolicy.MISSING must use "
+                "MISSING_CATEGORY_CODE outside the active universe."
+            )
+        return
+
+    if isinstance(field, Field3D):
+        if not np.issubdtype(field.values.dtype, np.floating):
+            raise ValueError(
+                f"Field '{name}' uses inactive_policy=InactivePolicy.MISSING but "
+                "does not have a floating dtype."
+            )
+        n_bad = int(np.isfinite(inactive_values).sum())
+    else:
+        if not np.issubdtype(field.values.dtype, np.floating):
+            raise ValueError(
+                f"Field '{name}' uses inactive_policy=InactivePolicy.MISSING but "
+                "does not have a floating dtype."
+            )
+        n_bad = int(np.isfinite(inactive_values).sum())
     if n_bad:
         raise ValueError(
             f"Field '{name}' has {n_bad:,} finite value(s) where active_mask "
-            "is False. Float fields must be NaN outside the active universe."
+            "is False. Fields with inactive_policy=InactivePolicy.MISSING must "
+            "be missing outside the active universe."
         )
 
 
@@ -323,9 +365,9 @@ def _to_dataframe(
     asset_selector = (
         slice(None)
         if assets is None
-        else _positions_from_unique_labels(panel.assets, assets)
+        else _positions_from_unique_labels(panel.asset_names, assets)
     )
-    selected_assets = panel.assets[asset_selector]
+    selected_assets = panel.asset_names[asset_selector]
 
     if isinstance(fields, str):
         return _field_to_dataframe(

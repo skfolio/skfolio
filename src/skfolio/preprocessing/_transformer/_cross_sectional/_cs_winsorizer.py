@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
@@ -121,8 +123,8 @@ class CSWinsorizer(BaseCSTransformer):
         Raises
         ------
         ValueError
-            If `low` / `high` are invalid, `X` is not a non-empty 2D array, `cs_weights`
-            is invalid, or any observation has no estimation asset.
+            If `low` / `high` are invalid, `X` is not a non-empty 2D array, or
+            `cs_weights` is invalid.
         """
         self._validate_params()
         X = skv.validate_data(
@@ -136,10 +138,16 @@ class CSWinsorizer(BaseCSTransformer):
         cs_weights = _validate_cs_weights(X=X, cs_weights=cs_weights)
 
         X_estimation = _mask_non_estimation_values(X=X, cs_weights=cs_weights)
-
-        q_lo, q_hi = np.nanpercentile(
-            X_estimation, [self.low * 100, self.high * 100], axis=1, keepdims=True
-        )
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="All-NaN slice encountered", category=RuntimeWarning
+            )
+            q_lo, q_hi = np.nanpercentile(
+                X_estimation,
+                [self.low * 100, self.high * 100],
+                axis=1,
+                keepdims=True,
+            )
 
         # Numpy clip preserves NaNs from X
         np.clip(X, q_lo, q_hi, out=X)

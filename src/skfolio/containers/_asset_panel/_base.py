@@ -8,13 +8,27 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Literal
+from typing import Any, Literal, TypeVar
 
+import numpy as np
 import pandas as pd
 
-from skfolio.containers._asset_panel._fields import BaseField, FieldCategorical
-from skfolio.containers._asset_panel._utils import _to_dataframe
-from skfolio.typing import StrArray
+from skfolio.containers._asset_panel._fields import (
+    BaseField,
+    Field2D,
+    Field3D,
+    FieldCategorical,
+    InactivePolicy,
+)
+from skfolio.containers._asset_panel._utils import (
+    _materialize_selector,
+    _positions_from_labels,
+    _positions_from_unique_labels,
+    _to_dataframe,
+)
+from skfolio.typing import AnyArray, ArrayLike, StrArray
+
+_BaseAssetPanelT = TypeVar("_BaseAssetPanelT", bound="_BaseAssetPanel")
 
 
 class _BaseAssetPanel(ABC):
@@ -43,6 +57,10 @@ class _BaseAssetPanel(ABC):
     @abstractmethod
     def get_field(self, name: str) -> BaseField:
         """Return a field object."""
+
+    @abstractmethod
+    def __setitem__(self, name: str, value: BaseField | ArrayLike) -> None:
+        """Add or replace a field."""
 
     @property
     def shape(self) -> tuple[int]:
@@ -76,6 +94,173 @@ class _BaseAssetPanel(ABC):
         if not isinstance(field, FieldCategorical):
             raise TypeError(f"Field '{name}' is not categorical.")
         return field.decode(missing_label=missing_label)
+
+    def sel_3d(self, name: str, *, labels: Any = None, groups: Any = None) -> AnyArray:
+        """Select entries from the third axis of a 3D field by label.
+
+        Exactly one of `labels` or `groups` must be provided. Selecting a single label
+        returns a 2D array with shape (n_observations, n_assets). Selecting multiple
+        labels or any group returns a 3D array whose first two axes are unchanged.
+
+        Parameters
+        ----------
+        name : str
+            Name of a `Field3D`.
+
+        labels : scalar, iterable, or None, optional
+            Third-axis labels to select.
+
+        groups : scalar, iterable, or None, optional
+            Third-axis group labels to select. The field must define `third_axis_groups`.
+
+        Returns
+        -------
+        values : ndarray
+            Selected values. A scalar `labels` selection returns 2D values. All other
+            selections return 3D values.
+        """
+        has_labels = labels is not None
+        has_groups = groups is not None
+        if has_labels == has_groups:
+            raise ValueError("Exactly one of labels or groups must be provided.")
+
+        field = self.get_field(name)
+        if not isinstance(field, Field3D):
+            raise TypeError(f"Field '{name}' is not a Field3D.")
+
+        if has_labels:
+            selector = _positions_from_unique_labels(field.third_axis_labels, labels)
+            positions = _materialize_selector(len(field.third_axis_labels), selector)
+            if isinstance(labels, (str, bytes)) or np.isscalar(labels):
+                return field.values[:, :, int(positions[0])]
+            return field.values[:, :, positions]
+
+        if field.third_axis_groups is None:
+            raise ValueError(f"Field '{name}' does not define third-axis groups.")
+        selector = _positions_from_labels(field.third_axis_groups, groups)
+        positions = _materialize_selector(len(field.third_axis_groups), selector)
+        return field.values[:, :, positions]
+
+    def add_2d_field(
+        self: _BaseAssetPanelT,
+        name: str,
+        values: ArrayLike,
+        *,
+        inactive_policy: InactivePolicy = InactivePolicy.MISSING,
+    ) -> _BaseAssetPanelT:
+        """Add or replace a numeric 2D field.
+
+        Parameters
+        ----------
+        name : str
+            Field name.
+
+        values : array-like of shape (n_observations, n_assets)
+            Numeric 2D values.
+
+        inactive_policy : InactivePolicy, default=InactivePolicy.MISSING
+            Validation policy for values outside `active_mask`.
+
+        Returns
+        -------
+        self : BaseAssetPanel
+            The modified container.
+        """
+        self[name] = Field2D(values, inactive_policy=inactive_policy)
+        return self
+
+    def add_3d_field(
+        self: _BaseAssetPanelT,
+        name: str,
+        values: ArrayLike,
+        *,
+        third_axis_name: str,
+        third_axis_labels: StrArray | list[str] | list[Any],
+        third_axis_groups: StrArray | list[str] | list[Any] | None = None,
+        inactive_policy: InactivePolicy = InactivePolicy.MISSING,
+    ) -> _BaseAssetPanelT:
+        """Add or replace a numeric 3D field.
+
+        This is a convenience wrapper around assigning a `Field3D`. The first two axes
+        of `values` must be observations and assets with shape (n_observations, n_assets).
+        The third axis stores a homogeneous block such as factors.
+
+        Parameters
+        ----------
+        name : str
+            Field name.
+
+        values : array-like of shape (n_observations, n_assets, n_third_axis)
+            Numeric 3D values.
+
+        third_axis_name : str
+            Name describing what the third axis represents (e.g. `factor`).
+
+        third_axis_labels : array-like of shape (n_third_axis,)
+            Labels for entries along the third axis such as factor names (e.g. `size`,
+            `momentum`).
+
+        third_axis_groups : array-like of shape (n_third_axis,), optional
+            Optional group label for each third-axis entry such as factor families (e.g.
+            `style`, `industry`).
+
+        inactive_policy : InactivePolicy, default=InactivePolicy.MISSING
+            Validation policy for values outside `active_mask`.
+
+        Returns
+        -------
+        self : BaseAssetPanel
+            The modified container.
+        """
+        self[name] = Field3D(
+            values,
+            third_axis_name=third_axis_name,
+            third_axis_labels=third_axis_labels,
+            third_axis_groups=third_axis_groups,
+            inactive_policy=inactive_policy,
+        )
+        return self
+
+    def add_categorical_field(
+        self: _BaseAssetPanelT,
+        name: str,
+        values: ArrayLike,
+        *,
+        levels: StrArray | list[str] | list[Any],
+        inactive_policy: InactivePolicy = InactivePolicy.MISSING,
+    ) -> _BaseAssetPanelT:
+        """Add or replace a 2D categorical field.
+
+        This is a convenience wrapper around assigning a `FieldCategorical`. The field
+        values must be integer codes with shape (n_observations, n_assets). Code -1 is
+        reserved for missing values. Code 0 selects `levels[0]`, code 1 selects
+        `levels[1]` and so on.
+
+        Parameters
+        ----------
+        name : str
+            Field name.
+
+        values : array-like of integers, shape (n_observations, n_assets)
+            Integer category codes.
+
+        levels : array-like of shape (n_levels,)
+            Category labels selected by codes 0, 1 and so on.
+
+        inactive_policy : InactivePolicy, default=InactivePolicy.MISSING
+            Validation policy for codes outside `active_mask`.
+
+        Returns
+        -------
+        self : BaseAssetPanel
+            The modified container.
+        """
+        self[name] = FieldCategorical(
+            values,
+            levels=levels,
+            inactive_policy=inactive_policy,
+        )
+        return self
 
     def to_dataframe(
         self,

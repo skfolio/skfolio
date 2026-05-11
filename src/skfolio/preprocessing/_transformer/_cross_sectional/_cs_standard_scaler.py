@@ -16,6 +16,7 @@ from skfolio.preprocessing._transformer._cross_sectional._utils import (
     _cs_group_keys,
     _cs_recenter_rescale,
     _cs_weighted_mean,
+    _mask_empty_cross_sections,
     _prepare_cs_estimation_inputs,
     _validate_and_normalize_groups,
     _validate_cs_weights,
@@ -175,8 +176,7 @@ class CSStandardScaler(BaseCSTransformer):
         ------
         ValueError
             If `min_group_size < 1`, `atol < 0`, `X` is not a non-empty
-            2D array, `cs_weights` is invalid, `cs_groups` is invalid,
-            or any observation has no estimation asset.
+            2D array, `cs_weights` is invalid, or `cs_groups` is invalid.
         """
         self._validate_params()
         X = skv.validate_data(
@@ -200,7 +200,9 @@ class CSStandardScaler(BaseCSTransformer):
                 out=Z,
                 where=finite_mask & (std_global > self.atol),
             )
-            return np.where(finite_mask, Z, np.nan)
+            return _mask_empty_cross_sections(
+                np.where(finite_mask, Z, np.nan), estimation_mask.any(axis=1)
+            )
 
         # bincount requires an explicit weight array
         bincount_weights = (

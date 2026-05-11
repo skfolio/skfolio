@@ -5,6 +5,7 @@ from skfolio.containers._asset_panel._fields import (
     Field2D,
     Field3D,
     FieldCategorical,
+    InactivePolicy,
 )
 from skfolio.containers._asset_panel._panel import AssetPanel
 from skfolio.containers._asset_panel._view import AssetPanelView
@@ -17,5 +18,6 @@ __all__ = [
     "Field2D",
     "Field3D",
     "FieldCategorical",
+    "InactivePolicy",
     "concat",
 ]
