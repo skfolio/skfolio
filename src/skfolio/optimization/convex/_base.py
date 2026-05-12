@@ -20,7 +20,11 @@ import sklearn.utils.metadata_routing as skm
 from cvxpy.reductions.solvers.defines import MI_SOLVERS
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _PREVIOUS_WEIGHTS,
+    _TRANSACTION_COSTS,
+)
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
@@ -1304,7 +1308,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.transaction_costs,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.TRANSACTION_COSTS.value,
+            name=_TRANSACTION_COSTS,
         )
         if np.all(transaction_costs == 0):
             return cp.Constant(0)
@@ -1343,7 +1347,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.management_fees,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.MANAGEMENT_FEES.value,
+            name=_MANAGEMENT_FEES,
         )
         if np.all(management_fees == 0):
             return cp.Constant(0)
@@ -1406,7 +1410,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.previous_weights,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.PREVIOUS_WEIGHTS.value,
+            name=_PREVIOUS_WEIGHTS,
         )
         if np.isscalar(previous_weights):
             previous_weights *= np.ones(n_assets)

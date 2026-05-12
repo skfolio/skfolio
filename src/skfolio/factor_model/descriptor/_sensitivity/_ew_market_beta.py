@@ -340,7 +340,7 @@ class EWMarketBeta(BaseDescriptor):
             self._buffer_market = np.empty(self._aggregation_period, dtype=float)
             self._buffer_idx = 0
 
-    def _update_ewma(self, ret_assets: np.ndarray, ret_market: float) -> None:
+    def _update_ewma(self, ret_assets: FloatArray, ret_market: float) -> None:
         """Update EWMA statistics with a single observation or aggregated values.
 
         Uses centered EWMA with lagged-mean deviations: deviations are computed from the
@@ -421,19 +421,19 @@ class EWMarketBeta(BaseDescriptor):
 
         Parameters
         ----------
-        raw_betas : np.ndarray
-            Raw EWMA betas, shape (n_assets,).
+        raw_betas : darray of shape (n_assets,)
+            Raw EWMA betas.
 
-        group_labels : np.ndarray
-            Group label for each asset (e.g., industry), shape (n_assets,).
+        group_labels : ndarray of shape (n_assets,)
+            Group label for each asset (e.g., industry).
 
-        market_cap : np.ndarray
-            Market capitalization for each asset, shape (n_assets,).
+        market_cap : ndarray of shape (n_assets,)
+            Market capitalization for each asset.
 
         Returns
         -------
-        shrunk_betas : np.ndarray
-            Shrunk betas, shape (n_assets,).
+        shrunk_betas : ndarray of shape (n_assets,)
+            Shrunk betas.
         """
         shrunk_betas = raw_betas.copy()
 

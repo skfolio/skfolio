@@ -17,6 +17,7 @@ from skfolio.containers._asset_panel._fields import (
     FieldCategorical,
 )
 from skfolio.containers._asset_panel._panel import AssetPanel
+from skfolio.typing import AnyArray, IntArray, StrArray
 
 __all__ = ["concat"]
 
@@ -192,8 +193,8 @@ def _validate_field_schema(
 def _validate_optional_groups(
     *,
     name: str,
-    reference_groups: np.ndarray | None,
-    groups: np.ndarray | None,
+    reference_groups: StrArray | None,
+    groups: IntArray | None,
     position: int,
 ) -> None:
     """Validate optional third-axis groups for a 3D field."""
@@ -212,7 +213,7 @@ def _validate_optional_groups(
         )
 
 
-def _validate_unique_observations(observations: np.ndarray) -> None:
+def _validate_unique_observations(observations: AnyArray) -> None:
     """Validate that concatenated observations contain no duplicate labels."""
     observation_index = pd.Index(observations)
     duplicate_positions = np.flatnonzero(observation_index.duplicated())

@@ -22,11 +22,13 @@ if TYPE_CHECKING:
         RiskMeasure,
     )
     from skfolio.optimization._base import BaseOptimization
+    from skfolio.preprocessing import BaseCSTransformer
 
 __all__ = [
     "AnyArray",
     "ArrayLike",
     "BoolArray",
+    "CSTransformer",
     "CvxMeasure",
     "ExpressionFunction",
     "Factor",
@@ -64,6 +66,7 @@ Measure: TypeAlias = Union[
 ]
 CvxMeasure: TypeAlias = Union["PerfMeasure", "RiskMeasure", "RatioMeasure"]
 Scoring: TypeAlias = Callable | dict[str, Callable] | Measure | None
+CSTransformer: TypeAlias = Union["BaseCSTransformer", Literal["passthrough"], None]
 MultiInput = float | dict[str, float] | ArrayLike
 Groups = dict[str, list[str]] | IntArray | StrArray | list[list[str]]
 LinearConstraints = FloatArray | list[str]

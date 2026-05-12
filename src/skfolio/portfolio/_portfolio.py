@@ -17,7 +17,11 @@ import numpy as np
 import pandas as pd
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _PREVIOUS_WEIGHTS,
+    _TRANSACTION_COSTS,
+)
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import ArrayLike, FloatArray, IntArray, StrArray
@@ -443,9 +447,9 @@ class Portfolio(BasePortfolio):
             "X",
             "assets",
             "weights",
-            _ParamKey.PREVIOUS_WEIGHTS.value,
-            _ParamKey.TRANSACTION_COSTS.value,
-            _ParamKey.MANAGEMENT_FEES.value,
+            _PREVIOUS_WEIGHTS,
+            _TRANSACTION_COSTS,
+            _MANAGEMENT_FEES,
             "n_assets",
             "total_cost",
             "total_fee",
@@ -456,9 +460,9 @@ class Portfolio(BasePortfolio):
         # read-only
         "X",
         "weights",
-        _ParamKey.PREVIOUS_WEIGHTS.value,
-        _ParamKey.TRANSACTION_COSTS.value,
-        _ParamKey.MANAGEMENT_FEES.value,
+        _PREVIOUS_WEIGHTS,
+        _TRANSACTION_COSTS,
+        _MANAGEMENT_FEES,
         "assets",
         "n_assets",
         "total_cost",
@@ -531,7 +535,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.PREVIOUS_WEIGHTS.value,
+                name=_PREVIOUS_WEIGHTS,
             )
 
         if transaction_costs is None:
@@ -543,7 +547,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.TRANSACTION_COSTS.value,
+                name=_TRANSACTION_COSTS,
             )
 
         if management_fees is None:
@@ -555,7 +559,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.MANAGEMENT_FEES.value,
+                name=_MANAGEMENT_FEES,
             )
 
         # Default observations and assets if X is not a DataFrame

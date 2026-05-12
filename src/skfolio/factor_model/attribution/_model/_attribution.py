@@ -999,7 +999,7 @@ def _compute_top_indices(
     return idx, None
 
 
-def _as_2d(a: np.ndarray) -> np.ndarray:
+def _as_2d(a: AnyArray) -> AnyArray:
     """Convert 1D array to 2D with shape (1, n)."""
     return a if a.ndim == 2 else a.reshape(1, -1)
 
@@ -1158,8 +1158,8 @@ def _html_escape(s: str) -> str:
 
 
 def _mean_return_ci_error_bars(
-    mu: np.ndarray,
-    se: np.ndarray,
+    mu: FloatArray,
+    se: FloatArray,
     z: float,
 ) -> tuple[list[float | None], list[float | None]]:
     """Asymmetric Plotly `error_y` extents from mean return and SE (return units)."""
@@ -1204,9 +1204,9 @@ def _hover_template(name: str, contrib_names: list[str], show_exposure: bool) ->
 
 def _scatter_plot_df(
     names: list[str],
-    values: dict[str, np.ndarray],
+    values: dict[str, FloatArray],
     mu_label: str,
-    observations: np.ndarray | None = None,
+    observations: AnyArray | None = None,
 ) -> pd.DataFrame:
     """Build DataFrame for risk-return scatter (single-point or rolling)."""
     n_items = len(names)
@@ -1292,7 +1292,7 @@ def _plot_bar_chart(
     is_rolling: bool,
     is_realized: bool,
     is_risk: bool,
-    observations: np.ndarray | None = None,
+    observations: AnyArray | None = None,
     confidence_level: float | None = None,
 ):
     if is_risk:
@@ -1324,7 +1324,7 @@ def _plot_bar_chart(
 
         z = float(sp_norm.ppf((1 + confidence_level) / 2))
 
-    se_matrix: np.ndarray | None = None
+    se_matrix = None
     if not is_risk and is_realized:
         se_matrix = _prepare_perf_mu_uncertainty_se(
             data, idio, top_n, include_idio, is_rolling

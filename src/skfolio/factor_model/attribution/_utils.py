@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from skfolio.typing import FloatArray
+from skfolio.typing import AnyArray, FloatArray
 
 
 def _format_percent(x: float) -> str:
@@ -51,7 +51,7 @@ def _format_contrib_with_ci_margin(mu: float, se: float, z: float) -> str:
     return f"{out} ± {_format_percent(z * se)}"
 
 
-def _validate_no_nan(arr: np.ndarray, name: str) -> None:
+def _validate_no_nan(arr: AnyArray, name: str) -> None:
     """Raise if the array contains any NaN."""
     nan_mask = np.isnan(arr)
     if nan_mask.any():

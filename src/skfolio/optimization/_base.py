@@ -27,7 +27,12 @@ import sklearn.base as skb
 from sklearn.utils.validation import check_is_fitted
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _PREVIOUS_WEIGHTS,
+    _RISK_FREE_RATE,
+    _TRANSACTION_COSTS,
+)
 from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
@@ -210,7 +215,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         for fb in fallback:
             try:
                 fb = _validate_fallback(fb)
-                if fb == _ParamKey.PREVIOUS_WEIGHTS.value:
+                if fb == _PREVIOUS_WEIGHTS:
                     self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
                     return
 
@@ -271,11 +276,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     "Provide valid previous weights or remove this fallback."
                 )
             self.weights_ = self._clean_previous_weights(n_assets=n_assets)
-            self.fallback_ = _ParamKey.PREVIOUS_WEIGHTS.value
-            self.fallback_chain_.append((_ParamKey.PREVIOUS_WEIGHTS.value, "success"))
+            self.fallback_ = _PREVIOUS_WEIGHTS
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
 
         except Exception as error:
-            self.fallback_chain_.append((_ParamKey.PREVIOUS_WEIGHTS.value, str(error)))
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))
             raise
 
     @abstractmethod
@@ -324,10 +329,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
         # Set the default portfolio parameters equal to the optimization parameters
         for param in [
-            _ParamKey.TRANSACTION_COSTS.value,
-            _ParamKey.MANAGEMENT_FEES.value,
-            _ParamKey.PREVIOUS_WEIGHTS.value,
-            _ParamKey.RISK_FREE_RATE.value,
+            _TRANSACTION_COSTS,
+            _MANAGEMENT_FEES,
+            _PREVIOUS_WEIGHTS,
+            _RISK_FREE_RATE,
         ]:
             if param not in ptf_kwargs and hasattr(self, param):
                 ptf_kwargs[param] = getattr(self, param)
@@ -424,9 +429,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         transaction costs, a maximum turnover, or a fallback depending on
         `previous_weights` are present.
         """
-        if _has_transaction_cost(
-            getattr(self, _ParamKey.TRANSACTION_COSTS.value, None)
-        ):
+        if _has_transaction_cost(getattr(self, _TRANSACTION_COSTS, None)):
             return True
 
         if getattr(self, "max_turnover", None) is not None:
@@ -439,7 +442,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
             for fb in fallback:
                 fb = _validate_fallback(fb)
-                if fb == _ParamKey.PREVIOUS_WEIGHTS.value or fb.needs_previous_weights:
+                if fb == _PREVIOUS_WEIGHTS or fb.needs_previous_weights:
                     return True
 
         return False
@@ -579,7 +582,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             self.previous_weights,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.PREVIOUS_WEIGHTS.value,
+            name=_PREVIOUS_WEIGHTS,
         )
         if np.isscalar(previous_weights):
             previous_weights = np.full(n_assets, float(previous_weights))
@@ -609,11 +612,11 @@ def _validate_fallback(
         If `fallback` is not a string and not an instance of `BaseOptimization`.
     """
     if isinstance(fallback, str):
-        if fallback != _ParamKey.PREVIOUS_WEIGHTS.value:
+        if fallback != _PREVIOUS_WEIGHTS:
             raise ValueError(
                 f"Unsupported string fallback: {fallback!r}. Only 'previous_weights' is allowed."
             )
-        return _ParamKey.PREVIOUS_WEIGHTS.value
+        return _PREVIOUS_WEIGHTS
     if not isinstance(fallback, BaseOptimization):
         raise TypeError(
             f"Fallback estimators must inherit from BaseOptimization (got {type(fallback).__name__})."

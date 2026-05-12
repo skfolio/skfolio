@@ -22,8 +22,8 @@ class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
     Descriptors and factor exposure estimators take an :class:`AssetPanel` and
     return transformed values indexed by observation and asset. Most transformers return
     an array with shape `(n_observations, n_assets)`. Transformers that produce multiple
-    values per asset, such as :class:`OneHotCategoryFactors`, return an array with shape
-    `(n_observations, n_assets, n_categories)`.
+    values per asset, such as :class:`OneHotCategoricalFactors`, return an array with
+    shape `(n_observations, n_assets, n_categories)`.
 
     In scikit-learn, `fit` and `partial_fit` update fitted state, stored in trailing
     underscore attributes, while `transform` returns transformed input data using that

@@ -12,7 +12,7 @@ from functools import cached_property
 
 import numpy as np
 
-from skfolio.typing import FloatArray, StrArray
+from skfolio.typing import FloatArray, IntArray, StrArray
 
 __all__ = [
     "ConstrainedFamily",
@@ -681,7 +681,7 @@ class ConstrainedFamily:
     """
 
     family_name: str
-    full_factor_indices: np.ndarray
+    full_factor_indices: IntArray
     dropped_index_in_family: int
     basis_coefficients: FloatArray
 

@@ -13,7 +13,7 @@ import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
 from skfolio.containers import AssetPanel, AssetPanelView
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import AnyArray, ArrayLike, FloatArray
 
 __all__ = ["validate_asset_panel", "validate_cross_sectional_data"]
 
@@ -447,6 +447,6 @@ def _check_fields_exist(
             )
 
 
-def _bad_observation(bad: np.ndarray) -> int:
+def _bad_observation(bad: AnyArray) -> int:
     """Return the first observation index containing a validation failure."""
     return int(np.where(bad.any(axis=1))[0][0])
