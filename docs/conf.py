@@ -9,9 +9,11 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import json
 import os
 import re
+import sys
 import warnings
 import xml.etree.ElementTree as ET
 from html import escape
@@ -330,9 +332,17 @@ extensions = [
     "sphinxext.opengraph",
     "sphinx_sitemap",
     "sphinx.ext.githubpages",
-    "jupyterlite_sphinx",
     "sphinx_last_updated_by_git",
+    "sphinx_llm.txt",  # llms.txt / llms-full.txt / per-page .md — see below
 ]
+
+# `sphinx-llm` (sphinx_llm.txt) builds the docs a second time with the markdown builder
+# (`sphinx-build -b markdown`), re-running this conf. `jupyterlite_sphinx` is HTML-only
+# and slow, and re-running its `jupyter lite build` in that sub-build corrupts the shared
+# JupyterLite state, so load it only for the primary (HTML) build.
+_is_markdown_subbuild = "markdown" in sys.argv
+if not _is_markdown_subbuild:
+    extensions.append("jupyterlite_sphinx")
 
 templates_path = ["_templates"]
 
@@ -423,6 +433,25 @@ html_baseurl = "https://skfolio.org/"
 sitemap_url_scheme = "{link}"
 sitemap_show_lastmod = True
 sitemap_excludes = ["search.html"]
+
+# -- sphinx-llm (sphinx_llm.txt): markdown docs for LLMs -----------------------
+# https://github.com/NVIDIA/sphinx-llm
+# Builds the docs a second time with the markdown builder and writes, into the HTML
+# build dir: a `<page>.html.md` markdown copy of every page, plus `llms-full.txt`
+# (all pages concatenated) and `llms.txt` (a markdown sitemap with per-page
+# descriptions) — following the https://llmstxt.org/ convention. Since these land in
+# the HTML output dir they get published with the site, e.g. at
+# https://skfolio.org/llms.txt , https://skfolio.org/llms-full.txt and
+# https://skfolio.org/<page>.html.md .
+llms_txt_description = (
+    "Python library for portfolio optimization and risk management built on top of "
+    "scikit-learn: build, fine-tune, cross-validate and stress-test portfolio models."
+)
+markdown_http_base = "https://skfolio.org"  # make the links in llms.txt absolute
+# Run the markdown sub-build sequentially, not in parallel with the HTML build: the
+# parallel mode races jupyterlite_sphinx (concurrent `jupyter lite build` on shared
+# state). jupyterlite is also dropped from the sub-build's extensions (see above).
+llms_txt_build_parallel = False
 # -- Internationalization ----------------------------------------------------
 
 # specifying the natural language populates some key tags
@@ -648,6 +677,24 @@ PATCH_CELL = nbformat.v4.new_code_cell(
 # -- Sphinx Hooks ----------------------------------------------------------------
 
 
+def _html_builders_only(handler):
+    """No-op a ``build-finished`` handler unless the active builder emits HTML.
+
+    The ``sphinx-llm`` extension runs a second ``sphinx-build -b markdown`` pass
+    through this conf; the handlers below manipulate (or assume the existence of)
+    HTML build output and would crash or be pointless under another builder.
+    """
+
+    @functools.wraps(handler)
+    def wrapper(app, exception):
+        if app.builder.name not in ("html", "dirhtml"):
+            return
+        return handler(app, exception)
+
+    return wrapper
+
+
+@_html_builders_only
 def patch_jupyterlite_notebooks(app, exception):
     """
     Iterates over all ipynb files in the _build/lite/files directory and prepends the
@@ -1152,6 +1199,7 @@ def override_html_title(app, pagename, templatename, context, doctree):
         context["title"] = "Portfolio Optimization in Python"
 
 
+@_html_builders_only
 def override_example_meta_descriptions(app, exception):
     if exception:
         return
@@ -1195,6 +1243,7 @@ def override_example_meta_descriptions(app, exception):
 
 
 
+@_html_builders_only
 def replace_index_links(app, exception):
     """
     Normalize only links that truly point to the *root* homepage:
@@ -1306,6 +1355,7 @@ def _canonical(app, target: str) -> str:
     return target
 
 
+@_html_builders_only
 def create_redirects(app, exception):
     if exception:
         return  # skip on failed builds

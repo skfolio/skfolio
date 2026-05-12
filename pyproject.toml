@@ -91,6 +91,7 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
+    "sphinx-llm>=0.4.1",
 ]
 
 [tool.setuptools.packages.find]
