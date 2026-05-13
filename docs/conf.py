@@ -448,6 +448,11 @@ llms_txt_description = (
     "scikit-learn: build, fine-tune, cross-validate and stress-test portfolio models."
 )
 markdown_http_base = "https://skfolio.org"  # make the links in llms.txt absolute
+# sphinx-markdown-builder defaults its cross-reference suffix to ".md", but sphinx-llm
+# writes per-page files as "<page>.html.md" to follow llmstxt.org's "append .md to any
+# HTML URL" convention. Override the URI suffix so internal references inside the
+# generated markdown resolve to the files that actually ship on the site.
+markdown_uri_doc_suffix = ".html.md"
 # Run the markdown sub-build sequentially, not in parallel with the HTML build: the
 # parallel mode races jupyterlite_sphinx (concurrent `jupyter lite build` on shared
 # state). jupyterlite is also dropped from the sub-build's extensions (see above).
