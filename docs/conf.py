@@ -694,6 +694,29 @@ def _html_builders_only(handler):
     return wrapper
 
 
+def patch_markdown_classifier(app):
+    """Make ``sphinx-markdown-builder`` render numpydoc parameter types.
+
+    Numpydoc emits the type for each parameter as a docutils ``classifier`` node;
+    ``sphinx-markdown-builder`` has no ``visit_classifier``, so the type is silently
+    dropped in the markdown output (e.g. ``returns : ndarray of shape (n,)`` becomes
+    just ``returns``). We add a visitor that emits the type in italics after the
+    term, preserving the information for LLM consumption.
+    """
+    if app.builder.name != "markdown":
+        return
+    from sphinx_markdown_builder.translator import MarkdownTranslator
+
+    def visit_classifier(self, _node):
+        self.add(" *")
+
+    def depart_classifier(self, _node):
+        self.add("*")
+
+    MarkdownTranslator.visit_classifier = visit_classifier
+    MarkdownTranslator.depart_classifier = depart_classifier
+
+
 @_html_builders_only
 def patch_jupyterlite_notebooks(app, exception):
     """
@@ -1375,6 +1398,9 @@ def create_redirects(app, exception):
 
 def setup(app):
     """Setup function to register the build-finished hook."""
+    # Builder-inited: patch sphinx-markdown-builder to emit parameter types.
+    app.connect("builder-inited", patch_markdown_classifier)
+
     # html page context
     app.connect("html-page-context", override_canonical)
     app.connect("html-page-context", inject_schema)
