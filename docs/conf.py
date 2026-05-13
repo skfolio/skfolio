@@ -1396,6 +1396,61 @@ def create_redirects(app, exception):
         print(f"[redirects] {src_docname}{suffix} → {target}")
 
 
+# Each Plotly figure is emitted by sphinx-markdown-builder as a verbatim HTML
+# block containing a ``plotly-graph-div`` and a ``Plotly.newPlot(...)`` payload
+# (often ~200 KB per figure). The payload is useless to an LLM and bloats both
+# the per-page ``*.html.md`` and the concatenated ``llms-full.txt`` (~86% of
+# size on this repo). Two wrappers occur in practice: sphinx-gallery's
+# ``<div class="output_subarea ...">`` cell wrapper, and the ``<html><body>...``
+# standalone document emitted by ``plotly.io.show()``.
+_PLOTLY_BLOCK_RES = [
+    re.compile(
+        r'<div class="output_subarea output_html rendered_html output_result">'
+        r".*?plotly-graph-div"
+        r".*?</div>\s*</div>",
+        flags=re.DOTALL,
+    ),
+    re.compile(
+        r"<html>.*?plotly-graph-div.*?</html>",
+        flags=re.DOTALL,
+    ),
+]
+_PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
+
+
+def strip_plotly_from_llms(app, exception):
+    """Strip inline Plotly HTML from sphinx-llm's markdown artifacts.
+
+    Runs after sphinx-llm's own ``build-finished`` hook (priority > 500) so the
+    per-page ``*.html.md`` and ``llms-full.txt`` already exist on disk.
+    """
+    if exception is not None:
+        return
+    if app.builder.name not in ("html", "dirhtml"):
+        return
+    outdir = Path(app.outdir)
+    targets = list(outdir.rglob("*.html.md"))
+    llms_full = outdir / "llms-full.txt"
+    if llms_full.exists():
+        targets.append(llms_full)
+    total_blocks = 0
+    total_files = 0
+    for path in targets:
+        text = path.read_text(encoding="utf-8")
+        n_total = 0
+        for regex in _PLOTLY_BLOCK_RES:
+            text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
+            n_total += n
+        if n_total:
+            path.write_text(text, encoding="utf-8")
+            total_blocks += n_total
+            total_files += 1
+    print(
+        f"[llms-strip-plotly] stripped {total_blocks} Plotly block(s) "
+        f"across {total_files} file(s)"
+    )
+
+
 def setup(app):
     """Setup function to register the build-finished hook."""
     # Builder-inited: patch sphinx-markdown-builder to emit parameter types.
@@ -1412,6 +1467,9 @@ def setup(app):
     app.connect("build-finished", override_example_meta_descriptions)
     app.connect("build-finished", replace_index_links)
     app.connect("build-finished", create_redirects)
+    # priority>500 so this runs after sphinx-llm's build-finished hook, which
+    # generates the .html.md / llms-full.txt that we then post-process.
+    app.connect("build-finished", strip_plotly_from_llms, priority=999)
 
     return {
         "version": "1.0",
