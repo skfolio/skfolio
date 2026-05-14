@@ -41,6 +41,7 @@ __all__ = [
     "Measure",
     "MultiInput",
     "Names",
+    "ObjArray",
     "ParametersValues",
     "Result",
     "RiskResult",

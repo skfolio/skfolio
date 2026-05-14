@@ -41,6 +41,14 @@ class GlobalFactor(BaseFactorExposure, stateless=True):
         factors for basket-neutral constraints, neutralization, attribution and
         reporting. The default is `"market"`.
 
+    Attributes
+    ----------
+    n_assets_ : int
+        Number of assets seen during fitting.
+
+    asset_names_ : ndarray of shape (n_assets,)
+        Asset names seen during fitting.
+
     Examples
     --------
     >>> from skfolio.factor_model.factor_exposure import GlobalFactor

@@ -119,10 +119,32 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
 
     n_jobs : int, default=1
         Number of parallel jobs for descriptor computation.
+
+    Attributes
+    ----------
+    descriptors_ : list of BaseDescriptor
+        Fitted descriptor estimators.
+
+    named_descriptors_ : dict of {str: BaseDescriptor}
+        Dictionary mapping descriptor names to fitted estimators.
+
+    outlier_transformer_ : BaseCSTransformer or str
+        The fitted outlier transformer.
+
+    scoring_transformer_ : BaseCSTransformer or str
+        The fitted scoring transformer.
+
+    n_assets_ : int
+        Number of assets seen during fitting.
+
+    asset_names_ : ndarray of shape (n_assets,)
+        Asset names seen during fitting.
     """
 
     descriptors_: list[BaseDescriptor]
     named_descriptors_: dict[str, BaseDescriptor]
+    outlier_transformer_: skt.CSTransformer
+    scoring_transformer_: skt.CSTransformer
 
     def __init__(
         self,
@@ -151,7 +173,7 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
         Parameters
         ----------
         X : AssetPanel
-            Input panel containing benchmark weights, descriptor fields and optional
+            Input panel containing "benchmark_weights", descriptor fields and optional
             grouping fields.
 
         y : None
@@ -202,9 +224,8 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
         **fit_params,
     ) -> FloatArray:
         """Compute factor exposure using the requested descriptor transform method."""
-        routed_params = skm.process_routing(
-            self, method.removesuffix("_transform"), **fit_params
-        )
+        routing_method = method.removesuffix("_transform")
+        routed_params = skm.process_routing(self, routing_method, **fit_params)
 
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -226,7 +247,7 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
             skp.delayed(call_asset_panel_transform)(
                 des,
                 X=X,
-                fit_params=routed_params[name][method.removesuffix("_transform")],
+                fit_params=routed_params[name][routing_method],
                 method=method,
             )
             for name, des in self.named_descriptors_.items()

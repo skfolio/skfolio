@@ -5,7 +5,65 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from skfolio.factor_model._utils import _market_returns
+from skfolio.factor_model._utils import (
+    _expand_factor_names,
+    _market_returns,
+    _neutralize_scores,
+)
+
+
+def test_expand_factor_names_deduplicates_family_members():
+    """Expanded target lists keep first occurrence order and remove duplicates."""
+    factor_to_idx = {"size": 0, "value": 1, "market": 2}
+    family_to_idx = {"style": [0, 1], "market": [2]}
+
+    result = _expand_factor_names(
+        ["style", "size", "market"],
+        factor_to_idx=factor_to_idx,
+        family_to_idx=family_to_idx,
+    )
+
+    assert result == [0, 1, 2]
+
+
+def test_neutralize_scores_excludes_missing_score_and_exposure():
+    """Missing score or exposure entries should receive zero regression weight."""
+    exposure = np.array(
+        [
+            [1.0, 2.0, 3.0, 4.0],
+            [1.0, -1.0, 2.0, -2.0],
+        ]
+    )
+    residual = np.array(
+        [
+            [1.0, -1.0, 0.5, -0.5],
+            [0.3, 0.2, -0.1, -0.4],
+        ]
+    )
+    scores = np.array([2.0 * exposure + residual])
+    exposures = exposure[:, :, None].copy()
+    cs_weights = np.ones_like(exposure)
+
+    scores[0, 0, 1] = np.nan
+    exposures[1, 2, 0] = np.nan
+
+    result = _neutralize_scores(
+        neutralize_against=["market"],
+        scores=scores,
+        exposures=exposures,
+        cs_weights=cs_weights,
+        factor_names=np.array(["market"]),
+        factor_families=np.array(["market"]),
+    )
+
+    assert result is scores
+    assert np.isnan(scores[0, 0, 1])
+    assert np.isnan(scores[0, 1, 2])
+
+    for t in range(exposure.shape[0]):
+        valid = np.isfinite(scores[0, t]) & np.isfinite(exposures[t, :, 0])
+        weighted_dot = np.sum(scores[0, t, valid] * exposures[t, valid, 0])
+        assert abs(weighted_dot) < 1e-12
 
 
 def test_market_returns_uses_estimation_mask():

@@ -47,6 +47,12 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
     ----------
     factor_names_ : ndarray of shape (n_factors,)
         The category labels corresponding to each one-hot column.
+
+    n_assets_ : int
+        Number of assets seen during fitting.
+
+    asset_names_ : ndarray of shape (n_assets,)
+        Asset names seen during fitting.
     """
 
     factor_names_: ObjArray

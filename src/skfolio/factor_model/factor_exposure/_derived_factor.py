@@ -67,6 +67,12 @@ class DerivedFactor(BaseFactorExposure, stateless=True):
     scoring_transformer_ : BaseCSTransformer or str
         The fitted scoring transformer.
 
+    n_assets_ : int
+        Number of assets seen during fitting.
+
+    asset_names_ : ndarray of shape (n_assets,)
+        Asset names seen during fitting.
+
     Examples
     --------
     >>> from skfolio.factor_model.factor_exposure import DerivedFactor, FixedWeightedFactor
