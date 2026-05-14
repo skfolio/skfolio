@@ -77,7 +77,7 @@ dev = [
 ]
 docs = [
     "PySCIPOpt<6.0.0",
-    "Sphinx",
+    "Sphinx>=7.2",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
     "matplotlib",

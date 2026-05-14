@@ -9,8 +9,11 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
 import datetime as dt
+import enum
 import functools
+import importlib
 import json
+import logging
 import os
 import re
 import sys
@@ -1401,6 +1404,81 @@ def create_redirects(app, exception):
         print(f"[redirects] {src_docname}{suffix} → {target}")
 
 
+class _SkfolioAutodocStrEnumNoise(logging.Filter):
+    """Hide autodoc/autosummary warnings for inherited ``str`` methods on skfolio enums.
+
+    ``AutoEnum`` subclasses ``(str, Enum)``, so every skfolio enum inherits ~40
+    public ``str`` methods. Combined with ``autodoc_default_options =
+    {"inherited-members": True}`` this produces a flood of "error while
+    formatting signature for X" / "failed to import object X" warnings from
+    ``sphinx.ext.autodoc`` and ``sphinx.ext.autosummary``. The companion
+    ``skip_strenum_public_str_methods`` callback prevents them from appearing
+    in the rendered docs; this filter silences the matching log lines.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        tail = "|".join(
+            re.escape(n)
+            for n in dir(str)
+            if not n.startswith("_") and callable(getattr(str, n, None))
+        )
+        self._pat = re.compile(
+            rf"(?:error while formatting signature for |failed to import object )"
+            rf"skfolio\.[\w.]+\.(?:{tail})\b"
+        )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            if self._pat.search(record.getMessage()):
+                return False
+        except Exception:
+            pass
+        return True
+
+
+def skip_strenum_public_str_methods(
+    app, _obj_type, member_name, member_obj, skip, options
+):
+    """Skip documenting inherited public ``str`` methods on ``str`` + ``Enum`` classes.
+
+    Returning ``True`` skips the member, ``None`` defers to the default. The
+    callback only suppresses methods that are (a) public, (b) genuinely the
+    inherited ``str.<name>`` object, and (c) not overridden in the enum
+    subclass's own ``__dict__``.
+    """
+    if skip or member_name.startswith("_"):
+        return None
+    sm = getattr(str, member_name, None)
+    if sm is None or not callable(sm):
+        return None
+    same = member_obj is sm or (
+        getattr(member_obj, "__objclass__", None) is str
+        and getattr(member_obj, "__name__", None) == member_name
+    )
+    if not same:
+        return None
+
+    modname = app.env.current_document.autodoc_module
+    cls_name = app.env.current_document.autodoc_class
+    if not modname or not cls_name:
+        return True
+
+    try:
+        module = importlib.import_module(modname)
+        subject = getattr(module, cls_name)
+    except (AttributeError, ImportError):
+        return True
+
+    if not isinstance(subject, type):
+        return True
+    if issubclass(subject, enum.Enum):
+        if member_name in subject.__dict__:
+            return None
+        return True
+    return None
+
+
 # Each Plotly figure is emitted by sphinx-markdown-builder as a verbatim HTML
 # block containing a ``plotly-graph-div`` and a ``Plotly.newPlot(...)`` payload
 # (often ~200 KB per figure). The payload is useless to an LLM and bloats both
@@ -1422,12 +1500,38 @@ _PLOTLY_BLOCK_RES = [
 ]
 _PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
 
+# sphinx-llm pages still carry numpydoc / sphinx-gallery metadata comments
+# (``<!-- !! processed by numpydoc !! -->``, ``<!-- GENERATED FROM PYTHON
+# SOURCE LINES X-Y -->``, ``<!-- DO NOT EDIT. -->``) — pure cruft for an LLM
+# consumer.
+_LLMS_HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
+_LLMS_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
 
-def strip_plotly_from_llms(app, exception):
-    """Strip inline Plotly HTML from sphinx-llm's markdown artifacts.
+
+def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
+    """Prepare sphinx-llm markdown text for LLM-oriented output.
+
+    Order of operations: replace Plotly HTML regions first, then remove all
+    HTML comments, collapse runs of three or more newlines to two, and strip
+    leading newlines so files do not start with empty lines after comment
+    removal.
+    """
+    n_plotly = 0
+    for regex in _PLOTLY_BLOCK_RES:
+        text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
+        n_plotly += n
+    text, n_comments = _LLMS_HTML_COMMENT_RE.subn("", text)
+    text = _LLMS_EXCESS_BLANK_LINES_RE.sub("\n\n", text).lstrip("\n")
+    return text, n_plotly, n_comments
+
+
+def postprocess_llm_markdown_artifacts(app, exception):
+    """Post-process sphinx-llm markdown files after the HTML build.
 
     Runs after sphinx-llm's own ``build-finished`` hook (priority > 500) so the
-    per-page ``*.html.md`` and ``llms-full.txt`` already exist on disk.
+    per-page ``*.html.md`` and ``llms-full.txt`` already exist on disk. Strips
+    inline Plotly HTML, removes leftover numpydoc/sphinx-gallery metadata
+    comments, and normalises whitespace.
     """
     if exception is not None:
         return
@@ -1438,26 +1542,42 @@ def strip_plotly_from_llms(app, exception):
     llms_full = outdir / "llms-full.txt"
     if llms_full.exists():
         targets.append(llms_full)
-    total_blocks = 0
+    total_plotly = 0
+    total_comments = 0
     total_files = 0
     for path in targets:
-        text = path.read_text(encoding="utf-8")
-        n_total = 0
-        for regex in _PLOTLY_BLOCK_RES:
-            text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
-            n_total += n
-        if n_total:
+        original = path.read_text(encoding="utf-8")
+        text, n_plotly, n_comments = _sanitize_llm_markdown_text(original)
+        if n_plotly or n_comments or text != original:
             path.write_text(text, encoding="utf-8")
-            total_blocks += n_total
+            total_plotly += n_plotly
+            total_comments += n_comments
             total_files += 1
     print(
-        f"[llms-strip-plotly] stripped {total_blocks} Plotly block(s) "
-        f"across {total_files} file(s)"
+        f"[llms-postprocess] updated {total_files} file(s): "
+        f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s) removed"
     )
 
 
 def setup(app):
-    """Setup function to register the build-finished hook."""
+    """Setup function to register autodoc, HTML, and build-finished hooks."""
+    # Attach the str-enum log filter once per app. setup(app) may run twice
+    # because sphinx-llm re-executes this conf under the markdown builder.
+    if getattr(app, "_skfolio_autodoc_str_enum_noise_filter", None) is None:
+        noise_filter = _SkfolioAutodocStrEnumNoise()
+        app._skfolio_autodoc_str_enum_noise_filter = noise_filter
+        for _log in ("sphinx.ext.autodoc", "sphinx.ext.autosummary"):
+            logging.getLogger(_log).addFilter(noise_filter)
+
+    # Filter inherited str methods out of every (str, Enum) class. priority
+    # below the default 500 so we vote first; the callback returns None
+    # outside its narrow target so it composes with later handlers.
+    app.connect(
+        "autodoc-skip-member",
+        skip_strenum_public_str_methods,
+        priority=-100,
+    )
+
     # Builder-inited: patch sphinx-markdown-builder to emit parameter types.
     app.connect("builder-inited", patch_markdown_classifier)
 
@@ -1474,7 +1594,7 @@ def setup(app):
     app.connect("build-finished", create_redirects)
     # priority>500 so this runs after sphinx-llm's build-finished hook, which
     # generates the .html.md / llms-full.txt that we then post-process.
-    app.connect("build-finished", strip_plotly_from_llms, priority=999)
+    app.connect("build-finished", postprocess_llm_markdown_artifacts, priority=999)
 
     return {
         "version": "1.0",
