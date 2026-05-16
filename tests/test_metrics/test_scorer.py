@@ -26,7 +26,7 @@ def test_default_score(X):
     l2_coefs = [0.001, 0.01]
     cv = sks.KFold(3)
     grid_search = sks.GridSearchCV(
-        estimator=model, cv=cv, n_jobs=-1, param_grid={"l2_coef": l2_coefs}
+        estimator=model, cv=cv, n_jobs=1, param_grid={"l2_coef": l2_coefs}
     )
     grid_search.fit(X)
 
@@ -66,7 +66,7 @@ def test_measure_score_ratio(X):
     grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
-        n_jobs=-1,
+        n_jobs=1,
         param_grid={"l2_coef": l2_coefs},
         scoring=make_scorer(RatioMeasure.CDAR_RATIO),
     )
@@ -107,7 +107,7 @@ def test_measure_score_risk_measure(X):
     grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
-        n_jobs=-1,
+        n_jobs=1,
         param_grid={"l2_coef": l2_coefs},
         scoring=make_scorer(RiskMeasure.CVAR),
     )
@@ -152,7 +152,7 @@ def test_measure_score_custom(X):
     grid_search = sks.GridSearchCV(
         estimator=model,
         cv=cv,
-        n_jobs=-1,
+        n_jobs=1,
         param_grid={"l2_coef": l2_coefs},
         scoring=make_scorer(custom),
     )

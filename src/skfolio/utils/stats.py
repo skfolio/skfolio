@@ -62,6 +62,8 @@ __all__ = [
 _NUMERICAL_THRESHOLD = 1e-12
 _MAX_RIDGE_TRIES = 3
 _RIDGE_ESCALATION_FACTOR = 10.0
+_DISTANCE_ATOL = 1e-5
+_DISTANCE_RTOL = 0.0
 
 
 class NBinsMethod(AutoEnum):
@@ -250,7 +252,9 @@ def assert_is_square(x: FloatArray) -> None:
         raise ValueError("The matrix must be square")
 
 
-def assert_is_symmetric(x: FloatArray) -> None:
+def assert_is_symmetric(
+    x: FloatArray, *, rtol: float = 1e-5, atol: float = 1e-8
+) -> None:
     """Raises an error if the matrix is not symmetric.
 
     Parameters
@@ -258,12 +262,18 @@ def assert_is_symmetric(x: FloatArray) -> None:
     x : ndarray of shape (n, m)
        The matrix.
 
+    rtol : float, default=1e-5
+        Relative tolerance for `numpy.allclose`.
+
+    atol : float, default=1e-8
+        Absolute tolerance for `numpy.allclose`.
+
     Raises
     ------
     ValueError: if the matrix is not symmetric.
     """
     assert_is_square(x)
-    if not np.allclose(x, x.T):
+    if not np.allclose(x, x.T, rtol=rtol, atol=atol):
         raise ValueError("The matrix must be symmetric")
 
 
@@ -279,8 +289,8 @@ def assert_is_distance(x: FloatArray) -> None:
     ------
     ValueError: if the matrix is a distance matrix.
     """
-    assert_is_symmetric(x)
-    if not np.allclose(np.diag(x), np.zeros(x.shape[0]), atol=1e-5):
+    assert_is_symmetric(x, rtol=_DISTANCE_RTOL, atol=_DISTANCE_ATOL)
+    if not np.allclose(np.diag(x), np.zeros(x.shape[0]), atol=_DISTANCE_ATOL):
         raise ValueError(
             "The distance matrix must have diagonal elements close to zeros"
         )
