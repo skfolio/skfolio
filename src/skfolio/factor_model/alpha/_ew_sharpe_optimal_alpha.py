@@ -7,40 +7,29 @@
 from __future__ import annotations
 
 import numpy as np
-import sklearn as sk
 import sklearn.utils.metadata_routing as skm
-import sklearn.utils.parallel as skp
 
 import skfolio.typing as skt
 from skfolio._constants import (
+    _DESCRIPTOR_SCORES,
     _EXPOSURES,
     _IDIO_RETURNS,
     _IDIO_VARIANCES,
-    _PASSTHROUGH,
 )
 from skfolio.containers import AssetPanel
-from skfolio.factor_model._utils import _forward_mean_return, _neutralize_scores
+from skfolio.factor_model._utils import _forward_mean_return
 from skfolio.factor_model.alpha._base import BaseAlpha
+from skfolio.factor_model.alpha._composition import BaseAlphaDescriptorComposition
 from skfolio.factor_model.descriptor import BaseDescriptor
-from skfolio.factor_model.descriptor._composition import DescriptorCompositionMixin
-from skfolio.preprocessing import (
-    BaseCSTransformer,
-    CSStandardScaler,
-    CSWinsorizer,
-)
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import safe_divide
-from skfolio.utils.tools import (
-    call_asset_panel_transform,
-    check_estimator,
-    half_life_to_decay_factor,
-)
+from skfolio.utils.tools import half_life_to_decay_factor
 from skfolio.utils.validation import validate_asset_panel
 
 _FITTED_ATTR = "alpha_"
 
 
-class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
+class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     r"""Exponentially weighted least-squares Sharpe-optimal alpha estimator.
 
     This estimator aggregates multiple cross-sectional signals from descriptors into a
@@ -228,12 +217,12 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
         orthogonalized with respect to the specified factor exposures before regression.
 
     outlier_transformer : BaseCSTransformer or "passthrough", optional
-         Cross-sectional transformer for outlier handling. If None, defaults to
-        `CSWinsorizer()`. Use "passthrough" to skip.
+         Cross-sectional transformer for descriptor outlier handling. If None, defaults
+         to `CSWinsorizer()`. Use "passthrough" to skip.
 
     scoring_transformer : BaseCSTransformer or "passthrough", optional
-        Cross-sectional transformer for scoring applied after outlier handling.
-        If None, defaults to `CSStandardScaler()`. Use "passthrough" to skip.
+        Cross-sectional transformer for descriptor scoring applied after outlier
+        handling. If None, defaults to `CSStandardScaler()`. Use "passthrough" to skip.
 
     transform_by_group : str, optional
         Name of a categorical characteristic in the AssetPanel to use for group-wise
@@ -308,20 +297,20 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
     ...     ],
     ...     horizon=5,      # one-week forward idiosyncratic return
     ...     half_life=21,    # one-month EWLS half-life
-    ...     neutralize_against=["sector"],
+    ...     neutralize_against=["market", "beta", "size"],
     ...     scale_target_by_idio_vol=True,
     ... )
     >>>
     >>> # Latest alpha forecast for the current rebalance.
     >>> alpha_model.fit(X)
-    >>> alpha = alpha_model.alpha_
+    >>> print(alpha_model.alpha_)
     >>>
-    >>> # Historical as-of alpha forecasts.
-    >>> alphas = alpha_model.fit_transform(X)
-    >>>
-    >>> # Online update with newly arrived observations.
+    >>> # Online learning with partial_fit
     >>> alpha_model.partial_fit(X_new)
-    >>> next_alpha = alpha_model.alpha_
+    >>> print(alpha_model.alpha_)
+    >>>
+    >>> # Historical as-of alpha forecasts with fit_transform
+    >>> alphas = alpha_model.fit_transform(X)
 
     Notes
     -----
@@ -340,11 +329,6 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
     .. [1] Active Portfolio Management
         McGraw-Hill. Grinold, R. C., & Kahn, R. N. (1999).
     """
-
-    descriptors_: list[BaseDescriptor]
-    named_descriptors_: dict[str, BaseDescriptor]
-    outlier_transformer_: skt.CSTransformer
-    scoring_transformer_: skt.CSTransformer
 
     def __init__(
         self,
@@ -492,185 +476,110 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
 
         first_call = not hasattr(self, _FITTED_ATTR)
 
-        required_characteristics = [_IDIO_RETURNS, _IDIO_VARIANCES]
+        required_fields = [_IDIO_RETURNS, _IDIO_VARIANCES]
         if self.neutralize_against is not None:
-            required_characteristics.append(_EXPOSURES)
+            required_fields.append(_EXPOSURES)
         if self.transform_by_group is not None:
-            required_characteristics.append(self.transform_by_group)
+            required_fields.append(self.transform_by_group)
 
         validate_asset_panel(
-            self, X, required_fields=required_characteristics, reset=first_call
+            self,
+            X,
+            required_fields=required_fields,
+            strictly_positive_or_nan=[_IDIO_VARIANCES],
+            reset=first_call,
         )
 
         if first_call:
             self._validate_params()
             self._initialize()
 
+        n_observations, n_assets = X.n_observations, X.n_assets
+
         scores = self._compute_scores(X=X, method=method, routed_params=routed_params)
 
-        idio_returns = X[_IDIO_RETURNS]
-        idio_var = X[_IDIO_VARIANCES]
-
-        if self._buffer_scores is not None:
-            combined_scores = np.concatenate([self._buffer_scores, scores], axis=1)
-            combined_returns = np.concatenate(
-                [self._buffer_returns, idio_returns], axis=0
-            )
-            combined_var = np.concatenate([self._buffer_var, idio_var], axis=0)
-        else:
-            combined_scores = scores
-            combined_returns = idio_returns
-            combined_var = idio_var
-
-        self._update_buffer(
-            combined_scores=combined_scores,
-            combined_returns=combined_returns,
-            combined_var=combined_var,
+        X = self._make_training_panel(
+            X, scores=scores, fields=[_IDIO_RETURNS, _IDIO_VARIANCES]
         )
+        X = self._prepend_buffer(X)
 
-        n_assets = X.n_assets
-        n_new_obs = scores.shape[1]
-        n_combined_obs = combined_scores.shape[1]
-        n_buffered_obs = n_combined_obs - n_new_obs
-        target_gap = self._target_gap
-        n_trainable_obs = max(0, n_combined_obs - target_gap)
+        n_combined_obs = X.n_observations
+        n_buffered_obs = n_combined_obs - n_observations
+        n_trainable_obs = max(0, n_combined_obs - self._target_gap)
         historical_alphas = (
-            np.full((n_new_obs, n_assets), np.nan, dtype=float) if transform else None
+            np.full((n_observations, n_assets), np.nan, dtype=float)
+            if transform
+            else None
         )
 
         if n_trainable_obs == 0:
             self.alpha_ = None
+            self._update_buffers(X)
             return historical_alphas
 
-        regression_scores = combined_scores[:, :n_trainable_obs, :].transpose(1, 2, 0)
         forward_returns = _forward_mean_return(
-            combined_returns, horizon=self.horizon, lag=self.signal_lag
-        )[:n_trainable_obs]
+            X[_IDIO_RETURNS], horizon=self.horizon, lag=self.signal_lag
+        )
 
         historical_coefficients = self._update_ewls(
-            forward_returns=forward_returns,
-            idio_var=combined_var[:n_trainable_obs],
-            scores=regression_scores,
+            X[:n_trainable_obs],
+            forward_returns=forward_returns[:n_trainable_obs],
             return_historical=transform,
         )
 
         if transform:
-            for forecast_idx in range(n_new_obs):
+            for forecast_idx in range(n_observations):
                 combined_obs_idx = n_buffered_obs + forecast_idx
-                coef_idx = combined_obs_idx - target_gap
+                coef_idx = combined_obs_idx - self._target_gap
                 if 0 <= coef_idx < n_trainable_obs:
-                    historical_alphas[forecast_idx] = _compute_alpha(
-                        scores=combined_scores[:, combined_obs_idx, :],
+                    historical_alphas[forecast_idx] = self._compute_alpha(
+                        scores=X[_DESCRIPTOR_SCORES][combined_obs_idx],
                         coefficient=historical_coefficients[coef_idx],
-                        idio_var=combined_var[combined_obs_idx],
-                        scale_target_by_idio_vol=self.scale_target_by_idio_vol,
+                        idio_variances=X[_IDIO_VARIANCES][combined_obs_idx],
                     )
 
         if self._n_valid_regression_obs == 0:
             self.alpha_ = None
         else:
-            self.alpha_ = _compute_alpha(
-                scores=scores[:, -1, :],
+            self.alpha_ = self._compute_alpha(
+                scores=scores[-1],
                 coefficient=self.coef_,
-                idio_var=idio_var[-1],
-                scale_target_by_idio_vol=self.scale_target_by_idio_vol,
+                idio_variances=X[_IDIO_VARIANCES][-1],
             )
 
+        self._update_buffers(X)
         return historical_alphas
 
-    def _compute_scores(
-        self, *, X: AssetPanel, method: str, routed_params
-    ) -> FloatArray:
-        """Compute descriptor scores from the input panel."""
-        cs_weights = X.estimation_mask.astype(float)
-        cs_groups = (
-            X[self.transform_by_group] if self.transform_by_group is not None else None
-        )
-
-        n_descriptors = len(self.descriptors_)
-
-        # Threading avoids copying the (potentially large) AssetPanel
-        # to each worker. Workers only read from it, so shared memory
-        # is safe. Descriptor computations are NumPy-dominated and
-        # release the GIL, giving true parallelism with threads.
-        scores = skp.Parallel(n_jobs=self.n_jobs, prefer="threads")(
-            skp.delayed(call_asset_panel_transform)(
-                des,
-                X=X,
-                fit_params=routed_params[name][method],
-                method=f"{method}_transform",
-            )
-            for name, des in self.named_descriptors_.items()
-        )
-        scores = np.stack(scores, axis=0)
-
-        for i in range(n_descriptors):
-            if self._outlier_transformer != _PASSTHROUGH:
-                scores[i] = self._outlier_transformer.fit_transform(
-                    scores[i], cs_weights=cs_weights, cs_groups=cs_groups
-                )
-
-            if self._scoring_transformer != _PASSTHROUGH:
-                scores[i] = self._scoring_transformer.fit_transform(
-                    scores[i], cs_weights=cs_weights, cs_groups=cs_groups
-                )
-
-        # Score neutralization
-        if self.neutralize_against is not None:
-            field = X.fields[_EXPOSURES]
-            exposures = field.values
-            factor_names = field.third_axis_labels
-            factor_families = field.third_axis_groups
-
-            scores = _neutralize_scores(
-                neutralize_against=self.neutralize_against,
-                scores=scores,
-                exposures=exposures,
-                cs_weights=cs_weights,
-                factor_names=factor_names,
-                factor_families=factor_families,
-            )
-            # Re-apply scoring after neutralization
-            for i in range(n_descriptors):
-                if self._scoring_transformer != _PASSTHROUGH:
-                    scores[i] = self._scoring_transformer.fit_transform(
-                        scores[i],
-                        cs_weights=cs_weights,
-                        cs_groups=cs_groups,
-                    )
-
-        return scores
-
     def _update_ewls(
-        self,
-        forward_returns: FloatArray,
-        idio_var: FloatArray,
-        scores: FloatArray,
-        return_historical: bool,
+        self, X: AssetPanel, forward_returns: FloatArray, return_historical: bool
     ) -> FloatArray | None:
         """Update EWLS normal equations and optionally return coefficient history."""
-        valid_var = np.isfinite(idio_var) & (idio_var > 0)
-        valid_target = np.isfinite(forward_returns) & valid_var
+        idio_variances = X[_IDIO_VARIANCES]
+        scores = X[_DESCRIPTOR_SCORES]
+        n_observations = X.n_observations
+        valid_var = np.isfinite(idio_variances)
+        valid_target = np.isfinite(forward_returns) & valid_var & X.estimation_mask
 
+        weights = X.estimation_mask.astype(float)
         if self.scale_target_by_idio_vol:
-            idio_vol = np.sqrt(np.where(valid_var, idio_var, np.nan))
-            target = safe_divide(forward_returns, idio_vol, fill_value=np.nan)
-            weights = np.where(valid_target, 1.0, 0.0)
+            target = safe_divide(
+                forward_returns, np.sqrt(idio_variances), fill_value=np.nan
+            )
+            weights = np.where(valid_target, weights, 0.0)
         else:
             target = forward_returns
-            inv_var = safe_divide(1.0, idio_var, fill_value=0.0)
-            weights = np.where(valid_target, inv_var, 0.0)
+            inv_var = safe_divide(1.0, idio_variances, fill_value=0.0)
+            weights = np.where(valid_target, weights * inv_var, 0.0)
 
-        n_trainable_obs, _, n_descriptors = scores.shape
         historical_coefficients = (
-            np.full((n_trainable_obs, n_descriptors), np.nan, dtype=float)
+            np.full((n_observations, len(self.descriptors_)), np.nan, dtype=float)
             if return_historical
             else None
         )
 
         valid = np.all(np.isfinite(scores), axis=2) & valid_target
 
-        for t in range(n_trainable_obs):
+        for t in range(n_observations):
             valid_t = valid[t]
             if not np.any(valid_t):
                 coefficient = self.coef_ if self._n_valid_regression_obs > 0 else None
@@ -730,34 +639,13 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
                 self._ew_target_cross_product
             )
 
-    def _update_buffer(
-        self,
-        *,
-        combined_scores: FloatArray,
-        combined_returns: FloatArray,
-        combined_var: FloatArray,
-    ) -> None:
-        """Keep only rows needed to mature future forward-return targets."""
-        n_combined_obs = combined_scores.shape[1]
-        buffer_start = max(0, n_combined_obs - self._target_gap)
-        self._buffer_scores = combined_scores[:, buffer_start:, :].copy()
-        self._buffer_returns = combined_returns[buffer_start:, :].copy()
-        self._buffer_var = combined_var[buffer_start:, :].copy()
-
     def _reset(self):
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 
     def _validate_params(self):
         """Validate hyperparameters."""
-        if not isinstance(self.horizon, (int, np.integer)) or self.horizon < 1:
-            raise ValueError(
-                f"horizon must be a positive integer (>= 1), got {self.horizon}"
-            )
-        if not isinstance(self.signal_lag, (int, np.integer)) or self.signal_lag < 1:
-            raise ValueError(
-                f"signal_lag must be a positive integer (>= 1), got {self.signal_lag}"
-            )
+        self._validate_common_params()
         if (
             not isinstance(self.half_life, (int, float, np.number))
             or self.half_life <= 0
@@ -772,13 +660,6 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
             raise ValueError(
                 f"ridge_scale must be a non-negative number, got {self.ridge_scale}"
             )
-        if not self.descriptors:
-            raise ValueError("descriptors cannot be empty")
-        if not isinstance(self.scale_target_by_idio_vol, (bool, np.bool_)):
-            raise ValueError(
-                "scale_target_by_idio_vol must be a boolean, "
-                f"got {self.scale_target_by_idio_vol!r}"
-            )
         if not isinstance(self.normalize_weights, (bool, np.bool_)):
             raise ValueError(
                 f"normalize_weights must be a boolean, got {self.normalize_weights!r}"
@@ -786,25 +667,7 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
 
     def _initialize(self):
         """Initialize internal state on first call."""
-        names, descriptors = self._validate_descriptors()
-
-        self.descriptors_ = [sk.clone(des) for des in descriptors]
-        self.named_descriptors_ = {
-            name: estimator
-            for name, estimator in zip(names, self.descriptors_, strict=True)
-        }
-
-        self._outlier_transformer = check_estimator(
-            self.outlier_transformer,
-            default=CSWinsorizer(),
-            check_type=BaseCSTransformer,
-        )
-
-        self._scoring_transformer = check_estimator(
-            self.scoring_transformer,
-            default=CSStandardScaler(),
-            check_type=BaseCSTransformer,
-        )
+        self._initialize_common_state()
 
         n_descriptors = len(self.descriptors_)
         self._decay = half_life_to_decay_factor(self.half_life)
@@ -813,26 +676,16 @@ class EWSharpeOptimalAlpha(BaseAlpha, DescriptorCompositionMixin):
         self._n_valid_regression_obs = 0
         self.coef_ = np.full(n_descriptors, np.nan)
 
-        self._buffer_scores = None
-        self._buffer_returns = None
-        self._buffer_var = None
+        self._initialize_buffers()
 
-    @property
-    def _target_gap(self) -> int:
-        """Number of future rows required before a signal observation matures."""
-        return self.signal_lag + self.horizon - 1
-
-
-def _compute_alpha(
-    scores: FloatArray,
-    coefficient: FloatArray,
-    idio_var: FloatArray,
-    scale_target_by_idio_vol: bool,
-) -> FloatArray:
-    """Compute alpha for one observation."""
-    alpha = coefficient @ scores
-    if scale_target_by_idio_vol:
-        valid_var = np.isfinite(idio_var) & (idio_var > 0)
-        idio_vol = np.sqrt(np.where(valid_var, idio_var, np.nan))
-        alpha = alpha * idio_vol
-    return alpha
+    def _compute_alpha(
+        self,
+        scores: FloatArray,
+        coefficient: FloatArray,
+        idio_variances: FloatArray,
+    ) -> FloatArray:
+        """Compute one cross-sectional alpha forecast from descriptor scores."""
+        alpha = scores @ coefficient
+        if self.scale_target_by_idio_vol:
+            alpha = alpha * np.sqrt(idio_variances)
+        return alpha

@@ -11,6 +11,7 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 
+from skfolio.containers._asset_panel._base import _BaseAssetPanel
 from skfolio.containers._asset_panel._fields import (
     BaseField,
     Field3D,
@@ -23,19 +24,20 @@ __all__ = ["concat"]
 
 
 def concat(
-    panels: Iterable[AssetPanel], *, verify_observations: bool = False
+    panels: Iterable[_BaseAssetPanel], *, verify_observations: bool = False
 ) -> AssetPanel:
     """Concatenate panels along the observation axis.
 
-    This function performs strict vertical concatenation. All panels must have
-    identical assets, field names, field types, field dtypes, categorical levels and
-    3D field metadata. Field arrays, observations, `active_mask` and
+    This function performs strict vertical concatenation. All panels or panel views
+    must have identical assets, field names, field types, field dtypes, categorical
+    levels and 3D field metadata. Field arrays, observations, `active_mask` and
     `estimation_mask` are concatenated on axis 0.
 
     Parameters
     ----------
-    panels : iterable of AssetPanel
-        Panels to concatenate. The iterable must contain at least one panel.
+    panels : iterable of AssetPanel or AssetPanelView
+        Panels or panel views to concatenate. The iterable must contain at least one
+        object.
 
     verify_observations : bool, default=False
         If `True`, raise an error when the concatenated observation labels contain
@@ -63,20 +65,22 @@ def concat(
     >>> concat([panel_1, panel_2])
     AssetPanel(n_observations=2, n_assets=2, n_fields=1)
     """
-    if isinstance(panels, AssetPanel):
+    if isinstance(panels, _BaseAssetPanel):
         raise TypeError(
-            "`panels` must be an iterable of AssetPanel instances, not a single "
-            "AssetPanel."
+            "`panels` must be an iterable of AssetPanel or AssetPanelView instances, "
+            "not a single AssetPanel or AssetPanelView."
         )
 
     panel_list = list(panels)
     if not panel_list:
-        raise ValueError("`panels` must contain at least one AssetPanel.")
+        raise ValueError(
+            "`panels` must contain at least one AssetPanel or AssetPanelView."
+        )
 
     for position, panel in enumerate(panel_list):
-        if not isinstance(panel, AssetPanel):
+        if not isinstance(panel, _BaseAssetPanel):
             raise TypeError(
-                "`panels` must contain only AssetPanel instances; "
+                "`panels` must contain only AssetPanel or AssetPanelView instances; "
                 f"item at position {position} has type {type(panel).__name__}."
             )
 
@@ -114,7 +118,7 @@ def concat(
 
 
 def _validate_concat_schema(
-    *, reference_panel: AssetPanel, panel: AssetPanel, position: int
+    *, reference_panel: _BaseAssetPanel, panel: _BaseAssetPanel, position: int
 ) -> None:
     """Validate non-concatenated axes and field schema for one panel."""
     if not np.array_equal(panel.asset_names, reference_panel.asset_names):

@@ -5,6 +5,7 @@ import pytest
 
 from skfolio._constants import _EXPOSURES, _IDIO_RETURNS, _IDIO_VARIANCES
 from skfolio.factor_model.alpha import EWSharpeOptimalAlpha
+from skfolio.factor_model.alpha._composition import _DESCRIPTOR_SCORES
 from skfolio.factor_model.descriptor import Passthrough
 from tests.test_factor_model._alpha_test_utils import apply_idio_nan_exclusions
 
@@ -206,9 +207,15 @@ class TestStreamingConsistency:
         model.fit(alpha_deterministic_panel)
 
         target_gap = horizon + signal_lag - 1
-        assert model._buffer_scores.shape[1] == target_gap
-        assert model._buffer_returns.shape[0] == target_gap
-        assert model._buffer_var.shape[0] == target_gap
+        assert model._buffer.n_observations == target_gap
+        assert list(model._buffer.fields) == [
+            _IDIO_RETURNS,
+            _IDIO_VARIANCES,
+            _DESCRIPTOR_SCORES,
+        ]
+        assert model._buffer[_DESCRIPTOR_SCORES].shape[0] == target_gap
+        assert model._buffer[_IDIO_RETURNS].shape[0] == target_gap
+        assert model._buffer[_IDIO_VARIANCES].shape[0] == target_gap
 
 
 class TestAlphaProperties:
@@ -280,8 +287,8 @@ class TestNaNHandling:
 
         assert model.alpha_ is not None
 
-    def test_invalid_variance_is_excluded(self, alpha_deterministic_panel):
-        """Invalid idiosyncratic variances should receive zero WLS weight."""
+    def test_non_positive_variance_raises(self, alpha_deterministic_panel):
+        """Non-positive idiosyncratic variances are rejected during validation."""
         panel = alpha_deterministic_panel.copy(deep=True)
         panel[_IDIO_VARIANCES][2:5, 0] = 0.0
         panel[_IDIO_VARIANCES][5:8, 1] = -1.0
@@ -292,26 +299,22 @@ class TestNaNHandling:
             half_life=5,
         )
 
-        model.fit(panel)
+        with pytest.raises(ValueError, match="strictly positive"):
+            model.fit(panel)
 
-        assert model.alpha_ is not None
-
-    def test_all_invalid_date_does_not_decay_coefficients(
-        self, alpha_deterministic_panel
-    ):
-        """A fully invalid regression date should freeze EWLS statistics."""
+    def test_infinite_variance_raises(self, alpha_deterministic_panel):
+        """Infinite idiosyncratic variances are rejected during validation."""
         panel = alpha_deterministic_panel.copy(deep=True)
-        panel[_IDIO_VARIANCES][5] = 0.0
+        panel[_IDIO_VARIANCES][5, 0] = np.inf
 
         model = EWSharpeOptimalAlpha(
             descriptors=[("signal", Passthrough("signal"))],
             horizon=3,
             half_life=5,
         )
-        model.fit(panel)
 
-        assert model._n_valid_regression_obs > 0
-        assert model.alpha_ is not None
+        with pytest.raises(ValueError, match="strictly positive"):
+            model.fit(panel)
 
     def test_estimation_mask_does_not_block_alpha_forecasts(
         self, alpha_deterministic_panel
@@ -417,7 +420,7 @@ class TestEdgeCases:
         model.fit(alpha_deterministic_panel)
 
         assert model.alpha_ is not None
-        assert model._buffer_scores.shape[1] == 1
+        assert model._buffer.n_observations == 1
 
     def test_single_observation_streaming(self, alpha_deterministic_panel):
         """Test streaming one observation at a time after warmup."""

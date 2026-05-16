@@ -76,7 +76,7 @@ def simple_panel():
 
 @pytest.fixture
 def alpha_deterministic_panel():
-    """Create simple panel data with required columns for PredictiveAlpha."""
+    """Create simple panel data with required columns for PredictorAlpha."""
     np.random.seed(123)  # Fixed seed for reproducibility
     n_obs = 20
     n_assets = 4

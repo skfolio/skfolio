@@ -17,6 +17,7 @@ from skfolio.containers._asset_panel._fields import BaseField
 from skfolio.containers._asset_panel._utils import (
     _as_field,
     _compose_observation_selectors,
+    _normalize_field_names,
     _normalize_positional_selector,
     _raise_if_raw_replaces_typed_field,
     _selector_length,
@@ -297,6 +298,44 @@ class AssetPanelView(_BaseAssetPanel):
             owner=owner,
             observation_selector=selector,
             _local_fields=local_fields,
+        )
+
+    def to_panel(
+        self,
+        *,
+        fields: str | Iterable[str] | None = None,
+        deep: bool = True,
+    ) -> AssetPanel:
+        """Return a new `AssetPanel` for the view's selected observations.
+
+        Parameters
+        ----------
+        fields : str, iterable of str, or None, optional
+            Field names to include. If `None`, all visible fields are included.
+
+        deep : bool, default=True
+            If `True`, copy field arrays and label arrays. If `False`, field arrays and
+            labels may share memory with the view source. Masks are always copied so the
+            returned panel owns independent lockable mask arrays.
+
+        Returns
+        -------
+        panel : AssetPanel
+            Panel containing only the view's observations and selected fields.
+        """
+        from skfolio.containers._asset_panel._panel import AssetPanel
+
+        field_names = _normalize_field_names(self.keys(), fields)
+        panel_fields = {
+            name: self.get_field(name).copy(deep=deep) for name in field_names
+        }
+        return AssetPanel(
+            fields=panel_fields,
+            observations=self.observations.copy() if deep else self.observations,
+            asset_names=self.asset_names.copy() if deep else self.asset_names,
+            active_mask=self.active_mask.copy(),
+            estimation_mask=self.estimation_mask.copy(),
+            _validate_on_init=False,
         )
 
     def _validate_field(self, name: str, field: BaseField) -> None:

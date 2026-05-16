@@ -1,4 +1,4 @@
-"""Descriptor composition mixin with scikit-learn metadata routing."""
+"""Base descriptor composition."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
@@ -6,28 +6,28 @@
 
 from __future__ import annotations
 
+from abc import ABC
+
 import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 
-from skfolio.factor_model.descriptor import BaseDescriptor, Passthrough
+from skfolio.factor_model.descriptor import BaseDescriptor
 from skfolio.utils.composition import BaseComposition
 
-__all__ = ["DescriptorCompositionMixin"]
+__all__ = ["BaseDescriptorComposition"]
 
 
-class DescriptorCompositionMixin(BaseComposition):
-    """Mixin class for all descriptor composition estimators in skfolio.
+class BaseDescriptorComposition(BaseComposition, ABC):
+    """Base class for all descriptor composition estimators in skfolio.
 
     This mixin provides `get_params` / `set_params` / metadata routing
     for the `descriptors` parameter, following the scikit-learn named
     estimator convention (similar to `Pipeline` or `ColumnTransformer`).
 
-    Descriptors can be specified as `(name, estimator)` tuples or as
-    `(name, field_name_string)` tuples. Strings are automatically wrapped
-    as :class:`~skfolio.factor_model.descriptor.Passthrough` instances.
+    Descriptors are specified as `(name, estimator)` tuples.
     """
 
-    descriptors: list[tuple[str, BaseDescriptor | str]]
+    descriptors: list[tuple[str, BaseDescriptor]]
 
     @property
     def named_descriptors(self):
@@ -99,26 +99,25 @@ class DescriptorCompositionMixin(BaseComposition):
     def _validate_descriptors(self) -> tuple[list[str], list[BaseDescriptor]]:
         """Validate the `descriptors` parameter.
 
-        Strings in the descriptor list are automatically wrapped as
-        :class:`Passthrough` instances (shorthand for field lookups).
-
         Returns
         -------
         names : list[str]
             The list of descriptor names.
         descriptors : list[BaseDescriptor]
-            The list of descriptor estimators (strings resolved to Passthrough).
+            The list of descriptor estimators.
         """
         if self.descriptors is None or len(self.descriptors) == 0:
             raise ValueError(
                 "Invalid 'descriptors' attribute, 'descriptors' should be a "
-                "list of (name, descriptor) tuples. Strings are accepted as "
-                "shorthand for Passthrough(field_name)."
+                "list of (name, descriptor) tuples."
             )
         names, descriptors = zip(*self.descriptors, strict=True)
-        descriptors = [Passthrough(d) if isinstance(d, str) else d for d in descriptors]
 
-        # defined by MetaEstimatorMixin
         self._validate_names(names)
+        for descriptor in descriptors:
+            if not isinstance(descriptor, BaseDescriptor):
+                raise TypeError(
+                    f"Expected descriptor to be a BaseDescriptor, got {type(descriptor)}"
+                )
 
-        return list(names), descriptors
+        return list(names), list(descriptors)

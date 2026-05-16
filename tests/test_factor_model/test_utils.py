@@ -40,11 +40,11 @@ def test_neutralize_scores_excludes_missing_score_and_exposure():
             [0.3, 0.2, -0.1, -0.4],
         ]
     )
-    scores = np.array([2.0 * exposure + residual])
+    scores = (2.0 * exposure + residual)[:, :, None]
     exposures = exposure[:, :, None].copy()
     cs_weights = np.ones_like(exposure)
 
-    scores[0, 0, 1] = np.nan
+    scores[0, 1, 0] = np.nan
     exposures[1, 2, 0] = np.nan
 
     result = _neutralize_scores(
@@ -57,12 +57,12 @@ def test_neutralize_scores_excludes_missing_score_and_exposure():
     )
 
     assert result is scores
-    assert np.isnan(scores[0, 0, 1])
-    assert np.isnan(scores[0, 1, 2])
+    assert np.isnan(scores[0, 1, 0])
+    assert np.isnan(scores[1, 2, 0])
 
     for t in range(exposure.shape[0]):
-        valid = np.isfinite(scores[0, t]) & np.isfinite(exposures[t, :, 0])
-        weighted_dot = np.sum(scores[0, t, valid] * exposures[t, valid, 0])
+        valid = np.isfinite(scores[t, :, 0]) & np.isfinite(exposures[t, :, 0])
+        weighted_dot = np.sum(scores[t, valid, 0] * exposures[t, valid, 0])
         assert abs(weighted_dot) < 1e-12
 
 

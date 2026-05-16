@@ -194,7 +194,7 @@ def _neutralize_scores(
     neutralize_against : list of str
         Factor names or family names to neutralize each descriptor score against.
 
-    scores : ndarray of shape (n_descriptors, n_observations, n_assets)
+    scores : ndarray of shape (n_observations, n_assets, n_descriptors)
         Descriptor score panels. The array is modified in-place.
 
     exposures : ndarray of shape (n_observations, n_assets, n_factors)
@@ -212,7 +212,7 @@ def _neutralize_scores(
 
     Returns
     -------
-    scores : ndarray of shape (n_descriptors, n_observations, n_assets)
+    scores : ndarray of shape (n_observations, n_assets, n_descriptors)
         The input score array with each descriptor replaced by its neutralized residuals.
 
     Raises
@@ -226,8 +226,10 @@ def _neutralize_scores(
         return scores
 
     x = exposures[:, :, targets_idx]
-    for i, score in enumerate(scores):
-        scores[i], _ = _cross_sectional_neutralize(y=score, x=x, cs_weights=cs_weights)
+    for i in range(scores.shape[2]):
+        scores[:, :, i], _ = _cross_sectional_neutralize(
+            y=scores[:, :, i], x=x, cs_weights=cs_weights
+        )
 
     return scores
 

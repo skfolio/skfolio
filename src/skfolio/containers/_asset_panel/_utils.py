@@ -62,6 +62,30 @@ def _validate_field_name(name: str) -> None:
         )
 
 
+def _normalize_field_names(
+    available: Iterable[str],
+    fields: str | Iterable[str] | None,
+) -> list[str]:
+    """Normalize and validate selected field names."""
+    available_names = list(available)
+    if fields is None:
+        return available_names
+
+    field_names = [fields] if isinstance(fields, str) else list(fields)
+    if not field_names:
+        raise ValueError("Cannot select zero fields; at least one field must remain.")
+
+    missing = [name for name in field_names if name not in available_names]
+    if missing:
+        raise KeyError(f"Fields not found: {missing}")
+
+    duplicates = {name for name in field_names if field_names.count(name) > 1}
+    if duplicates:
+        raise ValueError(f"Duplicate field names: {sorted(duplicates)}")
+
+    return field_names
+
+
 def _raise_if_raw_replaces_typed_field(
     *,
     name: str,

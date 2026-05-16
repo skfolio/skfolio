@@ -82,6 +82,7 @@ def _make_panel(**overrides) -> AssetPanel:
         "assets": ASSETS.copy(),
     }
     defaults.update(overrides)
+    defaults["asset_names"] = defaults.pop("assets")
     defaults["fields"] = _conform_to_universe(
         defaults["fields"],
         defaults.get("active_mask"),
@@ -921,11 +922,48 @@ class TestSelectionAndDrop:
         np.testing.assert_array_equal(selected.asset_names, ["MSFT", "AMZN"])
         np.testing.assert_array_equal(selected.observations, observations[2:6])
 
+    def test_sel_fields_returns_panel_with_selected_fields(self):
+        panel = _make_full_panel()
+
+        selected = panel.sel(fields=["exposures", "momentum"])
+
+        assert isinstance(selected, AssetPanel)
+        assert list(selected.fields) == ["exposures", "momentum"]
+        np.testing.assert_array_equal(selected.observations, panel.observations)
+        np.testing.assert_array_equal(selected.asset_names, panel.asset_names)
+        np.testing.assert_array_equal(selected["momentum"], panel["momentum"])
+        np.testing.assert_array_equal(selected["exposures"], panel["exposures"])
+        np.testing.assert_array_equal(
+            selected.fields["exposures"].third_axis_labels,
+            panel.fields["exposures"].third_axis_labels,
+        )
+
+    def test_sel_fields_combines_with_observation_and_asset_selection(self):
+        panel = _make_full_panel()
+
+        selected = panel.sel(
+            observations=slice(OBSERVATIONS[2], OBSERVATIONS[5]),
+            assets=["MSFT", "AMZN"],
+            fields="sector",
+        )
+
+        assert isinstance(selected, AssetPanel)
+        assert list(selected.fields) == ["sector"]
+        np.testing.assert_array_equal(selected.observations, OBSERVATIONS[2:6])
+        np.testing.assert_array_equal(selected.asset_names, ["MSFT", "AMZN"])
+        np.testing.assert_array_equal(
+            selected["sector"],
+            panel["sector"][2:6, :][:, [1, 3]],
+        )
+
     def test_sel_unknown_labels_raise(self):
         panel = _make_panel()
 
         with pytest.raises(KeyError, match="Labels not found"):
             panel.sel(assets=["MISSING"])
+
+        with pytest.raises(KeyError, match="Fields not found"):
+            panel.sel(fields=["missing"])
 
     def test_sel_3d_scalar_label_returns_2d_values(self):
         panel = _make_full_panel()
@@ -1573,6 +1611,50 @@ class TestView:
         assert values.shape == (6, N_ASSETS)
         np.testing.assert_array_equal(values, panel["exposures"][2:8, :, 1])
 
+    def test_view_to_panel_materializes_slice_and_selected_fields(self):
+        panel = _make_full_panel()
+        view = panel[2:8]
+
+        materialized = view.to_panel(fields=["sector", "exposures"], deep=True)
+
+        assert isinstance(materialized, AssetPanel)
+        assert list(materialized.fields) == ["sector", "exposures"]
+        np.testing.assert_array_equal(
+            materialized.observations, panel.observations[2:8]
+        )
+        np.testing.assert_array_equal(materialized.asset_names, panel.asset_names)
+        np.testing.assert_array_equal(materialized.active_mask, panel.active_mask[2:8])
+        np.testing.assert_array_equal(
+            materialized.estimation_mask,
+            panel.estimation_mask[2:8],
+        )
+        np.testing.assert_array_equal(materialized["sector"], panel["sector"][2:8])
+        np.testing.assert_array_equal(
+            materialized["exposures"], panel["exposures"][2:8]
+        )
+        np.testing.assert_array_equal(
+            materialized.fields["sector"].levels,
+            panel.fields["sector"].levels,
+        )
+        np.testing.assert_array_equal(
+            materialized.fields["exposures"].third_axis_labels,
+            panel.fields["exposures"].third_axis_labels,
+        )
+        assert not np.shares_memory(materialized["exposures"], panel["exposures"])
+
+    def test_view_to_panel_includes_local_fields(self):
+        panel = _make_panel()
+        view = panel[5:10]
+        local = np.full((5, N_ASSETS), 1.5)
+        view["local"] = local
+
+        materialized = view.to_panel(fields=["local"], deep=True)
+        materialized["local"][0, 0] = 2.5
+
+        assert list(materialized.fields) == ["local"]
+        np.testing.assert_array_equal(view["local"], local)
+        assert "local" not in panel
+
     def test_nested_slice_view_composes_selectors(self):
         panel = _make_panel()
 
@@ -1852,6 +1934,36 @@ class TestConcat:
         )
         assert not result.active_mask.flags.writeable
         assert not result.estimation_mask.flags.writeable
+
+    def test_concat_accepts_panel_views(self):
+        left = _make_full_panel(observations=np.arange(N_OBS))
+        right = _make_full_panel(observations=np.arange(N_OBS, 2 * N_OBS))
+        left_view = left[2:8]
+        right_view = right[3:7]
+
+        result = concat([left_view, right_view])
+
+        assert isinstance(result, AssetPanel)
+        np.testing.assert_array_equal(
+            result.observations,
+            np.concatenate([left_view.observations, right_view.observations]),
+        )
+        np.testing.assert_array_equal(
+            result.active_mask,
+            np.concatenate([left_view.active_mask, right_view.active_mask], axis=0),
+        )
+        np.testing.assert_array_equal(
+            result["momentum"],
+            np.concatenate([left_view["momentum"], right_view["momentum"]], axis=0),
+        )
+        np.testing.assert_array_equal(
+            result.fields["sector"].levels,
+            left.fields["sector"].levels,
+        )
+        np.testing.assert_array_equal(
+            result.fields["exposures"].third_axis_groups,
+            left.fields["exposures"].third_axis_groups,
+        )
 
     def test_concat_empty_input_raises(self):
         with pytest.raises(ValueError, match="at least one"):

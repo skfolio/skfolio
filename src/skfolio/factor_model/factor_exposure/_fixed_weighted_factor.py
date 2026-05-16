@@ -15,7 +15,7 @@ import skfolio.typing as skt
 from skfolio._constants import _BENCHMARK_WEIGHTS, _PASSTHROUGH
 from skfolio.containers import AssetPanel
 from skfolio.factor_model.descriptor import BaseDescriptor
-from skfolio.factor_model.descriptor._composition import DescriptorCompositionMixin
+from skfolio.factor_model.descriptor._composition import BaseDescriptorComposition
 from skfolio.factor_model.factor_exposure._base import BaseFactorExposure
 from skfolio.preprocessing import (
     BaseCSTransformer,
@@ -29,7 +29,7 @@ from skfolio.utils.validation import validate_asset_panel
 _FITTED_ATTR = "descriptors_"
 
 
-class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
+class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
     r"""Factor exposure as a fixed weighted combination of descriptors.
 
     Computes descriptor values, applies cross-sectional outlier and scoring transforms
@@ -77,10 +77,9 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
 
     Parameters
     ----------
-    descriptors : list of tuple (str, BaseDescriptor or str)
+    descriptors : list of tuple (str, BaseDescriptor)
         List of `(name, descriptor)` pairs. Each descriptor computes values from the
-        :class:`AssetPanel`. Strings are interpreted as field names and auto-wrapped as
-        :class:`Passthrough` descriptors.
+        :class:`AssetPanel`.
 
     family : str, default="style"
         The factor family this exposure belongs to (e.g., "market", "style", "industry",
@@ -149,7 +148,7 @@ class FixedWeightedFactor(BaseFactorExposure, DescriptorCompositionMixin):
     def __init__(
         self,
         *,
-        descriptors: list[tuple[str, BaseDescriptor | str]],
+        descriptors: list[tuple[str, BaseDescriptor]],
         family: str = "style",
         weights: FloatArray | None = None,
         min_coverage: float = 0.0,

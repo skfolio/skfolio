@@ -56,10 +56,10 @@ def _make_characteristics_factor_model():
     return CharacteristicsFactorModel(factors=factors)
 
 
-def test_string_descriptor_shorthand(simple_panel):
-    """Test that string descriptor specs are routed as Passthrough descriptors."""
+def test_passthrough_descriptor(simple_panel):
+    """Test that passthrough descriptors return raw panel fields."""
     factor = FixedWeightedFactor(
-        descriptors=[("market_cap", "market_cap")],
+        descriptors=[("market_cap", Passthrough("market_cap"))],
         outlier_transformer="passthrough",
         scoring_transformer="passthrough",
     )
@@ -70,13 +70,25 @@ def test_string_descriptor_shorthand(simple_panel):
     assert isinstance(factor.descriptors_[0], Passthrough)
 
 
+def test_string_descriptor_specs_raise(simple_panel):
+    """Test that descriptor specs must be descriptor estimators."""
+    factor = FixedWeightedFactor(
+        descriptors=[("market_cap", "market_cap")],
+        outlier_transformer="passthrough",
+        scoring_transformer="passthrough",
+    )
+
+    with pytest.raises(TypeError, match="Expected descriptor to be a BaseDescriptor"):
+        factor.fit_transform(simple_panel)
+
+
 def test_multi_descriptor_passthrough_scoring(simple_panel):
     """Test multi-descriptor weighted averages when scoring is skipped."""
     weights = np.array([0.25, 0.75])
     factor = FixedWeightedFactor(
         descriptors=[
-            ("market_cap", "market_cap"),
-            ("book_equity", "book_equity"),
+            ("market_cap", Passthrough("market_cap")),
+            ("book_equity", Passthrough("book_equity")),
         ],
         weights=weights,
         outlier_transformer="passthrough",
@@ -97,8 +109,8 @@ def test_min_coverage_masks_low_coverage_cells(simple_panel):
     simple_panel["book_equity"][0, 0] = np.nan
     factor = FixedWeightedFactor(
         descriptors=[
-            ("market_cap", "market_cap"),
-            ("book_equity", "book_equity"),
+            ("market_cap", Passthrough("market_cap")),
+            ("book_equity", Passthrough("book_equity")),
         ],
         weights=np.array([0.4, 0.6]),
         min_coverage=0.5,
@@ -129,8 +141,8 @@ def test_invalid_weights_raise(simple_panel, weights, match):
     """Test descriptor weight validation."""
     factor = FixedWeightedFactor(
         descriptors=[
-            ("market_cap", "market_cap"),
-            ("book_equity", "book_equity"),
+            ("market_cap", Passthrough("market_cap")),
+            ("book_equity", Passthrough("book_equity")),
         ],
         weights=weights,
         outlier_transformer="passthrough",

@@ -34,6 +34,7 @@ from skfolio.containers._asset_panel._utils import (
     _fill_2d,
     _format_observation_range,
     _materialize_selector,
+    _normalize_field_names,
     _normalize_positional_selector,
     _positions_from_unique_labels,
     _raise_if_raw_replaces_typed_field,
@@ -516,9 +517,13 @@ class AssetPanel(_BaseAssetPanel):
         )
 
     def sel(
-        self, *, observations: Any = None, assets: Any = None
+        self,
+        *,
+        observations: Any = None,
+        assets: Any = None,
+        fields: str | Iterable[str] | None = None,
     ) -> AssetPanel | AssetPanelView:
-        """Select observations and assets by label.
+        """Select observations, assets and fields by label.
 
         Parameters
         ----------
@@ -529,23 +534,33 @@ class AssetPanel(_BaseAssetPanel):
             Asset labels to select. If `None`, assets are not sliced and an
              `AssetPanelView` is returned.
 
+        fields : str, iterable of str, or None, optional
+            Field names to select. If `None`, all fields are selected.
+
         Returns
         -------
         panel or view : AssetPanel or AssetPanelView
-            Observation-only selections return a view. Selections that slice assets
-            return a new panel.
+            Observation-only selections without field filtering return a view.
+            Selections that slice assets or fields return a new panel.
         """
         observation_selector = (
             slice(None)
             if observations is None
             else _positions_from_unique_labels(self.observations, observations)
         )
-        if assets is None:
+        field_names = _normalize_field_names(self.fields, fields)
+        if assets is None and fields is None:
             return AssetPanelView(owner=self, observation_selector=observation_selector)
 
-        asset_selector = _positions_from_unique_labels(self.asset_names, assets)
+        asset_selector = (
+            slice(None)
+            if assets is None
+            else _positions_from_unique_labels(self.asset_names, assets)
+        )
         return self._subset(
-            observation_selector=observation_selector, asset_selector=asset_selector
+            observation_selector=observation_selector,
+            asset_selector=asset_selector,
+            fields=field_names,
         )
 
     def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:
@@ -1436,6 +1451,7 @@ class AssetPanel(_BaseAssetPanel):
         *,
         observation_selector: slice | IntArray,
         asset_selector: slice | IntArray,
+        fields: Iterable[str] | None = None,
     ) -> AssetPanel:
         """Return a panel restricted to selected observations and assets."""
         if _selector_length(self.n_observations, observation_selector) == 0:
@@ -1445,11 +1461,14 @@ class AssetPanel(_BaseAssetPanel):
         if _selector_length(self.n_assets, asset_selector) == 0:
             raise ValueError("Cannot remove all assets; at least one must remain.")
 
+        field_names = _normalize_field_names(self.fields, fields)
         new_fields = {
-            name: field.with_values(
-                _slice_field_values(field, observation_selector, asset_selector)
+            name: self.fields[name].with_values(
+                _slice_field_values(
+                    self.fields[name], observation_selector, asset_selector
+                )
             )
-            for name, field in self.fields.items()
+            for name in field_names
         }
         return AssetPanel(
             fields=new_fields,
