@@ -109,7 +109,7 @@ factor_prior = SyntheticData(
 factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
 
 model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-model.fit(X_train, factors_train)
+model.fit(X_train, factors=factors_train)
 print(model.weights_)
 
 ptf = model.predict(X_test)
@@ -135,7 +135,7 @@ factor_model.set_params(
     factor_prior_estimator__sample_args=dict(conditioning={"QUAL": -0.5})
 )
 # Refit the factor model on the full dataset to update the stressed scenarios
-factor_model.fit(X, factors)
+factor_model.fit(X, factors=factors)
 stressed_dist = factor_model.return_distribution_
 
 stressed_ptf = model.predict(stressed_dist)

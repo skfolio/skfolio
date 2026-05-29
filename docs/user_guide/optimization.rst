@@ -197,11 +197,11 @@ Minimum Variance portfolio using a Factor Model:
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
     model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -239,8 +239,8 @@ aversion of 2 and a denoised prior covariance matrix:
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
     factor_views = ["MTUM - QUAL == 0.0003 ",
                     "SIZE - USMV == 0.0004",
@@ -258,7 +258,7 @@ aversion of 2 and a denoised prior covariance matrix:
         )
     )
 
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -814,14 +814,14 @@ Minimize CVaR while constraining the tracking error to 0.30% vs a benchmark:
     spx_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, spx_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.CVAR,
         max_tracking_error=0.003,  # 0.30% tracking error constraint
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -878,14 +878,14 @@ Minimize tracking error vs a benchmark's returns:
     benchmark_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, benchmark_prices)
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, factors_train, factors_test = train_test_split(
         X, y["SP500"], test_size=0.33, shuffle=False
     )
 
     model = BenchmarkTracker(
         risk_measure=RiskMeasure.STANDARD_DEVIATION,
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)

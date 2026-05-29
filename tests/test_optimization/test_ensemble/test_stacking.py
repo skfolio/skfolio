@@ -52,7 +52,7 @@ def test_stacking(X_medium):
     )
 
 
-def test_stacking_factor(X_medium, y_medium):
+def test_stacking_factor(X_medium, factors_medium):
     estimators = [
         (
             "model1",
@@ -66,7 +66,7 @@ def test_stacking_factor(X_medium, y_medium):
     model = StackingOptimization(
         estimators=estimators, final_estimator=MeanRisk(), n_jobs=-1
     )
-    model.fit(X_medium, y_medium)
+    model.fit(X_medium, factors=factors_medium)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(

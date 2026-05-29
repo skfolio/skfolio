@@ -131,9 +131,9 @@ i.e., the dimensionality of the estimation problem, making portfolio optimizatio
 more robust against noise in the data. Factor models also provide a decomposition of
 financial risk into systematic and security-specific components.
 
-To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
-returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
-array (more than one factor). This is for consistency with the scikit-learn API.
+The `fit` method takes `X` as the asset
+returns and `factors` as the factor returns. Pass factor returns with the `factors` keyword
+argument.
 
 Tutorials:
     * :ref:`Factor Model <sphx_glr_auto_examples_mean_risk_plot_13_factor_model.py>`
@@ -151,10 +151,10 @@ Tutorials:
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(prices, factor_prices)
+    X, factors = prices_to_returns(prices, factor_prices)
 
     model = TimeSeriesFactorModel()
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.return_distribution_)
 
 
@@ -403,7 +403,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(prices, factor_prices)
+    X, factors = prices_to_returns(prices, factor_prices)
 
     views = [
         "MTUM - QUAL == 0.0003",
@@ -414,7 +414,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
     model = TimeSeriesFactorModel(
         factor_prior_estimator=BlackLitterman(views=views),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.return_distribution_)
 
 
@@ -437,7 +437,7 @@ This is often used for factor stress test.
     # Load historical prices and convert them to returns
     prices = load_sp500_dataset()
     factors = load_factors_dataset()
-    X, y = prices_to_returns(prices, factors)
+    X, factors = prices_to_returns(prices, factors)
 
 
     # Minimum CVaR optimization on Stressed Factors
@@ -449,14 +449,14 @@ This is often used for factor stress test.
     )
     factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.weights_)
 
     # Stress Test the Portfolio
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X,y)
+    factor_model.fit(X, factors=factors)
     stressed_dist = factor_model.return_distribution_
     stressed_ptf = model.predict(stressed_dist)
 
@@ -506,7 +506,7 @@ and with :class:`TimeSeriesFactorModel`:
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import SyntheticData, TimeSeriesFactorModel
+    from skfolio.prior import EntropyPooling, SyntheticData, TimeSeriesFactorModel
     from skfolio import RiskMeasure
 
     # Load historical prices and convert them to returns
@@ -526,5 +526,6 @@ and with :class:`TimeSeriesFactorModel`:
         cvar_views=["QUAL == 0.10"],
     )
 
-    factor_entropy_pooling.fit(X, factors)
+    factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooling)
+    factor_model.fit(X, factors=factors)
 

@@ -36,8 +36,8 @@ factor_prices = load_factors_dataset()
 prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
 # %%
 # Analyst views
@@ -67,7 +67,7 @@ model_bl_factor = MeanRisk(
     ),
     portfolio_params=dict(name="Black & Litterman Factor Model"),
 )
-model_bl_factor.fit(X_train, y_train)
+model_bl_factor.fit(X_train, factors=factors_train)
 model_bl_factor.weights_
 
 # %%
@@ -79,7 +79,7 @@ model_factor = MeanRisk(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="Factor Model"),
 )
-model_factor.fit(X_train, y_train)
+model_factor.fit(X_train, factors=factors_train)
 model_factor.weights_
 
 # %%
@@ -122,5 +122,5 @@ model = BlackLitterman(
     ),
 )
 
-model.fit(X, y)
+model.fit(X, factors=factors)
 print(model.return_distribution_.covariance.shape)

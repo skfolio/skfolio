@@ -53,8 +53,8 @@ factor_prices = load_factors_dataset()
 prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
 # %%
 # Model
@@ -156,7 +156,7 @@ model4 = HierarchicalRiskParity(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="HRP-CVaR-Factor-Model"),
 )
-model4.fit(X_train, y_train)
+model4.fit(X_train, factors=factors_train)
 
 model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 

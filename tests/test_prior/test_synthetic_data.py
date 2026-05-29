@@ -19,11 +19,11 @@ def test_synthetic_data(X):
     assert res.returns.shape == (1000, 20)
 
 
-def test_factor_synthetic_data(X, y):
+def test_factor_synthetic_data(X, factors):
     model = TimeSeriesFactorModel(
         factor_prior_estimator=SyntheticData(),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)
@@ -31,7 +31,7 @@ def test_factor_synthetic_data(X, y):
     assert res.returns.shape == (1000, 20)
 
 
-def test_factor_stress_test(X, y):
+def test_factor_stress_test(X, factors):
     model = TimeSeriesFactorModel(
         factor_prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(
@@ -41,7 +41,7 @@ def test_factor_stress_test(X, y):
             sample_args=dict(conditioning={"QUAL": -0.8}),
         )
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     res = model.return_distribution_
     assert hash(res)
     assert res.mu.shape == (20,)

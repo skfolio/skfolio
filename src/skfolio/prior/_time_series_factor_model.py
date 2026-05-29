@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import sklearn.base as skb
@@ -27,125 +27,6 @@ from skfolio.prior._model import FactorModel, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import cov_nearest
 from skfolio.utils.tools import check_estimator, get_feature_names
-
-
-class BaseLoadingMatrix(skb.BaseEstimator, ABC):
-    """Base class for all Loading Matrix estimators.
-
-    Notes
-    -----
-    All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
-    """
-
-    loading_matrix_: FloatArray
-    intercepts_: FloatArray
-
-    @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
-        pass
-
-
-class LoadingMatrixRegression(BaseLoadingMatrix):
-    """Loading Matrix Regression estimator.
-
-    Estimate the loading matrix by fitting one linear regressor per asset.
-
-    Parameters
-    ----------
-    linear_regressor : BaseEstimator, optional
-       Linear regressor used to fit the factors on each asset separately.
-       The default (`None`) is to use `LassoCV(fit_intercept=False)`.
-
-    n_jobs : int, optional
-        The number of jobs to run in parallel.
-
-        When individual estimators are fast to train or predict,
-        using ``n_jobs > 1`` can result in slower performance due
-        to the parallelism overhead.
-
-        The value `-1` means using all processors.
-        The default (`None`) means 1 unless in a `joblib.parallel_backend` context.
-
-    Attributes
-    ----------
-    loading_matrix_ : ndarray of shape (n_assets, n_factors)
-        The asset-by-factor loading (exposure) matrix.
-
-    intercepts_: ndarray of shape (n_assets,)
-        The intercepts.
-
-    multi_output_regressor_: MultiOutputRegressor
-        Fitted `sklearn.multioutput.MultiOutputRegressor`
-    """
-
-    multi_output_regressor_: skmo.MultiOutputRegressor
-
-    def __init__(
-        self,
-        linear_regressor: skb.BaseEstimator | None = None,
-        n_jobs: int | None = None,
-    ):
-        self.linear_regressor = linear_regressor
-        self.n_jobs = n_jobs
-
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
-        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            linear_regressor=self.linear_regressor,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
-        )
-        return router
-
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
-        """Fit the Loading Matrix Regression Estimator.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
-
-        y : array-like of shape (n_observations, n_factors)
-            Price returns of the factors.
-
-        **fit_params : dict
-            Parameters to pass to the underlying estimators.
-            Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
-            See :ref:`Metadata Routing User Guide <metadata_routing>` for
-            more details.
-
-        Returns
-        -------
-        self : LoadingMatrixRegression
-            Fitted estimator.
-        """
-        routed_params = skm.process_routing(self, "fit", **fit_params)
-
-        _linear_regressor = check_estimator(
-            self.linear_regressor,
-            default=skl.LassoCV(fit_intercept=False),
-            check_type=skb.BaseEstimator,
-        )
-
-        self.multi_output_regressor_ = skmo.MultiOutputRegressor(
-            _linear_regressor, n_jobs=self.n_jobs
-        )
-        self.multi_output_regressor_.fit(
-            X=y, y=X, **routed_params.factor_prior_estimator.fit
-        )
-        # noinspection PyUnresolvedReferences
-        n_assets = X.shape[1]
-        self.loading_matrix_ = np.array(
-            [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
-        )
-        self.intercepts_ = np.array(
-            [
-                self.multi_output_regressor_.estimators_[i].intercept_
-                for i in range(n_assets)
-            ]
-        )
 
 
 class TimeSeriesFactorModel(BasePrior):
@@ -252,6 +133,10 @@ class TimeSeriesFactorModel(BasePrior):
     n_features_in_: int
     feature_names_in_: StrArray
 
+    # Request `factors` by default when this estimator is used inside a sklearn
+    # metadata router so callers do not need to configure `set_fit_request`.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"factors": True}
+
     def __init__(
         self,
         loading_matrix_estimator: BaseLoadingMatrix | None = None,
@@ -286,8 +171,9 @@ class TimeSeriesFactorModel(BasePrior):
     def fit(
         self,
         X: ArrayLike,
-        y: Any,
-        factors: ArrayLike | None = None,
+        y: Any = None,
+        *,
+        factors: ArrayLike,
         **fit_params,
     ) -> TimeSeriesFactorModel:
         """Fit the Time-series factor model estimator.
@@ -297,11 +183,11 @@ class TimeSeriesFactorModel(BasePrior):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like of shape (n_observations, n_factors)
-            Factors' returns.
+        y : None
+            Not used, present for scikit-learn compatibility.
 
-        factors : array-like of shape (n_observations, n_factors), optional
-            Factors' returns. If provided, it will override `y`.
+        factors : array-like of shape (n_observations, n_factors)
+            Factors' returns.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -328,33 +214,27 @@ class TimeSeriesFactorModel(BasePrior):
             check_type=BaseLoadingMatrix,
         )
 
-        factor_returns = y
-        if factors is not None:
-            factor_returns = factors
-
         observations = X.index
-        factor_names = get_feature_names(factor_returns)
+        factor_names = get_feature_names(factors)
 
         # Fitting prior estimator
         self.factor_prior_estimator_.fit(
-            X=factor_returns, **routed_params.factor_prior_estimator.fit
+            factors, **routed_params.factor_prior_estimator.fit
         )
         factor_return_dist = self.factor_prior_estimator_.return_distribution_
 
         # Fitting loading matrix estimator
         self.loading_matrix_estimator_.fit(
-            X, factor_returns, **routed_params.loading_matrix_estimator.fit
+            X, factors, **routed_params.loading_matrix_estimator.fit
         )
         loading_matrix = self.loading_matrix_estimator_.loading_matrix_
         intercepts = self.loading_matrix_estimator_.intercepts_
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X, factor_returns = skv.validate_data(
-            self, X, factor_returns, multi_output=True
-        )
-        n_assets = X.shape[1]
-        n_factors = factor_returns.shape[1]
+        X, factors = skv.validate_data(self, X, factors, multi_output=True)
+        _, n_assets = X.shape
+        _, n_factors = factors.shape
         factor_families = None
 
         if self.factor_families is not None:
@@ -387,7 +267,7 @@ class TimeSeriesFactorModel(BasePrior):
         covariance = loading_matrix @ factor_return_dist.covariance @ loading_matrix.T
         returns = factor_return_dist.returns @ loading_matrix.T + intercepts
 
-        factor_returns_pred = factor_returns @ loading_matrix.T + intercepts
+        factor_returns_pred = factors @ loading_matrix.T + intercepts
         idio_returns = X - factor_returns_pred
         idio_var = sm.variance(idio_returns)
         covariance[np.diag_indices_from(covariance)] += idio_var
@@ -410,7 +290,7 @@ class TimeSeriesFactorModel(BasePrior):
                 exposures=None,
                 factor_covariance=factor_return_dist.covariance,
                 factor_mu=factor_return_dist.mu,
-                factor_returns=factor_returns,
+                factor_returns=factors,
                 idio_covariance=idio_var,
                 idio_variances=None,
                 idio_mu=None,
@@ -418,3 +298,121 @@ class TimeSeriesFactorModel(BasePrior):
             ),
         )
         return self
+
+
+class BaseLoadingMatrix(skb.BaseEstimator, ABC):
+    """Base class for all Loading Matrix estimators.
+
+    Notes
+    -----
+    All estimators should specify all the parameters that can be set
+    at the class level in their ``__init__`` as explicit keyword
+    arguments (no ``*args`` or ``**kwargs``).
+    """
+
+    loading_matrix_: FloatArray
+    intercepts_: FloatArray
+
+    @abstractmethod
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+        pass
+
+
+class LoadingMatrixRegression(BaseLoadingMatrix):
+    """Loading Matrix Regression estimator.
+
+    Estimate the loading matrix by fitting one linear regressor per asset.
+
+    Parameters
+    ----------
+    linear_regressor : BaseEstimator, optional
+       Linear regressor used to fit the factors on each asset separately.
+       The default (`None`) is to use `LassoCV(fit_intercept=False)`.
+
+    n_jobs : int, optional
+        The number of jobs to run in parallel.
+
+        When individual estimators are fast to train or predict,
+        using ``n_jobs > 1`` can result in slower performance due
+        to the parallelism overhead.
+
+        The value `-1` means using all processors.
+        The default (`None`) means 1 unless in a `joblib.parallel_backend` context.
+
+    Attributes
+    ----------
+    loading_matrix_ : ndarray of shape (n_assets, n_factors)
+        The asset-by-factor loading (exposure) matrix.
+
+    intercepts_: ndarray of shape (n_assets,)
+        The intercepts.
+
+    multi_output_regressor_: MultiOutputRegressor
+        Fitted `sklearn.multioutput.MultiOutputRegressor`
+    """
+
+    multi_output_regressor_: skmo.MultiOutputRegressor
+
+    def __init__(
+        self,
+        linear_regressor: skb.BaseEstimator | None = None,
+        n_jobs: int | None = None,
+    ):
+        self.linear_regressor = linear_regressor
+        self.n_jobs = n_jobs
+
+    def get_metadata_routing(self):
+        router = skm.MetadataRouter(owner=self.__class__.__name__).add(
+            linear_regressor=self.linear_regressor,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router
+
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+        """Fit the Loading Matrix Regression Estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_factors)
+            Price returns of the factors.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : LoadingMatrixRegression
+            Fitted estimator.
+        """
+        routed_params = skm.process_routing(self, "fit", **fit_params)
+
+        _linear_regressor = check_estimator(
+            self.linear_regressor,
+            default=skl.LassoCV(fit_intercept=False),
+            check_type=skb.BaseEstimator,
+        )
+
+        self.multi_output_regressor_ = skmo.MultiOutputRegressor(
+            _linear_regressor, n_jobs=self.n_jobs
+        )
+        self.multi_output_regressor_.fit(
+            X=y, y=X, **routed_params.factor_prior_estimator.fit
+        )
+        # noinspection PyUnresolvedReferences
+        n_assets = X.shape[1]
+        self.loading_matrix_ = np.array(
+            [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
+        )
+        self.intercepts_ = np.array(
+            [
+                self.multi_output_regressor_.estimators_[i].intercept_
+                for i in range(n_assets)
+            ]
+        )

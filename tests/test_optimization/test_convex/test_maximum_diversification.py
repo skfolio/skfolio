@@ -21,9 +21,9 @@ def test_maximum_diversification(X):
     np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
-def test_maximum_diversification_factor(X, y):
+def test_maximum_diversification_factor(X, factors):
     model = MaximumDiversification(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     ptf = model.predict(X)
     diversification = (
         model.problem_values_["expected_return"] / model.problem_values_["risk"]
@@ -33,13 +33,13 @@ def test_maximum_diversification_factor(X, y):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
-def test_maximum_diversification_factor_constraint(X, y):
-    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+def test_maximum_diversification_factor_constraint(X, factors):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
     model = MaximumDiversification(
         prior_estimator=TimeSeriesFactorModel(),
         linear_constraints=["Momentum == 0"],
     )
-    model.fit(X, factor_returns)
+    model.fit(X, factors=factor_returns)
 
     factor_model = model.prior_estimator_.return_distribution_.factor_model
     momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
@@ -47,14 +47,14 @@ def test_maximum_diversification_factor_constraint(X, y):
     np.testing.assert_almost_equal(momentum_exposure, 0.0)
 
 
-def test_maximum_diversification_factor_family_constraint(X, y):
-    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+def test_maximum_diversification_factor_family_constraint(X, factors):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
     factor_families = ["style", "quality", "style", "defensive", "style"]
     model = MaximumDiversification(
         prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
         linear_constraints=["style <= -0.05"],
     )
-    model.fit(X, factor_returns)
+    model.fit(X, factors=factor_returns)
 
     factor_model = model.prior_estimator_.return_distribution_.factor_model
     style_mask = factor_model.factor_families == "style"

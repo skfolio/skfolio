@@ -78,8 +78,8 @@ class SyntheticData(BasePrior):
     >>>
     >>> # Load historical prices and convert them to returns
     >>> prices = load_sp500_dataset()
-    >>> factors = load_factors_dataset()
-    >>> X, y = prices_to_returns(prices, factors)
+    >>> factor_prices = load_factors_dataset()
+    >>> X, factors = prices_to_returns(prices, factor_prices)
     >>>
     >>> # Instanciate the SyntheticData model and fit it
     >>> model = SyntheticData()
@@ -110,14 +110,14 @@ class SyntheticData(BasePrior):
     ...    )
     ... )
     >>> model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    >>> model.fit(X, y)
+    >>> model.fit(X, factors=factors)
     >>> print(model.weights_)
     >>>
     >>> # Stress Test the Portfolio
     >>> factor_model.set_params(factor_prior_estimator__sample_args=dict(
     ...     conditioning={"QUAL": -0.5}
     ... ))
-    >>> factor_model.fit(X,y)
+    >>> factor_model.fit(X, factors=factors)
     >>> stressed_dist = factor_model.return_distribution_
     >>> stressed_ptf = model.predict(stressed_dist)
     """

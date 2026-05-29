@@ -50,7 +50,7 @@ class CustomOptimization(BaseOptimization):
         )
         self.fail = fail
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, **fit_params):
         X = skv.validate_data(self, X)
         if self.fail:
             raise RuntimeError("CustomOptimization forced failure")
@@ -204,11 +204,11 @@ def test_predict_after_fallback_returns_portfolio(X):
     assert ptf.weights is not None and np.isclose(ptf.weights.sum(), 1.0)
 
 
-def test_fallback_factor_model(X, y):
+def test_fallback_factor_model(X, factors):
     model = CustomOptimization(
         fail=True, fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel())
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [

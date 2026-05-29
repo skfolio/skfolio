@@ -529,7 +529,7 @@ Factor Model
     )
 
     model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X_train, factors_train)
+    model.fit(X_train, factors=factors_train)
 
     print(model.weights_)
 
@@ -642,7 +642,7 @@ Minimum CVaR Optimization on Synthetic Factors
     )
     factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, factors)
+    model.fit(X, factors=factors)
     print(model.weights_)
 
 
@@ -653,7 +653,7 @@ Factor Stress Test
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X, factors)
+    factor_model.fit(X, factors=factors)
     stressed_dist = factor_model.return_distribution_
     stressed_ptf = model.predict(stressed_dist)
 
@@ -704,7 +704,8 @@ Stress Test with Entropy Pooling on Factor Synthetic Data
         cvar_views=["QUAL == 0.10"],
     )
 
-    factor_entropy_pooling.fit(X, factors)
+    factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooling)
+    factor_model.fit(X, factors=factors)
 
     # We retrieve the stressed distribution:
     stressed_dist = factor_model.return_distribution_

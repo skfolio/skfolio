@@ -37,11 +37,10 @@ def X():
 
 
 @pytest.fixture(scope="module")
-def y():
+def factors():
     factor_prices = load_factors_dataset()
     factor_prices = factor_prices.loc[pd.Timestamp(2014, 1, 1) :]
-    y = prices_to_returns(factor_prices)
-    return y
+    return prices_to_returns(factor_prices)
 
 
 @pytest.fixture(scope="module")
@@ -64,9 +63,8 @@ def X_medium(X):
 
 
 @pytest.fixture(scope="module")
-def y_medium(y):
-    y_medium = y["2020":]
-    return y_medium
+def factors_medium(factors):
+    return factors["2020":]
 
 
 @pytest.fixture(scope="module")

@@ -71,8 +71,8 @@ def X(X):
 
 
 @pytest.fixture(scope="module")
-def y(y):
-    return y["2018-01-03":]
+def factors(factors):
+    return factors["2018-01-03":]
 
 
 @pytest.fixture(
@@ -1123,28 +1123,28 @@ def test_groups(X, groups, linear_constraints):
     "objective_function",
     list(ObjectiveFunction),
 )
-def test_tracking_error(X, y, objective_function):
+def test_tracking_error(X, factors, objective_function):
     model = MeanRisk(max_tracking_error=0.005, objective_function=objective_function)
-    bench = y["SIZE"]
+    bench = factors["SIZE"]
     p = model.fit(X, bench).predict(X)
     tracking_error = np.std(p.returns - np.asarray(bench), ddof=1)
     np.testing.assert_almost_equal(tracking_error, 0.005, 4)
 
 
-def test_turnover(X, y):
+def test_turnover(X):
     previous_weights = np.ones(20) / 20
     model = MeanRisk(max_turnover=0.02, previous_weights=previous_weights)
-    p = model.fit(X, y).predict(X)
+    p = model.fit(X).predict(X)
     assert np.all(np.abs(p.weights - previous_weights) <= 0.02)
 
 
-def test_mean_risk_factor_model(X, y):
+def test_mean_risk_factor_model(X, factors):
     model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
-    portfolio = model.fit(X, y).predict(X)
+    portfolio = model.fit(X, factors=factors).predict(X)
     assert isinstance(portfolio, Portfolio)
 
 
-def test_optimization_factor_black_litterman(X, y):
+def test_optimization_factor_black_litterman(X, factors):
     n_observations, n_assets = X.shape
     factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - USMV== 0.04", "VLUE == 0.06"]
 
@@ -1157,7 +1157,7 @@ def test_optimization_factor_black_litterman(X, y):
             higham=True,
         ),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     np.testing.assert_almost_equal(
         model.prior_estimator_.return_distribution_.mu,
@@ -2183,14 +2183,14 @@ class TestFactorConstraints:
         ],
     )
     def test_single_factor_constraint(
-        self, X, y, constraints, factor_indices, check_type, expected
+        self, X, factors, constraints, factor_indices, check_type, expected
     ):
         """Test single factor exposure constraints."""
         model = MeanRisk(
             prior_estimator=TimeSeriesFactorModel(),
             linear_constraints=constraints,
         )
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         weights = model.weights_
         loading_matrix = (
@@ -2203,13 +2203,13 @@ class TestFactorConstraints:
         elif check_type == "almost_equal":
             np.testing.assert_almost_equal(exposure, expected)
 
-    def test_factor_range_constraint(self, X, y):
+    def test_factor_range_constraint(self, X, factors):
         """Test factor exposure bounded within a range."""
         model = MeanRisk(
             prior_estimator=TimeSeriesFactorModel(),
             linear_constraints=["MTUM <= -0.05", "MTUM >= -0.06"],
         )
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         weights = model.weights_
         loading_matrix = (
@@ -2219,13 +2219,13 @@ class TestFactorConstraints:
 
         assert -0.06 <= exposure <= -0.05
 
-    def test_combined_factors_constraint(self, X, y):
+    def test_combined_factors_constraint(self, X, factors):
         """Test constraint on sum of multiple factor exposures."""
         model = MeanRisk(
             prior_estimator=TimeSeriesFactorModel(),
             linear_constraints=["MTUM + SIZE == 0"],
         )
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         weights = model.weights_
         loading_matrix = (
@@ -2235,14 +2235,14 @@ class TestFactorConstraints:
 
         np.testing.assert_almost_equal(combined_exposure, 0.0)
 
-    def test_factor_family_constraint(self, X, y):
+    def test_factor_family_constraint(self, X, factors):
         """Test constraint on a factor family exposure."""
         factor_families = ["style", "quality", "style", "defensive", "style"]
         model = MeanRisk(
             prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
             linear_constraints=["style == 0"],
         )
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         factor_model = model.prior_estimator_.return_distribution_.factor_model
         style_mask = factor_model.factor_families == "style"
@@ -2252,14 +2252,14 @@ class TestFactorConstraints:
 
         np.testing.assert_almost_equal(family_exposure, 0.0)
 
-    def test_factor_family_inequality_constraint(self, X, y):
+    def test_factor_family_inequality_constraint(self, X, factors):
         """Test inequality constraint on a factor family exposure."""
         factor_families = ["style", "quality", "style", "defensive", "style"]
         model = MeanRisk(
             prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
             linear_constraints=["style <= -0.05"],
         )
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         factor_model = model.prior_estimator_.return_distribution_.factor_model
         style_mask = factor_model.factor_families == "style"

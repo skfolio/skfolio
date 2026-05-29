@@ -183,7 +183,7 @@ factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooli
 model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
 
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 sample_weight = model.prior_estimator_.return_distribution_.sample_weight
@@ -216,7 +216,7 @@ model = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model
 )
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 # %%
@@ -288,7 +288,7 @@ factor_opinion_pooling = OpinionPooling(
 
 factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooling)
 
-factor_model.fit(X, factors)
+factor_model.fit(X, factors=factors)
 
 # We retrieve the stressed distribution:
 stressed_dist = factor_model.return_distribution_

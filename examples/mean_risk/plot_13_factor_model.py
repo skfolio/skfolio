@@ -51,9 +51,9 @@ i.e., the dimensionality of the estimation problem, making portfolio optimizatio
 more robust against noise in the data. Factor models also provide a decomposition of
 financial risk into systematic and security-specific components.
 
-To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
-returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
-array (more than one factor). This is for consistency with the scikit-learn API.
+The `fit` method takes `X` as the asset
+returns and `factors` as the factor returns. Pass factor returns with the `factors` keyword
+argument.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel`
 estimator.
@@ -79,8 +79,8 @@ from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRe
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
 # %%
 # Factor Model
@@ -93,7 +93,7 @@ model_factor_1 = MeanRisk(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="Factor Model 1"),
 )
-model_factor_1.fit(X_train, y_train)
+model_factor_1.fit(X_train, factors=factors_train)
 model_factor_1.weights_
 
 # %%
@@ -115,7 +115,7 @@ model_factor_2 = MeanRisk(
     ),
     portfolio_params=dict(name="Factor Model 2"),
 )
-model_factor_2.fit(X_train, y_train)
+model_factor_2.fit(X_train, factors=factors_train)
 model_factor_2.weights_
 
 # %%
@@ -135,7 +135,7 @@ model_factor_3 = MeanRisk(
     ),
     portfolio_params=dict(name="Factor Model 3"),
 )
-model_factor_3.fit(X_train, y_train)
+model_factor_3.fit(X_train, factors=factors_train)
 model_factor_3.weights_
 
 # %%
