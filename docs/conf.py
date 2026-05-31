@@ -103,6 +103,10 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/mean_risk/plot_16_mip_threshold_constraints": (
         "Enforcing long/short threshold constraints via mixed-integer programming"
     ),
+    "auto_examples/mean_risk/plot_18_adanos_market_sentiment": (
+        "Converting external market sentiment into Black-Litterman and "
+        "Entropy-Pooling views"
+    ),
     # Risk Budgeting
     "auto_examples/risk_budgeting/plot_1_risk_parity_variance": (
         "Allocating capital by equalizing variance contributions"
@@ -202,6 +206,7 @@ EXAMPLE_LAST_UPDATED = {
     "auto_examples/mean_risk/plot_14_black_litterman_factor_model": "2023-12-18",
     "auto_examples/mean_risk/plot_15_mip_cardinality_constraints": "2024-11-19",
     "auto_examples/mean_risk/plot_16_mip_threshold_constraints": "2024-11-19",
+    "auto_examples/mean_risk/plot_18_adanos_market_sentiment": "2026-05-31",
     # Risk Budgeting
     "auto_examples/risk_budgeting/plot_1_risk_parity_variance": "2023-12-18",
     "auto_examples/risk_budgeting/plot_2_risk_budgeting_CVaR": "2023-12-18",
