@@ -590,6 +590,23 @@ class GraphDistance(BaseDistance):
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
         Names of assets seen during `fit`. Defined only when `X`
         has assets names that are all strings.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from skfolio.distance import GraphDistance
+    >>> X = pd.DataFrame(
+    ...     [[0.01, 0.02, 0.03], [0.02, 0.01, 0.04]],
+    ...     columns=["A", "B", "C"],
+    ... )
+    >>> adjacency = pd.DataFrame(
+    ...     [[1.0, 0.8, 0.2], [0.8, 1.0, 0.5], [0.2, 0.5, 1.0]],
+    ...     index=X.columns,
+    ...     columns=X.columns,
+    ... )
+    >>> model = GraphDistance().fit(X, adjacency_matrix=adjacency)
+    >>> model.distance_.shape
+    (3, 3)
     """
 
     def __init__(self, mode: GraphMode = GraphMode.ASSET):
