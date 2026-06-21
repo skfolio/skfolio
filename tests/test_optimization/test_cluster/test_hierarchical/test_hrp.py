@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import clone, config_context
 
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
+from skfolio.distance import GraphDistance
 from skfolio.moments import EWCovariance, ImpliedCovariance
 from skfolio.optimization import HierarchicalRiskParity
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
@@ -180,6 +182,66 @@ def test_metadata_routing(X_medium, implied_vol_medium):
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_graph_distance_metadata_routing_in_hrp():
+    X = pd.DataFrame(
+        [
+            [0.01, 0.02, 0.03],
+            [0.02, 0.01, 0.04],
+            [0.03, 0.01, 0.02],
+            [0.02, 0.03, 0.01],
+            [0.01, 0.04, 0.02],
+        ],
+        columns=["A", "B", "C"],
+    )
+    adjacency_matrix = pd.DataFrame(
+        [
+            [1.0, 0.8, 0.2],
+            [0.8, 1.0, 0.5],
+            [0.2, 0.5, 1.0],
+        ],
+        index=X.columns,
+        columns=X.columns,
+    )
+
+    with config_context(enable_metadata_routing=True):
+        model = HierarchicalRiskParity(
+            distance_estimator=GraphDistance().set_fit_request(adjacency_matrix=True)
+        )
+        model.fit(X, adjacency_matrix=adjacency_matrix)
+
+    expected_codependence = (adjacency_matrix.to_numpy() - 0.2) / (1.0 - 0.2)
+    np.fill_diagonal(expected_codependence, 1.0)
+    expected_distance = np.sqrt(1 - expected_codependence)
+    np.testing.assert_almost_equal(
+        model.distance_estimator_.distance_, expected_distance
+    )
+
+
+def test_graph_distance_metadata_routing_in_hrp_wrong_labels():
+    X = pd.DataFrame(np.eye(4, 3), columns=["A", "B", "C"])
+    adjacency_matrix = pd.DataFrame(
+        np.eye(3), index=["C", "B", "A"], columns=["C", "B", "A"]
+    )
+
+    with config_context(enable_metadata_routing=True):
+        model = HierarchicalRiskParity(
+            distance_estimator=GraphDistance().set_fit_request(adjacency_matrix=True)
+        )
+        with pytest.raises(ValueError, match="assets order"):
+            model.fit(X, adjacency_matrix=adjacency_matrix)
+
+
+def test_graph_distance_metadata_routing_in_hrp_missing_adjacency():
+    X = pd.DataFrame(np.eye(4, 3), columns=["A", "B", "C"])
+
+    with config_context(enable_metadata_routing=True):
+        model = HierarchicalRiskParity(
+            distance_estimator=GraphDistance().set_fit_request(adjacency_matrix=True)
+        )
+        with pytest.raises(ValueError, match="`adjacency_matrix` must be provided"):
+            model.fit(X)
 
 
 def test_hrp_weight_constraints(X):

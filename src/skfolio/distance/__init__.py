@@ -8,6 +8,8 @@ from skfolio.distance._base import BaseDistance
 from skfolio.distance._distance import (
     CovarianceDistance,
     DistanceCorrelation,
+    GraphDistance,
+    GraphMode,
     KendallDistance,
     MutualInformation,
     NBinsMethod,
@@ -19,6 +21,8 @@ __all__ = [
     "BaseDistance",
     "CovarianceDistance",
     "DistanceCorrelation",
+    "GraphDistance",
+    "GraphMode",
     "KendallDistance",
     "MutualInformation",
     "NBinsMethod",

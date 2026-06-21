@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from enum import auto
+
 import numpy as np
 import pandas as pd
 import scipy.spatial.distance as scd
@@ -23,7 +25,19 @@ from skfolio.utils.stats import (
     n_bins_freedman,
     n_bins_knuth,
 )
-from skfolio.utils.tools import check_estimator
+from skfolio.utils.tools import AutoEnum, check_estimator
+
+
+class GraphMode(AutoEnum):
+    """Enumeration of Graph Distance modes.
+
+    Parameters
+    ----------
+    ASSET : str
+        Use an asset-to-asset adjacency matrix.
+    """
+
+    ASSET = auto()
 
 
 class PearsonDistance(BaseDistance):
@@ -545,6 +559,100 @@ class MutualInformation(BaseDistance):
             dist[j, i] = dist[i, j]
         self.codependence_ = corr
         self.distance_ = dist
+        return self
+
+
+class GraphDistance(BaseDistance):
+    r"""Graph Distance estimator.
+
+    The codependence is computed from an asset-to-asset adjacency matrix. Weighted
+    adjacency values are min-max normalized into :math:`[0, 1]`, then transformed
+    into a distance matrix using:
+
+    .. math:: distance = \sqrt{1 - codependence}
+
+    Parameters
+    ----------
+    mode : GraphMode, default=GraphMode.ASSET
+        Graph mode. Only :class:`~skfolio.distance.GraphMode.ASSET` is supported.
+
+    Attributes
+    ----------
+    codependence_ : ndarray of shape (n_assets, n_assets)
+        Codependence matrix.
+
+    distance_ : ndarray of shape (n_assets, n_assets)
+        Distance matrix.
+
+    n_features_in_ : int
+        Number of assets seen during `fit`.
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of assets seen during `fit`. Defined only when `X`
+        has assets names that are all strings.
+    """
+
+    def __init__(self, mode: GraphMode = GraphMode.ASSET):
+        self.mode = mode
+
+    def fit(
+        self, X: ArrayLike, y=None, adjacency_matrix: ArrayLike | None = None
+    ) -> GraphDistance:
+        """Fit the Graph Distance estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        adjacency_matrix : array-like of shape (n_assets, n_assets)
+            Asset-to-asset adjacency matrix, ordered like the assets in `X`.
+
+        Returns
+        -------
+        self : GraphDistance
+            Fitted estimator.
+        """
+        X = skv.validate_data(self, X)
+        if self.mode != GraphMode.ASSET:
+            raise ValueError(f"mode {self.mode} is not supported")
+        if adjacency_matrix is None:
+            raise ValueError("`adjacency_matrix` must be provided")
+        if hasattr(self, "feature_names_in_") and isinstance(
+            adjacency_matrix, pd.DataFrame
+        ):
+            if not np.array_equal(adjacency_matrix.index, self.feature_names_in_):
+                raise ValueError(
+                    "`adjacency_matrix` index must match the assets order in `X`"
+                )
+            if not np.array_equal(adjacency_matrix.columns, self.feature_names_in_):
+                raise ValueError(
+                    "`adjacency_matrix` columns must match the assets order in `X`"
+                )
+
+        adjacency_matrix = skv.check_array(
+            adjacency_matrix, dtype=np.float64, input_name="adjacency_matrix"
+        )
+        n_assets = X.shape[1]
+        if adjacency_matrix.shape != (n_assets, n_assets):
+            raise ValueError(
+                "`adjacency_matrix` must be square with shape "
+                f"({n_assets}, {n_assets}), got {adjacency_matrix.shape}"
+            )
+
+        min_value = adjacency_matrix.min()
+        max_value = adjacency_matrix.max()
+        if min_value == max_value:
+            codependence = np.full_like(adjacency_matrix, np.clip(min_value, 0.0, 1.0))
+        else:
+            codependence = (adjacency_matrix - min_value) / (max_value - min_value)
+        np.fill_diagonal(codependence, 1.0)
+
+        self.codependence_ = codependence
+        self.distance_ = np.sqrt(np.clip(1 - self.codependence_, a_min=0.0, a_max=1.0))
         return self
 
 
