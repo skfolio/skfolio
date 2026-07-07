@@ -22,7 +22,6 @@ from cvxpy.reductions.solvers.defines import MI_SOLVERS
 import skfolio.typing as skt
 from skfolio._constants import (
     _MANAGEMENT_FEES,
-    _PREVIOUS_WEIGHTS,
     _TRANSACTION_COSTS,
 )
 from skfolio.measures import RiskMeasure, owa_gmd_weights
@@ -103,7 +102,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -303,7 +302,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     mu_uncertainty_set_estimator : BaseMuUncertaintySet, optional
         :ref:`Mu Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets expected returns are modelled with an ellipsoidal
+        If provided, the expected asset returns are modelled with an ellipsoidal
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
@@ -1401,19 +1400,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression the portfolio turnover.
         """
-        if self.previous_weights is None:
-            raise ValueError(
-                "If you provide `max_turnover`, you must also provide "
-                " `previous_weights`"
-            )
-        previous_weights = self._clean_input(
-            self.previous_weights,
-            n_assets=n_assets,
-            fill_value=0,
-            name=_PREVIOUS_WEIGHTS,
-        )
-        if np.isscalar(previous_weights):
-            previous_weights *= np.ones(n_assets)
+        previous_weights = self._clean_previous_weights(n_assets=n_assets)
         turnover = cp.abs(w - previous_weights * factor)
         return turnover
 

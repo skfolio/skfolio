@@ -40,7 +40,7 @@ class ReturnDistribution:
     Attributes
     ----------
     mu : ndarray of shape (n_assets,)
-        Estimation of the assets expected returns.
+        Estimation of expected asset returns.
 
     covariance : ndarray of shape (n_assets, n_assets)
         Estimation of the assets covariance matrix.

@@ -52,6 +52,7 @@ def cross_val_predict(
     pre_dispatch: str = "2*n_jobs",
     column_indices: IntArray | None = None,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> MultiPeriodPortfolio | Population:
     """Generate cross-validated `Portfolios` estimates.
 
@@ -136,6 +137,21 @@ def cross_val_predict(
     portfolio_params :  dict, optional
         Additional portfolio parameters passed to `MultiPeriodPortfolio`.
 
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of each
+        sequential path. This is useful when the strategy starts with no existing
+        position, while later portfolios represent regular rebalancing from the
+        previously predicted weights. For example, the entry rebalancing can relax
+        `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
+        caused by recurring rebalancing constraints. The first portfolio is included in
+        the result. The regular estimator parameters are used for all subsequent
+        optimizations. When provided, `cross_val_predict` evaluates a sequential
+        strategy path and propagates `previous_weights` between portfolios. This is only
+        supported for sequential CV strategies such as
+        :class:`~skfolio.model_selection.WalkForward`,
+        :class:`~sklearn.model_selection.TimeSeriesSplit` and
+        :class:`~skfolio.model_selection.MultipleRandomizedCV`.
+
     Returns
     -------
     predictions : MultiPeriodPortfolio | Population
@@ -184,9 +200,20 @@ def cross_val_predict(
     # estimator can be a Pipeline
     last_step = _get_last_step(estimator)
 
-    if getattr(last_step, "needs_previous_weights", False) and isinstance(
+    is_sequential_cv = isinstance(
         cv, WalkForward | MultipleRandomizedCV | sks.TimeSeriesSplit
-    ):
+    )
+    use_sequential_path = (
+        getattr(last_step, "needs_previous_weights", False)
+        or entry_rebalancing_params is not None
+    )
+    if entry_rebalancing_params is not None and not is_sequential_cv:
+        raise ValueError(
+            "`entry_rebalancing_params` is only supported with sequential CV "
+            "strategies: `WalkForward`, `TimeSeriesSplit` and `MultipleRandomizedCV`."
+        )
+
+    if use_sequential_path and is_sequential_cv:
         if isinstance(cv, MultipleRandomizedCV):
             splits = list(cv.split(X, y, **routed_params.splitter.split))
             path_ids = cv.get_path_ids()
@@ -205,6 +232,7 @@ def cross_val_predict(
                     routed_params=routed_params,
                     method=method,
                     path_splits=paths[pid],
+                    entry_rebalancing_params=entry_rebalancing_params,
                 )
                 for pid in sorted(paths.keys())
             )
@@ -214,10 +242,11 @@ def cross_val_predict(
             if n_jobs not in (None, 1):
                 warnings.warn(
                     "Parallel processing has been disabled because the optimization "
-                    "method requires sequential processing of previous weights. To "
-                    "suppress this warning, set `n_jobs=None`, or disable sequential "
-                    "processing of previous weights by setting your Optimization's "
-                    "`needs_previous_weights` attribute to False.",
+                    "method requires sequential processing of previous weights or "
+                    "`entry_rebalancing_params`. To suppress this warning, set "
+                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable "
+                    "sequential processing of previous weights by setting your "
+                    "Optimization's `needs_previous_weights` attribute to False.",
                     stacklevel=2,
                 )
             predictions = _run_path(
@@ -227,6 +256,7 @@ def cross_val_predict(
                 routed_params=routed_params,
                 method=method,
                 path_splits=splits,
+                entry_rebalancing_params=entry_rebalancing_params,
             )
 
     else:
@@ -476,6 +506,44 @@ def _is_portfolio_optimization_estimator(
     return isinstance(_get_last_step(estimator), BaseOptimization)
 
 
+def _apply_entry_rebalancing_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    entry_rebalancing_params: dict | None,
+) -> dict | None:
+    """Apply temporary parameters to the final optimization estimator.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        Portfolio optimization estimator or pipeline whose last step is an
+        optimization estimator.
+
+    entry_rebalancing_params : dict, optional
+        Parameters to apply while constructing the first portfolio.
+
+    Returns
+    -------
+    previous_params : dict | None
+        Original parameter values to restore after the first optimization, or `None`
+        when no temporary parameters were provided.
+    """
+    if entry_rebalancing_params is None:
+        return None
+
+    last_step = _get_last_step(estimator)
+    valid_params = last_step.get_params(deep=True)
+    unknown_params = sorted(set(entry_rebalancing_params) - set(valid_params))
+    if unknown_params:
+        raise ValueError(
+            "`entry_rebalancing_params` contains invalid parameter names for "
+            f"{last_step.__class__.__name__}: {unknown_params}."
+        )
+
+    previous_params = {name: valid_params[name] for name in entry_rebalancing_params}
+    last_step.set_params(**entry_rebalancing_params)
+    return previous_params
+
+
 def _run_path(
     estimator: skb.BaseEstimator | Pipeline,
     X: ArrayLike,
@@ -483,6 +551,7 @@ def _run_path(
     routed_params: sku.Bunch,
     method: str,
     path_splits: list[tuple[IntArray, IntArray, IntArray | None]],
+    entry_rebalancing_params: dict | None = None,
 ) -> list[Portfolio]:
     """Run sequential fit/predict along a single path of ordered splits.
 
@@ -512,6 +581,9 @@ def _run_path(
         Sequence of `(train_idx, test_idx[, column_indices])` describing one
         path of folds. `column_indices` can be `None`.
 
+    entry_rebalancing_params : dict, optional
+        Parameters applied only while constructing the first portfolio in the path.
+
     Returns
     -------
     list[Portfolio]
@@ -520,10 +592,12 @@ def _run_path(
     use_dict = _asset_names_enabled(X)
     predictions = []
     prev_weights = _get_last_step(estimator).previous_weights
-    for train, test, *column_indices in path_splits:
+    for i, (train, test, *column_indices) in enumerate(path_splits):
         est = sk.clone(estimator)
         last_step = _get_last_step(est)
         last_step.set_params(previous_weights=prev_weights)
+        if i == 0:
+            _apply_entry_rebalancing_params(est, entry_rebalancing_params)
         ptf = fit_and_predict(
             est,
             X,

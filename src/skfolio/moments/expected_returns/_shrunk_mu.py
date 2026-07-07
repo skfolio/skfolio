@@ -211,7 +211,7 @@ class ShrunkMu(BaseMu):
         # Calculate Estimators
         match self.method:
             case ShrunkMuMethods.JAMES_STEIN:
-                eigenvalues = np.linalg.eigvals(covariance)
+                eigenvalues = np.linalg.eigvalsh(covariance)
                 self.beta_ = (
                     (np.sum(eigenvalues) - 2 * np.max(eigenvalues))
                     / np.sum((sample_mu - self.mu_target_) ** 2)

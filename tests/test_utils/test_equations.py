@@ -75,6 +75,11 @@ def test_split_equation_string_error():
         _split_equation_string("a<3")
 
 
+def test_split_equation_string_chained_comparison_error():
+    with pytest.raises(EquationToMatrixError, match="only one comparison"):
+        _split_equation_string("a <= b <= c")
+
+
 def test_string_to_equation():
     string = "-5 - 3.5 * a + b - 2*c + 2 <= -1 + e*2.1 + f +6.5"
     groups = np.array([["a", "b", "c", "e", "f"]])
@@ -102,6 +107,32 @@ def test_string_to_equation():
     assert is_inequality is False
     np.testing.assert_array_almost_equal(left, np.array([-2.5, -2.5, -2, -2.1, 0]))
     assert right == -1.5
+
+    string = "a <= 1e-3"
+    groups = np.array([["a", "b"]])
+    left, right, is_inequality = _string_to_equation(
+        groups=groups, string=string, sum_to_one=False
+    )
+    assert is_inequality is True
+    np.testing.assert_array_almost_equal(left, np.array([1.0, 0.0]))
+    assert right == pytest.approx(1e-3)
+
+
+def test_string_to_equation_hyphenated_names():
+    groups = np.array([["a-b", "a", "b"]])
+    left, right, is_inequality = _string_to_equation(
+        groups=groups, string="a-b == 0", sum_to_one=False
+    )
+    assert is_inequality is False
+    np.testing.assert_array_almost_equal(left, np.array([1.0, 0.0, 0.0]))
+    assert right == pytest.approx(0.0)
+
+    left, right, is_inequality = _string_to_equation(
+        groups=groups, string="a - b == 0", sum_to_one=False
+    )
+    assert is_inequality is False
+    np.testing.assert_array_almost_equal(left, np.array([0.0, 1.0, -1.0]))
+    assert right == pytest.approx(0.0)
 
 
 def test_matching_array(groups):
@@ -194,6 +225,9 @@ def test_equations_to_matrix_error(groups):
         with pytest.raises(EquationToMatrixError):
             equations_to_matrix(groups=groups, equations=c)
 
+    with pytest.raises(EquationToMatrixError, match="only one comparison"):
+        equations_to_matrix(groups=groups, equations=["a <= b <= c"])
+
 
 def test_equations_to_matrix_duplicate_groups_error():
     groups = np.array(
@@ -244,6 +278,36 @@ def test_views():
     assert np.array_equal(b_eq, np.array([0.03, 0.04, 0.06]))
 
 
+def test_equations_to_matrix_hyphenated_group_name():
+    name = "Non-System-Specific Biopharmaceuticals"
+    groups = np.array([[name, "Other"]])
+
+    a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
+        groups=groups,
+        equations=[f"{name} == 0"],
+    )
+
+    np.testing.assert_array_almost_equal(a_eq, np.array([[1.0, 0.0]]))
+    np.testing.assert_array_almost_equal(b_eq, np.array([0.0]))
+    assert a_ineq.shape == (0, 2)
+    assert b_ineq.shape == (0,)
+
+
+def test_equations_to_matrix_large_hyphenated_asset_universe():
+    names = [f"Asset-{i}" for i in range(5000)]
+    groups = np.array([names])
+
+    _, _, a_ineq, b_ineq = equations_to_matrix(
+        groups=groups,
+        equations=["Asset-4999 <= 1e-3"],
+    )
+
+    assert a_ineq.shape == (1, 5000)
+    assert a_ineq[0, -1] == pytest.approx(1.0)
+    assert a_ineq[0, :-1].sum() == pytest.approx(0.0)
+    assert b_ineq[0] == pytest.approx(1e-3)
+
+
 def test_group_cardinalities_to_matrix(groups, group_cardinalities):
     a, b = group_cardinalities_to_matrix(
         groups=groups, group_cardinalities=group_cardinalities
@@ -257,10 +321,22 @@ def test_group_cardinalities_to_matrix(groups, group_cardinalities):
 
 
 def test_group_cardinalities_to_matrix_error(groups, group_cardinalities):
-    with pytest.raises(EquationToMatrixError):
+    with pytest.raises(GroupNotFoundError):
         _ = group_cardinalities_to_matrix(
             groups=groups, group_cardinalities={"x": 5}, raise_if_group_missing=True
         )
+
+
+def test_group_cardinalities_to_matrix_missing_group_warning(groups):
+    with pytest.warns(UserWarning, match="Unable to find 'x' in groups"):
+        a, b = group_cardinalities_to_matrix(
+            groups=groups,
+            group_cardinalities={"x": 5},
+            raise_if_group_missing=False,
+        )
+
+    assert a.shape == (0, groups.shape[1])
+    assert b.shape == (0,)
 
 
 class TestMatchingArrayWithFactors:
@@ -415,6 +491,67 @@ class TestStringToEquationWithFactors:
         assert right == 0
         assert is_inequality is False
 
+    def test_hyphenated_factor_constraint(self, groups, loading_matrix):
+        """Test parsing a factor constraint whose name contains operators."""
+        factor_groups = np.array(
+            [
+                ["Non-System-Specific Biopharmaceuticals", "Value", "Size"],
+                ["industry", "style", "style"],
+            ]
+        )
+        left, right, is_inequality = _string_to_equation(
+            groups=groups,
+            string="Non-System-Specific Biopharmaceuticals == 0",
+            sum_to_one=False,
+            loading_matrix=loading_matrix,
+            factor_groups=factor_groups,
+        )
+
+        np.testing.assert_array_almost_equal(left, loading_matrix[:, 0])
+        assert right == pytest.approx(0.0)
+        assert is_inequality is False
+
+    def test_hyphenated_factor_family_constraint(self, groups, loading_matrix):
+        """Test parsing a factor family whose name contains operators."""
+        family = "Non-System-Specific Biopharmaceuticals"
+        factor_groups = np.array(
+            [
+                ["industry_1", "Value", "Size"],
+                [family, "style", "style"],
+            ]
+        )
+        left, right, is_inequality = _string_to_equation(
+            groups=groups,
+            string=f"{family} == 0",
+            sum_to_one=False,
+            loading_matrix=loading_matrix,
+            factor_groups=factor_groups,
+        )
+
+        np.testing.assert_array_almost_equal(left, loading_matrix[:, 0])
+        assert right == pytest.approx(0.0)
+        assert is_inequality is False
+
+    def test_self_named_singleton_factor_family(self, groups, loading_matrix):
+        """Test that a singleton family can share its factor name."""
+        factor_groups = np.array(
+            [
+                ["market", "Value", "Size"],
+                ["market", "style", "style"],
+            ]
+        )
+        a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
+            groups=groups,
+            equations=["market == 0"],
+            loading_matrix=loading_matrix,
+            factor_groups=factor_groups,
+        )
+
+        assert len(a_ineq) == 0
+        assert len(b_ineq) == 0
+        np.testing.assert_array_almost_equal(a_eq[0], loading_matrix[:, 0])
+        assert b_eq[0] == pytest.approx(0.0)
+
 
 class TestEquationsToMatrixWithFactors:
     """Tests for equations_to_matrix with factor constraints."""
@@ -561,6 +698,25 @@ class TestEquationsToMatrixFactorValidation:
             equations_to_matrix(
                 groups=groups,
                 equations=["Momentum <= 0.3"],
+                loading_matrix=loading_matrix,
+                factor_groups=factor_groups,
+            )
+
+    def test_factor_name_family_collision_requires_singleton(
+        self, groups, loading_matrix
+    ):
+        """Test that factor/family collisions must be singleton families."""
+        factor_groups = np.array(
+            [
+                ["market", "beta", "momentum"],
+                ["style", "market", "market"],
+            ]
+        )
+
+        with pytest.raises(DuplicateGroupsError, match="family contains"):
+            equations_to_matrix(
+                groups=groups,
+                equations=["market == 0"],
                 loading_matrix=loading_matrix,
                 factor_groups=factor_groups,
             )

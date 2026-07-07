@@ -2519,6 +2519,9 @@ class TestGerberCovariance:
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered")
 @pytest.mark.filterwarnings("ignore:overflow encountered in dot:RuntimeWarning")
+@pytest.mark.filterwarnings(
+    "ignore:Objective did not converge:sklearn.exceptions.ConvergenceWarning"
+)
 class TestGraphicalLassoCV:
     def test_fit(self, X):
         model = GraphicalLassoCV()

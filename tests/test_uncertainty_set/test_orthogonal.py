@@ -6,9 +6,14 @@ import pytest
 import scipy.stats as scipy_stats
 
 from skfolio import RiskMeasure
+from skfolio.containers import AssetPanel
+from skfolio.descriptor import Passthrough
+from skfolio.factor_exposure import FixedWeightedFactor
+from skfolio.moments import EWCovariance, EWMu, EWVariance
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.prior import (
-    CSWeighting,
+    CharacteristicsFactorModel,
+    EmpiricalPrior,
     FactorModel,
     ReturnDistribution,
     TimeSeriesFactorModel,
@@ -18,6 +23,7 @@ from skfolio.uncertainty_set._orthogonal import (
     OrthogonalCovarianceUncertaintySet,
     OrthogonalMuUncertaintySet,
 )
+from skfolio.utils.stats import CSWeighting
 
 
 @dataclass(frozen=True)
@@ -104,6 +110,60 @@ def _fit_covariance_uncertainty(
     model = OrthogonalCovarianceUncertaintySet(**kwargs)
     model.fit(factor_case.X, return_distribution=factor_case.return_distribution)
     return model
+
+
+def _make_characteristics_case(
+    *,
+    n_obs: int = 24,
+    n_assets: int = 8,
+    seed: int = 123,
+) -> tuple[pd.DataFrame, AssetPanel]:
+    """Build returns and characteristics for an online factor-model prior."""
+    rng = np.random.default_rng(seed)
+    beta = rng.uniform(0.5, 1.5, size=n_assets)
+    factor_returns = rng.normal(0.0, 0.01, size=n_obs)
+    idio_vol = rng.uniform(0.005, 0.02, size=n_assets)
+    returns = beta[None, :] * factor_returns[:, None]
+    returns += rng.normal(size=(n_obs, n_assets)) * idio_vol
+
+    asset_names = np.array([f"asset_{i}" for i in range(n_assets)])
+    X = pd.DataFrame(returns, columns=asset_names)
+    characteristics = AssetPanel(
+        fields={
+            "returns": returns,
+            "market_cap": np.ones((n_obs, n_assets)),
+            "beta": np.broadcast_to(beta, (n_obs, n_assets)).copy(),
+        },
+        observations=np.arange(n_obs),
+        asset_names=asset_names,
+    )
+    return X, characteristics
+
+
+def _make_characteristics_factor_model() -> CharacteristicsFactorModel:
+    """Build a minimal characteristics factor model with online support."""
+    return CharacteristicsFactorModel(
+        factors=[
+            (
+                "beta",
+                FixedWeightedFactor(
+                    descriptors=[("beta", Passthrough("beta"))],
+                    family="market",
+                    outlier_transformer="passthrough",
+                    scoring_transformer="passthrough",
+                ),
+            )
+        ],
+        exposure_lag=1,
+        factor_prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(half_life=5, min_observations=1),
+            covariance_estimator=EWCovariance(half_life=5, min_observations=2),
+        ),
+        idio_variance_estimator=EWVariance(half_life=5, min_observations=1),
+        benchmark_mcap_power=0,
+        regression_mcap_power=0,
+        min_regression_assets=6,
+    )
 
 
 def _cs_weighting_metric(
@@ -263,6 +323,38 @@ class TestOrthogonalMuUncertaintySet:
             model.uncertainty_set_.radius, expected, rtol=1e-12, atol=1e-12
         )
 
+    def test_partial_fit_matches_fit(self, make_factor_case):
+        factor_case = make_factor_case(seed=19)
+        fit_model = OrthogonalMuUncertaintySet(
+            confidence_level=0.9,
+            uncertainty_shape="idio_variance",
+        )
+        partial_fit_model = OrthogonalMuUncertaintySet(
+            confidence_level=0.9,
+            uncertainty_shape="idio_variance",
+        )
+
+        fit_model.fit(
+            factor_case.X,
+            return_distribution=factor_case.return_distribution,
+        )
+        partial_fit_model.partial_fit(
+            factor_case.X,
+            return_distribution=factor_case.return_distribution,
+        )
+
+        np.testing.assert_allclose(
+            partial_fit_model.uncertainty_set_.radius,
+            fit_model.uncertainty_set_.radius,
+        )
+        np.testing.assert_allclose(
+            partial_fit_model.uncertainty_set_.geometry,
+            fit_model.uncertainty_set_.geometry,
+        )
+        assert (
+            partial_fit_model.uncertainty_set_.norm == fit_model.uncertainty_set_.norm
+        )
+
     def test_invalid_uncertainty_shape_raises(self, make_factor_case):
         factor_case = make_factor_case(seed=8)
         model = OrthogonalMuUncertaintySet(uncertainty_shape="bogus")
@@ -384,6 +476,39 @@ class TestOrthogonalCovarianceUncertaintySet:
                 factor_case.X, return_distribution=factor_case.return_distribution
             )
 
+    def test_partial_fit_matches_fit(self, make_factor_case):
+        factor_case = make_factor_case(seed=20)
+        fit_model = OrthogonalCovarianceUncertaintySet(
+            radius=0.7,
+            cs_weighting=CSWeighting.IDENTITY,
+        )
+        partial_fit_model = OrthogonalCovarianceUncertaintySet(
+            radius=0.7,
+            cs_weighting=CSWeighting.IDENTITY,
+        )
+
+        fit_model.fit(
+            factor_case.X,
+            return_distribution=factor_case.return_distribution,
+        )
+        partial_fit_model.partial_fit(
+            factor_case.X,
+            return_distribution=factor_case.return_distribution,
+        )
+
+        np.testing.assert_allclose(
+            partial_fit_model.uncertainty_set_.radius,
+            fit_model.uncertainty_set_.radius,
+        )
+        np.testing.assert_allclose(
+            partial_fit_model.uncertainty_set_.metric_sqrt,
+            fit_model.uncertainty_set_.metric_sqrt,
+        )
+        np.testing.assert_allclose(
+            partial_fit_model.uncertainty_set_.basis,
+            fit_model.uncertainty_set_.basis,
+        )
+
     def test_invalid_radius_raises(self):
         model = OrthogonalCovarianceUncertaintySet(radius=-1.0)
 
@@ -419,7 +544,7 @@ class TestOrthogonalCovarianceUncertaintySet:
 
 
 class TestMeanRiskIntegration:
-    def test_mu_uncertainty_with_factor_model(self, X, y):
+    def test_mu_uncertainty_with_factor_model(self, X, factors):
         model = MeanRisk(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
@@ -427,7 +552,7 @@ class TestMeanRiskIntegration:
             mu_uncertainty_set_estimator=OrthogonalMuUncertaintySet(),
         )
 
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         assert model.weights_.shape == (X.shape[1],)
         assert np.isfinite(model.weights_).all()
@@ -443,7 +568,7 @@ class TestMeanRiskIntegration:
             index=idx,
             columns=[f"asset_{i}" for i in range(n_assets)],
         )
-        y = pd.DataFrame(
+        factors = pd.DataFrame(
             factor_case.return_distribution.factor_model.factor_returns,
             index=idx,
             columns=[f"factor_{i}" for i in range(n_factors)],
@@ -455,7 +580,7 @@ class TestMeanRiskIntegration:
             prior_estimator=TimeSeriesFactorModel(),
         )
         baseline = MeanRisk(**common)
-        baseline.fit(X, y)
+        baseline.fit(X, factors=factors)
 
         robust = MeanRisk(
             **common,
@@ -463,7 +588,7 @@ class TestMeanRiskIntegration:
                 confidence_level=0.99,
             ),
         )
-        robust.fit(X, y)
+        robust.fit(X, factors=factors)
 
         assert robust.mu_uncertainty_set_estimator_ is not None
         u = robust.mu_uncertainty_set_estimator_.uncertainty_set_
@@ -475,7 +600,7 @@ class TestMeanRiskIntegration:
 
         assert not np.allclose(baseline.weights_, robust.weights_, atol=1e-4)
 
-    def test_covariance_uncertainty_with_factor_model(self, X, y):
+    def test_covariance_uncertainty_with_factor_model(self, X, factors):
         model = MeanRisk(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
@@ -485,13 +610,13 @@ class TestMeanRiskIntegration:
             ),
         )
 
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         assert model.weights_.shape == (X.shape[1],)
         assert np.isfinite(model.weights_).all()
         np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
 
-    def test_mu_and_covariance_uncertainty_together(self, X, y):
+    def test_mu_and_covariance_uncertainty_together(self, X, factors):
         model = MeanRisk(
             objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
             risk_measure=RiskMeasure.VARIANCE,
@@ -504,8 +629,45 @@ class TestMeanRiskIntegration:
             ),
         )
 
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
         assert model.weights_.shape == (X.shape[1],)
         assert np.isfinite(model.weights_).all()
         np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+    @pytest.mark.parametrize(
+        "uncertainty_params",
+        [
+            {"mu_uncertainty_set_estimator": OrthogonalMuUncertaintySet()},
+            {
+                "covariance_uncertainty_set_estimator": (
+                    OrthogonalCovarianceUncertaintySet(radius=0.5)
+                )
+            },
+        ],
+    )
+    def test_partial_fit_with_characteristics_factor_model(self, uncertainty_params):
+        X, characteristics = _make_characteristics_case()
+        model = MeanRisk(
+            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+            risk_measure=RiskMeasure.VARIANCE,
+            prior_estimator=_make_characteristics_factor_model(),
+            **uncertainty_params,
+        )
+
+        split = len(X) // 2
+        model.partial_fit(X.iloc[:split], characteristics=characteristics[:split])
+        model.partial_fit(X.iloc[split:], characteristics=characteristics[split:])
+
+        assert model.weights_.shape == (X.shape[1],)
+        assert np.isfinite(model.weights_).all()
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+        if model.mu_uncertainty_set_estimator_ is not None:
+            uncertainty_set = model.mu_uncertainty_set_estimator_.uncertainty_set_
+            assert isinstance(uncertainty_set, UncertaintySet)
+        else:
+            uncertainty_set = (
+                model.covariance_uncertainty_set_estimator_.uncertainty_set_
+            )
+            assert isinstance(uncertainty_set, CompactCovarianceUncertaintySet)

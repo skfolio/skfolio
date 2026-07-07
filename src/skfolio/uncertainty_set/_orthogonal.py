@@ -12,7 +12,7 @@ import numpy as np
 import scipy.linalg as sla
 import scipy.stats as st
 
-from skfolio.prior import CSWeighting, ReturnDistribution
+from skfolio.prior import ReturnDistribution
 from skfolio.typing import ArrayLike
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
@@ -22,6 +22,7 @@ from skfolio.uncertainty_set._model import (
     CompactCovarianceUncertaintySet,
     UncertaintySet,
 )
+from skfolio.utils.stats import CSWeighting
 
 
 class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
@@ -98,9 +99,9 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
 
     Notes
     -----
-    This estimator requires a factor model in the fitted return distribution.
-    When used inside :class:`~skfolio.optimization.MeanRisk`, the `return_distribution`
-    metadata is passed automatically if the estimator's `fit` signature declares it.
+    This estimator requires a factor model in the fitted return distribution. When used
+    inside :class:`~skfolio.optimization.MeanRisk`, the `return_distribution` metadata
+    is passed automatically by `fit` and `partial_fit`.
 
     References
     ----------
@@ -149,7 +150,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
 
         return_distribution : ReturnDistribution, optional
             The fitted return distribution from the prior estimator.
-            Passed internally by :class:`~skfolio.optimization.MeanRisk`.  Must contain a
+            Passed internally by :class:`~skfolio.optimization.MeanRisk`. Must contain a
             `factor_model` with `loading_matrix` and `idio_covariance`.
 
         **fit_params : dict
@@ -160,6 +161,60 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
         self : OrthogonalMuUncertaintySet
             Fitted estimator.
         """
+        return self._fit(
+            X,
+            y,
+            return_distribution=return_distribution,
+            **fit_params,
+        )
+
+    def partial_fit(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        *,
+        return_distribution: ReturnDistribution | None = None,
+        **fit_params,
+    ) -> OrthogonalMuUncertaintySet:
+        r"""Update the orthogonal mu uncertainty set.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_factors), optional
+            Price returns of factors. The default is `None`.
+
+        return_distribution : ReturnDistribution, optional
+            The fitted return distribution from the prior estimator.
+            Passed internally by :class:`~skfolio.optimization.MeanRisk`. Must contain a
+            `factor_model` with `loading_matrix` and `idio_covariance`.
+
+        **fit_params : dict
+            Additional parameters (unused).
+
+        Returns
+        -------
+        self : OrthogonalMuUncertaintySet
+            Updated estimator.
+        """
+        return self._fit(
+            X,
+            y,
+            return_distribution=return_distribution,
+            **fit_params,
+        )
+
+    def _fit(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        *,
+        return_distribution: ReturnDistribution | None = None,
+        **fit_params,
+    ) -> OrthogonalMuUncertaintySet:
+        """Fit the estimator from a fitted factor-model return distribution."""
         self._validate_params()
 
         if return_distribution is None:
@@ -226,7 +281,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
             )
             return self
 
-        # Per-direction scaling
+        # Scale each orthogonal direction.
         idio_covariance = factor_model.idio_covariance
         if self.uncertainty_shape == "identity":
             scaling_sqrt = np.eye(rank)
@@ -324,10 +379,9 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
 
     Notes
     -----
-    This estimator requires a factor model in the return distribution. It receives
-    `return_distribution` as an internal fit parameter, which is passed automatically by
-    :class:`~skfolio.optimization.MeanRisk` when the estimator's `fit` signature
-    declares it.
+    This estimator requires a factor model in the return distribution. When used inside
+    :class:`~skfolio.optimization.MeanRisk`, the `return_distribution` metadata is
+    passed automatically by `fit` and `partial_fit`.
 
     References
     ----------
@@ -385,6 +439,60 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self : OrthogonalCovarianceUncertaintySet
             Fitted estimator.
         """
+        return self._fit(
+            X,
+            y,
+            return_distribution=return_distribution,
+            **fit_params,
+        )
+
+    def partial_fit(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        *,
+        return_distribution: ReturnDistribution | None = None,
+        **fit_params,
+    ) -> OrthogonalCovarianceUncertaintySet:
+        r"""Update the orthogonal covariance uncertainty set.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_factors), optional
+            Price returns of factors. The default is `None`.
+
+        return_distribution : ReturnDistribution, optional
+            The fitted return distribution from the prior estimator.
+            Passed internally by :class:`~skfolio.optimization.MeanRisk`. Must contain a
+            `factor_model` with `loading_matrix` and `idio_covariance`.
+
+        **fit_params : dict
+            Additional parameters (unused).
+
+        Returns
+        -------
+        self : OrthogonalCovarianceUncertaintySet
+            Updated estimator.
+        """
+        return self._fit(
+            X,
+            y,
+            return_distribution=return_distribution,
+            **fit_params,
+        )
+
+    def _fit(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        *,
+        return_distribution: ReturnDistribution | None = None,
+        **fit_params,
+    ) -> OrthogonalCovarianceUncertaintySet:
+        """Fit the estimator from a fitted factor-model return distribution."""
         self._validate_params()
 
         if return_distribution is None:

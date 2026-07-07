@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from skfolio.typing import FloatArray
+from skfolio.typing import AnyArray
 
 
 class _ArrayBuffer:
@@ -23,14 +23,14 @@ class _ArrayBuffer:
 
     __slots__ = ("_buffer", "_size")
 
-    def __init__(self, values: FloatArray | None = None):
-        self._buffer: FloatArray | None = None
+    def __init__(self, values: AnyArray | None = None):
+        self._buffer: AnyArray | None = None
         self._size: int = 0
         if values is not None:
             self.append(values)
 
     @property
-    def array(self) -> FloatArray | None:
+    def array(self) -> AnyArray | None:
         """Read-only view of the valid region, or `None` if empty."""
         if self._buffer is None:
             return None
@@ -38,7 +38,7 @@ class _ArrayBuffer:
         view.flags.writeable = False
         return view
 
-    def append(self, values: FloatArray) -> None:
+    def append(self, values: AnyArray) -> None:
         """Append *values* along axis 0.
 
         First call allocates an exact-fit buffer (optimal for batch mode).
@@ -77,11 +77,17 @@ class _ArrayBuffer:
 
         *n_rows* must be positive. If the buffer already has fewer than
         *n_rows* rows the call is a no-op.
+
+        Truncation allocates a fresh internal buffer instead of shifting rows in
+        place: views returned by :attr:`array` may still be referenced by earlier
+        snapshots.
         """
         if n_rows <= 0:
             raise ValueError(f"`n_rows` must be positive, got {n_rows}")
         if self._size > n_rows:
-            self._buffer[:n_rows] = self._buffer[self._size - n_rows : self._size]
+            new_buffer = np.empty_like(self._buffer)
+            new_buffer[:n_rows] = self._buffer[self._size - n_rows : self._size]
+            self._buffer = new_buffer
             self._size = n_rows
 
     def clear(self) -> None:
@@ -99,3 +105,30 @@ class _ArrayBuffer:
         return (
             f"_ArrayBuffer(len={self._size}, shape={shape}, dtype={self._buffer.dtype})"
         )
+
+
+def _update_buffer(buffer: AnyArray, values: AnyArray, lag: int) -> None:
+    """Update the lag buffer in-place with the last `lag` rows of `values`.
+
+    All operations copy data into the pre-allocated `buffer`.  No view into `values` is
+    retained, so the caller's input array can be freed.
+
+    Parameters
+    ----------
+    buffer : ndarray of shape (lag, n_assets)
+        Pre-allocated buffer to update.
+
+    values : ndarray of shape (n_observations, n_assets)
+        New observations (may be a view into a larger array).
+
+    lag : int
+        Buffer size (number of lagged rows to retain).
+    """
+    n_observations = values.shape[0]
+    if n_observations == 0:
+        return
+    if n_observations >= lag:
+        np.copyto(buffer, values[-lag:])
+    else:
+        buffer[:-n_observations] = buffer[n_observations:]
+        buffer[-n_observations:] = values

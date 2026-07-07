@@ -18,6 +18,7 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.prior import BasePrior, EmpiricalPrior
@@ -104,7 +105,7 @@ class MeanRisk(ConvexOptimization):
     Cost, regularization, uncertainty set, and additional constraints can also be added
     to the optimization problem (see the parameters description).
 
-    The assets expected returns, covariance matrix and returns are estimated from the
+    The expected asset returns, covariance matrix and returns are estimated from the
     :ref:`prior estimator <prior>`.
 
     Parameters
@@ -150,7 +151,7 @@ class MeanRisk(ConvexOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -372,7 +373,7 @@ class MeanRisk(ConvexOptimization):
 
     mu_uncertainty_set_estimator : BaseMuUncertaintySet, optional
         :ref:`Mu Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets expected returns are modelled with an ellipsoidal
+        If provided, the expected asset returns are modelled with an ellipsoidal
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
@@ -598,6 +599,8 @@ class MeanRisk(ConvexOptimization):
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
         and `fallback_chain_` stores each attempt with the associated outcome.
+        With `partial_fit`, only `fallback="previous_weights"` is supported because
+        fallback estimators would not have accumulated the same online state.
 
     raise_on_failure : bool, default=True
         Controls error handling when fitting fails.
@@ -607,6 +610,8 @@ class MeanRisk(ConvexOptimization):
         is set to `None` and subsequent calls to `predict` will return a
         `FailedPortfolio`. When fallbacks are specified, this behavior applies only
         after all fallbacks have been exhausted.
+        With `partial_fit`, only solver failures are handled this way and errors raised
+        while updating stateful sub-estimators are always raised.
 
     Attributes
     ----------
@@ -836,12 +841,6 @@ class MeanRisk(ConvexOptimization):
         The optimization problem is solved fresh on each call using the updated
         moments from the prior estimator.
 
-        .. note::
-
-            ``fallback`` and ``efficient_frontier_size`` are not supported with
-            ``partial_fit`` because they require cloning or fallback estimators
-            that would not have learned from previous observations.
-
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
@@ -931,6 +930,7 @@ class MeanRisk(ConvexOptimization):
             self._initialize()
 
         if method == "partial_fit":
+            self._validate_partial_fit_fallback()
             self._validate_partial_fit_estimators()
 
         # Fit or partial_fit the prior estimator
@@ -1104,7 +1104,7 @@ class MeanRisk(ConvexOptimization):
             model.set_params(
                 objective_function=ObjectiveFunction.MINIMIZE_RISK,
                 efficient_frontier_size=None,
-                portfolio_params=dict(annualized_factor=1),
+                portfolio_params=dict(annualization_factor=1),
             )
             model.fit(X, y, **fit_params)
             min_return = model.problem_values_["expected_return"]
@@ -1282,19 +1282,32 @@ class MeanRisk(ConvexOptimization):
         problem = cp.Problem(objective, constraints)
 
         # results
-        self._solve_problem(
-            problem=problem,
-            w=w,
-            factor=factor,
-            parameters_values=parameters_values,
-            expressions={
-                "expected_return": expected_return,
-                "risk": risk,
-                "mu_uncertainty_set": mu_uncertainty_set,
-                "regularization": regularization,
-                "factor": factor,
-            },
-        )
+        expressions = {
+            "expected_return": expected_return,
+            "risk": risk,
+            "mu_uncertainty_set": mu_uncertainty_set,
+            "regularization": regularization,
+            "factor": factor,
+        }
+        self.error_ = None
+        self.fallback_ = None
+        self.fallback_chain_ = None
+        try:
+            self._solve_problem(
+                problem=problem,
+                w=w,
+                factor=factor,
+                parameters_values=parameters_values,
+                expressions=expressions,
+            )
+        except cp.SolverError as solver_error:
+            if method != "partial_fit":
+                raise
+            self._handle_partial_fit_solver_failure(
+                solver_error=solver_error,
+                n_assets=n_assets,
+                problem=problem,
+            )
 
         return self
 
@@ -1315,18 +1328,54 @@ class MeanRisk(ConvexOptimization):
                     "`objective_function = ObjectiveFunction.MINIMIZE_RISK`"
                 )
 
-        # Validate partial_fit support
         if method == "partial_fit":
             if self.efficient_frontier_size is not None:
                 raise ValueError(
                     "`efficient_frontier_size` is not supported with `partial_fit`."
                 )
 
-            if self.fallback is not None:
-                raise ValueError(
-                    "`fallback` is not supported with `partial_fit` because fallback "
-                    "estimators would not have learned from previous observations."
-                )
+    def _validate_partial_fit_fallback(self) -> None:
+        """Validate fallback support for `partial_fit`."""
+        if self.fallback is None or self.fallback == _PREVIOUS_WEIGHTS:
+            return
+        raise ValueError("`partial_fit` only supports fallback='previous_weights'.")
+
+    def _handle_partial_fit_solver_failure(
+        self, solver_error: cp.SolverError, n_assets: int, problem: cp.Problem
+    ) -> None:
+        """Handle solver failures after online state has been updated."""
+        error = str(solver_error)
+        self.fallback_ = None
+        self.fallback_chain_ = None
+
+        if self.fallback == _PREVIOUS_WEIGHTS:
+            self.fallback_chain_ = [(str(self), error)]
+            try:
+                self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+            except Exception as fallback_error:
+                self.error_ = str(fallback_error)
+                if self.raise_on_failure:
+                    raise
+                warnings.warn(str(fallback_error), stacklevel=2)
+                self.weights_ = None
+            else:
+                self.error_ = None
+            finally:
+                self.problem_values_ = None
+                if self.save_problem:
+                    self.problem_ = problem
+                self._clear_models_cache()
+            return
+
+        self.error_ = error
+        if self.raise_on_failure:
+            raise solver_error
+        warnings.warn(error, stacklevel=2)
+        self.weights_ = None
+        self.problem_values_ = None
+        if self.save_problem:
+            self.problem_ = problem
+        self._clear_models_cache()
 
     def _validate_partial_fit_estimators(self) -> None:
         """Validate incremental support for stateful sub-estimators."""

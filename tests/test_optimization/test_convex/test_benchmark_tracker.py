@@ -11,8 +11,8 @@ from skfolio.prior import TimeSeriesFactorModel
 
 
 @pytest.fixture
-def benchmark_returns(y):
-    return y["MTUM"]
+def benchmark_returns(factors):
+    return factors["MTUM"]
 
 
 def test_benchmark_tracker(X, benchmark_returns):
@@ -47,11 +47,11 @@ def test_benchmark_tracker_vs_manual(X, benchmark_returns):
     np.testing.assert_almost_equal(model1.weights_, model2.weights_, decimal=6)
 
 
-def test_benchmark_tracker_factor_constraint(X, y, benchmark_returns):
-    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+def test_benchmark_tracker_factor_constraint(X, factors, benchmark_returns):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
     with config_context(enable_metadata_routing=True):
         model = BenchmarkTracker(
-            prior_estimator=TimeSeriesFactorModel().set_fit_request(factors=True),
+            prior_estimator=TimeSeriesFactorModel(),
             linear_constraints=["Momentum == 0"],
         )
         model.fit(X, benchmark_returns, factors=factor_returns)
@@ -62,14 +62,12 @@ def test_benchmark_tracker_factor_constraint(X, y, benchmark_returns):
     np.testing.assert_almost_equal(momentum_exposure, 0.0)
 
 
-def test_benchmark_tracker_factor_family_constraint(X, y, benchmark_returns):
-    factor_returns = y.rename(columns={"MTUM": "Momentum"})
+def test_benchmark_tracker_factor_family_constraint(X, factors, benchmark_returns):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
     factor_families = ["style", "quality", "style", "defensive", "style"]
     with config_context(enable_metadata_routing=True):
         model = BenchmarkTracker(
-            prior_estimator=TimeSeriesFactorModel(
-                factor_families=factor_families
-            ).set_fit_request(factors=True),
+            prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
             linear_constraints=["style <= -0.05"],
         )
         model.fit(X, benchmark_returns, factors=factor_returns)

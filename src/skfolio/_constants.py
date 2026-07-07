@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+_ANNUALIZATION_FACTOR_DEFAULT = 252.0
+
 _TRANSACTION_COSTS = "transaction_costs"
 _MANAGEMENT_FEES = "management_fees"
 _PREVIOUS_WEIGHTS = "previous_weights"
@@ -24,3 +26,4 @@ _RETURNS = "returns"
 _MARKET_CAP = "market_cap"
 _EXPOSURES = "exposures"
 _DESCRIPTOR_SCORES = "descriptor_scores"
+_CURRENCY = "currency"

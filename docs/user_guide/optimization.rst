@@ -167,7 +167,7 @@ Prior Estimator
 
 Every portfolio optimization has a parameter named `prior_estimator`.
 The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the estimation of assets     expected returns, covariance matrix, returns and Cholesky
+estimates of expected asset returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
 
@@ -966,6 +966,15 @@ Diagnostics are exposed via:
 - `error_`: the stringified error of the failed fit.
 - `fallback_chain_`: a sequence of attempts with outcomes (`"success"` or the
   error message), starting from the primary estimator.
+
+For online workflows based on `partial_fit`, the estimator first updates its stateful
+components, such as the prior and moment estimators, then solves the next portfolio.
+The `raise_on_failure` policy applies to solver failures at that rebalance. Errors raised
+while updating stateful components are still raised because the estimator state may be
+incomplete. The only fallback supported by `partial_fit` is
+`fallback="previous_weights"`, which reuses the latest valid allocation. Estimator
+fallbacks are reserved for regular `fit`, where each fallback can be fitted on the
+complete training window.
 
 Example: proceed without raising and retrieve failure diagnostics
 

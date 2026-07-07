@@ -20,12 +20,12 @@ import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio.base import BaseComposition
 from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex import MeanRisk
 from skfolio.typing import ArrayLike
-from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 

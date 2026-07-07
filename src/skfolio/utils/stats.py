@@ -25,10 +25,16 @@ import scipy.spatial.distance as scd
 import scipy.special as scs
 from scipy.sparse import csr_matrix
 
-from skfolio.typing import BoolArray, FloatArray, IntArray
-from skfolio.utils.tools import AutoEnum
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
+from skfolio.utils.tools import (
+    AutoEnum,
+    _validate_non_negative_integer,
+    _validate_positive_integer,
+)
 
 __all__ = [
+    "CSWeighting",
+    "CorrelationMethod",
     "NBinsMethod",
     "assert_is_distance",
     "assert_is_square",
@@ -39,9 +45,9 @@ __all__ = [
     "corr_to_cov",
     "cov_nearest",
     "cov_to_corr",
+    "cs_pearson_correlation",
     "cs_rank",
-    "cs_rank_correlation",
-    "cs_weighted_correlation",
+    "cs_spearman_correlation",
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
@@ -63,6 +69,38 @@ __all__ = [
 _NUMERICAL_THRESHOLD = 1e-12
 _MAX_RIDGE_TRIES = 3
 _RIDGE_ESCALATION_FACTOR = 10.0
+
+
+class CorrelationMethod(AutoEnum):
+    """Correlation method."""
+
+    PEARSON = auto()
+    SPEARMAN = auto()
+
+
+class CSWeighting(AutoEnum):
+    """Cross-sectional weighting."""
+
+    BENCHMARK = auto()
+    REGRESSION = auto()
+    INVERSE_IDIO_VARIANCE = auto()
+    IDENTITY = auto()
+
+
+class NBinsMethod(AutoEnum):
+    """Enumeration of the Number of Bins Methods.
+
+    Parameters
+    ----------
+    FREEDMAN : str
+        Freedman method
+
+    KNUTH : str
+        Knuth method
+    """
+
+    FREEDMAN = auto()
+    KNUTH = auto()
 
 
 def safe_divide(
@@ -107,22 +145,6 @@ def safe_divide(
     np.divide(numerator, denominator, out=out, where=valid)
     np.nan_to_num(out, copy=False, nan=fill_value, posinf=fill_value, neginf=fill_value)
     return float(out) if out.ndim == 0 else out
-
-
-class NBinsMethod(AutoEnum):
-    """Enumeration of the Number of Bins Methods.
-
-    Parameters
-    ----------
-    FREEDMAN : str
-        Freedman method
-
-    KNUTH : str
-        Knuth method
-    """
-
-    FREEDMAN = auto()
-    KNUTH = auto()
 
 
 def n_bins_freedman(x: FloatArray) -> int:
@@ -223,7 +245,7 @@ def rand_weights(n: int, zeros: int = 0, seed: int | None = None) -> FloatArray:
     zeros : int, default=0
         The number of weights to randomly set to zeros.
 
-    seed : int or None, default=None
+    seed : int, optional
         Seed for reproducibility. If None, use an unseeded generator.
 
     Returns
@@ -746,7 +768,7 @@ def sample_unique_subsets(
     n_subsets : int
         Number of distinct subsets to generate (0 <= n_subsets <= C(n, k)).
 
-    random_state : int, RandomState instance or None, default=None
+    random_state : int, RandomState instance, optional
         Seed or random state to ensure reproducibility.
 
     Returns
@@ -876,7 +898,7 @@ def symmetrize(matrix: FloatArray, where: BoolArray | None = None) -> None:
     matrix : ndarray of shape (n, n)
         Square matrix to symmetrize in-place.
 
-    where : ndarray of shape (n,) or None, default=None
+    where : ndarray of shape (n,), optional
         Boolean mask indicating which rows/columns to include. If `None`,
         the full matrix is symmetrized.
     """
@@ -1074,7 +1096,116 @@ def squared_mahalanobis_dist(
     return _squared_mahalanobis_dist_from_cholesky(X, cholesky=chol, mean=mean)
 
 
-def cs_weighted_correlation(
+def _cs_pearson_correlation_2d_3d(
+    a: FloatArray,
+    b: FloatArray,
+    weights: FloatArray | None,
+    min_count: int,
+    eps: float,
+) -> FloatArray:
+    r"""Weighted Pearson correlation between 2D and 3D cross-sections.
+
+    `a` has shape `(n_observations, n_assets)` and `b` has shape
+    `(n_observations, n_assets, n_series)`. Correlations are computed over the
+    asset axis and returned with shape `(n_observations, n_series)`.
+    """
+    a_finite = np.isfinite(a)
+    b_finite = np.isfinite(b)
+
+    if weights is None:
+        a_weight = a_finite.astype(float)
+        n_valid = np.einsum("tn,tnk->tk", a_weight, b_finite, optimize=True)
+        weight_sum = n_valid
+    else:
+        w = np.asarray(weights, dtype=float)
+        if np.any(np.isfinite(w) & (w < 0.0)):
+            raise ValueError("`weights` must be non-negative.")
+        if w.ndim == 1:
+            if w.shape[0] != a.shape[1]:
+                raise ValueError(
+                    f"`weights` length must match the cross-sectional axis, got "
+                    f"{w.shape[0]} and {a.shape[1]}."
+                )
+            w = np.broadcast_to(w[np.newaxis, :], a.shape)
+        elif w.shape != a.shape:
+            raise ValueError(
+                f"`weights` must have shape {(a.shape[1],)} or {a.shape}, "
+                f"got {w.shape}."
+            )
+        effective = np.isfinite(w) & (w > 0.0) & a_finite
+        a_weight = np.where(effective, w, 0.0)
+        n_valid = np.einsum(
+            "tn,tnk->tk", effective.astype(float), b_finite, optimize=True
+        )
+        weight_sum = np.einsum("tn,tnk->tk", a_weight, b_finite, optimize=True)
+
+    a_weight_sum = a_weight.sum(axis=1)
+    a_center = safe_divide(
+        np.sum(np.where(a_finite, a_weight * a, 0.0), axis=1),
+        a_weight_sum,
+        fill_value=0.0,
+    )
+    a_centered = np.where(a_finite, a - a_center[:, np.newaxis], 0.0)
+
+    b_centered = np.where(b_finite, b, 0.0)
+    b_center = safe_divide(
+        np.einsum("tn,tnk->tk", a_weight, b_centered, optimize=True),
+        weight_sum,
+        fill_value=0.0,
+    )
+    b_centered -= b_center[:, np.newaxis, :]
+    b_centered[~b_finite] = 0.0
+
+    weighted_a = a_weight * a_centered
+    a_sum = np.einsum("tn,tnk->tk", weighted_a, b_finite, optimize=True)
+    a_square_sum = np.einsum(
+        "tn,tnk->tk", weighted_a * a_centered, b_finite, optimize=True
+    )
+    b_sum = np.einsum("tn,tnk->tk", a_weight, b_centered, optimize=True)
+    b_square_sum = np.einsum(
+        "tn,tnk,tnk->tk", a_weight, b_centered, b_centered, optimize=True
+    )
+    cross_sum = np.einsum("tn,tnk->tk", weighted_a, b_centered, optimize=True)
+
+    covariance = cross_sum - safe_divide(a_sum * b_sum, weight_sum, fill_value=np.nan)
+    a_variance = a_square_sum - safe_divide(a_sum**2, weight_sum, fill_value=np.nan)
+    b_variance = b_square_sum - safe_divide(b_sum**2, weight_sum, fill_value=np.nan)
+    a_variance = np.maximum(a_variance, 0.0)
+    b_variance = np.maximum(b_variance, 0.0)
+
+    denom = np.sqrt(a_variance * b_variance)
+    corr = safe_divide(covariance, denom, fill_value=np.nan, atol=eps)
+    corr[
+        (n_valid < min_count)
+        | (weight_sum <= eps)
+        | (a_variance <= eps)
+        | (b_variance <= eps)
+    ] = np.nan
+    return corr
+
+
+def _use_cs_pearson_correlation_2d_3d(
+    a: FloatArray, b: FloatArray, weights: FloatArray | None, axis: int
+) -> tuple[FloatArray, FloatArray] | None:
+    """Return ordered 2D/3D inputs for the optimized cross-sectional path."""
+    if axis not in (1, -2):
+        return None
+    if weights is not None:
+        w = np.asarray(weights)
+        if not (
+            w.ndim == 1
+            or (w.ndim == 2 and w.shape == a.shape[:2])
+            or (w.ndim == 2 and w.shape == b.shape[:2])
+        ):
+            return None
+    if a.ndim == 2 and b.ndim == 3 and a.shape == b.shape[:2]:
+        return a, b
+    if a.ndim == 3 and b.ndim == 2 and b.shape == a.shape[:2]:
+        return b, a
+    return None
+
+
+def cs_pearson_correlation(
     a: FloatArray,
     b: FloatArray,
     weights: FloatArray | None = None,
@@ -1109,16 +1240,19 @@ def cs_weighted_correlation(
     b : ndarray
         Second array, broadcastable to the same shape as *a*.
 
-    weights : ndarray or None, default=None
+    weights : ndarray, optional
         Non-negative weights, broadcastable to *a* along `axis`.
-        `None` uses equal weights.
+        `None` uses equal weights. Non-finite and zero weights are excluded
+        from weighted correlations.
 
     axis : int, default=0
         The cross-sectional axis along which correlation is computed.
 
     min_count : int, default=3
-        Minimum number of jointly finite observations along `axis`.
-        Slices with fewer valid pairs return `NaN`.
+        Minimum number of effective observations along `axis`. Without
+        `weights`, this is the number of jointly finite observations. With
+        `weights`, this is the number of jointly finite observations with
+        finite strictly positive weight.
 
     eps : float, default=1e-12
         Denominator threshold below which `NaN` is returned to guard against
@@ -1132,6 +1266,11 @@ def cs_weighted_correlation(
     """
     a = np.asarray(a, dtype=float)
     b = np.asarray(b, dtype=float)
+    fast_path = _use_cs_pearson_correlation_2d_3d(a, b, weights, axis)
+    if fast_path is not None:
+        return _cs_pearson_correlation_2d_3d(
+            fast_path[0], fast_path[1], weights=weights, min_count=min_count, eps=eps
+        )
 
     try:
         shape = np.broadcast_shapes(a.shape, b.shape)
@@ -1147,27 +1286,31 @@ def cs_weighted_correlation(
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)
-    n_valid = valid.sum(axis=axis)
 
     if weights is not None:
-        w = np.asarray(weights, dtype=float)
-        if w.ndim == 1:
-            if w.shape[0] != shape[axis]:
+        weight = np.asarray(weights, dtype=float)
+        if np.any(np.isfinite(weight) & (weight < 0.0)):
+            raise ValueError("`weights` must be non-negative.")
+        if weight.ndim == 1:
+            if weight.shape[0] != shape[axis]:
                 raise ValueError(
                     f"`weights` length must match the size of `axis`, got "
-                    f"{w.shape[0]} and {shape[axis]}."
+                    f"{weight.shape[0]} and {shape[axis]}."
                 )
-            w_shape = [1] * a.ndim
-            w_shape[axis] = shape[axis]
-            w = w.reshape(w_shape)
+            weight_shape = [1] * a.ndim
+            weight_shape[axis] = shape[axis]
+            weight = weight.reshape(weight_shape)
         else:
-            while w.ndim < a.ndim:
-                w = w[..., np.newaxis]
-        w = np.broadcast_to(w, shape).copy()
-        w[~valid] = 0.0
-        w_sum = w.sum(axis=axis)
+            while weight.ndim < a.ndim:
+                weight = weight[..., np.newaxis]
+        weight = np.broadcast_to(weight, shape).copy()
+        effective = valid & np.isfinite(weight) & (weight > 0.0)
+        n_valid = effective.sum(axis=axis)
+        weight[~effective] = 0.0
+        weight_sum = weight.sum(axis=axis)
     else:
-        w_sum = n_valid.astype(float)
+        n_valid = valid.sum(axis=axis)
+        weight_sum = n_valid.astype(float)
 
     a = a.copy()
     a[~valid] = 0.0
@@ -1176,11 +1319,11 @@ def cs_weighted_correlation(
 
     with np.errstate(divide="ignore", invalid="ignore"):
         if weights is not None:
-            a_mean = (w * a).sum(axis=axis) / w_sum
-            b_mean = (w * b).sum(axis=axis) / w_sum
+            a_mean = (weight * a).sum(axis=axis) / weight_sum
+            b_mean = (weight * b).sum(axis=axis) / weight_sum
         else:
-            a_mean = a.sum(axis=axis) / w_sum
-            b_mean = b.sum(axis=axis) / w_sum
+            a_mean = a.sum(axis=axis) / weight_sum
+            b_mean = b.sum(axis=axis) / weight_sum
 
     a -= np.expand_dims(a_mean, axis=axis)
     b -= np.expand_dims(b_mean, axis=axis)
@@ -1188,18 +1331,18 @@ def cs_weighted_correlation(
     b[~valid] = 0.0
 
     if weights is not None:
-        cov_ab = (w * a * b).sum(axis=axis)
-        var_a = (w * a**2).sum(axis=axis)
-        var_b = (w * b**2).sum(axis=axis)
+        covariance = (weight * a * b).sum(axis=axis)
+        a_variance = (weight * a**2).sum(axis=axis)
+        b_variance = (weight * b**2).sum(axis=axis)
     else:
-        cov_ab = (a * b).sum(axis=axis)
-        var_a = (a**2).sum(axis=axis)
-        var_b = (b**2).sum(axis=axis)
+        covariance = (a * b).sum(axis=axis)
+        a_variance = (a**2).sum(axis=axis)
+        b_variance = (b**2).sum(axis=axis)
 
-    denom = np.sqrt(var_a * var_b)
+    denom = np.sqrt(a_variance * b_variance)
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        corr = np.where(denom > eps, cov_ab / denom, np.nan)
+        corr = np.where(denom > eps, covariance / denom, np.nan)
 
     corr = np.where(n_valid >= min_count, corr, np.nan)
 
@@ -1234,7 +1377,7 @@ def cs_rank(a: FloatArray, axis: int = 0) -> FloatArray:
     return ranks
 
 
-def cs_rank_correlation(
+def cs_spearman_correlation(
     a: FloatArray,
     b: FloatArray,
     axis: int = 0,
@@ -1244,7 +1387,7 @@ def cs_rank_correlation(
     r"""Cross-sectional Spearman rank correlation.
 
     Ranks the jointly finite values of *a* and *b* along `axis` with :func:`cs_rank`,
-    then computes their Pearson correlation via :func:`cs_weighted_correlation`
+    then computes their Pearson correlation via :func:`cs_pearson_correlation`
     (unweighted).
 
     Parameters
@@ -1291,7 +1434,7 @@ def cs_rank_correlation(
         a_rank = cs_rank(np.where(valid, a, np.nan), axis=axis)
         b_rank = cs_rank(np.where(valid, b, np.nan), axis=axis)
 
-    return cs_weighted_correlation(
+    return cs_pearson_correlation(
         a_rank,
         b_rank,
         axis=axis,
@@ -1319,3 +1462,163 @@ def inverse_volatility_weights(covariance: FloatArray) -> FloatArray:
     std = np.sqrt(np.maximum(np.diag(covariance), _NUMERICAL_THRESHOLD))
     w = 1.0 / std
     return w / w.sum()
+
+
+def _forward_mean_return(X: ArrayLike, horizon: int = 5, lag: int = 1) -> FloatArray:
+    r"""Compute a forward H-period mean return target.
+
+    Computes the mean of the next H returns for each observation. This is used
+    as the regression target in alpha estimation models.
+
+    Under the as-of indexing convention, the target for observation :math:`t` is:
+
+    .. math::
+
+        y_t = \frac{1}{H}\sum_{s=\ell}^{\ell + H - 1} X_{t+s}
+
+    where :math:`\ell` is the signal lag. The default `lag=1` means scores at
+    :math:`t` predict returns starting at :math:`t{+}1`. An internal `lag=0`
+    is supported for arrays that are already shifted into a forecast/realization
+    alignment. The last
+    `lag + horizon - 1` rows are NaN due to incomplete forward windows.
+
+    Parameters
+    ----------
+    horizon : int, default=5
+        Number of forward periods to average. Must be >= 1.
+
+        * `horizon=1`: Returns next-period values.
+        * `horizon>1`: Returns mean of next H periods.
+
+    lag : int, default=1
+        Number of periods between the score date and the first return in the target
+        window. Must be >= 0. Public alpha estimators validate `signal_lag >= 1` to
+        respect the as-of time-indexing convention.
+
+    Returns
+    -------
+    y : ndarray of shape (T, N)
+        Forward mean returns. Last `lag + horizon - 1` rows are NaN.
+
+    Notes
+    -----
+    The computation uses an O(n) cumsum algorithm and handles NaN values by
+    excluding them from both sum and count (i.e., `nanmean` semantics).
+    """
+    _validate_positive_integer(horizon, "horizon")
+    _validate_non_negative_integer(lag, "lag")
+    horizon = int(horizon)
+    lag = int(lag)
+    X = np.asarray(X)
+    if X.ndim != 2:
+        raise ValueError(f"X must be 2D (T, N), got {X.shape}")
+
+    n_observations, n_assets = X.shape
+
+    if n_observations == 0:
+        return np.empty((0, n_assets), dtype=np.float64)
+
+    # NaN-safe sums: replace NaN with 0, and count valid observations
+    X0 = np.nan_to_num(X, nan=0.0)
+    V0 = np.isfinite(X).astype(np.float64)
+
+    target_gap = lag + horizon - 1
+
+    # Pad target_gap rows at the end so incomplete forward windows are treated as missing.
+
+    # (n_obs + target_gap, n_assets)
+    X0 = np.vstack([X0, np.zeros((target_gap, n_assets))])
+    V0 = np.vstack([V0, np.zeros((target_gap, n_assets))])
+
+    # Prefix a zero row so csum has length (n_obs + target_gap + 1, n_assets)
+    csum = np.vstack([np.zeros((1, n_assets)), np.cumsum(X0, axis=0)])
+    ccnt = np.vstack([np.zeros((1, n_assets)), np.cumsum(V0, axis=0)])
+
+    # For each t, window is [t + lag, t + lag + horizon) in the padded array.
+    start = np.arange(n_observations) + lag
+    end = np.arange(n_observations) + lag + horizon
+
+    # (n_obs, n_assets)
+    sum_fwd = csum[end] - csum[start]
+    cnt_fwd = ccnt[end] - ccnt[start]
+
+    y = safe_divide(sum_fwd, cnt_fwd, fill_value=np.nan)
+    if target_gap > 0:
+        y[-target_gap:] = np.nan
+    return y
+
+
+def _market_returns(
+    asset_returns: ArrayLike,
+    weights: ArrayLike,
+    estimation_mask: ArrayLike | None = None,
+) -> FloatArray:
+    """Compute market returns on the estimation universe.
+
+    Parameters
+    ----------
+    asset_returns : array-like of shape (n_observations, n_assets)
+        Asset returns at each observation.
+
+    weights : array-like of shape (n_observations, n_assets)
+        Asset weights per observation, typically market capitalizations.
+
+    estimation_mask : array-like of shape (n_observations, n_assets), optional
+        Boolean mask indicating which entries are eligible for market-return
+        construction. If `None`, all entries are eligible.
+
+    Returns
+    -------
+    market_ret : ndarray of shape (n_observations,)
+        Market (cap-weighted) return at each date.
+
+    Raises
+    ------
+    ValueError
+        If inputs do not have matching 2D shapes.
+
+    ValueError
+        If no eligible asset has finite returns and finite positive total
+        weight at any observation.
+    """
+    asset_returns = np.asarray(asset_returns, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    if asset_returns.ndim != 2:
+        raise ValueError(
+            "asset_returns must be a 2D array of shape (n_observations, n_assets)."
+        )
+    if weights.shape != asset_returns.shape:
+        raise ValueError(
+            "weights must have the same shape as asset_returns; "
+            f"got weights.shape={weights.shape} and "
+            f"asset_returns.shape={asset_returns.shape}."
+        )
+
+    if estimation_mask is None:
+        estimation_mask = np.ones(asset_returns.shape, dtype=bool)
+    else:
+        estimation_mask = np.asarray(estimation_mask, dtype=bool)
+        if estimation_mask.shape != asset_returns.shape:
+            raise ValueError(
+                "estimation_mask must have the same shape as asset_returns; "
+                f"got estimation_mask.shape={estimation_mask.shape} and "
+                f"asset_returns.shape={asset_returns.shape}."
+            )
+
+    valid = estimation_mask & np.isfinite(asset_returns) & np.isfinite(weights)
+    weights = np.where(valid, weights, 0.0)
+    asset_returns = np.where(valid, asset_returns, 0.0)
+
+    w_sum = weights.sum(axis=1, keepdims=True)
+    valid_rows = w_sum[:, 0] > 0
+    if not np.all(valid_rows):
+        bad_obs = int(np.where(~valid_rows)[0][0])
+        raise ValueError(
+            "Market return is undefined because no estimable asset has finite "
+            f"returns and finite positive total weight at observation index {bad_obs}."
+        )
+
+    norm_w = np.divide(
+        weights, w_sum, out=np.zeros_like(weights, dtype=float), where=w_sum > 0
+    )
+    return np.sum(norm_w * asset_returns, axis=1)

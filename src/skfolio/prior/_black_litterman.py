@@ -26,20 +26,20 @@ class BlackLitterman(BasePrior):
     """Black & Litterman estimator.
 
     The Black & Litterman model [1]_ takes a Bayesian approach by using a prior estimate
-    of the assets expected returns and covariance matrix, which are updated using the
+    of the expected asset returns and covariance matrix, which are updated using the
     analyst views to get a posterior estimate.
 
     Parameters
     ----------
     views : array-like of floats of shape (n_views,)
-        The analyst views about the assets expected returns.
+        The analyst views about the expected asset returns.
         The views must match the following patterns:
 
             * Absolute view: "asset_i = a"
             * Relative view: "asset_i - asset_j = b"
 
         With "asset_i" and "asset_j" the assets names and "a" and "b" the analyst views
-        about the assets expected returns expressed in the same frequency as the
+        about the expected asset returns expressed in the same frequency as the
         returns `X`.
 
         For example:
@@ -63,8 +63,8 @@ class BlackLitterman(BasePrior):
 
     prior_estimator : BasePrior, optional
         The assets' :ref:`prior estimator <prior>`. It is used to estimate
-        the :class:`~skfolio.prior.ReturnDistribution` containing the estimation of the
-        assets expected returns, covariance matrix, returns and Cholesky decomposition.
+        the :class:`~skfolio.prior.ReturnDistribution` containing estimates of
+        expected asset returns, covariance matrix, returns and Cholesky decomposition.
         The default (`None`) is to use `EmpiricalPrior(mu_estimator=EquilibriumMu())`.
 
     tau : float, default=0.05

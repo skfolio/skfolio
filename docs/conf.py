@@ -507,11 +507,15 @@ html_theme_options = {
         "image_dark": "_static/favicon.svg",
     },
     # "use_edit_page_button": True,
-    "show_toc_level": 1,
+    "show_toc_level": 2,
     "navbar_align": (
         "left"
     ),  # [left, content, right] For testing that the navbar items align properly
-    "secondary_sidebar_items": [],  # No secondary sidebar due to bug with plotly
+    "secondary_sidebar_items": {
+        "**": [],
+        "user_guide/*": ["page-toc"],
+        "user_guide/*/*": ["page-toc"],
+    },
 }
 
 html_sidebars = {

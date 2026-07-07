@@ -198,6 +198,18 @@ class TestArrayBufferTruncate:
         assert len(g) == 3
         npt.assert_array_equal(g.array, np.array([[8], [9], [99]], dtype=float))
 
+    def test_truncate_preserves_existing_views(self):
+        g = _ArrayBuffer()
+        g.append(np.arange(12.0).reshape(6, 2))
+        view = g.array
+        expected = view.copy()
+
+        g.truncate_to_last(2)
+        g.append(np.array([[99.0, 100.0]]))
+
+        npt.assert_array_equal(view, expected)
+        assert view.tobytes() == expected.tobytes()
+
     def test_truncate_to_one(self):
         g = _ArrayBuffer()
         for i in range(5):

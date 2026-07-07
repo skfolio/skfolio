@@ -9,6 +9,18 @@ html[data-theme="dark"] .highlight .c1 {
     color: #becbf7;
 }
 
+/* Heading scale: keep h1, slightly reduce h2 and h3 */
+html {
+    --pst-font-size-h2: 2rem;
+    --pst-font-size-h3: 1.625rem;
+}
+
+/* factor model user guide figures */
+
+.factor-model-figure {
+    margin: 1.5rem 0;
+}
+
 /* plotly */
 
 .plotly-graph-div {
@@ -48,10 +60,13 @@ div:has(.plotly-graph-div)::-webkit-scrollbar-track {
 }
 
 
-/* Pandas dataframe css */
+/* Pandas dataframe css (override theme: html div.rendered_html { margin: .1875rem }) */
 
-.rendered_html {
+html div.rendered_html {
     overflow-x: auto;
+    margin-top: 2rem;
+    margin-bottom: 0;
+    padding-bottom: 1.5rem;
 }
 
 .rendered_html table {
@@ -95,6 +110,27 @@ a:visited {
     color: var(--pst-color-link);
 }
 
+/* Reference catalog tables in the factor model user guide */
+table.catalog-table td ul {
+    list-style: none;
+    margin-bottom: 0;
+    padding-left: 0;
+}
 
+table.catalog-table tbody td:first-child {
+    vertical-align: middle;
+}
+
+/* Display math: pydata theme overflow-y clips tall superscripts (e.g. \text{span}) */
+div.math {
+    overflow: visible;
+}
+
+div.math mjx-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    padding-top: 0.15rem;
+    padding-bottom: 0.25rem;
+}
 
 

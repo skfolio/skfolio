@@ -594,6 +594,7 @@ class TestShrunkMu:
     def test_shrinkage_mu(self, X):
         model = ShrunkMu()
         model.fit(X)
+        assert np.issubdtype(model.mu_.dtype, np.floating)
         np.testing.assert_almost_equal(
             model.mu_,
             np.array(

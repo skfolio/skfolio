@@ -7,13 +7,18 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from skfolio.factor_model._family_constraint_basis import (
-    ConstrainedFamily,
+from skfolio.containers import AssetPanel
+from skfolio.prior import (
+    CorrelationMethod,
+    FactorModel,
+    ReturnDistribution,
+)
+from skfolio.prior._model._family_constraint_basis import (
+    FamilyConstraint,
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.prior import CSWeighting, FactorModel, ReturnDistribution
-from skfolio.utils.stats import cs_weighted_correlation
+from skfolio.utils.stats import CSWeighting, cov_to_corr, cs_pearson_correlation
 
 
 def _make_factor_model(
@@ -172,8 +177,8 @@ def factor_model_with_basis():
         factor_names=factor_names,
         factor_families=factor_families,
     )
-    fr_red = rng.standard_normal((T, basis.n_factors_reduced)) * 0.01
-    fr_full = basis.to_full_factor_returns(fr_red)
+    fr_red = rng.standard_normal((T, basis.n_reduced_factors)) * 0.01
+    fr_full = basis.expand_factor_returns(fr_red)
     ir = rng.standard_normal((T, N)) * 0.05
     A = rng.standard_normal((K, K))
 
@@ -225,6 +230,164 @@ class TestDataFrameAccessors:
     def test_exposures_df_requires_data(self, factor_model_no_ts):
         with pytest.raises(ValueError, match="exposures"):
             _ = factor_model_no_ts.exposures_df
+
+
+class TestEnrichAssetPanel:
+    def test_aligns_by_labels_and_shallow_copies(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        observations = np.concatenate([[np.datetime64("2019-12-31")], fm.observations])
+        asset_names = fm.asset_names[::-1]
+        panel = AssetPanel(
+            fields={"returns": np.zeros((len(observations), len(asset_names)))},
+            observations=observations,
+            asset_names=asset_names,
+        )
+
+        enriched = fm.enrich_asset_panel(panel)
+
+        assert enriched is not panel
+        assert "idio_returns" not in panel.fields
+        assert {
+            "idio_returns",
+            "idio_variances",
+            "regression_weights",
+            "exposures",
+        }.issubset(enriched.fields)
+        assert np.isnan(enriched["idio_returns"][0]).all()
+        assert np.isnan(enriched["idio_variances"][0]).all()
+        assert (enriched["regression_weights"][0] == 0.0).all()
+        assert np.isnan(enriched["exposures"][0]).all()
+        np.testing.assert_allclose(
+            enriched["idio_returns"][1:], fm.idio_returns[:, ::-1]
+        )
+        np.testing.assert_allclose(
+            enriched["idio_variances"][1:], fm.idio_variances[:, ::-1]
+        )
+        np.testing.assert_allclose(
+            enriched["regression_weights"][1:], fm.regression_weights[:, ::-1]
+        )
+        np.testing.assert_allclose(enriched["exposures"][1:], fm.exposures[:, ::-1])
+        np.testing.assert_array_equal(
+            enriched.fields["exposures"].third_axis_labels, fm.factor_names
+        )
+
+    def test_copy_false_mutates_panel(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        panel = AssetPanel(
+            fields={"returns": np.zeros((len(fm.observations), len(fm.asset_names)))},
+            observations=fm.observations,
+            asset_names=fm.asset_names,
+        )
+
+        enriched = fm.enrich_asset_panel(panel, copy=False)
+
+        assert enriched is panel
+        np.testing.assert_allclose(panel["idio_returns"], fm.idio_returns)
+
+    def test_enriches_view_with_view_local_fields(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        panel = AssetPanel(
+            fields={"returns": np.zeros((len(fm.observations), len(fm.asset_names)))},
+            observations=fm.observations,
+            asset_names=fm.asset_names,
+        )
+        view = panel[5:]
+
+        enriched = fm.enrich_asset_panel(view)
+
+        assert enriched is not view
+        assert enriched.owner is view.owner
+        assert "idio_returns" not in view.fields
+        assert "idio_returns" not in panel.fields
+        assert "idio_returns" in enriched.fields
+        np.testing.assert_allclose(enriched["idio_returns"], fm.idio_returns[5:])
+        np.testing.assert_allclose(enriched["exposures"], fm.exposures[5:])
+
+    def test_copy_false_mutates_view_locally(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        panel = AssetPanel(
+            fields={"returns": np.zeros((len(fm.observations), len(fm.asset_names)))},
+            observations=fm.observations,
+            asset_names=fm.asset_names,
+        )
+        view = panel[5:]
+
+        enriched = fm.enrich_asset_panel(view, copy=False)
+
+        assert enriched is view
+        assert "idio_returns" in view.fields
+        assert "idio_returns" not in panel.fields
+        np.testing.assert_allclose(view["idio_returns"], fm.idio_returns[5:])
+
+    def test_uses_effective_exposures(self, factor_model_with_basis):
+        fm = replace(
+            factor_model_with_basis,
+            idio_variances=np.ones_like(factor_model_with_basis.idio_returns),
+            regression_weights=np.ones_like(factor_model_with_basis.idio_returns),
+        )
+        panel = AssetPanel(
+            fields={"returns": np.zeros((len(fm.observations), len(fm.asset_names)))},
+            observations=fm.observations,
+            asset_names=fm.asset_names,
+        )
+
+        enriched = fm.enrich_asset_panel(panel)
+
+        expected = fm.family_constraint_basis.reduce_exposures(fm.exposures)
+        np.testing.assert_allclose(enriched["exposures"], expected)
+        np.testing.assert_array_equal(
+            enriched.fields["exposures"].third_axis_labels,
+            fm.effective_factor_names,
+        )
+        np.testing.assert_array_equal(
+            enriched.fields["exposures"].third_axis_groups,
+            fm.effective_factor_families,
+        )
+
+    def test_raises_when_observations_do_not_overlap(self, factor_model_with_weights):
+        factor_model = factor_model_with_weights
+        observations = np.array(
+            [np.datetime64("2019-01-01"), np.datetime64("2019-01-02")]
+        )
+        panel = AssetPanel(
+            fields={
+                "returns": np.zeros((len(observations), len(factor_model.asset_names)))
+            },
+            observations=observations,
+            asset_names=factor_model.asset_names,
+        )
+
+        with pytest.raises(ValueError, match="observations do not overlap"):
+            factor_model.enrich_asset_panel(panel)
+
+    def test_raises_when_assets_do_not_match(self, factor_model_with_weights):
+        factor_model = factor_model_with_weights
+        panel = AssetPanel(
+            fields={
+                "returns": np.zeros(
+                    (len(factor_model.observations), len(factor_model.asset_names) - 1)
+                )
+            },
+            observations=factor_model.observations,
+            asset_names=factor_model.asset_names[:-1],
+        )
+
+        with pytest.raises(ValueError, match="asset names"):
+            factor_model.enrich_asset_panel(panel)
+
+    def test_raises_when_field_exists(self, factor_model):
+        shape = (len(factor_model.observations), len(factor_model.asset_names))
+        panel = AssetPanel(
+            fields={
+                "returns": np.zeros(shape),
+                "idio_returns": np.zeros(shape),
+            },
+            observations=factor_model.observations,
+            asset_names=factor_model.asset_names,
+        )
+
+        with pytest.raises(ValueError, match="already contains"):
+            factor_model.enrich_asset_panel(panel)
 
 
 class TestSummary:
@@ -455,11 +618,15 @@ class TestExposureICSummary:
             "hit_rate",
         }
 
-    def test_rank_ic_default(self, factor_model):
-        df_rank = factor_model.exposure_ic_summary(rank=True)
-        df_pearson = factor_model.exposure_ic_summary(rank=False)
+    def test_spearman_ic_default(self, factor_model):
+        df_spearman = factor_model.exposure_ic_summary(
+            correlation_method=CorrelationMethod.SPEARMAN
+        )
+        df_pearson = factor_model.exposure_ic_summary(
+            correlation_method=CorrelationMethod.PEARSON
+        )
         assert not np.allclose(
-            df_rank["mean_ic"].values,
+            df_spearman["mean_ic"].values,
             df_pearson["mean_ic"].values,
         )
 
@@ -481,7 +648,11 @@ class TestExposureICSummary:
         captured = {}
 
         def fake_ic(
-            self, rank=True, horizon=1, factor_indices=None, reduced_basis=False
+            self,
+            correlation_method=CorrelationMethod.SPEARMAN,
+            horizon=1,
+            factor_indices=None,
+            reduced_basis=False,
         ):
             captured["factor_indices"] = factor_indices
             n_selected = len(factor_indices) if factor_indices is not None else 4
@@ -511,7 +682,7 @@ class TestExposureICSummary:
         with pytest.raises(ValueError, match="must be >= 1"):
             factor_model.exposure_ic_summary(horizon=0)
 
-    def test_rank_ic_uses_joint_finite_ranks(self):
+    def test_spearman_ic_uses_joint_finite_ranks(self):
         exposures = np.array(
             [
                 [[1.0], [2.0], [3.0], [4.0]],
@@ -543,7 +714,7 @@ class TestExposureICSummary:
             exposure_lag=0,
         )
 
-        ic, _ = fm._ic(rank=True, horizon=1)
+        ic, _ = fm._ic(correlation_method=CorrelationMethod.SPEARMAN, horizon=1)
 
         assert ic[0, 0] == pytest.approx(-1.0)
 
@@ -555,7 +726,9 @@ class TestPlotCumulativeExposureIC:
         assert "Cumulative" in fig.layout.title.text
 
     def test_pearson(self, factor_model):
-        fig = factor_model.plot_cumulative_exposure_ic(rank=False)
+        fig = factor_model.plot_cumulative_exposure_ic(
+            correlation_method=CorrelationMethod.PEARSON
+        )
         assert isinstance(fig, go.Figure)
 
     def test_factor_subset(self, factor_model):
@@ -570,7 +743,11 @@ class TestPlotCumulativeExposureIC:
         captured = {}
 
         def fake_ic(
-            self, rank=True, horizon=1, factor_indices=None, reduced_basis=False
+            self,
+            correlation_method=CorrelationMethod.SPEARMAN,
+            horizon=1,
+            factor_indices=None,
+            reduced_basis=False,
         ):
             captured["factor_indices"] = factor_indices
             captured["reduced_basis"] = reduced_basis
@@ -587,9 +764,13 @@ class TestPlotCumulativeExposureIC:
     def test_reduced_basis_ic_shape(self, factor_model_with_basis):
         fm = factor_model_with_basis
 
-        ic, _ = fm._ic(rank=True, horizon=1, reduced_basis=True)
+        ic, _ = fm._ic(
+            correlation_method=CorrelationMethod.SPEARMAN,
+            horizon=1,
+            reduced_basis=True,
+        )
 
-        assert ic.shape[1] == fm.family_constraint_basis.n_factors_reduced
+        assert ic.shape[1] == fm.family_constraint_basis.n_reduced_factors
 
     def test_requires_time_series(self, factor_model_no_ts):
         with pytest.raises(ValueError):
@@ -691,27 +872,29 @@ class TestIdioCalibrationSeries:
 # ------------------------------------------------------------------
 # Plots: factor covariance (no time series needed)
 # ------------------------------------------------------------------
-class TestPlotFactorCorrelation:
+class TestPlotFactorForecastCorrelation:
     def test_returns_figure(self, factor_model):
-        fig = factor_model.plot_factor_correlation()
+        fig = factor_model.plot_factor_forecast_correlation()
         assert isinstance(fig, go.Figure)
 
     def test_works_without_ts(self, factor_model_no_ts):
-        fig = factor_model_no_ts.plot_factor_correlation()
+        fig = factor_model_no_ts.plot_factor_forecast_correlation()
         assert isinstance(fig, go.Figure)
 
     def test_family_outlines(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_factor_correlation()
+        fig = factor_model_with_families.plot_factor_forecast_correlation()
         rects = [s for s in fig.layout.shapes if s.type == "rect"]
         assert len(rects) == 3
 
     def test_no_outline_single_family(self, factor_model_with_families):
-        fig = factor_model_with_families.plot_factor_correlation(families="style")
+        fig = factor_model_with_families.plot_factor_forecast_correlation(
+            families="style"
+        )
         rects = [s for s in fig.layout.shapes if s.type == "rect"]
         assert len(rects) == 0
 
     def test_no_outline_without_families(self, factor_model):
-        fig = factor_model.plot_factor_correlation()
+        fig = factor_model.plot_factor_forecast_correlation()
         assert len(fig.layout.shapes) == 0
 
     def test_no_outline_non_contiguous_families(self):
@@ -719,40 +902,59 @@ class TestPlotFactorCorrelation:
             n_factors=4,
             factor_families=["style", "industry", "style", "industry"],
         )
-        fig = fm.plot_factor_correlation()
+        fig = fm.plot_factor_forecast_correlation()
         assert len(fig.layout.shapes) == 0
 
-    def test_plot_matches_factor_correlation(self, factor_model):
-        fig = factor_model.plot_factor_correlation()
+    def test_plot_matches_factor_forecast_correlation(self, factor_model):
+        fig = factor_model.plot_factor_forecast_correlation()
         z = np.asarray(fig.data[0].z, dtype=float)
-        expected = factor_model.factor_correlation()
+        expected = factor_model.factor_forecast_correlation()
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
 
-class TestFactorCorrelation:
+class TestFactorForecastCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
-        corr = factor_model.factor_correlation()
+        corr = factor_model.factor_forecast_correlation()
         assert corr.shape == (len(factor_model.factor_names),) * 2
         np.testing.assert_allclose(corr, corr.T, atol=1e-12)
         np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-12)
 
     def test_works_without_ts(self, factor_model_no_ts):
-        corr = factor_model_no_ts.factor_correlation()
+        corr = factor_model_no_ts.factor_forecast_correlation()
         assert corr.shape == (len(factor_model_no_ts.factor_names),) * 2
 
     def test_factor_subset(self, factor_model):
-        corr = factor_model.factor_correlation(factors=["factor_0", "factor_1"])
+        corr = factor_model.factor_forecast_correlation(
+            factors=["factor_0", "factor_1"]
+        )
         assert corr.shape == (2, 2)
 
+    def test_matches_cov_to_corr(self, factor_model):
+        expected, _ = cov_to_corr(factor_model.factor_covariance)
+        np.testing.assert_allclose(
+            factor_model.factor_forecast_correlation(), expected, atol=1e-12
+        )
 
-class TestPlotFactorVolatilities:
+
+class TestPlotFactorForecastVolatilities:
     def test_returns_figure(self, factor_model):
-        fig = factor_model.plot_factor_volatilities()
+        fig = factor_model.plot_factor_forecast_volatilities()
         assert isinstance(fig, go.Figure)
 
     def test_custom_title(self, factor_model):
-        fig = factor_model.plot_factor_volatilities(title="Vols")
+        fig = factor_model.plot_factor_forecast_volatilities(title="Vols")
         assert fig.layout.title.text == "Vols"
+
+    def test_matches_factor_covariance_diag(self, factor_model):
+        annualization_factor = 252.0
+        fig = factor_model.plot_factor_forecast_volatilities(
+            annualization_factor=annualization_factor
+        )
+        plotted = np.sort(np.asarray(fig.data[0].x, dtype=float))
+        expected = np.sort(
+            np.sqrt(np.diag(factor_model.factor_covariance) * annualization_factor)
+        )
+        np.testing.assert_allclose(plotted, expected, atol=1e-12)
 
 
 # ------------------------------------------------------------------
@@ -943,7 +1145,7 @@ class TestExposureCorrelation:
 
         expected = np.nanmean(
             [
-                cs_weighted_correlation(
+                cs_pearson_correlation(
                     exposures[t, :, 0],
                     exposures[t, :, 1],
                     weights=benchmark_weights[t],
@@ -1312,7 +1514,7 @@ class TestSelectObservations:
         target = factor_model.observations[5:15]
         aligned = factor_model.select_observations(target)
         assert len(aligned.observations) == 10
-        assert aligned.factor_returns.base is factor_model.factor_returns
+        assert np.shares_memory(aligned.factor_returns, factor_model.factor_returns)
 
     def test_non_contiguous_slice(self, factor_model):
         target = factor_model.observations[np.array([0, 5, 10, 20])]
@@ -1629,6 +1831,10 @@ class TestPlotCSRegressionTStats:
         fig = factor_model.plot_cs_regression_t_stats(title="Custom")
         assert fig.layout.title.text == "Custom"
 
+    def test_plot_labels_formatted(self, factor_model):
+        fig = factor_model.plot_cs_regression_t_stats(factors=["factor_0"])
+        assert fig.data[0].name == "Factor 0"
+
 
 class TestPlotCSRegressionTStatExceedanceRate:
     def test_returns_figure(self, factor_model):
@@ -1708,7 +1914,7 @@ class TestGramDiagnosticsWithBasis:
     def test_cs_regression_t_stats_shape(self, factor_model_with_basis):
         fm = factor_model_with_basis
         t = fm.cs_regression_t_stats
-        K_red = fm.family_constraint_basis.n_factors_reduced
+        K_red = fm.family_constraint_basis.n_reduced_factors
         assert t.shape[1] == K_red
 
     def test_cs_regression_t_stats_columns_match_gram_names(
@@ -1721,7 +1927,7 @@ class TestGramDiagnosticsWithBasis:
     def test_vif_shape(self, factor_model_with_basis):
         fm = factor_model_with_basis
         v = fm.exposure_vif
-        K_red = fm.family_constraint_basis.n_factors_reduced
+        K_red = fm.family_constraint_basis.n_reduced_factors
         assert v.shape[1] == K_red
 
     def test_exposure_condition_number_shape(self, factor_model_with_basis):
@@ -1732,7 +1938,7 @@ class TestGramDiagnosticsWithBasis:
     def test_exceedance_rate_length(self, factor_model_with_basis):
         fm = factor_model_with_basis
         hr = fm.cs_regression_t_stat_exceedance_rate()
-        K_red = fm.family_constraint_basis.n_factors_reduced
+        K_red = fm.family_constraint_basis.n_reduced_factors
         assert hr.shape == (K_red,)
 
     def test_adjusted_r2_uses_n_regressors(self, factor_model_with_basis):
@@ -1744,7 +1950,7 @@ class TestGramDiagnosticsWithBasis:
         fm = factor_model_with_basis
         fig = fm.plot_cs_regression_t_stats()
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == fm.family_constraint_basis.n_factors_reduced
+        assert len(fig.data) == fm.family_constraint_basis.n_reduced_factors
 
     def test_plot_cs_regression_t_stats_factor_subset(self, factor_model_with_basis):
         fm = factor_model_with_basis
@@ -1768,7 +1974,7 @@ class TestGramDiagnosticsWithBasis:
         fm = factor_model_with_basis
         fig = fm.plot_exposure_vif()
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == fm.family_constraint_basis.n_factors_reduced
+        assert len(fig.data) == fm.family_constraint_basis.n_reduced_factors
 
     def test_plot_exposure_vif_family_filter(self, factor_model_with_basis):
         fm = factor_model_with_basis
@@ -1781,7 +1987,7 @@ class TestGramDiagnosticsWithBasis:
         fm = factor_model_with_basis
         fig = fm.plot_cs_regression_t_stat_exceedance_rate()
         assert isinstance(fig, go.Figure)
-        K_red = fm.family_constraint_basis.n_factors_reduced
+        K_red = fm.family_constraint_basis.n_reduced_factors
         assert len(fig.data[0].x) == K_red
 
     def test_dropped_factor_not_in_gram_names(self, factor_model_with_basis):
@@ -1890,7 +2096,7 @@ class TestFactorModelAttribution:
     # --- predicted_attribution ---
 
     def test_predicted_attribution_returns_attribution(self, fm_with_weights):
-        from skfolio.factor_model.attribution import Attribution
+        from skfolio.attribution import Attribution
 
         fm, w, _ = fm_with_weights
         result = fm.predicted_attribution(weights=w)
@@ -1898,7 +2104,7 @@ class TestFactorModelAttribution:
 
     def test_predicted_attribution_decomposition(self, fm_with_weights):
         fm, w, _ = fm_with_weights
-        result = fm.predicted_attribution(weights=w, annualized_factor=1)
+        result = fm.predicted_attribution(weights=w, annualization_factor=1)
         np.testing.assert_almost_equal(
             result.systematic.vol_contrib + result.idio.vol_contrib,
             result.total.vol,
@@ -1916,7 +2122,7 @@ class TestFactorModelAttribution:
     # --- realized_attribution ---
 
     def test_realized_attribution_returns_attribution(self, fm_with_weights):
-        from skfolio.factor_model.attribution import Attribution
+        from skfolio.attribution import Attribution
 
         fm, w, rets = fm_with_weights
         result = fm.realized_attribution(weights=w, portfolio_returns=rets)
@@ -1925,7 +2131,7 @@ class TestFactorModelAttribution:
     def test_realized_attribution_decomposition(self, fm_with_weights):
         fm, w, rets = fm_with_weights
         result = fm.realized_attribution(
-            weights=w, portfolio_returns=rets, annualized_factor=1
+            weights=w, portfolio_returns=rets, annualization_factor=1
         )
         sum_vol = (
             np.sum(result.factors.vol_contrib)
@@ -1945,7 +2151,7 @@ class TestFactorModelAttribution:
     # --- rolling_realized_attribution ---
 
     def test_rolling_realized_returns_attribution(self, fm_with_weights):
-        from skfolio.factor_model.attribution import Attribution
+        from skfolio.attribution import Attribution
 
         fm, w, rets = fm_with_weights
         result = fm.rolling_realized_attribution(
@@ -1975,7 +2181,7 @@ class TestFactorModelAttribution:
             portfolio_returns=rets,
             window_size=30,
             step=20,
-            annualized_factor=1,
+            annualization_factor=1,
         )
         for i in range(len(result.observations)):
             sum_vol = (
@@ -2017,9 +2223,12 @@ def _make_minimal_factor_model(
     idio_covariance,
     regression_weights=None,
     family_constraint_basis=None,
+    factor_covariance=None,
 ):
     """Build a minimal FactorModel for property tests."""
     n_assets, n_factors = loading.shape
+    if factor_covariance is None:
+        factor_covariance = np.eye(n_factors)
     return FactorModel(
         observations=np.arange(1),
         asset_names=np.array([f"A{i}" for i in range(n_assets)]),
@@ -2027,7 +2236,7 @@ def _make_minimal_factor_model(
         factor_families=None,
         loading_matrix=loading,
         exposures=None,
-        factor_covariance=np.eye(n_factors),
+        factor_covariance=factor_covariance,
         factor_mu=np.zeros(n_factors),
         factor_returns=None,
         idio_covariance=idio_covariance,
@@ -2053,15 +2262,15 @@ class TestEffectiveLoadingMatrix:
         rng = np.random.default_rng(50)
         loading = rng.standard_normal((n_assets, n_factors))
 
-        constrained_family = ConstrainedFamily(
+        constrained_family = FamilyConstraint(
             family_name="industry",
             full_factor_indices=np.array([0, 1]),
             dropped_index_in_family=0,
-            basis_coefficients=rng.uniform(0.3, 0.7, size=(1, 1)),
         )
         basis = FamilyConstraintBasis(
-            n_factors=n_factors,
-            constrained_families=(constrained_family,),
+            n_full_factors=n_factors,
+            family_constraints=(constrained_family,),
+            constraint_ratios=rng.uniform(0.3, 0.7, size=(1, 1)),
         )
 
         fm = _make_minimal_factor_model(
@@ -2071,3 +2280,92 @@ class TestEffectiveLoadingMatrix:
         )
         reduced = fm.effective_loading_matrix
         assert reduced.shape == (n_assets, n_factors - 1)
+
+
+class TestEffectiveFactorCovariance:
+    def test_passthrough_when_no_basis(self):
+        loading = np.eye(5, 3)
+        matrix = np.array(
+            [
+                [2.0, 0.2, 0.1],
+                [0.2, 1.5, 0.3],
+                [0.1, 0.3, 1.0],
+            ]
+        )
+        factor_covariance = matrix @ matrix.T
+        fm = _make_minimal_factor_model(
+            loading,
+            np.ones(5) * 0.01,
+            factor_covariance=factor_covariance,
+        )
+
+        np.testing.assert_array_equal(fm.effective_factor_covariance, factor_covariance)
+
+    def test_reduces_to_full_rank_retained_block(self):
+        n_assets, n_factors = 6, 4
+        rng = np.random.default_rng(51)
+        loading = rng.standard_normal((n_assets, n_factors))
+        constrained_family = FamilyConstraint(
+            family_name="industry",
+            full_factor_indices=np.array([0, 1]),
+            dropped_index_in_family=0,
+        )
+        basis = FamilyConstraintBasis(
+            n_full_factors=n_factors,
+            family_constraints=(constrained_family,),
+            constraint_ratios=rng.uniform(0.3, 0.7, size=(1, 1)),
+        )
+        matrix = rng.standard_normal((basis.n_reduced_factors, basis.n_reduced_factors))
+        covariance_reduced = matrix @ matrix.T / basis.n_reduced_factors
+        covariance_full = basis.expand_factor_covariance(covariance_reduced)
+        fm = _make_minimal_factor_model(
+            loading,
+            np.ones(n_assets) * 0.01,
+            family_constraint_basis=basis,
+            factor_covariance=covariance_full,
+        )
+
+        effective = fm.effective_factor_covariance
+
+        assert effective.shape == (basis.n_reduced_factors, basis.n_reduced_factors)
+        np.testing.assert_allclose(
+            effective,
+            covariance_full[
+                np.ix_(basis.retained_full_indices, basis.retained_full_indices)
+            ],
+            atol=1e-12,
+        )
+        assert np.linalg.eigvalsh(effective).min() > 0
+
+    def test_systematic_covariance_matches_full_basis(self):
+        n_assets, n_factors = 6, 4
+        rng = np.random.default_rng(52)
+        loading = rng.standard_normal((n_assets, n_factors))
+        constrained_family = FamilyConstraint(
+            family_name="industry",
+            full_factor_indices=np.array([0, 1]),
+            dropped_index_in_family=0,
+        )
+        basis = FamilyConstraintBasis(
+            n_full_factors=n_factors,
+            family_constraints=(constrained_family,),
+            constraint_ratios=rng.uniform(0.3, 0.7, size=(1, 1)),
+        )
+        matrix = rng.standard_normal((basis.n_reduced_factors, basis.n_reduced_factors))
+        covariance_reduced = matrix @ matrix.T / basis.n_reduced_factors
+        covariance_full = basis.expand_factor_covariance(covariance_reduced)
+        fm = _make_minimal_factor_model(
+            loading,
+            np.ones(n_assets) * 0.01,
+            family_constraint_basis=basis,
+            factor_covariance=covariance_full,
+        )
+
+        systematic_full = loading @ covariance_full @ loading.T
+        systematic_effective = (
+            fm.effective_loading_matrix
+            @ fm.effective_factor_covariance
+            @ fm.effective_loading_matrix.T
+        )
+
+        np.testing.assert_allclose(systematic_effective, systematic_full, atol=1e-12)

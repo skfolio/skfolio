@@ -15,6 +15,16 @@ import scipy.stats as st
 from skfolio.typing import ArrayLike, FloatArray
 
 
+def format_plot_label(name: str) -> str:
+    """Format a component name for plot display."""
+    return str(name).replace("_", " ").title()
+
+
+def format_plot_labels(names: ArrayLike) -> list[str]:
+    """Format component names for plot display."""
+    return [format_plot_label(name) for name in names]
+
+
 def plot_kde_distributions(
     X: pd.DataFrame,
     sample_weight: FloatArray | None = None,

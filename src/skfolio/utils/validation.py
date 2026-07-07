@@ -55,7 +55,7 @@ def validate_cross_sectional_data(
           `target_tags.required` tag. If the tag is `True`, a `ValueError` is raised.
         - array-like: validate as a numeric 2D array.
 
-    cs_weights : array-like of shape (n_observations, n_assets) or None, default=None
+    cs_weights : array-like of shape (n_observations, n_assets), optional
         Cross-sectional weights for each (observation, asset) pair.
 
         - `None` with `y` provided: return a matrix of ones.
@@ -220,30 +220,30 @@ def validate_asset_panel(
         AssetPanel. AssetPanel already validates that all fields have consistent shapes
         and consistent masks, allowing this validation to be lightweight.
 
-    required_fields : list of str or None, default=None
+    required_fields : list of str, optional
         Fields that must be present in the AssetPanel. If any are missing, a ValueError
         is raised.
 
-    reserved_fields : list of str or None, default=None
+    reserved_fields : list of str, optional
         Fields that must NOT be present in the AssetPanel. These are typically names the
         estimator will create internally. If any are found, a ValueError is raised.
 
-    finite_or_nan : list of str or None, default=None
+    finite_or_nan : list of str, optional
         Fields whose values must be finite or NaN.
 
-    finite_when_active : list of str or None, default=None
+    finite_when_active : list of str, optional
         Fields whose values must be finite wherever `active_mask` is True. This is
         typically used for fields like "market_cap" that must be forward-filled for
         holidays before constructing the AssetPanel.
 
-    strictly_positive_or_nan : list of str or None, default=None
+    strictly_positive_or_nan : list of str, optional
         Fields whose values must be strictly positive and finite, or NaN.
 
-    strictly_positive_when_active : list of str or None, default=None
+    strictly_positive_when_active : list of str, optional
         Fields whose values must be strictly positive and finite wherever
         `active_mask` is True.
 
-    non_negative_or_nan : list of str or None, default=None
+    non_negative_or_nan : list of str, optional
         Fields whose values must be non-negative and finite, or NaN.
 
     reset : bool, default=True

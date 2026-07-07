@@ -9,6 +9,15 @@ import pytest
 from skfolio.utils.tools import (
     _call_estimator,
     _filter_supported_params,
+    _is_bool,
+    _is_integer_number,
+    _is_real_number,
+    _validate_bool,
+    _validate_non_negative_integer,
+    _validate_non_negative_real,
+    _validate_positive_integer,
+    _validate_positive_real,
+    _validate_unit_interval,
     apply_window_size,
     args_names,
     bisection,
@@ -171,6 +180,91 @@ class TestDefaultAssetNames:
         n_assets = "5"
         with pytest.raises(TypeError):
             default_asset_names(n_assets)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [1, 1.5, np.int64(2), np.float64(3.0)],
+)
+def test_is_real_number_accepts_numeric_types(value):
+    assert _is_real_number(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [True, False, np.bool_(True), "1", None, []],
+)
+def test_is_real_number_rejects_non_numeric(value):
+    assert not _is_real_number(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [1, np.int64(2)],
+)
+def test_is_integer_number_accepts_integer_types(value):
+    assert _is_integer_number(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [1.5, np.float64(2.0), True, False, np.bool_(True), "1", None, []],
+)
+def test_is_integer_number_rejects_non_integer(value):
+    assert not _is_integer_number(value)
+
+
+@pytest.mark.parametrize("value", [True, False, np.bool_(True), np.bool_(False)])
+def test_is_bool_accepts_boolean_types(value):
+    assert _is_bool(value)
+
+
+@pytest.mark.parametrize("value", [1, 1.0, "True", None, []])
+def test_is_bool_rejects_non_boolean(value):
+    assert not _is_bool(value)
+
+
+def test_validate_bool_accepts_numpy_bool():
+    _validate_bool(np.bool_(False), "flag")
+
+
+def test_validate_bool_raises():
+    with pytest.raises(ValueError, match="flag must be a boolean"):
+        _validate_bool("yes", "flag")
+
+
+def test_validate_positive_real_accepts_valid():
+    _validate_positive_real(2.5, "half_life")
+
+
+@pytest.mark.parametrize("value", [0, -1, True, np.nan, "1"])
+def test_validate_positive_real_raises(value):
+    with pytest.raises(ValueError, match="half_life must be a positive number"):
+        _validate_positive_real(value, "half_life")
+
+
+def test_validate_non_negative_real_accepts_zero():
+    _validate_non_negative_real(0.0, "ridge_scale")
+
+
+def test_validate_positive_integer_rejects_bool():
+    with pytest.raises(ValueError, match="horizon must be a positive integer"):
+        _validate_positive_integer(True, "horizon")
+
+
+def test_validate_non_negative_integer_accepts_zero():
+    _validate_non_negative_integer(0, "skip")
+
+
+def test_validate_unit_interval_accepts_endpoints():
+    _validate_unit_interval(0.0, "shrinkage")
+    _validate_unit_interval(1.0, "shrinkage")
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.1, np.nan, True])
+def test_validate_unit_interval_raises(value):
+    with pytest.raises(ValueError, match="shrinkage must be a finite number between"):
+        _validate_unit_interval(value, "shrinkage")
 
 
 def test_deduplicate_names():

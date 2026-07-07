@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from enum import auto
 from functools import cached_property
 from typing import Literal, NamedTuple
 
@@ -18,14 +17,22 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as scs
 
-from skfolio.factor_model._family_constraint_basis import FamilyConstraintBasis
-from skfolio.factor_model.attribution import (
+from skfolio._constants import (
+    _CURRENCY,
+    _EXPOSURES,
+    _IDIO_RETURNS,
+    _IDIO_VARIANCES,
+    _REGRESSION_WEIGHTS,
+)
+from skfolio.attribution import (
     Attribution,
     predicted_factor_attribution,
     realized_factor_attribution,
     rolling_realized_factor_attribution,
 )
+from skfolio.containers import AssetPanel, AssetPanelView, InactivePolicy
 from skfolio.prior._model._covariance_sqrt import CovarianceSqrt
+from skfolio.prior._model._family_constraint_basis import FamilyConstraintBasis
 from skfolio.typing import (
     AnyArray,
     ArrayLike,
@@ -34,25 +41,20 @@ from skfolio.typing import (
     IntArray,
     StrArray,
 )
+from skfolio.utils._factor_tools import _resolve_factor_subset
+from skfolio.utils.figure import format_plot_label, format_plot_labels
 from skfolio.utils.stats import (
+    CSWeighting,
+    CorrelationMethod,
+    _forward_mean_return,
     cov_to_corr,
-    cs_rank_correlation,
-    cs_weighted_correlation,
+    cs_pearson_correlation,
+    cs_spearman_correlation,
     safe_cholesky,
     safe_divide,
 )
-from skfolio.utils.tools import AutoEnum
 
-__all__ = ["CSWeighting", "FactorModel"]
-
-
-class CSWeighting(AutoEnum):
-    """Cross-sectional weighting."""
-
-    BENCHMARK = auto()
-    REGRESSION = auto()
-    INVERSE_IDIO_VARIANCE = auto()
-    IDENTITY = auto()
+__all__ = ["CorrelationMethod", "FactorModel"]
 
 
 @dataclass(frozen=True, eq=False)
@@ -77,8 +79,8 @@ class FactorModel:
     Factor structure and factor-return methods use the stored loading matrix,
     factor moments and, the factor return time series. They are
     available for both time-series and characteristics-based factor models.
-    These include `factor_correlation`,
-    `plot_factor_correlation`, `plot_factor_volatilities`,
+    These include `factor_forecast_correlation`,
+    `plot_factor_forecast_correlation`, `plot_factor_forecast_volatilities`,
     `plot_factor_cumulative_returns`, and `predicted_attribution`.
 
     Cross-sectional regression diagnostics are prefixed with `cs_regression_`.
@@ -119,15 +121,17 @@ class FactorModel:
 
     exposures : ndarray of shape (n_observations, n_assets, n_factors) or None
         Full historical time series of asset-by-factor exposure (loading) matrices
-        following the as-of convention. Populated for cross-sectional factor models.
-        `None` for time-series factor models, which use the single time-invariant
-        `loading_matrix`.
+        following the as-of time-indexing convention. Populated for cross-sectional
+        factor models. `None` for time-series factor models, which use the single
+        time-invariant `loading_matrix`.
 
     factor_covariance : ndarray of shape (n_factors, n_factors)
-        Factor return covariance matrix.
+        Factor return covariance matrix. Under family constraints this full-basis
+        matrix is rank-deficient; use :attr:`effective_factor_covariance` (paired with
+        :attr:`effective_loading_matrix`) for decompositions such as Cholesky.
 
     factor_mu : ndarray of shape (n_factors,)
-        Factor expected returns.
+        Expected factor returns.
 
     factor_returns : ndarray of shape (n_observations, n_factors) or None
         Per-period factor returns. For time-series factor models, this is the input
@@ -153,16 +157,17 @@ class FactorModel:
         :math:`\hat\sigma^2_{i,t}`. Populated by cross-sectional factor models.
 
     exposure_lag : int, default=1
-        Lag applied to time-varying exposures under the as-of convention. The default
-        value of `1` aligns exposures known at the end of observation :math:`t-1` with
-        returns over :math:`(t-1, t]`, explicitly encoding data availability in the API
-        and guarding against look-ahead bias. Meaningful only when `exposures` is
-        populated; ignored by time-series factor models, where the loading matrix is
-        constant.
+        Lag applied to time-varying exposures under the as-of time-indexing convention.
+        The default value of `1` aligns exposures at :math:`t-1` with returns over
+        :math:`(t-1, t]`. Meaningful only when `exposures` is populated; ignored by
+        time-series factor models, where the loading matrix is constant.
 
     regression_weights : ndarray of shape (n_observations, n_assets) or None
         Cross-sectional WLS regression weights. Non-negative. Assets with zero weight
-        are excluded from the estimation universe. `None` for time-series factor models.
+        are excluded from the estimation universe. Row :math:`t` holds the weights
+        used by the regression at date :math:`t`; like the lagged exposures, they are
+        built from market caps at :math:`t - \text{lag}` and idiosyncratic variances
+        estimated up to :math:`t - 1`. `None` for time-series factor models.
 
     benchmark_weights : ndarray of shape (n_observations, n_assets) or None
         Benchmark weights used for weighted cross-sectional diagnostics. Non-negative.
@@ -231,13 +236,22 @@ class FactorModel:
             * `coverage`: average fraction of estimation-universe assets (positive
               regression weight) with non-missing factor exposure.
 
+        For characteristics-based models, `annualized_mean` and `annualized_vol` are
+        computed from model-native factor returns: the cross-sectional regression
+        coefficients per one unit of exposure. Equivalently, each factor return is the
+        WLS factor-mimicking portfolio return with unit exposure to that factor and zero
+        exposure to the other regression factors, without additional rescaling to fixed
+        gross exposure or volatility. The sign follows the exposure convention; for
+        example, a size factor built from log market capitalization is large-minus-small,
+        the opposite sign of the Fama-French SMB convention.
+
         Parameters
         ----------
         factors : list of str, optional
             Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. `None` includes all factors. Ignored when
             `factors` is given or when `factor_families` is `None`.
 
@@ -296,7 +310,7 @@ class FactorModel:
             t_stat_exceedance_rate = self.cs_regression_t_stat_exceedance_rate(
                 threshold=t_stat_threshold
             ).values
-            reduced_names = list(self._reduced_factor_names)
+            reduced_names = list(self._reduced_regression_factor_names)
             reduced_idx = {name: i for i, name in enumerate(reduced_names)}
 
             def _map_to_selected(values: FloatArray) -> FloatArray:
@@ -377,10 +391,10 @@ class FactorModel:
         )
         return pd.DataFrame(exposures, index=self.observations, columns=cols)
 
-    def factor_correlation(
+    def factor_forecast_correlation(
         self, factors: list[str] | None = None, families: str | list[str] | None = None
     ) -> FloatArray:
-        """Factor return correlation matrix from the estimated covariance.
+        """Factor return correlation forecast from :attr:`factor_covariance`.
 
         Parameters
         ----------
@@ -388,7 +402,7 @@ class FactorModel:
             Explicit subset of factor names. Takes precedence over
             `families` when specified.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. `None` includes all factors.
             Ignored when `factors` is given or when
             `factor_families` is `None`.
@@ -422,13 +436,73 @@ class FactorModel:
 
         Returns
         -------
-        loading : ndarray of shape (n_assets, n_factors_reduced)
+        loading : ndarray of shape (n_assets, n_reduced_factors)
             Full-rank loading matrix.
         """
         if self.family_constraint_basis is None:
             return self.loading_matrix
-        return self.family_constraint_basis.to_reduced_loading_matrix(
-            self.loading_matrix
+        return self.family_constraint_basis.reduce_loading_matrix(self.loading_matrix)
+
+    @property
+    def effective_exposures(self) -> FloatArray:
+        r"""Full-rank historical exposures, reduced when family constraints are present.
+
+        When the factor model uses family constraints, the full-basis exposure tensor is
+        rank-deficient because constrained factor families introduce linear dependencies
+        among columns. This property converts the historical exposures to the same
+        reduced full-rank basis as :attr:`effective_loading_matrix`.
+
+        When :attr:`family_constraint_basis` is `None`, the historical exposures are
+        returned unchanged.
+
+        Returns
+        -------
+        exposures : ndarray of shape (n_observations, n_assets, n_reduced_factors)
+            Historical full-rank exposure tensor.
+        """
+        self._require("exposures", "effective_exposures")
+        if self.family_constraint_basis is None:
+            return self.exposures
+        return self.family_constraint_basis.reduce_exposures(self.exposures)
+
+    @property
+    def effective_factor_names(self) -> StrArray:
+        """Factor names aligned with the effective reduced basis."""
+        if self.family_constraint_basis is None:
+            return self.factor_names
+        return self.family_constraint_basis.reduced_factor_names(self.factor_names)
+
+    @property
+    def effective_factor_families(self) -> StrArray | None:
+        """Factor families aligned with the effective reduced basis."""
+        if self.factor_families is None:
+            return None
+        if self.family_constraint_basis is None:
+            return self.factor_families
+        return self.family_constraint_basis.reduced_factor_names(self.factor_families)
+
+    @property
+    def effective_factor_covariance(self) -> FloatArray:
+        r"""Full-rank factor covariance, reduced when family constraints are present.
+
+        When the factor model uses family constraints, the full-basis factor covariance
+        :math:`R\,\Sigma_f^{\mathrm{red}}\,R^\top` is rank-deficient. This property
+        returns the reduced full-rank covariance aligned with
+        :attr:`effective_loading_matrix`, so that decompositions (e.g. Cholesky) and
+        SOC-based optimizers operate on a positive definite matrix.
+
+        When :attr:`family_constraint_basis` is `None`, the covariance is returned
+        unchanged.
+
+        Returns
+        -------
+        factor_covariance : ndarray of shape (n_reduced_factors, n_reduced_factors)
+            Full-rank factor covariance.
+        """
+        if self.family_constraint_basis is None:
+            return self.factor_covariance
+        return self.family_constraint_basis.reduce_factor_covariance(
+            self.factor_covariance
         )
 
     @cached_property
@@ -444,11 +518,19 @@ class FactorModel:
         :math:`(n \times n)` Cholesky entirely and represents the idiosyncratic part as
         an element-wise multiply.
 
+        When family constraints are present, the full-basis factor covariance
+        :math:`R\,\Sigma_f^{\mathrm{red}}\,R^\top` is rank-deficient. The systematic
+        square root is then built from the full-rank :attr:`effective_loading_matrix`
+        and :attr:`effective_factor_covariance`, which keeps the Cholesky exact and the
+        systematic component minimal.
+
         Returns
         -------
         CovarianceSqrt
         """
-        systematic = self.loading_matrix @ safe_cholesky(self.factor_covariance)
+        systematic = self.effective_loading_matrix @ safe_cholesky(
+            self.effective_factor_covariance
+        )
 
         if self.idio_covariance.ndim == 1:
             return CovarianceSqrt(
@@ -458,6 +540,127 @@ class FactorModel:
         return CovarianceSqrt(
             components=(systematic, safe_cholesky(self.idio_covariance)),
         )
+
+    def enrich_asset_panel(
+        self, panel: AssetPanel | AssetPanelView, copy: bool = True
+    ) -> AssetPanel | AssetPanelView:
+        """Add factor-model fields to an :class:`~skfolio.containers.AssetPanel`.
+
+        The returned panel contains the fields required by alpha estimators:
+        `idio_returns`, `idio_variances`, `regression_weights` and `exposures`.
+        Observations and assets are aligned by label. Panel observations that are not
+        present in the factor model are kept and filled with missing values, except
+        `regression_weights`, which is filled with zero. The asset set must match
+        exactly, although the order may differ. If `panel` is an
+        :class:`~skfolio.containers.AssetPanelView`, enriched fields are added as
+        view-local fields.
+
+        When family constraints are present, `exposures` are added in the reduced
+        full-rank basis used by the cross-sectional regression and factor covariance
+        estimator.
+
+        Parameters
+        ----------
+        panel : AssetPanel or AssetPanelView
+            Panel or observation view to enrich.
+
+        copy : bool, default=True
+            If `True`, enrich a shallow copy of `panel`. If `False`, mutate `panel`.
+
+        Returns
+        -------
+        enriched_panel : AssetPanel or AssetPanelView
+            Panel or view containing the factor-model fields.
+
+        Raises
+        ------
+        TypeError
+            If `panel` is not an :class:`~skfolio.containers.AssetPanel` or
+            :class:`~skfolio.containers.AssetPanelView`.
+
+        ValueError
+            If required factor-model histories are unavailable, if labels cannot be
+            aligned, or if any target field already exists.
+        """
+        if not isinstance(panel, (AssetPanel, AssetPanelView)):
+            raise TypeError(
+                "`panel` must be an AssetPanel or AssetPanelView, "
+                f"got {type(panel).__name__!r}."
+            )
+
+        field_names = {
+            _IDIO_RETURNS,
+            _IDIO_VARIANCES,
+            _REGRESSION_WEIGHTS,
+            _EXPOSURES,
+        }
+        existing = field_names.intersection(panel.fields)
+        if existing:
+            raise ValueError(
+                "Cannot enrich AssetPanel because it already contains "
+                f"{sorted(existing)}."
+            )
+
+        obs_idx = pd.Index(self.observations).get_indexer(panel.observations)
+        valid_obs = obs_idx >= 0
+        if not np.any(valid_obs):
+            raise ValueError(
+                "The FactorModel and AssetPanel observations do not overlap."
+            )
+
+        asset_idx = pd.Index(self.asset_names).get_indexer(panel.asset_names)
+        if np.any(asset_idx < 0) or len(panel.asset_names) != len(self.asset_names):
+            raise ValueError(
+                "FactorModel asset names must match AssetPanel asset names exactly."
+            )
+
+        self._require(
+            ("idio_returns", "idio_variances", "regression_weights", "exposures"),
+            "enrich_asset_panel",
+        )
+
+        if copy:
+            if isinstance(panel, AssetPanelView):
+                enriched_panel = panel.copy(deep=False, copy_owner=False)
+            else:
+                enriched_panel = panel.copy(deep=False)
+        else:
+            enriched_panel = panel
+
+        def align_2d(values: FloatArray, fill_value: float) -> FloatArray:
+            out = np.full(
+                (panel.n_observations, panel.n_assets), fill_value, dtype=float
+            )
+            out[valid_obs] = np.asarray(values, dtype=float)[obs_idx[valid_obs]][
+                :, asset_idx
+            ]
+            return out
+
+        def align_3d(values: FloatArray) -> FloatArray:
+            values = np.asarray(values, dtype=float)
+            out = np.full(
+                (panel.n_observations, panel.n_assets, values.shape[2]),
+                np.nan,
+                dtype=float,
+            )
+            out[valid_obs] = values[obs_idx[valid_obs]][:, asset_idx]
+            return out
+
+        enriched_panel[_IDIO_RETURNS] = align_2d(self.idio_returns, np.nan)
+        enriched_panel[_IDIO_VARIANCES] = align_2d(self.idio_variances, np.nan)
+        enriched_panel.add_2d_field(
+            name=_REGRESSION_WEIGHTS,
+            values=align_2d(self.regression_weights, 0.0),
+            inactive_policy=InactivePolicy.ZERO,
+        )
+        enriched_panel.add_3d_field(
+            name=_EXPOSURES,
+            values=align_3d(self.effective_exposures),
+            third_axis_name="factors",
+            third_axis_labels=self.effective_factor_names,
+            third_axis_groups=self.effective_factor_families,
+        )
+        return enriched_panel
 
     def select_assets(
         self, assets: ArrayLike | slice | None = None, slim: bool = False
@@ -474,7 +677,7 @@ class FactorModel:
 
         Parameters
         ----------
-        assets : array-like, slice or None, default=None
+        assets : array-like, slice , optional
             Assets to keep. Boolean arrays are treated as masks, integer arrays and
             slices are positional selectors and other arrays are matched against
             `asset_names`. The selection must be duplicate-free. If `None`, keep all
@@ -636,13 +839,13 @@ class FactorModel:
             family_constraint_basis=_slice(self.family_constraint_basis),
         )
 
-    def plot_factor_correlation(
+    def plot_factor_forecast_correlation(
         self,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
         title: str | None = None,
     ) -> go.Figure:
-        """Factor return correlation heatmap from the estimated covariance.
+        """Factor return correlation forecast heatmap from :attr:`factor_covariance`.
 
         Parameters
         ----------
@@ -662,25 +865,30 @@ class FactorModel:
         fig : go.Figure
         """
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        corr = self.factor_correlation(factors=factors, families=families)
+        corr = self.factor_forecast_correlation(factors=factors, families=families)
         fig = _heatmap(
             corr,
-            labels=factor_names,
-            title=title or "Factor Return Correlation",
+            labels=format_plot_labels(factor_names),
+            title=title or "Factor Forecast Correlation",
             zmin=-1,
             zmax=1,
         )
         _add_family_outlines(fig, self.factor_families, factor_indices)
         return fig
 
-    def plot_factor_volatilities(
+    def plot_factor_forecast_volatilities(
         self,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
         annualization_factor: float = 252.0,
         title: str | None = None,
     ) -> go.Figure:
-        """Bar chart of annualized factor returns volatilities.
+        r"""Bar chart of annualized factor volatility forecasts.
+
+        Computes annualized volatility as
+        :math:`\sqrt{\mathrm{diag}(\Sigma_F) \cdot \text{annualization\_factor}}`
+        from :attr:`factor_covariance`. Distinct from realized historical volatility
+        in :meth:`summary`.
 
         Parameters
         ----------
@@ -709,7 +917,9 @@ class FactorModel:
         )
         sort_order = np.argsort(factor_vols)
         factor_vols = factor_vols[sort_order]
-        sorted_factor_names = [str(factor_names[index]) for index in sort_order]
+        sorted_factor_names = format_plot_labels(
+            [str(factor_names[index]) for index in sort_order]
+        )
 
         fig = go.Figure(
             go.Bar(
@@ -721,8 +931,8 @@ class FactorModel:
         )
         fig.update_xaxes(tickformat=".2%")
         fig.update_layout(
-            title=title or "annualized Factor Volatility",
-            xaxis_title="Volatility",
+            title=title or "Factor Forecast Volatility",
+            xaxis_title="Annualized Volatility",
             yaxis_title="Factor",
         )
         return fig
@@ -829,7 +1039,9 @@ class FactorModel:
         self._require(("idio_returns", "idio_variances"), "idio_vol_ic")
         predicted_vol = np.sqrt(np.maximum(self.idio_variances[:-1], 0.0))
         abs_idio_next = np.abs(self.idio_returns[1:])
-        corr = cs_rank_correlation(predicted_vol, abs_idio_next, axis=1, min_count=5)
+        corr = cs_spearman_correlation(
+            predicted_vol, abs_idio_next, axis=1, min_count=5
+        )
         return pd.Series(
             corr, index=self.observations[1:], name="Idio Vol IC (Spearman)"
         )
@@ -862,7 +1074,7 @@ class FactorModel:
         standardized_abs_idio_next = safe_divide(
             abs_idio_next, predicted_vol, fill_value=np.nan
         )
-        corr = cs_rank_correlation(
+        corr = cs_spearman_correlation(
             predicted_vol, standardized_abs_idio_next, axis=1, min_count=5
         )
         return pd.Series(
@@ -1223,14 +1435,11 @@ class FactorModel:
             ["exposures", "factor_returns", "idio_returns"], "cs_regression_scores"
         )
 
-        (
-            lagged_exposures,
-            factor_returns,
-            idio_returns,
-            regression_weights,
-        ) = self._aligned(
-            ["exposures", "factor_returns", "idio_returns", "regression_weights"]
-        )
+        regression_data = self._regression_data
+        lagged_exposures = regression_data.exposures
+        factor_returns = regression_data.factor_returns
+        idio_returns = regression_data.idio_returns
+        regression_weights = regression_data.regression_weights
 
         systematic_returns = (
             lagged_exposures @ factor_returns[:, :, np.newaxis]
@@ -1294,12 +1503,12 @@ class FactorModel:
         -------
         cs_regression_t_stats : DataFrame
             Time-indexed t-statistics of shape
-            `(n_observations - exposure_lag, n_factors_reduced)`.
+            `(n_observations - exposure_lag, n_reduced_factors)`.
         """
         return pd.DataFrame(
             self._gram_diagnostics.t_stats,
             index=self._aligned("observations"),
-            columns=self._reduced_factor_names,
+            columns=self._reduced_regression_factor_names,
         )
 
     def cs_regression_t_stat_exceedance_rate(self, threshold: float = 2.0) -> pd.Series:
@@ -1320,7 +1529,7 @@ class FactorModel:
         Returns
         -------
         cs_regression_t_stat_exceedance_rate : Series
-            Shape `(n_factors_reduced,)`.
+            Shape `(n_reduced_factors,)`.
             Fraction of significant observations per factor.
         """
         t_stats = self._gram_diagnostics.t_stats
@@ -1329,7 +1538,7 @@ class FactorModel:
         rates = safe_divide(np.nansum(significant, axis=0), n_valid, fill_value=0.0)
         return pd.Series(
             rates,
-            index=self._reduced_factor_names,
+            index=self._reduced_regression_factor_names,
             name="cs_regression_t_stat_exceedance_rate",
         )
 
@@ -1377,7 +1586,7 @@ class FactorModel:
         label = score_labels[score]
         return _plot_single_ts(
             series.rename(label),
-            title=title or f"Rolling {label} \u2014 {window}-observation window",
+            title=title or f"Rolling {label} ({window} observations)",
             yaxis_title=label,
             window=window,
             show_raw=True,
@@ -1402,7 +1611,7 @@ class FactorModel:
         factors : list of str, optional
             Subset of factor names to include.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. Ignored when `factors` is given.
 
         window : int, optional
@@ -1416,7 +1625,7 @@ class FactorModel:
         fig : go.Figure
         """
         factor_indices, factor_names = self._resolve_factor_subset(
-            factors, families, reduced_basis=True
+            factors, families, reduced_basis=True, regression_only=True
         )
         abs_t_stats = np.abs(self._gram_diagnostics.t_stats[:, factor_indices])
         df = pd.DataFrame(
@@ -1428,7 +1637,7 @@ class FactorModel:
         default_title = (
             "|t|-statistic per Factor"
             if window is None
-            else f"Rolling Mean |t|-statistic \u2014 {window}-observation window"
+            else f"Rolling Mean |t|-statistic ({window} observations)"
         )
 
         fig = _multi_line_plot(df, title=title or default_title, yaxis_title="|t|")
@@ -1463,7 +1672,7 @@ class FactorModel:
             Subset of factor names to include. Takes precedence over `families` when
             specified.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. Ignored when `factors` is given.
 
         threshold : float, default=2.0
@@ -1477,13 +1686,13 @@ class FactorModel:
         fig : go.Figure
         """
         _, factor_names = self._resolve_factor_subset(
-            factors, families, reduced_basis=True
+            factors, families, reduced_basis=True, regression_only=True
         )
         rates = self.cs_regression_t_stat_exceedance_rate(threshold=threshold)
         rates = rates.loc[factor_names]
         order = np.argsort(rates.values)
         sorted_values = rates.values[order]
-        sorted_names = [str(rates.index[i]) for i in order]
+        sorted_names = format_plot_labels([str(rates.index[i]) for i in order])
 
         fig = go.Figure(
             go.Bar(
@@ -1498,8 +1707,13 @@ class FactorModel:
             line_width=1,
             line_dash="dash",
             line_color="gray",
-            annotation_text="5 % (null)",
-            annotation_position="top right",
+        )
+        x_max = max(float(np.max(sorted_values)), 0.05)
+        tick_step = 0.1
+        tickvals = np.sort(
+            np.unique(
+                np.concatenate([np.arange(0, x_max + tick_step, tick_step), [0.05]])
+            )
         )
         fig.update_layout(
             title=title
@@ -1507,7 +1721,7 @@ class FactorModel:
             xaxis_title="Exceedance Rate",
             yaxis_title="Factor",
         )
-        fig.update_xaxes(tickformat=".0%")
+        fig.update_xaxes(tickmode="array", tickvals=tickvals, tickformat=".0%")
         return fig
 
     # Exposure diagnostics
@@ -1550,19 +1764,51 @@ class FactorModel:
             latest=False,
             fallback_cs_weighting=CSWeighting.IDENTITY,
         )
-        n_observations, _, n_factors = exposures.shape
+        min_count = 3
+        eps = 1e-12
+        finite = np.isfinite(exposures)
+        mask = finite.astype(float)
+        clean_exposures = np.where(finite, exposures, 0.0)
+        mask_t = mask.transpose(0, 2, 1)
+        clean_exposures_t = clean_exposures.transpose(0, 2, 1)
 
-        pairwise_corr = np.full((n_observations, n_factors, n_factors), np.nan)
-        for factor_i in range(n_factors):
-            pairwise_corr[:, factor_i, factor_i] = 1.0
-            exposures_i = exposures[:, :, factor_i]
-            for factor_j in range(factor_i + 1, n_factors):
-                exposures_j = exposures[:, :, factor_j]
-                corr_ij = cs_weighted_correlation(
-                    exposures_i, exposures_j, weights=weights, axis=1
-                )
-                pairwise_corr[:, factor_i, factor_j] = corr_ij
-                pairwise_corr[:, factor_j, factor_i] = corr_ij
+        n_valid = mask_t @ mask
+        if weights is None:
+            weight_sum = n_valid
+            weighted_sum = clean_exposures_t @ mask
+            weighted_square_sum = (clean_exposures**2).transpose(0, 2, 1) @ mask
+            weighted_cross_sum = clean_exposures_t @ clean_exposures
+        else:
+            weights_3d = weights[:, :, np.newaxis]
+            weighted_mask = weights_3d * mask
+            weighted_exposures = weights_3d * clean_exposures
+
+            weight_sum = weighted_mask.transpose(0, 2, 1) @ mask
+            weighted_sum = weighted_exposures.transpose(0, 2, 1) @ mask
+            weighted_square_sum = (weighted_exposures * clean_exposures).transpose(
+                0, 2, 1
+            ) @ mask
+            weighted_cross_sum = weighted_exposures.transpose(0, 2, 1) @ clean_exposures
+
+        weighted_sum_t = weighted_sum.swapaxes(1, 2)
+        weighted_square_sum_t = weighted_square_sum.swapaxes(1, 2)
+        covariance = weighted_cross_sum - safe_divide(
+            weighted_sum * weighted_sum_t, weight_sum, fill_value=np.nan
+        )
+        variance = weighted_square_sum - safe_divide(
+            weighted_sum**2, weight_sum, fill_value=np.nan
+        )
+        variance_t = weighted_square_sum_t - safe_divide(
+            weighted_sum_t**2, weight_sum, fill_value=np.nan
+        )
+        variance = np.maximum(variance, 0.0)
+        variance_t = np.maximum(variance_t, 0.0)
+
+        denom = np.sqrt(variance * variance_t)
+        pairwise_corr = safe_divide(covariance, denom, fill_value=np.nan, atol=eps)
+        pairwise_corr[
+            (n_valid < min_count) | (variance <= eps) | (variance_t <= eps)
+        ] = np.nan
         corr = np.nanmean(pairwise_corr, axis=0)
         np.fill_diagonal(corr, 1.0)
         return corr
@@ -1589,12 +1835,12 @@ class FactorModel:
         -------
         exposure_vif : DataFrame
             Time-indexed VIF values of shape
-            `(n_observations - exposure_lag, n_factors_reduced)`.
+            `(n_observations - exposure_lag, n_reduced_factors)`.
         """
         return pd.DataFrame(
             self._gram_diagnostics.vif,
             index=self._aligned("observations"),
-            columns=self._reduced_factor_names,
+            columns=self._reduced_regression_factor_names,
         )
 
     @property
@@ -1620,7 +1866,7 @@ class FactorModel:
 
     def exposure_ic_summary(
         self,
-        rank: bool = True,
+        correlation_method: CorrelationMethod = CorrelationMethod.SPEARMAN,
         horizon: int = 1,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
@@ -1628,7 +1874,7 @@ class FactorModel:
         r"""Summary statistics for exposure Information Coefficients (ICs).
 
         Measures the cross-sectional correlation between factor exposures at :math:`t`
-        and the cumulative asset return from :math:`t + 1` to :math:`t + h`, where
+        and the forward mean asset return from :math:`t + 1` to :math:`t + h`, where
         :math:`h` is the forecast *horizon*.
 
         .. note::
@@ -1642,19 +1888,20 @@ class FactorModel:
 
         Parameters
         ----------
-        rank : bool, default=True
-            If `True`, compute Spearman (rank) IC. If `False`, compute Pearson IC
-            (weighted by`regression_weights` when available).
+        correlation_method : CorrelationMethod, default=CorrelationMethod.SPEARMAN
+            Correlation method used for the exposure IC. `SPEARMAN` computes
+            Spearman rank IC. `PEARSON` computes Pearson IC, weighted by
+            `regression_weights` when available.
 
         horizon : int, default=1
-            Forward window in number of observations. The cumulative return from
+            Forward window in number of observations. The mean return from
             :math:`t + 1` to :math:`t + h` is used.
 
         factors : list of str, optional
             Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. `None` includes all factors.
 
         Returns
@@ -1662,8 +1909,13 @@ class FactorModel:
         summary : DataFrame of shape (n_selected_factors, 4)
             Columns: `mean_ic`, `std_ic`, `ic_ir`, `hit_rate`.
         """
+        _check_correlation_method(correlation_method)
         factor_indices, factor_names = self._resolve_factor_subset(factors, families)
-        ic, _ = self._ic(rank=rank, horizon=horizon, factor_indices=factor_indices)
+        ic, _ = self._ic(
+            correlation_method=correlation_method,
+            horizon=horizon,
+            factor_indices=factor_indices,
+        )
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
@@ -1700,7 +1952,7 @@ class FactorModel:
         factors : list of str, optional
             Subset of factor names to include.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. Ignored when `factors` is given.
 
         window : int, optional
@@ -1714,7 +1966,7 @@ class FactorModel:
         fig : go.Figure
         """
         factor_indices, factor_names = self._resolve_factor_subset(
-            factors, families, reduced_basis=True
+            factors, families, reduced_basis=True, regression_only=True
         )
         vif = self._gram_diagnostics.vif[:, factor_indices]
         df = pd.DataFrame(
@@ -1727,7 +1979,7 @@ class FactorModel:
         default_title = (
             "Exposure Variance Inflation Factor"
             if window is None
-            else f"Rolling Mean Exposure VIF \u2014 {window}-observation window"
+            else f"Rolling Mean Exposure VIF ({window} observations)"
         )
 
         fig = _multi_line_plot(df, title=title or default_title, yaxis_title="VIF")
@@ -1765,7 +2017,7 @@ class FactorModel:
         label = "Exposure Condition Number"
         return _plot_single_ts(
             self.exposure_condition_number.rename(label),
-            title=title or f"Rolling {label} \u2014 {window}-observation window",
+            title=title or f"Rolling {label} ({window} observations)",
             yaxis_title=label,
             window=window,
             show_raw=True,
@@ -1774,7 +2026,7 @@ class FactorModel:
 
     def plot_cumulative_exposure_ic(
         self,
-        rank: bool = True,
+        correlation_method: CorrelationMethod = CorrelationMethod.SPEARMAN,
         factors: list[str] | None = None,
         families: str | list[str] | None = None,
         title: str | None = None,
@@ -1801,15 +2053,16 @@ class FactorModel:
 
         Parameters
         ----------
-        rank : bool, default=True
-            If `True`, compute Spearman (rank) IC. If `False`, compute Pearson IC
-            (weighted by `regression_weights` when available).
+        correlation_method : CorrelationMethod, default=CorrelationMethod.SPEARMAN
+            Correlation method used for the exposure IC. `SPEARMAN` computes
+            Spearman rank IC. `PEARSON` computes Pearson IC, weighted by
+            `regression_weights` when available.
 
         factors : list of str, optional
             Explicit subset of factor names. Takes precedence over `families` when
             specified.
 
-        families : str, list of str, or None, default=None
+        families : str, list of str, optional
             Factor families to include. `None` includes all factors.
 
         title : str, optional
@@ -1819,15 +2072,20 @@ class FactorModel:
         -------
         fig : go.Figure
         """
+        _check_correlation_method(correlation_method)
         factor_indices, factor_names = self._resolve_factor_subset(
             factors, families, reduced_basis=True
         )
         ic, obs_offset = self._ic(
-            rank=rank, horizon=1, factor_indices=factor_indices, reduced_basis=True
+            correlation_method=correlation_method,
+            horizon=1,
+            factor_indices=factor_indices,
+            reduced_basis=True,
         )
         cum_ic = np.nancumsum(ic, axis=0)
 
-        default_title = f"Cumulative {'Rank IC' if rank else 'IC'}"
+        method_label = format_plot_label(correlation_method.value)
+        default_title = f"Cumulative Exposure IC ({method_label})"
 
         df = pd.DataFrame(
             cum_ic,
@@ -1835,7 +2093,7 @@ class FactorModel:
             columns=factor_names,
         )
         return _multi_line_plot(
-            df, title=title or default_title, yaxis_title=default_title
+            df, title=title or default_title, yaxis_title="Cumulative IC"
         )
 
     def plot_exposure_distribution(
@@ -1856,11 +2114,11 @@ class FactorModel:
         factor : str
             Name of the factor to plot.
 
-        observation_idx : int or None, default=None
+        observation_idx : int , optional
             Observation index. `None` pools all dates, `-1` selects the last
             observation, `0` the first, etc.
 
-        n_bins : int or None, default=None
+        n_bins : int , optional
             Number of histogram bins. `None` lets Plotly choose automatically.
 
         title : str, optional
@@ -1871,17 +2129,22 @@ class FactorModel:
         fig : go.Figure
         """
         self._require("exposures", "plot_exposure_distribution")
-        factor_idx = _factor_indices(
-            factors=[factor], available=list(self.factor_names)
-        )[0]
+        factor_indices, _ = self._resolve_factor_subset(
+            factor_names_to_keep=[factor], family_names_to_keep=None
+        )
+        factor_idx = factor_indices[0]
 
         if observation_idx is not None:
             obs_label = str(self.observations[observation_idx])
             values = self.exposures[observation_idx, :, factor_idx]
-            default_title = f"Exposure Distribution: {factor} ({obs_label})"
+            default_title = (
+                f"Exposure Distribution: {format_plot_label(factor)} ({obs_label})"
+            )
         else:
             values = self.exposures[:, :, factor_idx].ravel()
-            default_title = f"Exposure Distribution: {factor} (all observations)"
+            default_title = (
+                f"Exposure Distribution: {format_plot_label(factor)} (all observations)"
+            )
 
         values = values[np.isfinite(values)]
 
@@ -2084,7 +2347,7 @@ class FactorModel:
         )
         fig = _heatmap(
             corr_avg,
-            labels=factor_names,
+            labels=format_plot_labels(factor_names),
             title=title or "Time-Average Exposure Correlation",
             zmin=-1,
             zmax=1,
@@ -2096,7 +2359,7 @@ class FactorModel:
     def predicted_attribution(
         self,
         weights: ArrayLike,
-        annualized_factor: float = 252.0,
+        annualization_factor: float = 252.0,
         compute_asset_breakdowns: bool = True,
     ) -> Attribution:
         r"""Compute ex-ante (predicted) factor volatility and return attribution.
@@ -2106,7 +2369,7 @@ class FactorModel:
         `factor_mu` is available, decomposes expected return into spanned
         and orthogonal components.
 
-        See :func:`~skfolio.factor_model.attribution.predicted_factor_attribution`
+        See :func:`~skfolio.attribution.predicted_factor_attribution`
         for the full mathematical description.
 
         Parameters
@@ -2114,9 +2377,9 @@ class FactorModel:
         weights : array-like of shape (n_assets,)
             Portfolio weights vector.
 
-        annualized_factor : float, default=252.0
+        annualization_factor : float, default=252.0
             Annualization factor applied to variances and expected returns
-            (volatilities are scaled by :math:`\sqrt{\text{annualized\_factor}}`).
+            (volatilities are scaled by :math:`\sqrt{\text{annualization\_factor}}`).
             Use 1.0 to disable annualization.
 
         compute_asset_breakdowns : bool, default=True
@@ -2140,7 +2403,7 @@ class FactorModel:
             factor_families=self.factor_families,
             factor_mu=self.factor_mu,
             idio_mu=self.idio_mu,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             compute_asset_breakdowns=compute_asset_breakdowns,
         )
 
@@ -2148,7 +2411,7 @@ class FactorModel:
         self,
         weights: ArrayLike,
         portfolio_returns: ArrayLike,
-        annualized_factor: float = 252.0,
+        annualization_factor: float = 252.0,
         compute_asset_breakdowns: bool = True,
         compute_uncertainty: bool = True,
     ) -> Attribution:
@@ -2158,7 +2421,7 @@ class FactorModel:
         from individual factors and idiosyncratic sources using actual
         historical data rather than model-predicted covariances.
 
-        See :func:`~skfolio.factor_model.attribution.realized_factor_attribution`
+        See :func:`~skfolio.attribution.realized_factor_attribution`
         for the full mathematical description.
 
         Parameters
@@ -2170,9 +2433,9 @@ class FactorModel:
         portfolio_returns : array-like of shape (n_observations,)
             Portfolio return time series.
 
-        annualized_factor : float, default=252.0
+        annualization_factor : float, default=252.0
             Annualization factor applied to variances and mean returns
-            (volatilities are scaled by :math:`\sqrt{\text{annualized\_factor}}`).
+            (volatilities are scaled by :math:`\sqrt{\text{annualization\_factor}}`).
             Use 1.0 to disable annualization.
 
         compute_asset_breakdowns : bool, default=True
@@ -2212,7 +2475,7 @@ class FactorModel:
             asset_names=self.asset_names,
             factor_names=self.factor_names,
             factor_families=self.factor_families,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             compute_asset_breakdowns=compute_asset_breakdowns,
             exposure_lag=self.exposure_lag,
             regression_weights=regression_weights,
@@ -2225,7 +2488,7 @@ class FactorModel:
         self,
         weights: ArrayLike,
         portfolio_returns: ArrayLike,
-        annualized_factor: float = 252.0,
+        annualization_factor: float = 252.0,
         window_size: int = 60,
         step: int = 21,
         compute_asset_breakdowns: bool = True,
@@ -2234,10 +2497,10 @@ class FactorModel:
     ) -> Attribution:
         r"""Compute rolling realized (ex-post) factor attribution.
 
-        Runs :func:`~skfolio.factor_model.attribution.rolling_realized_factor_attribution`
+        Runs :func:`~skfolio.attribution.rolling_realized_factor_attribution`
         over rolling windows of the factor model's time-varying data.
 
-        See :func:`~skfolio.factor_model.attribution.rolling_realized_factor_attribution`
+        See :func:`~skfolio.attribution.rolling_realized_factor_attribution`
         for the full mathematical description.
 
         Parameters
@@ -2249,9 +2512,9 @@ class FactorModel:
         portfolio_returns : array-like of shape (n_observations,)
             Portfolio return time series.
 
-        annualized_factor : float, default=252.0
+        annualization_factor : float, default=252.0
             Annualization factor applied to variances and mean returns
-            (volatilities are scaled by :math:`\sqrt{\text{annualized\_factor}}`).
+            (volatilities are scaled by :math:`\sqrt{\text{annualization\_factor}}`).
             Use 1.0 to disable annualization.
 
         window_size : int, default=60
@@ -2301,7 +2564,7 @@ class FactorModel:
             asset_names=self.asset_names,
             observations=self.observations,
             factor_families=self.factor_families,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             window_size=window_size,
             step=step,
             compute_asset_breakdowns=compute_asset_breakdowns,
@@ -2314,6 +2577,55 @@ class FactorModel:
         )
 
     # Private helpers
+    @cached_property
+    def _regression_data(self) -> _RegressionData:
+        """Lag-aligned data for cross-sectional regression diagnostics."""
+        self._require(
+            ("exposures", "factor_returns", "idio_returns"), "_regression_data"
+        )
+        (
+            lagged_exposures,
+            factor_returns,
+            idio_returns,
+            regression_weights,
+        ) = self._aligned(
+            ["exposures", "factor_returns", "idio_returns", "regression_weights"]
+        )
+
+        family_basis = self.family_constraint_basis
+        if family_basis is not None:
+            exposure_basis = (
+                family_basis[: -self.exposure_lag]
+                if self.exposure_lag > 0
+                else family_basis
+            )
+            lagged_exposures = exposure_basis.reduce_exposures(lagged_exposures)
+            factor_returns = family_basis.reduce_factor_returns(factor_returns)
+            factor_names = self._reduced_factor_names
+            regression_factor_mask = ~self._reduced_factor_is_currency
+        else:
+            factor_names = self.factor_names
+            regression_factor_mask = ~self._factor_is_currency
+
+        if not np.all(regression_factor_mask):
+            lagged_exposures = lagged_exposures[:, :, regression_factor_mask]
+            factor_returns = factor_returns[:, regression_factor_mask]
+            factor_names = factor_names[regression_factor_mask]
+
+        if len(factor_names) == 0:
+            raise ValueError(
+                "No cross-sectional regression factors are available. Currency factors "
+                "are direct factors and do not have regression diagnostics."
+            )
+
+        return _RegressionData(
+            exposures=lagged_exposures,
+            factor_returns=factor_returns,
+            idio_returns=idio_returns,
+            regression_weights=regression_weights,
+            factor_names=factor_names,
+        )
+
     @cached_property
     def _gram_diagnostics(self) -> _GramDiagnostics:
         r"""Per-observation t-statistics, VIF, and condition number.
@@ -2330,23 +2642,11 @@ class FactorModel:
         self._require(
             ("exposures", "factor_returns", "idio_returns"), "_gram_diagnostics"
         )
-        (
-            lagged_exposures,
-            factor_returns,
-            idio_returns,
-            regression_weights,
-        ) = self._aligned(
-            ["exposures", "factor_returns", "idio_returns", "regression_weights"]
-        )
-
-        family_basis = self.family_constraint_basis
-        if family_basis is not None:
-            if self.exposure_lag > 0:
-                family_basis = self.family_constraint_basis[: -self.exposure_lag]
-            lagged_exposures = family_basis.to_reduced_exposures(lagged_exposures)
-            factor_returns = self.family_constraint_basis.to_reduced_factor_returns(
-                factor_returns
-            )
+        regression_data = self._regression_data
+        lagged_exposures = regression_data.exposures
+        factor_returns = regression_data.factor_returns
+        idio_returns = regression_data.idio_returns
+        regression_weights = regression_data.regression_weights
 
         n_observations, _, n_factors = lagged_exposures.shape
 
@@ -2422,11 +2722,39 @@ class FactorModel:
         return self.factor_names
 
     @property
+    def _factor_is_currency(self) -> BoolArray:
+        """Mask of direct currency factors in the full factor basis."""
+        if self.factor_families is None:
+            return np.zeros(len(self.factor_names), dtype=bool)
+        return self.factor_families == _CURRENCY
+
+    @property
+    def _reduced_factor_families(self) -> StrArray | None:
+        """Factor families aligned with reduced-basis computations."""
+        if self.factor_families is None:
+            return None
+        family_basis = self.family_constraint_basis
+        if family_basis is not None:
+            return family_basis.reduced_factor_names(self.factor_families)
+        return self.factor_families
+
+    @property
+    def _reduced_factor_is_currency(self) -> BoolArray:
+        """Mask of direct currency factors in the reduced factor basis."""
+        factor_families = self._reduced_factor_families
+        if factor_families is None:
+            return np.zeros(len(self._reduced_factor_names), dtype=bool)
+        return factor_families == _CURRENCY
+
+    @property
+    def _reduced_regression_factor_names(self) -> StrArray:
+        """Reduced-basis factor names estimated by cross-sectional regression."""
+        return self._reduced_factor_names[~self._reduced_factor_is_currency]
+
+    @property
     def _n_regressors(self) -> int:
         """Effective number of independent regressors."""
-        if self.family_constraint_basis is not None:
-            return self.family_constraint_basis.n_factors_reduced
-        return len(self.factor_names)
+        return len(self._reduced_regression_factor_names)
 
     def _resolve_cs_weighting(
         self,
@@ -2500,7 +2828,7 @@ class FactorModel:
 
     def _ic(
         self,
-        rank: bool = True,
+        correlation_method: CorrelationMethod = CorrelationMethod.SPEARMAN,
         horizon: int = 1,
         factor_indices: slice | list[int] = slice(None),
         reduced_basis: bool = False,
@@ -2513,9 +2841,10 @@ class FactorModel:
 
         Parameters
         ----------
-        rank : bool, default=True
-            If `True`, compute Spearman (rank) IC. If `False`, compute Pearson IC
-            (weighted by `regression_weights` when available).
+        correlation_method : CorrelationMethod, default=CorrelationMethod.SPEARMAN
+            Correlation method used for the exposure IC. `SPEARMAN` computes
+            Spearman rank IC. `PEARSON` computes Pearson IC, weighted by
+            `regression_weights` when available.
 
         horizon : int, default=1
             Forward window in number of observations.  The cumulative return from
@@ -2536,6 +2865,7 @@ class FactorModel:
             Starting index into `self.observations` for the IC values.
             `ic[i]` corresponds to `observations[obs_offset + i]`.
         """
+        _check_correlation_method(correlation_method)
         self._require(("exposures", "factor_returns", "idio_returns"), "_ic")
 
         if horizon < 1:
@@ -2558,34 +2888,28 @@ class FactorModel:
                 f"with exposure_lag={self.exposure_lag}."
             )
 
-        # Cumulative return from obs t+1 to t+h for each t.
-        # asset_returns[j] = return at obs j + lag, so the slice
-        # starting at base aligns obs t+1 with ret[base + (t - start_t)].
-        base = max(1 - self.exposure_lag, 0)
-        if horizon == 1:
-            cumulative_returns = asset_returns[base : base + n_pairs]
-        else:
-            windows = np.lib.stride_tricks.sliding_window_view(
-                asset_returns[base:], horizon, axis=0
-            )
-            cumulative_returns = windows[:n_pairs].sum(axis=-1)
+        forward_returns = _forward_mean_return(
+            asset_returns, horizon=horizon, lag=max(1 - self.exposure_lag, 0)
+        )[:n_pairs]
 
         exposures = self.exposures
         if reduced_basis and self.family_constraint_basis is not None:
-            exposures = self.family_constraint_basis.to_reduced_exposures(exposures)
+            exposures = self.family_constraint_basis.reduce_exposures(exposures)
         exposure_window = exposures[start_t : start_t + n_pairs, :, factor_indices]
 
-        if rank:
-            ic = cs_rank_correlation(
-                exposure_window, cumulative_returns[:, :, np.newaxis], axis=1
+        if correlation_method is CorrelationMethod.SPEARMAN:
+            ic = cs_spearman_correlation(
+                forward_returns[:, :, np.newaxis],
+                exposure_window,
+                axis=1,
             )
         else:
             regression_weights = self.regression_weights
             if regression_weights is not None:
                 regression_weights = regression_weights[start_t : start_t + n_pairs]
-            ic = cs_weighted_correlation(
+            ic = cs_pearson_correlation(
+                forward_returns,
                 exposure_window,
-                cumulative_returns[:, :, np.newaxis],
                 weights=regression_weights,
                 axis=1,
             )
@@ -2609,7 +2933,7 @@ class FactorModel:
             Number of observations between the two cross-sections.
 
         cs_weighting : CSWeighting, default=CSWeighting.BENCHMARK
-            Cross-sectional weights passed to :func:`cs_weighted_correlation`.
+            Cross-sectional weights passed to :func:`cs_pearson_correlation`.
             Falls back to `CSWeighting.IDENTITY` with a warning when unavailable.
 
         Returns
@@ -2621,7 +2945,7 @@ class FactorModel:
         )
         if weights is not None:
             weights = weights[:-step]
-        return cs_weighted_correlation(
+        return cs_pearson_correlation(
             exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
@@ -2701,22 +3025,27 @@ class FactorModel:
 
     def _resolve_factor_subset(
         self,
-        factors: list[str] | None,
-        families: str | list[str] | None,
+        factor_names_to_keep: list[str] | None,
+        family_names_to_keep: str | list[str] | None,
         reduced_basis: bool = False,
+        regression_only: bool = False,
     ) -> tuple[slice | list[int], StrArray | list[str]]:
         """Resolve a factor subset from explicit names or family labels.
 
         Parameters
         ----------
-        factors : list of str or None
+        factor_names_to_keep : list of str or None
             Explicit factor names to keep.
 
-        families : str, list of str, or None
-            Family labels to keep. Ignored when `factors` is given.
+        family_names_to_keep : str, list of str, or None
+            Family labels to keep. Ignored when `factor_names_to_keep` is given.
 
         reduced_basis : bool, default=False
             Use True for diagnostics computed in the reduced basis.
+
+        regression_only : bool, default=False
+            Restrict available factors to factors estimated by cross-sectional
+            regression, excluding direct currency factors.
 
         Returns
         -------
@@ -2727,40 +3056,28 @@ class FactorModel:
         names : list of str
             Selected factor names in the same order as `indices`.
         """
-        all_names = self._reduced_factor_names if reduced_basis else self.factor_names
-        all_names = list(all_names)
-
-        if factors is None and families is None:
-            return slice(None), all_names
-
-        if factors is not None:
-            return _factor_indices(factors, all_names), factors
-
-        if families is not None:
-            if self.factor_families is None:
-                raise ValueError(
-                    "`families` was specified but `factor_families` is None."
-                )
-            if isinstance(families, str):
-                families = [families]
-            available_families = set(self.factor_families)
-            unknown = set(families) - available_families
-            if unknown:
-                raise ValueError(
-                    f"Unknown family/families: {sorted(unknown)}. "
-                    f"Available families: {sorted(available_families)}."
-                )
-            name_to_family = dict(
-                zip(self.factor_names, self.factor_families, strict=True)
+        factor_names = (
+            self._reduced_factor_names if reduced_basis else self.factor_names
+        )
+        factor_families = (
+            self._reduced_factor_families if reduced_basis else self.factor_families
+        )
+        if regression_only:
+            currency_mask = (
+                self._reduced_factor_is_currency
+                if reduced_basis
+                else self._factor_is_currency
             )
-            indices = [
-                index
-                for index, factor_name in enumerate(all_names)
-                if name_to_family.get(factor_name) in families
-            ]
-            return indices, [all_names[index] for index in indices]
+            factor_names = factor_names[~currency_mask]
+            if factor_families is not None:
+                factor_families = factor_families[~currency_mask]
 
-        return list(range(len(all_names))), all_names
+        return _resolve_factor_subset(
+            factor_names=factor_names,
+            factor_families=factor_families,
+            factor_names_to_keep=factor_names_to_keep,
+            family_names_to_keep=family_names_to_keep,
+        )
 
     def _standardized_idio_returns(self) -> FloatArray:
         r"""Compute :math:`z_{it} = u_{it} / \hat\sigma_{i,t}`."""
@@ -2786,23 +3103,23 @@ class FactorModel:
 class _GramDiagnostics(NamedTuple):
     """Per-observation Gram-matrix diagnostics."""
 
-    t_stats: FloatArray  # (n_observations - exposure_lag, n_factors_reduced)
-    vif: FloatArray  # (n_observations - exposure_lag, n_factors_reduced)
+    t_stats: FloatArray  # (n_observations - exposure_lag, n_reduced_factors)
+    vif: FloatArray  # (n_observations - exposure_lag, n_reduced_factors)
     condition_number: FloatArray  # (n_observations - exposure_lag,)
 
 
-def _factor_indices(factors: list[str], available: list[str]) -> list[int]:
-    """Resolve factor names to column indices, raising on unknown."""
-    missing = set(factors) - set(available)
-    if missing:
-        raise ValueError(
-            f"Unknown factor(s): {missing}. Available: {[str(x) for x in available]}."
-        )
-    return [available.index(f) for f in factors]
+class _RegressionData(NamedTuple):
+    """Lag-aligned data used by cross-sectional regression diagnostics."""
+
+    exposures: FloatArray
+    factor_returns: FloatArray
+    idio_returns: FloatArray
+    regression_weights: FloatArray | None
+    factor_names: StrArray
 
 
 def _multi_line_plot(df: pd.DataFrame, title: str, yaxis_title: str) -> go.Figure:
-    """Create a multi-line time series plot with legend toggling."""
+    """Create a multi-line time series plot with a toggleable legend."""
     colors = px.colors.qualitative.Plotly
     fig = go.Figure()
     for i, col in enumerate(df.columns):
@@ -2811,9 +3128,8 @@ def _multi_line_plot(df: pd.DataFrame, title: str, yaxis_title: str) -> go.Figur
                 x=df.index,
                 y=df[col].values,
                 mode="lines",
-                name=str(col),
+                name=format_plot_label(col),
                 line=dict(color=colors[i % len(colors)], width=1.5),
-                visible="legendonly",
             )
         )
     fig.update_layout(
@@ -2900,7 +3216,7 @@ def _plot_single_ts(
                 x=smoothed.index,
                 y=smoothed.values,
                 mode="lines",
-                name=f"Rolling Mean ({window} obs)",
+                name=f"Rolling Mean ({window} observations)",
                 line=dict(color="rgb(31, 119, 180)", width=2),
             )
         )
@@ -2922,6 +3238,11 @@ def _plot_single_ts(
             line_color="gray",
         )
         if ref_label is not None:
+            ref_yanchor = (
+                "middle"
+                if not show_mean
+                else ("bottom" if ref_value >= mean_val else "top")
+            )
             fig.add_annotation(
                 xref="paper",
                 yref="y",
@@ -2930,8 +3251,8 @@ def _plot_single_ts(
                 text=ref_label,
                 showarrow=False,
                 xanchor="left",
-                yanchor="middle",
-                xshift=10,
+                yanchor=ref_yanchor,
+                xshift=8,
             )
     if show_mean:
         fig.add_hline(
@@ -2939,6 +3260,11 @@ def _plot_single_ts(
             line_width=1,
             line_dash="dot",
             line_color="rgb(255, 127, 14)",
+        )
+        mean_yanchor = (
+            "middle"
+            if ref_value is None
+            else ("bottom" if mean_val >= ref_value else "top")
         )
         fig.add_annotation(
             xref="paper",
@@ -2948,14 +3274,14 @@ def _plot_single_ts(
             text=f"Mean: {mean_val:{mean_fmt}}",
             showarrow=False,
             xanchor="left",
-            yanchor="middle",
-            xshift=10,
+            yanchor=mean_yanchor,
+            xshift=8,
         )
     fig.update_layout(
         title=title,
         xaxis_title="Observation",
         yaxis_title=yaxis_title,
-        margin=dict(r=180),
+        margin=dict(r=120),
     )
     if tick_format is not None:
         fig.update_yaxes(tickformat=tick_format)
@@ -3091,6 +3417,12 @@ def _cs_skewness(z: FloatArray) -> FloatArray:
     if np.any(ok):
         skew[ok] = raw_skew[ok] * np.sqrt(n[ok] * (n[ok] - 1)) / (n[ok] - 2)
     return skew
+
+
+def _check_correlation_method(correlation_method: CorrelationMethod) -> None:
+    """Check that `correlation_method` is a `CorrelationMethod`."""
+    if not isinstance(correlation_method, CorrelationMethod):
+        raise TypeError("correlation_method must be a `CorrelationMethod`.")
 
 
 def _exceedance_agg(threshold: float):

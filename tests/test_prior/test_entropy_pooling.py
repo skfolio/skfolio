@@ -1059,9 +1059,9 @@ def test_synthetic_data_prior(X, solver):
     np.testing.assert_almost_equal(mean[1], 0.003)
 
 
-def test_factor_entropy_pooling(X, y, solver):
+def test_factor_entropy_pooling(X, factors, solver):
     ref = TimeSeriesFactorModel()
-    ref.fit(X, y)
+    ref.fit(X, factors=factors)
 
     model = TimeSeriesFactorModel(
         factor_prior_estimator=EntropyPooling(
@@ -1069,18 +1069,18 @@ def test_factor_entropy_pooling(X, y, solver):
             mean_views=["QUAL == 0.0005"],
         ),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.factor_prior_estimator_.return_distribution_.sample_weight
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
-    np.testing.assert_almost_equal(sm.mean(y["QUAL"], sample_weight=sw), 0.0005)
+    np.testing.assert_almost_equal(sm.mean(factors["QUAL"], sample_weight=sw), 0.0005)
     np.testing.assert_almost_equal(model.return_distribution_.sample_weight, sw)
 
     assert model.return_distribution_.mu.sum() > ref.return_distribution_.mu.sum()
 
 
-def test_factor_synthetic_data_entropy_pooling(X, y, solver):
+def test_factor_synthetic_data_entropy_pooling(X, factors, solver):
     factor_synth = SyntheticData(
         n_samples=10000,
         distribution_estimator=VineCopula(
@@ -1095,7 +1095,7 @@ def test_factor_synthetic_data_entropy_pooling(X, y, solver):
         mean_views=["QUAL == 0.0005"],
     )
     model = TimeSeriesFactorModel(factor_prior_estimator=factor_view)
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.factor_prior_estimator_.return_distribution_.sample_weight
     ret = model.factor_prior_estimator_.return_distribution_.returns

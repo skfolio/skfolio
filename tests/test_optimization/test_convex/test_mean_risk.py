@@ -680,8 +680,11 @@ def test_mean_risk_predict_with_non_investable_nan_assets(
     X_missing_invested = X.copy()
     X_missing_invested.iloc[0, 0] = np.nan
     portfolio = model.predict(X_missing_invested)
-    assert np.isnan(portfolio.returns[0])
-    assert np.isfinite(portfolio.returns[1:]).all()
+    assert np.isfinite(portfolio.returns).all()
+    expected_returns = (
+        np.nan_to_num(X_missing_invested.to_numpy(), nan=0.0) @ model.weights_
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
 
 
 def test_mean_risk_predict_population_with_non_investable_nan_assets(
@@ -1136,6 +1139,13 @@ def test_turnover(X):
     model = MeanRisk(max_turnover=0.02, previous_weights=previous_weights)
     p = model.fit(X).predict(X)
     assert np.all(np.abs(p.weights - previous_weights) <= 0.02)
+
+
+def test_turnover_defaults_previous_weights_to_zero(X):
+    model = MeanRisk(max_turnover=0.1)
+    p = model.fit(X).predict(X)
+    assert np.all(p.previous_weights == 0)
+    assert np.all(np.abs(p.weights) <= 0.1 + 1e-10)
 
 
 def test_mean_risk_factor_model(X, factors):
@@ -2146,6 +2156,122 @@ class TestPartialFit:
         model = MeanRisk()
         with pytest.raises(TypeError, match="partial_fit"):
             model.partial_fit(np.asarray(X))
+
+    def test_raise_on_failure_false(self, X):
+        """partial_fit returns FailedPortfolio when solver failure is not raised."""
+        model = _make_online_mean_risk(min_weights=1.0, raise_on_failure=False)
+
+        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+            model.partial_fit(X)
+
+        assert model.weights_ is None
+        assert model.problem_values_ is None
+        assert model.fallback_ is None
+        assert model.fallback_chain_ is None
+        assert "Solver 'CLARABEL' failed" in model.error_
+
+        ptf = model.predict(X)
+        assert isinstance(ptf, FailedPortfolio)
+        assert ptf.optimization_error == model.error_
+
+    def test_success_after_raise_on_failure_false_clears_error(self, X):
+        """A later successful partial_fit clears failure diagnostics."""
+        model = _make_online_mean_risk(min_weights=1.0, raise_on_failure=False)
+
+        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+            model.partial_fit(X)
+
+        model.set_params(min_weights=0.0)
+        model.partial_fit(X)
+
+        assert model.weights_.shape == (X.shape[1],)
+        assert model.error_ is None
+        assert model.fallback_ is None
+        assert model.fallback_chain_ is None
+
+    def test_fallback_previous_weights(self, X):
+        """partial_fit can fall back to previous weights after solver failure."""
+        previous_weights = np.full(X.shape[1], 1 / X.shape[1])
+        model = _make_online_mean_risk(
+            min_weights=1.0,
+            fallback="previous_weights",
+            previous_weights=previous_weights,
+        )
+
+        model.partial_fit(X)
+
+        np.testing.assert_array_equal(model.weights_, previous_weights)
+        assert model.error_ is None
+        assert model.fallback_ == "previous_weights"
+        assert model.fallback_chain_[-1] == ("previous_weights", "success")
+        assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+
+        ptf = model.predict(X)
+        assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+        np.testing.assert_array_equal(ptf.weights, previous_weights)
+        assert ptf.fallback_chain == model.fallback_chain_
+
+    def test_fallback_previous_weights_expands_non_investable_assets(
+        self, nan_investable_test_data, fixed_return_distribution_prior
+    ):
+        """previous_weights fallback stays aligned with the full universe."""
+
+        class OnlineFixedReturnDistributionPrior(fixed_return_distribution_prior):
+            def partial_fit(self, X, y=None):
+                return self.fit(X, y)
+
+        X, mu, covariance, investable_mask = nan_investable_test_data
+        previous_weights = np.array([0.2, 0.3, 0.4, 0.5])
+        model = MeanRisk(
+            min_weights=1.0,
+            fallback="previous_weights",
+            previous_weights=previous_weights,
+            prior_estimator=OnlineFixedReturnDistributionPrior(
+                mu=mu, covariance=covariance
+            ),
+        )
+
+        model.partial_fit(X)
+
+        expected_weights = previous_weights.copy()
+        expected_weights[~investable_mask] = 0.0
+        assert model.weights_.shape == (X.shape[1],)
+        np.testing.assert_array_equal(model.weights_, expected_weights)
+
+        ptf = model.predict(X)
+        assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
+        np.testing.assert_array_equal(ptf.weights, expected_weights)
+
+    def test_fallback_previous_weights_failure(self, X):
+        """Failed previous-weights fallback follows raise_on_failure."""
+        model = _make_online_mean_risk(
+            min_weights=1.0,
+            fallback="previous_weights",
+            raise_on_failure=False,
+        )
+
+        with pytest.warns(UserWarning, match="previous_weights.*None"):
+            model.partial_fit(X)
+
+        assert model.weights_ is None
+        assert model.problem_values_ is None
+        assert "previous_weights" in model.error_
+        assert "None" in model.error_
+        assert model.fallback_chain_[-1][0] == "previous_weights"
+
+        ptf = model.predict(X)
+        assert isinstance(ptf, FailedPortfolio)
+        assert ptf.optimization_error == model.error_
+        assert ptf.fallback_chain == model.fallback_chain_
+
+    def test_partial_fit_rejects_estimator_fallback_after_first_call(self, X):
+        """partial_fit validates fallback support on every call."""
+        model = _make_online_mean_risk()
+        model.partial_fit(X)
+        model.set_params(fallback=EqualWeighted())
+
+        with pytest.raises(ValueError, match="fallback='previous_weights'"):
+            model.partial_fit(X)
 
 
 class TestFactorConstraints:

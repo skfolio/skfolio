@@ -275,7 +275,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
                     "Provide valid previous weights or remove this fallback."
                 )
-            self.weights_ = self._clean_previous_weights(n_assets=n_assets)
+            investable_mask = getattr(self, "investable_mask_", None)
+            if investable_mask is not None:
+                n_assets = int(np.count_nonzero(investable_mask))
+            weights = self._clean_previous_weights(n_assets=n_assets)
+            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
             self.fallback_ = _PREVIOUS_WEIGHTS
             self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
 
@@ -403,7 +407,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     def fit_predict(self, X):
         """Perform `fit` on `X` and returns the predicted `Portfolio` or
         `Population` of `Portfolio` on `X` based on the fitted `weights`.
-        For factor models, use `fit(X, y)` then `predict(X)` separately.
+        For factor models, use `fit(X, factors=...)` then `predict(X)` separately.
 
         If fitting fails and `raise_on_failure=False`, this returns a
         `FailedPortfolio`.
@@ -520,7 +524,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         n_assets: int,
         fill_value: Any,
         name: str,
-    ) -> float | np.ndarray:
+    ) -> float | FloatArray:
         """Convert input to a cleaned float or 1D ndarray.
 
         When `investable_mask_` has been set (by `_prepare_investable_distribution`),

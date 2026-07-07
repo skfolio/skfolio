@@ -204,16 +204,22 @@ shape as `X`:
 
     active\_mask_{t,i} \in \{\mathrm{True}, \mathrm{False}\}
 
-It indicates whether asset :math:`i` belongs to the universe at observation :math:`t`.
+It indicates whether asset :math:`i` is active in the universe at observation
+:math:`t`.
 
-If `active_mask=True` and `X` is NaN, the asset remains in the universe but its
-return is missing for that observation (e.g. holiday). NaN-aware estimators handle this
-according to their own rule (e.g. skipping the missing pairwise update or freezing the
-current estimate).
+If `active_mask=True` and `X` is NaN, the value is considered missing for that
+observation (e.g. holiday). NaN-aware estimators handle this according to their own rule
+(e.g. skipping the missing pairwise update or freezing the current estimate).
 
-If `active_mask=False`, the asset is outside the universe for that observation. This
-is used for cases such as pre-listing and post-delisting periods. Estimators use this
-information to mark the asset as unavailable when its fitted moments cannot be used.
+If `active_mask=False`, the asset is inactive for that observation (e.g.
+pre-listing or post-delisting periods). Estimators use this information to mark the
+asset as unavailable when its fitted moments cannot be used.
+
+When data is stored in an :class:`~skfolio.containers.AssetPanel`, each field applies
+its `inactive_policy` outside `active_mask`. The default policy stores NaN for
+floating numeric fields and `MISSING=-1` for categorical fields; some generated
+fields can use zero or leave inactive values unchanged when that is the field's
+convention.
 
 Estimation Universe
 -------------------

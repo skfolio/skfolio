@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
@@ -138,16 +136,16 @@ class CSWinsorizer(BaseCSTransformer):
         cs_weights = _validate_cs_weights(X=X, cs_weights=cs_weights)
 
         X_estimation = _mask_non_estimation_values(X=X, cs_weights=cs_weights)
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="All-NaN slice encountered", category=RuntimeWarning
-            )
-            q_lo, q_hi = np.nanpercentile(
-                X_estimation,
+        any_finite = np.isfinite(X_estimation).any(axis=1)
+        q_bounds = np.full((2, X.shape[0], 1), np.nan, dtype=float)
+        if np.any(any_finite):
+            q_bounds[:, any_finite] = np.nanpercentile(
+                X_estimation[any_finite],
                 [self.low * 100, self.high * 100],
                 axis=1,
                 keepdims=True,
             )
+        q_lo, q_hi = q_bounds
 
         # Numpy clip preserves NaNs from X
         np.clip(X, q_lo, q_hi, out=X)

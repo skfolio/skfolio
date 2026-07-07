@@ -16,6 +16,10 @@ from skfolio.uncertainty_set._model import (
     CompactCovarianceUncertaintySet,
     UncertaintySet,
 )
+from skfolio.uncertainty_set._orthogonal import (
+    OrthogonalCovarianceUncertaintySet,
+    OrthogonalMuUncertaintySet,
+)
 
 __all__ = [
     "BaseCovarianceUncertaintySet",
@@ -25,5 +29,7 @@ __all__ = [
     "CompactCovarianceUncertaintySet",
     "EmpiricalCovarianceUncertaintySet",
     "EmpiricalMuUncertaintySet",
+    "OrthogonalCovarianceUncertaintySet",
+    "OrthogonalMuUncertaintySet",
     "UncertaintySet",
 ]

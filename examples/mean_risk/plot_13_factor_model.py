@@ -120,11 +120,11 @@ model_factor_2.weights_
 
 # %%
 # We can also change the :ref:`prior estimator <prior>` of the factors.
-# It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing the
-# factors expected returns and covariance matrix.
+# It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing
+# expected factor returns and the factor covariance matrix.
 #
-# For example, let's estimate the factors expected returns with James-Stein shrinkage
-# and the factors covariance matrix with the Gerber covariance estimator:
+# For example, let's estimate expected factor returns with James-Stein shrinkage
+# and the factor covariance matrix with the Gerber covariance estimator:
 model_factor_3 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,

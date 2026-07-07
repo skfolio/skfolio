@@ -14,6 +14,7 @@ from collections.abc import Callable, Iterator, Mapping
 from enum import Enum
 from functools import wraps
 from inspect import signature
+from numbers import Integral, Real
 from typing import Any, Literal
 
 import numpy as np
@@ -63,17 +64,12 @@ def call_asset_panel_transform(
     """Call an `AssetPanel` transformer with validated fit parameters.
 
     Metadata routing for descriptors and factor exposures uses the existing `fit`
-    bucket. The selected execution method (`fit_transform` or
-    `partial_fit_transform`) is passed explicitly.
+    bucket. The selected execution method (`fit_transform` or `partial_fit_transform`)
+    is passed explicitly.
     """
     fit_params = fit_params if fit_params is not None else {}
     fit_params = _check_method_params(X, params=fit_params)
-    return _call_estimator(
-        estimator,
-        method=method,
-        X=X,
-        extra_params=fit_params,
-    )
+    return _call_estimator(estimator, method=method, X=X, extra_params=fit_params)
 
 
 class AutoEnum(str, Enum):
@@ -183,8 +179,7 @@ def _check_method_params(
     indices: IntArray | slice | None = None,
     axis: int = 0,
 ):
-    """Check and validate the parameters passed to a specific
-    method like `fit`.
+    """Check and validate the parameters passed to a specific method like `fit`.
 
     Parameters
     ----------
@@ -194,20 +189,18 @@ def _check_method_params(
     params : dict
         Dictionary containing the parameters passed to the method.
 
-    indices : ndarray, slice, or None, default=None
-        Indices or slice to be selected if the parameter has the same size
-        as `X`.
+    indices : ndarray, slice,, optional
+        Indices or slice to be selected if the parameter has the same size as `X`.
 
     axis : int, default=0
-        The axis along which `X` will be sub-sampled. `axis=0` will select
-        rows while `axis=1` will select columns.
+        The axis along which `X` will be sub-sampled. `axis=0` will select rows while
+        `axis=1` will select columns.
 
     Returns
     -------
     method_params_validated : dict
         Validated parameters. We ensure that the values support indexing.
     """
-    # TODO don't raise, check scikit-learn
     n_observations = X.shape[0]
     method_params_validated = {}
     for param_key, param_value in params.items():
@@ -237,8 +230,8 @@ def safe_indexing(
         Data from which to sample rows.
 
     indices : array-like, slice, or None
-        Indices, slice, or None. When ``None``, the entire data is returned.
-        When a ``slice``, standard Python slicing is used (zero-copy for
+        Indices, slice, or None. When `None`, the entire data is returned.
+        When a `slice`, standard Python slicing is used (zero-copy for
         NumPy arrays and :class:`~skfolio.containers.AssetPanel`).
 
     axis : int, default=0
@@ -367,6 +360,96 @@ def args_names(func: object) -> list[str]:
     return [
         v for v in func.__code__.co_varnames[: func.__code__.co_argcount] if v != "self"
     ]
+
+
+def _is_real_number(value: object) -> bool:
+    """Return True for real-valued numbers, excluding booleans.
+
+    Accepts Python and NumPy real numeric types, such as `int`, `float`, `np.integer`
+    and `np.floating`. Python and NumPy booleans are excluded.
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is a real-valued number and not a boolean; False otherwise.
+    """
+    return isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
+
+
+def _is_integer_number(value: object) -> bool:
+    """Return True for integer-valued numbers, excluding booleans.
+
+    Accepts Python and NumPy integer scalar types, such as `int` and `np.integer`.
+    Python and NumPy booleans are excluded.
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is an integer-valued number and not a boolean; False otherwise.
+    """
+    return isinstance(value, Integral) and not isinstance(value, (bool, np.bool_))
+
+
+def _is_bool(value: object) -> bool:
+    """Return True for boolean scalars (Python or NumPy).
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is `bool` or `np.bool_`; False otherwise.
+    """
+    return isinstance(value, (bool, np.bool_))
+
+
+def _validate_bool(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a boolean."""
+    if not _is_bool(value):
+        raise ValueError(f"{name} must be a boolean, got {value!r}")
+
+
+def _validate_positive_real(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a finite positive real number."""
+    if not _is_real_number(value) or not np.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be a positive number, got {value}")
+
+
+def _validate_non_negative_real(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a finite non-negative real number."""
+    if not _is_real_number(value) or not np.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be a non-negative number, got {value}")
+
+
+def _validate_positive_integer(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a positive integer (>= 1)."""
+    if not _is_integer_number(value) or value < 1:
+        raise ValueError(f"{name} must be a positive integer (>= 1), got {value}")
+
+
+def _validate_non_negative_integer(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a non-negative integer (>= 0)."""
+    if not _is_integer_number(value) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value}")
+
+
+def _validate_unit_interval(value: object, name: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a finite real number in [0, 1]."""
+    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError(f"{name} must be a finite number between 0 and 1, got {value}")
 
 
 def check_estimator(
@@ -693,7 +776,7 @@ def fit_single_estimator(
     fit_params : dict
         Parameters that will be passed to the estimator method.
 
-    indices : ndarray, slice, or None, default=None
+    indices : ndarray, slice, optional
         Rows or columns to select from X, y, and fit_params.
         The default (`None`) is to select the entire data.
 
@@ -702,7 +785,7 @@ def fit_single_estimator(
         rows while `axis=1` will select columns.
 
     method : str, default="fit"
-        Estimator method to call (e.g. ``"fit"`` or ``"partial_fit"``).
+        Estimator method to call (e.g. `"fit"` or `"partial_fit"`).
 
     Returns
     -------

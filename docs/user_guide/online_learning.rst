@@ -173,6 +173,18 @@ This is useful when a portfolio estimator embeds incremental moment estimators s
 :class:`~skfolio.moments.EWMu` and
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
 
+During online portfolio evaluation, each rebalance is solved after the estimator has
+incorporated the observations available at that date. If the optimization problem cannot
+be solved and `raise_on_failure=False`, `online_predict` records that rebalance as a
+:class:`~skfolio.portfolio.FailedPortfolio` and continues with the next window. When the
+estimator uses previous weights, the last valid allocation remains the reference for
+later rebalances.
+
+To hold the last allocation instead of producing a failed rebalance, configure
+`fallback="previous_weights"`. Other fallback estimators are not available with
+`partial_fit`, because they would not have learned from the same sequence of past
+observations.
+
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
 for an end-to-end online evaluation of

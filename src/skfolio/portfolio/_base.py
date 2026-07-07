@@ -52,7 +52,7 @@ import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio import measures as mt
-from skfolio._constants import _RISK_FREE_RATE
+from skfolio._constants import _ANNUALIZATION_FACTOR_DEFAULT, _RISK_FREE_RATE
 from skfolio.measures import (
     ExtraRiskMeasure,
     PerfMeasure,
@@ -100,7 +100,7 @@ class BasePortfolio:
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=252.0
+    annualization_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -412,7 +412,7 @@ class BasePortfolio:
         "_loaded",
         # custom getter and setter
         "_fitness_measures",
-        "_annualized_factor",
+        "_annualization_factor",
         "_sample_weight",
         # custom getter (read-only and cached)
         "_fitness",
@@ -492,7 +492,7 @@ class BasePortfolio:
         observations: FloatArray | list,
         name: str | None = None,
         tag: str | None = None,
-        annualized_factor: float = 252.0,
+        annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         risk_free_rate: float = 0.0,
         compounded: bool = False,
@@ -506,9 +506,14 @@ class BasePortfolio:
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        **kwargs,
     ):
         self._loaded = False
-        self._annualized_factor = annualized_factor
+        self._annualization_factor = _resolve_annualization_factor(
+            annualization_factor,
+            kwargs,
+            owner_name=type(self).__name__,
+        )
         self._sample_weight = sample_weight
         self.returns = np.asarray(returns)
         self.observations = np.asarray(observations)
@@ -656,14 +661,27 @@ class BasePortfolio:
         delattr(self, "_fitness")
 
     @property
-    def annualized_factor(self) -> float:
-        """Portfolio annualized factor."""
-        return self._annualized_factor
+    def annualization_factor(self) -> float:
+        """Portfolio annualization factor."""
+        return self._annualization_factor
 
+    @annualization_factor.setter
+    def annualization_factor(self, value: float) -> None:
+        self._annualization_factor = value
+        self.clear()
+
+    # TODO remove depreciated annualized_factor in v2.0
+    @property
+    def annualized_factor(self) -> float:
+        """Deprecated alias for `annualization_factor`."""
+        _warn_deprecated_annualized_factor(stacklevel=3)
+        return self.annualization_factor
+
+    # TODO remove depreciated annualized_factor in v2.0
     @annualized_factor.setter
     def annualized_factor(self, value: float) -> None:
-        self._annualized_factor = value
-        self.clear()
+        _warn_deprecated_annualized_factor(stacklevel=3)
+        self.annualization_factor = value
 
     @property
     def sample_weight(self) -> float:
@@ -797,12 +815,12 @@ class BasePortfolio:
                     RiskMeasure.ANNUALIZED_VARIANCE,
                     RiskMeasure.ANNUALIZED_SEMI_VARIANCE,
                 ]:
-                    value *= self.annualized_factor
+                    value *= self.annualization_factor
                 elif measure in [
                     RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
                     RiskMeasure.ANNUALIZED_SEMI_DEVIATION,
                 ]:
-                    value *= np.sqrt(self.annualized_factor)
+                    value *= np.sqrt(self.annualization_factor)
             except Exception as e:
                 warnings.warn(
                     f"Unable to calculate the portfolio '{measure.value}' with"
@@ -925,14 +943,14 @@ class BasePortfolio:
                 RiskMeasure.ANNUALIZED_VARIANCE,
                 RiskMeasure.ANNUALIZED_SEMI_VARIANCE,
             ]:
-                rolling *= self.annualized_factor
+                rolling *= self.annualization_factor
             elif measure in [
                 RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
                 RiskMeasure.ANNUALIZED_SEMI_DEVIATION,
                 RatioMeasure.ANNUALIZED_SHARPE_RATIO,
                 RatioMeasure.ANNUALIZED_SORTINO_RATIO,
             ]:
-                rolling *= np.sqrt(self.annualized_factor)
+                rolling *= np.sqrt(self.annualization_factor)
         return rolling
 
     def summary(self, formatted: bool = True) -> pd.Series:
@@ -1260,3 +1278,38 @@ class BasePortfolio:
             else:
                 args[arg] = getattr(self, f"{measure.value}_{arg}")
         return func, args
+
+
+# TODO remove depreciated annualized_factor in v2.0
+def _warn_deprecated_annualized_factor(stacklevel: int = 2) -> None:
+    warnings.warn(
+        "`annualized_factor` is deprecated and will be removed in version 1.0. "
+        "Use `annualization_factor` instead.",
+        FutureWarning,
+        stacklevel=stacklevel,
+    )
+
+
+# TODO remove depreciated annualized_factor in v2.0
+def _resolve_annualization_factor(
+    annualization_factor: float | None,
+    kwargs: dict,
+    *,
+    owner_name: str,
+) -> float:
+    annualized_factor = kwargs.pop("annualized_factor", None)
+    if len(kwargs) != 0:
+        key = next(iter(kwargs))
+        raise TypeError(
+            f"{owner_name}.__init__() got an unexpected keyword argument '{key}'"
+        )
+    if annualization_factor is not None and annualized_factor is not None:
+        raise ValueError(
+            "`annualized_factor` is deprecated; pass only `annualization_factor`."
+        )
+    if annualized_factor is not None:
+        _warn_deprecated_annualized_factor(stacklevel=5)
+        return annualized_factor
+    if annualization_factor is None:
+        return _ANNUALIZATION_FACTOR_DEFAULT
+    return annualization_factor

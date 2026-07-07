@@ -119,7 +119,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    n_jobs : int or None, default=None
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -506,7 +506,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
         portfolio estimators.
 
-    n_jobs : int or None, default=None
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -733,7 +733,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    random_state : int, RandomState instance or None, default=None
+    random_state : int, RandomState instance, optional
         Pseudo random number generator state used for random uniform sampling
         from lists of possible values instead of scipy.stats distributions.
         Pass an int for reproducible output across multiple function calls.
@@ -753,7 +753,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
         portfolio estimators.
 
-    n_jobs : int or None, default=None
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0

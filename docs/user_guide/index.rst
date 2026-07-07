@@ -47,6 +47,7 @@ while reducing the risk of data leakage and overfitting.
     Expected Returns <expected_returns>
     Variance <variance>
     Covariance <covariance>
+    Factor Models <factor_models>
     Distance <distance>
     Clustering <cluster>
     Uncertainty Set <uncertainty_set>

@@ -59,7 +59,7 @@ _SAVE_VERSION = 1
 class AssetPanel(_BaseAssetPanel):
     """Container for aligned cross-sectional asset data.
 
-    `AssetPanel` stores asset-level fields (e.g. returns, volums, industry
+    `AssetPanel` stores asset-level fields (e.g. returns, volumes, industry
     classification, factor exposure), over shared observation and asset axes.
     Every field uses `observations` as the first axis and `assets` as the second
     axis. These two axes always have shape (n_observations, n_assets).
@@ -103,9 +103,9 @@ class AssetPanel(_BaseAssetPanel):
         missing observation (e.g. holiday, missing quote). If `None`, all pairs are
         active.
 
-    estimation_mask :boolean ndarray of shape (n_observations, n_assets), optional
+    estimation_mask : boolean ndarray of shape (n_observations, n_assets), optional
         Boolean mask indicating which active `(observation, asset)` pairs should be used
-        for estimator-specific statistics by `skfolio` estimators that suport it (e.g.
+        for estimator-specific statistics by `skfolio` estimators that support it (e.g.
         :class:`~skfolio.preprocessing.CSStandardScaler`,
         :class:`~skfolio.moments.RegimeAdjustedEWCovariance`
         If `None`, all active pairs are eligible for estimation. Values are always
@@ -142,14 +142,14 @@ class AssetPanel(_BaseAssetPanel):
     Compared with DataFrames, this avoids repeated `groupby`, `pivot` and
     index-alignment work while keeping the arrays ready for vectorized cross-sectional
     and time-series operations. Compared with xarray, it keeps a smaller API optimized
-    for quant worklows.
+    for quant workflows.
 
     Performance benefits come from the same layout:
 
     - observation slices return `AssetPanelView` objects, so walk-forward folds can
       reuse field arrays
     - native `Field3D` avoid restacking large lists of 2D arrays
-    - integer-coded categoricals and dense boolean masks keep memory and convertion
+    - integer-coded categoricals and dense boolean masks keep memory and conversion
       overhead low
     - with `Parallel(..., prefer="threads")`, workers can read the same big panel in
       memory instead of receiving separate process copies. This is useful for
@@ -192,11 +192,12 @@ class AssetPanel(_BaseAssetPanel):
     ...     levels=["energy", "bank", "technology"],
     ... )
     AssetPanel(n_observations=252, n_assets=4, n_fields=4)
+    >>> factor_labels = ["size", "momentum", "value"]
     >>> panel.add_3d_field(
     ...     name="factor_exposure",
     ...     values=np.random.randn(n_observations, n_assets, len(factor_labels)),
     ...     third_axis_name="factor",
-    ...     third_axis_labels=["size", "momentum", "value"],
+    ...     third_axis_labels=factor_labels,
     ...     third_axis_groups=["style", "style", "style"],
     ... )
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
@@ -245,7 +246,7 @@ class AssetPanel(_BaseAssetPanel):
     >>> summary = panel.describe(by="industry")
     >>> report = panel.info()
 
-     Clean selected fields:
+    Clean selected fields:
 
     >>> panel.ffill("returns", inplace=False)
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
@@ -259,10 +260,10 @@ class AssetPanel(_BaseAssetPanel):
     >>> panel.rename({"market_cap": "capitalization"})
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
     >>> panel.drop(assets=["AMZN"])
-
-     Concatenate, copy, save and load panels:
-
     AssetPanel(n_observations=252, n_assets=3, n_fields=5)
+
+    Concatenate, copy, save and load panels:
+
     >>> concat([panel[:126], panel[126:]])
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
     >>> panel.copy(deep=True)
@@ -274,8 +275,8 @@ class AssetPanel(_BaseAssetPanel):
     fields: dict[str, BaseField]
     observations: AnyArray
     asset_names: StrArray | list[str]
-    active_mask: BoolArray | None = None
-    estimation_mask: BoolArray | None = None
+    active_mask: BoolArray = None
+    estimation_mask: BoolArray = None
 
     _validate_on_init: bool = True
 
@@ -304,7 +305,6 @@ class AssetPanel(_BaseAssetPanel):
             self.estimation_mask = np.asarray(self.estimation_mask)
 
         # validate observations and assets
-        """Validate axis labels."""
         if self.observations.ndim != 1:
             raise ValueError("observations must be a 1D array.")
         if self.asset_names.ndim != 1:

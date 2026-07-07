@@ -3,8 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import pytest
 
-from skfolio.utils.figure import kde_trace, plot_kde_distributions
+from skfolio.utils.figure import format_plot_label, kde_trace, plot_kde_distributions
 
 
 def generate_sample_data():
@@ -15,6 +16,20 @@ def generate_sample_data():
     weights = np.ones(10)
     weights[:5] = 2  # heavier weight for first half
     return data, weights
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("non_linear_size", "Non Linear Size"),
+        ("beta", "Beta"),
+        ("Software & Services", "Software & Services"),
+        ("Other", "Other"),
+        ("Idiosyncratic", "Idiosyncratic"),
+    ],
+)
+def test_format_plot_label(raw, expected):
+    assert format_plot_label(raw) == expected
 
 
 def test_kde_trace_unweighted():

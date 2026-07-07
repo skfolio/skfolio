@@ -88,8 +88,8 @@ class TimeSeriesFactorModel(BasePrior):
 
     factor_prior_estimator : BasePrior, optional
         Estimator of the factor return distribution. It is used to estimate
-        the :class:`~skfolio.prior.ReturnDistribution` containing the factor
-        expected returns and covariance matrix.
+        the :class:`~skfolio.prior.ReturnDistribution` containing expected factor
+        returns and the factor covariance matrix.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
     factor_families : array-like of shape (n_factors,), optional

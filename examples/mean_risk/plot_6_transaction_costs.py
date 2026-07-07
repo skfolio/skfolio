@@ -20,7 +20,7 @@ optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
-with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of
+with :math:`\mu` the vector of expected asset returns and :math:`w` the vector of
 assets weights.
 
 the `transaction_costs` parameter can be a float, a dictionary or an array-like of

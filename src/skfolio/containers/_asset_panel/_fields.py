@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, StrArray
-from skfolio.utils.tools import AutoEnum
+from skfolio.utils.tools import AutoEnum, _is_integer_number
 
 __all__ = [
     "MISSING_CATEGORY_CODE",
@@ -402,10 +402,7 @@ def _all_string_like(values: AnyArray) -> bool:
 
 def _all_integer_like(values: AnyArray) -> bool:
     """Return True when all values are integer-like and not booleans."""
-    return all(
-        isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.bool_))
-        for value in values
-    )
+    return all(_is_integer_number(value) for value in values)
 
 
 def _is_string_like(value: Any) -> bool:

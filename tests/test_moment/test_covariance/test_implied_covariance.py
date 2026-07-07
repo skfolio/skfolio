@@ -161,6 +161,25 @@ def test_implied_covariance_default(X, implied_vol):
     )
 
 
+def test_implied_covariance_deprecated_annualized_factor():
+    with pytest.warns(FutureWarning, match="annualized_factor"):
+        model = ImpliedCovariance(annualized_factor=12)
+
+    assert model.annualization_factor == 12
+    assert model.annualized_factor is None
+
+    with pytest.warns(FutureWarning, match="annualized_factor"):
+        model.set_params(annualized_factor=52)
+
+    assert model.annualization_factor == 52
+    assert model.annualized_factor is None
+
+
+def test_implied_covariance_annualization_factor_conflict():
+    with pytest.raises(ValueError, match="annualized_factor"):
+        ImpliedCovariance(annualization_factor=252, annualized_factor=252)
+
+
 def test_implied_covariance_no_intercept(X, implied_vol):
     model = ImpliedCovariance(
         linear_regressor=skl.LinearRegression(fit_intercept=False)

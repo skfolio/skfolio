@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
@@ -167,12 +165,15 @@ class CSTanhShrinker(BaseCSTransformer):
 
         X_estimation = _mask_non_estimation_values(X=X, cs_weights=cs_weights)
         has_estimation_asset = np.isfinite(X_estimation).any(axis=1)
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore", message="All-NaN slice encountered", category=RuntimeWarning
+        median = np.full((X.shape[0], 1), np.nan, dtype=np.float64)
+        mad = np.full_like(median, np.nan)
+        if np.any(has_estimation_asset):
+            X_valid = X_estimation[has_estimation_asset]
+            median_valid = np.nanmedian(X_valid, axis=1, keepdims=True)
+            median[has_estimation_asset] = median_valid
+            mad[has_estimation_asset] = np.nanmedian(
+                np.abs(X_valid - median_valid), axis=1, keepdims=True
             )
-            median = np.nanmedian(X_estimation, axis=1, keepdims=True)
-            mad = np.nanmedian(np.abs(X_estimation - median), axis=1, keepdims=True)
 
         scale = _MAD_CONSISTENCY * mad
         half_width = scale * self.knee
