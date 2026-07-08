@@ -12,9 +12,11 @@ from skfolio.datasets._base import (
     load_sp500_implied_vol_dataset,
     load_sp500_index,
 )
+from skfolio.datasets._fxmacrodata import load_fxmacrodata_release_calendar
 
 __all__ = [
     "load_factors_dataset",
+    "load_fxmacrodata_release_calendar",
     "load_ftse100_dataset",
     "load_nasdaq_dataset",
     "load_sp500_dataset",
