@@ -15,6 +15,8 @@ from typing import ClassVar
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 import skfolio.typing as skt
 from skfolio._constants import _ParamKey
@@ -232,6 +234,14 @@ class Portfolio(BasePortfolio):
         fallback that was attempted, ending with the first `"success"` or the
         last error if all fail. This is set by the optimization estimator and
         propagated to the resulting portfolio.
+
+    asset_groups : dict[str, list[str]], optional
+        A dictionary mapping each asset name to a list of group levels, ordered from
+        the top level to the bottom level (for example
+        ``{"AAPL": ["Equity", "US"]}``). It is used by
+        :meth:`plot_composition_treemap` to nest assets under their groups. It can be
+        forwarded from an optimization estimator through its ``portfolio_params``.
+        The default (`None`) means no group hierarchy is attached to the Portfolio.
 
     Attributes
     ----------
@@ -494,6 +504,7 @@ class Portfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         fallback_chain: list[tuple[str, str]] | None = None,
+        asset_groups: dict[str, list[str]] | None = None,
     ):
         # extract assets names from X
         assets = None
@@ -610,6 +621,7 @@ class Portfolio(BasePortfolio):
             drawdown_at_risk_beta=drawdown_at_risk_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            asset_groups=asset_groups,
         )
         self._loaded = False
         # We save the original array-like object and not the numpy copy for improved
@@ -971,6 +983,83 @@ class Portfolio(BasePortfolio):
             return self.weights[np.where(self.assets == asset)[0][0]]
         except IndexError:
             raise IndexError("{asset} is not a valid asset name.") from None
+
+    def plot_composition_treemap(
+        self,
+        groups: dict[str, list[str]] | None = None,
+        level_names: list[str] | None = None,
+        title: str = "Portfolio Composition",
+    ) -> go.Figure:
+        """Plot the Portfolio composition as a treemap using the asset groups
+        hierarchy.
+
+        Unlike :meth:`plot_composition`, which gives a flat bar representation, the
+        treemap nests assets under their group levels, making the group structure of
+        the portfolio easy to read.
+
+        Parameters
+        ----------
+        groups : dict[str, list[str]], optional
+            A dictionary mapping each asset name to a list of group levels, ordered
+            from the top level to the bottom level. If not provided, the
+            ``asset_groups`` attribute of the Portfolio is used. If neither is
+            available, the treemap has a single level with all assets directly under
+            the root.
+
+        level_names : list[str], optional
+            The names of the group levels. If not provided, they are named
+            ``Level 1``, ``Level 2``, etc.
+
+        title : str, default="Portfolio Composition"
+            The title of the plot.
+
+        Returns
+        -------
+        plot : Figure
+            Returns the treemap plot Figure object.
+        """
+        if groups is None:
+            groups = self.asset_groups
+
+        df = self.composition
+
+        if groups:
+            if set(groups.keys()) != set(self.assets):
+                raise ValueError(
+                    "The assets in the portfolio and the groups dictionary must be "
+                    "the same."
+                )
+            groups_df = pd.DataFrame(groups).T
+            if level_names is not None:
+                if len(level_names) != len(groups_df.columns):
+                    raise ValueError(
+                        "The number of level names must match the number of levels "
+                        "in the groups."
+                    )
+                groups_df.columns = level_names
+            else:
+                groups_df.columns = [
+                    f"Level {i + 1}" for i in range(len(groups_df.columns))
+                ]
+            composition_with_groups = df.join(groups_df).reset_index()
+            group_names = list(groups_df.columns)
+        else:
+            composition_with_groups = df.reset_index()
+            group_names = []
+
+        value_name = df.columns[0]
+        path = [px.Constant("all")]
+        path.extend(group_names)
+        path.append("asset")
+
+        fig = px.treemap(
+            composition_with_groups,
+            path=path,
+            values=value_name,
+            title=title,
+        )
+        fig.update_traces(textinfo="label+value", textfont_size=14)
+        return fig
 
 
 def _get_risk(
