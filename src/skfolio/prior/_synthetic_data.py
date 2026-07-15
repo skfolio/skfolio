@@ -26,7 +26,7 @@ class SyntheticData(BasePrior):
     The Synthetic Data model estimates a :class:`~skfolio.prior.ReturnDistribution` by
     fitting a `distribution_estimator` and sampling new returns data from it.
 
-    The default ``distribution_estimator`` is a Regular Vine Copula model. Other common
+    The default `distribution_estimator` is a Regular Vine Copula model. Other common
     choices are Generative Adversarial Networks (GANs) or Variational Autoencoders
     (VAEs).
 
@@ -159,7 +159,7 @@ class SyntheticData(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

@@ -298,7 +298,7 @@ class EntropyPooling(BasePrior):
           documentation for a full list and descriptions:
           https://docs.scipy.org/doc/scipy/reference/optimize.minimize-tnc.html
 
-        - When using a **CVXPY** solver (e.g. ``"CLARABEL"``), supply any
+        - When using a **CVXPY** solver (e.g. `"CLARABEL"`), supply any
           solver-specific parameters here. Refer to the CVXPY solver guide for
           details: https://www.cvxpy.org/tutorial/solvers
 
@@ -484,7 +484,7 @@ class EntropyPooling(BasePrior):
         **fit_params : dict
            Parameters to pass to the underlying estimators.
            Only available if `enable_metadata_routing=True`, which can be
-           set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+           set by using `sklearn.set_config(enable_metadata_routing=True)`.
            See :ref:`Metadata Routing User Guide <metadata_routing>` for
            more details.
 

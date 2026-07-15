@@ -5,29 +5,29 @@ within CharacteristicsFactorModel, covering:
 
 Test 14a -- Spanned alpha recovery
     DGP: single factor with known betas.  Alpha is a linear function of
-    the betas (i.e. purely spanned).  With ``spanned_alpha_shrinkage=0``
+    the betas (i.e. purely spanned).  With `spanned_alpha_shrinkage=0`
     the factor-implied mu must match the alpha-implied factor mu, and the
     orthogonal component must be zero.
 
 Test 14b -- Orthogonal alpha recovery
     DGP: single factor.  Alpha has a component orthogonal to the factor
-    exposures.  With ``orthogonal_alpha_confidence=1`` the full orthogonal
-    alpha must be present in the final mu.  With ``confidence=0`` only the
+    exposures.  With `orthogonal_alpha_confidence=1` the full orthogonal
+    alpha must be present in the final mu.  With `confidence=0` only the
     spanned part survives.
 
 Test 14c -- Spanned alpha shrinkage
-    Same DGP as 14a.  Varying ``spanned_alpha_shrinkage`` from 0 to 1
+    Same DGP as 14a.  Varying `spanned_alpha_shrinkage` from 0 to 1
     must linearly interpolate between the alpha-implied and factor-prior
     factor mu.
 
 Test 14d -- EWSharpeOptimalAlpha integration
     DGP: single factor with a predictive signal (the true beta corrupted
-    by noise).  Using ``EWSharpeOptimalAlpha`` as alpha estimator, the
+    by noise).  Using `EWSharpeOptimalAlpha` as alpha estimator, the
     final mu must capture some of the cross-sectional return structure.
 
 Test 14e -- No alpha estimator (default)
-    When ``alpha_estimator=None`` the asset mu must equal the
-    factor-prior-implied spanned alpha (``B @ factor_prior_mu``).
+    When `alpha_estimator=None` the asset mu must equal the
+    factor-prior-implied spanned alpha (`B @ factor_prior_mu`).
 """
 
 from __future__ import annotations
@@ -51,8 +51,8 @@ class TestSpannedAlphaRecovery:
 
     Alpha vector: :math:`\alpha_i = c \cdot \beta_i` for some constant c.
     This alpha lies entirely in the column space of the factor exposures,
-    so ``_decompose_alpha`` must produce zero orthogonal component and the
-    factor mu from alpha must equal ``c``.
+    so `_decompose_alpha` must produce zero orthogonal component and the
+    factor mu from alpha must equal `c`.
     """
 
     N_OBS = 500
@@ -236,7 +236,7 @@ class TestOrthogonalAlpha:
 
 
 class TestSpannedAlphaShrinkage:
-    r"""Verify linear interpolation via ``spanned_alpha_shrinkage``.
+    r"""Verify linear interpolation via `spanned_alpha_shrinkage`.
 
     With shrinkage :math:`\lambda`, the factor mu is:
 
@@ -328,10 +328,10 @@ class TestSpannedAlphaShrinkage:
 
 
 class TestEWSharpeOptimalAlphaIntegration:
-    r"""End-to-end test with a real ``EWSharpeOptimalAlpha`` estimator.
+    r"""End-to-end test with a real `EWSharpeOptimalAlpha` estimator.
 
     DGP: single factor with known betas.  A noisy copy of the true beta
-    is provided as a predictive signal.  The ``EWSharpeOptimalAlpha``
+    is provided as a predictive signal.  The `EWSharpeOptimalAlpha`
     estimator should learn that this signal predicts idiosyncratic returns
     (which in this DGP are pure noise), producing a non-zero alpha that
     captures cross-sectional return structure.

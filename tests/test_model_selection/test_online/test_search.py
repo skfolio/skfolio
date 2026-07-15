@@ -299,7 +299,7 @@ class TestOnlineGridSearch:
         assert hasattr(search, "best_params_")
 
     def test_callable_refit_receives_full_cv_results(self, X):
-        """Callable refit receives the full ``cv_results_`` dictionary."""
+        """Callable refit receives the full `cv_results_` dictionary."""
         seen = {}
 
         def refit(results):
@@ -416,7 +416,7 @@ class TestOnlineGridSearch:
 
     @pytest.mark.filterwarnings("ignore:Estimator fit failed:UserWarning")
     def test_return_predictions_aligns_failed_candidates(self, X):
-        """Failed candidates keep a ``None`` placeholder in predictions."""
+        """Failed candidates keep a `None` placeholder in predictions."""
         from skfolio.portfolio import MultiPeriodPortfolio
 
         search = OnlineGridSearch(

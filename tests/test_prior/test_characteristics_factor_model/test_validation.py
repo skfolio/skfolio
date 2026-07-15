@@ -404,7 +404,7 @@ class TestNeutralizeExposureValidation:
         return CSLinearRegression(fit_intercept=False)
 
     def test_family_key_neutralizes_all_members(self):
-        """Key ``'style'`` must neutralize both size and momentum."""
+        """Key `'style'` must neutralize both size and momentum."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -424,7 +424,7 @@ class TestNeutralizeExposureValidation:
             assert changed, f"{name} exposure should have been modified"
 
     def test_single_factor_key_still_works(self):
-        """Key ``'momentum'`` must neutralize only momentum."""
+        """Key `'momentum'` must neutralize only momentum."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -469,7 +469,7 @@ class TestNeutralizeExposureValidation:
         assert np.all(np.isfinite(exp[:, :, 1][valid_size]))
 
     def test_overlap_self_neutralization_raises(self):
-        """``{'momentum': ['momentum']}`` is direct self-neutralization."""
+        """`{'momentum': ['momentum']}` is direct self-neutralization."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -485,7 +485,7 @@ class TestNeutralizeExposureValidation:
             )
 
     def test_overlap_family_self_neutralization_raises(self):
-        """``{'style': ['style']}`` is family-level self-neutralization."""
+        """`{'style': ['style']}` is family-level self-neutralization."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -501,7 +501,7 @@ class TestNeutralizeExposureValidation:
             )
 
     def test_overlap_family_vs_member_raises(self):
-        """``{'style': ['momentum']}`` overlaps because momentum is in style."""
+        """`{'style': ['momentum']}` overlaps because momentum is in style."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -517,7 +517,7 @@ class TestNeutralizeExposureValidation:
             )
 
     def test_overlap_mixed_family_and_factor_raises(self):
-        """``{'style': ['style', 'industry']}`` overlaps on style members."""
+        """`{'style': ['style', 'industry']}` overlaps on style members."""
         rng = np.random.default_rng(42)
         exp = self._make_exposures(rng, self.N_OBS, self.N_ASSETS, 5)
         wt = self._make_weights(self.N_OBS, self.N_ASSETS)
@@ -563,7 +563,7 @@ class TestNeutralizeExposureValidation:
             )
 
     def test_family_key_orthogonality(self):
-        """After ``{'style': ['industry']}``, the correlation between each
+        """After `{'style': ['industry']}`, the correlation between each
         style and industry exposure must be substantially reduced."""
         rng = np.random.default_rng(42)
         n_obs, n_assets = 100, 50

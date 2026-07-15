@@ -19,8 +19,8 @@ class BaseDistance(skb.BaseEstimator, ABC):
     Notes
     -----
     All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
+    at the class level in their `__init__` as explicit keyword
+    arguments (no `*args` or `**kwargs`).
 
     Attributes
     ----------

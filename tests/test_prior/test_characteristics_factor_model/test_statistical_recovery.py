@@ -63,16 +63,16 @@ Test 10 -- Factor neutralization
 
 Test 10b -- Neutralization with basket-neutral constraints
     DGP: market + 3 industry dummies + 1 style factor with industry-
-    correlated characteristic.  With both ``neutralize_against`` and
-    ``constrained_families``, verifies that output exposures in the
+    correlated characteristic.  With both `neutralize_against` and
+    `constrained_families`, verifies that output exposures in the
     original basis reflect the neutralization (style orthogonal to each
     industry under benchmark weights), and that both basis output modes
     produce identical asset covariance.
 
 Test 10c -- Demeaning vs neutralization equivalence
     Same DGP as Test 10b.  Compares three approaches: (A) within-industry
-    demeaning via ``transform_by_group``, (B) explicit neutralization via
-    ``neutralize_against``, (C) both combined.  All three satisfy
+    demeaning via `transform_by_group`, (B) explicit neutralization via
+    `neutralize_against`, (C) both combined.  All three satisfy
     D^T W z = 0.  Models A and C produce identical style exposures
     (neutralization is a no-op after demeaning).  Models A and B differ in
     within-group spread (demeaning normalizes per-group std).
@@ -109,12 +109,12 @@ Test 16 -- Currency factor
     Verifies the currency exposure pipeline end-to-end.
 
 Test 17 -- Neutralize-against family key and disjointness validation
-    Integration test through ``CharacteristicsFactorModel`` with
-    ``neutralize_against={"style": ["industry"]}``: both style exposures
+    Integration test through `CharacteristicsFactorModel` with
+    `neutralize_against={"style": ["industry"]}`: both style exposures
     must be benchmark-weight-orthogonal to every industry exposure, the
     covariance decomposition holds, and exposures differ from the
     no-neutralization control.  Companion validation and unit tests
-    (name resolution, overlap errors) live in ``test_validation.py``.
+    (name resolution, overlap errors) live in `test_validation.py`.
 
 """
 
@@ -278,7 +278,7 @@ class TestInterceptFactorEqualsBenchmark:
         \hat{f}(t) = \frac{\sum_i w_i\,R_i(t)}{\sum_i w_i}
 
     When the regression weights equal the benchmark weights (both use the same
-    ``mcap_power``), this is the benchmark-weighted average return. The
+    `mcap_power`), this is the benchmark-weighted average return. The
     identity is exact (not statistical), so this test uses tight numerical
     tolerance.
     """
@@ -351,7 +351,7 @@ class TestEWMarketBetaDescriptor:
     DGP: :math:`R_i(t) = \beta_i \cdot f(t) + \epsilon_i(t)` with constant
     true betas centered around 1 and equal market capitalization. The
     cap-weighted average return approximates the true factor, so
-    ``EWMarketBeta`` can recover :math:`\beta_i` from observable data alone.
+    `EWMarketBeta` can recover :math:`\beta_i` from observable data alone.
 
     Uses a short half-life (30) and many observations (1500) so the EWMA
     betas are well converged by the end of the sample. Assertions are
@@ -698,12 +698,12 @@ class TestExposureLagTimeVaryingBetas:
     r"""Verify the exposure lag machinery with linearly drifting betas.
 
     DGP: :math:`R_i(t) = \beta_i(t)\,f(t) + \epsilon_i(t)` where
-    :math:`\beta_i(t)` drifts linearly from ``beta_start_i`` to
-    ``beta_end_i``.
+    :math:`\beta_i(t)` drifts linearly from `beta_start_i` to
+    `beta_end_i`.
 
-    With ``exposure_lag = L``, the cross-sectional regression at time
+    With `exposure_lag = L`, the cross-sectional regression at time
     :math:`t` uses :math:`B(t - L)` (lagged exposures), while the
-    ``loading_matrix`` stores :math:`B(T)` (the most recent exposures,
+    `loading_matrix` stores :math:`B(T)` (the most recent exposures,
     used for the covariance decomposition :math:`B\,F\,B^\top + D`).
     """
 
@@ -811,11 +811,11 @@ class TestEstimationMask:
     * **Excluded assets** (indices 0--5): :math:`\beta_i = 10`,
       :math:`\sigma_\epsilon = 0.005`.
 
-    With ``estimation_mask = False`` for the excluded assets:
+    With `estimation_mask = False` for the excluded assets:
 
     * Factor returns must match a manual OLS using only estimation assets
       (exact numerical identity).
-    * All 30 assets must appear in ``loading_matrix`` and ``idio_returns``.
+    * All 30 assets must appear in `loading_matrix` and `idio_returns`.
     * Factor returns must differ from an all-asset OLS (proving exclusion).
     """
 
@@ -932,9 +932,9 @@ class TestSparseIdioCorrelationOverlay:
     and 1 share correlated idiosyncratic noise
     (:math:`\rho_{\epsilon} = 0.5`) and all other assets are independent.
 
-    With ``idio_corr_threshold > 0``, the model should:
+    With `idio_corr_threshold > 0`, the model should:
 
-    * Capture the correlated pair in the off-diagonal of ``idio_covariance``.
+    * Capture the correlated pair in the off-diagonal of `idio_covariance`.
     * Leave other off-diagonal entries at (or near) zero.
     * Still satisfy the covariance decomposition identity.
     """
@@ -1040,8 +1040,8 @@ class TestBasketNeutralConstraints:
 
         R_i(t) = f_{\text{mkt}}(t) + f_{k(i)}(t) + \epsilon_i(t)
 
-    With ``constrained_families=[("industry", None)]`` and
-    cap-weighted benchmark (``benchmark_mcap_power=1``), the reconstructed
+    With `constrained_families=[("industry", None)]` and
+    cap-weighted benchmark (`benchmark_mcap_power=1`), the reconstructed
     industry factor returns must satisfy:
 
     .. math::
@@ -1221,7 +1221,7 @@ class TestBasketNeutralConstraints:
 
 
 class TestFamilyConstraintBasisMode:
-    r"""Verify that the ``family_constraint_basis`` is stored and functional.
+    r"""Verify that the `family_constraint_basis` is stored and functional.
 
     Uses the same DGP as :class:`TestBasketNeutralConstraints`.  The factor
     model always stores full-basis data; the basis object must be present
@@ -1331,7 +1331,7 @@ class TestFamilyConstraintBasisMode:
 
 
 class TestFactorNeutralization:
-    r"""Verify that ``neutralize_against`` orthogonalizes factor exposures.
+    r"""Verify that `neutralize_against` orthogonalizes factor exposures.
 
     DGP: three factors (market, size, momentum) where the raw momentum
     characteristic is constructed with cross-sectional correlation
@@ -1342,12 +1342,12 @@ class TestFactorNeutralization:
         R_i(t) = f_{\text{mkt}}(t) + z_{\text{size},i}\,f_{\text{size}}(t)
                + z_{\text{mom},i}\,f_{\text{mom}}(t) + \epsilon_i(t)
 
-    With ``neutralize_against={"momentum": ["size"]}``, the model regresses
-    the momentum exposure on size (WLS, ``fit_intercept=False``) and replaces
+    With `neutralize_against={"momentum": ["size"]}`, the model regresses
+    the momentum exposure on size (WLS, `fit_intercept=False`) and replaces
     it with the re-standardized residual.
 
     Because the size exposure has zero weighted mean (pre-z-scored with equal
-    weights matching ``benchmark_mcap_power=0``), the WLS first-order
+    weights matching `benchmark_mcap_power=0`), the WLS first-order
     condition :math:`\sum_i w_i\,\text{size}_i\,\text{orth}_i = 0` is
     preserved through the CSStandardScaler re-standardization, giving
     exact cross-sectional orthogonality at every observation.
@@ -1518,8 +1518,8 @@ class TestNeutralizationWithBasketNeutralConstraints:
         R_i(t) = f_{\text{mkt}}(t) + f_{k(i)}(t)
                + z_i\,f_{\text{style}}(t) + \epsilon_i(t)
 
-    With ``neutralize_against={"style": ["industry"]}`` and
-    ``constrained_families=[("industry", None)]``, the style exposure
+    With `neutralize_against={"style": ["industry"]}` and
+    `constrained_families=[("industry", None)]`, the style exposure
     must be benchmark-weight-orthogonal to every industry factor in the
     output.
     """
@@ -1687,13 +1687,13 @@ class TestDemeaningVsNeutralizationEquivalence:
     Three models are compared:
 
     * **Model A** (demeaning only): style factor uses
-      ``transform_by_group="industry_group"`` to apply within-industry
+      `transform_by_group="industry_group"` to apply within-industry
       z-scoring via :class:`CSStandardScaler` with groups.
     * **Model B** (neutralization only): style factor uses global
       z-scoring (no groups), with
-      ``neutralize_against={"style": ["industry"]}``.
-    * **Model C** (both): combines ``transform_by_group`` and
-      ``neutralize_against``.
+      `neutralize_against={"style": ["industry"]}`.
+    * **Model C** (both): combines `transform_by_group` and
+      `neutralize_against`.
 
     All three satisfy :math:`D^\top W z_{\text{style}} = 0`. Models A and C
     produce identical style exposures because the explicit neutralization
@@ -1900,14 +1900,14 @@ class TestInverseIdioVarianceWeights:
         R_i(t) = \beta_i\,f(t) + \epsilon_i(t), \quad
         \epsilon_i \sim \mathcal{N}(0,\,\sigma_i^2)
 
-    With ``inv_idio_variance_weight_shrinkage=1``, the model runs an initial
+    With `inv_idio_variance_weight_shrinkage=1`, the model runs an initial
     OLS, estimates per-asset idiosyncratic variance via EWMA, and reweights the
     cross-sectional regression by :math:`1 / \hat\sigma_i^2`.  This
     approximates GLS, downweighting noisy assets and lowering factor-return MSE.
 
-    Partial shrinkage (``inv_idio_variance_weight_shrinkage=0.5``) blends
+    Partial shrinkage (`inv_idio_variance_weight_shrinkage=0.5`) blends
     inverse-variance weights with the base regression weights
-    (``regression_mcap_power=0.5`` gives :math:`\sqrt{\text{mcap}}`):
+    (`regression_mcap_power=0.5` gives :math:`\sqrt{\text{mcap}}`):
 
     .. math::
 
@@ -2102,7 +2102,7 @@ class TestInterceptRecoveryWithStyleAndIndustries:
     industry constraints and a z-scored style factor.
 
     DGP: market intercept + 3 industry dummies (basket-neutral) + 1 continuous
-    style factor (z-scored by default ``CSStandardScaler``), with heterogeneous
+    style factor (z-scored by default `CSStandardScaler`), with heterogeneous
     market caps.
 
     .. math::
@@ -2110,14 +2110,14 @@ class TestInterceptRecoveryWithStyleAndIndustries:
         R_i(t) = f_{\text{mkt}}(t) + f_{k(i)}(t)
                + \beta_i^{\text{raw}}\,f_{\text{style}}(t) + \epsilon_i(t)
 
-    With ``benchmark_mcap_power=1`` and ``regression_mcap_power=1``, the
+    With `benchmark_mcap_power=1` and `regression_mcap_power=1`, the
     basket-neutral constraints and z-scoring both produce exposures that are
     benchmark-weight-centered: :math:`\sum_i w_i B_{ij} = 0` for all
     non-market factors.  The WLS first-order condition then forces the
     intercept (market factor) to equal the benchmark-weighted average return
     exactly.
 
-    When ``regression_mcap_power != benchmark_mcap_power``, this identity
+    When `regression_mcap_power != benchmark_mcap_power`, this identity
     breaks because the centering is w.r.t. benchmark weights but the
     regression uses different weights.
     """
@@ -2809,7 +2809,7 @@ class TestNaNHandlingListingsDelistings:
 
     DGP: single factor, 50 assets.  The first 40 are present for the full
     sample. The last 10 are "late listings" that appear at the midpoint
-    (``active_mask=False`` and ``NaN`` returns before the listing date).
+    (`active_mask=False` and `NaN` returns before the listing date).
 
     .. math::
 
@@ -2982,13 +2982,13 @@ class TestNaNHandlingListingsDelistings:
 
 
 class TestNeutralizeExposureFamilyKeyIntegration:
-    r"""Integration test: ``neutralize_against`` with a family key through
-    ``CharacteristicsFactorModel``.
+    r"""Integration test: `neutralize_against` with a family key through
+    `CharacteristicsFactorModel`.
 
     DGP: market + 3 industry dummies + 2 style factors (size, momentum)
     where both style characteristics have industry-correlated components.
 
-    With ``neutralize_against={"style": ["industry"]}``, both style
+    With `neutralize_against={"style": ["industry"]}`, both style
     exposures must be benchmark-weight-orthogonal to every industry
     exposure in the output.
     """

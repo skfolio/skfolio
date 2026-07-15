@@ -24,7 +24,7 @@ def apply_idio_nan_exclusions(
     rows: slice | None = None,
     horizon: int = 3,
 ) -> None:
-    """Inject NaN idio returns for ``ticker`` while keeping estimators well posed.
+    """Inject NaN idio returns for `ticker` while keeping estimators well posed.
 
     Zeros matching `benchmark_weights` (then row-renormalizes). Sets `idio_variances`
     to `NaN` where inverse-variance WLS must skip pairs with undefined forward targets.

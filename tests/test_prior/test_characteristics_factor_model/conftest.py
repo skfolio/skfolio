@@ -26,14 +26,14 @@ def make_panel(
     returns : ndarray of shape (n_obs, n_assets)
     extra_fields : additional 2-D fields to include in the panel.
     market_cap : if None, defaults to equal weights (ones).
-    asset_names : if None, auto-generated as ``asset_0 .. asset_{n-1}``.
+    asset_names : if None, auto-generated as `asset_0 .. asset_{n-1}`.
     estimation_mask : if None, defaults to all True.
     active_mask : if None, defaults to all True.
 
     Returns
     -------
     panel : AssetPanel
-    X : DataFrame (same data as ``returns``, columns = asset names)
+    X : DataFrame (same data as `returns`, columns = asset names)
     """
     n_obs, n_assets = returns.shape
 

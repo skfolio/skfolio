@@ -343,7 +343,7 @@ class TestEWResidualVolatility:
             EWResidualVolatility(half_life=5, min_periods=1).fit_transform(simple_panel)
 
     def test_residual_volatility_attribute_set(self, simple_panel):
-        """The fitted ``residual_volatility_`` attribute stores the last row."""
+        """The fitted `residual_volatility_` attribute stores the last row."""
         descriptor = EWResidualVolatility(half_life=5, beta_half_life=5, min_periods=1)
         result = descriptor.fit_transform(simple_panel)
         np.testing.assert_array_equal(descriptor.residual_volatility_, result[-1])

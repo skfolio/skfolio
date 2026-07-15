@@ -1,7 +1,7 @@
 """Tests for CharacteristicsFactorModel.partial_fit equivalence.
 
-Verifies that calling ``partial_fit`` in batches produces the same output as a
-single ``fit`` call over the full dataset.
+Verifies that calling `partial_fit` in batches produces the same output as a
+single `fit` call over the full dataset.
 """
 
 from __future__ import annotations
@@ -669,7 +669,7 @@ class TestPartialFitMaxHistoryScores:
 class TestPartialFitBasketNeutral:
     """partial_fit with constrained_families must match fit(all).
 
-    Uses market + 3 industry factors with ``constrained_families``.
+    Uses market + 3 industry factors with `constrained_families`.
     The resolved factor_to_drop must be cached on the first call so subsequent
     batches use the same basis.
     """

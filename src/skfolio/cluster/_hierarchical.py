@@ -76,7 +76,7 @@ class LinkageMethod(AutoEnum):
         algorithm.
 
     MEDIAN : str
-    assigns :math:`d(s,t)` like the ``centroid`` method.
+    assigns :math:`d(s,t)` like the `centroid` method.
     This is also known as the WPGMC algorithm.
 
     WARD : str
@@ -114,9 +114,9 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
     Parameters
     ----------
     max_clusters : int, optional
-        For coherent clustering, the algorithm finds a minimum threshold ``r`` so that
+        For coherent clustering, the algorithm finds a minimum threshold `r` so that
         the cophenetic distance between any two original observations in the same flat
-        cluster is no more than ``r`` and no more than `max_clusters` flat clusters are
+        cluster is no more than `r` and no more than `max_clusters` flat clusters are
         formed. The default (`None`) is to estimate the maximal number of clusters
         based on the Two-Order Difference to Gap Statistic [1]_.
 

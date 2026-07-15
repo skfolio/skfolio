@@ -192,7 +192,7 @@ class TimeSeriesFactorModel(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -306,8 +306,8 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     Notes
     -----
     All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
+    at the class level in their `__init__` as explicit keyword
+    arguments (no `*args` or `**kwargs`).
     """
 
     loading_matrix_: FloatArray
@@ -333,7 +333,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         The number of jobs to run in parallel.
 
         When individual estimators are fast to train or predict,
-        using ``n_jobs > 1`` can result in slower performance due
+        using `n_jobs > 1` can result in slower performance due
         to the parallelism overhead.
 
         The value `-1` means using all processors.
@@ -382,7 +382,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

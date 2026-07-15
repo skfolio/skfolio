@@ -199,7 +199,7 @@ class TestEWVolatility:
         assert "min_acceptable_return" not in params
 
     def test_volatility_attribute_set(self, simple_panel):
-        """The fitted ``volatility_`` attribute stores the last row."""
+        """The fitted `volatility_` attribute stores the last row."""
         descriptor = EWVolatility(half_life=5, min_periods=1)
         result = descriptor.fit_transform(simple_panel)
         np.testing.assert_array_equal(descriptor.volatility_, result[-1])

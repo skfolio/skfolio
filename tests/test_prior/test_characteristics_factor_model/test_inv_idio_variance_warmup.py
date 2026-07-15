@@ -1,9 +1,9 @@
 """Test that inverse-variance regression weights handle warm-up NaN gracefully.
 
 The variance estimator returns NaN for assets that are active but have not yet
-accumulated ``min_observations`` valid observations (warm-up period).  Before
+accumulated `min_observations` valid observations (warm-up period).  Before
 the fix, NaN would propagate through normalization and blending into
-``regression_weights``, corrupting the second-pass WLS regression. Missing
+`regression_weights`, corrupting the second-pass WLS regression. Missing
 per-asset inverse-variance weights are set to zero in the inverse-variance
 component; rows with no ready variance estimates fall back to cap weights.
 """

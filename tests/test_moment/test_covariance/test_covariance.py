@@ -67,7 +67,7 @@ class _MinimalCovariance(BaseCovariance):
 
 
 class TestSetCovarianceActiveBlock:
-    """``_set_covariance`` peels incomplete active blocks and warns."""
+    """`_set_covariance` peels incomplete active blocks and warns."""
 
     def test_warns_and_peels_when_active_block_has_nan(self):
         cov = np.array(

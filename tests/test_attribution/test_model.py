@@ -1203,7 +1203,7 @@ class TestAttributionPlotColors:
         assert m["Idiosyncratic"] == _IDIO_COMPONENT_COLOR
 
     def test_consecutive_model_indices_use_distinct_plotly_colors(self):
-        """Neighboring entries in ``data.names`` order get different hex values."""
+        """Neighboring entries in `data.names` order get different hex values."""
         from skfolio.attribution._model._attribution import (
             _make_component_color_map,
         )
@@ -1215,7 +1215,7 @@ class TestAttributionPlotColors:
             assert m[f"x{i}"] != m[f"x{i + 1}"]
 
     def test_first_factor_uses_plotly_leader_color(self):
-        """Leading color matches the first swatch of ``qualitative.Plotly``."""
+        """Leading color matches the first swatch of `qualitative.Plotly`."""
         import plotly.express as px
 
         from skfolio.attribution._model._attribution import (
