@@ -34,6 +34,11 @@ class ReturnDistribution:
     finite. The `investable_mask` property infers this condition on first access
     and reconciles warm-up periods across independent moment estimators.
 
+    NaN values in `returns` are restricted to the columns of non-investable assets.
+    Prior estimators resolve missing observations of investable assets into finite
+    scenario values (for example, :class:`~skfolio.prior.EmpiricalPrior` zero-fills
+    them), so that `investable_subset` returns fully finite arrays.
+
     Use `investable_subset` before passing the distribution to downstream routines that
     operate only on the investable universe.
 
