@@ -881,7 +881,6 @@ def _realized_factor_attribution_core(
     # Factor contributions
     factor_pnl = ptf_factor * factor_returns
     factor_mu_contrib = np.mean(factor_pnl, axis=0)
-    factor_pct_total_mu = safe_divide(factor_mu_contrib, total_mu, np.nan, atol=1e-12)
     factor_var_contrib = _cov_with_centered(factor_pnl, ptf_ret_centered)
     factor_vol_contrib = factor_var_contrib / total_vol
     factor_pct_total_variance = factor_vol_contrib / total_vol
@@ -889,7 +888,6 @@ def _realized_factor_attribution_core(
     # Systematic
     systematic_pnl = np.sum(factor_pnl, axis=1)
     systematic_mu = float(np.sum(factor_mu_contrib))
-    systematic_pct_total_mu = safe_divide(systematic_mu, total_mu, np.nan, atol=1e-12)
     systematic_vol = float(np.std(systematic_pnl, ddof=1))
     systematic_cov = float(_cov_with_centered(systematic_pnl, ptf_ret_centered))
     systematic_corr = safe_divide(
@@ -902,7 +900,6 @@ def _realized_factor_attribution_core(
     # Idiosyncratic
     idio_pnl = np.sum(weights * idio_returns, axis=1)
     idio_mu = float(np.mean(idio_pnl))
-    idio_mu_pct_total_mu = safe_divide(idio_mu, total_mu, np.nan, atol=1e-12)
     idio_vol = float(np.std(idio_pnl, ddof=1))
     idio_cov = float(_cov_with_centered(idio_pnl, ptf_ret_centered))
     idio_corr = safe_divide(idio_cov, idio_vol * total_vol, np.nan, atol=1e-12)
@@ -912,7 +909,6 @@ def _realized_factor_attribution_core(
     # Unexplained: fees, cash, slippage, model misspecification
     unexplained_pnl = portfolio_returns - systematic_pnl - idio_pnl
     unexplained_mu = float(np.mean(unexplained_pnl))
-    unexplained_pct_total_mu = safe_divide(unexplained_mu, total_mu, np.nan, atol=1e-12)
     unexplained_vol = float(np.std(unexplained_pnl, ddof=1))
     unexplained_cov = float(_cov_with_centered(unexplained_pnl, ptf_ret_centered))
     unexplained_corr = safe_divide(
@@ -933,7 +929,6 @@ def _realized_factor_attribution_core(
         pct_total_variance=factor_pct_total_variance,
         mu=factor_mu * annualization_factor,
         mu_contrib=factor_mu_contrib * annualization_factor,
-        pct_total_mu=factor_pct_total_mu,
         exposure_std=exposure_std,
         mu_contrib_uncertainty=per_factor_uncertainty,
     )
@@ -959,7 +954,6 @@ def _realized_factor_attribution_core(
             idio_returns=idio_returns,
             ptf_ret_centered=ptf_ret_centered,
             total_vol=total_vol,
-            total_mu=total_mu,
             asset_names=asset_names,
             factor_names=factor_names,
             exposure_is_static=exposure_is_static,
@@ -976,7 +970,6 @@ def _realized_factor_attribution_core(
             vol_contrib=systematic_vol_contrib * ann_sqrt,
             pct_total_variance=systematic_pct_total_variance,
             mu_contrib=systematic_mu * annualization_factor,
-            pct_total_mu=systematic_pct_total_mu,
             corr_with_ptf=systematic_corr,
             mu_uncertainty=systematic_uncertainty,
         ),
@@ -985,7 +978,6 @@ def _realized_factor_attribution_core(
             vol_contrib=idio_vol_contrib * ann_sqrt,
             pct_total_variance=idio_pct_total_variance,
             mu_contrib=idio_mu * annualization_factor,
-            pct_total_mu=idio_mu_pct_total_mu,
             corr_with_ptf=idio_corr,
             mu_uncertainty=idio_uncertainty,
         ),
@@ -994,7 +986,6 @@ def _realized_factor_attribution_core(
             vol_contrib=unexplained_vol_contrib * ann_sqrt,
             pct_total_variance=unexplained_pct_total_variance,
             mu_contrib=unexplained_mu * annualization_factor,
-            pct_total_mu=unexplained_pct_total_mu,
             corr_with_ptf=unexplained_corr,
         ),
         total=Component(
@@ -1002,7 +993,6 @@ def _realized_factor_attribution_core(
             vol_contrib=total_vol * ann_sqrt,
             pct_total_variance=1.0,
             mu_contrib=total_mu * annualization_factor,
-            pct_total_mu=1.0,
             corr_with_ptf=1.0,
         ),
         factors=factors,
@@ -1029,7 +1019,6 @@ def _compute_realized_family_breakdown(
     vol_contrib = np.zeros(n_families)
     pct_total_variance = np.zeros(n_families)
     mu_contrib = np.zeros(n_families)
-    pct_total_mu = np.zeros(n_families)
 
     for i, family in enumerate(unique_families):
         indices = np.where(factor_families == family)[0]
@@ -1045,7 +1034,6 @@ def _compute_realized_family_breakdown(
         vol_contrib[i] = factors.vol_contrib[indices].sum()
         pct_total_variance[i] = factors.pct_total_variance[indices].sum()
         mu_contrib[i] = factors.mu_contrib[indices].sum()
-        pct_total_mu[i] = np.nansum(factors.pct_total_mu[indices])
 
     # Sort by absolute pct_total_variance (descending)
     sort_order = np.argsort(-np.abs(pct_total_variance))
@@ -1057,7 +1045,6 @@ def _compute_realized_family_breakdown(
         vol_contrib=vol_contrib[sort_order],
         pct_total_variance=pct_total_variance[sort_order],
         mu_contrib=mu_contrib[sort_order],
-        pct_total_mu=pct_total_mu[sort_order],
         mu_contrib_uncertainty=(
             per_family_uncertainty[sort_order]
             if per_family_uncertainty is not None
@@ -1073,7 +1060,6 @@ def _compute_realized_assets(
     idio_returns: FloatArray,
     ptf_ret_centered: FloatArray,
     total_vol: float,
-    total_mu: float,
     asset_names: StrArray,
     factor_names: StrArray,
     exposure_is_static: bool,
@@ -1134,9 +1120,7 @@ def _compute_realized_assets(
     valid_vol = vol > 0
     corr_with_ptf[valid_vol] = cov_with_ptf[valid_vol] / (vol[valid_vol] * total_vol)
 
-    # Percentage
     pct_total_variance = total_vol_contrib / total_vol
-    pct_total_mu = safe_divide(total_mu_contrib, total_mu, np.nan, atol=1e-12)
 
     assets = AssetBreakdown(
         names=asset_names,
@@ -1152,7 +1136,6 @@ def _compute_realized_assets(
         systematic_mu_contrib=systematic_mu_contrib * annualization_factor,
         idio_mu_contrib=idio_mu_contrib * annualization_factor,
         mu_contrib=total_mu_contrib * annualization_factor,
-        pct_total_mu=pct_total_mu,
     )
 
     # Asset-factor contributions (vectorized over factors)

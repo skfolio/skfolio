@@ -13,6 +13,10 @@ It follows the same API as scikit-learn's `estimator`: the `fit` method takes `X
 the assets returns and stores the expected returns in its  `mu_` attribute.
 `X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
+`mu_` is expressed in the periodicity of `X` (daily returns give daily expected
+returns) and is consumed as is by the optimizers, without annualization (see
+:ref:`Periodicity Convention <periodicity_convention>`).
+
 
 Available estimators are:
     * :class:`EmpiricalMu`

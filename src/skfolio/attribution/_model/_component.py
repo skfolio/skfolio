@@ -19,8 +19,8 @@ class Component:
 
     Represents one component of the portfolio attribution: systematic, idiosyncratic,
     unexplained, or total. Each component stores volatility and return contributions,
-    their percentages of total portfolio variance and return, standalone volatility,
-    correlation with the portfolio and optional return uncertainty.
+    the percentage of total portfolio variance, standalone volatility, correlation
+    with the portfolio and optional return uncertainty.
 
     For single-point attribution, fields are floats. For rolling attribution (from
     :func:`rolling_realized_factor_attribution`), fields are 1D arrays of shape
@@ -37,9 +37,6 @@ class Component:
     mu_contrib : float or ndarray of shape (n_windows,)
         Return contribution to total portfolio return (expected return for predicted
         attribution and mean return for realized attribution).
-
-    pct_total_mu : float or ndarray of shape (n_windows,)
-        Percentage of total portfolio return.
 
     vol : float or ndarray of shape (n_windows,)
         Standalone component volatility.
@@ -58,7 +55,6 @@ class Component:
     vol_contrib: float | FloatArray
     pct_total_variance: float | FloatArray
     mu_contrib: float | FloatArray
-    pct_total_mu: float | FloatArray
 
     vol: float | FloatArray
     corr_with_ptf: float | FloatArray

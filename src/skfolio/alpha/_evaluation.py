@@ -277,7 +277,9 @@ class AlphaForecastEvaluation:
         records = []
         for i, _ in enumerate(self.quantiles):
             records.append(
-                _return_stats(self.quantile_spread[:, i], self.annualization_factor)
+                _annualized_return_stats(
+                    self.quantile_spread[:, i], self.annualization_factor
+                )
             )
         return pd.DataFrame(records, index=pd.Index(self.quantiles, name="quantile"))
 
@@ -1517,9 +1519,9 @@ def _forward_window_record(
             "pearson_mean_ic": pearson_ic["mean"],
             "pearson_icir": pearson_ic["icir"],
             "pearson_ic_t_stat": pearson_ic["t_stat"],
-            "rank_weighted_portfolio_mean": rank_weighted_portfolio["mean_return"],
+            "rank_weighted_portfolio_mean": rank_weighted_portfolio["mean"],
             "rank_weighted_portfolio_ir": rank_weighted_portfolio["ir"],
-            "zscore_weighted_portfolio_mean": zscore_weighted_portfolio["mean_return"],
+            "zscore_weighted_portfolio_mean": zscore_weighted_portfolio["mean"],
             "zscore_weighted_portfolio_ir": zscore_weighted_portfolio["ir"],
             "mean_coverage": mean_coverage,
         }
@@ -1548,28 +1550,41 @@ def _correlation_stats(arr: FloatArray, *, ratio_name: str) -> dict[str, float]:
 def _portfolio_stats(
     returns: FloatArray, turnover: FloatArray, annualization_factor: float = 1.0
 ) -> dict[str, float]:
-    """Compute return statistics with average turnover."""
-    row = _return_stats(returns, annualization_factor)
+    """Compute annualized return statistics with average turnover."""
+    return_stats = _annualized_return_stats(returns, annualization_factor)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        row["mean_turnover"] = float(np.nanmean(turnover))
-    return row
+        mean_turnover = float(np.nanmean(turnover))
+    return {**return_stats, "mean_turnover": mean_turnover}
 
 
-def _return_stats(
+def _annualized_return_stats(
     returns: FloatArray, annualization_factor: float = 1.0
 ) -> dict[str, float]:
-    """Compute mean, standard deviation, IR and hit rate for returns."""
+    """Compute annualized mean, volatility, IR and hit rate for returns."""
+    return_stats = _return_stats(returns)
+    annualized_mean = return_stats["mean"] * annualization_factor
+    annualized_vol = return_stats["vol"] * np.sqrt(annualization_factor)
+    return {
+        "annualized_mean": annualized_mean,
+        "annualized_vol": annualized_vol,
+        "annualized_ir": safe_divide(
+            annualized_mean, annualized_vol, fill_value=np.nan
+        ),
+        "hit_rate": return_stats["hit_rate"],
+    }
+
+
+def _return_stats(returns: FloatArray) -> dict[str, float]:
+    """Compute mean, volatility, IR and hit rate for returns."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        mean_return = float(np.nanmean(returns))
-        std_return = float(np.nanstd(returns, ddof=1))
-    mean_return *= annualization_factor
-    std_return *= np.sqrt(annualization_factor)
+        mean = float(np.nanmean(returns))
+        vol = float(np.nanstd(returns, ddof=1))
     return {
-        "mean_return": mean_return,
-        "std_return": std_return,
-        "ir": safe_divide(mean_return, std_return, fill_value=np.nan),
+        "mean": mean,
+        "vol": vol,
+        "ir": safe_divide(mean, vol, fill_value=np.nan),
         "hit_rate": _hit_rate(returns),
     }
 

@@ -285,8 +285,12 @@ class MeanRisk(ConvexOptimization):
             Based on the above formula, the periodicity of the transaction costs
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            to be expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -313,7 +317,10 @@ class MeanRisk(ConvexOptimization):
             Based on the above formula, the periodicity of the management fees needs to
             be homogenous to the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -387,10 +394,11 @@ class MeanRisk(ConvexOptimization):
 
     covariance_uncertainty_set_estimator : BaseCovarianceUncertaintySet, optional
         :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets covariance matrix is modelled with an ellipsoidal
-        uncertainty set. It is called worst-case optimization and is a class of robust
-        optimization. It reduces the instability that arises from the estimation errors
-        of the covariance matrix.
+        If provided, covariance estimation uncertainty is included in the optimized
+        variance. This approach is known as worst-case optimization, a form of robust
+        optimization. It reduces sensitivity to covariance estimation errors.
+        Covariance uncertainty is applied when `risk_measure=RiskMeasure.VARIANCE` or
+        when `max_variance` is set.
         The default (`None`) means that no uncertainty set is used.
 
     linear_constraints : array-like of shape (n_constraints,), optional
@@ -529,7 +537,7 @@ class MeanRisk(ConvexOptimization):
         CVaR (Conditional Value at Risk) confidence level.
         The default value is `0.95`.
 
-    evar_beta : float, default=0
+    evar_beta : float, default=0.95
         EVaR (Entropic Value at Risk) confidence level.
         The default value is `0.95`.
 
@@ -1140,7 +1148,6 @@ class MeanRisk(ConvexOptimization):
             risk_limit = getattr(self, f"max_{r_m.value}")
 
             if self.risk_measure == r_m or risk_limit is not None:
-                # Add covariance uncertainty set if provided
                 if (
                     r_m == RiskMeasure.VARIANCE
                     and self.covariance_uncertainty_set_estimator_ is not None
@@ -1317,6 +1324,17 @@ class MeanRisk(ConvexOptimization):
             raise TypeError("risk_measure must be of type `RiskMeasure`")
         if not isinstance(self.objective_function, ObjectiveFunction):
             raise TypeError("objective_function must be of type `ObjectiveFunction`")
+        if self.covariance_uncertainty_set_estimator is not None:
+            covariance_risk_requested = (
+                self.risk_measure == RiskMeasure.VARIANCE
+                or self.max_variance is not None
+            )
+            if not covariance_risk_requested:
+                raise ValueError(
+                    "`covariance_uncertainty_set_estimator` requires "
+                    "`risk_measure=RiskMeasure.VARIANCE` or a `max_variance` "
+                    "constraint."
+                )
         if self.efficient_frontier_size is not None:
             if self.efficient_frontier_size <= 1:
                 raise ValueError(

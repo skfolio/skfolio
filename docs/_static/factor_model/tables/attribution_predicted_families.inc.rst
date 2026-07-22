@@ -9,11 +9,9 @@
           <th>Volatility Contribution</th>
           <th>% of Total Variance</th>
           <th>Expected Return Contribution</th>
-          <th>% of Total Expected Return</th>
         </tr>
         <tr>
           <th>Family</th>
-          <th></th>
           <th></th>
           <th></th>
           <th></th>
@@ -27,7 +25,6 @@
           <td>16.00%</td>
           <td>91.57%</td>
           <td>16.69%</td>
-          <td>100.00%</td>
         </tr>
         <tr>
           <th>industry</th>
@@ -35,12 +32,10 @@
           <td>-0.00%</td>
           <td>-0.00%</td>
           <td>-0.00%</td>
-          <td>-0.00%</td>
         </tr>
         <tr>
           <th>market</th>
           <td>0.0000</td>
-          <td>0.00%</td>
           <td>0.00%</td>
           <td>0.00%</td>
           <td>0.00%</td>

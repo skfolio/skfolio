@@ -7,18 +7,18 @@ Factor Models
 =============
 
 This guide covers skfolio's factor model implementations, their API and their
-theoretical foundations. It focuses on the cross-sectional characteristics factor
-model :class:`~skfolio.prior.CharacteristicsFactorModel`, the model family most widely
-used by financial institutions and the one that raises the largest number of methodological 
-and implementation challenges, such as point-in-time data, changing universes, look-ahead bias, 
-zero-sum constraints, alpha integration, diagnostics, attribution and computational performance 
-on large universes.
+theoretical foundations. It focuses on the characteristics-based cross-sectional factor
+model :class:`~skfolio.prior.CharacteristicsFactorModel`. This model family has
+become foundational in quantitative asset management, and implementing it correctly
+requires addressing many practical challenges (e.g. point-in-time data, changing 
+universes, look-ahead bias, zero-sum constraints, alpha integration, diagnostics, 
+attribution and computational performance on large universes).
 
 The results in this guide were obtained by fitting a 58-factor US equity model on
 the FactSet
-`Fundamentals Point-in-Time <https://www.factset.com/marketplace/catalog/product/factset-fundamentals-point-in-time>`_
-and
+`Fundamentals Point-in-Time <https://www.factset.com/marketplace/catalog/product/factset-fundamentals-point-in-time>`_,
 `Estimates Point-in-Time Consensus <https://www.factset.com/marketplace/catalog/product/factset-estimates-point-in-time-consensus>`_ 
+and `RBICS <https://www.factset.com/marketplace/catalog/product/factset-rbics-api>`_
 datasets. The gallery examples use synthetic characteristics data, so users can run the full API
 while respecting data vendor licences.
 
@@ -1124,14 +1124,29 @@ WLS regression.
 
 .. include:: ../_static/factor_model/fragments/factor_model_exposure_correlation.inc.rst
 
-In the :ref:`example <factor_model_code_example>`, the market row is zero meaning
-benchmark-weighted centering makes every style factor orthogonal to the market
-factor. The volatility-beta correlation and the correlation between non-linear size and
-size are also zero, as expected from the neutralization.
+In the :ref:`example <factor_model_code_example>`, the market exposure is constant
+(every asset has unit exposure), so its correlation row is uninformative and
+displays as zero. Market neutrality is instead guaranteed by benchmark-weighted
+centering: every exposure has a zero benchmark-weighted mean, so no factor
+carries net market exposure. The volatility-beta correlation and the correlation
+between non-linear size and size are zero, as expected from the neutralization.
 The remaining correlations are moderate, indicating no redundant factors. The
 `families` argument excludes the 44 industry factors for readability. When
 included, their correlations with the style factors are zero as well, the result
-of within-industry scoring through `transform_by_group="industry"`.
+of within-industry scoring through `transform_by_group="industry"`, and the
+industry-industry correlations are slightly negative rather than zero. Each asset
+belongs to exactly one industry, so membership in one industry rules out
+membership in all others. Zero correlation would mean industry memberships are
+independent, while this exclusion is a negative relationship.
+
+.. note::
+
+    For two one-hot exposures :math:`x` and :math:`y` with benchmark weights
+    :math:`p_x` and :math:`p_y`, the product :math:`xy` is always zero, so the
+    covariance :math:`\mathbb{E}[xy] - \mathbb{E}[x]\mathbb{E}[y] = -p_x p_y` is
+    negative, giving a correlation of
+    :math:`-\sqrt{p_x p_y / ((1-p_x)(1-p_y))}`, about -0.02 for the 44
+    industries of the example when weights are similar.
 
 :meth:`~skfolio.prior.FactorModel.plot_exposure_stability` shows the
 cross-sectional correlation of each factor's exposures between observations
@@ -1945,7 +1960,7 @@ momentum and profitability accumulate positive IC steadily across the sample
 negative IC.
 
 The IC quantifies return-predictive power. In a risk model, factors are designed
-to explain covariance structure, not to predict expected returns. A factor can
+to forecast covariance, not expected returns. A factor can
 therefore be an excellent risk factor with an IC near zero, and a low IC is not
 a reason to discard it. IC is mainly useful for evaluating alpha signals and
 factor premia, not for deciding whether a factor should remain in a risk model.
@@ -1963,8 +1978,12 @@ weights and the factor exposure tensor. In typical alpha research workflows,
 idiosyncratic returns serve as the prediction target (typically after
 cross-sectional transformation), idiosyncratic variances scale the target and
 factor exposures neutralize the features. Targeting idiosyncratic returns rather
-than raw returns removes the factor-driven component from the target, reduces
-noise and prevents the alpha model from re-learning factor premia.
+than raw returns removes the factor-driven component from the target. The
+cross-sectional variation of raw returns includes each asset's factor exposures
+times the factor returns, so a signal correlated with the exposures would pick
+up factor premia already captured by the factor model. The
+idiosyncratic target also carries less noise, since common factor volatility is
+removed.
 
 The alpha forecast should be expressed in expected-return units when it is combined
 with expected factor returns or used in an optimization alongside return-denominated 
@@ -2170,7 +2189,7 @@ configured at the optimization step:
   to the uncertainty of the orthogonal alpha.
 * :class:`~skfolio.uncertainty_set.OrthogonalCovarianceUncertaintySet`, passed to
   the optimizer's `covariance_uncertainty_set_estimator`, inflates the covariance
-  in orthogonal directions, raising their risk price directly.
+  in orthogonal directions, raising their variance directly.
 
 An optimizer can allocate in orthogonal directions even when the orthogonal alpha
 is zero as binding constraints (e.g. factor-neutrality, long-only) act through
@@ -2398,6 +2417,10 @@ linear size component, the factor produces the following approximate tilts:
    * - Very large
      - Short
 
+In skfolio, covariance uncertainty sets are applied to variance. With `MAXIMIZE_RATIO`
+and no additional objective penalty, minimizing variance or standard deviation
+produces the same maximum Sharpe ratio portfolio.
+
 .. code-block:: python
 
     from sklearn import set_config
@@ -2411,7 +2434,7 @@ linear size component, the factor produces the following approximate tilts:
 
     mvo = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        risk_measure=RiskMeasure.VARIANCE,
         prior_estimator=model,  # factor model as prior
         max_weights=0.05,  # limit individual positions to 5%
         min_weights=-0.05,  # allow short positions and limit to -5%
@@ -2429,7 +2452,7 @@ linear size component, the factor produces the following approximate tilts:
             "size == 0",
             "volatility == 0",
 
-            # Allow small exposures to
+            # Small bands on the remaining styles
             "growth <= 0.05",
             "growth >= -0.05",
 
@@ -2480,9 +2503,12 @@ position, so the maximum gross exposure is:
 
 Individual positions are limited to :math:`\pm 5\%`. Transaction costs follow the
 skfolio convention: a linear cost per unit traded, deducted from the portfolio
-expected return, expressed in the same periodicity as `X` (see
-:ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`). The 10
-basis points are amortized over the one-month expected holding period. Market
+expected return, which is expressed per observation period (here daily). A
+transaction cost is paid once per rebalancing while a position earns its return
+on every period it is held, so the 10 basis points are amortized over the
+one-month expected holding period to convert them to a daily cost,
+`0.001 / month` (see
+:ref:`Periodicity Convention <periodicity_convention>`). Market
 impact and borrow costs can be added through the optimizer's `add_objective` and
 `add_constraints` parameters, with native support planned for a future release.
 
@@ -2759,8 +2785,8 @@ Hyperparameter Tuning
 ~~~~~~~~~~~~~~~~~~~~~
 
 All model parameters, from descriptor half-lives to weighting powers, shrinkages
-and thresholds, follow the scikit-learn convention and can be searched with
-standard tuning utilities. For walk-forward tuning,
+and thresholds, follow the scikit-learn convention and can be tuned with
+standard model-selection utilities. For walk-forward tuning,
 :class:`~skfolio.model_selection.OnlineGridSearch` and
 :class:`~skfolio.model_selection.OnlineRandomizedSearch` evaluate each parameter
 combination in a single walk-forward pass using `partial_fit`, instead of refitting
@@ -2871,6 +2897,10 @@ Results are available as DataFrames through `summary_df`, `families_df` and
 `plot_return_contrib` and `plot_return_vs_vol_contrib`. Rolling attributions
 carry an `observations` axis and can be indexed (`attribution[i]`) to retrieve
 the attribution of a single window.
+
+Return contributions are reported directly in additive return units. Risk
+contributions are additionally normalized as shares of total variance, the
+standard scale for comparing risk attribution across portfolios and periods.
 
 The figures below use the constrained mean-variance portfolio from the
 :ref:`Portfolio Construction <factor_model_portfolio_construction>` section. That

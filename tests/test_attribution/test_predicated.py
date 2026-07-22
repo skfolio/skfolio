@@ -34,7 +34,6 @@ class TestPredictedFactorAttribution:
         assert isinstance(result.systematic.vol_contrib, float)
         assert isinstance(result.systematic.pct_total_variance, float)
         assert isinstance(result.systematic.mu, float)
-        assert isinstance(result.systematic.pct_total_mu, float)
         assert isinstance(result.systematic.corr_with_ptf, float)
 
         # Component fields - idio
@@ -60,7 +59,6 @@ class TestPredictedFactorAttribution:
         # Factors perf (defaults to zeros when factor_mu not provided)
         assert isinstance(result.factors.mu, np.ndarray)
         assert isinstance(result.factors.mu_contrib, np.ndarray)
-        assert isinstance(result.factors.pct_total_mu, np.ndarray)
         np.testing.assert_array_equal(result.factors.mu, np.zeros(2) * 252)
 
         # Families FactorBreakdown - None when not provided
@@ -74,13 +72,10 @@ class TestPredictedFactorAttribution:
         assert isinstance(result.systematic.mu, float)
         assert isinstance(result.idio.mu, float)
         assert isinstance(result.total.mu, float)
-        assert isinstance(result.systematic.pct_total_mu, float)
-        assert isinstance(result.idio.pct_total_mu, float)
 
         # Factors perf should be present
         assert isinstance(result.factors.mu, np.ndarray)
         assert isinstance(result.factors.mu_contrib, np.ndarray)
-        assert isinstance(result.factors.pct_total_mu, np.ndarray)
 
     # === DataFrame Output Tests ===
 
@@ -108,7 +103,6 @@ class TestPredictedFactorAttribution:
             "Volatility Contribution",
             "% of Total Variance",
             "Expected Return Contribution",
-            "% of Total Expected Return",
             "Standalone Volatility",
             "Standalone Expected Return",
             "Correlation with Portfolio",
@@ -117,7 +111,6 @@ class TestPredictedFactorAttribution:
             "Volatility Contribution",
             "% of Total Variance",
             "Expected Return Contribution",
-            "% of Total Expected Return",
         ]
         assert list(factors_df.columns) == expected_factors_cols
         assert list(summary_df.columns) == expected_summary_cols
@@ -133,14 +126,12 @@ class TestPredictedFactorAttribution:
         perf_cols = [
             "Standalone Expected Return",
             "Expected Return Contribution",
-            "% of Total Expected Return",
         ]
         for col in perf_cols:
             assert col in factors_df.columns
 
         # Check summary has perf columns
         assert "Expected Return Contribution" in summary_df.columns
-        assert "% of Total Expected Return" in summary_df.columns
 
     def test_df_output_with_families(self, multi_factor_model):
         """Test DataFrame output with families."""
@@ -163,7 +154,6 @@ class TestPredictedFactorAttribution:
             "Volatility Contribution",
             "% of Total Variance",
             "Expected Return Contribution",
-            "% of Total Expected Return",
         ]
         assert list(families_df.columns) == expected_families_cols
 
@@ -174,7 +164,6 @@ class TestPredictedFactorAttribution:
 
         # Families df has perf columns
         assert "Expected Return Contribution" in families_df.columns
-        assert "% of Total Expected Return" in families_df.columns
 
     # === Mathematical Correctness Tests (Risk) ===
 
@@ -336,16 +325,15 @@ class TestPredictedFactorAttribution:
             result.total.mu, result.systematic.mu + result.idio.mu
         )
 
-    def test_pct_total_mu_from_factors_sums_to_systematic_share(
+    def test_factor_return_contributions_sum_to_systematic_return(
         self, simple_factor_model_with_perf
     ):
-        """Test that factor % of Total Expected Return sums to systematic share."""
+        """Test that factor return contributions sum to systematic return."""
         result = predicted_factor_attribution(**simple_factor_model_with_perf)
-        factors_df = result.factors_df(formatted=False)
 
         np.testing.assert_almost_equal(
-            factors_df["% of Total Expected Return"].sum(),
-            result.systematic.pct_total_mu,
+            result.factors.mu_contrib.sum(),
+            result.systematic.mu,
         )
 
     def test_summary_expected_return_additive(self, simple_factor_model_with_perf):
@@ -403,9 +391,9 @@ class TestPredictedFactorAttribution:
         np.testing.assert_almost_equal(
             result_ann.systematic.mu, result_raw.systematic.mu * 252
         )
-        # Percentage shares should remain the same
         np.testing.assert_almost_equal(
-            result_ann.systematic.pct_total_mu, result_raw.systematic.pct_total_mu
+            result_ann.factors.mu_contrib,
+            result_raw.factors.mu_contrib * 252,
         )
 
     # === Input Handling Tests ===
@@ -534,10 +522,10 @@ class TestPredictedFactorAttribution:
         result = predicted_factor_attribution(**multi_factor_model_with_perf)
         families_df = result.families_df(formatted=False)
 
-        # % of Total Expected Return should sum to systematic's share
+        # Family return contributions should sum to the systematic return.
         np.testing.assert_almost_equal(
-            families_df["% of Total Expected Return"].sum(),
-            result.systematic.pct_total_mu,
+            families_df["Expected Return Contribution"].sum(),
+            result.systematic.mu,
         )
 
     # === Error Handling Tests ===
@@ -756,7 +744,6 @@ class TestPredictedFactorAttribution:
         )
 
         assert result.systematic.mu == 0.0
-        assert result.systematic.pct_total_mu == 0.0
 
     def test_zero_total_return(self):
         """Test handling when total expected return is zero."""
@@ -772,9 +759,9 @@ class TestPredictedFactorAttribution:
         )
 
         assert result.total.mu == 0.0
-        assert np.isnan(result.systematic.pct_total_mu)
-        assert np.isnan(result.idio.pct_total_mu)
-        assert np.all(np.isnan(result.factors.pct_total_mu))
+        assert result.systematic.mu == 0.0
+        assert result.idio.mu == 0.0
+        np.testing.assert_array_equal(result.factors.mu_contrib, 0.0)
 
     def test_negative_expected_returns(self):
         """Test handling of negative expected returns."""

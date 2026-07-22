@@ -5,9 +5,9 @@
       <thead>
         <tr style="text-align: right;">
           <th></th>
-          <th>mean_return</th>
-          <th>std_return</th>
-          <th>ir</th>
+          <th>annualized_mean</th>
+          <th>annualized_vol</th>
+          <th>annualized_ir</th>
           <th>hit_rate</th>
           <th>mean_turnover</th>
         </tr>

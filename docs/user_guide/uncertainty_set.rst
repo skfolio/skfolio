@@ -58,6 +58,9 @@ It is used to solve worst-case optimization using the
 robust optimization. It reduces the instability that arises from the estimation errors
 of the expected returns and the covariance matrix.
 
+Covariance uncertainty is applied when `risk_measure=RiskMeasure.VARIANCE` or when
+`max_variance` is set.
+
 **Example:**
 
 .. code-block:: python
@@ -83,4 +86,3 @@ of the expected returns and the covariance matrix.
     )
     model.fit(X)
     print(model.weights_)
-

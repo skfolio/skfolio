@@ -979,6 +979,38 @@ def test_worst_case_mean_variance(X):
     assert sum(np.square(w_ref)) - sum(np.square(w)) > diff
 
 
+def test_standard_deviation_rejects_covariance_uncertainty(X):
+    model = MeanRisk(
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(),
+    )
+
+    with pytest.raises(ValueError, match=r"risk_measure=RiskMeasure\.VARIANCE"):
+        model.fit(X)
+
+
+def test_covariance_uncertainty_requires_covariance_risk(X):
+    model = MeanRisk(
+        risk_measure=RiskMeasure.CVAR,
+        covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(),
+    )
+
+    with pytest.raises(ValueError, match=r"risk_measure=RiskMeasure\.VARIANCE"):
+        model.fit(X)
+
+
+def test_covariance_uncertainty_with_variance_limit(X):
+    model = MeanRisk(
+        risk_measure=RiskMeasure.CVAR,
+        max_variance=1.0,
+        covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(),
+    )
+
+    model.fit(X)
+
+    assert model.covariance_uncertainty_set_estimator_ is not None
+
+
 def test_transaction_costs(X, risk_measure):
     n_assets = X.shape[1]
     model = MeanRisk(

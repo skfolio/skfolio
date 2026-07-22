@@ -12,6 +12,13 @@ the assets returns and stores the portfolio weights in its `weights_` attribute.
 
 `X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
+All optimization inputs (expected returns, covariance, return scenarios) are expressed
+in the periodicity of `X`: with daily returns, the optimizer works with daily moments
+and scenarios rather than annualized ones. Parameters that share the unit of expected
+returns, such as `transaction_costs` and `management_fees`, must be expressed in the
+same periodicity. See :ref:`Periodicity Convention <periodicity_convention>` for the
+rationale and the cost conversion rules.
+
 Naive Allocation
 ****************
 
@@ -347,6 +354,12 @@ uncertainty set for the expected returns of the assets:
     portfolio = model.predict(X_test)
     print(portfolio.annualized_sharpe_ratio)
     print(portfolio.cdar_ratio)
+
+Covariance uncertainty is configured with `covariance_uncertainty_set_estimator`.
+It is applied to the variance risk measure or a `max_variance` constraint. Generic
+estimators use a lifted semidefinite formulation, while
+:class:`~skfolio.uncertainty_set.OrthogonalCovarianceUncertaintySet` uses a compact
+representation in the factor model's orthogonal space.
 
 
 Going Further

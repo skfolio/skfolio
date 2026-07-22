@@ -231,8 +231,12 @@ class ConvexOptimization(BaseOptimization, ABC):
             Based on the above formula, the periodicity of the transaction costs
             needs to be homogenous to the periodicity of :math:`\mu`. For example, if
             the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            to be expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -259,7 +263,10 @@ class ConvexOptimization(BaseOptimization, ABC):
             Based on the above formula, the periodicity of the management fees needs to
             be homogenous to the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -316,10 +323,11 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     covariance_uncertainty_set_estimator : BaseCovarianceUncertaintySet, optional
         :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets covariance matrix is modelled with an ellipsoidal
-        uncertainty set. It is called worst-case optimization and is a class of robust
-        optimization. It reduces the instability that arises from the estimation errors
-        of the covariance matrix.
+        If provided, covariance estimation uncertainty is included in the optimized
+        variance. This approach is known as worst-case optimization, a form of robust
+        optimization. It reduces sensitivity to covariance estimation errors.
+        Covariance uncertainty is applied when `risk_measure=RiskMeasure.VARIANCE` or
+        when `max_variance` is set.
         The default (`None`) means that no uncertainty set is used.
 
     linear_constraints : array-like of shape (n_constraints,), optional
@@ -392,7 +400,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         CVaR (Conditional Value at Risk) confidence level.
         The default value is `0.95`.
 
-    evar_beta : float, default=0
+    evar_beta : float, default=0.95
         EVaR (Entropic Value at Risk) confidence level.
         The default value is `0.95`.
 
@@ -1660,51 +1668,50 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _standard_deviation_risk(
         self, return_distribution: ReturnDistribution, w: cp.Variable
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Standard Deviation risk measure.
+        """Expression and constraints of the standard deviation risk measure.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-            asset returns distribution DataModel.
+            Asset return distribution.
 
         w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints of the Standard Deviation risk measure.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the standard deviation risk measure.
         """
-        # nonneg=True instead of constraint v>=0 is preferred for better DCP analysis
-        v = cp.Variable(nonneg=True)
+        # nonneg=True instead of a separate constraint improves DCP analysis.
+        risk = cp.Variable(nonneg=True)
         scale = self._scale_constraints
-        sqrt = return_distribution.covariance_sqrt
+        covariance_sqrt = return_distribution.covariance_sqrt
 
-        terms = [component.T @ w for component in sqrt.components]
-        if sqrt.diagonal is not None:
-            terms.append(cp.multiply(sqrt.diagonal, w))
+        terms = [component.T @ w for component in covariance_sqrt.components]
+        if covariance_sqrt.diagonal is not None:
+            terms.append(cp.multiply(covariance_sqrt.diagonal, w))
 
-        risk = v
-        constraints = [cp.SOC(v * scale, cp.hstack(terms) * scale)]
+        constraints = [cp.SOC(risk * scale, cp.hstack(terms) * scale)]
         return risk, constraints
 
     def _variance_risk(
         self, return_distribution: ReturnDistribution, w: cp.Variable
     ) -> skt.RiskResult:
-        """Expression and Constraints of the Variance risk measure.
+        """Expression and constraints of the variance risk measure.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
+            Asset return distribution.
 
         w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-           CVXPY Expression and Constraints the Variance risk measure.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the variance risk measure.
         """
         risk, constraints = self._standard_deviation_risk(
             return_distribution=return_distribution, w=w
@@ -1719,38 +1726,51 @@ class ConvexOptimization(BaseOptimization, ABC):
         w: cp.Variable,
         factor: skt.Factor,
     ) -> skt.RiskResult:
-        r"""Expression and Constraints of the Worst Case Variance.
+        r"""Expression and constraints of the worst-case variance.
+
+        A :class:`~skfolio.uncertainty_set.CompactCovarianceUncertaintySet`
+        adds the reduced quadratic penalty
+
+        .. math::
+
+            \kappa \min_z \lVert Cw - Qz \rVert_2^2
+
+        to the nominal variance. A generic
+        :class:`~skfolio.uncertainty_set.UncertaintySet` uses a lifted semidefinite
+        formulation.
 
         Parameters
         ----------
         return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
+            Asset return distribution.
 
         covariance_uncertainty_set : UncertaintySet | CompactCovarianceUncertaintySet
-             :ref:`Covariance Uncertainty set <uncertainty_set_estimator>`.
+            Fitted :ref:`covariance uncertainty set <uncertainty_set_estimator>`.
 
         w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
+            CVXPY variable representing the asset weights.
 
         factor : cvxpy Variable | cvxpy Constant
-           Additional variable used for the optimization of some objective function
-           like the ratio maximization.
+            Homogenization factor used by the generic lifted formulation for ratio
+            optimization.
 
         Returns
         -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-           CVXPY Expression and Constraints the Worst Case Variance.
+        expression : tuple[cvxpy Expression, list[cvxpy Expression]]
+            CVXPY expression and constraints of the worst-case variance.
         """
         if isinstance(covariance_uncertainty_set, CompactCovarianceUncertaintySet):
+            # The compact representation avoids lifted matrix variables.
             risk, constraints = self._variance_risk(return_distribution, w)
             residual = cp.multiply(covariance_uncertainty_set.metric_sqrt, w)
             rank = covariance_uncertainty_set.basis.shape[1]
             if rank > 0:
-                z = cp.Variable(rank)
-                residual = residual - covariance_uncertainty_set.basis @ z
+                projection_coefficients = cp.Variable(rank)
+                residual -= covariance_uncertainty_set.basis @ projection_coefficients
             risk += covariance_uncertainty_set.radius * cp.sum_squares(residual)
             return risk, constraints
 
+        # Generic covariance uncertainty uses a lifted semidefinite formulation.
         n_assets = return_distribution.returns.shape[1]
         x = cp.Variable((n_assets, n_assets), symmetric=True)
         y = cp.Variable((n_assets, n_assets), symmetric=True)

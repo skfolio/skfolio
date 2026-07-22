@@ -1168,7 +1168,7 @@ class FactorModel:
         """
         return _plot_single_ts(
             self.idio_calibration,
-            title=title or "Idiosyncratic Calibration",
+            title=title or _rolling_title("Idiosyncratic Calibration", window),
             yaxis_title="Cross-Sectional Std of Standardised Idio Returns",
             window=window,
             ref_value=1.0,
@@ -1214,7 +1214,12 @@ class FactorModel:
         expected_rate = 2 * scs.norm.sf(threshold)
         return _plot_single_ts(
             self.idio_tail_rate(threshold=threshold),
-            title=title or f"abs(standardized idio returns) > {threshold}",
+            title=title
+            or _rolling_title(
+                "Idiosyncratic Tail Rate",
+                window,
+                context=f"threshold={threshold}",
+            ),
             yaxis_title="Fraction of Assets",
             window=window,
             ref_value=expected_rate,
@@ -1249,8 +1254,7 @@ class FactorModel:
         """
         return _plot_single_ts(
             self.idio_kurtosis,
-            title=title
-            or "Cross-Sectional Excess Kurtosis of Standardised Idio Returns",
+            title=title or _rolling_title("Cross-Sectional Excess Kurtosis", window),
             yaxis_title="Excess Kurtosis",
             window=window,
             ref_value=0.0,
@@ -1282,7 +1286,7 @@ class FactorModel:
         """
         return _plot_single_ts(
             self.idio_skewness,
-            title=title or "Cross-Sectional Skewness of Standardised Idio Returns",
+            title=title or _rolling_title("Cross-Sectional Skewness", window),
             yaxis_title="Skewness",
             window=window,
             ref_value=0.0,
@@ -1325,13 +1329,19 @@ class FactorModel:
         """
         return _plot_single_ts(
             self.idio_vol_ic.rename("Rank Correlation (Spearman)"),
-            title=title or "Idiosyncratic Volatility IC (Spearman)",
+            title=title
+            or _rolling_title(
+                "Idiosyncratic Volatility IC",
+                window,
+                context="Spearman",
+            ),
             yaxis_title=(
                 "Rank Correlation (Spearman, predicted idio vol vs |idio return|)"
             ),
             window=window,
             show_raw=True,
             show_mean=False,
+            raw_trace_name="Rank Correlation",
         )
 
     def plot_idio_vol_residual_dependence(
@@ -1371,7 +1381,12 @@ class FactorModel:
         """
         return _plot_single_ts(
             self.idio_vol_residual_dependence.rename("Residual Dependence (Spearman)"),
-            title=title or "Idiosyncratic Volatility Residual Dependence (Spearman)",
+            title=title
+            or _rolling_title(
+                "Idiosyncratic Volatility Residual Dependence",
+                window,
+                context="Spearman",
+            ),
             yaxis_title=(
                 "Rank Correlation (Spearman, predicted idio vol vs "
                 "|idio return| / predicted idio vol)"
@@ -1380,6 +1395,7 @@ class FactorModel:
             show_raw=True,
             show_mean=False,
             ref_value=0.0,
+            raw_trace_name="Residual Dependence",
         )
 
     # Cross-sectional regression diagnostics
@@ -1561,7 +1577,7 @@ class FactorModel:
             Score to plot. Must be one of `"r2"`, `"adjusted_r2"`, `"aic"`, or `"bic"`.
 
         window : int, default=30
-            Number of observations for the rolling mean.
+            Number of observations required for the rolling mean.
 
         title : str, optional
             Custom title.
@@ -1586,7 +1602,7 @@ class FactorModel:
         label = score_labels[score]
         return _plot_single_ts(
             series.rename(label),
-            title=title or f"Rolling {label} ({window} observations)",
+            title=title or _rolling_title(label, window),
             yaxis_title=label,
             window=window,
             show_raw=True,
@@ -1602,9 +1618,9 @@ class FactorModel:
     ) -> go.Figure:
         r"""Plot absolute cross-sectional regression t-statistics over time per factor.
 
-        When `window` is provided, plots the rolling mean of :math:`|t|` instead of the
-        raw values. A horizontal reference line at :math:`|t| = 2` marks the
-        conventional significance threshold.
+        When `window` is provided, plots the rolling mean of :math:`|t|` over
+        `window` observations instead of the raw values. A horizontal reference line
+        at :math:`|t| = 2` marks the conventional significance threshold.
 
         Parameters
         ----------
@@ -1632,7 +1648,7 @@ class FactorModel:
             abs_t_stats, index=self._aligned("observations"), columns=factor_names
         )
         if window is not None:
-            df = df.rolling(window=window, min_periods=1).mean()
+            df = df.rolling(window=window).mean()
 
         default_title = (
             "|t|-statistic per Factor"
@@ -1737,6 +1753,12 @@ class FactorModel:
         cross-sectional analogue of multicollinearity diagnostics used in regression,
         where redundant predictors can inflate variance inflation factors (VIFs).
 
+        Pairs involving a factor with degenerate cross-sectional variance (e.g. the
+        constant global factor exposure) have an undefined correlation and are
+        reported as zero by convention. When two factors are never finite on at
+        least 3 common assets at any observation, their correlation cannot be
+        estimated and is reported as NaN.
+
         Parameters
         ----------
         factors : list of str, optional
@@ -1766,6 +1788,10 @@ class FactorModel:
         )
         min_count = 3
         eps = 1e-12
+        # The weighted variance is computed by cancellation of terms of the order
+        # of the weighted square sum, so degenerate (constant) exposures must be
+        # detected with a tolerance relative to that scale.
+        rel_tol = 1e-9
         finite = np.isfinite(exposures)
         mask = finite.astype(float)
         clean_exposures = np.where(finite, exposures, 0.0)
@@ -1806,10 +1832,20 @@ class FactorModel:
 
         denom = np.sqrt(variance * variance_t)
         pairwise_corr = safe_divide(covariance, denom, fill_value=np.nan, atol=eps)
-        pairwise_corr[
-            (n_valid < min_count) | (variance <= eps) | (variance_t <= eps)
-        ] = np.nan
-        corr = np.nanmean(pairwise_corr, axis=0)
+        insufficient = n_valid < min_count
+        degenerate = (variance <= eps + rel_tol * weighted_square_sum) | (
+            variance_t <= eps + rel_tol * weighted_square_sum_t
+        )
+        pairwise_corr[insufficient | degenerate] = np.nan
+        with warnings.catch_warnings():
+            # All-NaN slices are expected for degenerate pairs and handled below.
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            corr = np.nanmean(pairwise_corr, axis=0)
+        # A pair that is degenerate at every observation with sufficient joint
+        # coverage (e.g. any pair involving the constant global factor exposure)
+        # has an undefined correlation and is reported as zero by convention.
+        zero_by_convention = np.isnan(corr) & (degenerate & ~insufficient).any(axis=0)
+        corr[zero_by_convention] = 0.0
         np.fill_diagonal(corr, 1.0)
         return corr
 
@@ -1943,9 +1979,9 @@ class FactorModel:
     ) -> go.Figure:
         r"""Plot exposure Variance Inflation Factors over time per factor.
 
-        When `window` is provided, plots the rolling mean instead of raw per-observation
-        values. A horizontal reference line at VIF = 5 marks the conventional
-        collinearity threshold.
+        When `window` is provided, plots the rolling mean over `window` observations
+        instead of raw per-observation values. A horizontal reference line at VIF = 5
+        marks the conventional collinearity threshold.
 
         Parameters
         ----------
@@ -1974,7 +2010,7 @@ class FactorModel:
         )
 
         if window is not None:
-            df = df.rolling(window=window, min_periods=1).mean()
+            df = df.rolling(window=window).mean()
 
         default_title = (
             "Exposure Variance Inflation Factor"
@@ -2005,7 +2041,7 @@ class FactorModel:
         Parameters
         ----------
         window : int, default=30
-            Number of observations for the rolling mean.
+            Number of observations required for the rolling mean.
 
         title : str, optional
             Custom title.
@@ -2017,7 +2053,7 @@ class FactorModel:
         label = "Exposure Condition Number"
         return _plot_single_ts(
             self.exposure_condition_number.rename(label),
-            title=title or f"Rolling {label} ({window} observations)",
+            title=title or _rolling_title(label, window),
             yaxis_title=label,
             window=window,
             show_raw=True,
@@ -3140,6 +3176,23 @@ def _multi_line_plot(df: pd.DataFrame, title: str, yaxis_title: str) -> go.Figur
     return fig
 
 
+def _rolling_title(
+    metric: str,
+    window: int | None,
+    *,
+    context: str | None = None,
+) -> str:
+    """Format a default title for raw or rolling time-series plots."""
+    if window is None:
+        return f"{metric} ({context})" if context is not None else metric
+    suffix = (
+        f"{window} observations"
+        if context is None
+        else f"{context}, {window} observations"
+    )
+    return f"Rolling {metric} ({suffix})"
+
+
 def _plot_single_ts(
     series: pd.Series,
     title: str,
@@ -3152,6 +3205,7 @@ def _plot_single_ts(
     ref_label: str | None = None,
     mean_fmt: str = ".2f",
     tick_format: str | None = None,
+    raw_trace_name: str | None = None,
 ) -> go.Figure:
     """Single time-series plot with optional rolling mean and reference lines.
 
@@ -3167,7 +3221,7 @@ def _plot_single_ts(
         Y-axis label.
 
     window : int, optional
-        If given, smooth with a rolling mean before plotting.
+        If given, smooth with a rolling mean once a complete window is available.
 
     show_raw : bool, default=False
         When `True` and `window` is set, also plot the raw series as
@@ -3190,13 +3244,12 @@ def _plot_single_ts(
 
     tick_format : str, optional
         Y-axis tick format (e.g. `".2%"`).
+
+    raw_trace_name : str, optional
+        Trace name used for the raw series when `show_raw` is `True`.
     """
     raw = series.values.copy()
-    smoothed = (
-        series.rolling(window=window, min_periods=1).mean()
-        if window is not None
-        else series
-    )
+    smoothed = series.rolling(window=window).mean() if window is not None else series
 
     mean_val = np.nanmean(raw)
 
@@ -3207,7 +3260,7 @@ def _plot_single_ts(
                 x=series.index,
                 y=raw,
                 mode="lines",
-                name=series.name,
+                name=raw_trace_name or series.name,
                 line=dict(color="rgba(31, 119, 180, 0.35)", width=1),
             )
         )
@@ -3216,7 +3269,7 @@ def _plot_single_ts(
                 x=smoothed.index,
                 y=smoothed.values,
                 mode="lines",
-                name=f"Rolling Mean ({window} observations)",
+                name="Rolling Mean",
                 line=dict(color="rgb(31, 119, 180)", width=2),
             )
         )

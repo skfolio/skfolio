@@ -1155,6 +1155,7 @@ def _rolling(
     series : Series
         Rolling statistic with the warmup period removed.
     """
+    _validate_rolling_window(window, len(observations))
     series = pd.Series(arr, index=observations)
     if stats_type == "std":
         return series.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1222,6 +1223,7 @@ def _rolling_portfolio_band(
     p95 : Series
         Rolling 95th percentile across portfolios.
     """
+    _validate_rolling_window(window, len(observations))
     df = pd.DataFrame(arr, index=observations)
     if stats_type == "std":
         rolled = df.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1232,6 +1234,15 @@ def _rolling_portfolio_band(
         rolled.quantile(0.05, axis=1),
         rolled.quantile(0.95, axis=1),
     )
+
+
+def _validate_rolling_window(window: int, n_observations: int) -> None:
+    """Validate rolling window length against available observations."""
+    if window > n_observations:
+        raise ValueError(
+            "`window` must be less than or equal to the number of evaluation "
+            f"observations; got window={window} and n_observations={n_observations}."
+        )
 
 
 def _median_portfolio_stats(arr: FloatArray, stats_func: Callable) -> dict[str, object]:

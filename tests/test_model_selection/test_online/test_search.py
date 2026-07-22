@@ -639,6 +639,65 @@ class TestOnlineRandomizedSearch:
         assert isinstance(search.best_score_, float)
 
 
+@pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+def test_search_entry_rebalancing_params(search_cls, X):
+    """Search entry parameters only affect the first candidate portfolio."""
+    transaction_costs = 0.001
+    search_params = (
+        {"param_grid": {"transaction_costs": [transaction_costs]}}
+        if search_cls is OnlineGridSearch
+        else {
+            "param_distributions": {"transaction_costs": [transaction_costs]},
+            "n_iter": 1,
+            "random_state": 0,
+        }
+    )
+    search = search_cls(
+        _make_online_estimator(),
+        **search_params,
+        warmup_size=WARMUP,
+        test_size=TEST_SIZE,
+        return_predictions=True,
+        entry_rebalancing_params={"transaction_costs": 0.0, "fallback": None},
+    )
+
+    search.fit(X)
+
+    prediction = search.cv_results_["predictions"][0]
+    assert len(prediction) >= 2
+    assert prediction[0].transaction_costs == 0.0
+    assert all(ptf.transaction_costs == transaction_costs for ptf in prediction[1:])
+    assert search.best_estimator_.transaction_costs == transaction_costs
+
+
+def test_search_invalid_entry_rebalancing_param_raises(X):
+    """Invalid entry parameter names raise before candidate evaluation."""
+    search = OnlineGridSearch(
+        _make_online_estimator(),
+        param_grid={"risk_aversion": [1.0]},
+        warmup_size=WARMUP,
+        test_size=TEST_SIZE,
+        entry_rebalancing_params={"not_a_parameter": 1},
+    )
+
+    with pytest.raises(ValueError, match="contains invalid parameter names"):
+        search.fit(X)
+
+
+def test_search_entry_rebalancing_params_rejects_component_estimator(X):
+    """Search entry parameters require a portfolio optimization estimator."""
+    search = OnlineGridSearch(
+        EWCovariance(),
+        param_grid={"half_life": [20]},
+        warmup_size=WARMUP,
+        test_size=50,
+        entry_rebalancing_params={"half_life": 10},
+    )
+
+    with pytest.raises(ValueError, match="entry_rebalancing_params"):
+        search.fit(X)
+
+
 class TestValidateSizes:
     def test_float_warmup_size_raises(self):
         with pytest.raises(TypeError, match="warmup_size must be an integer"):

@@ -911,6 +911,13 @@ class TestPlotFactorForecastCorrelation:
         expected = factor_model.factor_forecast_correlation()
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
+    def test_height_scales_with_number_of_factors(self):
+        n_factors = 24
+        fm = _make_factor_model(n_factors=n_factors, n_assets=40)
+        fig = fm.plot_factor_forecast_correlation()
+
+        assert fig.layout.height == max(450, 28 * n_factors + 300)
+
 
 class TestFactorForecastCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
@@ -1111,6 +1118,15 @@ class TestPlotExposureCorrelation:
         )
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
+    def test_height_scales_with_number_of_factors(self):
+        n_factors = 24
+        fm = _make_factor_model(n_factors=n_factors, n_assets=40)
+        fig = fm.plot_exposure_correlation(
+            families=None, cs_weighting=CSWeighting.IDENTITY
+        )
+
+        assert fig.layout.height == max(450, 28 * n_factors + 300)
+
 
 class TestExposureCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
@@ -1163,6 +1179,28 @@ class TestExposureCorrelation:
         np.testing.assert_allclose(corr[1, 0], expected, atol=1e-12)
         np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-12)
 
+    def test_constant_exposure_reports_zero_correlation(self):
+        rng = np.random.default_rng(42)
+        n_obs, n_assets = 10, 50
+        exposures = np.empty((n_obs, n_assets, 3))
+        exposures[:, :, 0] = 1.0
+        exposures[:, :, 1] = rng.standard_normal((n_obs, n_assets))
+        exposures[:, :, 2] = rng.standard_normal((n_obs, n_assets))
+        benchmark_weights = np.full((n_obs, n_assets), 1.0 / n_assets)
+        fm = _make_exposure_only_factor_model(
+            exposures=exposures,
+            benchmark_weights=benchmark_weights,
+        )
+
+        corr = fm.exposure_correlation(
+            families=None, cs_weighting=CSWeighting.BENCHMARK
+        )
+
+        assert not np.isnan(corr).any()
+        assert np.all(corr[0, 1:] == 0.0)
+        assert np.all(corr[1:, 0] == 0.0)
+        np.testing.assert_allclose(np.diag(corr), 1.0, atol=1e-12)
+
 
 # ------------------------------------------------------------------
 # Plots: residual
@@ -1179,6 +1217,11 @@ class TestPlotResidualCalibration:
     def test_rolling_window(self, factor_model):
         fig = factor_model.plot_idio_calibration(window=10)
         assert isinstance(fig, go.Figure)
+        assert fig.layout.title.text == (
+            "Rolling Idiosyncratic Calibration (10 observations)"
+        )
+        expected = factor_model.idio_calibration.rolling(window=10).mean().values
+        np.testing.assert_allclose(fig.data[0].y, expected)
 
     def test_requires_idio_data(self, factor_model_no_ts):
         with pytest.raises(ValueError, match="idio_returns"):
@@ -1198,6 +1241,12 @@ class TestPlotResidualTailRate:
         fig = factor_model.plot_idio_tail_rate(threshold=2.0)
         assert "2.0" in fig.layout.title.text
 
+    def test_rolling_title(self, factor_model):
+        fig = factor_model.plot_idio_tail_rate(threshold=2.0, window=10)
+        assert fig.layout.title.text == (
+            "Rolling Idiosyncratic Tail Rate (threshold=2.0, 10 observations)"
+        )
+
 
 class TestPlotIdioKurtosis:
     def test_returns_figure(self, factor_model):
@@ -1211,6 +1260,12 @@ class TestPlotIdioKurtosis:
     def test_single_trace(self, factor_model):
         fig = factor_model.plot_idio_kurtosis()
         assert len(fig.data) == 1
+
+    def test_rolling_title(self, factor_model):
+        fig = factor_model.plot_idio_kurtosis(window=10)
+        assert fig.layout.title.text == (
+            "Rolling Cross-Sectional Excess Kurtosis (10 observations)"
+        )
 
 
 class TestPlotIdioSkewness:
@@ -1226,6 +1281,12 @@ class TestPlotIdioSkewness:
         fig = factor_model.plot_idio_skewness()
         assert len(fig.data) == 1
 
+    def test_rolling_title(self, factor_model):
+        fig = factor_model.plot_idio_skewness(window=10)
+        assert fig.layout.title.text == (
+            "Rolling Cross-Sectional Skewness (10 observations)"
+        )
+
 
 class TestPlotIdioVolIc:
     def test_returns_figure(self, factor_model):
@@ -1239,6 +1300,21 @@ class TestPlotIdioVolIc:
     def test_two_traces(self, factor_model):
         fig = factor_model.plot_idio_vol_ic(window=10)
         assert len(fig.data) == 2
+
+    def test_title_and_legend_names(self, factor_model):
+        fig = factor_model.plot_idio_vol_ic(window=10)
+        assert fig.layout.title.text == (
+            "Rolling Idiosyncratic Volatility IC (Spearman, 10 observations)"
+        )
+        assert [trace.name for trace in fig.data] == [
+            "Rank Correlation",
+            "Rolling Mean",
+        ]
+
+    def test_smoothed_trace_uses_full_window(self, factor_model):
+        fig = factor_model.plot_idio_vol_ic(window=10)
+        expected = factor_model.idio_vol_ic.rolling(window=10).mean().values
+        np.testing.assert_allclose(fig.data[1].y, expected)
 
 
 class TestPlotIdioVolResidualDependence:
@@ -1256,6 +1332,24 @@ class TestPlotIdioVolResidualDependence:
     def test_two_traces(self, factor_model):
         fig = factor_model.plot_idio_vol_residual_dependence(window=10)
         assert len(fig.data) == 2
+
+    def test_title_and_legend_names(self, factor_model):
+        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
+        assert fig.layout.title.text == (
+            "Rolling Idiosyncratic Volatility Residual Dependence "
+            "(Spearman, 10 observations)"
+        )
+        assert [trace.name for trace in fig.data] == [
+            "Residual Dependence",
+            "Rolling Mean",
+        ]
+
+    def test_smoothed_trace_uses_full_window(self, factor_model):
+        fig = factor_model.plot_idio_vol_residual_dependence(window=10)
+        expected = (
+            factor_model.idio_vol_residual_dependence.rolling(window=10).mean().values
+        )
+        np.testing.assert_allclose(fig.data[1].y, expected)
 
 
 class TestWeightingParameter:
@@ -1804,6 +1898,24 @@ class TestPlotCSRegressionScores:
         fig = factor_model.plot_cs_regression_scores(window=5)
         assert len(fig.data) == 2
 
+    def test_title_and_legend_names(self, factor_model):
+        fig = factor_model.plot_cs_regression_scores(window=5)
+        assert fig.layout.title.text == "Rolling Adjusted R\u00b2 (5 observations)"
+        assert [trace.name for trace in fig.data] == [
+            "Adjusted R\u00b2",
+            "Rolling Mean",
+        ]
+
+    def test_smoothed_trace_uses_full_window(self, factor_model):
+        fig = factor_model.plot_cs_regression_scores(window=5)
+        expected = (
+            factor_model.cs_regression_scores["adjusted_r2"]
+            .rolling(window=5)
+            .mean()
+            .values
+        )
+        np.testing.assert_allclose(fig.data[1].y, expected)
+
     def test_invalid_score(self, factor_model):
         with pytest.raises(ValueError, match="score"):
             factor_model.plot_cs_regression_scores(score="bad")
@@ -1826,6 +1938,13 @@ class TestPlotCSRegressionTStats:
         fig = factor_model.plot_cs_regression_t_stats(window=5)
         assert isinstance(fig, go.Figure)
         assert "Rolling" in fig.layout.title.text
+        expected = (
+            pd.Series(np.abs(factor_model._gram_diagnostics.t_stats[:, 0]))
+            .rolling(window=5)
+            .mean()
+            .values
+        )
+        np.testing.assert_allclose(fig.data[0].y, expected)
 
     def test_custom_title(self, factor_model):
         fig = factor_model.plot_cs_regression_t_stats(title="Custom")
@@ -1880,12 +1999,36 @@ class TestPlotExposureVIF:
         fig = factor_model.plot_exposure_vif(window=5)
         assert isinstance(fig, go.Figure)
         assert "Rolling" in fig.layout.title.text
+        expected = (
+            pd.Series(factor_model._gram_diagnostics.vif[:, 0])
+            .rolling(window=5)
+            .mean()
+            .values
+        )
+        np.testing.assert_allclose(fig.data[0].y, expected)
 
 
 class TestPlotExposureConditionNumber:
     def test_returns_figure(self, factor_model):
         fig = factor_model.plot_exposure_condition_number(window=5)
         assert isinstance(fig, go.Figure)
+
+    def test_smoothed_trace_uses_full_window(self, factor_model):
+        fig = factor_model.plot_exposure_condition_number(window=5)
+        expected = (
+            factor_model.exposure_condition_number.rolling(window=5).mean().values
+        )
+        np.testing.assert_allclose(fig.data[1].y, expected)
+
+    def test_title_and_legend_names(self, factor_model):
+        fig = factor_model.plot_exposure_condition_number(window=5)
+        assert fig.layout.title.text == (
+            "Rolling Exposure Condition Number (5 observations)"
+        )
+        assert [trace.name for trace in fig.data] == [
+            "Exposure Condition Number",
+            "Rolling Mean",
+        ]
 
     def test_custom_title(self, factor_model):
         fig = factor_model.plot_exposure_condition_number(title="Custom")

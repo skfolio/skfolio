@@ -48,15 +48,12 @@ class BaseBreakdown(ABC):
     mu_contrib : ndarray of shape (n_items,) or (n_windows, n_items)
         Return contribution to total portfolio return.
 
-    pct_total_mu : ndarray of shape (n_items,) or (n_windows, n_items)
-        Percentage of total portfolio return.
     """
 
     names: StrArray
     vol_contrib: FloatArray
     pct_total_variance: FloatArray
     mu_contrib: FloatArray
-    pct_total_mu: FloatArray
 
     @property
     def _is_rolling(self) -> bool:
@@ -157,7 +154,6 @@ class BaseBreakdown(ABC):
                 "Volatility Contribution",
                 "% of Total Variance",
                 mu_contrib_col,
-                f"% of Total {mu_label}",
                 "Systematic Vol Contribution",
                 "Idiosyncratic Vol Contribution",
                 f"Systematic {mu_label} Contribution",
@@ -193,7 +189,6 @@ class BaseBreakdown(ABC):
             "Mean Return Uncertainty",
             f"Systematic {mu_label} Contribution",
             f"Idiosyncratic {mu_label} Contribution",
-            f"% of Total {mu_label}",
             "Standalone Volatility",
             f"Standalone {mu_label}",
         ]
@@ -229,7 +224,6 @@ class BaseBreakdown(ABC):
             "Volatility Contribution": self.vol_contrib.ravel(),
             "% of Total Variance": self.pct_total_variance.ravel(),
             f"{mu_label} Contribution": self.mu_contrib.ravel(),
-            f"% of Total {mu_label}": self.pct_total_mu.ravel(),
         }
 
         return data
@@ -270,9 +264,6 @@ class FactorBreakdown(BaseBreakdown):
 
     mu_contrib : ndarray of shape (n_factors,) or (n_windows, n_factors)
         Factor return contribution to total portfolio return.
-
-    pct_total_mu : ndarray of shape (n_factors,) or (n_windows, n_factors)
-        Percentage of total portfolio return.
 
     vol : ndarray of shape (n_factors,) or (n_windows, n_factors)
         Standalone factor volatility.
@@ -317,9 +308,8 @@ class FactorBreakdown(BaseBreakdown):
             Whether this is realized (ex-post) attribution.
 
         formatted : bool, default=False
-            If True, format numeric columns for display: volatility/return and
-            percentage columns as "XX.XX%", other numeric columns rounded to 4 decimal
-            places.
+            If True, format volatility, return and variance-share columns as
+            percentages and round other numeric columns to 4 decimal places.
 
         observations : ndarray, optional
             Observation labels for rolling attribution. If provided, returns a
@@ -334,7 +324,7 @@ class FactorBreakdown(BaseBreakdown):
         -------
         df : pandas.DataFrame
             Pandas DataFrame with columns for exposures, volatilities, correlations,
-            contributions, and percentage shares. For single-point attribution,
+            contributions and variance shares. For single-point attribution,
             indexed by `Factor` and sorted by absolute variance contribution
             (descending). For rolling attribution, returns a MultiIndex DataFrame.
         """
@@ -409,9 +399,6 @@ class FamilyBreakdown(BaseBreakdown):
     mu_contrib : ndarray of shape (n_families,) or (n_windows, n_families)
         Family return contribution, equal to the sum of its factor return contributions.
 
-    pct_total_mu : ndarray of shape (n_families,) or (n_windows, n_families)
-        Percentage of total portfolio return.
-
     mu_contrib_uncertainty : ndarray of shape (n_families,) or (n_windows, n_families) or None
         Standard error of the family mean return contribution, accounting for
         cross-factor estimation correlations within the family. `None` when uncertainty
@@ -439,9 +426,8 @@ class FamilyBreakdown(BaseBreakdown):
             Whether this is realized (ex-post) attribution.
 
         formatted : bool, default=False
-            If True, format numeric columns for display: volatility/return and
-            percentage columns as "XX.XX%", other numeric columns rounded to 4 decimal
-            places.
+            If True, format volatility, return and variance-share columns as
+            percentages and round other numeric columns to 4 decimal places.
 
         observations : ndarray, optional
             Observation labels for rolling attribution. If provided, returns a
@@ -456,7 +442,7 @@ class FamilyBreakdown(BaseBreakdown):
         -------
         df : pandas.DataFrame
             Pandas DataFrame with columns for exposures, volatilities, correlations,
-            contributions, and percentage shares. For single-point attribution,
+            contributions and variance shares. For single-point attribution,
             indexed by `Family` and sorted by absolute variance contribution
             (descending). For rolling attribution, returns a MultiIndex DataFrame.
         """
@@ -535,9 +521,6 @@ class AssetBreakdown(BaseBreakdown):
 
     pct_total_variance : ndarray of shape (n_assets,) or (n_windows, n_assets)
         Percentage of total portfolio variance.
-
-    pct_total_mu : ndarray of shape (n_assets,) or (n_windows, n_assets)
-        Percentage of total portfolio return.
 
     vol : ndarray of shape (n_assets,) or (n_windows, n_assets)
         Standalone asset volatility: :math:`\sqrt{(B F B^\top + D)_{ii}}`.

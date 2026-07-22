@@ -57,6 +57,45 @@ def test_reproducible():
     assert not np.array_equal(a["returns"], c["returns"])
 
 
+def test_bearish_signal_descriptors_predict_lower_returns():
+    panel = make_synthetic_characteristics(
+        n_assets=200,
+        n_observations=500,
+        late_listing_proba=0.0,
+        delisting_proba=0.0,
+        missing_ratio=0.0,
+        random_state=0,
+    )
+    short_interest = panel["short_interest"] / (panel["adj_shares_outstanding"] * 1e6)
+    analyst_dispersion = panel["eps_ntm_std"] / panel["adj_close"]
+
+    assert np.nanmean(np.nanstd(short_interest, axis=0)) > 0.0
+    assert np.nanmean(np.nanstd(analyst_dispersion, axis=0)) > 0.0
+
+    proxy_mask = np.isfinite(short_interest) & np.isfinite(analyst_dispersion)
+    assert (
+        np.corrcoef(short_interest[proxy_mask], analyst_dispersion[proxy_mask])[0, 1]
+        > 0.25
+    )
+
+    next_returns = panel["returns"][1:]
+    next_returns -= np.nanmean(next_returns, axis=1, keepdims=True)
+    short_interest = np.log(short_interest[:-1])
+    short_interest -= np.nanmean(short_interest, axis=1, keepdims=True)
+    short_mask = np.isfinite(short_interest) & np.isfinite(next_returns)
+    assert np.corrcoef(short_interest[short_mask], next_returns[short_mask])[0, 1] < 0.0
+
+    analyst_dispersion = np.log(analyst_dispersion[:-1])
+    analyst_dispersion -= np.nanmean(analyst_dispersion, axis=1, keepdims=True)
+    dispersion_mask = np.isfinite(analyst_dispersion) & np.isfinite(next_returns)
+    assert (
+        np.corrcoef(analyst_dispersion[dispersion_mask], next_returns[dispersion_mask])[
+            0, 1
+        ]
+        < 0.0
+    )
+
+
 def test_active_mask_invariants(panel):
     active = panel.active_mask
     # Every observation has at least one active asset.
@@ -77,7 +116,7 @@ def test_n_industries_controls_levels():
     present = set(np.unique(labels[panel.active_mask]))
     assert present <= {
         "Real Estate",
-        "Software & Services",
+        "Software",
         "Banks",
         "Energy",
     }

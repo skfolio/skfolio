@@ -36,9 +36,11 @@ The default is 0.0 (no transaction costs).
     the input `X` is composed of **daily** returns, the `transaction_costs` need
     to be expressed as **daily** costs.
 
-This means that you need to convert this fixed transaction costs into daily costs. To
-achieve this, you need the notion of expected investment duration. This is crucial since
-the optimization problem has no notion of investment duration.
+This means that you need to convert this fixed transaction costs into daily costs. The
+reason is that a transaction cost is paid once per rebalancing while a position earns
+its expected return on every period it is held. To convert the one-off cost, you need
+the notion of expected investment duration. This is crucial since the optimization
+problem has no notion of investment duration.
 
 For example, let's assume that asset A has an expected daily return of 0.01%
 with a TC of 1% and asset B has an expected daily return of 0.005% with no TC.
@@ -56,7 +58,9 @@ Example:
         * 1 year expected return B ~= 1.3%
 
 So in order to take that duration into account, you should divide the fix TC by the
-expected investment duration.
+expected investment duration. See
+:ref:`Periodicity Convention <periodicity_convention>` for the general convention on
+expressing optimization inputs in the periodicity of `X`.
 """
 
 # %%

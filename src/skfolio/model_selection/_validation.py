@@ -530,6 +530,22 @@ def _apply_entry_rebalancing_params(
     if entry_rebalancing_params is None:
         return None
 
+    _validate_entry_rebalancing_params(estimator, entry_rebalancing_params)
+    last_step = _get_last_step(estimator)
+    valid_params = last_step.get_params(deep=True)
+    previous_params = {name: valid_params[name] for name in entry_rebalancing_params}
+    last_step.set_params(**entry_rebalancing_params)
+    return previous_params
+
+
+def _validate_entry_rebalancing_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    entry_rebalancing_params: dict | None,
+) -> None:
+    """Validate parameters applied only to the first portfolio."""
+    if entry_rebalancing_params is None:
+        return
+
     last_step = _get_last_step(estimator)
     valid_params = last_step.get_params(deep=True)
     unknown_params = sorted(set(entry_rebalancing_params) - set(valid_params))
@@ -538,10 +554,6 @@ def _apply_entry_rebalancing_params(
             "`entry_rebalancing_params` contains invalid parameter names for "
             f"{last_step.__class__.__name__}: {unknown_params}."
         )
-
-    previous_params = {name: valid_params[name] for name in entry_rebalancing_params}
-    last_step.set_params(**entry_rebalancing_params)
-    return previous_params
 
 
 def _run_path(

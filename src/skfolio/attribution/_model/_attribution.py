@@ -115,8 +115,7 @@ class Attribution:
             "vol",
             "vol_contrib",
             "pct_total_variance",
-            "mu",
-            "pct_total_mu",
+            "mu_contrib",
             "corr_with_ptf",
         )
 
@@ -128,7 +127,6 @@ class Attribution:
             "pct_total_variance",
             "mu",
             "mu_contrib",
-            "pct_total_mu",
             "corr_with_ptf",
         )
 
@@ -422,15 +420,14 @@ class Attribution:
     ) -> pd.DataFrame:
         r"""Return component-level attribution as a DataFrame.
 
-        The summary reports volatility contribution, percentage of total variance,
-        return contribution and percentage of total return for the systematic,
-        idiosyncratic, optional unexplained, and total components.
+        The summary reports volatility contribution, percentage of total variance and
+        return contribution for the systematic, idiosyncratic, optional unexplained,
+        and total components.
 
         Parameters
         ----------
         formatted : bool, default=True
-            Format volatility, return, and percentage-of-total columns as percentage
-            strings.
+            Format volatility, return and variance-share columns as percentage strings.
 
         confidence_level : float, default=0.95
             When `formatted=True` and uncertainty data are present, the mean return
@@ -447,7 +444,7 @@ class Attribution:
         mu_contrib_col = f"{mu_label} Contribution"
         merged_mu_ci_col = f"{mu_contrib_col} ({int(confidence_level * 100)}% CI)"
 
-        # Build component names and data tuples (vol_contrib, pct_var, mu, pct_mu)
+        # Build component names and data.
         component_names = ["Systematic", "Idiosyncratic"]
         component_objects = [self.systematic, self.idio]
 
@@ -461,8 +458,7 @@ class Attribution:
         # Extract data from component objects
         vol_contrib = [c.vol_contrib for c in component_objects]
         pct_var = [c.pct_total_variance for c in component_objects]
-        mu_contrib = [c.mu for c in component_objects]
-        pct_mu = [c.pct_total_mu for c in component_objects]
+        mu_contrib = [c.mu_contrib for c in component_objects]
 
         has_uncertainty = any(c.mu_uncertainty is not None for c in component_objects)
 
@@ -481,7 +477,6 @@ class Attribution:
                 "Volatility Contribution": np.column_stack(vol_contrib).ravel(),
                 "% of Total Variance": np.column_stack(pct_var).ravel(),
                 mu_contrib_col: np.column_stack(mu_contrib).ravel(),
-                f"% of Total {mu_label}": np.column_stack(pct_mu).ravel(),
             }
 
             if has_uncertainty:
@@ -500,7 +495,6 @@ class Attribution:
                 "Volatility Contribution": vol_contrib,
                 "% of Total Variance": pct_var,
                 mu_contrib_col: mu_contrib,
-                f"% of Total {mu_label}": pct_mu,
             }
 
             if has_uncertainty:
@@ -531,13 +525,11 @@ class Attribution:
                 "Volatility Contribution",
                 "% of Total Variance",
                 mu_contrib_col,
-                f"% of Total {mu_label}",
             ]
             for col in pct_cols:
                 if col in df.columns:
                     df[col] = df[col].map(_format_percent)
 
-        pct_mu_col = f"% of Total {mu_label}"
         pref: list[str] = []
         pref.extend(
             [
@@ -549,7 +541,6 @@ class Attribution:
             pref.append(merged_mu_ci_col)
         else:
             pref.append(mu_contrib_col)
-        pref.append(pct_mu_col)
         if "Mean Return Uncertainty" in df.columns:
             pref.append("Mean Return Uncertainty")
         rest = [c for c in df.columns if c not in pref]
@@ -565,8 +556,7 @@ class Attribution:
         Parameters
         ----------
         formatted : bool, default=True
-            Format volatility, return, and percentage-of-total columns as percentage
-            strings.
+            Format volatility, return and variance-share columns as percentage strings.
 
         confidence_level : float, default=0.95
             When `formatted=True` and uncertainty data are present, merges mean return
@@ -598,8 +588,7 @@ class Attribution:
         Parameters
         ----------
         formatted : bool, default=True
-            Format volatility, return, and percentage-of-total columns as percentage
-            strings.
+            Format volatility, return and variance-share columns as percentage strings.
 
         confidence_level : float, default=0.95
             When `formatted=True` and uncertainty data are present, merges mean return
@@ -634,8 +623,7 @@ class Attribution:
         Parameters
         ----------
         formatted : bool, default=True
-            Format volatility, return, and percentage-of-total columns as percentage
-            strings.
+            Format volatility, return and variance-share columns as percentage strings.
 
         Returns
         -------
@@ -922,6 +910,7 @@ class Attribution:
             )
 
         fig.add_hline(y=0, line_width=1, line_dash="dash", line_color="gray")
+        fig.update_yaxes(autorangeoptions_include=[-1, 1])
         return fig
 
     def plot_return_vs_vol_contrib(
@@ -1298,9 +1287,8 @@ def _prepare_perf_mu_uncertainty_se(
 
 def _perf_contrib_hover_html(
     name: str,
-    contrib_names: list[str],
+    contrib_name: str,
     mu: float,
-    pct_mu: float,
     exposure: float,
     se: float,
     confidence_level: float | None,
@@ -1313,8 +1301,7 @@ def _perf_contrib_hover_html(
     `Mean Return Contribution (N% CI):` :math:`\mu \pm z \times SE`.
     This string is passed as `hovertext`, not `hovertemplate`.
     """
-    mu_hdr = _html_escape(contrib_names[0])
-    pct_hdr = _html_escape(contrib_names[1])
+    mu_hdr = _html_escape(contrib_name)
     lines = [f"<b>{_html_escape(name)}</b>"]
 
     if np.isfinite(se) and confidence_level is not None and z is not None:
@@ -1327,7 +1314,6 @@ def _perf_contrib_hover_html(
         if np.isfinite(se):
             lines.append(f"Mean return SE: {_format_percent(se)}")
 
-    lines.append(f"{pct_hdr}: {_format_percent(pct_mu)}")
     if np.isfinite(exposure):
         lines.append(f"Exposure: {_format_decimal(exposure, 2)}")
     return "<br>".join(lines)
@@ -1378,7 +1364,7 @@ def _hover_template(name: str, contrib_names: list[str], show_exposure: bool) ->
         for i, contrib_name in enumerate(contrib_names)
     ]
     if show_exposure:
-        lines.append("Exposure: %{customdata[2]:.2f}")
+        lines.append(f"Exposure: %{{customdata[{len(contrib_names)}]:.2f}}")
     body = "<br>".join(lines)
     return f"<b>{safe}</b><br>{body}<extra></extra>"
 
@@ -1604,8 +1590,8 @@ def _plot_contribution_chart(
         title = "Return Contribution"
         title_rolling = f"{title} Over Time"
         yaxis_title = f"Annualized {mu_label} Contribution (%)"
-        contrib_names = [f"{mu_label} Contribution", f"% of Total {mu_label}"]
-        attrs = ["mu_contrib", "pct_total_mu", "exposure"]
+        contrib_names = [f"{mu_label} Contribution"]
+        attrs = ["mu_contrib", "exposure"]
 
     names, values, colors = _prepare_plot_data(
         data=data,
@@ -1651,10 +1637,9 @@ def _plot_contribution_chart(
                     [
                         _perf_contrib_hover_html(
                             name,
-                            contrib_names,
+                            contrib_names[0],
                             float(custom_data[j, 0]),
                             float(custom_data[j, 1]),
-                            float(custom_data[j, 2]),
                             float(se_matrix[j, i]),
                             confidence_level,
                             z,
@@ -1667,7 +1652,7 @@ def _plot_contribution_chart(
                     hovertemplates = []
                     customdata = []
                 custom_data = np.column_stack([values[attr][:, i] for attr in attrs])
-                show_exposure = not np.all(np.isnan(custom_data[:, 2]))
+                show_exposure = not np.all(np.isnan(custom_data[:, -1]))
                 customdata.append(custom_data)
                 hovertemplates.append(
                     _hover_template(name, contrib_names, show_exposure)
@@ -1716,9 +1701,8 @@ def _plot_contribution_chart(
         hover_texts = [
             _perf_contrib_hover_html(
                 names[i],
-                contrib_names,
+                contrib_names[0],
                 float(mu_row[i]),
-                float(values["pct_total_mu"][0][i]),
                 float(values["exposure"][0][i]),
                 float(se_row[i]),
                 confidence_level,

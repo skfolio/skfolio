@@ -34,7 +34,6 @@ class TestRealizedFactorAttribution:
         assert isinstance(result.systematic.vol_contrib, float)
         assert isinstance(result.systematic.pct_total_variance, float)
         assert isinstance(result.systematic.mu, float)
-        assert isinstance(result.systematic.pct_total_mu, float)
         assert isinstance(result.systematic.corr_with_ptf, float)
 
         # Component fields - idio
@@ -83,7 +82,6 @@ class TestRealizedFactorAttribution:
             "Volatility Contribution",
             "% of Total Variance",
             "Mean Return Contribution",
-            "% of Total Mean Return",
             "Standalone Volatility",
             "Standalone Mean Return",
             "Correlation with Portfolio",
@@ -715,7 +713,6 @@ class TestRollingRealizedFactorAttribution:
                 "vol_contrib",
                 "pct_total_variance",
                 "mu",
-                "pct_total_mu",
             ]:
                 val = getattr(comp, attr)
                 assert isinstance(val, np.ndarray)
@@ -737,7 +734,6 @@ class TestRollingRealizedFactorAttribution:
             "pct_total_variance",
             "mu",
             "mu_contrib",
-            "pct_total_mu",
             "exposure_std",
         ]:
             val = getattr(result.factors, attr)
@@ -875,8 +871,8 @@ class TestRollingRealizedFactorAttribution:
         else:
             np.testing.assert_array_almost_equal(ann_val, raw_val * 252)
 
-    def test_pct_shares_unchanged_by_annualization(self, rolling_static_model):
-        """Test that percentage shares are unchanged by annualization."""
+    def test_variance_shares_unchanged_by_annualization(self, rolling_static_model):
+        """Test that variance shares are unchanged by annualization."""
         result_raw = rolling_realized_factor_attribution(
             **rolling_static_model, window_size=60, step=30, annualization_factor=1
         )

@@ -616,6 +616,61 @@ class TestMeanRiskIntegration:
         assert np.isfinite(model.weights_).all()
         np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
 
+    def test_covariance_uncertainty_rejects_standard_deviation(self, X, factors):
+        model = MeanRisk(
+            risk_measure=RiskMeasure.STANDARD_DEVIATION,
+            prior_estimator=TimeSeriesFactorModel(),
+            covariance_uncertainty_set_estimator=OrthogonalCovarianceUncertaintySet(),
+        )
+
+        with pytest.raises(ValueError, match=r"risk_measure=RiskMeasure\.VARIANCE"):
+            model.fit(X, factors=factors)
+
+    def test_maximize_ratio_with_compact_covariance_uncertainty(self, X, factors):
+        model = MeanRisk(
+            objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+            risk_measure=RiskMeasure.VARIANCE,
+            prior_estimator=TimeSeriesFactorModel(),
+            covariance_uncertainty_set_estimator=OrthogonalCovarianceUncertaintySet(
+                radius=0.5
+            ),
+        )
+
+        model.fit(X, factors=factors)
+
+        assert model.weights_.shape == (X.shape[1],)
+        assert np.isfinite(model.weights_).all()
+        assert np.isfinite(model.problem_values_["risk"])
+        assert model.problem_values_["risk"] > 0
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+    def test_zero_radius_matches_nominal_variance(self, X, factors):
+        common_params = dict(
+            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+            risk_measure=RiskMeasure.VARIANCE,
+            prior_estimator=TimeSeriesFactorModel(),
+        )
+        nominal_model = MeanRisk(**common_params)
+        robust_model = MeanRisk(
+            **common_params,
+            covariance_uncertainty_set_estimator=OrthogonalCovarianceUncertaintySet(
+                radius=0.0
+            ),
+        )
+
+        nominal_model.fit(X, factors=factors)
+        robust_model.fit(X, factors=factors)
+
+        np.testing.assert_allclose(
+            robust_model.weights_, nominal_model.weights_, rtol=1e-6, atol=1e-8
+        )
+        np.testing.assert_allclose(
+            robust_model.problem_values_["risk"],
+            nominal_model.problem_values_["risk"],
+            rtol=1e-7,
+            atol=1e-10,
+        )
+
     def test_mu_and_covariance_uncertainty_together(self, X, factors):
         model = MeanRisk(
             objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,

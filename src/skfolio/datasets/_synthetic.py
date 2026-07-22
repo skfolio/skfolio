@@ -20,19 +20,19 @@ _PERIODS_PER_YEAR = 252
 # assign assets to industries (make some industries larger than others).
 _INDUSTRY_SAMPLING_WEIGHTS = (
     ("Real Estate", 390.0),
-    ("Software & Services", 280.0),
+    ("Software", 280.0),
     ("Banks", 270.0),
     ("Energy", 240.0),
     ("Capital Goods", 230.0),
-    ("Commercial & Professional Services", 210.0),
-    ("Financial Services", 200.0),
-    ("Technology Hardware & Equipment", 170.0),
-    ("Pharmaceuticals & Biotechnology", 170.0),
-    ("Health Care Equipment & Services", 160.0),
+    ("Commercial", 210.0),
+    ("Financials", 200.0),
+    ("Tech Hardware", 170.0),
+    ("Pharma & Biotech", 170.0),
+    ("Health Care", 160.0),
     ("Materials", 160.0),
-    ("Food, Beverage & Tobacco", 150.0),
+    ("Food & Beverage", 150.0),
     ("Utilities", 150.0),
-    ("Consumer Discretionary Retail", 140.0),
+    ("Retail", 140.0),
     ("Insurance", 140.0),
     ("Semiconductors", 130.0),
 )
@@ -53,16 +53,17 @@ _BETA_SPREAD = 0.40
 _IDIO_LOG_SIGMA = 0.5
 _TAIL_DOF = 6.0
 
-# Idiosyncratic returns mix three unit-variance components whose weights sum to one,
-# so the total idiosyncratic variance is preserved: a slow-moving persistent component,
-# so trailing returns predict future returns beyond the contemporaneous factors
-# (positive momentum Sharpe), a transient price-pressure component that reverts over a
-# few weeks, creating negative short-horizon autocorrelation (positive reversal Sharpe)
-# and a transitory fat-tailed shock for the remaining variance.
+# Idiosyncratic returns mix unit-variance components whose weights sum to one, so the
+# total idiosyncratic variance is preserved. They include persistent momentum,
+# mean-reverting price pressure, a small predictable bearish component and a
+# transitory fat-tailed shock for the remaining variance.
 _IDIO_MOMENTUM_AUTOCORR = 0.98
 _IDIO_MOMENTUM_WEIGHT = 0.005
 _IDIO_REVERSAL_AUTOCORR = 0.95
 _IDIO_REVERSAL_WEIGHT = 0.3
+_BEARISH_SIGNAL_AUTOCORR = 0.99
+_BEARISH_SIGNAL_IDIO_VARIANCE_WEIGHT = 0.000625
+_BEARISH_SIGNAL_DESCRIPTOR_SENSITIVITY = 0.8
 
 # Explicit style factors recovered by the default descriptors, each given as
 # (annualized volatility, annualized mean, AR(1) coefficient). Market beta, momentum
@@ -218,6 +219,20 @@ def make_synthetic_characteristics(
     momentum and short-term reversal factors a realistic positive Sharpe without
     changing the idiosyncratic variance.
 
+    To support alpha-research examples, the idiosyncratic shock also contains a small
+    predictable component driven by a persistent latent bearish signal
+    :math:`z_{i,t}`. Short interest and analyst forecast dispersion are constructed as
+    noisy increasing functions of :math:`z_{i,t}`, while the next-period return
+    contribution is
+
+    .. math::
+
+        \varepsilon^{\mathrm{signal}}_{i,t+1}
+        = -\sigma_i\sqrt{w_{\mathrm{signal}}}\,z_{i,t}.
+
+    Consequently, high values of either descriptor predict lower future
+    idiosyncratic returns without same-period look-ahead.
+
     Forward-looking and lower-coverage fields (`eps_ntm`, `dps_ntm`, `eps_ntm_std`,
     `enterprise_value`, `ebitda_ttm` and `cost_of_revenue_ttm`) carry partial coverage
     to mirror real data, while price, volume, shares and market cap are always
@@ -353,18 +368,10 @@ def make_synthetic_characteristics(
         0.0,
     )
     buyback_yield = 0.01 + 0.02 * trait_quality + noise(0.03)
-    short_interest_ratio = np.clip(
-        np.exp(
-            np.log(_RATIO_MEDIANS["short_interest_ratio"])
-            - 0.3 * trait_quality
-            + noise(0.4)
-        ),
-        0.0,
-        0.4,
-    )
-    eps_dispersion_ratio = np.exp(
-        np.log(_RATIO_MEDIANS["eps_dispersion_ratio"]) + noise(0.4)
-    )
+
+    # Asset-specific offsets keep the two signal descriptors heterogeneous and noisy.
+    short_interest_log_offset = -0.3 * trait_quality + noise(0.4)
+    analyst_dispersion_log_offset = noise(0.4)
     cash_to_assets = np.clip(_RATIO_MEDIANS["cash_to_assets"] + noise(0.05), 0.0, 0.6)
 
     beta = np.clip(1.0 + _BETA_SPREAD * trait_risk, 0.1, 3.0)
@@ -433,10 +440,9 @@ def make_synthetic_characteristics(
     )
     idio_daily_vol = np.sqrt(idio_var) * idio_shape / np.sqrt(np.mean(idio_shape**2))
 
-    # Mix transitory, persistent (momentum) and mean-reverting (reversal) components.
-    # All three have unit variance and are independent, so the idiosyncratic variance
-    # is unchanged. The reversal component is the unit-variance first difference of a
-    # persistent AR(1).
+    # Allocate the idiosyncratic variance budget across transitory, momentum,
+    # reversal and predictable bearish components. The reversal component is the
+    # unit-variance first difference of a persistent AR(1) process.
     transitory_component = _fat_tailed_normal(
         rng, (n_observations, n_assets), _TAIL_DOF
     )
@@ -450,11 +456,37 @@ def make_synthetic_characteristics(
     reversal_component[1:] = (pressure_level[1:] - pressure_level[:-1]) / np.sqrt(
         2.0 * (1.0 - _IDIO_REVERSAL_AUTOCORR)
     )
+
+    # A spawned stream keeps the signal reproducible without consuming draws from the
+    # main stream and shifting the calibrated factor paths.
+    signal_seed = np.random.SeedSequence(random_state).spawn(1)[0]
+    signal_rng = np.random.default_rng(signal_seed)
+    latent_bearish_signal = _ar1_filter(
+        signal_rng.standard_normal((n_observations, n_assets)),
+        _BEARISH_SIGNAL_AUTOCORR,
+    )
+    # Cross-sectional normalization gives the sensitivity and variance weight stable
+    # meanings across dates and universe sizes.
+    latent_bearish_signal -= latent_bearish_signal.mean(axis=1, keepdims=True)
+    latent_bearish_signal_std = latent_bearish_signal.std(axis=1, keepdims=True)
+    latent_bearish_signal /= np.where(
+        latent_bearish_signal_std == 0.0, 1.0, latent_bearish_signal_std
+    )
+
     idio_shock = (
-        np.sqrt(1.0 - _IDIO_MOMENTUM_WEIGHT - _IDIO_REVERSAL_WEIGHT)
+        np.sqrt(
+            1.0
+            - _IDIO_MOMENTUM_WEIGHT
+            - _IDIO_REVERSAL_WEIGHT
+            - _BEARISH_SIGNAL_IDIO_VARIANCE_WEIGHT
+        )
         * transitory_component
         + np.sqrt(_IDIO_MOMENTUM_WEIGHT) * momentum_component
         + np.sqrt(_IDIO_REVERSAL_WEIGHT) * reversal_component
+    )
+    # The one-period lag makes observable descriptors predict future returns.
+    idio_shock[1:] -= (
+        np.sqrt(_BEARISH_SIGNAL_IDIO_VARIANCE_WEIGHT) * latent_bearish_signal[:-1]
     )
     idio = idio_daily_vol[None, :] * idio_shock
 
@@ -525,8 +557,25 @@ def make_synthetic_characteristics(
 
     eps_ntm = forward_earnings_to_price[None, :] * adj_close
     dps_ntm = forward_dividend_yield[None, :] * adj_close
-    eps_ntm_std = eps_dispersion_ratio[None, :] * np.abs(eps_ntm)
-    short_interest = short_interest_ratio[None, :] * shares * 1e6
+
+    # Both descriptors observe the same bearish signal through independent noisy
+    # offsets. Sensitivity controls their signal-to-noise ratio in log space.
+    eps_dispersion_ratio = np.exp(
+        np.log(_RATIO_MEDIANS["eps_dispersion_ratio"])
+        + analyst_dispersion_log_offset[None, :]
+        + _BEARISH_SIGNAL_DESCRIPTOR_SENSITIVITY * latent_bearish_signal
+    )
+    short_interest_ratio = np.clip(
+        np.exp(
+            np.log(_RATIO_MEDIANS["short_interest_ratio"])
+            + short_interest_log_offset[None, :]
+            + _BEARISH_SIGNAL_DESCRIPTOR_SENSITIVITY * latent_bearish_signal
+        ),
+        0.0,
+        0.4,
+    )
+    eps_ntm_std = eps_dispersion_ratio * np.abs(eps_ntm)
+    short_interest = short_interest_ratio * shares * 1e6
 
     fields = {
         "returns": returns,

@@ -99,7 +99,9 @@ class TestAttributionPlotMethods:
     def test_plot_exposure_returns_figure(self, simple_factor_model):
         """Test that plot_exposure returns a go.Figure."""
         result = predicted_factor_attribution(**simple_factor_model)
-        assert isinstance(result.plot_exposure(), go.Figure)
+        fig = result.plot_exposure()
+        assert isinstance(fig, go.Figure)
+        assert fig.layout.yaxis.autorangeoptions.include == (-1, 1)
 
     def test_plot_exposure_contains_factors(self, simple_factor_model):
         """Test that exposure chart contains all factors."""
@@ -245,6 +247,8 @@ class TestAttributionPlotMethods:
         bar_data = result.plot_return_contrib().data[0]
         assert "Momentum" in bar_data.x
         assert "Value" in bar_data.x
+        assert bar_data.customdata.shape[1] == 2
+        assert "% of Total" not in str(bar_data.hovertemplate)
 
     @pytest.mark.parametrize("include_idio,expected", [(True, True), (False, False)])
     def test_return_bar_residual_inclusion(
@@ -707,7 +711,6 @@ class TestAssetAttribution:
             "Expected Return Contribution",
             "Systematic Expected Return Contribution",
             "Idiosyncratic Expected Return Contribution",
-            "% of Total Expected Return",
             "Standalone Volatility",
             "Standalone Expected Return",
             "Correlation with Portfolio",

@@ -979,6 +979,7 @@ Functions
     datasets.load_ftse100_dataset
     datasets.load_nasdaq_dataset
     datasets.load_sp500_implied_vol_dataset
+    datasets.make_synthetic_characteristics
 
 .. _preprocessing_ref:
 

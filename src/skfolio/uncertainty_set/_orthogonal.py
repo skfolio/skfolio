@@ -381,7 +381,8 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
     -----
     This estimator requires a factor model in the return distribution. When used inside
     :class:`~skfolio.optimization.MeanRisk`, the `return_distribution` metadata is
-    passed automatically by `fit` and `partial_fit`.
+    passed automatically by `fit` and `partial_fit`. Covariance uncertainty is applied
+    when `risk_measure=RiskMeasure.VARIANCE` or when `max_variance` is set.
 
     References
     ----------

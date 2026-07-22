@@ -14,6 +14,10 @@ assets returns and stores the covariance in its `covariance_` attribute.
 
 `X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
+`covariance_` is expressed in the periodicity of `X` (daily returns give a daily
+covariance) and is consumed as is by the optimizers, without annualization (see
+:ref:`Periodicity Convention <periodicity_convention>`).
+
 
 Available estimators are:
     * :class:`EmpiricalCovariance`

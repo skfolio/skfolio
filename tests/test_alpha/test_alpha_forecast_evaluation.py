@@ -176,8 +176,21 @@ class TestAlphaForecastEvaluation:
             "rank_weighted_portfolio",
             "zscore_weighted_portfolio",
         ]
+        assert list(evaluation.portfolio_summary().columns) == [
+            "annualized_mean",
+            "annualized_vol",
+            "annualized_ir",
+            "hit_rate",
+            "mean_turnover",
+        ]
         assert evaluation.quantile_summary().index.name == "quantile"
         assert list(evaluation.quantile_summary().index) == [0.25]
+        assert list(evaluation.quantile_summary().columns) == [
+            "annualized_mean",
+            "annualized_vol",
+            "annualized_ir",
+            "hit_rate",
+        ]
         assert list(evaluation.holding_period_summary().index) == [1, 2, 3]
         assert list(evaluation.decay_summary().index) == [1, 2, 3]
         assert evaluation.holding_period_summary().index.name == "holding_period"
@@ -235,16 +248,16 @@ class TestAlphaForecastEvaluation:
         period_portfolio = evaluation_period.portfolio_summary()
         annualized_portfolio = evaluation_annualized.portfolio_summary()
         np.testing.assert_allclose(
-            annualized_portfolio["mean_return"],
-            4.0 * period_portfolio["mean_return"],
+            annualized_portfolio["annualized_mean"],
+            4.0 * period_portfolio["annualized_mean"],
         )
         np.testing.assert_allclose(
-            annualized_portfolio["std_return"],
-            2.0 * period_portfolio["std_return"],
+            annualized_portfolio["annualized_vol"],
+            2.0 * period_portfolio["annualized_vol"],
         )
         np.testing.assert_allclose(
-            annualized_portfolio["ir"],
-            2.0 * period_portfolio["ir"],
+            annualized_portfolio["annualized_ir"],
+            2.0 * period_portfolio["annualized_ir"],
         )
         np.testing.assert_allclose(
             annualized_portfolio["mean_turnover"],
@@ -254,12 +267,16 @@ class TestAlphaForecastEvaluation:
         period_quantile = evaluation_period.quantile_summary()
         annualized_quantile = evaluation_annualized.quantile_summary()
         np.testing.assert_allclose(
-            annualized_quantile["mean_return"],
-            4.0 * period_quantile["mean_return"],
+            annualized_quantile["annualized_mean"],
+            4.0 * period_quantile["annualized_mean"],
         )
         np.testing.assert_allclose(
-            annualized_quantile["std_return"],
-            2.0 * period_quantile["std_return"],
+            annualized_quantile["annualized_vol"],
+            2.0 * period_quantile["annualized_vol"],
+        )
+        np.testing.assert_allclose(
+            annualized_quantile["annualized_ir"],
+            2.0 * period_quantile["annualized_ir"],
         )
 
     def test_simple_portfolios_use_200_percent_gross(self):

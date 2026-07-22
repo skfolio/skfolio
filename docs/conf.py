@@ -388,18 +388,19 @@ add_function_parentheses = False
 # we want to re-order the examples.
 ORDER_OF_EXAMPLES = {
     "mean_risk": 1,
-    "risk_budgeting": 2,
-    "synthetic_data": 3,
-    "entropy_pooling": 4,
-    "clustering": 5,
-    "maximum_diversification": 6,
-    "distributionally_robust_cvar": 7,
-    "ensemble": 8,
-    "model_selection": 9,
-    "online_learning": 10,
-    "pre_selection": 11,
-    "metadata_routing": 12,
-    "data_preparation": 13,
+    "factor_models": 2,
+    "risk_budgeting": 3,
+    "synthetic_data": 4,
+    "entropy_pooling": 5,
+    "clustering": 6,
+    "maximum_diversification": 7,
+    "distributionally_robust_cvar": 8,
+    "ensemble": 9,
+    "model_selection": 10,
+    "online_learning": 11,
+    "pre_selection": 12,
+    "metadata_routing": 13,
+    "data_preparation": 14,
 }
 
 # -- sphinxext-opengraph ----------------------------------------------------

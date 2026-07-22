@@ -20,7 +20,7 @@ from skfolio.attribution._model import (
 )
 from skfolio.attribution._utils import _validate_no_nan
 from skfolio.typing import ArrayLike, FloatArray, StrArray
-from skfolio.utils.stats import assert_is_square, safe_divide
+from skfolio.utils.stats import assert_is_square
 
 __all__ = ["predicted_factor_attribution"]
 
@@ -141,17 +141,14 @@ def predicted_factor_attribution(
 
         \operatorname{VolContrib}_k = b_k \sigma_k \rho_{k,P}.
 
-    **Percentage of Total:**
+    **Percentage of Total Variance:**
 
-    The percentage-of-total variance and expected return are computed as:
+    The variance share of each factor is:
 
     .. math::
 
         \operatorname{PctTotalVariance}_k =
-        \frac{\operatorname{VolContrib}_k}{\sigma_P},
-        \qquad
-        \operatorname{PctTotalMu}_k =
-        \frac{\operatorname{MuContrib}_k}{\mu_P}.
+        \frac{\operatorname{VolContrib}_k}{\sigma_P}.
 
     **NaN handling**:
 
@@ -465,11 +462,6 @@ def predicted_factor_attribution(
     # Total expected return
     total_mu = systematic_mu + orthogonal_mu
 
-    # Percentage contributions
-    spanned_pct_total_mu = safe_divide(systematic_mu, total_mu, np.nan, atol=1e-12)
-    orthogonal_pct_total_mu = safe_divide(orthogonal_mu, total_mu, np.nan, atol=1e-12)
-    factor_pct_total_mu = safe_divide(factor_mu_contrib, total_mu, np.nan, atol=1e-12)
-
     # Factors breakdown
     factors = FactorBreakdown(
         names=factor_names,
@@ -482,7 +474,6 @@ def predicted_factor_attribution(
         pct_total_variance=factor_pct_total_variance,
         mu=factor_mu,
         mu_contrib=factor_mu_contrib,
-        pct_total_mu=factor_pct_total_mu,
     )
 
     # Family breakdown
@@ -505,7 +496,6 @@ def predicted_factor_attribution(
             idio_mu=idio_mu,
             factor_cov_with_ptf=factor_cov_with_ptf,
             total_vol=total_vol,
-            total_mu=total_mu,
             asset_names=asset_names,
             factor_names=factor_names,
         )
@@ -519,7 +509,6 @@ def predicted_factor_attribution(
             vol_contrib=systematic_vol_contrib,
             pct_total_variance=systematic_pct_total_variance,
             mu_contrib=systematic_mu,
-            pct_total_mu=spanned_pct_total_mu,
             corr_with_ptf=systematic_corr_with_ptf,
         ),
         idio=Component(
@@ -527,7 +516,6 @@ def predicted_factor_attribution(
             vol_contrib=idio_vol_contrib,
             pct_total_variance=idio_pct_total_variance,
             mu_contrib=orthogonal_mu,
-            pct_total_mu=orthogonal_pct_total_mu,
             corr_with_ptf=idio_corr_with_ptf,
         ),
         total=Component(
@@ -535,7 +523,6 @@ def predicted_factor_attribution(
             vol_contrib=total_vol,
             pct_total_variance=1.0,
             mu_contrib=total_mu,
-            pct_total_mu=1.0,
             corr_with_ptf=1.0,
         ),
         unexplained=None,
@@ -557,7 +544,6 @@ def _compute_predicted_family_breakdown(
     vol_contrib = np.zeros(n_families)
     pct_total_variance = np.zeros(n_families)
     mu_contrib = np.zeros(n_families)
-    pct_total_mu = np.zeros(n_families)
 
     for i, family in enumerate(unique_families):
         indices = np.where(factor_families == family)[0]
@@ -565,7 +551,6 @@ def _compute_predicted_family_breakdown(
         vol_contrib[i] = factors.vol_contrib[indices].sum()
         pct_total_variance[i] = factors.pct_total_variance[indices].sum()
         mu_contrib[i] = factors.mu_contrib[indices].sum()
-        pct_total_mu[i] = np.nansum(factors.pct_total_mu[indices])
 
     # Sort by absolute pct_total_variance (descending)
     sort_order = np.argsort(-np.abs(pct_total_variance))
@@ -577,7 +562,6 @@ def _compute_predicted_family_breakdown(
         vol_contrib=vol_contrib[sort_order],
         pct_total_variance=pct_total_variance[sort_order],
         mu_contrib=mu_contrib[sort_order],
-        pct_total_mu=pct_total_mu[sort_order],
     )
 
 
@@ -590,7 +574,6 @@ def _compute_predicted_assets(
     idio_mu: FloatArray,
     factor_cov_with_ptf: FloatArray,
     total_vol: float,
-    total_mu: float,
     asset_names: StrArray,
     factor_names: StrArray,
 ) -> tuple[AssetBreakdown, AssetByFactorContribution]:
@@ -629,7 +612,6 @@ def _compute_predicted_assets(
     systematic_mu_contrib = weights * (loadings @ factor_mu)
     idio_mu_contrib = weights * idio_mu
     total_mu_contrib = systematic_mu_contrib + idio_mu_contrib
-    pct_total_mu = safe_divide(total_mu_contrib, total_mu, np.nan, atol=1e-12)
 
     assets = AssetBreakdown(
         names=asset_names,
@@ -645,7 +627,6 @@ def _compute_predicted_assets(
         systematic_mu_contrib=systematic_mu_contrib,
         idio_mu_contrib=idio_mu_contrib,
         mu_contrib=total_mu_contrib,
-        pct_total_mu=pct_total_mu,
     )
 
     # Asset-factor contribs
