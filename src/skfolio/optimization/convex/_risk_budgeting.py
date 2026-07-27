@@ -297,10 +297,21 @@ class RiskBudgeting(ConvexOptimization):
         It is a function that must take as argument the weights `w` and returns a
         CVXPY expression.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression or a list of CVXPY expressions.
+        The callable must accept the weights as its first argument. It can optionally
+        accept the estimator instance as its second argument, allowing access to the
+        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
+        expressions.
+
+        For example, the estimator instance can provide its `budget` attribute:
+
+        >>> from skfolio.optimization import MeanRisk
+        >>> def custom_constraints(weights, estimator):
+        ...     return [weights >= estimator.budget / 20]
+        >>> model = MeanRisk(add_constraints=custom_constraints)
+
+        The custom constraint is evaluated when `fit` is called.
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
         Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
