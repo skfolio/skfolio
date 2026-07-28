@@ -568,3 +568,71 @@ def test_portfolio_nan_handling(X, weights):
     portfolio_nan = Portfolio(X=X_nan_zero_only, weights=weights)
     portfolio_ref = Portfolio(X=X, weights=weights)
     np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)
+
+
+def _small_portfolio(with_groups: bool = True) -> Portfolio:
+    rng = np.random.default_rng(42)
+    X_small = pd.DataFrame(
+        rng.normal(0.001, 0.02, (60, 4)),
+        columns=["asset_a", "asset_b", "asset_c", "asset_d"],
+    )
+    weights = np.array([0.4, 0.3, 0.2, 0.1])
+    groups = None
+    if with_groups:
+        groups = {
+            "asset_a": ["Equity", "US"],
+            "asset_b": ["Equity", "EU"],
+            "asset_c": ["Bond", "US"],
+            "asset_d": ["Bond", "EU"],
+        }
+    return Portfolio(X=X_small, weights=weights, asset_groups=groups)
+
+
+def test_asset_groups_attribute():
+    ptf = _small_portfolio()
+    assert ptf.asset_groups == {
+        "asset_a": ["Equity", "US"],
+        "asset_b": ["Equity", "EU"],
+        "asset_c": ["Bond", "US"],
+        "asset_d": ["Bond", "EU"],
+    }
+    # default is None
+    assert (
+        Portfolio(
+            X=pd.DataFrame(np.ones((5, 2)), columns=["a", "b"]),
+            weights=np.array([0.5, 0.5]),
+        ).asset_groups
+        is None
+    )
+    # survives pickling (stored in __slots__ and __reduce__)
+    assert pickle.loads(pickle.dumps(ptf)).asset_groups == ptf.asset_groups
+
+
+def test_plot_composition_treemap():
+    import plotly.graph_objects as go
+
+    ptf = _small_portfolio()
+    # uses the asset_groups attribute by default
+    fig = ptf.plot_composition_treemap()
+    assert isinstance(fig, go.Figure)
+    # explicit level names
+    fig = ptf.plot_composition_treemap(level_names=["Class", "Region"])
+    assert isinstance(fig, go.Figure)
+    # explicit groups override the attribute
+    fig = ptf.plot_composition_treemap(
+        groups={a: ["G"] for a in ptf.assets}, level_names=["Group"]
+    )
+    assert isinstance(fig, go.Figure)
+    # portfolio without groups still renders a flat treemap
+    assert isinstance(_small_portfolio(with_groups=False).plot_composition_treemap(),
+                      go.Figure)
+
+
+def test_plot_composition_treemap_errors():
+    ptf = _small_portfolio()
+    # groups keys must match the portfolio assets
+    with pytest.raises(ValueError, match="must be the same"):
+        ptf.plot_composition_treemap(groups={"asset_a": ["G"]})
+    # level_names length must match the number of levels
+    with pytest.raises(ValueError, match="number of level names"):
+        ptf.plot_composition_treemap(level_names=["only_one"])
