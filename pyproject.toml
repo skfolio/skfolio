@@ -82,7 +82,7 @@ dev = [
 docs = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
-    "Sphinx",
+    "Sphinx>=7.2",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
     "matplotlib",
@@ -96,6 +96,7 @@ docs = [
     "jupyterlite-pyodide-kernel",
     "nbformat",
     "sphinx-last-updated-by-git",
+    "sphinx-llm>=0.4.1",
 ]
 
 [tool.setuptools.packages.find]

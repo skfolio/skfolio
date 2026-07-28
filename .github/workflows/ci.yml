@@ -45,9 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -94,9 +94,9 @@ jobs:
             deps: "latest"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -128,7 +128,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           fail_ci_if_error: false
 
@@ -146,9 +146,9 @@ jobs:
         os: [macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -208,9 +208,9 @@ jobs:
 #    continue-on-error: true   # informational only
 #    timeout-minutes: 50
 #    steps:
-#      - uses: actions/checkout@v6
+#      - uses: actions/checkout@v7
 #
-#      - uses: actions/setup-python@v6
+#      - uses: actions/setup-python@v7
 #        with:
 #          python-version: "3.15-dev"
 #

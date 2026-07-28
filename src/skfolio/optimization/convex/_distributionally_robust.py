@@ -178,10 +178,21 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         Risk-free interest rate.
         The default value is `0.0`.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression or a list of CVXPY expressions.
+        The callable must accept the weights as its first argument. It can optionally
+        accept the estimator instance as its second argument, allowing access to the
+        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
+        expressions.
+
+        For example, the estimator instance can provide its `budget` attribute:
+
+        >>> from skfolio.optimization import MeanRisk
+        >>> def custom_constraints(weights, estimator):
+        ...     return [weights >= estimator.budget / 20]
+        >>> model = MeanRisk(add_constraints=custom_constraints)
+
+        The custom constraint is evaluated when `fit` is called.
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
         Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
@@ -286,6 +297,30 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     -----
     All estimators should specify all parameters as explicit keyword arguments in
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
+
+    Examples
+    --------
+    For a complete tutorial on distributionally robust CVaR optimization, see the
+    :ref:`distributionally_robust_examples` gallery.
+
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.optimization import DistributionallyRobustCVaR
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>>
+    >>> # Load recent historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()["2020":]
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Distributionally robust CVaR optimization
+    >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> # Increasing the radius increases the uncertainty around the distribution,
+    >>> # which brings the weights closer to equal weighting
+    >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.10)
+    >>> model.fit(X)
+    >>> print(model.weights_)
 
     References
     ----------

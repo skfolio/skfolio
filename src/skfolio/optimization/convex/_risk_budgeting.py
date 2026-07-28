@@ -315,10 +315,21 @@ class RiskBudgeting(ConvexOptimization):
         It is a function that must take as argument the weights `w` and returns a
         CVXPY expression.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression or a list of CVXPY expressions.
+        The callable must accept the weights as its first argument. It can optionally
+        accept the estimator instance as its second argument, allowing access to the
+        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
+        expressions.
+
+        For example, the estimator instance can provide its `budget` attribute:
+
+        >>> from skfolio.optimization import MeanRisk
+        >>> def custom_constraints(weights, estimator):
+        ...     return [weights >= estimator.budget / 20]
+        >>> model = MeanRisk(add_constraints=custom_constraints)
+
+        The custom constraint is evaluated when `fit` is called.
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
         Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
@@ -419,6 +430,40 @@ class RiskBudgeting(ConvexOptimization):
     -----
     All estimators should specify all parameters as explicit keyword arguments in
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
+
+    Examples
+    --------
+    For complete tutorials on risk budgeting optimization, see the
+    :ref:`risk_budgeting_examples` gallery.
+
+    >>> from skfolio import RiskMeasure
+    >>> from skfolio.datasets import load_sp500_dataset
+    >>> from skfolio.optimization import RiskBudgeting
+    >>> from skfolio.preprocessing import prices_to_returns
+    >>>
+    >>> # Load historical prices and convert them to returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices)
+    >>>
+    >>> # Variance risk parity optimization
+    >>> model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> # CVaR risk budgeting with custom asset budgets
+    >>> risk_budget = {asset: 1.0 for asset in X.columns}
+    >>> risk_budget["AAPL"] = 1.5
+    >>> risk_budget["GE"] = 0.2
+    >>> risk_budget["JPM"] = 0.2
+    >>> model = RiskBudgeting(
+    ...     risk_measure=RiskMeasure.CVAR,
+    ...     risk_budget=risk_budget,
+    ... )
+    >>> model.fit(X)
+    >>> print(model.weights_)
+    >>>
+    >>> portfolio = model.predict(X)
+    >>> print(portfolio.cvar)
 
     References
     ----------

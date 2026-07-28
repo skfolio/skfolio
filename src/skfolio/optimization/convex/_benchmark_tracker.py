@@ -162,9 +162,21 @@ class BenchmarkTracker(MeanRisk):
         Add a custom objective to the existing objective expression.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
-        Add a custom constraint or a list of constraints.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+        Add a custom constraint or a list of constraints to the existing constraints.
+        The callable must accept the weights as its first argument. It can optionally
+        accept the estimator instance as its second argument, allowing access to the
+        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
+        expressions.
+
+        For example, the estimator instance can provide its `budget` attribute:
+
+        >>> from skfolio.optimization import MeanRisk
+        >>> def custom_constraints(weights, estimator):
+        ...     return [weights >= estimator.budget / 20]
+        >>> model = MeanRisk(add_constraints=custom_constraints)
+
+        The custom constraint is evaluated when `fit` is called.
 
     portfolio_params : dict, optional
         Portfolio parameters.

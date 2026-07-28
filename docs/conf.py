@@ -5,16 +5,20 @@ list see the documentation:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 """
 
-# -- Path setup --------------------------------------------------------------
+# -- Path setup ------------------------------------------------------------------------
 from __future__ import annotations
 
 import datetime as dt
+import enum
+import functools
 import importlib
 import inspect
 import json
+import logging
 import os
 import pkgutil
 import re
+import sys
 import warnings
 import xml.etree.ElementTree as ET
 from html import escape
@@ -303,20 +307,20 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# -- Project information -----------------------------------------------------
+# -- Project information ---------------------------------------------------------------
 
 project = "skfolio"
 copyright = "2026, skfolio developers (BSD License)"
 author = "Hugo Delatte"
 
-# -- SEO meta tags ------------------------------------------------------------
+# -- SEO meta tags ---------------------------------------------------------------------
 html_meta = {
     "robots": "index, follow",
 }
 
 html_title = "skfolio"
 
-# -- General configuration ---------------------------------------------------
+# -- General configuration -------------------------------------------------------------
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -332,9 +336,17 @@ extensions = [
     "sphinxext.opengraph",
     "sphinx_sitemap",
     "sphinx.ext.githubpages",
-    "jupyterlite_sphinx",
     "sphinx_last_updated_by_git",
+    "sphinx_llm.txt",  # llms.txt / llms-full.txt / per-page .md
 ]
+
+# `sphinx-llm` builds the docs a second time with the markdown builder
+# (`sphinx-build -b markdown`), re-running this conf. `jupyterlite_sphinx` is HTML-only
+# and slow and re-running its `jupyter lite build` in that sub-build corrupts the shared
+# JupyterLite state, so load it only for the primary (HTML) build.
+_is_markdown_subbuild = "markdown" in sys.argv
+if not _is_markdown_subbuild:
+    extensions.append("jupyterlite_sphinx")
 
 templates_path = ["_templates"]
 
@@ -419,7 +431,7 @@ default_role = "literal"
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = False
 
-# -- Gallery order  --------------------------------------------------------
+# -- Gallery order  --------------------------------------------------------------------
 # Section and tutorial names do not include their order so that reordering does
 # not change URLs. Dictionary key order controls sections and tuple order controls
 # tutorials within each section.
@@ -533,7 +545,7 @@ def validate_tutorial_order() -> None:
 
 validate_tutorial_order()
 
-# -- sphinxext-opengraph ----------------------------------------------------
+# -- sphinxext-opengraph ---------------------------------------------------------------
 
 ogp_site_url = "https://skfolio.org/"
 ogp_site_name = "skfolio"
@@ -541,32 +553,60 @@ ogp_image = "https://skfolio.org/_static/expo.jpg"
 ogp_enable_meta_description = True
 ogp_description_length = 160
 
-# -- sphinx_last_updated_by_git  ----------------------------------------------------
+# -- sphinx_last_updated_by_git  -------------------------------------------------------
 
 git_untracked_check_dependencies = True
 
-# -- autosummary ------------------------------- ------------------------------
+# -- autosummary -----------------------------------------------------------------------
 
 autosummary_generate = True
 
-# -- sphinx_sitemap -------------------------------------------------------------
+# -- sphinx_sitemap --------------------------------------------------------------------
 html_baseurl = "https://skfolio.org/"
 sitemap_url_scheme = "{link}"
 sitemap_show_lastmod = True
 sitemap_excludes = ["search.html"]
-# -- Internationalization ----------------------------------------------------
+
+# -- sphinx-llm ------------------------------------------------------------------------
+# https://github.com/NVIDIA/sphinx-llm
+# Builds the docs a second time with the markdown builder and writes, into the HTML
+# build dir: a `<page>.html.md` markdown copy of every page, plus `llms-full.txt` (all
+# pages concatenated) and `llms.txt` (a markdown sitemap with per-page descriptions),
+# following the https://llmstxt.org/ convention. Since these land in the HTML output dir
+# they get published with the site, e.g. at https://skfolio.org/llms.txt ,
+# https://skfolio.org/llms-full.txt and https://skfolio.org/<page>.html.md
+llms_txt_description = (
+    "Python library for portfolio optimization and risk management built on top of "
+    "scikit-learn: build, fine-tune, cross-validate and stress-test portfolio models."
+)
+
+# make the links in llms.txt absolute
+markdown_http_base = "https://skfolio.org"
+
+# sphinx-markdown-builder defaults its cross-reference suffix to ".md", but sphinx-llm
+# writes per-page files as "<page>.html.md" to follow llmstxt.org's "append .md to any
+# HTML URL" convention. Override the URI suffix so internal references inside the
+# generated markdown resolve to the files that actually ship on the site.
+markdown_uri_doc_suffix = ".html.md"
+
+# Run the markdown sub-build sequentially, not in parallel with the HTML build: the
+# parallel mode races jupyterlite_sphinx (concurrent `jupyter lite build` on shared
+# state). jupyterlite is also dropped from the sub-build's extensions (see above).
+llms_txt_build_parallel = False
+
+# -- Internationalization --------------------------------------------------------------
 
 # specifying the natural language populates some key tags
 language = "en"
 
-# -- MyST options ------------------------------------------------------------
+# -- MyST options ----------------------------------------------------------------------
 
 # This allows us to use ::: to denote directives, useful for admonitions
 myst_enable_extensions = ["colon_fence", "linkify", "substitution"]
 myst_heading_anchors = 2
 myst_substitutions = {"rtd": "[Read the Docs](https://readthedocs.org/)"}
 
-# -- sphinx-favicons ------------------------------------------------------------
+# -- sphinx-favicons -------------------------------------------------------------------
 favicons = [
     {
         "rel": "icon",
@@ -610,7 +650,7 @@ favicons = [
     },
 ]
 
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output -----------------------------------------------------------
 
 html_theme = "pydata_sphinx_theme"
 html_sourcelink_suffix = ""
@@ -671,7 +711,7 @@ html_css_files = ["css/custom.css"]
 # html_js_files = ["custom-icon.js"]
 # todo_include_todos = True
 
-# -- gallery  ----------------------------------------------------------------
+# -- gallery  --------------------------------------------------------------------------
 
 image_scrapers = (
     "matplotlib",
@@ -751,7 +791,7 @@ sphinx_gallery_conf = {
     # 'show_api_usage': True,
 }
 
-# -- jupyterlite  ----------------------------------------------------------------
+# -- jupyterlite  ----------------------------------------------------------------------
 # Read more at https://jupyterlite-sphinx.readthedocs.io/en/latest/configuration.html#configuration
 
 # We use the current directory
@@ -794,18 +834,56 @@ PATCH_CELL = nbformat.v4.new_code_cell(
 )
 
 
-# -- Sphinx Hooks ----------------------------------------------------------------
+# -- Sphinx Hooks ----------------------------------------------------------------------
 
 
-def patch_jupyterlite_notebooks(app, exception):
+def _html_builders_only(handler):
+    """No-op a `build-finished` handler unless the active builder emits HTML.
+
+    The `sphinx-llm` extension runs a second `sphinx-build -b markdown` pass through
+    this conf. The handlers below manipulate (or assume the existence of) HTML build
+    output and would crash or be pointless under another builder.
     """
-    Iterates over all ipynb files in the _build/lite/files directory and prepends the
+
+    @functools.wraps(handler)
+    def wrapper(app, exception):
+        if app.builder.name not in ("html", "dirhtml"):
+            return
+        return handler(app, exception)
+
+    return wrapper
+
+
+def patch_markdown_classifier(app):
+    """Make `sphinx-markdown-builder` render numpydoc parameter types.
+
+    Numpydoc emits the type for each parameter as a docutils `classifier` node.
+    `sphinx-markdown-builder` has no `visit_classifier`, so the type is silently dropped
+    in the markdown output (e.g. `returns : ndarray of shape (n,)` becomes just
+    `returns`). We add a visitor that emits the type in italics after the term,
+    preserving the information for LLM consumption.
+    """
+    if app.builder.name != "markdown":
+        return
+    from sphinx_markdown_builder.translator import MarkdownTranslator
+
+    def visit_classifier(self, _node):
+        self.add(" *")
+
+    def depart_classifier(self, _node):
+        self.add("*")
+
+    MarkdownTranslator.visit_classifier = visit_classifier
+    MarkdownTranslator.depart_classifier = depart_classifier
+
+
+@_html_builders_only
+def patch_jupyterlite_notebooks(app, exception):
+    """Iterates over all ipynb files in the _build/lite/files directory and prepends the
     `PATCH_CELL` node to each notebook.
 
     We assume that the entire Sphinx build has been completed prior to running this
     function.
-
-    :raises FileNotFoundError if the JupyterLite build directory is not found
     """
     print("Running Patch jupyterlite notebooks...")
     # 1) Skip on build errors
@@ -1331,6 +1409,7 @@ def override_html_title(app, pagename, templatename, context, doctree):
         context["title"] = "Portfolio Optimization in Python"
 
 
+@_html_builders_only
 def override_example_meta_descriptions(app, exception):
     if exception:
         return
@@ -1373,6 +1452,8 @@ def override_example_meta_descriptions(app, exception):
         print(f"Updated: {html_file.relative_to(output_dir)}")
 
 
+
+@_html_builders_only
 def replace_index_links(app, exception):
     """
     Normalize only links that truly point to the *root* homepage:
@@ -1476,6 +1557,7 @@ def _canonical(app, target: str) -> str:
     return target
 
 
+@_html_builders_only
 def create_redirects(app, exception):
     if exception:
         return  # skip on failed builds
@@ -1509,9 +1591,174 @@ def skip_str_inherited_members(app, what, name, obj, skip, options):
     return False
 
 
+class _SkfolioAutodocStrEnumNoise(logging.Filter):
+    """Hide autodoc/autosummary warnings for inherited `str` methods on skfolio enums.
+
+    `AutoEnum` subclasses `(str, Enum)`, so every skfolio enum inherits ~40 public `str`
+    methods. Combined with `autodoc_default_options = {"inherited-members": True}` this
+    produces a flood of "error while formatting signature for X" / "failed to import
+    object X" warnings from `sphinx.ext.autodoc` and `sphinx.ext.autosummary`. The
+    companion `skip_strenum_public_str_methods` callback prevents them from appearing
+    in the rendered docs. This filter silences the matching log lines.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        tail = "|".join(
+            re.escape(n)
+            for n in dir(str)
+            if not n.startswith("_") and callable(getattr(str, n, None))
+        )
+        self._pat = re.compile(
+            rf"(?:error while formatting signature for |failed to import object )"
+            rf"skfolio\.[\w.]+\.(?:{tail})\b"
+        )
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            if self._pat.search(record.getMessage()):
+                return False
+        except Exception:
+            pass
+        return True
+
+
+def skip_strenum_public_str_methods(
+    app, _obj_type, member_name, member_obj, skip, options
+):
+    """Skip documenting inherited public `str` methods on `str` + `Enum` classes.
+
+    Returning `True` skips the member, `None` defers to the default. The callback only
+    suppresses methods that are (a) public, (b) genuinely the inherited `str.<name>`
+    object, and (c) not overridden in the enum subclass's own `__dict__`.
+    """
+    if skip or member_name.startswith("_"):
+        return None
+    sm = getattr(str, member_name, None)
+    if sm is None or not callable(sm):
+        return None
+    same = member_obj is sm or (
+        getattr(member_obj, "__objclass__", None) is str
+        and getattr(member_obj, "__name__", None) == member_name
+    )
+    if not same:
+        return None
+
+    modname = app.env.current_document.autodoc_module
+    cls_name = app.env.current_document.autodoc_class
+    if not modname or not cls_name:
+        return True
+
+    try:
+        module = importlib.import_module(modname)
+        subject = getattr(module, cls_name)
+    except (AttributeError, ImportError):
+        return True
+
+    if not isinstance(subject, type):
+        return True
+    if issubclass(subject, enum.Enum):
+        if member_name in subject.__dict__:
+            return None
+        return True
+    return None
+
+
+# Each Plotly figure is emitted by sphinx-markdown-builder as a verbatim HTML block
+# containing a `plotly-graph-div` and a `Plotly.newPlot(...)` payload (often ~200 KB per
+# figure). The payload is useless to an LLM and bloats both the per-page `*.html.md` and
+# the concatenated `llms-full.txt`. Two wrappers occur: sphinx-gallery's
+# `<div class="output_subarea ...">` cell wrapper and the `<html><body>...` standalone
+# document emitted by `plotly.io.show()`.
+_PLOTLY_BLOCK_RES = [
+    re.compile(
+        r'<div class="output_subarea output_html rendered_html output_result">'
+        r".*?plotly-graph-div"
+        r".*?</div>\s*</div>",
+        flags=re.DOTALL,
+    ),
+    re.compile(
+        r"<html>.*?plotly-graph-div.*?</html>",
+        flags=re.DOTALL,
+    ),
+]
+_PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
+
+# Remove metadata comments (e.g. `<!-- !! processed by numpydoc !! -->`) from
+# sphinx-llm pages
+_LLMS_HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
+_LLMS_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
+
+
+def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
+    """Prepare sphinx-llm markdown text for LLM-oriented output.
+
+    Order of operations: replace Plotly HTML regions first, then remove all HTML
+    comments, collapse runs of three or more newlines to two and strip leading newlines
+    so files do not start with empty lines after comment removal.
+    """
+    n_plotly = 0
+    for regex in _PLOTLY_BLOCK_RES:
+        text, n = regex.subn(_PLOTLY_PLACEHOLDER, text)
+        n_plotly += n
+    text, n_comments = _LLMS_HTML_COMMENT_RE.subn("", text)
+    text = _LLMS_EXCESS_BLANK_LINES_RE.sub("\n\n", text).lstrip("\n")
+    return text, n_plotly, n_comments
+
+
+def postprocess_llm_markdown_artifacts(app, exception):
+    """Post-process sphinx-llm markdown files after the HTML build.
+
+    Runs after sphinx-llm's own `build-finished` hook (priority > 500) so the per-page
+    `*.html.md` and `llms-full.txt` already exist on disk. Strips inline Plotly HTML,
+    removes leftover numpydoc/sphinx-gallery metadata comments and normalises whitespace.
+    """
+    if exception is not None:
+        return
+    if app.builder.name not in ("html", "dirhtml"):
+        return
+    outdir = Path(app.outdir)
+    targets = list(outdir.rglob("*.html.md"))
+    llms_full = outdir / "llms-full.txt"
+    if llms_full.exists():
+        targets.append(llms_full)
+    total_plotly = 0
+    total_comments = 0
+    total_files = 0
+    for path in targets:
+        original = path.read_text(encoding="utf-8")
+        text, n_plotly, n_comments = _sanitize_llm_markdown_text(original)
+        if n_plotly or n_comments or text != original:
+            path.write_text(text, encoding="utf-8")
+            total_plotly += n_plotly
+            total_comments += n_comments
+            total_files += 1
+    print(
+        f"[llms-postprocess] updated {total_files} file(s): "
+        f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s) removed"
+    )
+
+
 def setup(app):
-    """Setup function to register the build-finished hook."""
+    """Setup function to register autodoc, HTML, and build-finished hooks."""
+
+    # sphinx-llm re-executes this conf under the markdown builder.
+    if getattr(app, "_skfolio_autodoc_str_enum_noise_filter", None) is None:
+        noise_filter = _SkfolioAutodocStrEnumNoise()
+        app._skfolio_autodoc_str_enum_noise_filter = noise_filter
+        for _log in ("sphinx.ext.autodoc", "sphinx.ext.autosummary"):
+            logging.getLogger(_log).addFilter(noise_filter)
+
+    # Attach the str-enum log filter once per app. setup(app) may run twice because
     app.connect("autodoc-skip-member", skip_str_inherited_members)
+
+    # Filter inherited str methods out of every (str, Enum) class. We set priority below
+    # the default 500. The callback returns None outside its narrow target so it
+    # composes with later handlers.
+    app.connect( "autodoc-skip-member", skip_strenum_public_str_methods, priority=-100)
+
+    # Patch sphinx-markdown-builder to emit parameter types.
+    app.connect("builder-inited", patch_markdown_classifier)
 
     # html page context
     app.connect("html-page-context", override_canonical)
@@ -1524,6 +1771,10 @@ def setup(app):
     app.connect("build-finished", override_example_meta_descriptions)
     app.connect("build-finished", replace_index_links)
     app.connect("build-finished", create_redirects)
+
+    # We set priority>500 so this runs after sphinx-llm's build-finished hook, which
+    # generates the .html.md / llms-full.txt that we then post-process.
+    app.connect("build-finished", postprocess_llm_markdown_artifacts, priority=999)
 
     return {
         "version": "1.0",
