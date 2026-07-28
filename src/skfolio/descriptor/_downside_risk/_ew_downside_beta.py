@@ -33,17 +33,22 @@ class EWDownsideBeta(BaseDescriptor):
     The lower partial moment co-moment formulation is:
 
     .. math::
+        :nowrap:
 
-        D_i(t) = \min(r_i(t) - \text{mar},\; 0)
-
-        D_m(t) = \min(r_m(t) - \text{mar},\; 0)
-
+        \[
+        \begin{aligned}
+        D_i(t)
+            &= \min(r_i(t) - \text{mar},\; 0) \\[0.75em]
+        D_m(t)
+            &= \min(r_m(t) - \text{mar},\; 0) \\[0.75em]
         \beta^{\text{down}}_i(t)
-          = \frac{\text{EWMA}(D_i \cdot D_m)}
-                 {\text{EWMA}(D_m^2)}
+            &= \frac{\text{EWMA}(D_i \cdot D_m)}
+                    {\text{EWMA}(D_m^2)}
+        \end{aligned}
+        \]
 
     where :math:`\text{mar}` is the minimum acceptable return threshold and the EWMA
-    uses decay :math:`\lambda = \exp(-\ln(2) / \text{half_life})`.
+    uses decay :math:`\lambda = \exp(-\ln(2) / \text{half\_life})`.
 
     The EWMA is updated at every observation. Returns above `mar` add zero downside
     co-moment for that observation, while previous downside co-moments still decay.
@@ -66,7 +71,7 @@ class EWDownsideBeta(BaseDescriptor):
         computing downside betas. Until both counts reach this value, the asset's output
         is NaN. This warm-up period avoids exposing early EWMA values before the
         downside beta estimate has sufficiently converged from its zero initialization.
-        If `None`, defaults to :math:`\lceil\text{half_life}\rceil`, with a minimum
+        If `None`, defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum
         of 1.
 
     eps : float, default=1e-12
@@ -93,12 +98,13 @@ class EWDownsideBeta(BaseDescriptor):
     updated only for assets with valid (non-NaN) returns and each asset's
     valid-observation count controls when its output starts. This avoids emitting
     initialized values for late-listed or sparsely observed assets. The `active_mask`
-    property of :class:`AssetPanel` distinguishes holidays from delistings.
+    property of :class:`~skfolio.containers.AssetPanel` distinguishes holidays from
+    delistings.
 
     Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`AssetPanel`). If no estimable asset has both finite returns and finite
-    `market_cap` at an observation, the market return is undefined and a `ValueError` is
-    raised.
+    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
+    returns and finite `market_cap` at an observation, the market return is undefined
+    and a `ValueError` is raised.
 
     References
     ----------

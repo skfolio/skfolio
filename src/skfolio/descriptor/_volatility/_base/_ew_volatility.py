@@ -28,14 +28,19 @@ class _BaseEWVolatility(BaseDescriptor):
     per-asset correction for the weights missing at the start of each asset history:
 
     .. math::
+        :nowrap:
 
-        S_i(t) = \lambda \cdot S_i(t-1)
-            + (1 - \lambda) \cdot f(r_i(t))^2
+        \[
+        \begin{aligned}
+        S_i(t)
+            &= \lambda \cdot S_i(t-1)
+               + (1 - \lambda) \cdot f(r_i(t))^2 \\[0.75em]
+        \text{output}_i(t)
+            &= \sqrt{\frac{S_i(t)}{1 - \lambda^{n_i(t)}}}
+        \end{aligned}
+        \]
 
-        \text{output}_i(t) =
-            \sqrt{\frac{S_i(t)}{1 - \lambda^{n_i(t)}}}
-
-    where :math:`\lambda = \exp(-\ln(2)/\text{half_life})` and :math:`n_i(t)` is the
+    where :math:`\lambda = \exp(-\ln(2)/\text{half\_life})` and :math:`n_i(t)` is the
     number of valid observations for asset :math:`i`.
 
     When `min_acceptable_return` is `None`, :math:`f(r) = r`. When set to a float,

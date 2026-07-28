@@ -1114,8 +1114,9 @@ class Portfolio(BasePortfolio):
         r"""Rolling realized (ex-post) factor risk and performance attribution.
 
         Computes :func:`~skfolio.attribution.realized_factor_attribution`
-        over rolling windows, returning an :class:`Attribution` where all numeric fields
-        carry an additional leading dimension for the number of windows.
+        over rolling windows, returning an :class:`~skfolio.attribution.Attribution`
+        where all numeric fields carry an additional leading dimension for the number
+        of windows.
 
         Rolling realized attribution is computed on the overlapping observation window
         between the portfolio and the factor model. Portfolio observations outside the

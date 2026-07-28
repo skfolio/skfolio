@@ -16,9 +16,9 @@ class IssuanceGrowthRate(GrowthRate):
 
     .. math::
 
-        \text{issuance_growth}(t)
-        = \frac{\text{adj_shares_outstanding}(t)}
-               {\text{adj_shares_outstanding}(t - \text{lag})} - 1
+        \text{issuance\_growth}(t)
+        = \frac{\text{adj\_shares\_outstanding}(t)}
+               {\text{adj\_shares\_outstanding}(t - \text{lag})} - 1
 
     The first `lag` observations are NaN because no lagged history is available.
 

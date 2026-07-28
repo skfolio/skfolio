@@ -23,8 +23,8 @@ class DividendToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{dividend_to_price}(t) =
-        \frac{\text{dividends_ttm}(t)}{\text{market_cap}(t)}
+        \text{dividend\_to\_price}(t) =
+        \frac{\text{dividends\_ttm}(t)}{\text{market\_cap}(t)}
 
     Dividend-to-price measures the income yield that shareholders receive relative to
     the current market price. High-yield stocks tend to be mature, cash-generative
@@ -44,9 +44,9 @@ class DividendToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{dividends_ttm}}{\text{market_cap}}
-        = \frac{\text{dividends_ttm} / \text{shares_out}}{\text{adj_close}}
-        = \frac{\text{dps_ttm}}{\text{adj_close}}
+        \frac{\text{dividends\_ttm}}{\text{market\_cap}}
+        = \frac{\text{dividends\_ttm} / \text{shares\_out}}{\text{adj\_close}}
+        = \frac{\text{dps\_ttm}}{\text{adj\_close}}
 
     The aggregate form is preferred because it avoids subtle split-adjustment mismatches
     between numerator and denominator. Aggregate fundamentals are the primary form from

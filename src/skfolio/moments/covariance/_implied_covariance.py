@@ -188,7 +188,7 @@ class ImpliedCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-        # TODO remove depreciated annualized_factor in v2.0
+        # TODO remove deprecated annualized_factor in v2.0
         annualized_factor: float | None = None,
     ):
         if annualized_factor is not None:
@@ -198,7 +198,7 @@ class ImpliedCovariance(BaseCovariance):
                     "`annualization_factor`."
                 )
             warnings.warn(
-                "`annualized_factor` is deprecated and will be removed in version 1.0. "
+                "`annualized_factor` is deprecated and will be removed in version 2.0. "
                 "Use `annualization_factor` instead.",
                 FutureWarning,
                 stacklevel=2,
@@ -233,7 +233,7 @@ class ImpliedCovariance(BaseCovariance):
 
     def set_params(self, **params) -> ImpliedCovariance:
         """Set estimator parameters."""
-        # TODO remove depreciated annualized_factor in v2.0
+        # TODO remove deprecated annualized_factor in v2.0
         if "annualized_factor" in params:
             annualized_factor = params.pop("annualized_factor")
             if annualized_factor is not None:
@@ -243,7 +243,7 @@ class ImpliedCovariance(BaseCovariance):
                         "`annualization_factor`."
                     )
                 warnings.warn(
-                    "`annualized_factor` is deprecated and will be removed in version 1.0. "
+                    "`annualized_factor` is deprecated and will be removed in version 2.0. "
                     "Use `annualization_factor` instead.",
                     FutureWarning,
                     stacklevel=2,

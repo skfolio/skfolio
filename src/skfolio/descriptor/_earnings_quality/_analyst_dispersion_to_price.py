@@ -23,8 +23,8 @@ class AnalystDispersionToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{analyst_dispersion_to_price}(t) =
-        \frac{\text{eps_ntm_std}(t)}{\text{adj_close}(t)}
+        \text{analyst\_dispersion\_to\_price}(t) =
+        \frac{\text{eps\_ntm\_std}(t)}{\text{adj\_close}(t)}
 
     Higher values indicate greater disagreement among analysts about a firm's forward
     earnings relative to its price. Forecast dispersion is a proxy for earnings

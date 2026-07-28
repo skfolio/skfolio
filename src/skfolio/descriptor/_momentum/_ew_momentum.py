@@ -32,23 +32,29 @@ class EWMomentum(BaseDescriptor):
     "12-1" momentum signal uses a skip of approximately one month [1]_.
 
     .. math::
+        :nowrap:
 
-        x(t) = \log(1 + r(t))
-
-        S(t) = \lambda \cdot S(t-1)
-             + (1 - \lambda) \cdot x(t - \text{skip})
-
-        \text{momentum}(t) =
-        \begin{cases}
-            \exp(S(t)) - 1 & \text{if exponentiate} \\
+        \[
+        \begin{aligned}
+        x(t)
+            &= \log(1 + r(t)) \\[0.75em]
+        S(t)
+            &= \lambda \cdot S(t-1)
+               + (1 - \lambda) \cdot x(t - \text{skip}) \\[0.75em]
+        \text{momentum}(t)
+            &=
+            \begin{cases}
+            \exp(S(t)) - 1 & \text{if } \texttt{exponentiate=True} \\
             S(t) & \text{otherwise}
-        \end{cases}
+            \end{cases}
+        \end{aligned}
+        \]
 
-    where :math:`\lambda = \exp(-\ln(2) / \text{half_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
     At observation :math:`t`, the EWMA input is the log return from :math:`t - \text{skip}`.
-    Therefore, :math:`\text{half_life}` is measured on the delayed input series. An
+    Therefore, :math:`\text{half\_life}` is measured on the delayed input series. An
     EWMA with this half-life is comparable to a fixed window of about
-    :math:`2 \cdot \text{half_life} / \ln 2` delayed observations, with the most recent
+    :math:`2 \cdot \text{half\_life} / \ln 2` delayed observations, with the most recent
     :math:`\text{skip}` observations excluded.
 
     Parameters
@@ -58,7 +64,7 @@ class EWMomentum(BaseDescriptor):
         :math:`\log(1 + r(t - \text{skip}))`. The default of 87 approximately matches a
         :class:`RollingMomentum` window of 252 observations (~1 year of daily data). To
         match a different window :math:`W`, use
-        :math:`\text{half_life} \approx W \cdot \ln(2) / 2 \approx 0.35 \, W`. Adjust
+        :math:`\text{half\_life} \approx W \cdot \ln(2) / 2 \approx 0.35 \, W`. Adjust
         for other frequencies (e.g., `half_life=6` for monthly data).
 
     skip : int, default=21
@@ -71,7 +77,7 @@ class EWMomentum(BaseDescriptor):
         Minimum number of valid delayed returns required for each asset. Until an asset
         reaches this count, its output is NaN. This warm-up period avoids exposing early
         EWMA values before the estimate has sufficiently converged from its zero
-        initialization. If `None`, defaults to :math:`\lceil\text{half_life}\rceil`,
+        initialization. If `None`, defaults to :math:`\lceil\text{half\_life}\rceil`,
         with a minimum of 1.
 
     exponentiate : bool, default=False
@@ -98,7 +104,7 @@ class EWMomentum(BaseDescriptor):
     finite and greater than `-1`, so :math:`\log(1 + r)` is finite. The EWMA state is
     updated only for finite delayed log returns, and each asset's valid-observation
     count controls when its output starts. The `active_mask` property of the input
-    :class:`AssetPanel` distinguishes holidays from delistings.
+    :class:`~skfolio.containers.AssetPanel` distinguishes holidays from delistings.
 
     See Also
     --------

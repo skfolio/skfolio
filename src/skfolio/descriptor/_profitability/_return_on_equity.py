@@ -23,7 +23,7 @@ class ReturnOnEquity(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{ROE}(t) =  \frac{\text{net_income_ttm}(t)}{\text{book_equity}(t)}
+        \text{ROE}(t) =  \frac{\text{net\_income\_ttm}(t)}{\text{book\_equity}(t)}
 
     Return on equity measures profitability from the common shareholders' perspective:
     how much profit a firm generates per unit of common equity capital. Stocks with

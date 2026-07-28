@@ -44,12 +44,12 @@ class ChangeToScale(BaseDescriptor):
     Parameters
     ----------
     field : str
-        Field name in the :class:`AssetPanel` to compute the change for. Non-missing
-        values must be finite.
+        Field name in the :class:`~skfolio.containers.AssetPanel` to compute the
+        change for. Non-missing values must be finite.
 
     scale_field : str
-        Field name in the :class:`AssetPanel` used as the current positive denominator.
-        Non-missing values must be finite and strictly positive.
+        Field name in the :class:`~skfolio.containers.AssetPanel` used as the current
+        positive denominator. Non-missing values must be finite and strictly positive.
 
     lag : int
         Number of observations to look back. The interpretation depends on the data

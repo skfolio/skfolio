@@ -15,12 +15,18 @@ class EWVolatility(_BaseEWVolatility):
     Computes return volatility with an EWMA variance estimate:
 
     .. math::
+        :nowrap:
 
-        S_i(t) = \lambda \cdot S_i(t-1) + (1 - \lambda) \cdot r_i(t)^2
+        \[
+        \begin{aligned}
+        S_i(t)
+            &= \lambda \cdot S_i(t-1) + (1 - \lambda) \cdot r_i(t)^2 \\[0.75em]
+        \text{output}_i(t)
+            &= \sqrt{\frac{S_i(t)}{1 - \lambda^{n_i(t)}}}
+        \end{aligned}
+        \]
 
-        \text{output}_i(t) = \sqrt{\frac{S_i(t)}{1 - \lambda^{n_i(t)}}}
-
-    where :math:`\lambda = \exp(-\ln(2)/\text{half_life})` and :math:`n_i(t)` is the
+    where :math:`\lambda = \exp(-\ln(2)/\text{half\_life})` and :math:`n_i(t)` is the
     number of valid returns for asset :math:`i`.
 
     This descriptor uses raw returns, so the estimate includes both systematic and
@@ -37,7 +43,7 @@ class EWVolatility(_BaseEWVolatility):
         reaches this count, its output is NaN. This warm-up period avoids exposing
         early EWMA values before the volatility estimate has sufficiently converged
         from its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------

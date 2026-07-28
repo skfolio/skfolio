@@ -19,9 +19,9 @@ __all__ = ["GlobalFactor"]
 class GlobalFactor(BaseFactorExposure, stateless=True):
     r"""Constant factor exposure equal to one for every asset.
 
-    `GlobalFactor` represents an intercept or broad market factor in a characteristics
-    factor model. It does not depend on any characteristic field. It uses the panel
-    dimensions to return an exposure matrix of ones with shape
+    `GlobalFactor` represents a cross-sectional regression intercept or broad market
+    factor in a characteristics factor model. It does not depend on any characteristic
+    field. It uses the panel dimensions to return an exposure matrix of ones with shape
     `(n_observations, n_assets)`.
 
     For each observation :math:`t` and asset :math:`i`, the exposure is:

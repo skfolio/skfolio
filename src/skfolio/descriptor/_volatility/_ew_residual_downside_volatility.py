@@ -16,22 +16,26 @@ class EWResidualDownsideVolatility(_BaseEWResidualVolatility):
     Only residuals below the `min_acceptable_return` threshold contribute:
 
     .. math::
+        :nowrap:
 
-        \epsilon_i(t) = r_i(t) - \hat\beta_i(t) \cdot r_m(t)
-
-        D_i(t) = \min(\epsilon_i(t) - \text{mar},\; 0)
-
-        S_{\text{down},i}(t) = \lambda_v \cdot
-            S_{\text{down},i}(t-1)
-            + (1 - \lambda_v) \cdot D_i(t)^2
-
-        \text{output}_i(t) =
-            \sqrt{\frac{S_{\text{down},i}(t)}
-            {1 - \lambda_v^{n_i(t)}}}
+        \[
+        \begin{aligned}
+        \epsilon_i(t)
+            &= r_i(t) - \hat\beta_i(t) \cdot r_m(t) \\[0.75em]
+        D_i(t)
+            &= \min(\epsilon_i(t) - \text{mar},\; 0) \\[0.75em]
+        S_{\text{down},i}(t)
+            &= \lambda_v \cdot S_{\text{down},i}(t-1)
+               + (1 - \lambda_v) \cdot D_i(t)^2 \\[0.75em]
+        \text{output}_i(t)
+            &= \sqrt{\frac{S_{\text{down},i}(t)}
+                         {1 - \lambda_v^{n_i(t)}}}
+        \end{aligned}
+        \]
 
     where :math:`\hat\beta_i(t)` is the EWMA beta estimated with decay
-    :math:`\lambda_\beta = \exp(-\ln(2)/\text{beta_half_life})`,
-    :math:`\lambda_v = \exp(-\ln(2)/\text{half_life})` and :math:`n_i(t)` is the
+    :math:`\lambda_\beta = \exp(-\ln(2)/\text{beta\_half\_life})`,
+    :math:`\lambda_v = \exp(-\ln(2)/\text{half\_life})` and :math:`n_i(t)` is the
     number of valid returns for asset :math:`i`. The zero-initialized residual variance
     accumulator is bias-corrected at output time using each asset's valid observation
     count.
@@ -55,7 +59,7 @@ class EWResidualDownsideVolatility(_BaseEWResidualVolatility):
         reaches this count, its output is NaN. This warm-up period avoids exposing
         early EWMA values before the downside residual volatility estimate has
         sufficiently converged from its zero initialization. If `None`, defaults to
-        :math:`\lceil\max(\text{half_life}, \text{beta_half_life})\rceil`, with a
+        :math:`\lceil\max(\text{half\_life}, \text{beta\_half\_life})\rceil`, with a
         minimum of 1.
 
     eps : float, default=1e-12
@@ -82,9 +86,9 @@ class EWResidualDownsideVolatility(_BaseEWResidualVolatility):
     must be finite.
 
     Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`AssetPanel`). If no estimable asset has both finite returns and finite
-    `market_cap` at an observation, the market return is undefined and a `ValueError`
-    is raised.
+    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
+    returns and finite `market_cap` at an observation, the market return is undefined
+    and a `ValueError` is raised.
 
     References
     ----------

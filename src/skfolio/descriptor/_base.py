@@ -28,11 +28,10 @@ from sklearn.utils import metadata_routing as skm
 class BaseDescriptor(BaseAssetPanelTransformer, ABC):
     """Base class for all descriptor transformers.
 
-    A descriptor takes an :class:`AssetPanel` and returns one raw descriptor
-    value per observation and asset, usually with shape
-    `(n_observations, n_assets)`. Descriptors are the inputs used by factor
-    exposure estimators such as
-    :class:`~skfolio.factor_exposure.FixedWeightedFactor`.
+    A descriptor takes an :class:`~skfolio.containers.AssetPanel` and returns one raw
+    descriptor value per observation and asset, usually with shape
+    `(n_observations, n_assets)`. Descriptors are the inputs used by factor exposure
+    estimators such as :class:`~skfolio.factor_exposure.FixedWeightedFactor`.
 
     Descriptors follow the :class:`~skfolio.base.BaseAssetPanelTransformer`
     protocol:
@@ -51,8 +50,9 @@ class BaseDescriptor(BaseAssetPanelTransformer, ABC):
 
     See Also
     --------
-    BaseAssetPanelTransformer : Shared `AssetPanel` transformer contract.
-    BaseFactorExposure : Combines descriptors into factor exposures.
+    :class:`~skfolio.base.BaseAssetPanelTransformer` : Shared transformer contract.
+    :class:`~skfolio.factor_exposure.BaseFactorExposure` : Combines descriptors into
+        factor exposures.
     """
 
 

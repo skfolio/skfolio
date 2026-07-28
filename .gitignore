@@ -147,6 +147,9 @@ sphinx_gallery/tests/tinybuild/_build/
 sphinx_gallery/tests/tinybuild/tiny_html/
 junit-results.xml
 
+# Local agent instructions
+/AGENTS.md
+
 # Cursor editor workspace
 .cursor/
 

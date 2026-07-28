@@ -22,8 +22,8 @@ class EarningsToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{earnings_to_price}(t) =
-        \frac{\text{net_income_ttm}(t)}{\text{market_cap}(t)}
+        \text{earnings\_to\_price}(t) =
+        \frac{\text{net\_income\_ttm}(t)}{\text{market\_cap}(t)}
 
     This is the inverse of the price-to-earnings (P/E) ratio and measures how much
     profit a firm generates per unit of market value. A high ratio identifies firms with
@@ -45,8 +45,8 @@ class EarningsToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{net_income_ttm}}{\text{market_cap}}
-        = \frac{\text{eps_ttm}}{\text{price}}
+        \frac{\text{net\_income\_ttm}}{\text{market\_cap}}
+        = \frac{\text{eps\_ttm}}{\text{price}}
 
     The aggregate form is preferred because it avoids subtle split-adjustment mismatches
     between numerator and denominator. Aggregate fundamentals are the primary form from

@@ -29,7 +29,7 @@ We will:
 # Data
 # ====
 # We reuse the synthetic characteristics panel from the :ref:`first tutorial
-# <sphx_glr_auto_examples_factor_models_plot_1_characteristics_factor_model.py>`.
+# <sphx_glr_auto_examples_factor_models_plot_characteristics_factor_model.py>`.
 # It covers 500 assets over 1,500 trading days and includes late listings,
 # delistings, holidays and missing characteristics:
 import numpy as np
@@ -47,7 +47,7 @@ panel = make_synthetic_characteristics(
 # Next, we rebuild the 24-factor model with one global market factor, 10
 # industry factors and 13 style factors built from 29 descriptors. See the
 # :ref:`first tutorial
-# <sphx_glr_auto_examples_factor_models_plot_1_characteristics_factor_model.py>`
+# <sphx_glr_auto_examples_factor_models_plot_characteristics_factor_model.py>`
 # for more details:
 from skfolio.descriptor import (
     AnalystDispersionToPrice,
@@ -384,7 +384,7 @@ evaluation.calibration_summary()
 
 # %%
 # The calibration slope of 1.003 indicates that the forecast scale is closely
-# aligned with realized idiosyncratic returns. The mean forecast is close to zero
+# aligned with idiosyncratic returns. The mean forecast is close to zero
 # because the signal is centered cross-sectionally.
 #
 # We now turn to the plots, starting with the IC accumulated through time. A
@@ -414,7 +414,7 @@ evaluation.plot_factor_correlation()
 # %%
 # All correlations are small, so the forecast is close to factor neutral.
 # Such small overlaps are not a concern for the portfolio below because the
-# factor model separates the forecast into spanned and orthogonal components
+# factor model separates the forecast into spanned alpha and orthogonal alpha
 # and the optimization constraints keep the portfolio's factor exposures near
 # zero. Unwanted tilts can also be removed at the alpha estimator level with
 # `neutralize_against`.
@@ -428,23 +428,22 @@ model.set_params(alpha_estimator=alpha_estimator)
 
 # %%
 # With `alpha_estimator` configured, the factor model enriches the input panel,
-# fits the estimator and decomposes its forecast into factor-spanned and
-# orthogonal components. The default `spanned_alpha_shrinkage=1.0` retains the
-# factor premia estimated from the factor-return time series rather than the
-# alpha-implied premia. The alpha forecast therefore contributes to expected
-# returns only through its orthogonal component.
-# `orthogonal_alpha_confidence` controls shrinkage of this component
+# fits the estimator and decomposes its forecast into spanned alpha and orthogonal
+# alpha. The default `spanned_alpha_shrinkage=1.0` uses only factor-implied asset
+# expected returns. The alpha forecast therefore contributes to expected returns
+# only through the orthogonal alpha.
+# `orthogonal_alpha_confidence` controls shrinkage of the orthogonal alpha
 # toward zero (see :ref:`Spanned and Orthogonal Alpha
 # <factor_model_spanned_alpha>`).
 #
 # Factor-Neutral Optimization
 # ===========================
 # The :ref:`previous tutorial
-# <sphx_glr_auto_examples_factor_models_plot_2_factor_constrained_portfolio.py>`
+# <sphx_glr_auto_examples_factor_models_plot_factor_constrained_portfolio.py>`
 # captured factor premia through explicit exposure targets. Here we do the
 # opposite: we constrain market, industry and style exposures close to zero and
-# let the return come from the orthogonal alpha forecast (common in statistical
-# arbitrage).
+# use the orthogonal alpha as the modeled expected return, an approach common in
+# statistical arbitrage.
 #
 # We maximize mean-variance utility so that the optimizer balances expected
 # return against variance and, in the backtest below, transaction costs. We use
@@ -506,8 +505,8 @@ print(f"Gross exposure: {np.abs(mvo.weights_).sum():.2f}")
 # `budget=0.0` makes the portfolio dollar neutral and `max_long=1.5` caps the
 # long exposure at 150%. Dollar neutrality implies an equally sized short
 # exposure, so the gross exposure can reach 300%. For the market factor,
-# `budget=0.0` is equivalent to a `"market == 0"` constraint on the intercept,
-# so the explicit constraint is unnecessary. At the gross-exposure cap, the
+# `budget=0.0` is equivalent to a `"market == 0"` constraint on the global factor
+# exposure, so the explicit constraint is unnecessary. At the gross-exposure cap, the
 # 1.5% position limit requires at least 100 long and 100 short positions,
 # preventing the portfolio from being concentrated in fewer names.
 #
@@ -552,8 +551,8 @@ predicted_attrib.plot_return_contrib(top_n=15)
 
 # %%
 # The idiosyncratic component dominates expected return. This is consistent with
-# the forecast coming primarily from orthogonal alpha rather than intentional
-# factor-premia exposures. In the previous tutorial, the idiosyncratic
+# the modeled expected return coming primarily from orthogonal alpha. In the previous
+# tutorial, the idiosyncratic
 # expected-return contribution was zero because the factor model had no alpha
 # estimator.
 #
@@ -707,9 +706,9 @@ mpp.plot_long_short_exposure()
 # %%
 # Ex-Post Attribution
 # ===================
-# Now that we have the backtest, let's check whether the strategy behaved as
-# designed, earning its return from the orthogonal alpha rather than factor
-# premia. `realized_attribution` decomposes the walk-forward portfolio using
+# Now that we have the backtest, let's check whether realized performance was
+# concentrated in idiosyncratic returns, as intended by the orthogonal alpha
+# forecast. `realized_attribution` decomposes the walk-forward portfolio using
 # realized factor returns, exposures and idiosyncratic returns. For this
 # descriptive ex-post analysis, we refit the factor model over the completed
 # sample. This fit occurs after the backtest and does not enter any portfolio
@@ -735,11 +734,11 @@ show(fig)
 
 # %%
 # |
+#
 # The error bars show 95% confidence intervals on annualized mean return
 # contributions. The idiosyncratic return contribution is positive. Residual
 # factor exposures make a small aggregate contribution. The realized return decomposition is
-# consistent with orthogonal alpha being the primary return source rather than
-# factor premia.
+# consistent with the orthogonal alpha forecast.
 #
 # The summary DataFrame adds `unexplained`, the residual between
 # observed portfolio returns and model-attributed returns. The portfolio
@@ -758,8 +757,8 @@ realized_attrib.summary_df()
 # Conclusion
 # ==========
 # We recovered the synthetic idiosyncratic alpha from short interest and analyst
-# forecast dispersion, integrated it into the factor model and used its
-# orthogonal component in a factor-neutral portfolio.
+# forecast dispersion, integrated it into the factor model and used the orthogonal
+# alpha in a factor-neutral portfolio.
 #
 # .. seealso::
 #       The :ref:`Alpha Estimators <factor_model_alpha>` section of the

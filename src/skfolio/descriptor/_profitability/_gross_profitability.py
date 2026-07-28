@@ -22,9 +22,9 @@ class GrossProfitability(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{gross_profitability}(t) =
-        \frac{\text{sales_ttm}(t) - \text{cost_of_revenue_ttm}(t)}
-             {\text{total_assets}(t)}
+        \text{gross\_profitability}(t) =
+        \frac{\text{sales\_ttm}(t) - \text{cost\_of\_revenue\_ttm}(t)}
+             {\text{total\_assets}(t)}
 
     Gross profitability captures a firm's ability to generate profit from its asset base
     before operating expenses, interest and taxes. It is less affected by financing,

@@ -44,12 +44,12 @@ class ChangeInIntensity(BaseDescriptor):
     Parameters
     ----------
     field : str
-        Field name in the :class:`AssetPanel` used as numerator :math:`A`.
-        Non-missing values must be finite.
+        Field name in the :class:`~skfolio.containers.AssetPanel` used as numerator
+        :math:`A`. Non-missing values must be finite.
 
     scale_field : str
-        Field name in the :class:`AssetPanel` used as denominator :math:`S`.
-        Non-missing values must be finite and strictly positive.
+        Field name in the :class:`~skfolio.containers.AssetPanel` used as denominator
+        :math:`S`. Non-missing values must be finite and strictly positive.
 
     lag : int
         Number of observations to look back. The interpretation depends on the data

@@ -17,15 +17,22 @@ class EWDownsideVolatility(_BaseEWVolatility):
     estimate:
 
     .. math::
+        :nowrap:
 
-        D_i(t) = \min(r_i(t) - \text{mar},\; 0)
+        \[
+        \begin{aligned}
+        D_i(t)
+            &= \min(r_i(t) - \text{mar},\; 0) \\[0.75em]
+        S_{\text{down},i}(t)
+            &= \lambda \cdot S_{\text{down},i}(t-1)
+               + (1 - \lambda) \cdot D_i(t)^2 \\[0.75em]
+        \text{output}_i(t)
+            &= \sqrt{\frac{S_{\text{down},i}(t)}
+                         {1 - \lambda^{n_i(t)}}}
+        \end{aligned}
+        \]
 
-        S_{\text{down},i}(t) = \lambda \cdot S_{\text{down},i}(t-1)
-         + (1 - \lambda) \cdot D_i(t)^2
-
-        \text{output}_i(t) =  \sqrt{\frac{S_{\text{down},i}(t)} {1 - \lambda^{n_i(t)}}}
-
-    where :math:`\lambda = \exp(-\ln(2)/\text{half_life})` and :math:`n_i(t)` is the
+    where :math:`\lambda = \exp(-\ln(2)/\text{half\_life})` and :math:`n_i(t)` is the
     number of valid returns for asset :math:`i`.
 
     Parameters
@@ -42,7 +49,7 @@ class EWDownsideVolatility(_BaseEWVolatility):
         this count, its output is NaN. This warm-up period avoids exposing early EWMA
         values before the downside volatility estimate has sufficiently converged from
         its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------

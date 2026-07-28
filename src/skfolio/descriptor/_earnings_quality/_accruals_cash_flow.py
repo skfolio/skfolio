@@ -22,9 +22,9 @@ class AccrualsCashFlow(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{accruals_cash_flow}(t) =
-        \frac{\text{net_income_ttm}(t) - \text{operating_cash_flow_ttm}(t)}
-             {\text{total_assets}(t)}
+        \text{accruals\_cash\_flow}(t) =
+        \frac{\text{net\_income\_ttm}(t) - \text{operating\_cash\_flow\_ttm}(t)}
+             {\text{total\_assets}(t)}
 
     High accruals indicate that reported earnings substantially exceed cash generated
     from operations. Empirically, firms with high accruals tend to have less persistent

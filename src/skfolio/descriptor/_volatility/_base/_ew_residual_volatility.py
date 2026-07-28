@@ -30,19 +30,24 @@ class _BaseEWResidualVolatility(BaseDescriptor):
     history:
 
     .. math::
+        :nowrap:
 
-        \epsilon_i(t) = r_i(t) - \hat\beta_i(t) \cdot r_m(t)
-
-        S_{\epsilon,i}(t) = \lambda_v \cdot S_{\epsilon,i}(t-1)
-            + (1 - \lambda_v) \cdot f(\epsilon_i(t))^2
-
-        \text{output}_i(t) =
-            \sqrt{\frac{S_{\epsilon,i}(t)}
-            {1 - \lambda_v^{n_i(t)}}}
+        \[
+        \begin{aligned}
+        \epsilon_i(t)
+            &= r_i(t) - \hat\beta_i(t) \cdot r_m(t) \\[0.75em]
+        S_{\epsilon,i}(t)
+            &= \lambda_v \cdot S_{\epsilon,i}(t-1)
+               + (1 - \lambda_v) \cdot f(\epsilon_i(t))^2 \\[0.75em]
+        \text{output}_i(t)
+            &= \sqrt{\frac{S_{\epsilon,i}(t)}
+                         {1 - \lambda_v^{n_i(t)}}}
+        \end{aligned}
+        \]
 
     where :math:`\hat\beta_i(t)` is the EWMA beta estimated with decay
-    :math:`\lambda_\beta = \exp(-\ln(2)/\text{beta_half_life})` and the residual
-    variance uses decay :math:`\lambda_v = \exp(-\ln(2)/\text{half_life})`.
+    :math:`\lambda_\beta = \exp(-\ln(2)/\text{beta\_half\_life})` and the residual
+    variance uses decay :math:`\lambda_v = \exp(-\ln(2)/\text{half\_life})`.
 
     When `min_acceptable_return` is `None`, :math:`f(\epsilon) = \epsilon` (total
     residual volatility). When set to a float,

@@ -1,4 +1,4 @@
-"""Passthrough descriptor exposing a raw `AssetPanel` field."""
+"""Passthrough descriptor exposing a raw :class:`~skfolio.containers.AssetPanel` field."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
@@ -13,7 +13,7 @@ from skfolio.utils.validation import validate_asset_panel
 
 
 class Passthrough(BaseDescriptor, stateless=True):
-    """Passthrough descriptor for an `AssetPanel` field.
+    """Passthrough descriptor for an :class:`~skfolio.containers.AssetPanel` field.
 
     Returns the selected panel field without numerical transformation. This is
     useful for raw vendor fields or for values computed upstream that should
@@ -22,7 +22,8 @@ class Passthrough(BaseDescriptor, stateless=True):
     Parameters
     ----------
     field : str
-        Name of the field to read from the input :class:`AssetPanel`.
+        Name of the field to read from the input
+        :class:`~skfolio.containers.AssetPanel`.
 
     Attributes
     ----------

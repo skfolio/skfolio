@@ -23,9 +23,9 @@ class ShareholderYield(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{shareholder_yield}(t) =
-        \frac{\text{dividends_ttm}(t) + \text{net_buybacks_ttm}(t)}
-             {\text{market_cap}(t)}
+        \text{shareholder\_yield}(t) =
+        \frac{\text{dividends\_ttm}(t) + \text{net\_buybacks\_ttm}(t)}
+             {\text{market\_cap}(t)}
 
     Dividend yield alone misses a large and growing share of corporate payout. Since the
     1990s, share repurchases have overtaken dividends as the dominant mechanism for

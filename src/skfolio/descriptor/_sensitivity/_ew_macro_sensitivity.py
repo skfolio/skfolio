@@ -74,7 +74,7 @@ class EWMacroSensitivity(BaseDescriptor):
         value, the asset's output is NaN. This warm-up period avoids exposing early
         EWMA values before the sensitivity estimate has sufficiently converged from its
         zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     eps : float, default=1e-12
         Small constant for numerical stability in denominators.
@@ -104,9 +104,9 @@ class EWMacroSensitivity(BaseDescriptor):
     controls when its output starts.
 
     Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`AssetPanel`). If no estimable asset has both finite returns and finite
-    `market_cap` at an observation, the market return is undefined and a `ValueError` is
-    raised.
+    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
+    returns and finite `market_cap` at an observation, the market return is undefined
+    and a `ValueError` is raised.
 
     See Also
     --------

@@ -27,49 +27,46 @@ html {
     min-width: 700px;
 }
 
-
-div:has(.plotly-graph-div) {
-     overflow-x: auto;
+html div.rendered_html:has(.plotly-graph-div) {
+    overflow-x: auto;
+    margin-bottom: 1rem;
 }
 
-
-div:has(.plotly-graph-div)::-webkit-scrollbar {
+html div.rendered_html:has(.plotly-graph-div)::-webkit-scrollbar {
     height: .7rem;
     width: .7rem
 }
 
-div:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
+html div.rendered_html:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-muted);
     border-radius: .35rem
 }
 
-div:has(.plotly-graph-div):-webkit-scrollbar-track {
+html div.rendered_html:has(.plotly-graph-div):-webkit-scrollbar-track {
     background: transparent
 }
 
-div:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
+html div.rendered_html:has(.plotly-graph-div)::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-muted)
 }
 
-div:has(.plotly-graph-div)::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
+html div.rendered_html:has(.plotly-graph-div)::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-base)
 }
 
-div:has(.plotly-graph-div)::-webkit-scrollbar-track {
+html div.rendered_html:has(.plotly-graph-div)::-webkit-scrollbar-track {
     background: var(--pst-color-on-surface)
 }
 
-
 /* Pandas dataframe css (override theme: html div.rendered_html { margin: .1875rem }) */
 
-html div.rendered_html {
+html div.rendered_html:has(table.dataframe) {
     overflow-x: auto;
     margin-top: 2rem;
-    margin-bottom: 0;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
-.rendered_html table {
+.rendered_html table.dataframe {
     width: 100%;
 }
 
@@ -80,30 +77,38 @@ table.dataframe thead th:first-child {
     width: 142px;
 }
 
-.rendered_html::-webkit-scrollbar {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar {
     height: .7rem;
     width: .7rem
 }
 
-.rendered_html::-webkit-scrollbar-thumb {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-muted);
     border-radius: .35rem
 }
 
-.rendered_html::-webkit-scrollbar-track {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar-track {
     background: transparent
 }
 
-.rendered_html::-webkit-scrollbar-thumb {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-muted)
 }
 
-.rendered_html::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar-thumb:hover,body:hover::-webkit-scrollbar-thumb {
     background: var(--pst-color-text-base)
 }
 
-.rendered_html::-webkit-scrollbar-track {
+.rendered_html:has(table.dataframe)::-webkit-scrollbar-track {
     background: var(--pst-color-on-surface)
+}
+
+/* Sphinx-Gallery adds two line breaks after rich HTML outputs. */
+html div.rendered_html:has(.plotly-graph-div) + br,
+html div.rendered_html:has(.plotly-graph-div) + br + br,
+html div.rendered_html:has(table.dataframe) + br,
+html div.rendered_html:has(table.dataframe) + br + br {
+    display: none;
 }
 
 a:visited {
@@ -121,16 +126,23 @@ table.catalog-table tbody td:first-child {
     vertical-align: middle;
 }
 
-/* Display math: pydata theme overflow-y clips tall superscripts (e.g. \text{span}) */
+/* Display math: MathJax under-measures tall scripts (e.g. \text superscripts,
+   underbrace labels). overflow-y visible computes to auto next to overflow-x
+   auto and shows a vertical scrollbar, so hide the y axis and reserve the
+   overflow area with padding instead. */
 div.math {
     overflow: visible;
 }
 
 div.math mjx-container {
     overflow-x: auto;
-    overflow-y: visible;
-    padding-top: 0.15rem;
-    padding-bottom: 0.25rem;
+    overflow-y: hidden;
+    padding-top: 0.3rem;
+    padding-bottom: 0.5rem;
 }
 
-
+/* Extra vertical space between rows in aligned/cases/array display math.
+   MathJax sets its own mtd padding, so !important is required. */
+div.math mjx-mtable mjx-mtd {
+    padding-block: 0.35em !important;
+}

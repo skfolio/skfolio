@@ -22,15 +22,15 @@ class EbitdaToEnterpriseValue(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{ebitda_to_enterprise_value}(t) =
-        \frac{\text{ebitda_ttm}(t)}{\text{enterprise_value}(t)}
+        \text{ebitda\_to\_enterprise\_value}(t) =
+        \frac{\text{ebitda\_ttm}(t)}{\text{enterprise\_value}(t)}
 
     Enterprise value adjusts for capital structure by adding debt and subtracting cash
     and equivalents from market capitalization:
 
     .. math::
 
-        EV = \text{market_cap} + \text{total_debt} - \text{cash_and_equivalents}
+        EV = \text{market\_cap} + \text{total\_debt} - \text{cash\_and\_equivalents}
 
     EBITDA measures operating profitability before financing, taxes and non-cash
     charges. A high ratio identifies firms generating strong operating income relative
@@ -45,8 +45,8 @@ class EbitdaToEnterpriseValue(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{EV} = \text{market_cap} + \text{total_debt}
-                   - \text{cash_and_equivalents}
+        \text{EV} = \text{market\_cap} + \text{total\_debt}
+                   - \text{cash\_and\_equivalents}
 
     Non-missing `enterprise_value` values must be finite. Observations with
     `enterprise_value <= 0` are masked to NaN because the valuation yield is not

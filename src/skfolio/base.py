@@ -21,27 +21,29 @@ __all__ = ["BaseAssetPanelTransformer", "BaseComposition"]
 
 
 class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
-    """Base class for estimators that transform :class:`AssetPanel` data.
+    """Base class for estimators that transform asset panel data.
 
-    Descriptors and factor exposure estimators take an :class:`AssetPanel` and
-    return transformed values indexed by observation and asset. Most transformers return
-    an array with shape `(n_observations, n_assets)`. Transformers that produce multiple
-    values per asset, such as :class:`OneHotCategoricalFactors`, return an array with
-    shape `(n_observations, n_assets, n_categories)`.
+    Descriptors and factor exposure estimators take an
+    :class:`~skfolio.containers.AssetPanel` and return transformed values indexed by
+    observation and asset. Most transformers return an array with shape
+    `(n_observations, n_assets)`. Transformers that produce multiple values per asset,
+    such as :class:`~skfolio.factor_exposure.OneHotCategoricalFactors`, return an array
+    with shape `(n_observations, n_assets, n_categories)`.
 
     In scikit-learn, `fit` and `partial_fit` update fitted state, stored in trailing
     underscore attributes, while `transform` returns transformed input data using that
-    state. This separation is not suitable for every :class:`AssetPanel` transformer.
-    For some estimators, the transformed value is produced by the same state transition
-    that updates the estimator. A separate `transform` method would either need to
-    mutate state or depend on a preceding `partial_fit` call, so the API exposes the
-    combined operation directly. For example, the exponentially weighted momentum
-    descriptor :class:`EWMomentum` needs to update its internal EWMA state to compute
-    the transformed value on each observation.
+    state. This separation is not suitable for every
+    :class:`~skfolio.containers.AssetPanel` transformer. For some estimators, the
+    transformed value is produced by the same state transition that updates the
+    estimator. A separate `transform` method would either need to mutate state or
+    depend on a preceding `partial_fit` call, so the API exposes the combined
+    operation directly. For example, the exponentially weighted momentum
+    descriptor :class:`~skfolio.descriptor.EWMomentum` needs to update its internal
+    EWMA state to compute the transformed value on each observation.
 
     Other transformers are independent across observations. For example, the
-    :class:`DividendToPrice` descriptor depends only on the current `dividends_ttm`
-    and `market_cap` values and can therefore be declared stateless.
+    :class:`~skfolio.descriptor.DividendToPrice` descriptor depends only on the current
+    `dividends_ttm` and `market_cap` values and can therefore be declared stateless.
 
     Accordingly, `fit_transform` is used for full-batch computation and
     `partial_fit_transform` for online computation. Subclasses must implement
@@ -66,8 +68,8 @@ class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
 
     See Also
     --------
-    BaseDescriptor : Computes a raw descriptor from characteristics.
-    BaseFactorExposure : Computes factor exposures from characteristics.
+    :class:`~skfolio.descriptor.BaseDescriptor` : Computes raw descriptor values.
+    :class:`~skfolio.factor_exposure.BaseFactorExposure` : Computes factor exposures.
     """
 
     n_assets_: int

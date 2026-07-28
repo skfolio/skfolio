@@ -6,19 +6,19 @@ within CharacteristicsFactorModel, covering:
 Test 14a -- Spanned alpha recovery
     DGP: single factor with known betas.  Alpha is a linear function of
     the betas (i.e. purely spanned).  With `spanned_alpha_shrinkage=0`
-    the factor-implied mu must match the alpha-implied factor mu, and the
-    orthogonal component must be zero.
+    the final expected returns must match the spanned alpha, and the
+    orthogonal alpha must be zero.
 
 Test 14b -- Orthogonal alpha recovery
-    DGP: single factor.  Alpha has a component orthogonal to the factor
-    exposures.  With `orthogonal_alpha_confidence=1` the full orthogonal
-    alpha must be present in the final mu.  With `confidence=0` only the
-    spanned part survives.
+    DGP: single factor.  The alpha forecast contains both spanned alpha and
+    orthogonal alpha.  With `orthogonal_alpha_confidence=1` the full orthogonal
+    alpha must be present in the final mu.  With `confidence=0` only the spanned
+    alpha survives.
 
 Test 14c -- Spanned alpha shrinkage
     Same DGP as 14a.  Varying `spanned_alpha_shrinkage` from 0 to 1
-    must linearly interpolate between the alpha-implied and factor-prior
-    factor mu.
+    must linearly interpolate between the spanned alpha and expected returns
+    from the factor prior.
 
 Test 14d -- EWSharpeOptimalAlpha integration
     DGP: single factor with a predictive signal (the true beta corrupted
@@ -27,7 +27,7 @@ Test 14d -- EWSharpeOptimalAlpha integration
 
 Test 14e -- No alpha estimator (default)
     When `alpha_estimator=None` the asset mu must equal the
-    factor-prior-implied spanned alpha (`B @ factor_prior_mu`).
+    factor-prior-implied expected returns (`B @ factor_prior_mu`).
 """
 
 from __future__ import annotations
@@ -51,8 +51,8 @@ class TestSpannedAlphaRecovery:
 
     Alpha vector: :math:`\alpha_i = c \cdot \beta_i` for some constant c.
     This alpha lies entirely in the column space of the factor exposures,
-    so `_decompose_alpha` must produce zero orthogonal component and the
-    factor mu from alpha must equal `c`.
+    so `_decompose_alpha` must produce zero orthogonal alpha and the factor
+    mu from alpha must equal `c`.
     """
 
     N_OBS = 500
@@ -82,7 +82,7 @@ class TestSpannedAlphaRecovery:
             returns, extra_fields={"beta": betas_2d, "alpha_signal": alpha_2d}
         )
 
-        # spanned_alpha_shrinkage=0: use the alpha-implied factor mu entirely
+        # spanned_alpha_shrinkage=0: use the spanned alpha entirely
         model = CharacteristicsFactorModel(
             factors=[("f1", passthrough_factor("beta"))],
             alpha_estimator=_ConstantAlpha("alpha_signal"),
@@ -99,7 +99,7 @@ class TestSpannedAlphaRecovery:
 
     def test_mu_recovers_alpha(self):
         """Final asset mu must approximate the injected alpha (purely
-        spanned, shrinkage=0 gives full weight to alpha-implied mu)."""
+        spanned, shrinkage=0 gives full weight to the spanned alpha)."""
         np.testing.assert_allclose(
             self.model.return_distribution_.mu,
             self.alpha,
@@ -107,25 +107,26 @@ class TestSpannedAlphaRecovery:
         )
 
     def test_orthogonal_alpha_is_zero(self):
-        """With purely spanned alpha, the orthogonal component is zero."""
+        """With purely spanned alpha, the orthogonal alpha is zero."""
         fm = self.model.factor_model_
-        spanned = fm.loading_matrix @ fm.factor_mu
-        orthogonal = self.model.return_distribution_.mu - spanned
-        np.testing.assert_allclose(orthogonal, 0, atol=1e-10)
+        spanned_alpha = fm.loading_matrix @ fm.factor_mu
+        orthogonal_alpha = self.model.return_distribution_.mu - spanned_alpha
+        np.testing.assert_allclose(orthogonal_alpha, 0, atol=1e-10)
 
     def test_factor_mu_equals_slope(self):
         """The factor mu must equal the alpha slope constant."""
         fm = self.model.factor_model_
         # With passthrough factor (no z-scoring), the exposure equals
         # the raw beta.  factor_mu = c so that B @ factor_mu = c * beta
-        # which matches the alpha.  The factor model also has an intercept,
-        # so factor_mu[0] absorbs the mean and factor_mu[1] = ALPHA_SLOPE.
-        spanned = fm.loading_matrix @ fm.factor_mu
-        np.testing.assert_allclose(spanned, self.alpha, atol=1e-10)
+        # which matches the alpha.  GlobalFactor supplies a cross-sectional
+        # intercept, so factor_mu[0] absorbs the mean and
+        # factor_mu[1] = ALPHA_SLOPE.
+        spanned_alpha = fm.loading_matrix @ fm.factor_mu
+        np.testing.assert_allclose(spanned_alpha, self.alpha, atol=1e-10)
 
 
 class TestOrthogonalAlpha:
-    r"""Alpha has a component orthogonal to the factor exposures.
+    r"""Alpha contains spanned alpha and orthogonal alpha.
 
     DGP:
         :math:`R_i(t) = \beta_i \, f(t) + \epsilon_i(t)`
@@ -152,7 +153,7 @@ class TestOrthogonalAlpha:
         eps = rng.normal(0, sigma_eps, size=(cls.N_OBS, cls.N_ASSETS))
         returns = betas[None, :] * f_true[:, None] + eps
 
-        # Build orthogonal component: random vector, project out beta and 1
+        # Build orthogonal alpha: random vector, project out beta and 1
         raw_delta = rng.normal(0, 0.001, size=cls.N_ASSETS)
         # Under equal weights, project out intercept (ones) and beta
         ones = np.ones(cls.N_ASSETS)
@@ -202,23 +203,23 @@ class TestOrthogonalAlpha:
         cls.delta = delta
 
     def test_full_confidence_recovers_total_alpha(self):
-        """With confidence=1 the total alpha (spanned + ortho) is recovered."""
+        """With confidence=1, spanned alpha and orthogonal alpha are recovered."""
         np.testing.assert_allclose(
             self.model_full.return_distribution_.mu,
             self.alpha,
             atol=1e-10,
         )
 
-    def test_zero_confidence_discards_orthogonal(self):
+    def test_zero_confidence_discards_orthogonal_alpha(self):
         """With confidence=0 only the spanned alpha survives."""
         mu = self.model_zero.return_distribution_.mu
         fm = self.model_zero.factor_model_
-        spanned = fm.loading_matrix @ fm.factor_mu
-        np.testing.assert_allclose(mu, spanned, atol=1e-10)
+        spanned_alpha = fm.loading_matrix @ fm.factor_mu
+        np.testing.assert_allclose(mu, spanned_alpha, atol=1e-10)
 
     def test_zero_confidence_mu_differs_from_full(self):
         """Zero confidence mu must differ from full confidence mu because
-        the orthogonal component is non-zero."""
+        the orthogonal alpha is non-zero."""
         diff = np.max(
             np.abs(
                 self.model_full.return_distribution_.mu
@@ -227,26 +228,28 @@ class TestOrthogonalAlpha:
         )
         assert diff > 1e-5, f"max |mu_full - mu_zero| = {diff:.2e}"
 
-    def test_orthogonal_component_equals_delta(self):
-        """The orthogonal component must equal the injected delta."""
+    def test_orthogonal_alpha_equals_delta(self):
+        """The orthogonal alpha must equal the injected delta."""
         fm = self.model_full.factor_model_
-        spanned = fm.loading_matrix @ fm.factor_mu
-        ortho = self.model_full.return_distribution_.mu - spanned
-        np.testing.assert_allclose(ortho, self.delta, atol=1e-10)
+        spanned_alpha = fm.loading_matrix @ fm.factor_mu
+        orthogonal_alpha = self.model_full.return_distribution_.mu - spanned_alpha
+        np.testing.assert_allclose(orthogonal_alpha, self.delta, atol=1e-10)
 
 
 class TestSpannedAlphaShrinkage:
     r"""Verify linear interpolation via `spanned_alpha_shrinkage`.
 
-    With shrinkage :math:`\lambda`, the factor mu is:
+    With shrinkage :math:`\lambda`, the factor-spanned expected returns are:
 
     .. math::
 
-        \mu_f = \lambda \, \mu_f^{\text{prior}}
-                + (1 - \lambda) \, \mu_f^{\text{alpha}}
+        \mu^{\parallel}
+        = \lambda \, B(T)\,\mu_f
+        + (1 - \lambda) \,\alpha^{\parallel}
 
-    The test fits three models: shrinkage = 0 (pure alpha), 0.5 (blend),
-    and 1 (pure prior), and verifies the blended mu is the midpoint.
+    The test fits three models: shrinkage = 0 (spanned alpha), 0.5 (blend),
+    and 1 (factor premia), and verifies the blended expected returns are the
+    midpoint.
     """
 
     N_OBS = 500
@@ -544,7 +547,7 @@ class TestNoAlphaEstimatorDefault:
         """alpha_estimator_ must be None."""
         assert self.model.alpha_estimator_ is None
 
-    def test_mu_equals_spanned_prior(self):
+    def test_mu_equals_factor_prior_projection(self):
         """Asset mu must equal B @ factor_prior_mu."""
         fm = self.model.factor_model_
         expected_mu = fm.loading_matrix @ fm.factor_mu
@@ -554,9 +557,9 @@ class TestNoAlphaEstimatorDefault:
             atol=1e-12,
         )
 
-    def test_no_orthogonal_component(self):
-        """With no alpha estimator, the idio mu stored in the factor model
-        must be zero."""
+    def test_no_orthogonal_alpha(self):
+        """With no alpha estimator, the orthogonal alpha stored in the factor
+        model must be zero."""
         fm = self.model.factor_model_
         np.testing.assert_allclose(fm.idio_mu, 0, atol=1e-12)
 

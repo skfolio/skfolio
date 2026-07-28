@@ -1,6 +1,10 @@
 .. -*- mode: rst -*-
 
-|Licence| |Codecov| |Black| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord| |DOI|
+.. The regions delimited by the `skfolio-shared-*-start` and `skfolio-shared-*-end`
+   comments are included verbatim in `docs/index.rst`. Do not rename or remove them.
+   Content placed outside those regions stays in the README only.
+
+|Licence| |Codecov| |PythonVersion| |PyPi| |CI/CD| |Downloads| |Ruff| |Contribution| |Website| |JupyterLite| |Discord| |DOI|
 
 .. |Licence| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
    :target: https://github.com/skfolio/skfolio/blob/main/LICENSE
@@ -14,11 +18,8 @@
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
    :target: https://pypi.org/project/skfolio
 
-.. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-   :target: https://github.com/psf/black
-
 .. |CI/CD| image:: https://img.shields.io/github/actions/workflow/status/skfolio/skfolio/release.yml.svg?logo=github
-   :target: https://github.com/skfolio/skfolio/raw/main/LICENSE
+   :target: https://github.com/skfolio/skfolio/actions
 
 .. |Downloads| image:: https://static.pepy.tech/badge/skfolio
    :target: https://pepy.tech/project/skfolio
@@ -41,45 +42,42 @@
 .. |DOI| image:: https://zenodo.org/badge/731792488.svg
    :target: https://doi.org/10.5281/zenodo.16148630
 
-.. |PythonMinVersion| replace:: 3.10
-.. |NumpyMinVersion| replace:: 1.23.4
-.. |ScipyMinVersion| replace:: 1.8.0
-.. |PandasMinVersion| replace:: 1.4.1
-.. |CvxpyBaseMinVersion| replace:: 1.5.0
-.. |ClarabelMinVersion| replace:: 0.9.0
-.. |SklearnMinVersion| replace:: 1.6.0
-.. |JoblibMinVersion| replace:: 1.3.2
-.. |PlotlyMinVersion| replace:: 5.22.0
-
 
 ===============
 |icon|  skfolio
 ===============
-.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/logo_animate.svg
+.. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/logo_animate.svg
     :width: 100
     :alt: skfolio documentation
     :target: https://skfolio.org/
 
 
-**skfolio** is a Python library for portfolio optimization and risk management built on
-top of scikit-learn. It offers a unified interface and tools compatible with
-scikit-learn to build, fine-tune, cross-validate and stress-test portfolio models.
+.. skfolio-shared-introduction-start
+
+**skfolio** is a Python library for portfolio optimization, factor modeling and risk
+management built on top of scikit-learn. It offers a unified interface and tools
+compatible with scikit-learn to build, fine-tune, cross-validate and stress-test
+portfolio models.
 
 It is distributed under the open-source 3-Clause BSD license.
 
-**skfolio**  is backed by `Skfolio Labs <https://skfoliolabs.com>`_, which provides enterprise support and SLAs for
-institutions.
+**skfolio** is backed by `Skfolio Labs <https://skfoliolabs.com>`_, which provides
+enterprise support and SLAs for institutions.
 
-.. image:: https://raw.githubusercontent.com/skfolio/skfolio/master/docs/_static/expo.jpg
+.. skfolio-shared-introduction-end
+
+.. image:: https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/expo.jpg
     :target: https://skfolio.org/auto_examples/
     :alt: examples
+
+.. skfolio-shared-body-start
 
 Important links
 ~~~~~~~~~~~~~~~
 
-- `Documentation <https://skfolio.org/>`_
 - `Examples <https://skfolio.org/auto_examples/>`_
 - `User Guide <https://skfolio.org/user_guide/>`_
+- `API Reference <https://skfolio.org/api.html>`_
 - `GitHub Repo <https://github.com/skfolio/skfolio>`_
 - `Enterprise Support <https://skfoliolabs.com>`_
 
@@ -91,25 +89,25 @@ Featured in
 Installation
 ~~~~~~~~~~~~
 
-`skfolio` is available on PyPI and can be installed with::
+.. |PythonMinVersion| replace:: 3.10
+
+`skfolio` requires Python |PythonMinVersion| or later and can be installed with:
+
+.. code:: bash
 
     pip install -U skfolio
 
+See the `installation guide <https://skfolio.org/user_guide/install.html>`_ for the full
+dependency list, for conda-forge, and for the mixed-integer solvers (`SCIP`, `GUROBI`,
+`MOSEK`) required by cardinality and threshold constraints.
 
-Dependencies
+Contribution
 ~~~~~~~~~~~~
 
-`skfolio` requires:
-
-- python (>= |PythonMinVersion|)
-- numpy (>= |NumpyMinVersion|)
-- scipy (>= |ScipyMinVersion|)
-- pandas (>= |PandasMinVersion|)
-- cvxpy-base (>= |CvxpyBaseMinVersion|)
-- clarabel (>= |ClarabelMinVersion|)
-- scikit-learn (>= |SklearnMinVersion|)
-- joblib (>= |JoblibMinVersion|)
-- plotly (>= |PlotlyMinVersion|)
+We welcome contributions of all kinds. Whether it's reporting a bug, suggesting an
+improvement, or submitting code, your input helps make `skfolio` better. See the
+`contributing guide <https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md>`_
+to get started.
 
 Key Concepts
 ~~~~~~~~~~~~
@@ -158,6 +156,21 @@ Available models
     * Ensemble Methods:
         * Stacking Optimization
 
+* Prior Estimator:
+    * Empirical
+    * Characteristics-Based Cross-Sectional Factor Model:
+        * 46 descriptors across 17 families (e.g. value, size, momentum, profitability)
+        * Factor Exposures
+        * Cross-Sectional Regression
+        * Alpha Estimators
+        * Forecast Evaluation
+        * Ex-post and Ex-ante Attribution
+    * Time-Series Factor Model
+    * Black & Litterman
+    * Synthetic Data (Stress Test, Factor Stress Test)
+    * Entropy Pooling
+    * Opinion Pooling
+
 * Expected Returns Estimator:
     * Empirical
     * Exponentially Weighted
@@ -205,14 +218,6 @@ Available models
         * Independent Copula
     * Multivariate
         * Vine Copula (Regular, Centered, Clustered, Conditional Sampling)
-
-* Prior Estimator:
-    * Empirical
-    * Black & Litterman
-    * Factor Model
-    * Synthetic Data (Stress Test, Factor Stress Test)
-    * Entropy Pooling
-    * Opinion Pooling
 
 * Uncertainty Set Estimator:
     * On Expected Returns:
@@ -307,8 +312,28 @@ Imports
     from scipy.stats import loguniform
 
     from skfolio import RatioMeasure, RiskMeasure
-    from skfolio.datasets import load_factors_dataset, load_sp500_dataset
+    from skfolio.datasets import (
+        load_factors_dataset,
+        load_sp500_dataset,
+        make_synthetic_characteristics,
+    )
+    from skfolio.descriptor import (
+        BookToPrice,
+        CashFlowToPrice,
+        EWMarketBeta,
+        EWMomentum,
+        EWResidualVolatility,
+        EWVolatility,
+        LogMarketCap,
+        SalesToPrice,
+    )
     from skfolio.distribution import VineCopula
+    from skfolio.factor_exposure import (
+        DerivedFactor,
+        FixedWeightedFactor,
+        GlobalFactor,
+        OneHotCategoricalFactors,
+    )
     from skfolio.model_selection import (
         CombinatorialPurgedCV,
         WalkForward,
@@ -332,12 +357,13 @@ Imports
     from skfolio.preprocessing import prices_to_returns
     from skfolio.prior import (
         BlackLitterman,
+        CharacteristicsFactorModel,
         EmpiricalPrior,
         EntropyPooling,
         TimeSeriesFactorModel,
         OpinionPooling,
         SyntheticData,
-     )
+    )
     from skfolio.uncertainty_set import BootstrapMuUncertaintySet
 
 Load Dataset
@@ -495,7 +521,7 @@ Grid Search on Embedded Parameters
             "risk_measure": [
                 RiskMeasure.VARIANCE,
                 RiskMeasure.CVAR,
-                RiskMeasure.VARIANCE.CDAR,
+                RiskMeasure.CDAR,
             ],
             "prior_estimator__mu_estimator__half_life": [10, 20, 30, 40],
         },
@@ -517,8 +543,113 @@ Black & Litterman Model
         prior_estimator=BlackLitterman(views=views),
     )
 
-Factor Model
-------------
+Characteristics-Based Factor Model
+----------------------------------
+.. code-block:: python
+
+    month = 21
+    quarter = 3 * month
+    half_year = 6 * month
+    year = 12 * month
+
+    characteristics = make_synthetic_characteristics(
+        n_assets=500,
+        n_observations=2000,
+        random_state=0,
+    )
+
+    # Global factor
+    market_factor = GlobalFactor(family="market")
+
+    # Industry factors
+    industry_factors = OneHotCategoricalFactors(
+        category="industry",
+        family="industry",
+    )
+
+    # Style factors
+    beta_factor = FixedWeightedFactor(
+        descriptors=[
+            ("market_beta", EWMarketBeta(half_life=year)),
+        ],
+        transform_by_group="industry",
+    )
+
+    momentum_factor = FixedWeightedFactor(
+        descriptors=[
+            ("momentum", EWMomentum(half_life=half_year, skip=month)),
+        ],
+        transform_by_group="industry",
+    )
+
+    size_factor = FixedWeightedFactor(
+        descriptors=[("log_market_cap", LogMarketCap())],
+        transform_by_group="industry",
+    )
+
+    non_linear_size_factor = DerivedFactor(
+        source="size",
+        func=lambda x: x**3,
+        transform_by_group="industry",
+    )
+
+    value_factor = FixedWeightedFactor(
+        descriptors=[
+            ("book_to_price", BookToPrice()),
+            ("sales_to_price", SalesToPrice()),
+            ("cash_flow_to_price", CashFlowToPrice()),
+        ],
+        weights=[0.8, 0.1, 0.1],
+        transform_by_group="industry",
+    )
+
+    volatility_factor = FixedWeightedFactor(
+        descriptors=[
+            ("vol", EWVolatility(half_life=quarter)),
+            (
+                "residual_vol",
+                EWResidualVolatility(
+                    half_life=quarter,
+                    beta_half_life=quarter,
+                ),
+            ),
+        ],
+        transform_by_group="industry",
+    )
+
+    # Characteristics factor model
+    model = CharacteristicsFactorModel(
+        factors=[
+            ("market", market_factor),
+            ("industry", industry_factors),
+            ("beta", beta_factor),
+            ("momentum", momentum_factor),
+            ("size", size_factor),
+            ("non_linear_size", non_linear_size_factor),
+            ("value", value_factor),
+            ("volatility", volatility_factor),
+        ],
+        neutralize_against={
+            "volatility": ["beta"],
+            "non_linear_size": ["size"],
+        },
+        constrained_families=[("industry", None)],
+        exposure_lag=1,
+        inv_idio_variance_weight_shrinkage=0.5,
+        n_jobs=-1,
+    )
+
+    model.fit(characteristics=characteristics)
+
+    factor_model = model.factor_model_
+    print(factor_model.summary())
+
+For complete workflows, see the `Factor Models user guide
+<https://skfolio.org/user_guide/factor_models.html>`_ and the `Factor Models tutorials
+<https://skfolio.org/auto_examples/factor_models/index.html>`_.
+
+Time-Series Factor Model
+------------------------
 .. code-block:: python
 
     factor_prices = load_factors_dataset()
@@ -538,8 +669,8 @@ Factor Model
     print(portfolio.calmar_ratio)
     print(portfolio.summary())
 
-Factor Model & Covariance Detoning
-----------------------------------
+Time-Series Factor Model & Covariance Detoning
+----------------------------------------------
 .. code-block:: python
 
     model = MeanRisk(
@@ -548,8 +679,8 @@ Factor Model & Covariance Detoning
         )
     )
 
-Black & Litterman Factor Model
-------------------------------
+Black & Litterman Time-Series Factor Model
+------------------------------------------
 .. code-block:: python
 
     factor_views = ["MTUM - QUAL == 0.03 ", "VLUE == 0.06"]
@@ -583,11 +714,11 @@ K-fold Cross-Validation
 .. code-block:: python
 
     model = MeanRisk()
-    mmp = cross_val_predict(model, X_test, cv=KFold(n_splits=5))
-    # mmp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
+    mpp = cross_val_predict(model, X_test, cv=KFold(n_splits=5))
+    # mpp is the predicted MultiPeriodPortfolio object composed of 5 Portfolios (1 per testing fold)
 
-    mmp.plot_cumulative_returns()
-    print(mmp.summary())
+    mpp.plot_cumulative_returns()
+    print(mpp.summary())
 
 
 Combinatorial Purged Cross-Validation
@@ -734,7 +865,6 @@ Opinion Pooling
 
     opinion_pooling.fit(X)
 
-
 Docker
 ~~~~~~
 
@@ -750,7 +880,7 @@ Run the container::
 
 Browse:
 
-Open localhost:8888/lab and start using `skfolio`
+Open `localhost:8888/lab` and start using `skfolio`
 
 Recognition
 ~~~~~~~~~~~
@@ -782,7 +912,8 @@ If you use `skfolio` in a scientific publication, we would appreciate citations:
         @software{skfolio,
           title     = {skfolio},
           author    = {Delatte, Hugo and Nicolini, Carlo and Manzi, Matteo},
-          year      = {2024},
+          version   = {1.0.0},
+          year      = {2026},
           doi       = {10.5281/zenodo.16148630},
           url       = {https://doi.org/10.5281/zenodo.16148630}
         }
@@ -791,7 +922,7 @@ The above uses the concept DOI, which always resolves to the latest release.
 If you need precise reproducibility, especially for journals or conferences that require
 it, you can cite the version-specific DOI for the exact release you used. To find it,
 go to our `Zenodo project page <https://doi.org/10.5281/zenodo.16148630>`_, locate the
-release you wish to reference (e.g. "v0.10.2"), and copy the DOI listed next to that
+release you wish to reference (e.g. "v1.0.0"), and copy the DOI listed next to that
 version.
 
 **The paper:**
@@ -808,3 +939,4 @@ version.
           url           = {https://arxiv.org/abs/2507.04176}
         }
 
+.. skfolio-shared-body-end

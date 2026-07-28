@@ -22,9 +22,9 @@ class MarketLeverage(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{market_leverage}(t) =
-        \frac{\text{total_debt}(t)}
-             {\text{total_debt}(t) + \text{market_cap}(t)}
+        \text{market\_leverage}(t) =
+        \frac{\text{total\_debt}(t)}
+             {\text{total\_debt}(t) + \text{market\_cap}(t)}
 
     Market leverage blends accounting data (total debt) with market data (market
     capitalization). Unlike :class:`BookLeverage`, the denominator updates daily with

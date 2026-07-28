@@ -22,8 +22,8 @@ class SalesToEnterpriseValue(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{sales_to_enterprise_value}(t) =
-        \frac{\text{sales_ttm}(t)}{\text{enterprise_value}(t)}
+        \text{sales\_to\_enterprise\_value}(t) =
+        \frac{\text{sales\_ttm}(t)}{\text{enterprise\_value}(t)}
 
     This descriptor is a valuation and efficiency measure: it measures how much revenue
     a firm generates per unit of enterprise value. Unlike :class:`AssetTurnover`, which
@@ -53,8 +53,8 @@ class SalesToEnterpriseValue(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{EV} = \text{market_cap} + \text{total_debt}
-                   - \text{cash_and_equivalents}
+        \text{EV} = \text{market\_cap} + \text{total\_debt}
+                   - \text{cash\_and\_equivalents}
 
     Non-missing `enterprise_value` values must be finite. Observations with
     `enterprise_value <= 0` are masked to NaN because the valuation yield is not

@@ -36,7 +36,7 @@ class EWMarketBeta(BaseDescriptor):
 
     where :math:`r_i` is the return of asset :math:`i`, :math:`r_m` is the cap-weighted
     market return computed on the estimation universe and the EWMA uses decay
-    :math:`\lambda = \exp(-\ln(2) / \text{half_life})`.
+    :math:`\lambda = \exp(-\ln(2) / \text{half\_life})`.
 
     Parameters
     ----------
@@ -56,7 +56,7 @@ class EWMarketBeta(BaseDescriptor):
         computing market betas. Until both counts reach this value, the asset's output
         is NaN. This warm-up period avoids exposing early EWMA values before the beta
         estimate has sufficiently converged from its zero initialization. If `None`,
-        defaults to :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        defaults to :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     shrinkage_group : str, optional
         Name of a categorical field containing group labels (e.g., `"industry"`) for
@@ -112,12 +112,12 @@ class EWMarketBeta(BaseDescriptor):
     updated only for assets with valid returns and each asset's valid-observation count
     controls when its output starts. This avoids emitting initialized values for
     late-listed or sparsely observed assets. The `active_mask` property of
-    :class:`AssetPanel` distinguishes holidays from delistings.
+    :class:`~skfolio.containers.AssetPanel` distinguishes holidays from delistings.
 
     Market returns are computed from the estimation universe (`estimation_mask` of
-    :class:`AssetPanel`). If no estimable asset has both finite returns and finite
-    `market_cap` at an observation, the market return is undefined and a `ValueError`
-    is raised.
+    :class:`~skfolio.containers.AssetPanel`). If no estimable asset has both finite
+    returns and finite `market_cap` at an observation, the market return is undefined
+    and a `ValueError` is raised.
 
     References
     ----------

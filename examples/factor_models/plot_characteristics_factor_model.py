@@ -10,8 +10,9 @@ is covered in the :ref:`Factor Models <factor_models>` user guide.
 A characteristics factor model builds factor exposures from point-in-time asset
 characteristics (e.g. industry, market capitalization, book equity, analyst
 estimates). It computes the exposures from the data and estimates the factor
-returns at each date by cross-sectional regression of asset returns on the
-lagged exposures:
+returns at each date by cross-sectional regression of asset returns on factor
+exposures (see :ref:`Cross-Sectional Regression
+<factor_model_cross_sectional_regression>`):
 
 .. math::
 
@@ -22,7 +23,7 @@ and :math:`\epsilon_t` the idiosyncratic returns.
 
 The model then assembles the asset covariance forecast from the factor
 covariance :math:`F`, estimated on the factor return series, and the
-idiosyncratic covariance :math:`D`, estimated on the regression residuals:
+idiosyncratic covariance :math:`D`, estimated from the idiosyncratic returns:
 
 .. math::
 
@@ -54,10 +55,10 @@ panel = make_synthetic_characteristics(
 )
 
 # %%
-# The panel is an :class:`~skfolio.containers.AssetPanel`, a container of
-# point-in-time fields aligned on shared observation and asset axes of shape
-# (n_observations, n_assets). See the :ref:`Asset Data Representation
-# <asset_data_representation>` user guide for more details.
+# The data is stored in an :class:`~skfolio.containers.AssetPanel`, skfolio's
+# container for aligned cross-sectional asset data. The motivation for introducing
+# this container and its practical benefits for portfolio workflows are covered in
+# the :ref:`Asset Data Representation <asset_data_representation>` user guide.
 #
 # Let's inspect the data with `to_dataframe`, which converts the panel to a
 # pandas DataFrame:
@@ -68,21 +69,19 @@ panel.to_dataframe(output_format="long").head()
 print(panel.info())
 
 # %%
-# From the `info()` report:
+# `active_mask` records whether each asset belongs to the universe at each
+# observation, distinguishing missing data for an active asset from periods outside
+# the universe (e.g. before listing or after delisting). `estimation_mask` selects
+# the active asset-observation pairs used to estimate cross-sectional statistics and
+# factor returns. The model still computes exposures and forecasts for active pairs
+# outside this subset. See :ref:`Coverage, Estimation and Investment Universes
+# <factor_model_universes>` for details.
 #
-# * The **Active Mask** identifies which asset-observation pairs are active.
-#   90.3% of entries are active. The remainder are pre-listing and
-#   post-delisting periods, visible in the asset-duration statistics.
-# * The **Estimation Mask** selects the active pairs used to fit
-#   cross-sectional statistics and regressions. 475 of the 500 assets
-#   contribute to estimation, emulating a restricted estimation universe
-#   (e.g. exclusions for data quality). Excluded assets still
-#   receive exposures and forecasts.
-# * **Field Coverage** reports missingness per field. Price, volume, shares
-#   and market cap are fully populated on active entries, while the
-#   forward-looking fields (`eps_ntm`, `dps_ntm`, `eps_ntm_std`) carry about
-#   20% missing values, as with real analyst-estimate coverage.
-# * `industry` is a categorical field with 10 levels.
+# In this panel:
+#
+# * 90.3% of asset-observation pairs are active.
+# * 475 of the 500 assets contribute to model estimation.
+# * Analyst-estimate fields are about 20% missing, and `industry` has 10 categories.
 
 # %%
 # Factor Exposures
@@ -92,14 +91,6 @@ print(panel.info())
 # <factor_model_factor_exposures>` in the user guide). Estimators carry a
 # `family` attribute (`"market"`, `"industry"`, `"style"`) used for
 # neutralization, zero-sum constraints and reporting.
-#
-# We first define the trading-day constants used for descriptor half-lives and
-# lags throughout the tutorial:
-week = 5
-month = 21
-quarter = 3 * month
-half_year = 6 * month
-year = 12 * month
 
 # %%
 # Global Factor
@@ -115,8 +106,8 @@ global_factor = GlobalFactor(family="market")
 # %%
 # Industry Factors
 # ----------------
-# Next, we build the industry factors as one-hot exposures from the
-# `industry` categorical field, one factor per industry:
+# Next, we derive the industry factor exposures by one-hot encoding the `industry`
+# categorical field:
 from skfolio.factor_exposure import OneHotCategoricalFactors
 
 industry_factors = OneHotCategoricalFactors(category="industry", family="industry")
@@ -134,7 +125,8 @@ industry_factors = OneHotCategoricalFactors(category="industry", family="industr
 # :ref:`Cross-Sectional Transformers
 # <factor_model_cross_sectional_transformers>`). With
 # `transform_by_group="industry"`, scoring happens within each industry,
-# which makes style exposures orthogonal to the industry factors:
+# which makes style exposures orthogonal to the industry factors (see
+# :ref:`Neutralization <factor_model_neutralization>`):
 from skfolio.descriptor import (
     AssetsGrowthRate,
     AssetTurnover,
@@ -167,6 +159,12 @@ from skfolio.descriptor import (
     ShareholderYield,
 )
 from skfolio.factor_exposure import DerivedFactor, FixedWeightedFactor
+
+week = 5
+month = 21
+quarter = 3 * month
+half_year = 6 * month
+year = 12 * month
 
 beta_factor = FixedWeightedFactor(
     descriptors=[("market_beta", EWMarketBeta(half_life=year))],
@@ -282,7 +280,7 @@ volatility_factor = FixedWeightedFactor(
 # %%
 # Model Definition
 # ================
-# We now assemble the factors into a
+# We now assemble the factors into the
 # :class:`~skfolio.prior.CharacteristicsFactorModel`:
 from skfolio.moments import EWMu, RegimeAdjustedEWCovariance
 from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior
@@ -351,18 +349,13 @@ model = CharacteristicsFactorModel(
 # Fitting
 # =======
 #
-# Batch Fit
-# ---------
-# We fit the model on the panel. The `X` argument (asset returns defining
-# the investment universe) is optional. When omitted, the investment universe
-# equals the coverage universe:
+# Full-Panel Fitting
+# ------------------
+# We fit the model on the panel. The optional `X` argument defines the
+# investment universe used by downstream portfolio optimization. When omitted,
+# it defaults to the panel's coverage universe. See :ref:`Coverage, Estimation
+# and Investment Universes <factor_model_universes>`.
 model.fit(characteristics=panel)
-
-# %%
-# Descriptor warmup consumes the first year of observations (the longest lag
-# in the model is one year, used by the growth and investment descriptors),
-# plus one observation for the exposure lag, leaving 1,247 fitted
-# observations out of 1,500.
 
 # %%
 # Online Learning
@@ -370,11 +363,10 @@ model.fit(characteristics=panel)
 # The model also supports online learning (see :ref:`Online
 # Learning <factor_model_online_learning>`). `partial_fit` appends new
 # observations without refitting the history, and the result is identical to
-# a batch `fit` on the concatenated data. The first call must provide enough
-# history for the stacked descriptor and estimator warmups (see :ref:`Warmup
-# Periods <factor_model_warmup>`), while later chunks can be as small as one
-# observation. Let's refit the model on an initial warmup window, then feed
-# it monthly chunks:
+# a full-panel `fit` on the concatenated data. We initialize the model with two
+# years plus one month of data to cover the cumulative descriptor and estimator
+# warmups (see :ref:`Warmup Periods <factor_model_warmup>`). Later chunks can
+# be as small as one observation:
 warmup = 2 * year + month
 model.fit(characteristics=panel[:warmup])
 
@@ -396,6 +388,11 @@ print(f"mu shape: {distribution.mu.shape}")
 print(f"covariance shape: {distribution.covariance.shape}")
 print(f"scenarios shape: {distribution.returns.shape}")
 print(f"investable assets: {np.isfinite(distribution.mu).sum()}")
+
+# %%
+# The scenario history contains 1,247 observations because the one-year
+# descriptor warmup and one-observation exposure lag consume the first 253
+# observations of the 1,500-observation panel.
 
 # %%
 # Next, we retrieve `factor_model_`, the :class:`~skfolio.prior.FactorModel`
@@ -464,15 +461,11 @@ factor_model.cs_regression_scores.mean()
 factor_model.plot_cs_regression_scores(score="adjusted_r2", window=20)
 
 # %%
-# The mean :math:`R^2` is around 60%. The synthetic generator was
-# parametrized with `systematic_variance_ratio=0.5`, so half of the
-# cross-sectional return variance comes from the factor structure on average.
-# The weighted regression sits above that average because its weights
-# emphasize large-cap, low-idiosyncratic-variance assets, whose systematic
-# share is higher. On real daily US equity data, the mean :math:`R^2`
-# typically falls between 25% and 40% (see :ref:`Regression Diagnostics
-# <factor_model_regression_diagnostics>` in the user guide). The synthetic
-# universe is smaller and cleaner than a real one.
+# The mean :math:`R^2` is around 60%, as expected for this synthetic dataset,
+# where factor effects are deliberately easy to identify. On real daily US
+# equity data, the mean :math:`R^2` typically falls between 25% and 40% (see
+# :ref:`Regression Diagnostics <factor_model_regression_diagnostics>` in the
+# user guide). The synthetic universe is smaller and cleaner than a real one.
 #
 # Next, `plot_cs_regression_t_stat_exceedance_rate` shows how often each factor's
 # t-statistic exceeds 2 in absolute value. A factor whose true coefficient is
@@ -503,7 +496,7 @@ show(fig)
 # ==============================
 # Now let's test the idiosyncratic volatility forecasts. The diagnostics use
 # the standardized idiosyncratic returns
-# :math:`z_{it} = u_{it} / \hat\sigma_{it}`. Under correct calibration,
+# :math:`z_{it} = \epsilon_{it} / \hat\sigma_{it}`. Under correct calibration,
 # :math:`z` has cross-sectional standard deviation 1.0:
 factor_model.idio_calibration_summary()
 
@@ -518,11 +511,13 @@ factor_model.plot_idio_calibration(window=20)
 # Student-t shocks.
 #
 # Let's now separate ranking power from calibration with `plot_idio_vol_ic`,
-# which displays the Spearman correlation between predicted volatility and the
-# next-period absolute idiosyncratic return. High values mean the model ranks
-# cross-sectional volatility differences well, while the calibration series
-# above tests their scale. Together they show that the idiosyncratic risk
-# forecasts are both well ordered and well scaled:
+# which displays the Spearman correlation between idiosyncratic volatility
+# forecasts and next-period absolute idiosyncratic returns. High values mean
+# the model tends to forecast higher volatility for assets that subsequently
+# experience larger idiosyncratic moves. This tests the ordering of the
+# forecasts, while the calibration series above tests their scale. Together,
+# they show that the idiosyncratic risk forecasts are both well ordered and
+# well scaled:
 factor_model.plot_idio_vol_ic()
 
 # %%
@@ -537,9 +532,9 @@ factor_model.exposure_ic_summary(families=["market", "style"])
 factor_model.plot_cumulative_exposure_ic(families=["market", "style"])
 
 # %%
-# Here the yield-related factors (earnings
-# yield, dividend yield) accumulate positive IC with hit rates above 52%,
-# consistent with the positive premia assigned to them by the generator.
+# Mean ICs are small, IC IRs remain low and hit rates remain around 50% across
+# factors, so no factor stands out as a strong, consistent predictor of
+# next-period returns.
 #
 # The IC quantifies return-predictive power. In a risk model, factors are
 # designed to forecast covariance, not expected returns.
@@ -551,13 +546,12 @@ factor_model.plot_cumulative_exposure_ic(families=["market", "style"])
 # %%
 # Covariance Forecast Evaluation
 # ==============================
-# The diagnostics above are in-sample, and in-sample fit says little about
-# forecast quality. We now evaluate the covariance forecast out of sample with
+# We now evaluate the full covariance forecast out of sample with
 # :func:`~skfolio.model_selection.online_covariance_forecast_evaluation` (see
 # :ref:`Covariance Forecast Evaluation
 # <factor_model_covariance_forecast_evaluation>`). It walks forward through
 # the data, compares each covariance forecast with the subsequently realized
-# returns and reports calibration diagnostics.
+# returns and computes calibration diagnostics.
 #
 # `X` are the asset returns in the standard skfolio format and
 # `warmup_size` reserves two years plus one month for the estimator warmups
@@ -592,56 +586,88 @@ evaluation.plot_calibration(diagnostics=["bias"])
 # %%
 # Hyperparameter Tuning
 # =====================
-# All model parameters, from descriptor half-lives to weighting powers and
-# shrinkages, follow the scikit-learn convention and can be tuned with
-# standard model-selection utilities.
-# :class:`~skfolio.model_selection.OnlineGridSearch` evaluates each candidate
-# in a single walk-forward pass (see :ref:`Hyperparameter Tuning
-# <factor_model_hyper_parameter_tuning>`).
+# Model parameters follow the scikit-learn naming convention. Here we jointly
+# tune the regression weights, factor covariance dynamics and idiosyncratic
+# variance dynamics.
 #
-# Here we score the risk model directly on its covariance forecast with a
-# QLIKE loss and tune the regime half-life of the factor covariance
-# estimator. In `make_scorer`, `response_method=None` indicates a
-# non-predictor estimator and `greater_is_better=False` a loss to minimize:
-from skfolio.metrics import make_scorer, portfolio_variance_qlike_loss
-from skfolio.model_selection import OnlineGridSearch
-
-qlike_scorer = make_scorer(
-    portfolio_variance_qlike_loss,
-    greater_is_better=False,
-    response_method=None,
-)
-
-search = OnlineGridSearch(
-    estimator=model,
-    param_grid={
-        "factor_prior_estimator__covariance_estimator__regime_half_life": [
-            10,
-            21,
-            63,
-        ],
-    },
-    scoring=qlike_scorer,
-    warmup_size=warmup,
-    test_size=week,
-)
-search.fit(X, characteristics=panel)
-print(search.best_params_)
-
-# %%
-# When the model is embedded in an optimizer, the same search can instead
-# target portfolio-level scores (e.g. ratio measures) to tune the full
-# pipeline, as shown in the user guide.
+# Because these parameters are continuous, we use
+# :class:`~skfolio.model_selection.OnlineRandomizedSearch`. It evaluates each
+# candidate in a single walk-forward pass using `partial_fit`. The search uses
+# the first four years, preserving the remaining observations as an untouched
+# holdout.
+#
+# We score the risk model directly with a portfolio-variance QLIKE loss. In
+# `make_scorer`, `response_method=None` indicates a non-predictor estimator and
+# `greater_is_better=False` a loss to minimize. The complete search is shown
+# without execution because fitting 100 candidates is computationally
+# intensive (see :ref:`Hyperparameter Tuning
+# <factor_model_hyper_parameter_tuning>`):
+#
+# .. code-block:: python
+#
+#     from scipy.stats import loguniform, uniform
+#
+#     from skfolio.metrics import make_scorer, portfolio_variance_qlike_loss
+#     from skfolio.model_selection import OnlineRandomizedSearch
+#
+#     qlike_scorer = make_scorer(
+#         portfolio_variance_qlike_loss,
+#         greater_is_better=False,
+#         response_method=None,
+#     )
+#
+#     search_size = 4 * year
+#
+#     search = OnlineRandomizedSearch(
+#         estimator=model,
+#         param_distributions={
+#             "inv_idio_variance_weight_shrinkage": uniform(0.0, 1.0),
+#             "factor_prior_estimator__covariance_estimator__half_life": (
+#                 loguniform(quarter, half_year)
+#             ),
+#             "factor_prior_estimator__covariance_estimator__corr_half_life": (
+#                 loguniform(half_year, year)
+#             ),
+#             "factor_prior_estimator__covariance_estimator__regime_half_life": (
+#                 loguniform(week, quarter)
+#             ),
+#             "idio_variance_estimator__half_life": loguniform(
+#                 month, half_year
+#             ),
+#             "idio_variance_estimator__regime_half_life": loguniform(
+#                 week, quarter
+#             ),
+#         },
+#         n_iter=100,
+#         scoring=qlike_scorer,
+#         warmup_size=2 * year + month,
+#         test_size=week,
+#         random_state=0,
+#         n_jobs=-1,
+#     )
+#     search.fit(
+#         X.iloc[:search_size],
+#         characteristics=panel[:search_size],
+#     )
+#
+#     print(search.best_params_)
+#     print(search.best_score_)
+#
+# `best_score_` summarizes the walk-forward validation windows within the
+# four-year search period. `cv_results_` contains every sampled parameter set,
+# score, rank and fit time. For a small set of discrete candidates,
+# :class:`~skfolio.model_selection.OnlineGridSearch` is also available and
+# evaluates every parameter combination.
 
 # %%
 # Conclusion
 # ==========
 # We built a 24-factor characteristics factor model, verified its exposures
-# and regressions, evaluated and tuned its risk forecasts out of sample, and
-# updated it online. The fitted model is a prior estimator, so we can pass it
-# to any skfolio optimizer through `prior_estimator`. It supplies expected
-# returns, covariance, scenarios and factor exposures that can be constrained
-# by name.
+# and regressions, evaluated its risk forecasts out of sample, showed how to
+# tune them and updated the model online. The fitted model is a prior estimator,
+# so we can pass it to any skfolio optimizer through `prior_estimator`. It
+# supplies expected returns, covariance, scenarios and factor exposures that
+# can be constrained.
 #
 # The next tutorial builds a factor-constrained portfolio on top of this
 # model and performs factor-level risk and performance attribution.

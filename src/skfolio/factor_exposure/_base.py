@@ -16,10 +16,10 @@ __all__ = ["BaseFactorExposure"]
 class BaseFactorExposure(BaseAssetPanelTransformer, ABC):
     """Base class for factor exposure estimators.
 
-    A factor exposure estimator takes an :class:`AssetPanel` and returns asset exposures
-    to one or more factors. Single-factor estimators return values with shape
-    `(n_observations, n_assets)`. Multi-factor estimators return values with shape
-    `(n_observations, n_assets, n_factors)`.
+    A factor exposure estimator takes an :class:`~skfolio.containers.AssetPanel` and
+    returns asset exposures to one or more factors. Single-factor estimators return
+    values with shape `(n_observations, n_assets)`. Multi-factor estimators return
+    values with shape `(n_observations, n_assets, n_factors)`.
 
     Factor exposures follow the :class:`~skfolio.base.BaseAssetPanelTransformer`
     protocol:
@@ -40,8 +40,8 @@ class BaseFactorExposure(BaseAssetPanelTransformer, ABC):
 
     See Also
     --------
-    BaseAssetPanelTransformer : Shared `AssetPanel` transformer contract.
-    BaseDescriptor : Computes raw descriptor values.
+    :class:`~skfolio.base.BaseAssetPanelTransformer` : Shared transformer contract.
+    :class:`~skfolio.descriptor.BaseDescriptor` : Computes raw descriptor values.
     """
 
     def __init__(self, *, family: str) -> None:

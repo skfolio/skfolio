@@ -23,7 +23,7 @@ We will:
 # Data
 # ====
 # We reuse the synthetic characteristics panel from the :ref:`previous tutorial
-# <sphx_glr_auto_examples_factor_models_plot_1_characteristics_factor_model.py>`.
+# <sphx_glr_auto_examples_factor_models_plot_characteristics_factor_model.py>`.
 # It covers 500 assets over 1,500 trading days and includes late listings,
 # delistings, holidays and missing characteristics:
 import numpy as np
@@ -41,7 +41,7 @@ panel = make_synthetic_characteristics(
 # Next, we rebuild the 24-factor model with one global market factor, 10
 # industry factors and 13 style factors built from 29 descriptors. See the
 # :ref:`previous tutorial
-# <sphx_glr_auto_examples_factor_models_plot_1_characteristics_factor_model.py>`
+# <sphx_glr_auto_examples_factor_models_plot_characteristics_factor_model.py>`
 # for more details:
 from skfolio.descriptor import (
     AssetTurnover,
@@ -312,8 +312,8 @@ print(f"Gross exposure: {np.abs(mvo.weights_).sum():.2f}")
 # Industry neutrality needs one constraint per industry factor. A single
 # `"industry == 0"` on the family name would only force industry exposures to
 # offset each other. For the market factor, `budget=0.0` is equivalent to a
-# `"market == 0"` constraint on the intercept, so the explicit constraint is
-# unnecessary.
+# `"market == 0"` constraint on the global factor exposure, so the explicit
+# constraint is unnecessary.
 #
 # The factor model fitted inside the optimizer is available through
 # `prior_estimator_`. We keep a reference to it for attribution below:
@@ -576,6 +576,7 @@ show(fig)
 
 # %%
 # |
+#
 # The error bars show 95% confidence intervals on annualized mean return
 # contributions. Momentum and dividend yield are the main positive factor
 # contributors. Because no alpha estimator is attached, any realized

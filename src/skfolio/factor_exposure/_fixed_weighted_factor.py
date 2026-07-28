@@ -84,7 +84,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
     ----------
     descriptors : list of tuple (str, BaseDescriptor)
         List of `(name, descriptor)` pairs. Each descriptor computes values from the
-        :class:`AssetPanel`.
+        :class:`~skfolio.containers.AssetPanel`.
 
     family : str, default="style"
         The factor family this exposure belongs to (e.g., "market", "style", "industry",

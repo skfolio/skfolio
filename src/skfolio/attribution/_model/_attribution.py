@@ -40,7 +40,7 @@ class Attribution:
     r"""Factor attribution result.
 
     Result returned by :func:`predicted_factor_attribution`,
-     :func:`realized_factor_attribution` or :func:`rolling_realized_factor_attribution`.
+    :func:`realized_factor_attribution` or :func:`rolling_realized_factor_attribution`.
 
     Predicted and realized attribution expose the same decomposition: systematic,
     idiosyncratic, total and per-factor attribution. Realized attribution may also

@@ -29,14 +29,19 @@ class DaysToCover(BaseDescriptor):
     volume:
 
     .. math::
+        :nowrap:
 
-        \text{EWMA_volume}(t) = \lambda \cdot \text{EWMA_volume}(t-1)
-            + (1 - \lambda) \cdot \text{adj_volume}(t)
+        \[
+        \begin{aligned}
+        \text{EWMA\_volume}(t)
+            &= \lambda \cdot \text{EWMA\_volume}(t-1)
+               + (1 - \lambda) \cdot \text{adj\_volume}(t) \\[0.75em]
+        \text{days\_to\_cover}(t)
+            &= \frac{\text{short\_interest}(t)}{\text{EWMA\_volume}(t)}
+        \end{aligned}
+        \]
 
-        \text{days_to_cover}(t) =
-        \frac{\text{short_interest}(t)}{\text{EWMA_volume}(t)}
-
-    where :math:`\lambda = \exp(-\ln(2) / \text{half_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
 
     Days to cover measures how many trading days it would take short sellers to buy back
     their positions at the current trading rate. High values indicate crowded short
@@ -61,7 +66,7 @@ class DaysToCover(BaseDescriptor):
         Until an asset reaches this count, its output is NaN. This warm-up period avoids
         exposing early EWMA values before the volume estimate has sufficiently converged
         from its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------
@@ -87,8 +92,8 @@ class DaysToCover(BaseDescriptor):
     count. NaN `short_interest` propagates to the output but does not prevent the volume
     state from updating.
 
-    The `active_mask` property of the :class:`AssetPanel` distinguishes holidays from
-    delistings.
+    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
+    distinguishes holidays from delistings.
 
     References
     ----------

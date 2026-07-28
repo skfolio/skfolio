@@ -28,14 +28,20 @@ class EWAmihudIlliquidity(BaseDescriptor):
     Computes an EWMA of the per-observation Amihud illiquidity ratio:
 
     .. math::
+        :nowrap:
 
-        \text{ILLIQ_raw}(t) =
-        \frac{|r(t)|}{\text{adj_close}(t) \times \text{adj_volume}(t)}
+        \[
+        \begin{aligned}
+        \text{ILLIQ\_raw}(t)
+            &= \frac{|r(t)|}
+                    {\text{adj\_close}(t) \times \text{adj\_volume}(t)} \\[0.75em]
+        \text{ILLIQ}(t)
+            &= \lambda \cdot \text{ILLIQ}(t-1)
+               + (1 - \lambda) \cdot \text{ILLIQ\_raw}(t)
+        \end{aligned}
+        \]
 
-        \text{ILLIQ}(t) = \lambda \cdot \text{ILLIQ}(t-1)
-            + (1 - \lambda) \cdot \text{ILLIQ_raw}(t)
-
-    where :math:`\lambda = \exp(-\ln(2) / \text{half_life})` is the EWMA decay factor
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor
     and the denominator is the dollar trading volume (traded amount).
 
     The Amihud illiquidity ratio is a proxy for price impact, defined as the absolute
@@ -63,7 +69,7 @@ class EWAmihudIlliquidity(BaseDescriptor):
         an asset reaches this count, its output is NaN. This warm-up period avoids
         exposing early EWMA values before the illiquidity estimate has sufficiently
         converged from its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------
@@ -90,8 +96,8 @@ class EWAmihudIlliquidity(BaseDescriptor):
     held and the valid-observation count is not incremented. NaN in `returns`,
     `adj_close` or `adj_volume` is handled the same way.
 
-    The `active_mask` property of the :class:`AssetPanel` distinguishes holidays from
-    delistings.
+    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
+    distinguishes holidays from delistings.
 
     References
     ----------

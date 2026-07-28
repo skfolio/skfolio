@@ -16,9 +16,9 @@ class AssetsGrowthRate(GrowthRate):
 
     .. math::
 
-        \text{assets_growth}(t)
-        = \frac{\text{total_assets}(t)}
-               {\text{total_assets}(t - \text{lag})} - 1
+        \text{assets\_growth}(t)
+        = \frac{\text{total\_assets}(t)}
+               {\text{total\_assets}(t - \text{lag})} - 1
 
     The first `lag` observations are NaN because no lagged history is available.
 

@@ -22,9 +22,9 @@ class BookLeverage(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{book_leverage}(t) =
-        \frac{\text{total_debt}(t)}
-             {\text{total_debt}(t) + \text{book_equity}(t)}
+        \text{book\_leverage}(t) =
+        \frac{\text{total\_debt}(t)}
+             {\text{total\_debt}(t) + \text{book\_equity}(t)}
 
     Book leverage measures financial risk through the lens of the capital structure: the
     fraction of a firm's total invested capital (debt plus common equity) that comes
@@ -34,7 +34,7 @@ class BookLeverage(BaseDescriptor, stateless=True):
     Non-missing `total_debt` and `book_equity` values must be finite.
 
     This form is preferred over the debt-to-equity ratio (:math:`D / E`) because the two
-    are monotonically related (:math:`D / E = \text{book_leverage} / (1 - \text{book_leverage})`)
+    are monotonically related (:math:`D / E = \text{book\_leverage} / (1 - \text{book\_leverage})`)
     but book leverage is bounded in :math:`[0, 1]` for healthy firms, producing
     well-behaved cross-sectional distributions that do not require aggressive
     winsorization.

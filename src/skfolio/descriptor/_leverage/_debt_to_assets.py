@@ -22,8 +22,8 @@ class DebtToAssets(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{debt_to_assets}(t) =
-        \frac{\text{total_debt}(t)}{\text{total_assets}(t)}
+        \text{debt\_to\_assets}(t) =
+        \frac{\text{total\_debt}(t)}{\text{total\_assets}(t)}
 
     Debt-to-assets is the most widely used leverage descriptor in equity risk models.
     It measures the proportion of a firm's asset base financed by debt. Higher values

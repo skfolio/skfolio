@@ -22,7 +22,7 @@ class ReturnOnAssets(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{ROA}(t) = \frac{\text{net_income_ttm}(t)}{\text{total_assets}(t)}
+        \text{ROA}(t) = \frac{\text{net\_income\_ttm}(t)}{\text{total\_assets}(t)}
 
     Return on assets measures how efficiently a firm converts its asset base into
     earnings. Higher values indicate greater profitability per unit of capital deployed.

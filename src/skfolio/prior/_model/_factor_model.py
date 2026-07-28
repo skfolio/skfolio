@@ -142,15 +142,19 @@ class FactorModel:
         Idiosyncratic covariance (diagonal vector or full matrix).
 
     idio_mu : ndarray of shape (n_assets,) or None
-        Per-asset expected idiosyncratic return (alpha), constrained to be
-        :math:`W`-orthogonal to the factor loadings (:math:`B^\top W \alpha = 0`).
-        Distinct from the time-series mean of `idio_returns`, which is not enforced to
-        be factor-orthogonal. Populated by cross-sectional factor models.
+        Factor-orthogonal expected return for each asset, also called orthogonal alpha.
+        With the default weighted least-squares projection, it satisfies
+        :math:`B^\top W\,\text{idio\_mu}=0`. Custom robust or regularized
+        cross-sectional regressors may produce a component that is only approximately
+        orthogonal. Distinct from the time-series mean of `idio_returns`, which is not
+        enforced to be factor-orthogonal. Populated by cross-sectional factor models.
 
     idio_returns : ndarray of shape (n_observations, n_assets) or None
-        Per-period idiosyncratic returns. For time-series factor models, this is the
-        regression residuals :math:`r - B f`; for cross-sectional factor models, this is
-        the per-period residuals from the cross-sectional regression.
+        Per-period idiosyncratic returns, obtained from the corresponding factor
+        regression. For time-series factor models, these are
+        :math:`r - a - Bf`, where :math:`a` is the vector of time-series regression
+        intercepts. For cross-sectional factor models, these are
+        :math:`R(t) - B(t-\ell)f(t)`.
 
     idio_variances : ndarray of shape (n_observations, n_assets) or None
         Time-varying per-asset predicted idiosyncratic variances
@@ -668,7 +672,7 @@ class FactorModel:
         """Return a new `FactorModel` restricted to selected assets.
 
         Per-asset fields (`asset_names`, `loading_matrix`, `exposures`,
-         `idio_covariance`, `idio_mu`, `idio_returns`, `idio_variances`,
+        `idio_covariance`, `idio_mu`, `idio_returns`, `idio_variances`,
         `regression_weights`, `benchmark_weights`) are subsetted along the asset axis.
         Per-factor and time-only fields (`factor_names`, `factor_families`,
         `factor_covariance`, `factor_mu`, `factor_returns`, `observations`) and
@@ -982,7 +986,8 @@ class FactorModel:
          returns.
 
         Computes time-aggregated statistics of the cross-sectional distribution of
-        standardized idiosyncratic returns :math:`z_{it} = u_{it} / \hat\sigma_{i,t}`.
+        standardized idiosyncratic returns
+        :math:`z_{it} = \epsilon_{it} / \hat\sigma_{i,t}`.
 
         Under a Gaussian assumption, the expected values are :math:`\text{std}(z) = 1`,
         excess kurtosis :math:`= 0`, skewness :math:`= 0`, and the 3-:math:`\sigma` tail
@@ -1022,7 +1027,7 @@ class FactorModel:
 
         Computes the cross-sectional rank correlation (Spearman) between the predicted
         specific volatility :math:`\hat\sigma_{i,t}` and the next-period absolute
-        idiosyncratic return :math:`|u_{i,t+1}|`.
+        idiosyncratic return :math:`|\epsilon_{i,t+1}|`.
 
         If the model captures the cross-sectional scale of idiosyncratic shocks, then
         assets with larger :math:`\hat\sigma_{i,t}` should tend to realize larger
@@ -1033,7 +1038,7 @@ class FactorModel:
         * This diagnostic can also pick up broad cross-sectional scale effects such as
           size or liquidity, so it should be read together with
           :attr:`idio_vol_residual_dependence` which checks whether the standardized
-          residual magnitude :math:`|u_{i,t+1}| / \hat\sigma_{i,t}` still depends on the
+          idiosyncratic return magnitude :math:`|z_{i,t+1}|` still depends on the
           predicted volatility level.
         """
         self._require(("idio_returns", "idio_variances"), "idio_vol_ic")
@@ -1053,11 +1058,8 @@ class FactorModel:
 
         Computes the cross-sectional rank correlation (Spearman) between the predicted
         specific volatility :math:`\hat\sigma_{i,t}` and the next-period standardized
-        absolute idiosyncratic return :math:`|u_{i,t+1}| / \hat\sigma_{i,t}`.
-
-        In the stylized relation :math:`u_{i,t+1} = \hat\sigma_{i,t}\,\varepsilon_{i,t+1}`,
-        dividing by :math:`\hat\sigma_{i,t}` gives
-        :math:`|u_{i,t+1}| / \hat\sigma_{i,t} = |\varepsilon_{i,t+1}|`.
+        absolute idiosyncratic return
+        :math:`|\epsilon_{i,t+1}| / \hat\sigma_{i,t} = |z_{i,t+1}|`.
         If the volatility forecast is well calibrated, this standardized magnitude
         should be roughly independent of :math:`\hat\sigma_{i,t}`, so the correlation
         should be close to 0.
@@ -1302,7 +1304,7 @@ class FactorModel:
 
         Plots the cross-sectional rank correlation (Spearman) between the predicted
         specific volatility :math:`\hat\sigma_{i,t}` and the next-period absolute
-        idiosyncratic return :math:`|u_{i,t+1}|`.
+        idiosyncratic return :math:`|\epsilon_{i,t+1}|`.
 
         This is a ranking diagnostic: do names predicted to have larger
         :math:`\hat\sigma_{i,t}` tend to realize larger raw absolute moves.
@@ -1335,9 +1337,7 @@ class FactorModel:
                 window,
                 context="Spearman",
             ),
-            yaxis_title=(
-                "Rank Correlation (Spearman, predicted idio vol vs |idio return|)"
-            ),
+            yaxis_title="Rank Correlation",
             window=window,
             show_raw=True,
             show_mean=False,
@@ -1354,11 +1354,8 @@ class FactorModel:
 
         Plots the cross-sectional rank correlation (Spearman) between the predicted
         specific volatility :math:`\hat\sigma_{i,t}` and the next-period standardized
-        absolute idiosyncratic return :math:`|u_{i,t+1}| / \hat\sigma_{i,t}`.
-
-        In the stylized relation :math:`u_{i,t+1} = \hat\sigma_{i,t}\,\varepsilon_{i,t+1}`,
-        dividing by :math:`\hat\sigma_{i,t}` gives
-        :math:`|u_{i,t+1}| / \hat\sigma_{i,t} = |\varepsilon_{i,t+1}|`.
+        absolute idiosyncratic return
+        :math:`|\epsilon_{i,t+1}| / \hat\sigma_{i,t} = |z_{i,t+1}|`.
         If the volatility forecast is well calibrated, this standardized magnitude
         should be roughly independent of :math:`\hat\sigma_{i,t}`, so the correlation
         should be close to 0.
@@ -2402,8 +2399,8 @@ class FactorModel:
 
         Decomposes portfolio volatility using the exposure-volatility-correlation
         framework (:math:`x`-:math:`\sigma`-:math:`\rho`) and, when
-        `factor_mu` is available, decomposes expected return into spanned
-        and orthogonal components.
+        `factor_mu` is available, decomposes expected return into factor-spanned
+        and factor-orthogonal components.
 
         See :func:`~skfolio.attribution.predicted_factor_attribution`
         for the full mathematical description.
@@ -3116,7 +3113,7 @@ class FactorModel:
         )
 
     def _standardized_idio_returns(self) -> FloatArray:
-        r"""Compute :math:`z_{it} = u_{it} / \hat\sigma_{i,t}`."""
+        r"""Compute :math:`z_{it} = \epsilon_{it} / \hat\sigma_{i,t}`."""
         self._require(("idio_returns", "idio_variances"), "standardized_idio_returns")
         idio_vol = np.sqrt(np.maximum(self.idio_variances, 0.0))
         return safe_divide(self.idio_returns, idio_vol, fill_value=np.nan)

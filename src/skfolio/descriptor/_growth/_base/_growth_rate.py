@@ -52,25 +52,20 @@ class GrowthRate(BaseDescriptor):
 
     Common investment-factor descriptors:
 
-    Asset growth (`field="total_assets"`):
-        Year-over-year balance-sheet expansion. Firms with rapid asset growth tend to
-        earn lower future returns [1]_.
-
-    Issuance growth (`field="adj_shares_outstanding"`):
-        Year-over-year change in split-adjusted shares outstanding. Net share issuance
-        is a negative predictor of future returns, independent of size, value and
-        momentum [2]_.
-
-    Capital expenditure growth (`field="capex_ttm"`):
-        Year-over-year change in trailing capital expenditure. Firms with large capex
-        increases subsequently underperform, consistent with investor under-reaction to
-         overinvestment [3]_.
+    * Asset growth (`field="total_assets"`): year-over-year balance-sheet expansion.
+      Firms with rapid asset growth tend to earn lower future returns [1]_.
+    * Issuance growth (`field="adj_shares_outstanding"`): year-over-year change in
+      split-adjusted shares outstanding. Net share issuance is a negative predictor of
+      future returns, independent of size, value and momentum [2]_.
+    * Capital expenditure growth (`field="capex_ttm"`): year-over-year change in
+      trailing capital expenditure. Firms with large capex increases subsequently
+      underperform, consistent with investor under-reaction to overinvestment [3]_.
 
     Parameters
     ----------
     field : str
-        Field name in the :class:`AssetPanel` to compute growth for. Non-missing values
-        must be finite and non-negative.
+        Field name in the :class:`~skfolio.containers.AssetPanel` to compute growth
+        for. Non-missing values must be finite and non-negative.
 
     lag : int
         Number of observations to look back. The interpretation depends on the data

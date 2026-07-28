@@ -22,7 +22,7 @@ class SalesToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{sales_to_price}(t) = \frac{\text{sales_ttm}(t)}{\text{market_cap}(t)}
+        \text{sales\_to\_price}(t) = \frac{\text{sales\_ttm}(t)}{\text{market\_cap}(t)}
 
     Sales are less directly affected by accounting choices than earnings, providing a
     stable value signal. Firms with high sales relative to market capitalization are
@@ -51,8 +51,8 @@ class SalesToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{sales_ttm}}{\text{market_cap}}
-        = \frac{\text{sales_per_share}}{\text{price}}
+        \frac{\text{sales\_ttm}}{\text{market\_cap}}
+        = \frac{\text{sales\_per\_share}}{\text{price}}
 
     The aggregate form is preferred because it avoids subtle split-adjustment
     mismatches between numerator and denominator. Aggregate fundamentals are the primary

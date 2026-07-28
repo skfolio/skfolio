@@ -22,9 +22,9 @@ class ShortInterest(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{short_interest}(t) =
-        \frac{\text{short_interest}(t)}
-             {\text{adj_shares_outstanding}(t)}
+        \text{short\_interest}(t) =
+        \frac{\text{short\_interest}(t)}
+             {\text{adj\_shares\_outstanding}(t)}
 
     Short interest measures the fraction of common shares outstanding that has been
     borrowed and sold short. High values indicate stronger bearish positioning and may

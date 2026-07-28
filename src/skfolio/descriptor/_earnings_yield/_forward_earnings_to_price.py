@@ -23,8 +23,8 @@ class ForwardEarningsToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{forward_earnings_to_price}(t) =
-        \frac{\text{eps_ntm}(t)}{\text{adj_close}(t)}
+        \text{forward\_earnings\_to\_price}(t) =
+        \frac{\text{eps\_ntm}(t)}{\text{adj\_close}(t)}
 
     Forward earnings-to-price reflects the market's expectation of future profitability
     relative to the current price. Because it incorporates analyst forecasts rather than
@@ -42,10 +42,10 @@ class ForwardEarningsToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{eps_ntm}}{\text{adj_close}}
-        = \frac{\text{eps_ntm} \times \text{shares_out}}
-              {\text{adj_close} \times \text{shares_out}}
-        = \frac{\text{earnings_ntm}}{\text{market_cap}}
+        \frac{\text{eps\_ntm}}{\text{adj\_close}}
+        = \frac{\text{eps\_ntm} \times \text{shares\_out}}
+              {\text{adj\_close} \times \text{shares\_out}}
+        = \frac{\text{earnings\_ntm}}{\text{market\_cap}}
 
 
     Parameters

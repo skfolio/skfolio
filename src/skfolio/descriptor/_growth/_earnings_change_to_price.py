@@ -17,9 +17,9 @@ class EarningsChangeToPrice(ChangeToScale):
 
     .. math::
 
-        \text{earnings_change_to_price}(t) =
-        \frac{\text{net_income_ttm}(t) - \text{net_income_ttm}(t - \text{lag})}
-             {\text{market_cap}(t)}
+        \text{earnings\_change\_to\_price}(t) =
+        \frac{\text{net\_income\_ttm}(t) - \text{net\_income\_ttm}(t - \text{lag})}
+             {\text{market\_cap}(t)}
 
     The first `lag` observations are NaN because no lagged history is available.
 
@@ -45,8 +45,8 @@ class EarningsChangeToPrice(ChangeToScale):
 
     .. math::
 
-        \frac{\text{eps_ttm}(t) - \text{eps_ttm}(t - \text{lag})}
-             {\text{adj_close}(t)}
+        \frac{\text{eps\_ttm}(t) - \text{eps\_ttm}(t - \text{lag})}
+             {\text{adj\_close}(t)}
 
     The aggregate form is preferred for consistency with the other value descriptors
     and to avoid split-adjustment mismatches.

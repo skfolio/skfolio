@@ -78,6 +78,8 @@ Functions
     measures.third_central_moment
     measures.fourth_central_moment
     measures.fourth_lower_partial_moment
+    measures.skew
+    measures.kurtosis
     measures.cvar
     measures.mean_absolute_deviation
     measures.value_at_risk
@@ -374,6 +376,7 @@ Model Dataclass
 
     prior.ReturnDistribution
     prior.FactorModel
+    prior.CovarianceSqrt
 
 Base Class
 ----------
@@ -1102,9 +1105,9 @@ Functions
     stats.corr_to_cov
     stats.cov_nearest
     stats.cov_to_corr
+    stats.cs_pearson_correlation
     stats.cs_rank
-    stats.cs_rank_correlation
-    stats.cs_weighted_correlation
+    stats.cs_spearman_correlation
     stats.inverse_multiply
     stats.inverse_volatility_weights
     stats.safe_cholesky
@@ -1120,6 +1123,37 @@ Functions
     stats.squared_standardized_euclidean_dist
     stats.symmetric_step_up_matrix
     stats.symmetrize
+
+.. _distribution_ref:
+
+:mod:`skfolio.distribution`: Distribution Estimators
+====================================================
+
+.. automodule:: skfolio.distribution
+   :no-members:
+   :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseDistribution
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.SelectionCriterion
 
 .. _univariate_distribution_ref:
 
@@ -1173,6 +1207,17 @@ Functions
 .. automodule:: skfolio.distribution.multivariate
    :no-members:
    :no-inherited-members:
+
+Base Class
+----------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    distribution.BaseMultivariateDist
 
 Classes
 -------

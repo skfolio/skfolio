@@ -22,8 +22,8 @@ class CashFlowToAssets(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{cash_flow_to_assets}(t) =
-        \frac{\text{operating_cash_flow_ttm}(t)}{\text{total_assets}(t)}
+        \text{cash\_flow\_to\_assets}(t) =
+        \frac{\text{operating\_cash\_flow\_ttm}(t)}{\text{total\_assets}(t)}
 
     Cash flow to assets measures cash-based profitability: how much cash a firm
     generates from operations per unit of assets. Unlike net income-based measures

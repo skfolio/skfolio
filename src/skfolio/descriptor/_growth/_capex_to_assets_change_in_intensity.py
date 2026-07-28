@@ -18,10 +18,10 @@ class CapexToAssetsChangeInIntensity(ChangeInIntensity):
 
     .. math::
 
-        \text{capex_to_assets_change_in_intensity}(t)
-        = \frac{\text{capex_ttm}(t)}{\text{total_assets}(t)}
-        - \frac{\text{capex_ttm}(t - \text{lag})}
-               {\text{total_assets}(t - \text{lag})}
+        \text{capex\_to\_assets\_change\_in\_intensity}(t)
+        = \frac{\text{capex\_ttm}(t)}{\text{total\_assets}(t)}
+        - \frac{\text{capex\_ttm}(t - \text{lag})}
+               {\text{total\_assets}(t - \text{lag})}
 
     The first `lag` observations are NaN because no lagged history is available.
 

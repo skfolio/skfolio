@@ -45,17 +45,18 @@ class TimeSeriesFactorModel(BasePrior):
 
     .. math::
 
-        r_i(t) = \alpha_i + B_i \, f(t) + \epsilon_i(t)
+        r_i(t) = a_i + B_i \, f(t) + \epsilon_i(t)
 
     where :math:`B_i` is the factor loadings (exposures), :math:`f(t)` is the
-    vector of factor returns, :math:`\alpha_i` is the intercept, and
-    :math:`\epsilon_i(t)` is the idiosyncratic return (residual).
+    vector of factor returns, :math:`a_i` is the intercept of asset :math:`i`'s
+    time-series regression, and :math:`\epsilon_i(t)` is the idiosyncratic return,
+    obtained as the regression residual.
 
     The expected return vector is:
 
     .. math::
 
-        \mu = B \, \mathbb{E}[f] + \alpha
+        \mu = B \, \mathbb{E}[f] + a
 
     and the covariance matrix is:
 

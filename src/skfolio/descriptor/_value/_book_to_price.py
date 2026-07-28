@@ -23,7 +23,7 @@ class BookToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{book_to_price}(t) = \frac{\text{book_equity}(t)}{\text{market_cap}(t)}
+        \text{book\_to\_price}(t) = \frac{\text{book\_equity}(t)}{\text{market\_cap}(t)}
 
     A high book-to-price ratio identifies stocks trading at a discount relative to their
     common equity. Historically, cheap stocks with high book-to-price ratios have earned
@@ -53,8 +53,8 @@ class BookToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{book_equity}}{\text{price} \times \text{shares_out}}
-        = \frac{\text{book_value_per_share}}{\text{price}}
+        \frac{\text{book\_equity}}{\text{price} \times \text{shares\_out}}
+        = \frac{\text{book\_value\_per\_share}}{\text{price}}
 
     The aggregate form is preferred because it avoids subtle split-adjustment mismatches
     between numerator and denominator. Aggregate fundamentals are the primary form from

@@ -28,14 +28,20 @@ class EWShareTurnover(BaseDescriptor):
     Computes an EWMA of per-observation share turnover:
 
     .. math::
+        :nowrap:
 
-        \text{turnover_raw}(t) =
-        \frac{\text{adj_volume}(t)}{\text{adj_shares_outstanding}(t)}
+        \[
+        \begin{aligned}
+        \text{turnover\_raw}(t)
+            &= \frac{\text{adj\_volume}(t)}
+                    {\text{adj\_shares\_outstanding}(t)} \\[0.75em]
+        \text{turnover}(t)
+            &= \lambda \cdot \text{turnover}(t-1)
+               + (1 - \lambda) \cdot \text{turnover\_raw}(t)
+        \end{aligned}
+        \]
 
-        \text{turnover}(t) = \lambda \cdot \text{turnover}(t-1)
-            + (1 - \lambda) \cdot \text{turnover_raw}(t)
-
-    where :math:`\lambda = \exp(-\ln(2) / \text{half_life})` is the EWMA decay factor.
+    where :math:`\lambda = \exp(-\ln(2) / \text{half\_life})` is the EWMA decay factor.
 
     Share turnover measures trading intensity as the fraction of shares outstanding that
     changes hands over each observation period. Lower turnover indicates weaker trading
@@ -62,7 +68,7 @@ class EWShareTurnover(BaseDescriptor):
         asset reaches this count, its output is NaN. This warm-up period avoids
         exposing early EWMA values before the turnover estimate has sufficiently
         converged from its zero initialization. If `None`, defaults to
-        :math:`\lceil\text{half_life}\rceil`, with a minimum of 1.
+        :math:`\lceil\text{half\_life}\rceil`, with a minimum of 1.
 
     Attributes
     ----------
@@ -88,8 +94,8 @@ class EWShareTurnover(BaseDescriptor):
     `adj_shares_outstanding` holds the EWMA state and does not increment the
     valid-observation count. Zero `adj_volume` is valid and produces zero turnover.
 
-    The `active_mask` property of the :class:`AssetPanel` distinguishes holidays from
-    delistings.
+    The `active_mask` property of the :class:`~skfolio.containers.AssetPanel`
+    distinguishes holidays from delistings.
 
     References
     ----------

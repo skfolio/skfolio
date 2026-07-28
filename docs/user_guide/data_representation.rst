@@ -108,7 +108,7 @@ given history, assets can:
 * enter the investment universe (e.g. new listing)
 * leave the investment universe (e.g. delisting, default, expiry)
 * remain in the universe while having missing data on some dates (e.g. holidays,
-trading interruptions, missing quotes)
+  trading interruptions, missing quotes)
 
 Each source of missingness has different modelling implications. The right treatment
 depends on the modelling choice and on what the downstream estimators support. A poor

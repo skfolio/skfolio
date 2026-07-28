@@ -26,8 +26,11 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
 
     .. math::
 
-        x_{t,i,k} = 1 \quad \text{if asset } i \text{ belongs to category } k,
-        \quad 0 \text{ otherwise}
+        x_{t,i,k} =
+        \begin{cases}
+        1 & \text{if asset } i \text{ belongs to category } k \\
+        0 & \text{otherwise}
+        \end{cases}
 
     Missing category codes produce NaN exposures for all category factors of that
     asset-observation pair.

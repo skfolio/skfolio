@@ -1078,7 +1078,7 @@ class AssetPanel(_BaseAssetPanel):
         fields : str or iterable of str
             Field names used to determine when each asset can become active. Floating
             values must be finite, categorical values must not be missing, and 3D
-             floating values must be finite across the third axis.
+            floating values must be finite across the third axis.
 
         Returns
         -------

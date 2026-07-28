@@ -21,7 +21,7 @@ class LogMarketCap(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{log_market_cap}(t) = \ln(\text{market_cap}(t))
+        \text{log\_market\_cap}(t) = \ln(\text{market\_cap}(t))
 
     Log market capitalization is the standard size descriptor in equity factor models.
     The logarithm reduces the right skew of market capitalization and produces a more

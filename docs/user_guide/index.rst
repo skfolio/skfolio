@@ -22,18 +22,15 @@
 User Guide
 ==========
 
-.. warning::
-    The API is already stable and follows scikit-learn conventions.
-    However, the version number remains below 1.0.0 to allow for rapid iteration
-    and development. A first official stable release (1.0.0) is planned for 2025.
-    Until then, we recommend pinning versions in production environments to guard
-    against minor breaking changes, or connecting with `Skfolio Labs <https://skfoliolabs.com>`_
-    for enterprise support and dedicated SLAs.
+`skfolio` is a Python library for portfolio optimization, factor modeling and risk
+management built on top of scikit-learn to perform model selection, validation,
+parameter tuning and stress-test while reducing the risk of data leakage and overfitting.
 
-
-`skfolio` is a portfolio optimization and risk management framework build on top of
-scikit-learn to perform model selection, validation, parameter tuning and stress-test
-while reducing the risk of data leakage and overfitting.
+The public API is stable from version 1.0.0
+onward and follows `semantic versioning <https://semver.org>`_: no backward-incompatible
+change within the 1.x series, and anything scheduled for removal raises a
+`FutureWarning` before being removed in the next major release.
+`Skfolio Labs <https://skfoliolabs.com>`_ provides enterprise support and dedicated SLAs.
 
 .. toctree::
     :maxdepth: 2

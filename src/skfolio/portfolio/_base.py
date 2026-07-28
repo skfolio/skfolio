@@ -670,14 +670,14 @@ class BasePortfolio:
         self._annualization_factor = value
         self.clear()
 
-    # TODO remove depreciated annualized_factor in v2.0
+    # TODO remove deprecated annualized_factor in v2.0
     @property
     def annualized_factor(self) -> float:
         """Deprecated alias for `annualization_factor`."""
         _warn_deprecated_annualized_factor(stacklevel=3)
         return self.annualization_factor
 
-    # TODO remove depreciated annualized_factor in v2.0
+    # TODO remove deprecated annualized_factor in v2.0
     @annualized_factor.setter
     def annualized_factor(self, value: float) -> None:
         _warn_deprecated_annualized_factor(stacklevel=3)
@@ -1280,17 +1280,17 @@ class BasePortfolio:
         return func, args
 
 
-# TODO remove depreciated annualized_factor in v2.0
+# TODO remove deprecated annualized_factor in v2.0
 def _warn_deprecated_annualized_factor(stacklevel: int = 2) -> None:
     warnings.warn(
-        "`annualized_factor` is deprecated and will be removed in version 1.0. "
+        "`annualized_factor` is deprecated and will be removed in version 2.0. "
         "Use `annualization_factor` instead.",
         FutureWarning,
         stacklevel=stacklevel,
     )
 
 
-# TODO remove depreciated annualized_factor in v2.0
+# TODO remove deprecated annualized_factor in v2.0
 def _resolve_annualization_factor(
     annualization_factor: float | None,
     kwargs: dict,

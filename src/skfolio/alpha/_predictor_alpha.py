@@ -47,248 +47,248 @@ _CALIBRATION_RIDGE_SCALE = 1e-6
 class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     r"""Predictor alpha estimator using a user-provided regressor.
 
-     This estimator converts descriptors into cross-sectional scores, optionally
-     neutralizes those scores against factor exposures and fits a scikit-learn compatible
-     regressor where each observation-asset pair is one training sample. It supports
-     nonlinear signal combinations while keeping the final forecast in expected
-     idiosyncratic return units when calibration is enabled.
+    This estimator converts descriptors into cross-sectional scores, optionally
+    neutralizes those scores against factor exposures and fits a scikit-learn compatible
+    regressor where each observation-asset pair is one training sample. It supports
+    nonlinear signal combinations while keeping the final forecast in expected
+    idiosyncratic return units when calibration is enabled.
 
-     The predictor supports two forecast units. With
-     `forecast_unit=ForecastUnit.IDIO_RETURN`, it is fitted to the forward mean
-     idiosyncratic return :math:`u_{t,i}`. With
-     `forecast_unit=ForecastUnit.IDIO_SHARPE`, it is fitted to
-     :math:`u_{t,i} / \sigma_{t,i}` and the forecast is multiplied by current
-     idiosyncratic volatility so `alpha_` remains in expected return units. This is
-     useful when signals are assumed to forecast idiosyncratic Sharpe rather than raw
-     idiosyncratic return.
+    The predictor supports two forecast units. With
+    `forecast_unit=ForecastUnit.IDIO_RETURN`, it is fitted to the forward mean
+    idiosyncratic return :math:`\epsilon_{t,i}`. With
+    `forecast_unit=ForecastUnit.IDIO_SHARPE`, it is fitted to
+    :math:`\epsilon_{t,i} / \sigma_{t,i}` and the forecast is multiplied by current
+    idiosyncratic volatility so `alpha_` remains in expected return units. This is
+    useful when signals are assumed to forecast idiosyncratic Sharpe rather than raw
+    idiosyncratic return.
 
-     When `calibrate_to_return_units=True`, the raw predictor output
-     :math:`\hat a_{t,i}` is calibrated to expected-return units with scalar
-     exponentially weighted least squares:
+    When `calibrate_to_return_units=True`, the raw predictor output
+    :math:`\hat a_{t,i}` is calibrated to expected-return units with scalar
+    exponentially weighted least squares:
 
-     .. math::
+    .. math::
 
-         \beta_t = \arg\min_\beta \sum_i
-         \frac{(u_{t,i} - \hat a_{t,i}\beta)^2}{\sigma_{t,i}^2}
+        \beta_t = \arg\min_\beta \sum_i
+        \frac{(\epsilon_{t,i} - \hat a_{t,i}\beta)^2}{\sigma_{t,i}^2}
 
-     The calibration coefficient is estimated with exponentially weighted least squares:
+    The calibration coefficient is estimated with exponentially weighted least squares:
 
-     .. math::
+    .. math::
 
-         A_t^{EW} = \lambda A_{t-1}^{EW}
-         + (1 - \lambda)\hat a_t^\top W_t \hat a_t
+        A_t^{EW} = \lambda A_{t-1}^{EW}
+        + (1 - \lambda)\hat a_t^\top W_t \hat a_t
 
-     .. math::
+    .. math::
 
-         b_t^{EW} = \lambda b_{t-1}^{EW}
-         + (1 - \lambda)\hat a_t^\top W_t u_t,
-         \quad \lambda = 2^{-1/\text{half-life}}
+        b_t^{EW} = \lambda b_{t-1}^{EW}
+        + (1 - \lambda)\hat a_t^\top W_t \epsilon_t,
+        \quad \lambda = 2^{-1/\text{half-life}}
 
-     and the ridge-stabilized coefficient is:
+    and the ridge-stabilized coefficient is:
 
-     .. math::
+    .. math::
 
-         \beta_t = b_t^{EW} / (A_t^{EW} + \rho_t)
+        \beta_t = b_t^{EW} / (A_t^{EW} + \rho_t)
 
-     This produces alpha in expected return units, which is required whenever the
-     optimizer is trading off alpha against real costs and constraints such as
-     transaction costs, market impact, borrow costs, or turnover constraints.
+    This produces alpha in expected return units, which is required whenever the
+    optimizer is trading off alpha against real costs and constraints such as
+    transaction costs, market impact, borrow costs, or turnover constraints.
 
-     In batch mode, calibration uses predictions from held-out CV folds when enough
-     samples are available. This reduces the in-sample scale inflation from fitting
-     and calibrating on the same predictions. These predictions are used only for
-     scale calibration, not as a time-series performance estimate. The default splitter
-     treats valid observation-asset pairs as approximately exchangeable. Pass a
-     date-aware or purged splitter through `cv` when the calibration itself should
-     enforce stricter temporal separation.
+    In batch mode, calibration uses predictions from held-out CV folds when enough
+    samples are available. This reduces the in-sample scale inflation from fitting
+    and calibrating on the same predictions. These predictions are used only for
+    scale calibration, not as a time-series performance estimate. The default splitter
+    treats valid observation-asset pairs as approximately exchangeable. Pass a
+    date-aware or purged splitter through `cv` when the calibration itself should
+    enforce stricter temporal separation.
 
-     The estimator supports :meth:`fit` and :meth:`partial_fit`. In online mode,
-     samples are trained when their forward-return targets become observable,
-     including rows carried in the target-maturity buffer. The predictor must
-     support `partial_fit` after the first fitted update.
+    The estimator supports :meth:`fit` and :meth:`partial_fit`. In online mode,
+    samples are trained when their forward-return targets become observable,
+    including rows carried in the target-maturity buffer. The predictor must
+    support `partial_fit` after the first fitted update.
 
     Parameters
     ----------
-     predictor : estimator
-         Regressor that implements `fit` and `predict`. For online mode, the predictor
-         must also implement `partial_fit`. The predictor receives one sample per valid
-         observation-asset pair, with shape `(n_observations * n_assets, n_descriptors)`,
-         and predicts the transformed target.
+    predictor : estimator
+        Regressor that implements `fit` and `predict`. For online mode, the predictor
+        must also implement `partial_fit`. The predictor receives one sample per valid
+        observation-asset pair, with shape `(n_observations * n_assets, n_descriptors)`,
+        and predicts the transformed target.
 
-     descriptors : list of (name, estimator) tuples
-         List of descriptors that compute signals from characteristics. Each tuple
-         contains a string name and a descriptor estimator. Multiple descriptors are
-         aggregated into a single alpha using multivariate regression. The descriptors
-         are evaluated in parallel if `n_jobs > 1`.
+    descriptors : list of (name, estimator) tuples
+        List of descriptors that compute signals from characteristics. Each tuple
+        contains a string name and a descriptor estimator. Multiple descriptors are
+        aggregated into a single alpha using multivariate regression. The descriptors
+        are evaluated in parallel if `n_jobs > 1`.
 
-     half_life : float, default=20
-         Half-life of the EWLS calibration statistics in number of observations. Only
-         used when `calibrate_to_return_units=True`.
+    half_life : float, default=20
+        Half-life of the EWLS calibration statistics in number of observations. Only
+        used when `calibrate_to_return_units=True`.
 
-         * Larger half-life: More stable alpha estimates, slower adaptation
-         * Smaller half-life: More responsive estimates, faster adaptation
+        * Larger half-life: More stable alpha estimates, slower adaptation
+        * Smaller half-life: More responsive estimates, faster adaptation
 
-     horizon : int, default=1
-         Number of forward periods to average for the target idiosyncratic return.
-         Must be >= 1. The target for observation :math:`t` is
-         `mean(idio_returns[t+signal_lag : t+signal_lag+horizon])`.
+    horizon : int, default=1
+        Number of forward periods to average for the target idiosyncratic return.
+        Must be >= 1. The target for observation :math:`t` is
+        `mean(idio_returns[t+signal_lag : t+signal_lag+horizon])`.
 
-         * `horizon=1`: Predicts one-period idiosyncratic return starting after `signal_lag`
-         * `horizon>1`: Predicts the mean of `horizon` idiosyncratic returns starting
-           after `signal_lag`.
+        * `horizon=1`: Predicts one-period idiosyncratic return starting after `signal_lag`
+        * `horizon>1`: Predicts the mean of `horizon` idiosyncratic returns starting
+          after `signal_lag`.
 
-     signal_lag : int, default=1
-         Number of periods between the signal observation and the first return in the
-         target window. Must be >= 1. Under skfolio's as-of time-indexing convention,
-         `signal_lag=0` would use information observed at the end of :math:`t` to
-         predict return at :math:`t`, which is look-ahead. Values larger than 1 can
-         model conservative data availability or execution delays.
+    signal_lag : int, default=1
+        Number of periods between the signal observation and the first return in the
+        target window. Must be >= 1. Under skfolio's as-of time-indexing convention,
+        `signal_lag=0` would use information observed at the end of :math:`t` to
+        predict return at :math:`t`, which is look-ahead. Values larger than 1 can
+        model conservative data availability or execution delays.
 
-     neutralize_against : list of str, optional
-         Factor names or families to neutralize scores against. If provided, scores are
-         orthogonalized with respect to the specified factor exposures before prediction.
+    neutralize_against : list of str, optional
+        Factor names or families to neutralize scores against. If provided, scores are
+        orthogonalized with respect to the specified factor exposures before prediction.
 
-     outlier_transformer : BaseCSTransformer or "passthrough", optional
-         Cross-sectional transformer for descriptor outlier handling. If `None`,
-         defaults to `CSWinsorizer()`. Use `"passthrough"` to skip.
+    outlier_transformer : BaseCSTransformer or "passthrough", optional
+        Cross-sectional transformer for descriptor outlier handling. If `None`,
+        defaults to `CSWinsorizer()`. Use `"passthrough"` to skip.
 
-     scoring_transformer : BaseCSTransformer or "passthrough", optional
-         Cross-sectional transformer for descriptor scoring applied after outlier
-         handling. If None, defaults to `CSStandardScaler()`. Use "passthrough" to skip.
+    scoring_transformer : BaseCSTransformer or "passthrough", optional
+        Cross-sectional transformer for descriptor scoring applied after outlier
+        handling. If None, defaults to `CSStandardScaler()`. Use "passthrough" to skip.
 
-     target_outlier_transformer : BaseCSTransformer or "passthrough", optional
-         Cross-sectional transformer for target outlier handling. If `None`, defaults
-         to `CSWinsorizer()`. Use `"passthrough"` to skip.
+    target_outlier_transformer : BaseCSTransformer or "passthrough", optional
+        Cross-sectional transformer for target outlier handling. If `None`, defaults
+        to `CSWinsorizer()`. Use `"passthrough"` to skip.
 
-     target_scoring_transformer : BaseCSTransformer or "passthrough", optional
-         Cross-sectional transformer for target scoring. If `None`, defaults to
-         `"passthrough"`. The calibration stage calibrates the predictor output back
-         to expected-return units when `calibrate_to_return_units=True`.
+    target_scoring_transformer : BaseCSTransformer or "passthrough", optional
+        Cross-sectional transformer for target scoring. If `None`, defaults to
+        `"passthrough"`. The calibration stage calibrates the predictor output back
+        to expected-return units when `calibrate_to_return_units=True`.
 
-     transform_by_group : str, optional
-         Name of a categorical characteristic in the AssetPanel to use for group-wise
-         transformations. If provided, cross-sectional transformations are applied
-         within each group separately.
+    transform_by_group : str, optional
+        Name of a categorical characteristic in the AssetPanel to use for group-wise
+        transformations. If provided, cross-sectional transformations are applied
+        within each group separately.
 
-     forecast_unit : ForecastUnit, default=ForecastUnit.IDIO_RETURN
-         Unit of the intermediate forecast learned by the predictor. With
-         `ForecastUnit.IDIO_RETURN`, the predictor is trained on forward mean
-         idiosyncratic return. With `ForecastUnit.IDIO_SHARPE`, the target is divided by
-         forecast idiosyncratic volatility and the resulting idiosyncratic-Sharpe
-         forecast is converted back to return units by multiplying by current
-         idiosyncratic volatility.
+    forecast_unit : ForecastUnit, default=ForecastUnit.IDIO_RETURN
+        Unit of the intermediate forecast learned by the predictor. With
+        `ForecastUnit.IDIO_RETURN`, the predictor is trained on forward mean
+        idiosyncratic return. With `ForecastUnit.IDIO_SHARPE`, the target is divided by
+        forecast idiosyncratic volatility and the resulting idiosyncratic-Sharpe
+        forecast is converted back to return units by multiplying by current
+        idiosyncratic volatility.
 
-     calibrate_to_return_units : bool, default=True
-         If `True`, calibrate raw predictor output to expected return units using
-         scalar EWLS. If `False`, return the predictor output after any volatility
-         conversion implied by `forecast_unit`.
+    calibrate_to_return_units : bool, default=True
+        If `True`, calibrate raw predictor output to expected return units using
+        scalar EWLS. If `False`, return the predictor output after any volatility
+        conversion implied by `forecast_unit`.
 
-     forecast_scale : float, default=1.0
-         Multiplicative scale applied to the final alpha forecast after optional
-         return-unit calibration. This controls alpha strength without changing the
-         predictor or calibration coefficient estimates.
+    forecast_scale : float, default=1.0
+        Multiplicative scale applied to the final alpha forecast after optional
+        return-unit calibration. This controls alpha strength without changing the
+        predictor or calibration coefficient estimates.
 
-     cv : cross-validator, int, optional
-         Cross-validation strategy used to obtain predictions from held-out folds for
-         return-unit calibration. When `None`, uses `KFold(5)`. CV is used only in
-         batch mode when `calibrate_to_return_units=True` and there are enough
-         samples.
+    cv : cross-validator, int, optional
+        Cross-validation strategy used to obtain predictions from held-out folds for
+        return-unit calibration. When `None`, uses `KFold(5)`. CV is used only in
+        batch mode when `calibrate_to_return_units=True` and there are enough
+        samples.
 
-     n_jobs : int, default=1
-         Number of parallel jobs for descriptor computation and cross-validation.
+    n_jobs : int, default=1
+        Number of parallel jobs for descriptor computation and cross-validation.
 
     Attributes
     ----------
-     alpha_ : ndarray of shape (n_assets,) or None
+    alpha_ : ndarray of shape (n_assets,) or None
         Estimated alpha for each asset, after applying `forecast_scale`. If
         `calibrate_to_return_units=True`, this is in expected return units. Otherwise,
         it is the predictor output after any volatility conversion. Returns `None`
         during warmup.
 
-     predictor_ : estimator
-         Fitted predictor instance.
+    predictor_ : estimator
+        Fitted predictor instance.
 
-     descriptors_ : list of BaseDescriptor
-         Fitted descriptor estimators.
+    descriptors_ : list of BaseDescriptor
+        Fitted descriptor estimators.
 
-     named_descriptors_ : dict of {str: BaseDescriptor}
-         Dictionary mapping descriptor names to fitted estimators.
+    named_descriptors_ : dict of {str: BaseDescriptor}
+        Dictionary mapping descriptor names to fitted estimators.
 
-     outlier_transformer_ : BaseCSTransformer or str
-         Fitted descriptor outlier transformer.
+    outlier_transformer_ : BaseCSTransformer or str
+        Fitted descriptor outlier transformer.
 
-     scoring_transformer_ : BaseCSTransformer or str
-         Fitted descriptor scoring transformer.
+    scoring_transformer_ : BaseCSTransformer or str
+        Fitted descriptor scoring transformer.
 
-     target_outlier_transformer_ : BaseCSTransformer or str
-         Fitted target outlier transformer.
+    target_outlier_transformer_ : BaseCSTransformer or str
+        Fitted target outlier transformer.
 
-     target_scoring_transformer_ : BaseCSTransformer or str
-         Fitted target scoring transformer.
+    target_scoring_transformer_ : BaseCSTransformer or str
+        Fitted target scoring transformer.
 
-     n_assets_ : int
-         Number of assets seen during fitting.
+    n_assets_ : int
+        Number of assets seen during fitting.
 
-     asset_names_ : ndarray
-         Names of assets in the coverage universe.
+    asset_names_ : ndarray
+        Names of assets in the coverage universe.
 
     Examples
     --------
-     >>> import numpy as np
-     >>> from sklearn.linear_model import SGDRegressor
-     >>> from skfolio.datasets import make_synthetic_characteristics
-     >>> from skfolio.alpha import ForecastUnit, PredictorAlpha
-     >>> from skfolio.descriptor import EWMomentum, BookToPrice, Reversal, Passthrough
-     >>>
-     >>> X = make_synthetic_characteristics()
-     >>> rng = np.random.default_rng(0)
-     >>>
-     >>> # Alpha models regress forward idiosyncratic returns. In production these
-     >>> # come from a fitted CharacteristicsFactorModel.
-     >>> idio_returns = rng.standard_normal((X.n_observations, X.n_assets))
-     >>> idio_returns[~X.active_mask] = np.nan
-     >>> X["idio_returns"] = idio_returns
-     >>>
-     >>> # Required when forecast_unit=ForecastUnit.IDIO_SHARPE to scale targets and alphas.
-     >>> idio_variances = rng.uniform(0.01, 0.05, (X.n_observations, X.n_assets))
-     >>> idio_variances[~X.active_mask] = np.nan
-     >>> X["idio_variances"] = idio_variances
-     >>>
-     >>> # Required when neutralize_against is set. In production these are factor
-     >>> # exposures from the characteristics factor model.
-     >>> exposures = rng.standard_normal((X.n_observations, X.n_assets, 3))
-     >>> exposures[~X.active_mask] = np.nan
-     >>> X.add_3d_field(
-     ...     "exposures",
-     ...     exposures,
-     ...     third_axis_name="factors",
-     ...     third_axis_labels=["market", "beta", "size"],
-     ... )
-     >>>
-     >>> alpha_model = PredictorAlpha(
-     ...     predictor=SGDRegressor(),
-     ...     descriptors=[
-     ...         ("momentum", EWMomentum()),
-     ...         ("book_to_price", BookToPrice()),
-     ...         ("reversal", Reversal()),
-     ...         ("eps_ntm", Passthrough("eps_ntm")),
-     ...     ],
-     ...     horizon=5,
-     ...     half_life=21,
-     ...     neutralize_against=["market", "beta", "size"],
-     ...     forecast_unit=ForecastUnit.IDIO_SHARPE,
-     ... )
-     >>>
-     >>> alpha_model.fit(X)
-     >>> print(alpha_model.alpha_)
-     >>>
-     >>> # Online learning (requires predictor with partial_fit)
-     >>> alpha_model.partial_fit(X[-5:])
-     >>> print(alpha_model.alpha_)
+    >>> import numpy as np
+    >>> from sklearn.linear_model import SGDRegressor
+    >>> from skfolio.datasets import make_synthetic_characteristics
+    >>> from skfolio.alpha import ForecastUnit, PredictorAlpha
+    >>> from skfolio.descriptor import EWMomentum, BookToPrice, Reversal, Passthrough
+    >>>
+    >>> X = make_synthetic_characteristics()
+    >>> rng = np.random.default_rng(0)
+    >>>
+    >>> # Alpha models regress forward idiosyncratic returns. In production these
+    >>> # come from a fitted CharacteristicsFactorModel.
+    >>> idio_returns = rng.standard_normal((X.n_observations, X.n_assets))
+    >>> idio_returns[~X.active_mask] = np.nan
+    >>> X["idio_returns"] = idio_returns
+    >>>
+    >>> # Required when forecast_unit=ForecastUnit.IDIO_SHARPE to scale targets and alphas.
+    >>> idio_variances = rng.uniform(0.01, 0.05, (X.n_observations, X.n_assets))
+    >>> idio_variances[~X.active_mask] = np.nan
+    >>> X["idio_variances"] = idio_variances
+    >>>
+    >>> # Required when neutralize_against is set. In production these are factor
+    >>> # exposures from the characteristics factor model.
+    >>> exposures = rng.standard_normal((X.n_observations, X.n_assets, 3))
+    >>> exposures[~X.active_mask] = np.nan
+    >>> X.add_3d_field(
+    ...     "exposures",
+    ...     exposures,
+    ...     third_axis_name="factors",
+    ...     third_axis_labels=["market", "beta", "size"],
+    ... )
+    >>>
+    >>> alpha_model = PredictorAlpha(
+    ...     predictor=SGDRegressor(),
+    ...     descriptors=[
+    ...         ("momentum", EWMomentum()),
+    ...         ("book_to_price", BookToPrice()),
+    ...         ("reversal", Reversal()),
+    ...         ("eps_ntm", Passthrough("eps_ntm")),
+    ...     ],
+    ...     horizon=5,
+    ...     half_life=21,
+    ...     neutralize_against=["market", "beta", "size"],
+    ...     forecast_unit=ForecastUnit.IDIO_SHARPE,
+    ... )
+    >>>
+    >>> alpha_model.fit(X)
+    >>> print(alpha_model.alpha_)
+    >>>
+    >>> # Online learning (requires predictor with partial_fit)
+    >>> alpha_model.partial_fit(X[-5:])
+    >>> print(alpha_model.alpha_)
 
     See Also
     --------
-     EWSharpeOptimalAlpha : Linear signal aggregation with Sharpe-optimal WLS weighting.
+    EWSharpeOptimalAlpha : Linear signal aggregation with Sharpe-optimal WLS weighting.
 
     References
     ----------

@@ -20,16 +20,23 @@ class RollingMomentum(_BaseRollingLogReturn):
     "12-1" momentum signal uses a skip of approximately one month [1]_.
 
     .. math::
+        :nowrap:
 
-        x(k) = \log(1 + r(k))
-
-        S(t) = \sum_{k=t-\text{skip}-\text{window}+1}^{t-\text{skip}} x(k)
-
-        \text{momentum}(t) =
-        \begin{cases}
-            \exp(S(t)) - 1 & \text{if exponentiate} \\
+        \[
+        \begin{aligned}
+        x(k)
+            &= \log(1 + r(k)) \\[0.75em]
+        S(t)
+            &= \sum_{k=t-\text{skip}-\text{window}+1}^{t-\text{skip}}
+               x(k) \\[0.75em]
+        \text{momentum}(t)
+            &=
+            \begin{cases}
+            \exp(S(t)) - 1 & \text{if } \texttt{exponentiate=True} \\
             S(t) & \text{otherwise}
-        \end{cases}
+            \end{cases}
+        \end{aligned}
+        \]
 
     The window uses the :math:`\text{window}` observations ending at
     :math:`t - \text{skip}`. Output is NaN until the asset has a full active lookback

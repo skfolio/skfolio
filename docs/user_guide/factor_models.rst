@@ -19,7 +19,8 @@ the FactSet
 `Fundamentals Point-in-Time <https://www.factset.com/marketplace/catalog/product/factset-fundamentals-point-in-time>`_,
 `Estimates Point-in-Time Consensus <https://www.factset.com/marketplace/catalog/product/factset-estimates-point-in-time-consensus>`_ 
 and `RBICS <https://www.factset.com/marketplace/catalog/product/factset-rbics-api>`_
-datasets. The gallery examples use synthetic characteristics data, so users can run the full API
+datasets. The :ref:`Factor Models gallery <factor_models_examples>` provides complete,
+runnable tutorials using synthetic characteristics data, so users can explore the full API
 while respecting data vendor licences.
 
 For complementary references, see "The Elements of Quantitative Investing" by Giuseppe
@@ -59,23 +60,18 @@ Factor models are used for:
 * **Alpha research**: provide the ingredients of the alpha workflow, such as
   idiosyncratic returns as a prediction target, idiosyncratic variances
   for signal scaling, and factor exposures for neutralization.
-* **Alpha decomposition**: split expected returns into factor-spanned and orthogonal
-  components before optimization.
+* **Alpha decomposition**: split an alpha forecast into spanned alpha and orthogonal
+  alpha before optimization.
 
 Model Definition
 ~~~~~~~~~~~~~~~~
 
-A factor model decomposes the return of asset :math:`i` at time :math:`t` into:
+A factor model decomposes asset returns into systematic and idiosyncratic
+components:
 
 .. math::
 
-    r_{t,i} = \alpha_i + \sum_{k=1}^{K} \beta_{i,k} \, f_{t,k} + \epsilon_{t,i}
-
-or in matrix form:
-
-.. math::
-
-    r_t = \alpha + B \, f_t + \epsilon_t
+    r_t = B \, f_t + \epsilon_t
 
 where:
 
@@ -83,40 +79,8 @@ where:
   the loading matrix: the sensitivity of each asset to each factor.
 * :math:`f_t \in \mathbb{R}^{K}` is the vector of factor returns: the return per unit
   of exposure at time :math:`t`, common to all assets.
-* :math:`\epsilon_t \in \mathbb{R}^{N}` is the vector of idiosyncratic returns, the
-  part of each asset's return not explained by the factors.
-* :math:`\alpha \in \mathbb{R}^{N}` is the asset-level alpha, or intercept.
-
-The vector of expected asset returns is:
-
-.. math::
-
-    \mu = \alpha + B \, \mu_f
-
-where :math:`\mu_f = \mathbb{E}[f_t]` is the vector of expected factor returns.
-When factor returns are centered, :math:`\alpha = \mu`; otherwise, factor premia
-explain part of :math:`\mu`. Pure risk models set :math:`\alpha = 0`.
-
-When an alpha estimator is provided,
-:class:`~skfolio.prior.CharacteristicsFactorModel` treats :math:`\alpha` as an
-asset-level forecast and decomposes it into a factor-spanned part and an orthogonal
-part:
-
-.. math::
-
-    \alpha = \alpha^{\parallel} + \alpha^{\perp}
-    \qquad \text{with} \qquad
-    \alpha^{\parallel} = B \, g
-
-The spanned part :math:`\alpha^{\parallel}` is explained by factor exposures and can
-be written as :math:`B g`. The vector :math:`g` contains the expected factor returns
-that reproduce the spanned alpha. The orthogonal part :math:`\alpha^{\perp}` is the
-asset-level alpha left outside the factor space. This gives two estimates of
-expected factor returns: :math:`\mu_f`, estimated from the factor return time series,
-and :math:`g`, obtained by projecting the alpha forecast onto the factor exposure
-space.
-skfolio blends these sources with `spanned_alpha_shrinkage`, which is covered in
-:ref:`Spanned and Orthogonal Alpha <factor_model_spanned_alpha>`.
+* :math:`\epsilon_t \in \mathbb{R}^{N}` is the vector of idiosyncratic returns: the
+  part of asset returns not explained by the factors.
 
 The factor structure assumes that common co-movement is captured by the factors, and
 that the remaining idiosyncratic covariance is diagonal or sparse. The asset
@@ -129,8 +93,12 @@ covariance matrix is:
 where :math:`F \in \mathbb{R}^{K \times K}` is the factor covariance matrix and
 :math:`D` is the diagonal or sparse idiosyncratic covariance matrix.
 
+The :ref:`Expected Returns <factor_model_expected_returns>` section explains how
+:class:`~skfolio.prior.CharacteristicsFactorModel` estimates expected asset returns
+from expected factor returns and an optional alpha forecast.
+
 The rest of this guide covers the estimation of :math:`B`, :math:`f_t`, :math:`F`,
-:math:`D` and :math:`\alpha`, and their use in optimization and attribution.
+and :math:`D`, and their use in optimization and attribution.
 
 Types of Factor Models
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -277,10 +245,10 @@ The model is fitted as follows:
    idiosyncratic covariance as a diagonal matrix or, when `idio_corr_threshold > 0`,
    as a sparse covariance using correlation thresholding.
 9. If provided, fit `alpha_estimator` to produce an alpha forecast. Decompose it into
-   factor-spanned and orthogonal alphas, blend the spanned alpha with the expected
-   factor returns using `spanned_alpha_shrinkage`, shrink the orthogonal alpha with
-   `orthogonal_alpha_confidence` and assemble the final :math:`\mu`, :math:`\Sigma`
-   and asset return scenarios on the investment universe.
+   spanned alpha and orthogonal alpha, blend factor-implied asset expected returns with
+   the spanned alpha using `spanned_alpha_shrinkage`, shrink the orthogonal alpha
+   with `orthogonal_alpha_confidence` and assemble the final :math:`\mu`,
+   :math:`\Sigma` and asset return scenarios on the investment universe.
 
 Each step is detailed in the following sections.
 
@@ -762,6 +730,9 @@ exposure date and defaults to 1:
 
 where :math:`\ell` is `exposure_lag`. With the default :math:`\ell = 1`, returns over
 :math:`(t-1, t]` are regressed on exposures measured at :math:`t-1`.
+At each observation, this regression estimates realized factor returns and
+idiosyncratic returns :math:`\epsilon(t)`. Expected asset returns are subsequently
+constructed from expected factor returns and, when configured, an alpha forecast.
 
 The same alignment applies to regression weights. Market capitalization weights are
 lagged by `exposure_lag`, and inverse-idiosyncratic-variance weights at date
@@ -793,8 +764,8 @@ results, as subtracting a common risk-free rate shifts the cross-section by a co
 that the global factor absorbs. Excess returns are nonetheless still preferred because 
 some descriptors estimate time-series regressions (e.g.
 :class:`~skfolio.descriptor.EWMarketBeta`,
-:class:`~skfolio.descriptor.EWResidualVolatility`) whose intercept should capture
-residual return without absorbing the risk-free rate. In a multi-currency model,
+:class:`~skfolio.descriptor.EWResidualVolatility`) whose time-series intercept should
+capture residual return without absorbing the risk-free rate. In a multi-currency model,
 `returns` should contain local excess returns, and currency excess returns are
 supplied through the `currency_excess_returns` argument. See the :ref:`Currency
 Factors <factor_model_currency_factors>` section.
@@ -814,7 +785,8 @@ skfolio provides four factor exposure estimators:
 
 * :class:`~skfolio.factor_exposure.GlobalFactor` creates one common factor by
   assigning every asset an exposure of 1.0. In the cross-sectional regression,
-  this factor acts as the intercept or broad market factor. With the
+  this factor acts as the cross-sectional regression intercept or broad market
+  factor. With the
   benchmark-weighted centering and zero-sum constraints described in
   :ref:`Global Factor and Benchmark Portfolio <factor_model_global_factor>`, its
   estimated factor return captures the benchmark portfolio return.
@@ -1199,7 +1171,7 @@ problem:
 where :math:`w_i(t)` are the weights described in
 :ref:`Regression Weights <factor_model_regression_weights>`,
 :math:`B_i(t - \ell)` is asset :math:`i`'s lagged exposure vector and :math:`\ell` is
-`exposure_lag`. Idiosyncratic returns are the regression residuals:
+`exposure_lag`. Idiosyncratic returns are obtained as the regression residuals:
 
 .. math::
 
@@ -1233,7 +1205,7 @@ wrapped estimator separately to each observation.
 Regression Weights
 ~~~~~~~~~~~~~~~~~~
 
-Regression residuals are heteroskedastic, meaning idiosyncratic variance differs widely
+Idiosyncratic returns are heteroskedastic, meaning idiosyncratic variance differs widely
 across the cross-section. An unweighted regression would give excessive influence to the 
 noisiest names. Under heteroskedasticity, the best linear unbiased estimator (BLUE) is the 
 weighted least squares regression whose weights are proportional to inverse idiosyncratic
@@ -1331,24 +1303,55 @@ the latest as-of basis.
 Global Factor and Benchmark Portfolio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Combined with the exposure centering and zero-sum constraints described in :ref:`Zero-Sum Constraints <factor_model_zero_sum_constraints>`, the
-global factor return has a direct economic interpretation. Style exposures are
-centered so that their benchmark-weighted average is zero (the default
-:class:`~skfolio.preprocessing.CSStandardScaler` behavior) and
-constrained family returns average to zero under benchmark weights, so all
-non-global factors satisfy:
+Under the exposure centering and zero-sum constraints described in
+:ref:`Zero-Sum Constraints <factor_model_zero_sum_constraints>`, the global
+factor return captures the benchmark portfolio return. Aggregating the
+cross-sectional regression over the assets :math:`i` of the estimation
+universe under benchmark weights gives (time indices omitted):
 
 .. math::
 
-    \sum_i w_i^{\text{bench}}\,B_{ij} = 0 \quad \forall\; j \neq 0
+    \underbrace{\sum_i w_i^{\text{bench}} R_i}_{\text{benchmark return}}
+    = \hat{f}_0
+    + \underbrace{\sum_{j \in \text{industry, country}} w_j\,\hat{f}_j}_{=\,0
+    \text{ (zero-sum constraint)}}
+    + \sum_{j \in \text{styles}} \underbrace{\Big(\sum_i w_i^{\text{bench}}
+    B_{ij}\Big)}_{=\,0 \text{ (benchmark-centered)}} \hat{f}_j
+    + \underbrace{\sum_i w_i^{\text{bench}}\,\hat{\epsilon}_i}_{\approx\,0}
 
-The benchmark portfolio therefore has zero exposure to every factor except the global
-one, and the estimated global factor return tracks the benchmark portfolio return on
+where :math:`\hat{f}_0` is the global factor return, :math:`\hat{f}_j` the
+other factor returns, :math:`B_{ij}` the exposure of asset :math:`i` to factor
+:math:`j` and :math:`\hat{\epsilon}_i` its idiosyncratic return.
+
+* For a constrained one-hot family such as industry or country, the benchmark
+  exposure to factor :math:`j` is the total benchmark weight of the assets in
+  that category, :math:`w_j = \sum_i w_i^{\text{bench}} B_{ij}` (the industry
+  cap share when `benchmark_mcap_power=1`). The family term
+  :math:`\sum_j w_j \hat{f}_j` is the benchmark-weighted average of the
+  family's factor returns, set to zero by the zero-sum constraint. Industry
+  factors shift return between industries without changing the benchmark
+  total, and country factors between countries.
+* Style exposures are centered so that the benchmark-weighted average
+  exposure :math:`\sum_i w_i^{\text{bench}} B_{ij}` is zero (the default
+  :class:`~skfolio.preprocessing.CSStandardScaler` behavior). The benchmark
+  has no style tilt and style factor returns do not contribute to its
+  return.
+* The residual term is the benchmark-weighted average of the idiosyncratic
+  returns. The weighted residuals sum to zero under the regression weights,
+  and the remaining difference between benchmark and regression weights is
+  diversified across the cross-section.
+
+The estimated global factor return tracks the benchmark portfolio return on
 the estimation universe (e.g. the market-cap portfolio when
-`benchmark_mcap_power=1`). Small deviations remain when regression weights differ
-from benchmark weights. When `regression_mcap_power == benchmark_mcap_power` and
-`inv_idio_variance_weight_shrinkage == 0`, the regression weights are proportional to
-the benchmark weights and the identity becomes exact:
+`benchmark_mcap_power=1`), with deviations limited to the residual term when
+regression weights differ from benchmark weights. When
+`regression_mcap_power == benchmark_mcap_power` and
+`inv_idio_variance_weight_shrinkage == 0`, the regression weights are
+proportional to the benchmark weights and the residual term is exactly zero:
+the WLS normal equations make the weighted residuals orthogonal to every
+column of the exposure design, including the global column of ones, so
+:math:`\sum_i w_i^{\text{bench}} \hat{\epsilon}_i = 0` and the identity is
+exact:
 
 .. math::
 
@@ -1678,8 +1681,9 @@ Idiosyncratic Risk Calibration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 These diagnostics test the idiosyncratic volatility forecasts through the
-standardized idiosyncratic returns :math:`z_{it} = u_{it} / \hat\sigma_{it}`. Under
-correct calibration, :math:`z` has cross-sectional standard deviation 1.0.
+standardized idiosyncratic returns
+:math:`z_{it} = \epsilon_{it} / \hat\sigma_{it}`. Under correct calibration,
+:math:`z` has cross-sectional standard deviation 1.0.
 
 :meth:`~skfolio.prior.FactorModel.idio_calibration_summary` aggregates the main
 statistics:
@@ -1901,20 +1905,16 @@ Additional plots on
 Expected Returns
 ----------------
 
-The model is not only a risk model but also estimates expected asset returns
-used by downstream optimizers. Two components contribute here: expected factor returns
-(factor premia), estimated by the factor prior and mapped to assets through their
-exposures, and an optional asset-level alpha forecast built from quantities the
-pipeline has already estimated (idiosyncratic returns, factor exposures,
-idiosyncratic variances). This section covers both components, how the alpha
-forecast is decomposed and combined with the factor premia, and the diagnostics
-used to evaluate the results.
+:class:`~skfolio.prior.CharacteristicsFactorModel` estimates expected asset returns
+from factor premia and an optional alpha forecast. The factor prior estimates expected
+factor returns, which are mapped to assets through their exposures. This section
+explains how these estimates are used together and how they are evaluated.
 
 Expected Factor Returns
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-By default (`alpha_estimator=None`), expected asset returns are determined
-entirely by the factor premia:
+With `alpha_estimator=None` and the default `spanned_alpha_shrinkage=1`, expected
+asset returns are determined entirely by the factor premia:
 
 .. math::
 
@@ -1971,8 +1971,8 @@ Alpha Estimators
 ~~~~~~~~~~~~~~~~
 
 The `alpha_estimator` parameter accepts any :class:`~skfolio.alpha.BaseAlpha`
-estimator producing asset-level expected returns. Before it is fitted, the factor
-model enriches the panel with the quantities it has already estimated:
+estimator producing an expected-return forecast for each asset. Before it is fitted,
+the factor model enriches the panel with the quantities it has already estimated:
 idiosyncratic returns, idiosyncratic variances, regression weights, benchmark
 weights and the factor exposure tensor. In typical alpha research workflows,
 idiosyncratic returns serve as the prediction target (typically after
@@ -2025,7 +2025,7 @@ result is scaled into expected-return units.
   It supports nonlinear interactions and non-additive signal effects, for example with
   tree-based models or regularized regressors. With `calibrate_to_return_units=True`,
   the raw predictor output is calibrated to expected-return units by exponentially
-  weighted least squares, so `alpha_` remains usable alongside factor premia.
+  weighted least squares, so `alpha_` is in expected-return units.
   `forecast_scale` is applied after this optional calibration. This flexibility
   increases the need for robust validation, because nonlinear models can fit noise,
   require more data and be sensitive to target construction and cross-validation
@@ -2080,9 +2080,9 @@ acceptable. Custom estimators are created by subclassing
 Spanned and Orthogonal Alpha
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The fitted alpha forecast is decomposed into a factor-spanned part and an
-orthogonal part by projecting it onto the factor exposure space with a weighted
-cross-sectional regression, using the latest exposures and regression weights:
+The fitted alpha forecast is decomposed into spanned alpha and orthogonal alpha by
+projecting it onto the factor exposure space with a weighted cross-sectional
+regression, using the latest exposures and regression weights:
 
 .. math::
 
@@ -2090,32 +2090,30 @@ cross-sectional regression, using the latest exposures and regression weights:
     \qquad \text{with} \qquad
     \alpha^{\parallel} = B(T)\,g
 
-where :math:`g` is the vector of expected factor returns that reproduces the spanned
-alpha and :math:`\alpha^{\perp}` is the orthogonal residual, the asset-specific
-part of the forecast that the factor exposures cannot explain.
+where :math:`\alpha^{\parallel}` is the spanned alpha,
+:math:`\alpha^{\perp}` is the orthogonal alpha and :math:`g` is the factor-return
+vector that reproduces the spanned alpha through :math:`B(T)`.
 
-This gives two estimates of expected factor returns: :math:`\mu_f`, estimated
-from the factor return time series (see :ref:`Factor Return Distribution
-<factor_model_factor_return_distribution>`), and :math:`g`, obtained by
-projecting the alpha forecast onto the factor exposure space.
-`spanned_alpha_shrinkage` blends these two sources:
+`spanned_alpha_shrinkage` blends the factor-implied asset expected returns
+:math:`B(T)\,\mu_f` with the spanned alpha:
 
 .. math::
 
-    \mu^{\text{span}} =
-    (1 - \lambda)\,\mu^{\text{span}}_{\text{alpha}}
-    + \lambda\,\mu^{\text{span}}_{\text{factor}}
+    \mu^{\parallel}
+    = \lambda\,B(T)\,\mu_f + (1 - \lambda)\,\alpha^{\parallel}
 
-where :math:`\lambda = 1` (default) keeps only the time-series factor premia,
-:math:`\lambda = 0` keeps only the alpha-implied premia and intermediate values
-blend the two. With the default, the alpha forecast contributes to expected
-returns only through its orthogonal part.
+where :math:`\mu_f` contains expected factor returns estimated from the factor
+return time series (see :ref:`Factor Return Distribution
+<factor_model_factor_return_distribution>`). :math:`\lambda = 1` (default) uses
+factor-implied asset expected returns, :math:`\lambda = 0` uses the spanned alpha and
+intermediate values blend the two. With the default, the alpha forecast contributes
+to expected returns only through the orthogonal alpha.
 
-The orthogonal part is shrunk towards zero by `orthogonal_alpha_confidence`:
+The orthogonal alpha is shrunk towards zero by `orthogonal_alpha_confidence`:
 
 .. math::
 
-    \mu = \mu^{\text{span}} + c\,\mu^{\perp}
+    \mu = \mu^{\parallel} + c\,\alpha^{\perp}
 
 where :math:`c = 1` (default) uses the orthogonal alpha as-is and :math:`c = 0`
 discards it. Orthogonal directions are penalized only through idiosyncratic
@@ -2126,8 +2124,14 @@ tempers this incentive when confidence in the forecast is limited.
 <factor_model_orthogonal_space_regularization>` covers this behavior and the
 optimizer-level alternatives.
 
-The orthogonal alpha is stored in `factor_model_.idio_mu`. When currency factors
-are present, direct currency expected returns are added to :math:`\mu`.
+The shrunk orthogonal alpha :math:`c\,\alpha^{\perp}` is stored in
+`factor_model_.idio_mu`. When currency factors are present, direct currency expected
+returns are added to :math:`\mu`.
+
+With the default weighted least-squares cross-sectional regressor, the decomposition
+satisfies :math:`B(T)^\top W\alpha^{\perp}=0`. Custom robust or regularized
+cross-sectional regressors may produce a component that is only approximately
+orthogonal.
 
 Alpha and Risk Factor Alignment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2142,10 +2146,9 @@ component would remain in idiosyncratic returns, causing the optimizer to undere
 its risk.
 
 If the modified definition improves expected returns but does not improve the risk
-model, the existing risk factor should remain. The signal can then be decomposed
-into a component spanned by the risk model and an orthogonal component. The
-orthogonal component represents diversifiable alpha relative to the validated risk
-model, so allocating to it is intentional.
+model, the existing risk factor should remain. The resulting alpha forecast can then
+be decomposed into spanned alpha and orthogonal alpha. The orthogonal alpha is
+diversifiable relative to the validated risk model, so allocating to it is intentional.
 
 A historical example comes from momentum. Earlier commercial risk models measured
 momentum over the most recent 12 months, including the latest month. Later
@@ -2388,7 +2391,7 @@ metadata routing.
 
 This section builds two portfolios on the fitted model: a factor-constrained
 portfolio that trades factor premia through explicit exposure targets, and a
-factor-neutral alpha portfolio that allocates to the orthogonal alpha component.
+factor-neutral portfolio built from the orthogonal alpha.
 
 Factor-Constrained Portfolio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2522,7 +2525,7 @@ factors. Industry neutrality therefore uses one constraint per industry
 factor rather than a single `"industry == 0"` constraint, which would only force
 industry exposures to offset each other. No explicit
 `"market == 0"` constraint is needed because `budget=0.0` already sets the
-exposure to the market intercept to zero.
+global factor exposure to zero.
 
 `fallback="previous_weights"` keeps the latest valid allocation when a
 rebalancing problem is infeasible, for example on dates where strict constraints
@@ -2615,12 +2618,12 @@ Factor-Neutral Alpha Portfolio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The previous example earns its return from factor premia through explicit
-exposure targets. This portfolio takes the opposite approach, common in
-statistical arbitrage: all factor exposures are kept close to zero and the
-return comes from the orthogonal alpha component. This setup requires an alpha
-estimator producing orthogonal alpha. Without one, expected returns come entirely
-from factor exposures, and once those exposures are constrained to zero, every
-feasible portfolio has zero expected return and the optimal allocation is empty.
+exposure targets. This portfolio keeps factor exposures close to zero and uses the
+orthogonal alpha as its modeled expected return, an approach common in statistical
+arbitrage. The factor model obtains the orthogonal alpha by projecting the alpha
+forecast onto the factor exposure space. When the orthogonal alpha is zero, every
+feasible factor-neutral portfolio has zero modeled expected return and the optimal
+allocation is empty.
 
 The validated alpha estimator from the :ref:`Alpha Estimators
 <factor_model_alpha>` section is attached to the factor model, and a
@@ -2863,7 +2866,7 @@ and portfolio returns. Three methods take the fitted factor model as argument:
   matrix, factor covariance and idiosyncratic covariance. The volatility forecast
   is decomposed using the exposure-volatility-correlation framework
   (:math:`x`-:math:`\sigma`-:math:`\rho`) and, when expected factor returns are
-  available, expected return is decomposed into spanned and orthogonal
+  available, expected return is decomposed into factor-spanned and factor-orthogonal
   components.
 * `realized_attribution` computes ex-post attribution from the realized factor
   returns, exposures and idiosyncratic returns.
@@ -3032,7 +3035,7 @@ portfolio, whose weights vary through time:
 Out of sample, the systematic component earned 7.5% ± 1.5% annualized mean
 return for a 5.1% volatility contribution. The idiosyncratic component cost
 -1.4% ± 1.5%: the risk taken in orthogonal directions was not compensated,
-consistent with the zero orthogonal alpha forecast.
+consistent with a zero factor-orthogonal expected-return component.
 
 .. code-block:: python
 

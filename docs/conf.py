@@ -9,8 +9,11 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 from __future__ import annotations
 
 import datetime as dt
+import importlib
+import inspect
 import json
 import os
+import pkgutil
 import re
 import warnings
 import xml.etree.ElementTree as ET
@@ -23,7 +26,6 @@ import nbformat
 import plotly.io as pio
 from plotly.io._sg_scraper import plotly_sg_scraper
 from sphinx.errors import SphinxError
-from sphinx_gallery.sorting import FileNameSortKey
 
 import skfolio
 
@@ -365,6 +367,40 @@ latex_domain_indices = False
 # see https://github.com/numpy/numpydoc/issues/69
 numpydoc_class_members_toctree = False
 
+
+def _numpydoc_show_inherited_class_members() -> dict[str, bool]:
+    """Hide inherited members in numpydoc Methods/Attributes for AutoEnum classes.
+
+    AutoEnum subclasses inherit public `str` methods. Numpydoc lists them in the
+    class Methods autosummary, and Sphinx fails while formatting some signatures.
+    Estimator classes keep the default (`True`) so inherited sklearn helpers stay
+    in the summary table. Autodoc still skips `str` methods via
+    `skip_str_inherited_members`.
+    """
+    from skfolio.utils.tools import AutoEnum
+
+    mapping: dict[str, bool] = {}
+    for module_info in pkgutil.walk_packages(skfolio.__path__, skfolio.__name__ + "."):
+        try:
+            module = importlib.import_module(module_info.name)
+        except Exception:
+            continue
+        for attr_name, obj in vars(module).items():
+            if not inspect.isclass(obj):
+                continue
+            try:
+                is_autoenum = issubclass(obj, AutoEnum)
+            except TypeError:
+                continue
+            if not is_autoenum:
+                continue
+            mapping[f"{obj.__module__}.{obj.__qualname__}"] = False
+            mapping[f"{module.__name__}.{attr_name}"] = False
+    return mapping
+
+
+numpydoc_show_inherited_class_members = _numpydoc_show_inherited_class_members()
+
 # Copy robots.txt into the HTML root
 html_extra_path = ["robots.txt"]
 
@@ -383,25 +419,119 @@ default_role = "literal"
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = False
 
-# -- Example section order  ------------------------------------------------
-# We don't insert the number in the name other the link would change each time
-# we want to re-order the examples.
-ORDER_OF_EXAMPLES = {
-    "mean_risk": 1,
-    "factor_models": 2,
-    "risk_budgeting": 3,
-    "synthetic_data": 4,
-    "entropy_pooling": 5,
-    "clustering": 6,
-    "maximum_diversification": 7,
-    "distributionally_robust_cvar": 8,
-    "ensemble": 9,
-    "model_selection": 10,
-    "online_learning": 11,
-    "pre_selection": 12,
-    "metadata_routing": 13,
-    "data_preparation": 14,
+# -- Gallery order  --------------------------------------------------------
+# Section and tutorial names do not include their order so that reordering does
+# not change URLs. Dictionary key order controls sections and tuple order controls
+# tutorials within each section.
+TUTORIAL_ORDER = {
+    "mean_risk": (
+        "plot_1_maximum_sharpe_ratio.py",
+        "plot_2_minimum_CVaR.py",
+        "plot_3_efficient_frontier.py",
+        "plot_4_mean_variance_cdar.py",
+        "plot_5_weight_constraints.py",
+        "plot_6_transaction_costs.py",
+        "plot_7_management_fees.py",
+        "plot_8_regularization.py",
+        "plot_9_uncertainty_set.py",
+        "plot_10_tracking_error.py",
+        "plot_11_empirical_prior.py",
+        "plot_12_black_and_litterman.py",
+        "plot_13_factor_model.py",
+        "plot_14_black_litterman_factor_model.py",
+        "plot_15_mip_cardinality_constraints.py",
+        "plot_16_mip_threshold_constraints.py",
+        "plot_17_failure_and_fallbacks.py",
+    ),
+    "factor_models": (
+        "plot_characteristics_factor_model.py",
+        "plot_factor_constrained_portfolio.py",
+        "plot_alpha_factor_neutral_portfolio.py",
+    ),
+    "risk_budgeting": (
+        "plot_1_risk_parity_variance.py",
+        "plot_2_risk_budgeting_CVaR.py",
+        "plot_3_risk_parity_ledoit_wolf.py",
+    ),
+    "synthetic_data": (
+        "plot_1_bivariate_copulas.py",
+        "plot_2_vine_copula.py",
+        "plot_3_min_CVaR_stressed_factors.py",
+    ),
+    "entropy_pooling": (
+        "plot_1_entropy_pooling.py",
+        "plot_2_opinion_pooling.py",
+    ),
+    "clustering": (
+        "plot_1_hrp_cvar.py",
+        "plot_2_herc_cdar.py",
+        "plot_3_hrp_vs_herc.py",
+        "plot_4_nco.py",
+        "plot_5_nco_grid_search.py",
+        "plot_6_schur.py",
+    ),
+    "maximum_diversification": ("plot_1_maximum_diversification.py",),
+    "distributionally_robust_cvar": ("plot_1_distributionally_robust_cvar.py",),
+    "ensemble": ("plot_1_stacking.py",),
+    "model_selection": ("plot_1_multiple_randomized_cv.py",),
+    "online_learning": (
+        "plot_1_online_covariance_forecast_evaluation.py",
+        "plot_2_online_hyperparameter_tuning.py",
+        "plot_3_online_portfolio_optimization_evaluation.py",
+    ),
+    "pre_selection": (
+        "plot_1_drop_correlated.py",
+        "plot_2_select_best_performers.py",
+        "plot_3_custom_pre_selection_volumes.py",
+        "plot_4_incomplete_dataset.py",
+    ),
+    "metadata_routing": ("plot_1_implied_volatility.py",),
+    "data_preparation": ("plot_1_investment_horizon.py",),
 }
+
+
+def validate_tutorial_order() -> None:
+    """Validate that the tutorial registry matches the gallery source tree."""
+    examples_dir = Path(__file__).resolve().parent.parent / "examples"
+    gallery_sections = {
+        path.name
+        for path in examples_dir.iterdir()
+        if path.is_dir() and (path / "README.txt").is_file()
+    }
+    configured_sections = set(TUTORIAL_ORDER)
+
+    missing_sections = gallery_sections - configured_sections
+    unknown_sections = configured_sections - gallery_sections
+    if missing_sections or unknown_sections:
+        raise SphinxError(
+            "Tutorial order sections do not match gallery sections. "
+            f"Missing sections: {sorted(missing_sections)}. "
+            f"Unknown sections: {sorted(unknown_sections)}."
+        )
+
+    for section_name, configured_files in TUTORIAL_ORDER.items():
+        duplicate_files = sorted(
+            {
+                filename
+                for filename in configured_files
+                if configured_files.count(filename) > 1
+            }
+        )
+        actual_files = {
+            path.name for path in (examples_dir / section_name).glob("plot_*.py")
+        }
+        missing_files = actual_files - set(configured_files)
+        unknown_files = set(configured_files) - actual_files
+        if duplicate_files or missing_files or unknown_files:
+            raise SphinxError(
+                f"Tutorial order for section {section_name!r} does not match its "
+                f"gallery files. Duplicate files: {duplicate_files}. "
+                f"Missing files: {sorted(missing_files)}. "
+                f"Unknown files: {sorted(unknown_files)}."
+            )
+
+
+validate_tutorial_order()
 
 # -- sphinxext-opengraph ----------------------------------------------------
 
@@ -485,10 +615,8 @@ favicons = [
 html_theme = "pydata_sphinx_theme"
 html_sourcelink_suffix = ""
 
-# Define the version we use for matching in the version switcher.
-# For local development, infer the version to match from the package.
+# Inferred from the installed package and surfaced in the page metadata.
 release = skfolio.__version__
-version_match = "v" + release
 
 html_theme_options = {
     "pygments_light_style": "friendly",  # "friendly",
@@ -551,8 +679,8 @@ image_scrapers = (
 )
 
 
-class FileNameNumberSortKey(FileNameSortKey):
-    """Sort examples in src_dir by file name number.
+class TutorialOrderSortKey:
+    """Sort tutorials according to the explicit registry.
 
     Parameters
     ----------
@@ -560,14 +688,30 @@ class FileNameNumberSortKey(FileNameSortKey):
         The source directory.
     """
 
-    def __call__(self, filename) -> float:
-        # filename="plot_10_tracking_error.py"
-        return float(filename.split("_")[1])
+    def __init__(self, src_dir: str) -> None:
+        self.section_name = Path(src_dir).name
+        self.positions = {
+            filename: position
+            for position, filename in enumerate(
+                TUTORIAL_ORDER.get(self.section_name, ())
+            )
+        }
+
+    def __call__(self, filename: str) -> int:
+        """Return the configured position of a tutorial."""
+        filename = Path(filename).name
+        try:
+            return self.positions[filename]
+        except KeyError as error:
+            raise SphinxError(
+                f"Tutorial {filename!r} is not registered in the explicit order "
+                f"for section {self.section_name!r}."
+            ) from error
 
 
 def custom_section_order(section_name) -> int:
-    # section_name = "..\\examples\\10_data_preparation"
-    return ORDER_OF_EXAMPLES[Path(section_name).name]
+    """Return the configured position of a gallery section."""
+    return tuple(TUTORIAL_ORDER).index(Path(section_name).name)
 
 
 sphinx_gallery_conf = {
@@ -580,7 +724,7 @@ sphinx_gallery_conf = {
     "examples_dirs": ["../examples"],
     "gallery_dirs": ["auto_examples"],
     "subsection_order": custom_section_order,
-    "within_subsection_order": FileNameNumberSortKey,
+    "within_subsection_order": TutorialOrderSortKey,
     "image_scrapers": image_scrapers,
     # avoid generating too many cross links
     "inspect_global_variables": False,
@@ -811,6 +955,7 @@ CODE_ID = "https://github.com/skfolio/skfolio#code"
 WEBSITE_ID = "https://skfolio.org#website"
 SEARCH_TARGET = "{base}/search.html?q={{search_term_string}}"
 
+
 def _breadcrumb(id_url: str, items: list[tuple[int, str, str]]):
     return {
         "@type": "BreadcrumbList",
@@ -821,13 +966,16 @@ def _breadcrumb(id_url: str, items: list[tuple[int, str, str]]):
         ],
     }
 
+
 def inject_schema(app, pagename, templatename, context, doctree):
     base = app.config.html_baseurl.rstrip("/")
     in_lang = "en"
 
     # helper: always return a usable URL for this page
     def _url_for(page: str) -> str:
-        return context.get("pageurl") or (f"{base}/" if page == "index" else f"{base}/{page}.html")
+        return context.get("pageurl") or (
+            f"{base}/" if page == "index" else f"{base}/{page}.html"
+        )
 
     date_published = str(dt.date(2023, 12, 18))
     date_modified = context.get("last_updated") or str(dt.date.today())
@@ -861,9 +1009,21 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 "about": {"@id": WEBSITE_ID},
                 "inLanguage": in_lang,
                 "hasPart": [
-                    {"@type": "WebPage", "name": "User Guide",   "url": f"{base}/user_guide/index.html"},
-                    {"@type": "WebPage", "name": "Examples",     "url": f"{base}/auto_examples/index.html"},
-                    {"@type": "WebPage", "name": "API Reference","url": f"{base}/api.html"},
+                    {
+                        "@type": "WebPage",
+                        "name": "User Guide",
+                        "url": f"{base}/user_guide/index.html",
+                    },
+                    {
+                        "@type": "WebPage",
+                        "name": "Examples",
+                        "url": f"{base}/auto_examples/index.html",
+                    },
+                    {
+                        "@type": "WebPage",
+                        "name": "API Reference",
+                        "url": f"{base}/api.html",
+                    },
                 ],
             },
             # cross-domain entities with minimal fields to avoid validator warnings
@@ -872,7 +1032,7 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 "@id": ORG_ID,
                 "name": "Skfolio Labs",
                 "url": "https://skfoliolabs.com",
-                "logo": "https://skfoliolabs.com/icon.svg"
+                "logo": "https://skfoliolabs.com/icon.svg",
             },
             {
                 "@type": "SoftwareApplication",
@@ -882,7 +1042,7 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 "operatingSystem": "Any",
                 "softwareHelp": "https://skfolio.org",
                 "sameAs": ["https://skfolio.org", "https://github.com/skfolio/skfolio"],
-                "publisher": {"@id": ORG_ID}
+                "publisher": {"@id": ORG_ID},
                 # NOTE: intentionally no 'offers' and no 'aggregateRating' (no stars)
             },
             {
@@ -894,8 +1054,8 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 "programmingLanguage": "Python",
                 "isPartOf": {"@id": APP_ID},
                 "author": {"@id": ORG_ID},
-                "publisher": {"@id": ORG_ID}
-            }
+                "publisher": {"@id": ORG_ID},
+            },
         ],
     }
 
@@ -932,15 +1092,23 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "dateModified": date_modified,
                     "primaryImageOfPage": {
                         "@type": "ImageObject",
-                        "url": f"{base}/_static/expo.jpg"
+                        "url": f"{base}/_static/expo.jpg",
                     },
                 },
                 {
                     "@type": "ItemList",
                     "@id": f"{base}/#featured-sections",
                     "itemListElement": [
-                        {"@type": "ListItem", "position": 1, "url": f"{base}/user_guide/index.html"},
-                        {"@type": "ListItem", "position": 2, "url": f"{base}/auto_examples/index.html"},
+                        {
+                            "@type": "ListItem",
+                            "position": 1,
+                            "url": f"{base}/user_guide/index.html",
+                        },
+                        {
+                            "@type": "ListItem",
+                            "position": 2,
+                            "url": f"{base}/auto_examples/index.html",
+                        },
                         {"@type": "ListItem", "position": 3, "url": f"{base}/api.html"},
                     ],
                 },
@@ -1076,7 +1244,13 @@ def inject_schema(app, pagename, templatename, context, doctree):
         parts = []
         for doc in all_examples:
             headline, _ = get_example_headline_and_description(app, doc)
-            parts.append({"@type": "TechArticle", "headline": headline, "url": f"{base}/{doc}.html"})
+            parts.append(
+                {
+                    "@type": "TechArticle",
+                    "headline": headline,
+                    "url": f"{base}/{doc}.html",
+                }
+            )
 
         page_schema = {
             "@context": "https://schema.org",
@@ -1167,11 +1341,11 @@ def override_example_meta_descriptions(app, exception):
     for html_file in output_dir.rglob("*.html"):
         pagename = html_file.relative_to(output_dir).with_suffix("").as_posix()
         if (
-                not (
-                        pagename.startswith("auto_examples/")
-                        and pagename != "auto_examples/index"
-                )
-                or pagename in REDIRECTS
+            not (
+                pagename.startswith("auto_examples/")
+                and pagename != "auto_examples/index"
+            )
+            or pagename in REDIRECTS
         ):
             continue
 
@@ -1199,7 +1373,6 @@ def override_example_meta_descriptions(app, exception):
         print(f"Updated: {html_file.relative_to(output_dir)}")
 
 
-
 def replace_index_links(app, exception):
     """
     Normalize only links that truly point to the *root* homepage:
@@ -1218,8 +1391,8 @@ def replace_index_links(app, exception):
         return
 
     base = app.config.html_baseurl.rstrip("/")
-    outdir = app.outdir
-    root_index_abs = os.path.normpath(os.path.join(outdir, "index.html"))
+    outdir = Path(app.outdir)
+    root_index_abs = (outdir / "index.html").resolve()
 
     # 1) Absolute root link: href="/index.html"
     abs_root_pattern = re.compile(
@@ -1229,7 +1402,7 @@ def replace_index_links(app, exception):
 
     # 2) Fully-qualified root link: href="{base}/index.html"
     fq_root_pattern = re.compile(
-        r'href\s*=\s*(["\'])' + re.escape(base) + r'/index\.html\1(?![#?])',
+        r'href\s*=\s*(["\'])' + re.escape(base) + r"/index\.html\1(?![#?])",
         flags=re.IGNORECASE,
     )
 
@@ -1245,45 +1418,37 @@ def replace_index_links(app, exception):
         flags=re.IGNORECASE,
     )
 
-    def _rel_up_repl(current_html_path: str):
+    def _rel_up_repl(current_html_path: Path):
         """Return a callable that rewrites ../index.html → / only if it resolves to root index."""
-        current_dir = os.path.dirname(current_html_path)
+        current_dir = current_html_path.parent
 
         def _repl(m: re.Match) -> str:
             quote = m.group(1)
-            prefix = m.group('prefix')  # e.g., "../" or "../../"
-            # Resolve the target to an absolute path on disk
-            resolved = os.path.normpath(os.path.join(current_dir, prefix, "index.html"))
+            prefix = m.group("prefix")  # e.g., "../" or "../../"
+            resolved = (current_dir / prefix / "index.html").resolve()
             if resolved == root_index_abs:
-                return f'href={quote}/{quote}'
+                return f"href={quote}/{quote}"
             # Not the root index → leave untouched
             return m.group(0)
 
         return _repl
 
-    for root, _, files in os.walk(outdir):
-        for fname in files:
-            if not fname.endswith(".html"):
-                continue
+    for path in outdir.rglob("*.html"):
+        text = path.read_text(encoding="utf-8")
 
-            path = os.path.join(root, fname)
-            with open(path, encoding="utf-8") as f:
-                text = f.read()
+        # Absolute / fully-qualified root → "/"
+        new_text = abs_root_pattern.sub(r'href="/"', text)
+        new_text = fq_root_pattern.sub(lambda m: f'href="{base}/"', new_text)
 
-            # Absolute / fully-qualified root → "/"
-            new_text = abs_root_pattern.sub(r'href="/"', text)
-            new_text = fq_root_pattern.sub(lambda m: f'href="{base}/"', new_text)
+        # ../index.html (or deeper) → resolve; rewrite only if it maps to root index
+        new_text = rel_up_pattern.sub(_rel_up_repl(path), new_text)
 
-            # ../index.html (or deeper) → resolve; rewrite only if it maps to root index
-            new_text = rel_up_pattern.sub(_rel_up_repl(path), new_text)
+        # "index.html" or "./index.html" → rewrite only if *this file* lives in outdir root
+        if path.parent == outdir:
+            new_text = rel_same_pattern.sub(r'href="/"', new_text)
 
-            # "index.html" or "./index.html" → rewrite only if *this file* lives in outdir root
-            if os.path.dirname(path) == outdir:
-                new_text = rel_same_pattern.sub(r'href="/"', new_text)
-
-            if new_text != text:
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(new_text)
+        if new_text != text:
+            path.write_text(new_text, encoding="utf-8")
 
 
 # Accessible + bot-friendly template: meta refresh + canonical + JS + link
@@ -1325,11 +1490,29 @@ def create_redirects(app, exception):
             canonical=_canonical(app, target),
         )
         out_path.write_text(html, encoding="utf-8")
-        print(f"[redirects] {src_docname}{suffix} → {target}")
+        print(f"[redirects] {src_docname}{suffix} -> {target}")
+
+
+def skip_str_inherited_members(app, what, name, obj, skip, options):
+    """Skip str methods pulled in by AutoEnum via inherited-members."""
+    if skip:
+        return True
+    if name not in vars(str):
+        return False
+    qualname = getattr(obj, "__qualname__", "") or ""
+    if qualname.startswith("str."):
+        return True
+    if getattr(obj, "__objclass__", None) is str:
+        return True
+    if obj is vars(str).get(name):
+        return True
+    return False
 
 
 def setup(app):
     """Setup function to register the build-finished hook."""
+    app.connect("autodoc-skip-member", skip_str_inherited_members)
+
     # html page context
     app.connect("html-page-context", override_canonical)
     app.connect("html-page-context", inject_schema)

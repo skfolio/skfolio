@@ -16,8 +16,8 @@ class SalesGrowthRate(GrowthRate):
 
     .. math::
 
-        \text{sales_growth}(t)
-        = \frac{\text{sales_ttm}(t)}{\text{sales_ttm}(t - \text{lag})} - 1
+        \text{sales\_growth}(t)
+        = \frac{\text{sales\_ttm}(t)}{\text{sales\_ttm}(t - \text{lag})} - 1
 
     The first `lag` observations are NaN because no lagged history is available.
 

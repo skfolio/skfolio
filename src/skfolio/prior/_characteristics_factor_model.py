@@ -108,11 +108,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     8. Estimate idiosyncratic variances with `idio_variance_estimator`, then form
        the idiosyncratic covariance as a diagonal matrix or, when
        `idio_corr_threshold > 0`, as a sparse covariance using correlation thresholding.
-    9. If provided, fit `alpha_estimator` to produce alpha forecast. Decompose it
-       into factor-spanned and orthogonal alphas, blend the spanned alpha with the
-       expected factor returns using `spanned_alpha_shrinkage`, shrink the orthogonal
-       alpha with `orthogonal_alpha_confidence` and assemble the final :math:`\mu`,
-       :math:`\Sigma` and asset return scenarios on the investment universe.
+    9. If provided, fit `alpha_estimator` to produce an alpha forecast. Decompose it
+       into factor-spanned and orthogonal alphas, blend factor-implied asset expected
+       returns with the spanned alpha using `spanned_alpha_shrinkage`, shrink the
+       orthogonal alpha with `orthogonal_alpha_confidence` and assemble the final
+       :math:`\mu`, :math:`\Sigma` and asset return scenarios on the investment
+       universe.
 
     For asset :math:`i` and observation :math:`t`, factor returns are estimated from the
     cross-sectional regression
@@ -125,6 +126,10 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     asset :math:`i`'s factor exposure vector, :math:`f(t)` is the vector of realized
     factor returns, :math:`\ell` is the exposure lag and :math:`\epsilon_i(t)` is the
     idiosyncratic return.
+
+    At each observation, this regression estimates realized factor returns and
+    idiosyncratic returns. Expected asset returns are subsequently constructed from
+    expected factor returns and, when configured, an alpha forecast.
 
     The estimator follows skfolio's as-of time-indexing convention: all time-varying
     inputs at observation :math:`t` reflect information available up to and including
@@ -145,11 +150,29 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     where :math:`F` is the factor return covariance and :math:`D` is the idiosyncratic
     covariance.
 
-    The fitted expected-return vector combines expected factor returns with optional
-    alpha forecast. When an alpha estimator is provided, its contribution is controlled
-    by `spanned_alpha_shrinkage` for the factor-spanned alpha and
-    `orthogonal_alpha_confidence` for the orthogonal alpha. Direct currency expected
-    returns are added when currency factors are present.
+    With the default settings and no alpha estimator, the fitted expected-return vector
+    is :math:`\mu = B(T)\,\mu_f`, where :math:`\mu_f` contains expected factor returns.
+    When an alpha estimator is provided, its forecast is decomposed as
+
+    .. math::
+
+        \alpha = \alpha^{\parallel} + \alpha^{\perp},
+        \qquad
+        \alpha^{\parallel} = B(T)\,g
+
+    where :math:`\alpha^{\parallel}` is the spanned alpha and
+    :math:`\alpha^{\perp}` is the orthogonal alpha. Expected returns are assembled as
+
+    .. math::
+
+        \mu
+        = \lambda\,B(T)\,\mu_f
+        + (1 - \lambda)\,\alpha^{\parallel}
+        + c\,\alpha^{\perp},
+
+    where :math:`\lambda` is `spanned_alpha_shrinkage` and :math:`c` is
+    `orthogonal_alpha_confidence`. Direct currency expected returns are added when
+    currency factors are present.
 
     Asset return scenarios in `return_distribution_.returns` are built by mapping
     factor-prior scenarios through the latest loading matrix and adding idiosyncratic
@@ -265,8 +288,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     cs_regressor : BaseCSLinearModel, optional
         Cross-sectional regression estimator used to estimate factor returns from asset
         returns and lagged exposures. Must have `fit_intercept=False`. To model an
-        intercept, include a :class:`~skfolio.factor_exposure.GlobalFactor`
-        in `factors`. The default (`None`) is to use
+        cross-sectional intercept, include a
+        :class:`~skfolio.factor_exposure.GlobalFactor` in `factors`. The default
+        (`None`) is to use
         :class:`~skfolio.linear_model.CSLinearRegression`.
 
         .. note::
@@ -308,8 +332,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
     constrained_families : list[tuple[str, str | None]], optional
         Zero-sum constraints applied within factor families. This is useful for one-hot
-        families such as industry or country, whose exposures are collinear with the
-        market factor (intercept) when all categories are included.
+        families such as industry or country, whose exposures are collinear with
+        :class:`~skfolio.factor_exposure.GlobalFactor` when all categories are
+        included.
 
         Economically, the market factor captures the benchmark portfolio return.
         Constrained family factors capture relative effects around it. For example,
@@ -405,9 +430,10 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
 
     alpha_estimator : BaseAlpha, optional
-        Estimator producing asset-level expected returns (i.e. alpha forecast), from
-        idiosyncratic returns and alpha signals computed from `AssetPanel` fields,
-        before decomposition into factor-spanned alpha and orthogonal alpha.
+        Estimator producing an expected-return forecast for each asset from
+        idiosyncratic returns and alpha signals computed from `AssetPanel` fields.
+        The forecast is subsequently decomposed into spanned alpha and orthogonal
+        alpha.
 
         If `None` (default), expected asset returns are determined entirely by the
         expected factor returns estimated by `factor_prior_estimator` (factor premia).
@@ -419,35 +445,35 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         only when the downstream objective treats them purely as ordinal signals.
 
     spanned_alpha_shrinkage : float, default=1.0
-        Shrinkage applied to spanned alpha. Alpha from `alpha_estimator` is split
-        into spanned alpha and orthogonal alpha. The spanned alpha is blended with
-        the expected factor returns:
+        Shrinkage applied to spanned alpha. The alpha forecast is decomposed as
+        :math:`\alpha = \alpha^{\parallel} + \alpha^{\perp}`, with
+        :math:`\alpha^{\parallel} = B(T)\,g`. The factor-implied asset expected returns
+        :math:`B(T)\,\mu_f` are blended with the spanned alpha:
 
         .. math::
 
-            \mu^{\text{span}} =
-            (1 - \lambda)\,\mu^{\text{span}}_{\text{alpha}}
-            + \lambda\,\mu^{\text{span}}_{\text{factor}}
+            \mu^{\parallel}
+            = \lambda\,B(T)\,\mu_f + (1 - \lambda)\,\alpha^{\parallel}
 
-        where :math:`\lambda` is `spanned_alpha_shrinkage`.
+        where :math:`\mu_f` contains expected factor returns and :math:`\lambda` is
+        `spanned_alpha_shrinkage`.
 
-        * `0`: use only the spanned alpha from `alpha_estimator`. When
-          `alpha_estimator=None`, this sets the non-currency spanned expected return
-          to zero.
-        * `1` (default): use only the expected factor returns.
-        * Between 0 and 1: partially shrink the spanned alpha toward the expected
-          factor returns.
+        * `0`: use only the spanned alpha. When `alpha_estimator=None`, this sets the
+          non-currency factor-spanned expected return to zero.
+        * `1` (default): use only factor-implied asset expected returns.
+        * Between 0 and 1: blend factor-implied asset expected returns with the
+          spanned alpha.
 
         Must satisfy `0 <= spanned_alpha_shrinkage <= 1`.
 
     orthogonal_alpha_confidence : float, default=1.0
-        Confidence weight applied to orthogonal alpha. After alpha is decomposed into
-        spanned alpha and orthogonal alpha, the orthogonal alpha is shrunk toward
-        zero:
+        Confidence weight applied to orthogonal alpha. After the alpha forecast is
+        decomposed into :math:`\alpha^{\parallel}` and :math:`\alpha^{\perp}`, the
+        orthogonal alpha is shrunk toward zero:
 
         .. math::
 
-            \mu = \mu^{\text{span}} + c\,\mu^{\perp}
+            \mu = \mu^{\parallel} + c\,\alpha^{\perp}
 
         where :math:`c` is `orthogonal_alpha_confidence`.
 
@@ -557,13 +583,13 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     n_assets_ : int
         Number of assets seen during fitting.
 
-    asset_names_ : ndarray of shape (n_assets_,)
+    asset_names_ : ndarray of shape (n_assets,)
         Asset names in the coverage universe.
 
     n_features_in_ : int
         Number of assets in the investment universe.
 
-    feature_names_in_ : ndarray of shape (n_features_in_,)
+    feature_names_in_ : ndarray of shape (n_features_in,)
         Asset names in the investment universe. When `X` is `None`, equals
         `asset_names_`.
 
@@ -571,9 +597,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     -----
     When the factor list includes a
     :class:`~skfolio.factor_exposure.GlobalFactor`, that factor acts as
-    the regression intercept because its exposure is one for every asset. Its estimated
-    return is close to the return of the market (defined as the benchmark-weighted
-    portfolio on the estimation universe).
+    the cross-sectional regression intercept because its exposure is one for every
+    asset. Its estimated return is close to the return of the market (defined as the
+    benchmark-weighted portfolio on the estimation universe).
 
     When remaining factor exposures are centered so their benchmark-weighted average is
     zero, as produced by :class:`~skfolio.preprocessing.CSStandardScaler` and family
@@ -1235,8 +1261,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             first_call=first_call,
         )
 
-        # Decompose alpha into expected factor returns and an orthogonal residual.
-        # The spanned asset alpha is rebuilt later after shrinkage.
+        # Decompose the forecast into spanned alpha and orthogonal alpha.
+        # The projection coefficients are blended with expected factor returns below.
         factor_mu_reduced, orthogonal_alpha = self._decompose_alpha(
             alpha=alpha,
             exposure=exposures_reduced[[-1]],
@@ -1266,7 +1292,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             latest_idio_variances=idio_variances[-1],
         )
 
-        # Shrink spanned mu towards the factor prior projection
+        # Blend the projection coefficients with expected factor returns.
         factor_mu_prior_reduced = factor_dist_reduced_with_ccy.mu[:n_reduced_factors]
         factor_mu_reduced = (
             factor_mu_prior_reduced * self.spanned_alpha_shrinkage
@@ -1275,15 +1301,15 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         factor_mu_reduced_with_ccy = factor_dist_reduced_with_ccy.mu.copy()
         factor_mu_reduced_with_ccy[:n_reduced_factors] = factor_mu_reduced
 
-        spanned_alpha = exposures_reduced[-1] @ factor_mu_reduced
+        spanned_mu = exposures_reduced[-1] @ factor_mu_reduced
 
-        # Shrink orthogonal alpha towards 0 as a function of user confidence
+        # Shrink orthogonal alpha toward zero according to user confidence.
         orthogonal_alpha *= self.orthogonal_alpha_confidence
 
-        # Reassemble both spanned and orthogonal into the assets' expected returns vector
-        alpha = spanned_alpha + orthogonal_alpha
+        # Assemble factor-spanned expected returns and orthogonal alpha.
+        mu = spanned_mu + orthogonal_alpha
         if ccy_exposures is not None:
-            alpha += ccy_exposures[-1] @ factor_mu_reduced_with_ccy[n_reduced_factors:]
+            mu += ccy_exposures[-1] @ factor_mu_reduced_with_ccy[n_reduced_factors:]
 
         # Asset covariance (n_assets, n_assets)
         factor_cov_reduced_with_ccy = factor_dist_reduced_with_ccy.covariance
@@ -1400,7 +1426,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         # Assets
         self.return_distribution_ = ReturnDistribution(
-            mu=alpha,
+            mu=mu,
             covariance=asset_cov,
             returns=asset_return_scenarios,
             sample_weight=sample_weight,
@@ -2096,8 +2122,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         Raises
         ------
         ValueError
-            If a :class:`DerivedFactor` references an undefined source, or if an
-            estimator returns an unexpected number of dimensions.
+            If a :class:`~skfolio.factor_exposure.DerivedFactor` references an undefined
+            source, or if an estimator returns an unexpected number of dimensions.
         """
         results_dict = {}
         for layer in self._get_dependency_layers():
@@ -2602,7 +2628,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         routed_params: dict,
         first_call: bool,
     ) -> FloatArray:
-        """Compute asset-level alpha from the alpha estimator.
+        """Compute the alpha forecast from the alpha estimator.
 
         Alpha estimators may require the idiosyncratic returns, idiosyncratic variances,
         factor exposures and regression weights. We enrich the
@@ -2648,8 +2674,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         Returns
         -------
         alpha : ndarray of shape (n_assets,)
-            Asset-level expected returns. Zero vector if no alpha estimator is
-            provided or while the alpha estimator is in its warmup period.
+            Expected-return forecast for each asset. Zero vector if no alpha estimator
+            is provided or while the alpha estimator is in its warmup period.
         """
         if self.alpha_estimator_ is None:
             return np.zeros(self.n_assets_)
@@ -2725,19 +2751,19 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         regression_weights: FloatArray,
         routed_params: dict,
     ) -> tuple[FloatArray, FloatArray]:
-        """Decompose asset-level alpha into factor-spanned and orthogonal components.
+        r"""Decompose an alpha forecast into spanned alpha and orthogonal alpha.
 
-        Projects the asset-level alpha vector onto the column space of the latest
-        factor exposure matrix using weighted cross-sectional regression. The fitted
-        component is the part of alpha that can be explained by factor exposures and
-        is represented as factor-level expected returns. The residual component is
-        the asset-specific alpha left unexplained by the factor exposure space.
+        Projects the alpha forecast onto the column space of the latest factor exposure
+        matrix using weighted cross-sectional regression. The fitted values are the
+        spanned alpha, represented as factor-level expected returns. The residual is
+        the orthogonal alpha. With the default weighted least-squares regressor, it
+        satisfies :math:`B(T)^\top W\alpha^{\perp}=0`.
 
 
         Parameters
         ----------
         alpha : ndarray of shape (n_assets,)
-            Asset-level alpha from the alpha estimator.
+            Alpha forecast from the alpha estimator.
 
         exposure : ndarray of shape (1, n_assets, n_factors)
             Latest factor exposures (single observation).
@@ -2751,11 +2777,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         Returns
         -------
         factor_mu : ndarray of shape (n_factors,)
-            Factor-level expected returns implied by the spanned alpha.
+            Factor-return vector that reproduces the spanned alpha.
 
         orthogonal_alpha : ndarray of shape (n_assets,)
-            Asset-specific alpha orthogonal to the factor exposure space. Missing
-            alpha or exposure values propagate to the corresponding entries.
+            Orthogonal alpha. Missing alpha or exposure values propagate to the
+            corresponding entries.
         """
         _, n_assets, n_factors = exposure.shape
 
@@ -2818,8 +2844,8 @@ def _compute_single_factor_estimator(
         Metadata-routed fit parameters for this factor.
 
     source_exposure : ndarray or None
-        For :class:`DerivedFactor`, the pre-computed exposure of the source factor.
-        `None` for non-derived factors.
+        For :class:`~skfolio.factor_exposure.DerivedFactor`, the pre-computed exposure
+        of the source factor. `None` for non-derived factors.
 
     method : str
         Asset-panel transform method called on `factor_estimator`.

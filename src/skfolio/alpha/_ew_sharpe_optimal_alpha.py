@@ -87,8 +87,8 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
         y_t =
         \begin{cases}
-        u_t, & \text{if } \texttt{forecast\_unit=ForecastUnit.IDIO\_RETURN} \\
-        u_t / \sigma_t, &
+        \epsilon_t, & \text{if } \texttt{forecast\_unit=ForecastUnit.IDIO\_RETURN} \\
+        \epsilon_t / \sigma_t, &
         \text{if } \texttt{forecast\_unit=ForecastUnit.IDIO\_SHARPE}
         \end{cases}
 
@@ -105,7 +105,8 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     where:
 
-    - :math:`u_{t,i}` is the forward mean idiosyncratic return over the chosen horizon
+    - :math:`\epsilon_{t,i}` is the forward mean idiosyncratic return over the chosen
+      horizon
     - :math:`S_{t,i} \in \mathbb{R}^K` is the vector of cross-sectional scores
     - :math:`\sigma_{t,i}^2` is the forecast idiosyncratic variance
 
@@ -117,23 +118,25 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     .. math::
 
-        u_{t,i} = \sigma_{t,i} S_{t,i}^\top \beta + \epsilon_{t,i},
-        \quad \operatorname{Var}(\epsilon_{t,i}) \propto \sigma_{t,i}^2
+        \epsilon_{t,i} = \sigma_{t,i} S_{t,i}^\top \beta + \eta_{t,i},
+        \quad \operatorname{Var}(\eta_{t,i}) \propto \sigma_{t,i}^2
 
     The corresponding inverse-variance GLS objective is:
 
     .. math::
 
         \beta_t = \arg\min_\beta \sum_i
-            \frac{(u_{t,i} - \sigma_{t,i} S_{t,i}^\top \beta)^2}{\sigma_{t,i}^2}
+            \frac{(\epsilon_{t,i} - \sigma_{t,i} S_{t,i}^\top \beta)^2}
+            {\sigma_{t,i}^2}
 
     which is equivalent to ordinary least squares on the volatility-scaled target
-    :math:`u_{t,i}/\sigma_{t,i}`:
+    :math:`\epsilon_{t,i}/\sigma_{t,i}`:
 
     .. math::
 
         \beta_t = \arg\min_\beta \sum_i
-          \left(\frac{u_{t,i}}{\sigma_{t,i}} - S_{t,i}^\top \beta\right)^2
+          \left(\frac{\epsilon_{t,i}}{\sigma_{t,i}}
+          - S_{t,i}^\top \beta\right)^2
 
     The final forecast is converted back to expected return units:
 

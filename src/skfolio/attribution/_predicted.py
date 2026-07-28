@@ -60,11 +60,12 @@ def predicted_factor_attribution(
     The expected return vector is modeled as:
 
     .. math::
-        \mu = B \lambda + \mu_\perp
+        \mu = B \mu_f + \mu_\perp
 
-    where :math:`\lambda` contains the expected factor returns (factor premia),
-    :math:`B \lambda` is the spanned expected return (spanned alpha) and
-    :math:`\mu_\perp` is the orthogonal expected return (orthogonal alpha).
+    where :math:`\mu_f` contains the expected factor returns (factor premia),
+    :math:`B \mu_f` is the factor-spanned expected return and
+    :math:`\mu_\perp` is the factor-orthogonal expected return, also called
+    orthogonal alpha.
 
     **Portfolio Variance Decomposition:**
 
@@ -79,7 +80,7 @@ def predicted_factor_attribution(
 
     .. math::
 
-        \mu_P = w^\top \mu = b^\top \lambda + w^\top \mu_\perp.
+        \mu_P = w^\top \mu = b^\top \mu_f + w^\top \mu_\perp.
 
     **Volatility Contributions:**
 
@@ -118,13 +119,13 @@ def predicted_factor_attribution(
 
     .. math::
 
-        \operatorname{MuContrib}_k = b_k \lambda_k.
+        \operatorname{MuContrib}_k = b_k \mu_{f,k}.
 
     These are also additive:
 
     .. math::
 
-        \sum_k \operatorname{MuContrib}_k = b^\top \lambda.
+        \sum_k \operatorname{MuContrib}_k = b^\top \mu_f.
 
     **Correlation (x-sigma-rho framework):**
 
@@ -188,19 +189,18 @@ def predicted_factor_attribution(
         enables family-level aggregation in DataFrame output.
 
     factor_mu : array-like of shape (n_factors,), optional
-        Expected returns of each factor (factor premia), :math:`\lambda`. Defaults to
+        Expected returns of each factor (factor premia), :math:`\mu_f`. Defaults to
         zeros if not provided. Must be per-period (e.g., daily expected returns if using
         daily data). All inputs (`factor_covariance`, `idio_covariance`, `factor_mu`,
         `idio_mu`) must share the same periodicity. Use `annualization_factor` to scale
         outputs to annualized values.
 
     idio_mu : array-like of shape (n_assets,), optional
-        Per-asset expected idiosyncratic return, :math:`\mu_\perp`, constrained to be
-        orthogonal to the factor loadings. It is distinct from the time-series mean of
-        `idio_returns`, which is not enforced to be factor-orthogonal. Defaults to zeros
-        if not provided. Must be per-period, same as `factor_mu`. NaN entries for
-        non-investable assets are filled with 0 (requires corresponding weights to be
-        zero).
+        Factor-orthogonal expected return for each asset, :math:`\mu_\perp`. It is
+        distinct from the time-series mean of `idio_returns`, which is not enforced to
+        be factor-orthogonal. Defaults to zeros if not provided. Must be per-period,
+        same as `factor_mu`. NaN entries for non-investable assets are filled with 0
+        (requires corresponding weights to be zero).
 
         .. note::
 
@@ -208,10 +208,10 @@ def predicted_factor_attribution(
             loading matrix :math:`B` (with respect to your chosen regression metric,
             e.g., OLS or GLS). This function does **not** perform any orthogonalization.
             It assumes `idio_mu` satisfies the decomposition
-            :math:`\mu = B \lambda + \mu_\perp` where :math:`B^\top \mu_\perp = 0` (or
-            the appropriate weighted inner product equals zero for GLS). Typically, this
-            is the residual vector from regressing expected asset returns onto the factor
-            loadings.
+            :math:`\mu = B \mu_f + \mu_\perp` where
+            :math:`B^\top \mu_\perp = 0` (or the appropriate weighted inner product
+            equals zero for GLS). Typically, this is the residual vector from regressing
+            expected asset returns onto the factor loadings.
 
     annualization_factor : float, default=252.0
         Used to annualize expected returns, variances and volatilities. Use 1.0 to

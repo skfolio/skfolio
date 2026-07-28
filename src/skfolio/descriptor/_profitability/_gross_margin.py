@@ -22,9 +22,9 @@ class GrossMargin(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{gross_margin}(t) =
-        \frac{\text{sales_ttm}(t) - \text{cost_of_revenue_ttm}(t)}
-             {\text{sales_ttm}(t)}
+        \text{gross\_margin}(t) =
+        \frac{\text{sales\_ttm}(t) - \text{cost\_of\_revenue\_ttm}(t)}
+             {\text{sales\_ttm}(t)}
 
     Gross margin captures pricing power and unit economics: the fraction of each dollar
     of revenue retained after direct production costs. A high and stable gross margin

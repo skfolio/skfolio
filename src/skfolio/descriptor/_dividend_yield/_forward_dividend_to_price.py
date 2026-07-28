@@ -23,8 +23,8 @@ class ForwardDividendToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \text{forward_dividend_to_price}(t) =
-        \frac{\text{dps_ntm}(t)}{\text{adj_close}(t)}
+        \text{forward\_dividend\_to\_price}(t) =
+        \frac{\text{dps\_ntm}(t)}{\text{adj\_close}(t)}
 
     Forward dividend-to-price captures the expected income yield based on analyst
     consensus forecasts. Because it incorporates forward-looking estimates rather than
@@ -56,10 +56,10 @@ class ForwardDividendToPrice(BaseDescriptor, stateless=True):
 
     .. math::
 
-        \frac{\text{dps_ntm}}{\text{adj_close}}
-        = \frac{\text{dps_ntm} \times \text{shares_out}}
-              {\text{adj_close} \times \text{shares_out}}
-        = \frac{\text{forward_dividends_ntm}}{\text{market_cap}}
+        \frac{\text{dps\_ntm}}{\text{adj\_close}}
+        = \frac{\text{dps\_ntm} \times \text{shares\_out}}
+              {\text{adj\_close} \times \text{shares\_out}}
+        = \frac{\text{forward\_dividends\_ntm}}{\text{market\_cap}}
 
     References
     ----------

@@ -803,7 +803,7 @@ def _score_multi_period_portfolio(
     multi_period_portfolio: MultiPeriodPortfolio,
     scoring: BaseMeasure | None,
 ) -> float:
-    """Score a :class:`MultiPeriodPortfolio` using a measure.
+    """Score a :class:`~skfolio.portfolio.MultiPeriodPortfolio` using a measure.
 
     Risk measures are negated so that higher is always better.
 
