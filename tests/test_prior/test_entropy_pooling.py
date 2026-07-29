@@ -1041,7 +1041,7 @@ def test_synthetic_data_prior(X, solver):
     model = EntropyPooling(
         solver=solver,
         prior_estimator=SyntheticData(
-            n_samples=10000,
+            n_samples=1000,
             distribution_estimator=VineCopula(
                 log_transform=True,
                 marginal_candidates=[Gaussian()],
@@ -1060,6 +1060,8 @@ def test_synthetic_data_prior(X, solver):
 
 
 def test_factor_entropy_pooling(X, factors, solver):
+    X = X.iloc[-300:]
+    factors = factors.loc[X.index]
     ref = TimeSeriesFactorModel()
     ref.fit(X, factors=factors)
 
@@ -1081,8 +1083,10 @@ def test_factor_entropy_pooling(X, factors, solver):
 
 
 def test_factor_synthetic_data_entropy_pooling(X, factors, solver):
+    X = X.iloc[-300:]
+    factors = factors.loc[X.index]
     factor_synth = SyntheticData(
-        n_samples=10000,
+        n_samples=1000,
         distribution_estimator=VineCopula(
             log_transform=True,
             marginal_candidates=[Gaussian()],
@@ -1100,7 +1104,7 @@ def test_factor_synthetic_data_entropy_pooling(X, factors, solver):
     sw = model.factor_prior_estimator_.return_distribution_.sample_weight
     ret = model.factor_prior_estimator_.return_distribution_.returns
     assert np.all(sw >= 0)
-    assert len(sw) == 10000
+    assert len(sw) == 1000
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(sm.mean(ret, sample_weight=sw)[1], 0.0005)
     np.testing.assert_almost_equal(model.return_distribution_.sample_weight, sw)

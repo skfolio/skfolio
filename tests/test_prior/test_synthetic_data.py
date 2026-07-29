@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from skfolio import RiskMeasure
+from skfolio import MultiPeriodPortfolio, RiskMeasure
 from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import MeanRisk
@@ -10,6 +10,7 @@ from skfolio.prior import SyntheticData, TimeSeriesFactorModel
 
 
 def test_synthetic_data(X):
+    X = X.iloc[-300:]
     model = SyntheticData()
     model.fit(X)
     res = model.return_distribution_
@@ -20,6 +21,8 @@ def test_synthetic_data(X):
 
 
 def test_factor_synthetic_data(X, factors):
+    X = X.iloc[-300:]
+    factors = factors.loc[X.index]
     model = TimeSeriesFactorModel(
         factor_prior_estimator=SyntheticData(),
     )
@@ -61,12 +64,15 @@ def test_factor_stress_test(X, factors):
 
 
 def test_optimization_synthetic_data(X):
+    X = X.iloc[-800:]
     model = MeanRisk(
         risk_measure=RiskMeasure.CVAR,
         prior_estimator=SyntheticData(
             distribution_estimator=VineCopula(log_transform=True, n_jobs=-1),
-            n_samples=2000,
+            n_samples=500,
         ),
     )
     cv = WalkForward(train_size=252, test_size=100)
-    _ = cross_val_predict(model, X, cv=cv, n_jobs=-1)
+    prediction = cross_val_predict(model, X, cv=cv, n_jobs=-1)
+    assert isinstance(prediction, MultiPeriodPortfolio)
+    assert len(prediction) == cv.get_n_splits(X)

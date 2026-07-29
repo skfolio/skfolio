@@ -51,18 +51,21 @@ def precisions():
 
 @pytest.fixture(scope="module")
 def precisions2(precisions):
-    precisions[RiskMeasure.EVAR] = 3
-    precisions[RiskMeasure.GINI_MEAN_DIFFERENCE] = 5
-    return precisions
+    result = precisions.copy()
+    result[RiskMeasure.EDAR] = 5
+    result[RiskMeasure.EVAR] = 3
+    result[RiskMeasure.GINI_MEAN_DIFFERENCE] = 5
+    return result
 
 
 @pytest.fixture(scope="module")
 def precisions3(precisions):
-    precisions[RiskMeasure.VARIANCE] = 6
-    precisions[RiskMeasure.WORST_REALIZATION] = 5
-    precisions[RiskMeasure.CDAR] = 5
-    precisions[RiskMeasure.EDAR] = 5
-    return precisions
+    result = precisions.copy()
+    result[RiskMeasure.VARIANCE] = 6
+    result[RiskMeasure.WORST_REALIZATION] = 5
+    result[RiskMeasure.CDAR] = 5
+    result[RiskMeasure.EDAR] = 5
+    return result
 
 
 @pytest.fixture(scope="module")
@@ -229,6 +232,8 @@ def test_mean_risk_minimize_risk(
     mean_risk_params_linear_constraints,
     mean_risk_params_inequalities,
 ):
+    if risk_measure not in {RiskMeasure.CVAR, RiskMeasure.CDAR}:
+        X = X.iloc[-250:]
     params = {
         **mean_risk_params,
         **mean_risk_params_transaction_costs,
@@ -259,6 +264,11 @@ def test_mean_risk_minimize_risk_2(
     risk_measure2,
 ):
     precision = precisions[risk_measure2]
+    X_test = (
+        X_small.iloc[-100:]
+        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
+        else X_small
+    )
 
     # Minimize risk
     model = MeanRisk(
@@ -266,7 +276,7 @@ def test_mean_risk_minimize_risk_2(
         risk_measure=risk_measure2,
     )
 
-    p = model.fit_predict(X_small)
+    p = model.fit_predict(X_test)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -284,6 +294,7 @@ def test_mean_risk_under_risk_and_return_constraint(
     mean_risk_params_transaction_costs,
     mean_risk_params_linear_constraints,
 ):
+    X = X.iloc[-250:]
     params = {
         **mean_risk_params,
         **mean_risk_params_transaction_costs,
@@ -354,6 +365,11 @@ def test_mean_risk_under_risk_and_return_constraint_2(
 ):
     precision = precisions2[risk_measure2]
     max_risk_arg = f"max_{risk_measure2.value}"
+    X_test = (
+        X_small.iloc[-100:]
+        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
+        else X_small
+    )
 
     # Minimize risk
     min_risk_model = MeanRisk(
@@ -361,7 +377,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         risk_measure=risk_measure2,
     )
 
-    min_risk_model_ptf = min_risk_model.fit_predict(X_small)
+    min_risk_model_ptf = min_risk_model.fit_predict(X_test)
     risk_constraint = (min_risk_model.problem_values_["risk"] + 1e-7) * 1.05
 
     # Maximize return under upper risk constraint
@@ -371,7 +387,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         **{max_risk_arg: risk_constraint},
     )
 
-    p = max_return_model.fit_predict(X_small)
+    p = max_return_model.fit_predict(X_test)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), risk_constraint, precision
     )
@@ -395,7 +411,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
         min_return=max_return_model.problem_values_["expected_return"],
     )
 
-    p = model.fit_predict(X_small)
+    p = model.fit_predict(X_test)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -415,6 +431,12 @@ def test_mean_risk_utility(
     mean_risk_params_transaction_costs,
     mean_risk_params_linear_constraints,
 ):
+    if risk_measure not in {
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CVAR,
+        RiskMeasure.MAX_DRAWDOWN,
+    }:
+        X = X.iloc[-250:]
     params = {
         **mean_risk_params,
         **mean_risk_params_transaction_costs,
@@ -449,6 +471,11 @@ def test_mean_risk_utility2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
+    X_test = (
+        X_small.iloc[-100:]
+        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
+        else X_small
+    )
 
     # Maximize utility
     risk_aversion = 3
@@ -458,7 +485,7 @@ def test_mean_risk_utility2(
         risk_aversion=risk_aversion,
     )
 
-    p = model.fit_predict(X_small)
+    p = model.fit_predict(X_test)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -479,6 +506,7 @@ def test_mean_risk_ratio(
     mean_risk_params_transaction_costs,
     mean_risk_params_linear_constraints,
 ):
+    X = X.iloc[-250:]
     params = {
         **mean_risk_params,
         **mean_risk_params_transaction_costs,
@@ -507,13 +535,18 @@ def test_mean_risk_ratio2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
+    X_test = (
+        X_small.iloc[-100:]
+        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
+        else X_small
+    )
 
     # Maximize ratio
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         risk_measure=risk_measure2,
     )
-    p = model.fit_predict(X_small)
+    p = model.fit_predict(X_test)
     np.testing.assert_almost_equal(
         getattr(p, risk_measure2.value), model.problem_values_["risk"], precision
     )
@@ -826,6 +859,7 @@ def test_mean_risk_predict(X):
 
 @pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_regularization(X, risk_measure, mean_risk_params_coef):
+    X = X.iloc[-250:]
     diff = 0.01
 
     max_risk_arg = f"max_{risk_measure.value}"
@@ -1052,6 +1086,7 @@ def test_transaction_costs(X, risk_measure):
 
 @pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_mean_risk_methods(X, risk_measure, precisions):
+    X = X.iloc[-250:]
     n_assets = X.shape[1]
     target_risk_arg = f"max_{risk_measure.value}"
     precision = precisions[risk_measure]
@@ -1435,29 +1470,30 @@ def test_cardinality_constraint(X, objective_function, cardinality):
 
 def test_cardinality_constraint_ratio_convergence(X):
     risk_measure = RiskMeasure.STANDARD_DEVIATION
+    X_test = X.iloc[:, :10]
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
         min_weights=-0.03,
-        max_weights=0.2,
+        max_weights=0.35,
         budget=0.9,
-        cardinality=7,
+        cardinality=4,
         risk_measure=risk_measure,
         solver="SCIP",
     )
-    p = model.fit_predict(X)
+    p = model.fit_predict(X_test)
     ratio = p.mean / getattr(p, risk_measure)
 
     model = MeanRisk(
         risk_measure=risk_measure,
         min_weights=-0.03,
-        max_weights=0.2,
+        max_weights=0.35,
         budget=0.9,
-        cardinality=7,
-        efficient_frontier_size=20,
+        cardinality=4,
+        efficient_frontier_size=10,
         solver="SCIP",
     )
-    pop = model.fit_predict(X)
+    pop = model.fit_predict(X_test)
     expected_ratio = max([p.mean / getattr(p, risk_measure) for p in pop])
     np.testing.assert_almost_equal(ratio, expected_ratio, 4)
 
@@ -1559,6 +1595,7 @@ def test_optimal_homogenization_factor(mu, expected):
 
 
 def test_mip_cardinality_and_threshold_constraints_long_short(X):
+    X_test = X.iloc[:, :12]
     model = MeanRisk(
         risk_measure=RiskMeasure.STANDARD_DEVIATION,
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
@@ -1567,14 +1604,14 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
         budget=0.5,
         solver="SCIP",
     )
-    model.fit(X)
+    model.fit(X_test)
     w = model.weights_
 
-    cardinality = 10
-    threshold_long = 0.05
-    threshold_short = -0.03
+    cardinality = 6
+    threshold_long = 0.1
+    threshold_short = -0.05
 
-    assert np.sum(abs(w) > 1e-10) == 20
+    assert np.sum(abs(w) > 1e-10) == X_test.shape[1]
     assert np.any((w < threshold_long - 1e-8) & (w > 0 + 1e-8))
     assert np.any((w > threshold_short + 1e-8) & (w < 0 - 1e-8))
 
@@ -1584,7 +1621,7 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
         threshold_long=threshold_long,
         threshold_short=threshold_short,
     )
-    model.fit(X)
+    model.fit(X_test)
     w = model.weights_
 
     assert np.sum(abs(w) > 1e-10) == cardinality

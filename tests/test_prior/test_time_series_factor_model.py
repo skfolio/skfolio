@@ -14,10 +14,12 @@ from skfolio.utils.stats import safe_cholesky
 
 
 def test_factor_model(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
     model = TimeSeriesFactorModel()
     with pytest.raises(TypeError, match="missing 1 required keyword-only argument"):
-        model.fit(X, factors)
-    model.fit(X, factors=factors)
+        model.fit(X_test, factors_test)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
     assert model.return_distribution_.mu.shape == (20,)
     sqrt = model.return_distribution_.covariance_sqrt
@@ -40,7 +42,7 @@ def test_factor_model(X, factors):
             linear_regressor=LassoCV(cv=5, fit_intercept=False), n_jobs=-1
         ),
     )
-    model.fit(X, factors=factors)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
     chol = safe_cholesky(model.return_distribution_.covariance)
     np.testing.assert_almost_equal(
@@ -51,9 +53,11 @@ def test_factor_model(X, factors):
 
 
 def test_factor_model_with_factor_families(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
     factor_families = ["style", "quality", "style", "defensive", "style"]
     model = TimeSeriesFactorModel(factor_families=factor_families)
-    model.fit(X, factors=factors)
+    model.fit(X_test, factors=factors_test)
 
     np.testing.assert_array_equal(
         model.return_distribution_.factor_model.factor_families,
@@ -62,10 +66,12 @@ def test_factor_model_with_factor_families(X, factors):
 
 
 def test_factor_model_factor_families_length_error(X, factors):
+    X_test = X.iloc[-50:]
+    factors_test = factors.loc[X_test.index]
     model = TimeSeriesFactorModel(factor_families=["style", "quality"])
 
     with pytest.raises(ValueError, match=r"`factor_families` must have length 5"):
-        model.fit(X, factors=factors)
+        model.fit(X_test, factors=factors_test)
 
 
 def test_black_litterman_factor_model(X, factors):
@@ -139,6 +145,8 @@ def test_metadata_routing_error(X, factors, implied_vol):
 
 
 def test_metadata_routing(X, implied_vol):
+    X_test = X.iloc[-300:, :6]
+    implied_vol_test = implied_vol.loc[X_test.index, X_test.columns]
     with config_context(enable_metadata_routing=True):
         model = TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(
@@ -149,9 +157,9 @@ def test_metadata_routing(X, implied_vol):
         )
 
         with pytest.raises(ValueError):
-            model.fit(X, factors=X)
+            model.fit(X_test, factors=X_test)
 
-        model.fit(X, factors=X, implied_vol=implied_vol)
+        model.fit(X_test, factors=X_test, implied_vol=implied_vol_test)
 
     # noinspection PyUnresolvedReferences
-    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (6,)

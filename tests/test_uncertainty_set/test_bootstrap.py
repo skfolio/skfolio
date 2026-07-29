@@ -154,11 +154,12 @@ class TestBootstrapMuUncertaintySet:
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
             model = BootstrapMuUncertaintySet(
+                n_bootstrap_samples=20,
                 prior_estimator=EmpiricalPrior(
                     covariance_estimator=ImpliedCovariance().set_fit_request(
                         implied_vol=True
                     )
-                )
+                ),
             )
 
             with pytest.raises(ValueError):
@@ -309,11 +310,12 @@ class TestBootstrapCovarianceUncertaintySet:
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
             model = BootstrapCovarianceUncertaintySet(
+                n_bootstrap_samples=20,
                 prior_estimator=EmpiricalPrior(
                     covariance_estimator=ImpliedCovariance().set_fit_request(
                         implied_vol=True
                     )
-                )
+                ),
             )
 
             with pytest.raises(ValueError):

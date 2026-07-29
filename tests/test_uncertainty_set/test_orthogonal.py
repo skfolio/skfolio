@@ -96,6 +96,12 @@ def make_factor_case():
     return _make_factor_case
 
 
+@pytest.fixture(scope="module")
+def factor_data_small(X, factors):
+    X = X.iloc[-252:]
+    return X, factors.loc[X.index]
+
+
 def _fit_mu_uncertainty(
     factor_case: FactorCase, **kwargs
 ) -> OrthogonalMuUncertaintySet:
@@ -544,7 +550,8 @@ class TestOrthogonalCovarianceUncertaintySet:
 
 
 class TestMeanRiskIntegration:
-    def test_mu_uncertainty_with_factor_model(self, X, factors):
+    def test_mu_uncertainty_with_factor_model(self, factor_data_small):
+        X, factors = factor_data_small
         model = MeanRisk(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
@@ -600,7 +607,8 @@ class TestMeanRiskIntegration:
 
         assert not np.allclose(baseline.weights_, robust.weights_, atol=1e-4)
 
-    def test_covariance_uncertainty_with_factor_model(self, X, factors):
+    def test_covariance_uncertainty_with_factor_model(self, factor_data_small):
+        X, factors = factor_data_small
         model = MeanRisk(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
@@ -616,7 +624,8 @@ class TestMeanRiskIntegration:
         assert np.isfinite(model.weights_).all()
         np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
 
-    def test_covariance_uncertainty_rejects_standard_deviation(self, X, factors):
+    def test_covariance_uncertainty_rejects_standard_deviation(self, factor_data_small):
+        X, factors = factor_data_small
         model = MeanRisk(
             risk_measure=RiskMeasure.STANDARD_DEVIATION,
             prior_estimator=TimeSeriesFactorModel(),
@@ -626,7 +635,10 @@ class TestMeanRiskIntegration:
         with pytest.raises(ValueError, match=r"risk_measure=RiskMeasure\.VARIANCE"):
             model.fit(X, factors=factors)
 
-    def test_maximize_ratio_with_compact_covariance_uncertainty(self, X, factors):
+    def test_maximize_ratio_with_compact_covariance_uncertainty(
+        self, factor_data_small
+    ):
+        X, factors = factor_data_small
         model = MeanRisk(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
             risk_measure=RiskMeasure.VARIANCE,
@@ -644,7 +656,8 @@ class TestMeanRiskIntegration:
         assert model.problem_values_["risk"] > 0
         np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
 
-    def test_zero_radius_matches_nominal_variance(self, X, factors):
+    def test_zero_radius_matches_nominal_variance(self, factor_data_small):
+        X, factors = factor_data_small
         common_params = dict(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
@@ -671,7 +684,8 @@ class TestMeanRiskIntegration:
             atol=1e-10,
         )
 
-    def test_mu_and_covariance_uncertainty_together(self, X, factors):
+    def test_mu_and_covariance_uncertainty_together(self, factor_data_small):
+        X, factors = factor_data_small
         model = MeanRisk(
             objective_function=ObjectiveFunction.MAXIMIZE_UTILITY,
             risk_measure=RiskMeasure.VARIANCE,

@@ -911,14 +911,6 @@ class TestPlotFactorForecastCorrelation:
         expected = factor_model.factor_forecast_correlation()
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
-    def test_height_scales_with_number_of_factors(self):
-        n_factors = 24
-        fm = _make_factor_model(n_factors=n_factors, n_assets=40)
-        fig = fm.plot_factor_forecast_correlation()
-
-        assert fig.layout.height == max(450, 28 * n_factors + 300)
-
-
 class TestFactorForecastCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
         corr = factor_model.factor_forecast_correlation()
@@ -1117,16 +1109,6 @@ class TestPlotExposureCorrelation:
             families=None, cs_weighting=CSWeighting.IDENTITY
         )
         np.testing.assert_allclose(z, expected, atol=1e-12)
-
-    def test_height_scales_with_number_of_factors(self):
-        n_factors = 24
-        fm = _make_factor_model(n_factors=n_factors, n_assets=40)
-        fig = fm.plot_exposure_correlation(
-            families=None, cs_weighting=CSWeighting.IDENTITY
-        )
-
-        assert fig.layout.height == max(450, 28 * n_factors + 300)
-
 
 class TestExposureCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):

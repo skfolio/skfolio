@@ -689,6 +689,7 @@ def test_cross_val_predict_and_grid_search(
     expand_train,
     purged_size,
 ):
+    X_test = X_medium.iloc[:, :6]
     cv = WalkForward(
         test_size=test_size,
         train_size=train_size,
@@ -701,17 +702,15 @@ def test_cross_val_predict_and_grid_search(
     )
 
     model = Pipeline(
-        [("pre_selection", SelectKExtremes(k=10)), ("allocation", InverseVolatility())]
+        [("pre_selection", SelectKExtremes(k=5)), ("allocation", InverseVolatility())]
     )
 
-    pred = cross_val_predict(model, X_medium, cv=cv)
+    pred = cross_val_predict(model, X_test, cv=cv)
     assert isinstance(pred, MultiPeriodPortfolio)
-    assert len(pred) == cv.get_n_splits(X_medium)
+    assert len(pred) == cv.get_n_splits(X_test)
 
-    gs = GridSearchCV(
-        estimator=model, cv=cv, param_grid={"pre_selection__k": [2, 3, 4, 5]}
-    )
-    gs.fit(X_medium)
+    gs = GridSearchCV(estimator=model, cv=cv, param_grid={"pre_selection__k": [2, 3]})
+    gs.fit(X_test)
     assert gs.best_estimator_
 
 

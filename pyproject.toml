@@ -75,6 +75,7 @@ dev = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
     "pytest",
+    "pytest-xdist",
     "pytest-cov",
     "ruff",
     "pre-commit",
@@ -154,4 +155,6 @@ convention = "numpy"
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",
+    "-n=4",
+    "--dist=worksteal",
 ]
