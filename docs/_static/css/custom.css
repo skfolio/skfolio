@@ -27,6 +27,21 @@ html {
     min-width: 700px;
 }
 
+.skfolio-lazy-plot {
+    min-height: 450px;
+}
+
+.skfolio-lazy-plot[aria-busy="true"] {
+    background: var(--pst-color-surface);
+}
+
+.skfolio-plotly-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--pst-color-text-muted);
+}
+
 html div.rendered_html:has(.plotly-graph-div) {
     overflow-x: auto;
     margin-bottom: 1rem;

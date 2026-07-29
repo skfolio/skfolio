@@ -8,7 +8,6 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 # -- Path setup ------------------------------------------------------------------------
 from __future__ import annotations
 
-import datetime as dt
 import enum
 import functools
 import importlib
@@ -17,6 +16,7 @@ import json
 import logging
 import os
 import pkgutil
+import queue
 import re
 import sys
 import warnings
@@ -104,6 +104,19 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/mean_risk/plot_16_mip_threshold_constraints": (
         "Enforcing long/short threshold constraints via mixed-integer programming"
     ),
+    "auto_examples/mean_risk/plot_17_failure_and_fallbacks": (
+        "Handling optimization failures with fallback estimators and diagnostics"
+    ),
+    # Factor Models
+    "auto_examples/factor_models/plot_characteristics_factor_model": (
+        "Building and evaluating a characteristics-based cross-sectional factor model"
+    ),
+    "auto_examples/factor_models/plot_factor_constrained_portfolio": (
+        "Optimizing and attributing a factor-constrained long-short portfolio"
+    ),
+    "auto_examples/factor_models/plot_alpha_factor_neutral_portfolio": (
+        "Researching idiosyncratic alpha in a factor-neutral long-short portfolio"
+    ),
     # Risk Budgeting
     "auto_examples/risk_budgeting/plot_1_risk_parity_variance": (
         "Allocating capital by equalizing variance contributions"
@@ -151,6 +164,10 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/clustering/plot_5_nco_grid_search": (
         "Merging NCO with combinatorial purged CV cross-validation"
     ),
+    "auto_examples/clustering/plot_6_schur": (
+        "Interpolating between hierarchical risk parity and minimum variance "
+        "with Schur allocation"
+    ),
     # Maximum Diversification
     "auto_examples/maximum_diversification/plot_1_maximum_diversification": (
         "Maximizing the diversification ratio in portfolio selection"
@@ -175,8 +192,14 @@ EXAMPLE_DESCRIPTIONS = {
     ),
 }
 
-EXAMPLE_LAST_UPDATED = {
-    "auto_examples/index": str(dt.date.today()),
+EXAMPLE_DATE_PUBLISHED = {
+    # Factor Models
+    "auto_examples/factor_models/plot_characteristics_factor_model": "2026-07-29",
+    "auto_examples/factor_models/plot_factor_constrained_portfolio": "2026-07-29",
+    "auto_examples/factor_models/plot_alpha_factor_neutral_portfolio": "2026-07-29",
+}
+
+EXAMPLE_DATE_MODIFIED = {
     # Data Preparation
     "auto_examples/data_preparation/plot_1_investment_horizon": "2023-12-18",
     # Pre-selection
@@ -234,6 +257,25 @@ EXAMPLE_LAST_UPDATED = {
     "auto_examples/online_learning/plot_3_online_portfolio_optimization_evaluation": "2026-04-09",
 }
 
+
+def get_example_lastmod(pagename: str) -> str | None:
+    """Return the latest factual publication or modification date for an example page."""
+    if not pagename.startswith("auto_examples/"):
+        return None
+
+    if pagename.endswith("/index") or pagename == "auto_examples/index":
+        prefix = pagename.removesuffix("index")
+        dates = [
+            date
+            for registry in (EXAMPLE_DATE_PUBLISHED, EXAMPLE_DATE_MODIFIED)
+            for example, date in registry.items()
+            if example.startswith(prefix)
+        ]
+        return max(dates, default=None)
+
+    return EXAMPLE_DATE_MODIFIED.get(pagename) or EXAMPLE_DATE_PUBLISHED.get(pagename)
+
+
 # Map old *docname* (no .rst/.html) -> new URL (root-relative or absolute)
 REDIRECTS = {
     "auto_examples/5_distributionally_robust_cvar/plot_1_distributionally_robust_cvar": "/auto_examples/distributionally_robust_cvar/plot_1_distributionally_robust_cvar.html",
@@ -274,6 +316,7 @@ REDIRECTS = {
 
 
 def get_example_headline_and_description(app, pagename) -> tuple[str, str]:
+    """Return the structured-data headline and description for an example page."""
     title = get_doc_title(app, pagename)
 
     headline = f"Tutorial on {title}"
@@ -310,7 +353,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # -- Project information ---------------------------------------------------------------
 
 project = "skfolio"
-copyright = "2026, skfolio developers (BSD License)"
+copyright = "2026, skfolio developers (BSD License)"  # noqa: A001
 author = "Hugo Delatte"
 
 # -- SEO meta tags ---------------------------------------------------------------------
@@ -322,7 +365,12 @@ html_title = "skfolio"
 
 # -- General configuration -------------------------------------------------------------
 
+_LOCAL_EXTENSION_PATH = str(Path(__file__).parent / "_extensions")
+if _LOCAL_EXTENSION_PATH not in sys.path:
+    sys.path.insert(0, _LOCAL_EXTENSION_PATH)
+
 extensions = [
+    "skfolio_core_web_vitals",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
@@ -338,15 +386,13 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx_last_updated_by_git",
     "sphinx_llm.txt",  # llms.txt / llms-full.txt / per-page .md
+    "jupyterlite_sphinx",
 ]
 
 # `sphinx-llm` builds the docs a second time with the markdown builder
-# (`sphinx-build -b markdown`), re-running this conf. `jupyterlite_sphinx` is HTML-only
-# and slow and re-running its `jupyter lite build` in that sub-build corrupts the shared
-# JupyterLite state, so load it only for the primary (HTML) build.
+# (`sphinx-build -b markdown`), re-running this conf. Keep the extension list identical
+# so the sequential sub-build can reuse the primary build's doctree environment.
 _is_markdown_subbuild = "markdown" in sys.argv
-if not _is_markdown_subbuild:
-    extensions.append("jupyterlite_sphinx")
 
 templates_path = ["_templates"]
 
@@ -422,7 +468,7 @@ html_last_updated_fmt = "%Y-%m-%d"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+exclude_patterns = ["_build*", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -589,9 +635,14 @@ markdown_http_base = "https://skfolio.org"
 # generated markdown resolve to the files that actually ship on the site.
 markdown_uri_doc_suffix = ".html.md"
 
-# Run the markdown sub-build sequentially, not in parallel with the HTML build: the
-# parallel mode races jupyterlite_sphinx (concurrent `jupyter lite build` on shared
-# state). jupyterlite is also dropped from the sub-build's extensions (see above).
+# Preserve Sphinx targets so cross-references to sections, modules, classes, methods,
+# functions and properties keep working in the generated Markdown pages.
+markdown_anchor_sections = True
+markdown_anchor_signatures = True
+
+# Run the Markdown sub-build after the HTML build so it consumes completed gallery
+# sources and avoids concurrent writes to gallery and JupyterLite state. JupyterLite
+# remains loaded for doctree compatibility, but its Markdown cleanup hook is disabled.
 llms_txt_build_parallel = False
 
 # -- Internationalization --------------------------------------------------------------
@@ -791,6 +842,11 @@ sphinx_gallery_conf = {
     # 'show_api_usage': True,
 }
 
+# The HTML build owns tutorial execution. The sequential sphinx-llm Markdown build
+# consumes the generated gallery sources without executing the examples a second time.
+if _is_markdown_subbuild:
+    plot_gallery = "False"
+
 # -- jupyterlite  ----------------------------------------------------------------------
 # Read more at https://jupyterlite-sphinx.readthedocs.io/en/latest/configuration.html#configuration
 
@@ -854,18 +910,55 @@ def _html_builders_only(handler):
     return wrapper
 
 
-def patch_markdown_classifier(app):
-    """Make `sphinx-markdown-builder` render numpydoc parameter types.
+def _disable_jupyterlite_markdown_cleanup(app):
+    """Disable JupyterLite's build-finished handler in the Markdown sub-build.
+
+    The handler skips the JupyterLite build for non-HTML builders but still removes
+    shared JupyterLite state. Keeping the extension loaded preserves doctree cache
+    compatibility with the primary build; disconnecting this handler prevents the
+    Markdown pass from modifying that state.
+    """
+    if not _is_markdown_subbuild:
+        return
+
+    from jupyterlite_sphinx.jupyterlite_sphinx import jupyterlite_build
+
+    for listener in tuple(app.events.listeners["build-finished"]):
+        if listener.handler is jupyterlite_build:
+            app.disconnect(listener.id)
+            return
+
+    warnings.warn(
+        "Unable to disable the JupyterLite Markdown build-finished handler.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+
+
+def patch_markdown_builder(app):
+    """Configure the Markdown builder for the documentation structure.
 
     Numpydoc emits the type for each parameter as a docutils `classifier` node.
     `sphinx-markdown-builder` has no `visit_classifier`, so the type is silently dropped
     in the markdown output (e.g. `returns : ndarray of shape (n,)` becomes just
-    `returns`). We add a visitor that emits the type in italics after the term,
-    preserving the information for LLM consumption.
+    `returns`). Docutils and Sphinx-Gallery also emit nodes that the Markdown translator
+    does not support. Register visitors that preserve their content or intentionally
+    omit metadata.
+
+    The generic Markdown builder also treats HTML static and extra paths as source
+    documents. Excluding those asset trees matches the HTML builder and prevents
+    static reStructuredText fragments from entering the LLM artifacts.
     """
     if app.builder.name != "markdown":
         return
+    from docutils import nodes
+    from sphinx_markdown_builder.builder import MarkdownBuilder
     from sphinx_markdown_builder.translator import MarkdownTranslator
+
+    def get_asset_paths(_builder):
+        return [*html_extra_path, *html_static_path]
+
+    MarkdownBuilder.get_asset_paths = get_asset_paths
 
     def visit_classifier(self, _node):
         self.add(" *")
@@ -873,64 +966,129 @@ def patch_markdown_classifier(app):
     def depart_classifier(self, _node):
         self.add("*")
 
+    def visit_meta(self, _node):
+        raise nodes.SkipNode
+
+    def visit_abbreviation(self, _node):
+        return
+
+    def depart_abbreviation(self, _node):
+        return
+
+    def visit_citation(self, node):
+        self.visit_footnote(node)
+
+    def depart_citation(self, node):
+        self._pop_context(node)
+
+    def visit_imgsgnode(self, node):
+        self.visit_image(node)
+
+    def depart_imgsgnode(self, _node):
+        return
+
+    def make_admonition_visitor(title):
+        def visit_admonition(self, _node):
+            self._push_box(title)
+
+        return visit_admonition
+
+    def depart_admonition(self, node):
+        self._pop_context(node)
+
     MarkdownTranslator.visit_classifier = visit_classifier
     MarkdownTranslator.depart_classifier = depart_classifier
+    MarkdownTranslator.visit_meta = visit_meta
+    MarkdownTranslator.visit_abbreviation = visit_abbreviation
+    MarkdownTranslator.depart_abbreviation = depart_abbreviation
+    MarkdownTranslator.visit_citation = visit_citation
+    MarkdownTranslator.depart_citation = depart_citation
+    MarkdownTranslator.visit_imgsgnode = visit_imgsgnode
+    MarkdownTranslator.depart_imgsgnode = depart_imgsgnode
+    for node_name, title in {
+        "caution": "CAUTION",
+        "danger": "DANGER",
+        "error": "ERROR",
+        "tip": "TIP",
+    }.items():
+        setattr(
+            MarkdownTranslator,
+            f"visit_{node_name}",
+            make_admonition_visitor(title),
+        )
+        setattr(MarkdownTranslator, f"depart_{node_name}", depart_admonition)
 
 
 @_html_builders_only
 def patch_jupyterlite_notebooks(app, exception):
-    """Iterates over all ipynb files in the _build/lite/files directory and prepends the
-    `PATCH_CELL` node to each notebook.
+    """Prepend the `PATCH_CELL` node to notebooks in the active JupyterLite output.
 
     We assume that the entire Sphinx build has been completed prior to running this
     function.
     """
-    print("Running Patch jupyterlite notebooks...")
     # 1) Skip on build errors
     if exception:
         warnings.warn(
-            f"Sitemap hook: skipping because build failed ({exception!r})", stacklevel=2
+            f"JupyterLite notebook patch: skipping because build failed ({exception!r})",
+            stacklevel=2,
         )
         return
 
-    built_jupyterlite_dir = Path(jupyterlite_dir, "_build", "lite")
+    built_jupyterlite_dir = Path(app.outdir, "lite")
     if not built_jupyterlite_dir.exists():
         raise FileNotFoundError(
             f"JupyterLite build directory not found at {built_jupyterlite_dir}."
         )
 
     notebook_paths = Path(built_jupyterlite_dir, "files").rglob("*.ipynb")
+    patched_notebooks = 0
     for notebook_path in notebook_paths:
-        print(f"Patching {notebook_path}")
-        with open(notebook_path) as f:
+        with open(notebook_path, encoding="utf-8") as f:
             nb = nbformat.read(f, as_version=nbformat.NO_CONVERT)
-            nb.cells.insert(0, PATCH_CELL)
+            first_cell = nb.cells[0] if nb.cells else None
+            if (
+                first_cell is None
+                or first_cell.get("source", "").strip() != PATCH_CELL_CODE
+            ):
+                nb.cells.insert(0, PATCH_CELL)
             # Remove any 'id' fields
             for cell in nb.cells:
                 cell.pop("id", None)
-            with open(notebook_path, "w") as file:
+            with open(notebook_path, "w", encoding="utf-8") as file:
                 nbformat.write(nb, file, version=nbformat.NO_CONVERT)
+        patched_notebooks += 1
+    print(f"Patched {patched_notebooks} JupyterLite notebook(s)")
 
 
+@_html_builders_only
+def populate_complete_sitemap(app, exception):
+    """Populate sphinx-sitemap with every discovered document.
+
+    sphinx-sitemap normally records only pages written during the current invocation,
+    which truncates the sitemap during incremental builds. Rebuild its queue from the
+    cached Sphinx environment before the extension writes `sitemap.xml`.
+    """
+    if exception is not None:
+        return
+
+    from sphinx_sitemap import add_html_link
+
+    app.sitemap_links = queue.Queue()
+    for docname in sorted(app.env.found_docs - REDIRECTS.keys()):
+        add_html_link(app, docname, None, None, None)
+
+
+@_html_builders_only
 def prune_and_fix_sitemap(app, exception):
-    # 1) Skip on build errors
+    """Remove non-document pages and normalize sitemap metadata."""
     if exception:
         warnings.warn(
             f"Sitemap hook: skipping because build failed ({exception!r})", stacklevel=2
         )
         return
 
-    # 2) Only for HTML builder
-    if app.builder.name != "html":
-        warnings.warn(
-            f"Sitemap hook: builder is '{app.builder.name}', not 'html' — skipping",
-            stacklevel=2,
-        )
-        return
-
     sitemap_path = Path(app.outdir) / app.config.sitemap_filename
 
-    # 3) Ensure sitemap exists
     if not sitemap_path.exists():
         warnings.warn(
             f"Sitemap hook: '{sitemap_path}' not found, skipping", stacklevel=2
@@ -938,7 +1096,6 @@ def prune_and_fix_sitemap(app, exception):
         return
 
     try:
-        # Parse existing sitemap
         tree = ET.parse(sitemap_path)
         root = tree.getroot()
         ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
@@ -951,14 +1108,8 @@ def prune_and_fix_sitemap(app, exception):
             href = loc.text
             path = urlparse(href).path
 
-            # drop any viewcode pages under /_modules/
+            # Drop viewcode pages.
             if path.startswith("/_modules/"):
-                root.remove(url)
-                removed += 1
-                continue
-
-            # Remove nested index.html pages under auto_examples
-            if re.match(r"^/auto_examples/.+/index\.html$", path):
                 root.remove(url)
                 removed += 1
                 continue
@@ -967,14 +1118,13 @@ def prune_and_fix_sitemap(app, exception):
             if path == "/index.html":
                 loc.text = app.config.html_baseurl.rstrip("/") + "/"
 
-                # Inject <priority>1.0</priority> for the homepage
                 priority_el = url.find("sm:priority", ns)
                 if priority_el is None:
                     priority_el = ET.SubElement(url, f"{{{ns['sm']}}}priority")
                 priority_el.text = "1.0"
 
-            # Inject known <lastmod>
-            lastmod = EXAMPLE_LAST_UPDATED.get(path.lstrip("/").removesuffix(".html"))
+            # Use factual example publication and modification dates.
+            lastmod = get_example_lastmod(path.lstrip("/").removesuffix(".html"))
             if lastmod:
                 lastmod_el = url.find("sm:lastmod", ns)
                 if lastmod_el is None:
@@ -987,10 +1137,8 @@ def prune_and_fix_sitemap(app, exception):
                 stacklevel=2,
             )
 
-        # Register default namespace so no ns0 prefix appears
         ET.register_namespace("", ns["sm"])
 
-        # Write back, using default_namespace (Python 3.8+)
         tree.write(
             sitemap_path,
             encoding="utf-8",
@@ -1009,12 +1157,9 @@ def prune_and_fix_sitemap(app, exception):
 
 
 def override_canonical(app, pagename, templatename, context, doctree):
-    # only run if you have a base URL set
-    if not app.config.html_baseurl:
-        return
-    # Homepage → slash-only
-    if pagename == "index":
-        context["pageurl"] = html_baseurl.rstrip("/") + "/"
+    """Use the canonical root URL for homepage metadata."""
+    if app.config.html_baseurl and pagename == "index":
+        context["pageurl"] = app.config.html_baseurl.rstrip("/") + "/"
 
 
 def get_doc_title(app, pagename) -> str:
@@ -1026,26 +1171,201 @@ def get_doc_title(app, pagename) -> str:
     raise ValueError(f"Failed to retrieve title from {pagename}")
 
 
+_API_DESCRIPTION_MAX_LENGTH = 160
+_DESCRIPTION_META_RE = re.compile(
+    r"""<meta\b"""
+    r"""(?=[^>]*\b(?:name|property)\s*=\s*["']"""
+    r"""(?:description|og:description|twitter:description)["'])"""
+    r"""[^>]*>\s*""",
+    flags=re.IGNORECASE,
+)
+_OG_IMAGE_META_RE = re.compile(
+    r"""<meta\b(?=[^>]*\bproperty\s*=\s*["']og:image(?::alt)?["'])[^>]*>\s*""",
+    flags=re.IGNORECASE,
+)
+_FACTOR_MODELS_IMAGE = (
+    "_static/factor_model/plots/factor_model_exposure_correlation.webp"
+)
+
+
+def _set_description_meta(context, description: str) -> None:
+    """Replace standard and social description metadata in a page context."""
+    escaped_description = escape(description, quote=True)
+    metatags = _DESCRIPTION_META_RE.sub("", context.get("metatags", "")).rstrip()
+    context["metatags"] = (
+        f"{metatags}\n"
+        f'<meta name="description" content="{escaped_description}" />\n'
+        f'<meta property="og:description" content="{escaped_description}" />\n'
+        f'<meta name="twitter:description" content="{escaped_description}" />\n'
+    )
+
+
+def _truncate_at_word_boundary(text: str, max_length: int) -> str:
+    """Truncate text at a word boundary and append an ellipsis."""
+    if len(text) <= max_length:
+        return text
+
+    truncated = text[: max_length - 1].rsplit(" ", maxsplit=1)[0]
+    truncated = truncated.rstrip(" ,.;:-")
+    if not truncated:
+        truncated = text[: max_length - 1].rstrip()
+    return f"{truncated}…"
+
+
+def get_api_meta_description(pagename, doctree) -> str:
+    """Build an API description from the documented object's summary."""
+    from docutils import nodes
+    from sphinx import addnodes
+
+    qualified_name = pagename.removeprefix("generated/")
+    content = next(doctree.findall(addnodes.desc_content), None)
+    summary_node = (
+        next(
+            (
+                child
+                for child in content.children
+                if isinstance(child, (nodes.paragraph, nodes.definition_list))
+            ),
+            None,
+        )
+        if content is not None
+        else None
+    )
+    if summary_node is None:
+        raise SphinxError(
+            f"API description: no summary paragraph found for '{pagename}'"
+        )
+
+    summary = " ".join(summary_node.astext().split())
+    if not summary:
+        raise SphinxError(f"API description: empty summary found for '{pagename}'")
+    if summary[-1] not in ".!?":
+        summary += "."
+
+    suffix = f"API reference for {qualified_name}."
+    summary = _truncate_at_word_boundary(
+        summary,
+        _API_DESCRIPTION_MAX_LENGTH - len(suffix) - 1,
+    )
+    return f"{summary} {suffix}"
+
+
+def get_representative_image(app, pagename: str) -> tuple[str, str] | None:
+    """Return a representative image URL and alternative text for selected pages."""
+    base = app.config.html_baseurl.rstrip("/")
+    if pagename == "user_guide/factor_models":
+        return (
+            f"{base}/{_FACTOR_MODELS_IMAGE}",
+            "Correlation heatmap of market and style factor exposures",
+        )
+
+    if pagename in REDIRECTS or not pagename.startswith("auto_examples/"):
+        return None
+
+    parts = pagename.split("/")
+    if pagename.endswith("/index") and len(parts) == 3:
+        tutorials = TUTORIAL_ORDER.get(parts[1])
+        if not tutorials:
+            return None
+        stem = Path(tutorials[0]).stem
+        title = get_doc_title(app, pagename)
+        return (
+            f"{base}/_images/sphx_glr_{stem}_thumb.png",
+            f"{title} examples",
+        )
+
+    if pagename != "auto_examples/index" and not pagename.endswith("/index"):
+        stem = parts[-1]
+        title = get_doc_title(app, pagename)
+        return (
+            f"{base}/_images/sphx_glr_{stem}_thumb.png",
+            f"{title} tutorial visualization",
+        )
+
+    return None
+
+
+def inject_representative_image_meta(
+    app, pagename, templatename, context, doctree
+) -> None:
+    """Use representative Open Graph images where relevant assets exist."""
+    representative_image = get_representative_image(app, pagename)
+    if representative_image is None:
+        return
+
+    image_url, image_alt = representative_image
+    metatags = _OG_IMAGE_META_RE.sub("", context.get("metatags", "")).rstrip()
+    context["metatags"] = (
+        f"{metatags}\n"
+        f'<meta property="og:image" content="{escape(image_url, quote=True)}" />\n'
+        f'<meta property="og:image:alt" content="{escape(image_alt, quote=True)}" />\n'
+    )
+
+
+def inject_api_meta_description(app, pagename, templatename, context, doctree):
+    """Add standard and social descriptions to generated API pages."""
+    if not pagename.startswith("generated/skfolio.") or doctree is None:
+        return
+
+    _set_description_meta(context, get_api_meta_description(pagename, doctree))
+
+
+def inject_example_meta_description(app, pagename, templatename, context, doctree):
+    """Add standard and social descriptions to gallery categories and examples."""
+    if (
+        not pagename.startswith("auto_examples/")
+        or pagename == "auto_examples/index"
+        or pagename in REDIRECTS
+    ):
+        return
+
+    if pagename.endswith("/index"):
+        title = get_doc_title(app, pagename)
+        description = (
+            f"Examples and tutorials for {title} using skfolio, a Python library "
+            "for portfolio optimization and risk management."
+        )
+    else:
+        _, description = get_example_headline_and_description(app, pagename)
+
+    _set_description_meta(context, description)
+
+
 # Stable entity IDs shared across skfolio.org and skfoliolabs.com
 ORG_ID = "https://skfoliolabs.com#organization"
-APP_ID = "https://skfoliolabs.com#skfolio"
 CODE_ID = "https://github.com/skfolio/skfolio#code"
 WEBSITE_ID = "https://skfolio.org#website"
-SEARCH_TARGET = "{base}/search.html?q={{search_term_string}}"
+DOCS_DATE_PUBLISHED = "2023-12-18"
+_ARTICLE_AUTHOR = {
+    "@type": "Organization",
+    "@id": ORG_ID,
+    "name": "Skfolio Labs",
+    "url": "https://skfoliolabs.com",
+}
 
 
-def _breadcrumb(id_url: str, items: list[tuple[int, str, str]]):
+def _breadcrumb(id_url: str, items: list[tuple[str, str]]) -> dict[str, object]:
+    """Build a Google-compatible breadcrumb with sequential positions."""
+    if len(items) < 2:
+        raise ValueError("A breadcrumb requires at least two items")
+
     return {
         "@type": "BreadcrumbList",
         "@id": f"{id_url}#breadcrumb",
         "itemListElement": [
-            {"@type": "ListItem", "position": pos, "name": name, "item": url}
-            for (pos, name, url) in items
+            {
+                "@type": "ListItem",
+                "position": position,
+                "name": name,
+                "item": url,
+            }
+            for position, (name, url) in enumerate(items, start=1)
         ],
     }
 
 
 def inject_schema(app, pagename, templatename, context, doctree):
+    """Add page-specific JSON-LD structured data."""
     base = app.config.html_baseurl.rstrip("/")
     in_lang = "en"
 
@@ -1055,35 +1375,36 @@ def inject_schema(app, pagename, templatename, context, doctree):
             f"{base}/" if page == "index" else f"{base}/{page}.html"
         )
 
-    date_published = str(dt.date(2023, 12, 18))
-    date_modified = context.get("last_updated") or str(dt.date.today())
+    page_dates = {"datePublished": DOCS_DATE_PUBLISHED}
+    if date_modified := context.get("last_updated"):
+        page_dates["dateModified"] = date_modified
+    representative_image = get_representative_image(app, pagename)
+    image_properties = (
+        {"image": representative_image[0]} if representative_image else {}
+    )
 
     # Always initialize metatags safely
     context["metatags"] = context.get("metatags", "")
 
-    # ---------- 1) SITE-WIDE BLOCK (present on every page) ----------
-    sitewide_graph = {
+    # Homepage site entities.
+    homepage_graph = {
         "@context": "https://schema.org",
         "@graph": [
             {
                 "@type": "WebSite",
                 "@id": WEBSITE_ID,
-                "url": base,
-                "name": "Skfolio Documentation",
+                "url": f"{base}/",
+                "name": "skfolio",
+                "alternateName": ["skfolio documentation", "skfolio.org"],
                 "inLanguage": in_lang,
                 "publisher": {"@id": ORG_ID},
-                "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": SEARCH_TARGET.format(base=base),
-                    "query-input": "required name=search_term_string",
-                },
             },
-            # Global primary nav (header links appear on all pages)
+            # Primary navigation links shown throughout the documentation.
             {
                 "@type": "SiteNavigationElement",
                 "@id": f"{base}/#site-nav",
                 "name": "Primary navigation",
-                "url": base,
+                "url": f"{base}/",
                 "about": {"@id": WEBSITE_ID},
                 "inLanguage": in_lang,
                 "hasPart": [
@@ -1104,7 +1425,7 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     },
                 ],
             },
-            # cross-domain entities with minimal fields to avoid validator warnings
+            # Cross-domain entities with stable identifiers.
             {
                 "@type": "Corporation",
                 "@id": ORG_ID,
@@ -1113,43 +1434,30 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 "logo": "https://skfoliolabs.com/icon.svg",
             },
             {
-                "@type": "SoftwareApplication",
-                "@id": APP_ID,
-                "name": "Skfolio",
-                "applicationCategory": "DeveloperApplication",
-                "operatingSystem": "Any",
-                "softwareHelp": "https://skfolio.org",
-                "sameAs": ["https://skfolio.org", "https://github.com/skfolio/skfolio"],
-                "publisher": {"@id": ORG_ID},
-                # NOTE: intentionally no 'offers' and no 'aggregateRating' (no stars)
-            },
-            {
                 "@type": "SoftwareSourceCode",
                 "@id": CODE_ID,
                 "name": "Skfolio Source Code",
                 "url": "https://github.com/skfolio/skfolio",
                 "codeRepository": "https://github.com/skfolio/skfolio",
                 "programmingLanguage": "Python",
-                "isPartOf": {"@id": APP_ID},
                 "author": {"@id": ORG_ID},
                 "publisher": {"@id": ORG_ID},
             },
         ],
     }
 
-    # Inject site-wide graph
-    context["metatags"] += (
-        '\n<script type="application/ld+json">\n'
-        + json.dumps(sitewide_graph, indent=2)
-        + "\n</script>\n"
-    )
-    print(f"Inject Site-wide Schema into {pagename}")
+    if pagename == "index":
+        context["metatags"] += (
+            '\n<script type="application/ld+json">\n'
+            + json.dumps(homepage_graph, indent=2)
+            + "\n</script>\n"
+        )
 
-    # ---------- 2) PAGE-LEVEL BLOCK (exactly one per page) ----------
+    # Page-level entities.
     page_schema = None
     url = _url_for(pagename)
 
-    # Docs home (/) as CollectionPage + breadcrumb + featured ItemList
+    # Docs home (/) as CollectionPage with a featured ItemList
     if pagename == "index":
         page_schema = {
             "@context": "https://schema.org",
@@ -1161,13 +1469,12 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "url": url,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
-                    "datePublished": date_published,
-                    "dateModified": date_modified,
+                    **page_dates,
                     "primaryImageOfPage": {
                         "@type": "ImageObject",
                         "url": f"{base}/_static/expo.jpg",
@@ -1190,7 +1497,6 @@ def inject_schema(app, pagename, templatename, context, doctree):
                         {"@type": "ListItem", "position": 3, "url": f"{base}/api.html"},
                     ],
                 },
-                _breadcrumb(url, [(1, "Docs Home", f"{base}/")]),
             ],
         }
 
@@ -1222,13 +1528,12 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "url": url,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
-                    "datePublished": date_published,
-                    "dateModified": date_modified,
+                    **page_dates,
                 },
                 {
                     "@type": "ItemList",
@@ -1238,8 +1543,8 @@ def inject_schema(app, pagename, templatename, context, doctree):
                 _breadcrumb(
                     url,
                     [
-                        (1, "Docs Home", f"{base}/"),
-                        (2, "User Guide", url),
+                        ("Docs Home", f"{base}/"),
+                        ("User Guide", url),
                     ],
                 ),
             ],
@@ -1258,20 +1563,20 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "url": url,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
-                    "datePublished": date_published,
-                    "dateModified": date_modified,
+                    **page_dates,
+                    **image_properties,
                 },
                 _breadcrumb(
                     url,
                     [
-                        (1, "Docs Home", f"{base}/"),
-                        (2, "User Guide", f"{base}/user_guide/index.html"),
-                        (3, title, url),
+                        ("Docs Home", f"{base}/"),
+                        ("User Guide", f"{base}/user_guide/index.html"),
+                        (title, url),
                     ],
                 ),
             ],
@@ -1296,15 +1601,37 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "targetPlatform": "Any platform running Python 3.10+",
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
-                    "datePublished": date_published,
-                    "dateModified": date_modified,
+                    **page_dates,
                 },
-                _breadcrumb(url, [(1, "Docs Home", f"{base}/"), (2, "API", url)]),
+                _breadcrumb(
+                    url,
+                    [
+                        ("Docs Home", f"{base}/"),
+                        ("API Reference", url),
+                    ],
+                ),
+            ],
+        }
+
+    # Generated API object pages
+    elif pagename.startswith("generated/skfolio."):
+        title = get_doc_title(app, pagename)
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                _breadcrumb(
+                    url,
+                    [
+                        ("Docs Home", f"{base}/"),
+                        ("API Reference", f"{base}/api.html"),
+                        (title, url),
+                    ],
+                ),
             ],
         }
 
@@ -1345,22 +1672,48 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "hasPart": parts,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
-                    "datePublished": date_published,
-                    "dateModified": date_modified,
+                    **page_dates,
                 },
-                _breadcrumb(url, [(1, "Docs Home", f"{base}/"), (2, "Examples", url)]),
+                _breadcrumb(
+                    url,
+                    [
+                        ("Docs Home", f"{base}/"),
+                        ("Examples", url),
+                    ],
+                ),
+            ],
+        }
+
+    # Gallery category indexes
+    elif pagename.startswith("auto_examples/") and pagename.endswith("/index"):
+        title = get_doc_title(app, pagename)
+        page_schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                _breadcrumb(
+                    url,
+                    [
+                        ("Docs Home", f"{base}/"),
+                        ("Examples", f"{base}/auto_examples/index.html"),
+                        (title, url),
+                    ],
+                ),
             ],
         }
 
     # Individual example pages as TechArticle + breadcrumb (+ provenance)
     elif pagename.startswith("auto_examples/") and not pagename.endswith("index"):
         headline, desc = get_example_headline_and_description(app, pagename)
-        example_date = EXAMPLE_LAST_UPDATED.get(pagename, str(dt.date.today()))
+        example_dates = {}
+        if example_date_published := EXAMPLE_DATE_PUBLISHED.get(pagename):
+            example_dates["datePublished"] = example_date_published
+        if example_date_modified := EXAMPLE_DATE_MODIFIED.get(pagename):
+            example_dates["dateModified"] = example_date_modified
         page_schema = {
             "@context": "https://schema.org",
             "@graph": [
@@ -1372,21 +1725,21 @@ def inject_schema(app, pagename, templatename, context, doctree):
                     "url": url,
                     "inLanguage": in_lang,
                     "isPartOf": {"@id": WEBSITE_ID},
-                    "about": {"@id": APP_ID},
+                    "about": {"@id": CODE_ID},
                     "publisher": {"@id": ORG_ID},
-                    "author": {"@id": ORG_ID},
+                    "author": _ARTICLE_AUTHOR,
                     "copyrightHolder": {"@id": ORG_ID},
                     "mainEntityOfPage": url,
                     "isBasedOn": {"@id": CODE_ID},
-                    "datePublished": example_date,
-                    "dateModified": example_date,
+                    **example_dates,
+                    **image_properties,
                 },
                 _breadcrumb(
                     url,
                     [
-                        (1, "Docs Home", f"{base}/"),
-                        (2, "Examples", f"{base}/auto_examples/index.html"),
-                        (3, headline, url),
+                        ("Docs Home", f"{base}/"),
+                        ("Examples", f"{base}/auto_examples/index.html"),
+                        (headline, url),
                     ],
                 ),
             ],
@@ -1399,64 +1752,18 @@ def inject_schema(app, pagename, templatename, context, doctree):
             + json.dumps(page_schema, indent=2)
             + "\n</script>\n"
         )
-        print(f"Inject Page-level Schema into {pagename}")
 
 
 def override_html_title(app, pagename, templatename, context, doctree):
+    """Use a concise, search-oriented homepage title."""
     # only on the main index
     if pagename == "index":
-        print("Running Override HTML Title...")
         context["title"] = "Portfolio Optimization in Python"
 
 
 @_html_builders_only
-def override_example_meta_descriptions(app, exception):
-    if exception:
-        return
-
-    print("Running meta description override (examples only)...")
-    output_dir = Path(app.outdir)
-
-    for html_file in output_dir.rglob("*.html"):
-        pagename = html_file.relative_to(output_dir).with_suffix("").as_posix()
-        if (
-            not (
-                pagename.startswith("auto_examples/")
-                and pagename != "auto_examples/index"
-            )
-            or pagename in REDIRECTS
-        ):
-            continue
-
-        headline, desc = get_example_headline_and_description(app, pagename)
-
-        html = html_file.read_text(encoding="utf-8")
-
-        # Replace or insert <meta name="description">
-        html = re.sub(
-            r'<meta\s+name=["\']description["\']\s+content=["\'].*?["\']\s*/?>',
-            f'<meta name="description" content="{escape(desc)}">',
-            html,
-            flags=re.IGNORECASE,
-        )
-
-        # Replace or insert <meta property="og:description">
-        html = re.sub(
-            r'<meta\s+property=["\']og:description["\']\s+content=["\'].*?["\']\s*/?>',
-            f'<meta property="og:description" content="{escape(desc)}">',
-            html,
-            flags=re.IGNORECASE,
-        )
-
-        html_file.write_text(html, encoding="utf-8")
-        print(f"Updated: {html_file.relative_to(output_dir)}")
-
-
-
-@_html_builders_only
 def replace_index_links(app, exception):
-    """
-    Normalize only links that truly point to the *root* homepage:
+    """Normalize only links that truly point to the root homepage.
 
       - href="/index.html"                    -> href="/"
       - href="{html_baseurl}/index.html"      -> href="{html_baseurl}/"
@@ -1559,11 +1866,13 @@ def _canonical(app, target: str) -> str:
 
 @_html_builders_only
 def create_redirects(app, exception):
+    """Write redirect pages for legacy documentation URLs."""
     if exception:
         return  # skip on failed builds
 
     outdir = Path(app.outdir)
     suffix = getattr(app.builder, "out_suffix", ".html")  # default HTML builder
+    updated_redirects = 0
     for src_docname, target in REDIRECTS.items():
         out_path = outdir / f"{src_docname}{suffix}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1571,8 +1880,59 @@ def create_redirects(app, exception):
             to_uri=target,
             canonical=_canonical(app, target),
         )
-        out_path.write_text(html, encoding="utf-8")
-        print(f"[redirects] {src_docname}{suffix} -> {target}")
+        if not out_path.exists() or out_path.read_text(encoding="utf-8") != html:
+            out_path.write_text(html, encoding="utf-8")
+            updated_redirects += 1
+
+    if updated_redirects:
+        print(f"Updated {updated_redirects} redirect page(s)")
+
+
+_HEAD_RE = re.compile(r"<head\b[^>]*>.*?</head>", flags=re.IGNORECASE | re.DOTALL)
+_VIEWPORT_META_RE = re.compile(
+    r"""<meta\b(?=[^>]*\bname\s*=\s*["']viewport["'])[^>]*>""",
+    flags=re.IGNORECASE,
+)
+_CANONICAL_VIEWPORT_META = (
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+)
+
+
+@_html_builders_only
+def normalize_viewport_meta(app, exception):
+    """Keep one canonical viewport declaration in each generated HTML head."""
+    if exception:
+        return
+
+    updated_pages = 0
+    for path in Path(app.outdir).rglob("*.html"):
+        original = path.read_text(encoding="utf-8")
+        head_match = _HEAD_RE.search(original)
+        if head_match is None:
+            continue
+
+        head = head_match.group()
+        if len(_VIEWPORT_META_RE.findall(head)) <= 1:
+            continue
+
+        replacement_count = 0
+
+        def replace_viewport(match: re.Match) -> str:
+            nonlocal replacement_count
+            replacement_count += 1
+            return _CANONICAL_VIEWPORT_META if replacement_count == 1 else ""
+
+        normalized_head = _VIEWPORT_META_RE.sub(replace_viewport, head)
+        html = (
+            original[: head_match.start()]
+            + normalized_head
+            + original[head_match.end() :]
+        )
+        path.write_text(html, encoding="utf-8")
+        updated_pages += 1
+
+    if updated_pages:
+        print(f"Normalized viewport metadata in {updated_pages} page(s)")
 
 
 def skip_str_inherited_members(app, what, name, obj, skip, options):
@@ -1688,6 +2048,15 @@ _PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
 # sphinx-llm pages
 _LLMS_HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
 _LLMS_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
+_LLMS_SITE_URL_RE = re.compile(
+    r"(?P<prefix>\]\(https://skfolio\.org/)"
+    r"(?P<path>[^)\r\n]*\\[^)\r\n]*)(?=\))"
+)
+_LLMS_TRUNCATED_SECONDARY_LINK_RE = re.compile(
+    r"\[(?P<label>[^\]\r\n]+)\]\("
+    r"https://skfolio\.org(?:/[^)\r\n]*)?\.\.\.(?=\r?$)",
+    flags=re.MULTILINE,
+)
 
 
 def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
@@ -1706,41 +2075,91 @@ def _sanitize_llm_markdown_text(text: str) -> tuple[str, int, int]:
     return text, n_plotly, n_comments
 
 
+def _normalize_llms_txt_urls(text: str) -> tuple[str, int]:
+    """Use URL separators in links generated for the `llms.txt` sitemap."""
+
+    def replace_url(match: re.Match) -> str:
+        return match.group("prefix") + match.group("path").replace("\\", "/")
+
+    return _LLMS_SITE_URL_RE.subn(replace_url, text)
+
+
+def _repair_truncated_llms_txt_links(text: str) -> tuple[str, int]:
+    """Replace truncated secondary links with their readable labels."""
+    return _LLMS_TRUNCATED_SECONDARY_LINK_RE.subn(
+        lambda match: match.group("label"),
+        text,
+    )
+
+
 def postprocess_llm_markdown_artifacts(app, exception):
     """Post-process sphinx-llm markdown files after the HTML build.
 
     Runs after sphinx-llm's own `build-finished` hook (priority > 500) so the per-page
-    `*.html.md` and `llms-full.txt` already exist on disk. Strips inline Plotly HTML,
-    removes leftover numpydoc/sphinx-gallery metadata comments and normalises whitespace.
+    `*.html.md`, `llms-full.txt` and `llms.txt` files already exist on disk. Strips
+    inline Plotly HTML, removes leftover numpydoc/sphinx-gallery metadata comments,
+    normalises whitespace, repairs truncated description links and ensures sitemap
+    links use URL separators on every platform.
     """
     if exception is not None:
         return
     if app.builder.name not in ("html", "dirhtml"):
         return
     outdir = Path(app.outdir)
+
+    stale_files = 0
+    if app.builder.name == "html":
+        expected_files = {Path(f"{docname}.html.md") for docname in app.env.found_docs}
+        for path in outdir.rglob("*.html.md"):
+            if path.relative_to(outdir) not in expected_files:
+                path.unlink()
+                stale_files += 1
+
     targets = list(outdir.rglob("*.html.md"))
     llms_full = outdir / "llms-full.txt"
     if llms_full.exists():
         targets.append(llms_full)
+    llms_index = outdir / "llms.txt"
+    if llms_index.exists():
+        targets.append(llms_index)
     total_plotly = 0
     total_comments = 0
+    total_normalized_urls = 0
+    total_repaired_links = 0
     total_files = 0
     for path in targets:
         original = path.read_text(encoding="utf-8")
         text, n_plotly, n_comments = _sanitize_llm_markdown_text(original)
-        if n_plotly or n_comments or text != original:
+        n_normalized_urls = 0
+        n_repaired_links = 0
+        if path == llms_index:
+            text, n_normalized_urls = _normalize_llms_txt_urls(text)
+            text, n_repaired_links = _repair_truncated_llms_txt_links(text)
+        if (
+            n_plotly
+            or n_comments
+            or n_normalized_urls
+            or n_repaired_links
+            or text != original
+        ):
             path.write_text(text, encoding="utf-8")
             total_plotly += n_plotly
             total_comments += n_comments
+            total_normalized_urls += n_normalized_urls
+            total_repaired_links += n_repaired_links
             total_files += 1
     print(
         f"[llms-postprocess] updated {total_files} file(s): "
-        f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s) removed"
+        f"{total_plotly} Plotly block(s), {total_comments} HTML comment(s), "
+        f"{total_normalized_urls} URL(s) normalized, "
+        f"{total_repaired_links} truncated link(s) repaired, "
+        f"{stale_files} stale file(s) removed"
     )
 
 
 def setup(app):
     """Setup function to register autodoc, HTML, and build-finished hooks."""
+    _disable_jupyterlite_markdown_cleanup(app)
 
     # sphinx-llm re-executes this conf under the markdown builder.
     if getattr(app, "_skfolio_autodoc_str_enum_noise_filter", None) is None:
@@ -1749,28 +2168,35 @@ def setup(app):
         for _log in ("sphinx.ext.autodoc", "sphinx.ext.autosummary"):
             logging.getLogger(_log).addFilter(noise_filter)
 
-    # Attach the str-enum log filter once per app. setup(app) may run twice because
+    # Skip inherited str methods that should not appear in API documentation.
     app.connect("autodoc-skip-member", skip_str_inherited_members)
 
     # Filter inherited str methods out of every (str, Enum) class. We set priority below
     # the default 500. The callback returns None outside its narrow target so it
     # composes with later handlers.
-    app.connect( "autodoc-skip-member", skip_strenum_public_str_methods, priority=-100)
+    app.connect("autodoc-skip-member", skip_strenum_public_str_methods, priority=-100)
 
-    # Patch sphinx-markdown-builder to emit parameter types.
-    app.connect("builder-inited", patch_markdown_classifier)
+    # Configure sphinx-markdown-builder for documentation-specific nodes and assets.
+    app.connect("builder-inited", patch_markdown_builder)
 
     # html page context
-    app.connect("html-page-context", override_canonical)
+    # Set the homepage URL before other page-context consumers.
+    app.connect("html-page-context", override_canonical, priority=499)
     app.connect("html-page-context", inject_schema)
     app.connect("html-page-context", override_html_title)
+    app.connect("html-page-context", inject_representative_image_meta, priority=900)
+    app.connect("html-page-context", inject_api_meta_description, priority=900)
+    app.connect("html-page-context", inject_example_meta_description, priority=900)
 
     # Build finished
     app.connect("build-finished", patch_jupyterlite_notebooks)
-    app.connect("build-finished", prune_and_fix_sitemap)
-    app.connect("build-finished", override_example_meta_descriptions)
+    # Populate before sphinx-sitemap's default-priority writer, then post-process its
+    # complete output.
+    app.connect("build-finished", populate_complete_sitemap, priority=499)
+    app.connect("build-finished", prune_and_fix_sitemap, priority=501)
     app.connect("build-finished", replace_index_links)
     app.connect("build-finished", create_redirects)
+    app.connect("build-finished", normalize_viewport_meta, priority=998)
 
     # We set priority>500 so this runs after sphinx-llm's build-finished hook, which
     # generates the .html.md / llms-full.txt that we then post-process.

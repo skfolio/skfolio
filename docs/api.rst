@@ -1,16 +1,6 @@
 :og:description: API reference for skfolio: detailed documentation of functions, classes, and modules for portfolio optimization and risk management in Python.
 
 .. meta::
-    :keywords: python portfolio optimization,
-               quantitative finance,
-               risk management,
-               portfolio backtesting,
-               algorithmic trading,
-               robust optimization,
-               scikit-learn integration,
-               financial modeling,
-               stress testing,
-               skfolio
     :description: API reference for skfolio: detailed documentation of functions,
                   classes, and modules for portfolio optimization and risk management
                   in Python.

@@ -1,18 +1,7 @@
 :og:description:  Python library for portfolio optimization, factor modeling and risk management built on scikit-learn to create, fine-tune, cross-validate and stress-test portfolio models.
+:og:url: https://skfolio.org/
 
 .. meta::
-    :keywords: python portfolio optimization,
-               characteristics factor model,
-               fundamental factor model,
-               quantitative finance,
-               risk management,
-               portfolio backtesting,
-               algorithmic trading,
-               robust optimization,
-               scikit-learn integration,
-               financial modeling,
-               stress testing,
-               skfolio
     :description: Python library for portfolio optimization, factor modeling and risk
                   management built on scikit-learn to create, fine-tune, cross-validate
                   and stress-test portfolio models.
@@ -48,7 +37,7 @@ skfolio
         imagesizes="(max-width: 960px) 100vw, 1500px"
         type="image/webp">
 
-    <a href="https://skfolio.org/auto_examples/"
+    <a href="https://skfolio.org/auto_examples/index.html"
        title="Browse the skfolio examples gallery">
         <picture>
             <source

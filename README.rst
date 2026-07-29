@@ -67,7 +67,7 @@ enterprise support and SLAs for institutions.
 .. skfolio-shared-introduction-end
 
 .. image:: https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/expo.jpg
-    :target: https://skfolio.org/auto_examples/
+    :target: https://skfolio.org/auto_examples/index.html
     :alt: examples
 
 .. skfolio-shared-body-start
@@ -75,8 +75,8 @@ enterprise support and SLAs for institutions.
 Important links
 ~~~~~~~~~~~~~~~
 
-- `Examples <https://skfolio.org/auto_examples/>`_
-- `User Guide <https://skfolio.org/user_guide/>`_
+- `Examples <https://skfolio.org/auto_examples/index.html>`_
+- `User Guide <https://skfolio.org/user_guide/index.html>`_
 - `API Reference <https://skfolio.org/api.html>`_
 - `GitHub Repo <https://github.com/skfolio/skfolio>`_
 - `Enterprise Support <https://skfoliolabs.com>`_
@@ -100,6 +100,18 @@ Installation
 See the `installation guide <https://skfolio.org/user_guide/install.html>`_ for the full
 dependency list, for conda-forge, and for the mixed-integer solvers (`SCIP`, `GUROBI`,
 `MOSEK`) required by cardinality and threshold constraints.
+
+LLM-friendly documentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The documentation follows the `llms.txt convention <https://llmstxt.org/>`_ and
+provides token-efficient Markdown alongside the HTML site:
+
+- Start with `llms.txt <https://skfolio.org/llms.txt>`_ to find relevant pages.
+- Read only the Markdown pages needed by appending `.md` to their HTML URLs, for example
+  `factor_models.html.md <https://skfolio.org/user_guide/factor_models.html.md>`_.
+- Use `llms-full.txt <https://skfolio.org/llms-full.txt>`_ only when the complete
+  documentation is required in a single file.
 
 Contribution
 ~~~~~~~~~~~~
