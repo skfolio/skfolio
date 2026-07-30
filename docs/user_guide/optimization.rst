@@ -319,9 +319,10 @@ For more complex cases and estimators, check the :ref:`API Reference <api>`.
 Worst-Case Optimization
 =======================
 With the `mu_uncertainty_set_estimator` parameter, the expected returns of the assets
-are modeled with an ellipsoidal uncertainty set. This approach is known as worst-case
-optimization and falls under the class of robust optimization. It mitigates the
-instability that arises from estimation errors of the expected returns.
+are modeled with a :ref:`norm-ball uncertainty set <uncertainty_set_estimator>`. This
+approach is known as worst-case optimization and falls under the class of robust
+optimization. It mitigates the instability that arises from estimation errors of the
+expected returns.
 
 **Example:**
 

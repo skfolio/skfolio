@@ -259,8 +259,8 @@ parameters of composite or nested estimators using a dedicated
 
 **Example:**
 
-In the below example, we search for the optimal parameter `alpha` of the nested estimator
-:class:`~skfolio.moments.EWMu`:
+In the below example, we search for the optimal parameter `half_life` of the nested
+estimator :class:`~skfolio.moments.EWMu`:
 
 .. code-block:: python
 

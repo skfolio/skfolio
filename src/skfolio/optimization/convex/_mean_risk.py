@@ -380,16 +380,18 @@ class MeanRisk(ConvexOptimization):
 
     mu_uncertainty_set_estimator : BaseMuUncertaintySet, optional
         :ref:`Mu Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the expected asset returns are modelled with an ellipsoidal
+        If provided, the expected asset returns are modelled with a norm-ball
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
         The worst-case portfolio expected return is:
 
-        .. math:: w^T \cdot \hat{\mu} - \kappa_{\mu} \lVert S_{\mu}^\frac{1}{2} \cdot w \rVert_{2}
+        .. math:: w^T \cdot \hat{\mu} - \kappa_{\mu} \lVert L_{\mu}^T \cdot w \rVert_{q}
 
-        with :math:`\kappa` the size of the ellipsoid (confidence region) and
-        :math:`S` its shape.
+        with :math:`\kappa` the radius of the uncertainty set (confidence region),
+        :math:`L` its linear geometry map and :math:`q` the dual norm. For an
+        ellipsoidal set with shape matrix :math:`S`, :math:`L` is a square-root factor
+        satisfying :math:`S = L L^T` and :math:`q` is :math:`2`.
         The default (`None`) means that no uncertainty set is used.
 
     covariance_uncertainty_set_estimator : BaseCovarianceUncertaintySet, optional
