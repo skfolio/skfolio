@@ -453,7 +453,7 @@ def _validate_unit_interval(value: object, name: str) -> None:
 
 
 def check_estimator(
-    estimator: skb.BaseEstimator | None | Literal["passthrough"],
+    estimator: skb.BaseEstimator | Literal["passthrough"] | None,
     default: skb.BaseEstimator | None,
     check_type: Any,
 ):

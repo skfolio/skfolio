@@ -366,12 +366,15 @@ model.fit(characteristics=panel)
 # a full-panel `fit` on the concatenated data. We initialize the model with two
 # years plus one month of data to cover the cumulative descriptor and estimator
 # warmups (see :ref:`Warmup Periods <factor_model_warmup>`). Later chunks can
-# be as small as one observation:
-warmup = 2 * year + month
-model.fit(characteristics=panel[:warmup])
-
-for i in range(warmup, len(panel), month):
-    model.partial_fit(characteristics=panel[i : i + month])
+# be as small as one observation. The equivalent incremental fit is:
+#
+# .. code-block:: python
+#
+#     warmup = 2 * year + month
+#     model.fit(characteristics=panel[:warmup])
+#
+#     for i in range(warmup, len(panel), month):
+#         model.partial_fit(characteristics=panel[i : i + month])
 
 # %%
 # Model Outputs
@@ -564,7 +567,7 @@ evaluation = online_covariance_forecast_evaluation(
     model,
     X,
     params={"characteristics": panel},
-    warmup_size=warmup,
+    warmup_size= 2 * year + month,
     test_size=week,
 )
 evaluation.summary()

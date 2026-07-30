@@ -47,7 +47,6 @@ __all__ = [
     "RiskResult",
     "Scoring",
     "StrArray",
-    "StrArray",
     "Tags",
     "Target",
 ]

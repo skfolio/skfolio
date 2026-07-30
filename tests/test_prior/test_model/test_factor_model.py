@@ -911,6 +911,7 @@ class TestPlotFactorForecastCorrelation:
         expected = factor_model.factor_forecast_correlation()
         np.testing.assert_allclose(z, expected, atol=1e-12)
 
+
 class TestFactorForecastCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):
         corr = factor_model.factor_forecast_correlation()
@@ -1109,6 +1110,7 @@ class TestPlotExposureCorrelation:
             families=None, cs_weighting=CSWeighting.IDENTITY
         )
         np.testing.assert_allclose(z, expected, atol=1e-12)
+
 
 class TestExposureCorrelation:
     def test_returns_symmetric_matrix(self, factor_model):

@@ -156,7 +156,8 @@ randomized_search = RandomizedSearchCV(
     param_distributions={
         "mu_uncertainty_set_estimator__confidence_level": uniform(loc=0, scale=1),
     },
-    n_iter=50,
+    n_iter=40,
+    random_state=0,
     scoring=make_scorer(RatioMeasure.CVAR_RATIO),
 )
 randomized_search.fit(X_train)

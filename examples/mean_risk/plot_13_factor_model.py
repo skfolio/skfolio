@@ -66,6 +66,7 @@ estimator.
 # assets from the SPX Index composition and the Factors dataset composed of the daily
 # prices of 5 ETFs representing common factors:
 from plotly.io import show
+from sklearn import set_config
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import train_test_split
 
@@ -75,6 +76,8 @@ from skfolio.moments import GerberCovariance, ShrunkMu
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRegression
+
+set_config(enable_metadata_routing=True)
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
