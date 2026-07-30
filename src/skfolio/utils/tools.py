@@ -29,7 +29,6 @@ from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 
 __all__ = [
     "AutoEnum",
-    "_call_estimator",
     "apply_window_size",
     "args_names",
     "bisection",

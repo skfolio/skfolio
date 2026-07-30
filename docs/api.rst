@@ -786,6 +786,7 @@ Model Dataclass
     :template: class.rst
 
     uncertainty_set.UncertaintySet
+    uncertainty_set.CompactCovarianceUncertaintySet
 
 
 Base Classes
@@ -813,6 +814,8 @@ Classes
     uncertainty_set.EmpiricalCovarianceUncertaintySet
     uncertainty_set.BootstrapMuUncertaintySet
     uncertainty_set.BootstrapCovarianceUncertaintySet
+    uncertainty_set.OrthogonalMuUncertaintySet
+    uncertainty_set.OrthogonalCovarianceUncertaintySet
 
 
 .. _pre_selection_ref:

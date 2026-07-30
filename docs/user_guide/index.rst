@@ -20,6 +20,7 @@ The public API is stable from version 1.0.0
 onward and follows `semantic versioning <https://semver.org>`_: no backward-incompatible
 change within the 1.x series, and anything scheduled for removal raises a
 `FutureWarning` before being removed in the next major release.
+Upgrading between major versions is covered in the :ref:`Migration Guide <migration>`.
 `Skfolio Labs <https://skfoliolabs.com>`_ provides enterprise support and dedicated SLAs.
 
 .. toctree::
@@ -47,3 +48,4 @@ change within the 1.x series, and anything scheduled for removal raises a
     Datasets <datasets>
     Data Preparation <data_preparation>
     Asset Data Representation <data_representation>
+    Migration Guide <migration>
