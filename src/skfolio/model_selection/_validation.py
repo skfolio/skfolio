@@ -368,86 +368,70 @@ def _route_params(
     -------
     routed_params : Bunch
         Routed parameters with `.estimator_params` attribute and, when `cv` is provided,
-        `.splitter.split`.
+        `.splitter.split`. Values are plain dictionaries, so the result can be passed to
+        worker processes.
 
     Raises
     ------
-    RuntimeError
-        If metadata routing returns an unexpected non-empty internal payload for the
-        requested estimator or splitter method.
+    UnsetMetadataPassedError
+        If metadata routing is enabled and `params` contains metadata that the estimator
+        has not explicitly requested.
     """
     params = params or {}
 
-    if _routing_enabled():
-        # For estimators, a MetadataRouter is created in get_metadata_routing
-        # methods. For these router methods, we create the router to use
-        # `process_routing` on it.
-        router = skm.MetadataRouter(owner=owner)
-        if cv is not None:
-            router.add(
-                splitter=cv,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
-            )
-        router.add(
-            estimator=estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
-        )
-        request_method = f"set_{callee}_request"
-        try:
-            routed_params = skm.process_routing(router, "fit", **params)
-        except ske.UnsetMetadataPassedError as e:
-            # The default exception would mention `fit` since in the above
-            # `process_routing` code, we pass `fit` as the caller. However,
-            # the user is not calling `fit` directly, so we change the message
-            # to make it more suitable for this case.
-            unrequested_params = sorted(e.unrequested_params)
-            raise ske.UnsetMetadataPassedError(
-                message=(
-                    f"{unrequested_params} are passed to `{owner}` but are"
-                    " not explicitly set as requested or not requested for"
-                    f" {owner}'s estimator: "
-                    f"{estimator.__class__.__name__}. Call"
-                    f" `.{request_method}({{metadata}}=True)` on the estimator"
-                    f" for each metadata in {unrequested_params} that you want"
-                    " to use and `metadata=False` if you are not using it. See the"
-                    " Metadata Routing User guide"
-                    " <https://scikit-learn.org/stable/metadata_routing.html>"
-                    " for more information."
-                ),
-                unrequested_params=e.unrequested_params,
-                routed_params=e.routed_params,
-            ) from None
-        estimator = getattr(routed_params, "estimator", None)
-        if estimator is None:
-            routed_params.estimator_params = {}
-        elif hasattr(estimator, callee):
-            routed_params.estimator_params = getattr(estimator, callee)
-        elif len(estimator) == 0:
-            routed_params.estimator_params = {}
-        else:
-            raise RuntimeError(
-                "Metadata routing returned an unexpected estimator payload for "
-                f"`{owner}` and callee `{callee}`."
-            )
-
-        if cv is not None:
-            splitter = getattr(routed_params, "splitter", None)
-            if splitter is None:
-                routed_params.splitter = sku.Bunch(split={})
-            elif hasattr(splitter, "split"):
-                pass
-            elif len(splitter) == 0:
-                routed_params.splitter = sku.Bunch(split={})
-            else:
-                raise RuntimeError(
-                    "Metadata routing returned an unexpected splitter payload for "
-                    f"`{owner}`."
-                )
-    else:
-        routed_params = sku.Bunch()
-        routed_params.estimator_params = params
+    if not params or not _routing_enabled():
+        # With routing disabled the parameters are passed through unchanged, and with no
+        # metadata there is nothing to route. `process_routing` is bypassed because it
+        # returns a placeholder object that cannot be pickled when metadata is empty.
+        routed_params = sku.Bunch(estimator_params=params)
         if cv is not None:
             routed_params.splitter = sku.Bunch(split={})
+        return routed_params
+
+    # For estimators, a MetadataRouter is created in get_metadata_routing
+    # methods. For these router methods, we create the router to use
+    # `process_routing` on it.
+    router = skm.MetadataRouter(owner=owner)
+    if cv is not None:
+        router.add(
+            splitter=cv,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
+        )
+    router.add(
+        estimator=estimator,
+        method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
+    )
+    try:
+        router_params = skm.process_routing(router, "fit", **params)
+    except ske.UnsetMetadataPassedError as e:
+        # The default exception would mention `fit` since in the above
+        # `process_routing` code, we pass `fit` as the caller. However,
+        # the user is not calling `fit` directly, so we change the message
+        # to make it more suitable for this case.
+        unrequested_params = sorted(e.unrequested_params)
+        request_method = f"set_{callee}_request"
+        raise ske.UnsetMetadataPassedError(
+            message=(
+                f"{unrequested_params} are passed to `{owner}` but are"
+                " not explicitly set as requested or not requested for"
+                f" {owner}'s estimator: "
+                f"{estimator.__class__.__name__}. Call"
+                f" `.{request_method}({{metadata}}=True)` on the estimator"
+                f" for each metadata in {unrequested_params} that you want"
+                " to use and `metadata=False` if you are not using it. See the"
+                " Metadata Routing User guide"
+                " <https://scikit-learn.org/stable/metadata_routing.html>"
+                " for more information."
+            ),
+            unrequested_params=e.unrequested_params,
+            routed_params=e.routed_params,
+        ) from None
+
+    # Keep only the payload as plain dictionaries: the result is passed to worker
+    # processes.
+    routed_params = sku.Bunch(estimator_params=dict(router_params.estimator[callee]))
+    if cv is not None:
+        routed_params.splitter = sku.Bunch(split=dict(router_params.splitter.split))
 
     return routed_params
 

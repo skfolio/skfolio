@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pickle
+
 import numpy as np
 import pytest
 import sklearn.model_selection as sks
@@ -17,7 +19,6 @@ from skfolio.model_selection import (
     WalkForward,
     cross_val_predict,
 )
-from skfolio.model_selection import _validation as msv
 from skfolio.model_selection._validation import _route_params
 from skfolio.moments import (
     EWCovariance,
@@ -162,22 +163,49 @@ def test_route_params_partial_fit_error_message(X):
     assert "set_fit_request" not in message
 
 
-def test_route_params_raises_on_unexpected_estimator_payload(monkeypatch):
-    malformed = sku.Bunch(estimator=sku.Bunch(unexpected={"foo": "bar"}))
-
-    monkeypatch.setattr(msv, "_routing_enabled", lambda: True)
-    monkeypatch.setattr(msv.skm, "process_routing", lambda *args, **kwargs: malformed)
-
-    with pytest.raises(
-        RuntimeError,
-        match="unexpected estimator payload",
-    ):
-        _route_params(
-            MeanRisk(),
-            params={"foo": np.array([1.0])},
-            owner="cross_val_predict",
-            callee="fit",
+def test_route_params_picklable_without_metadata():
+    # `process_routing` returns a private placeholder that cannot be pickled when no
+    # metadata is passed, which breaks the process-based parallel paths.
+    with config_context(enable_metadata_routing=True):
+        routed_params = _route_params(
+            EWCovariance(),
+            owner="online_score",
+            callee="partial_fit",
+            cv=KFold(2),
         )
+
+    assert isinstance(routed_params, sku.Bunch)
+    assert set(routed_params) == {"estimator_params", "splitter"}
+    assert routed_params.estimator_params == {}
+    assert routed_params.splitter.split == {}
+
+    restored = pickle.loads(pickle.dumps(routed_params))
+    assert restored.estimator_params == {}
+    assert restored.splitter.split == {}
+
+
+def test_route_params_picklable_with_metadata(X):
+    active_mask = np.ones(X.shape, dtype=bool)
+
+    with config_context(enable_metadata_routing=True):
+        routed_params = _route_params(
+            EWCovariance().set_partial_fit_request(active_mask=True),
+            params={"active_mask": active_mask},
+            owner="online_score",
+            callee="partial_fit",
+            cv=KFold(2),
+        )
+
+    assert isinstance(routed_params, sku.Bunch)
+    assert set(routed_params) == {"estimator_params", "splitter"}
+    np.testing.assert_array_equal(
+        routed_params.estimator_params["active_mask"], active_mask
+    )
+    assert routed_params.splitter.split == {}
+
+    restored = pickle.loads(pickle.dumps(routed_params))
+    np.testing.assert_array_equal(restored.estimator_params["active_mask"], active_mask)
+    assert restored.splitter.split == {}
 
 
 def test_cross_val_predict_non_portfolio_estimator_raises(X):
