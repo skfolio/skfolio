@@ -32,9 +32,9 @@ The default is 0.0 (no transaction costs).
 .. warning::
 
     According to the above formula, the periodicity of the transaction costs
-    needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-    the input `X` is composed of **daily** returns, the `transaction_costs` need
-    to be expressed as **daily** costs.
+    must match the periodicity of :math:`\mu`. For example, if the input
+    `X` is composed of **daily** returns, the `transaction_costs` need to be
+    expressed as **daily** costs.
 
 This means that you need to convert this fixed transaction costs into daily costs. The
 reason is that a transaction cost is paid once per rebalancing while a position earns

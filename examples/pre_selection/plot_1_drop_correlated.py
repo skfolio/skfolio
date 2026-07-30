@@ -51,7 +51,7 @@ model1.weights_
 # %%
 # Pipeline
 # ========
-# Then, we create a maximum Sharpe ratio model with pre-selection using `Pipepline` and
+# Then, we create a maximum Sharpe ratio model with pre-selection using `Pipeline` and
 # fit it on the training set:
 set_config(transform_output="pandas")
 

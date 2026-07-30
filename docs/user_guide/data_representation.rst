@@ -54,7 +54,7 @@ Both representations have trade-offs and serve different purposes.
 
 Long format is often convenient for storage, database queries, joins, filtering and are
 more memory efficient when the universe changes through time. It can also naturally
-distinguish a missing data for an asset that belongs to the universe (e.g. holidays),
+distinguish missing data for an asset that belongs to the universe (e.g. holidays),
 represented by a NaN, from an asset that is not in the universe (e.g. delisting),
 represented by the absence of a row.
 
@@ -74,7 +74,7 @@ whole workflow must remain time-aware.
 
 On the contrary, wide format uses more memory when the universe changes through time,
 because assets that are not present at a given date are represented by NaNs. For example,
-if an universe changes by about 2% per year, a 10-year history carries roughly 20%
+if a universe changes by about 2% per year, a 10-year history carries roughly 20%
 additional entries for assets that were not present during the full period. In return,
 wide format keeps the data in a dense `date × asset` representation expected by most
 transformers and estimators. This allows vectorized implementations to operate on

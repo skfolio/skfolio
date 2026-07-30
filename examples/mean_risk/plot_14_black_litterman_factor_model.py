@@ -20,7 +20,7 @@ Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel` estimator.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors:
+# prices of 5 ETFs representing common factors:
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
@@ -47,7 +47,7 @@ X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test
 # (absolute view) and will outperform the factor Value by 3% p.a. (relative view). We
 # also estimate the factor Momentum will outperform the factor Quality by 2% p.a
 # (relative view). By converting these annualized estimates into daily estimates to be
-# homogenous with the input `X`, we get:
+# homogeneous with the input `X`, we get:
 factor_views = [
     "SIZE == 0.00039",
     "SIZE - VLUE == 0.00011 ",

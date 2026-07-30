@@ -159,9 +159,9 @@ class MaximumDiversification(MeanRisk):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogeneous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs. A transaction cost is paid once per
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
             rebalancing while a position earns its expected return on every period it
             is held, so the one-off cost is converted by dividing it by the expected
             investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
@@ -190,8 +190,8 @@ class MaximumDiversification(MeanRisk):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogeneous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
             expressed in **daily** fees. Unlike transaction costs, management fees
             accrue with holding time, so a stated annual fee converts directly to the
@@ -296,7 +296,7 @@ class MaximumDiversification(MeanRisk):
     max_tracking_error : float, optional
         Upper bound constraint on the tracking error.
         The tracking error is defined as the RMSE (root-mean-square error) of the
-        portfolio returns compared to a target returns. If `max_tracking_error` is
+        portfolio returns compared to target returns. If `max_tracking_error` is
         provided, the target returns `y` must be provided in the `fit` method.
 
     max_turnover : float, optional

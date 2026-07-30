@@ -10,7 +10,7 @@ The :ref:`Uncertainty Set estimator <uncertainty_set_ref>` builds an ellipsoidal
 :class:`UncertaintySet` of the distribution moments.
 
 An ellipsoidal uncertainty set is defined by its size :math:`\kappa` and
-shape :math:`S`. Ellipsoidal uncertainty set can be used with both expected returns
+shape :math:`S`. Ellipsoidal uncertainty sets can be used for both expected returns
 and covariance:
 
 Expected returns ellipsoidal uncertainty set:

@@ -708,7 +708,7 @@ def _compute_weights(
                         d_aug = cov_nearest(d_aug)
                 except Exception:
                     raise ValueError(
-                        f"Schur complement failed with gamma={gamma:0.4f}. Chose a "
+                        f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
                     ) from None
 

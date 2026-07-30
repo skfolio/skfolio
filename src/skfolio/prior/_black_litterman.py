@@ -77,7 +77,7 @@ class BlackLitterman(BasePrior):
     view_confidences : array-like of floats of shape (n_views,), optional
         Instead of using a diagonal uncertainty matrix (Omega) proportional to the prior
         covariance matrix, you can provide the vector of view confidences (between 0
-        and 1) as describe by the Idzorek's method [2]_.
+        and 1) as described in Idzorek's method [2]_.
 
     risk_free_rate : float, default=0.0
         The risk-free rate.

@@ -396,7 +396,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         -------
         score : float
             The Sharpe Ratio of the portfolio if the prediction is a single `Portfolio`
-            or the mean of all the portfolios Sharpe Ratios if the prediction is a
+            or the mean of all the portfolio Sharpe Ratios if the prediction is a
             `Population` of `Portfolio`.
         """
         result = self.predict(X)

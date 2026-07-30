@@ -32,13 +32,13 @@ from skfolio.utils.tools import check_estimator, fit_single_estimator
 class StackingOptimization(BaseOptimization, BaseComposition):
     """Stack of optimizations with a final optimization.
 
-    Stacking Optimization is an ensemble method that consists in stacking the output of
+    Stacking Optimization is an ensemble method that consists of stacking the output of
     individual portfolio optimizations with a final portfolio optimization.
 
-    The weights are the dot-product of individual optimizations weights with the final
+    The weights are the dot-product of individual optimization weights with the final
     optimization weights.
 
-    Stacking allows to use the strength of each individual portfolio optimization by
+    Stacking uses the strength of each individual portfolio optimization by
     using their output as input of a final portfolio optimization.
 
     To avoid data leakage, out-of-sample estimates are used to fit the outer

@@ -6,7 +6,7 @@
 Datasets
 ********
 
-`skfolio` comes with three natives datasets available via:
+`skfolio` comes with three native datasets available via:
 
     * :func:`load_sp500_dataset`
     * :func:`load_sp500_index`
@@ -37,7 +37,7 @@ local prototyping when you do not have a point-in-time fundamentals feed.
 
 **Example:**
 
-Loading the SPX 500 dataset, which  contains daily adjusted closing prices for 20
+Loading the S&P 500 dataset, which contains daily adjusted closing prices for 20
 selected constituents of the S&P 500 Index, covering the period from 1990-01-02 to
 2022-12-28:
 

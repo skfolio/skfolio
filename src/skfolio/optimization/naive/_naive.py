@@ -260,7 +260,7 @@ class EqualWeighted(BaseOptimization):
 class Random(BaseOptimization):
     """Random weight estimator.
 
-    The assets weight are drawn from a Dirichlet distribution and sum to one.
+    The asset weights are drawn from a Dirichlet distribution and sum to one.
 
     Parameters
     ----------

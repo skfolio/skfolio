@@ -39,7 +39,7 @@ class NestedClustersOptimization(BaseOptimization):
     Marcos Lopez de Prado.
 
     It uses a distance matrix to compute clusters using a clustering algorithm (
-    Hierarchical Tree Clustering, KMeans, etc..). For each cluster, the inner-cluster
+    Hierarchical Tree Clustering, KMeans, etc.). For each cluster, the inner-cluster
     weights are computed by fitting the inner-estimator on each cluster using the whole
     training data. Then the outer-cluster weights are computed by training the
     outer-estimator using out-of-sample estimates of the inner-estimators with

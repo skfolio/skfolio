@@ -316,7 +316,7 @@ population.plot_contribution(measure=RiskMeasure.CVAR)
 # ======================
 # Instead of applying Entropy Pooling directly to asset returns, we can embed it
 # within a Factor Model.
-# This allows us to impose views on factor data such at the quality factor "QUAL":
+# This allows us to impose views on factor data such as the quality factor "QUAL":
 
 factor_entropy_pooling = EntropyPooling(mean_views=["QUAL == 0.0005"])
 
@@ -335,7 +335,7 @@ summary(factors, sample_weight)
 # ========================================
 # Rather than applying Entropy Pooling directly to a limited historical factor prior,
 # we generate 100,000 synthetic factor returns using a Vine Copula. This synthetic
-# dataset extrapolate the tail dependencies and allows more extreme EP views that were
+# dataset extrapolates the tail dependencies and allows more extreme EP views that were
 # infeasible with sparse historical data:
 
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)

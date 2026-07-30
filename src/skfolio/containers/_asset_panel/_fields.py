@@ -281,10 +281,10 @@ class FieldCategorical(Field2D):
 class Field3D(BaseField):
     """Numeric 3D field with axes (observations, assets, third_axis).
 
-    Use this field for homogeneous tensor (e.g. factor exposures). The third-axis
+    Use this field for homogeneous tensors (e.g. factor exposures). The third-axis
     metadata is stored on the field. The array is stored physically in 3D so that
     operations along any axis remain vectorized and avoid stacking many 2D arrays which
-    is expensive for large panels. When you need repeated tensor operation, prefer a
+    is expensive for large panels. When you need repeated tensor operations, prefer a
     `Field3D` instead of multiple `Field2D`.
 
     Parameters

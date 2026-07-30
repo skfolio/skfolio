@@ -283,9 +283,9 @@ class MeanRisk(ConvexOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs. A transaction cost is paid once per
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
             rebalancing while a position earns its expected return on every period it
             is held, so the one-off cost is converted by dividing it by the expected
             investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
@@ -314,8 +314,8 @@ class MeanRisk(ConvexOptimization):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
             expressed in **daily** fees. Unlike transaction costs, management fees
             accrue with holding time, so a stated annual fee converts directly to the
@@ -384,7 +384,7 @@ class MeanRisk(ConvexOptimization):
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
-        The worst case portfolio expect return is:
+        The worst-case portfolio expected return is:
 
         .. math:: w^T \cdot \hat{\mu} - \kappa_{\mu} \lVert S_{\mu}^\frac{1}{2} \cdot w \rVert_{2}
 
@@ -460,7 +460,7 @@ class MeanRisk(ConvexOptimization):
     max_tracking_error : float, optional
         Upper bound constraint on the tracking error.
         The tracking error is defined as the RMSE (root-mean-square error) of the
-        portfolio returns compared to a target returns. If `max_tracking_error` is
+        portfolio returns compared to target returns. If `max_tracking_error` is
         provided, the target returns `y` must be provided in the `fit` method.
 
         .. seealso::
@@ -1344,7 +1344,7 @@ class MeanRisk(ConvexOptimization):
                     # (homogeneous technique)
                     # Schaible,"Parameter-free Convex Equivalent and Dual Programs of
                     # Fractional Programming Problems".
-                    # The condition to work is f1 >= 0, so we need to raise an user
+                    # The condition to work is f1 >= 0, so we need to raise a user
                     # warning when it's not the case.
 
                     constraints += [

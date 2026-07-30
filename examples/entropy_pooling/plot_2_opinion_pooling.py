@@ -194,7 +194,7 @@ summary(factors, sample_weight)
 # ========================================
 # Rather than applying Option Pooling directly to a limited historical factor prior,
 # we generate 100,000 synthetic factor returns using a Vine Copula. This synthetic
-# dataset extrapolate the tail dependencies and allows more extreme EP views that were
+# dataset extrapolates the tail dependencies and allows more extreme EP views that were
 # infeasible with sparse historical data:
 
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)

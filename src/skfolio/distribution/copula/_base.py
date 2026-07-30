@@ -69,7 +69,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         """
         X = skv.validate_data(self, X, dtype=np.float64, reset=reset)
         if X.shape[1] != 2:
-            raise ValueError("X must contains two columns for Bivariate Copula")
+            raise ValueError("X must contain two columns for Bivariate Copula")
         if not np.all((X >= 0) & (X <= 1)):
             raise ValueError(
                 "X must be in the interval `[0, 1]`, usually reprinting uniform "

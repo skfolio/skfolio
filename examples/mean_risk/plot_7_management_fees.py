@@ -6,7 +6,7 @@ Management Fees
 This tutorial shows how to incorporate management fees (MF) into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
-By using The `management_fees` parameter, you can add linear MF to the optimization
+By using the `management_fees` parameter, you can add linear MF to the optimization
 problem:
 
 .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
@@ -69,13 +69,13 @@ model.weights_
 # Management Fees
 # ===============
 # Management fees are usually used in assets under management but for this example we
-# will assume that it also applies for the below stocks:
+# will assume that they also apply to the stocks below:
 #
 #   * Apple: 3% p.a.
 #   * General Electric: 6% p.a.
 #   * JPMorgan: 1% p.a.
 #
-# The MF are expressed in per annum, so we need to convert them in daily MF.
+# The MF are expressed per annum, so we need to convert them to daily MF.
 # We suppose 252 trading days in a year:
 management_fees = {"AAPL": 0.03 / 252, "GE": 0.06 / 252, "JPM": 0.01 / 252}
 # Same as management_fees = np.array([0.03, 0.06, 0.01]) / 252

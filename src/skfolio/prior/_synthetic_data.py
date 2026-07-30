@@ -81,7 +81,7 @@ class SyntheticData(BasePrior):
     >>> factor_prices = load_factors_dataset()
     >>> X, factors = prices_to_returns(prices, factor_prices)
     >>>
-    >>> # Instanciate the SyntheticData model and fit it
+    >>> # Instantiate the SyntheticData model and fit it
     >>> model = SyntheticData()
     >>> model.fit(X)
     >>> print(model.return_distribution_)

@@ -18,7 +18,7 @@ Linear return (or simple return) is defined as:
 
 .. math:: R^{Lin}_{t} = \frac{S_{t}}{S_{t-1}} - 1
 
-**Linear returns aggregates across securities**, meaning that the linear return
+**Linear returns aggregate across securities**, meaning that the linear return
 of a portfolio is the sum of the weighted linear returns of its components:
 
 .. math:: R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}
@@ -33,7 +33,7 @@ Logarithmic return (or continuously compounded return) is defined as:
 
 .. math:: R^{Log}_{t} = ln\Biggl(\frac{S_{t}}{S_{t-1}}\Biggr)
 
-**Logarithmic returns aggregates across time**, meaning that the logarithmic return over
+**Logarithmic returns aggregate across time**, meaning that the logarithmic return over
 k periods is the sum of all single-period logarithmic returns:
 
 .. math:: R^{Log}_{t..k} = ln\Biggl(\frac{S_{t+k}}{S_{t}}\Biggr) = \sum_{j=1}^{k} ln\Biggl(\frac{S_{t+j}}{S_{t+j-1}}\Biggr)= \sum_{j=1}^{k-1} R^{Log}_{t+j}

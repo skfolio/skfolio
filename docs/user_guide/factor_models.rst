@@ -3222,7 +3222,7 @@ observations) on a laptop (Ultra 9 275HX, 24 cores, 32 GB RAM), for two models:
 An incremental `partial_fit` on the next observation runs in under a second for both
 models.
 
-Achieving these performances relies on two implementation choices. Firstly, the
+Achieving this performance relies on two implementation choices. Firstly, the
 hot paths are vectorized NumPy operations backed by parallel BLAS kernels.  
 Secondly, factor exposures are computed with thread-based parallelism (`n_jobs`), 
 which avoids copying the panel to worker processes (the computations are 

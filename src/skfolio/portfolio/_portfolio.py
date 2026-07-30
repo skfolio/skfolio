@@ -1,6 +1,6 @@
 """Portfolio module.
 `Portfolio` is returned by the `predict` method of Optimization estimators.
-It needs to be homogeneous to the convex optimization problems meaning that `Portfolio`
+It must be consistent with the convex optimization problems, meaning that `Portfolio`
 is the dot product of the assets weights with the assets returns.
 """
 
@@ -104,8 +104,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogeneous to the optimization problems, the periodicity of the
-            transaction costs needs to be homogeneous to the periodicity of the
+            To be consistent with the optimization problems, the periodicity of the
+            transaction costs must match the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `transaction_costs` need to be expressed in **daily** transaction costs.
 
@@ -131,8 +131,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogeneous to the optimization problems, the periodicity of the
-            management fees needs to be homogeneous to the periodicity of the
+            To be consistent with the optimization problems, the periodicity of the
+            management fees must match the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `management_fees` need to be expressed in **daily** fees.
 

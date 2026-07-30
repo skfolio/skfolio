@@ -229,9 +229,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs. A transaction cost is paid once per
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
             rebalancing while a position earns its expected return on every period it
             is held, so the one-off cost is converted by dividing it by the expected
             investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
@@ -260,8 +260,8 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
             expressed in **daily** fees. Unlike transaction costs, management fees
             accrue with holding time, so a stated annual fee converts directly to the
@@ -313,7 +313,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
-        The worst case portfolio expect return is:
+        The worst-case portfolio expected return is:
 
         .. math:: w^T\hat{\mu} - \kappa_{\mu}\lVert S_{\mu}^\frac{1}{2}w\rVert_{2}
 
@@ -914,7 +914,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             ):
                 raise ValueError(
                     "When 'threshold_long' is provided and 'min_weights' can be negative "
-                    "(short position are allowed), then 'threshold_short' must also be "
+                    "(short positions are allowed), then 'threshold_short' must also be "
                     "provided"
                 )
 
@@ -1847,7 +1847,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Semi Variance risk measure.
+            CVXPY Expression and Constraints of the Semi Variance risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1893,7 +1893,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Semi Standard Deviation risk measure.
+            CVXPY Expression and Constraints of the Semi Standard Deviation risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_min_acceptable_return = self._cvx_min_acceptable_return(
@@ -1945,7 +1945,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Worst Realization risk measure.
+            CVXPY Expression and Constraints of the Worst Realization risk measure.
         """
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(
@@ -1987,7 +1987,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the CVaR risk measure.
+            CVXPY Expression and Constraints of the CVaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
@@ -2039,7 +2039,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EVaR risk measure.
+            CVXPY Expression and Constraints of the EVaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
@@ -2081,7 +2081,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         w: cp.Variable,
         factor: skt.Factor,
     ) -> skt.RiskResult:
-        """Expression and Constraints of the EVaR risk measure.
+        """Expression and Constraints of the Maximum Drawdown risk measure.
 
         Parameters
         ----------
@@ -2098,7 +2098,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EVaR risk measure.
+            CVXPY Expression and Constraints of the Maximum Drawdown risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
@@ -2131,7 +2131,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Average Drawdown risk measure.
+            CVXPY Expression and Constraints of the Average Drawdown risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2163,7 +2163,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the CDaR risk measure.
+            CVXPY Expression and Constraints of the CDaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2201,7 +2201,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the EDaR risk measure.
+            CVXPY Expression and Constraints of the EDaR risk measure.
         """
         n_observations = return_distribution.returns.shape[0]
         v, constraints = self._cvx_drawdown(
@@ -2244,7 +2244,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Ulcer Index risk measure.
+            CVXPY Expression and Constraints of the Ulcer Index risk measure.
         """
         v, constraints = self._cvx_drawdown(
             return_distribution=return_distribution, w=w, factor=factor
@@ -2263,8 +2263,8 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         The Gini mean difference (GMD) is a measure of dispersion introduced in the
         context of portfolio optimization by Yitzhaki (1982).
-        The initial formulation was not used by practitioners due to the high number of
-        variables that increases proportional to T(T-1)/2 ,
+        The initial formulation was not used by practitioners because the number of
+        variables increases proportionally to T(T-1)/2.
 
         Cajas (2021) proposed an alternative reformulation based on the ordered weighted
         averaging (OWA) operator for monotonic weights proposed by Chassein and
@@ -2286,7 +2286,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         Returns
         -------
         expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY Expression and Constraints the Ulcer Index risk measure.
+            CVXPY Expression and Constraints of the Gini Mean Difference risk measure.
         """
         ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
         ptf_transaction_cost = self._cvx_transaction_cost(

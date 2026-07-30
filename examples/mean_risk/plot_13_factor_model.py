@@ -12,7 +12,7 @@ weight, Cholesky decomposition).
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:
@@ -64,7 +64,7 @@ estimator.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors:
+# prices of 5 ETFs representing common factors:
 from plotly.io import show
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import train_test_split

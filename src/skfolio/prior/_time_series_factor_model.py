@@ -253,14 +253,14 @@ class TimeSeriesFactorModel(BasePrior):
 
         if loading_matrix.shape != (n_assets, n_factors):
             raise ValueError(
-                "`loading_matrix_estimator.loading_matrix_` must ba a 2D array of"
+                "`loading_matrix_estimator.loading_matrix_` must be a 2D array of"
                 f" shape {(n_assets, n_factors)}, got"
                 f" {loading_matrix.shape} instead."
             )
 
         if intercepts.shape != (n_assets,):
             raise ValueError(
-                "`loading_matrix_estimator.intercepts_` must ba a 1D array of "
+                "`loading_matrix_estimator.intercepts_` must be a 1D array of "
                 f"shape {(n_assets,)}, got {intercepts.shape} instead."
             )
 

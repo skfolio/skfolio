@@ -148,7 +148,7 @@ class AssetPanel(_BaseAssetPanel):
 
     - observation slices return `AssetPanelView` objects, so walk-forward folds can
       reuse field arrays
-    - native `Field3D` avoid restacking large lists of 2D arrays
+    - native `Field3D` fields avoid restacking large lists of 2D arrays
     - integer-coded categoricals and dense boolean masks keep memory and conversion
       overhead low
     - with `Parallel(..., prefer="threads")`, workers can read the same big panel in

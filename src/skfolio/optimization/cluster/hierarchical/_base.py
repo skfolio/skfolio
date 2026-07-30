@@ -83,7 +83,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         selling). Negative weights are not allowed. If a float is provided, it is
         applied to each asset. `None` is equivalent to the default `0.0`. If a
         dictionary is provided, its (key/value) pair must be the (asset name/asset
-        minium weight) and the input `X` of the `fit` methods must be a DataFrame with
+        minimum weight) and the input `X` of the `fit` methods must be a DataFrame with
         the asset names in columns. When using a dictionary, assets values that are not
         provided are assigned the default  minimum weight of `0.0`.
 
@@ -133,9 +133,9 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogeneous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs. A transaction cost is paid once per
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
             rebalancing while a position earns its expected return on every period it
             is held, so the one-off cost is converted by dividing it by the expected
             investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
@@ -164,8 +164,8 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogeneous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
             expressed in **daily** fees. Unlike transaction costs, management fees
             accrue with holding time, so a stated annual fee converts directly to the

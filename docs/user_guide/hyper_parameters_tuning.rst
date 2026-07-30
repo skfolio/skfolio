@@ -121,7 +121,7 @@ favorable properties.
 where each setting is sampled from a distribution over possible parameter values.
 This has two main benefits over an exhaustive search:
 
-* A budget can be chosen independent of the number of parameters and possible values.
+* A budget can be chosen independently of the number of parameters and possible values.
 * Adding parameters that do not influence the performance does not decrease efficiency.
 
 Specifying how parameters should be sampled is done using a dictionary, very
@@ -259,7 +259,7 @@ parameters of composite or nested estimators using a dedicated
 
 **Example:**
 
-In the below example, we search the optimal parameter `alpha` of the nested estimator
+In the below example, we search for the optimal parameter `alpha` of the nested estimator
 :class:`~skfolio.moments.EWMu`:
 
 .. code-block:: python
@@ -298,7 +298,7 @@ In the below example, we search the optimal parameter `alpha` of the nested esti
 
 **Example:**
 
-The same logic applies for `Pipeline`. Here we search the optimal risk measure of
+The same logic applies to `Pipeline`. Here we search for the optimal risk measure of
 :class:`~skfolio.optimization.MeanRisk` which is part of a `Pipeline`:
 
 .. code-block:: python

@@ -4,7 +4,7 @@
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-# The Portfolio class contains more than 40 measures than can be computationally
+# The Portfolio class contains more than 40 measures that can be computationally
 # expensive. The use of __slots__ instead of __dict__ is based on the following
 # consideration:
 #   * Fast Portfolio instantiation.
@@ -17,8 +17,8 @@
 #   * DRY by not re-writing @cached_property decorated methods for all the 40 measures.
 #
 # We define 7 types of attributes:
-#     * Public (read and right)
-#     * Private (read and right for private usage)
+#     * Public (read and write)
+#     * Private (read and write for private usage)
 #     * Read-only (handled in __setattr__)
 #     * Global and local measures arguments: when they change, we clear the cache of
 #       all the measures (handled in __setattr__)
@@ -874,7 +874,7 @@ class BasePortfolio:
 
         Parameters
         ----------
-        measure : ct.Measure, default=RatioMeasure.SHARPE_RATIO
+        measure : Measure, default=RatioMeasure.SHARPE_RATIO
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
@@ -1172,7 +1172,7 @@ class BasePortfolio:
 
         Parameters
         ----------
-        measure : ct.Measure, default = RatioMeasure.SHARPE_RATIO
+        measure : Measure, default = RatioMeasure.SHARPE_RATIO
            The measure.
 
         window : int, default=30

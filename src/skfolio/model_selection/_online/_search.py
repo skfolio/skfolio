@@ -666,7 +666,7 @@ class OnlineGridSearch(BaseOnlineSearch):
 
 
 class OnlineRandomizedSearch(BaseOnlineSearch):
-    """Online randomized search on hyper parameters.
+    """Online randomized search on hyperparameters.
 
     Each sampled parameter combination is evaluated by running a full online
     walk-forward pass. Unlike :class:`OnlineGridSearch`, not all parameters are tried

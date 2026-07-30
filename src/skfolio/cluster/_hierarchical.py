@@ -43,7 +43,7 @@ class LinkageMethod(AutoEnum):
         .. math:: d(u, v) = \max(dist(u[i],v[j]))
 
         for all points :math:`i` in cluster u and :math:`j` in
-        cluster :math:`v`. This is also known by the Farthest Point
+        cluster :math:`v`. This is also known as the Farthest Point
         Algorithm or Voor Hees Algorithm.
 
     AVERAGE : str

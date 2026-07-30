@@ -12,7 +12,7 @@ This approach, known as worst-case optimization, falls under the umbrella of rob
 optimization. It reduces the instability that arises from the estimation errors of the
 expected returns.
 
-The worst case portfolio expect return is:
+The worst-case portfolio expected return is:
 
     .. math:: w^T\hat{\mu} - \kappa_{\mu}\lVert S_{\mu}^\frac{1}{2}w\rVert_{2}
 
@@ -22,7 +22,7 @@ shape.
 In this example, we will use a Mean-CVaR model with an
 :class:`~skfolio.uncertainty_set.EmpiricalMuUncertaintySet` estimator.
 
-Note that other uncertainty set can be used, for example:
+Note that other uncertainty sets can be used, for example:
 :class:`~skfolio.uncertainty_set.BootstrapMuUncertaintySet`.
 """
 

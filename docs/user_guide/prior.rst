@@ -11,7 +11,7 @@ pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample weight, Ch
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:
@@ -160,7 +160,7 @@ Tutorials:
 
 The loading matrix (betas) of the factors is estimated using a
 `loading_matrix_estimator`. By default, we use the :class:`LoadingMatrixRegression`
-which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
+which fits the factors using a :class:`sklearn.linear_model.LassoCV` on each asset
 separately.
 
 Synthetic Data
@@ -199,7 +199,7 @@ Tutorials:
     prices = load_sp500_dataset()
     X = prices_to_returns(prices, factors)
    
-    # Instanciate the SyntheticData model and fit it
+    # Instantiate the SyntheticData model and fit it
     model = SyntheticData()
     model.fit(X)
     print(model.return_distribution_)
@@ -423,7 +423,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
 By combining :class:`SyntheticData` with :class:`TimeSeriesFactorModel` you can generate
 synthetic data of your factors then project them to your assets.
-This is often used for factor stress test.
+This is often used for factor stress testing.
 
 .. code-block:: python
 
@@ -496,7 +496,7 @@ This can be achieved by combining :class:`EntropyPooling` with :class:`Synthetic
 
 Instead of applying extreme Entropy Pooling views directly to asset returns, we can
 embed it within a time-series factor model.
-This allows us to impose views on factor data such at the quality factor "QUAL".
+This allows us to impose views on factor data such as the quality factor "QUAL".
 This can be achieved by combining :class:`EntropyPooling` with :class:`SyntheticData`
 and with :class:`TimeSeriesFactorModel`:
 

@@ -219,7 +219,7 @@ def n_bins_knuth(x: FloatArray) -> int:
 
 
 def rand_weights_dirichlet(n: int) -> np.array:
-    """Produces n random weights that sum to one from a dirichlet distribution
+    """Produces n random weights that sum to one from a Dirichlet distribution
     (uniform distribution over a simplex).
 
     Parameters
@@ -419,7 +419,7 @@ def cov_nearest(
     warn: bool = False,
 ):
     """Compute the nearest covariance matrix that is positive definite and with a
-    cholesky decomposition than can be computed. The variance is left unchanged.
+    cholesky decomposition that can be computed. The variance is left unchanged.
     A covariance matrix that is not positive definite often occurs in high
     dimensional problems. It can be due to multicollinearity, floating-point
     inaccuracies, or when the number of observations is smaller than the number of

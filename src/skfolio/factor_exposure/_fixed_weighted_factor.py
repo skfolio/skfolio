@@ -78,7 +78,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
     re-scored composite, or the weighted composite when scoring is skipped.
 
     `weights` are fixed inputs and are not learned by this estimator. They can be set
-    from economic priors or selected by hyperparameters tuning.
+    from economic priors or selected by hyperparameter tuning.
 
     Parameters
     ----------

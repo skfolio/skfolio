@@ -64,7 +64,7 @@ class BaseMeasure(AutoEnum):
             return getattr(self.__class__, f"ANNUALIZED_{self.name}")
         except AttributeError:
             raise AttributeError(
-                f"{self.name} doesn't have a annualized version"
+                f"{self.name} doesn't have an annualized version"
             ) from None
 
     @property

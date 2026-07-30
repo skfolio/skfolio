@@ -299,7 +299,7 @@ def safe_split(
 
 
 def cache_method(cache_name: str) -> Callable:
-    """Decorator that caches class methods results into a class dictionary.
+    """Decorator that caches class method results into a class dictionary.
 
     Parameters
     ----------
@@ -457,8 +457,8 @@ def check_estimator(
     default: skb.BaseEstimator | None,
     check_type: Any,
 ):
-    """Check the estimator type and returns its cloned version it provided, otherwise
-     return the default estimator.
+    """Check the estimator type and return its cloned version if provided, otherwise
+    return the default estimator.
 
     Parameters
     ----------
@@ -732,12 +732,12 @@ def optimal_rounding_decimals(x: float) -> int:
 
 
 def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
-    """Generator to bisect a list of array.
+    """Generator to bisect a list of arrays.
 
     Parameters
     ----------
     x : list[ndarray]
-        A list of array.
+        A list of arrays.
 
     Yields
     ------
@@ -844,7 +844,7 @@ def fit_and_predict(
     predictions : array-like or list of array-like
         If `test` is an array, it returns the array-like result of calling
         'estimator.method' on `test`.
-        Otherwise, if `test` is a list of arrays, it returns the list of array-like
+        Otherwise, if `test` is a list of arrays, it returns a list of array-like
         results of calling 'estimator.method' on each test set in `test`.
     """
     fit_params = fit_params if fit_params is not None else {}

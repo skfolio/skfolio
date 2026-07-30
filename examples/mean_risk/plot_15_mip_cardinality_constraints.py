@@ -158,7 +158,7 @@ show(fig)
 population_train.plot_composition()
 
 # %%
-# Finlay, we can analyse the test population using methods such as:
+# Finally, we can analyse the test population using methods such as:
 #
 #  * `population_test.summary()`
 #  * `population_test.plot_cumulative_returns()`

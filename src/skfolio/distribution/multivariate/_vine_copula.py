@@ -198,7 +198,7 @@ class VineCopula(BaseMultivariateDist):
     >>> prices = load_factors_dataset()
     >>> X = prices_to_returns(prices)
     >>>
-    >>> # Instanciate the VineCopula model
+    >>> # Instantiate the VineCopula model
     >>> vine = VineCopula()
     >>> # Fit the model
     >>> vine.fit(X)

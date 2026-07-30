@@ -173,7 +173,7 @@ Prior Estimator
 ===============
 
 Every portfolio optimization has a parameter named `prior_estimator`.
-The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
+The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.ReturnDistribution` containing
 estimates of expected asset returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
@@ -526,7 +526,7 @@ by Marcos Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
-in the dendrogram, minimizing the distance between leafs.
+in the dendrogram, minimizing the distance between leaves.
 in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
