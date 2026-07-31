@@ -62,6 +62,7 @@ def precisions2(precisions):
 def precisions3(precisions):
     result = precisions.copy()
     result[RiskMeasure.VARIANCE] = 6
+    result[RiskMeasure.CVAR] = 6
     result[RiskMeasure.WORST_REALIZATION] = 5
     result[RiskMeasure.CDAR] = 5
     result[RiskMeasure.EDAR] = 5

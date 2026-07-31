@@ -55,9 +55,10 @@ class AssetPanelView(_BaseAssetPanel):
     owner : AssetPanel
         Panel that owns the underlying arrays.
 
-    observation_selector : slice or ndarray of integers, default=slice(None)
+    observation_selector : slice or ndarray of integers, optional
         Selector applied to the owner observation axis. Slices preserve zero-copy
         semantics. Integer arrays follow NumPy fancy-indexing semantics on access.
+        The default (`None`) selects all observations.
 
     _local_fields : dict[str, BaseField], optional
         View-local fields. This argument is for internal use. Use `view[name] = value`
@@ -71,7 +72,7 @@ class AssetPanelView(_BaseAssetPanel):
     """
 
     owner: AssetPanel
-    observation_selector: slice | IntArray = slice(None)
+    observation_selector: slice | IntArray | None = None
     _local_fields: dict[str, BaseField] | None = None
 
     def __post_init__(self) -> None:
