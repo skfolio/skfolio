@@ -20,7 +20,7 @@ _ASSET_ROOT = Path("_static") / "plotly"
 _ASSET_URL_ROOT = "_static/plotly"
 _LOADER_PATH = "scripts/lazy-plotly.js"
 _HTML_SCRIPT_RE = re.compile(
-    r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>",
+    r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script\b[^>]*>",
     flags=re.IGNORECASE | re.DOTALL,
 )
 _PLOTLY_CDN_SRC_RE = re.compile(
@@ -33,7 +33,7 @@ _PLOTLY_GRAPH_DIV_RE = re.compile(
     flags=re.IGNORECASE,
 )
 _HTML_CLASS_RE = re.compile(
-    r"""\bclass\s*=\s*(?P<quote>["'])(?P<value>.*?)(?P=quote)""",
+    r"""(?<![\w-])class\s*=\s*(?P<quote>["'])(?P<value>.*?)(?P=quote)""",
     flags=re.IGNORECASE | re.DOTALL,
 )
 _LAUNCH_BADGE_IMG_RE = re.compile(
@@ -105,7 +105,7 @@ def _is_gallery_index_page(pagename: str) -> bool:
 def _get_html_attribute(attrs: str, name: str) -> str | None:
     """Return an attribute value from an HTML start tag fragment."""
     match = re.search(
-        rf"""\b{re.escape(name)}\s*=\s*(?P<quote>["'])(?P<value>.*?)"""
+        rf"""(?<![\w-]){re.escape(name)}\s*=\s*(?P<quote>["'])(?P<value>.*?)"""
         rf"""(?P=quote)""",
         attrs,
         flags=re.IGNORECASE | re.DOTALL,
@@ -115,7 +115,7 @@ def _get_html_attribute(attrs: str, name: str) -> str | None:
 
 def _add_html_attribute(attrs: str, name: str, value: str) -> str:
     """Add an escaped HTML attribute unless the start tag already contains it."""
-    if re.search(rf"\b{re.escape(name)}\s*=", attrs, flags=re.IGNORECASE):
+    if re.search(rf"(?<![\w-]){re.escape(name)}\s*=", attrs, flags=re.IGNORECASE):
         return attrs
     return f'{attrs} {name}="{escape(value, quote=True)}"'
 
