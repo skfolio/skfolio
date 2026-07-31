@@ -1,140 +1,170 @@
 # Contributing
 
-Contributions are welcome, and they are greatly appreciated! Every little helps, and credit will always be given.
+Thank you for contributing to skfolio. Contributions of all sizes are welcome,
+including bug reports, feature proposals, documentation improvements, tests, and
+code changes.
 
-You can contribute in many ways:
+By participating in the project, you agree to follow our
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Types of Contributions
+## Ways to contribute
 
-### Report Bugs
+- Report reproducible bugs through [GitHub issues][gh-issues].
+- Propose improvements or new features.
+- Improve the documentation, docstrings, or tutorials.
+- Fix open issues.
+- Add tests or improve existing test coverage.
 
-Report bugs to [our issue page][gh-issues]. If you are reporting a bug, please include:
+Please report security vulnerabilities according to our
+[Security Policy](SECURITY.md), rather than opening a public issue.
 
-- Your operating system name and version.
-- Any details about your local setup that might be helpful in troubleshooting.
-- Detailed steps to reproduce the bug.
+For substantial changes, consider opening an issue first. This gives maintainers and
+contributors an opportunity to discuss the scope and approach before implementation.
 
-### Fix Bugs
+### Report a bug
 
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help wanted" is open to whoever wants to implement it.
+A useful bug report includes:
 
-### Implement Features
+- Your operating system and Python version.
+- Relevant details about your environment.
+- A minimal reproducible example.
+- The observed behavior and the expected behavior.
+- The complete error message or traceback, when applicable.
 
-Look through the GitHub issues for features. Anything tagged with "enhancement" and "help wanted" is open to whoever wants to implement it.
+### Propose a feature
 
-### Write Documentation
+A useful feature proposal:
 
-skfolio could always use more documentation, whether as part of the official docs, in docstrings, or even on the tutorials.
+- Explains the problem or use case.
+- Describes the expected behavior.
+- Keeps the initial scope as narrow as practical.
+- Mentions alternatives or prior approaches when relevant.
 
-### Submit Feedback
+## Development setup
 
-The best way to send feedback is via [our issue page][gh-issues] on GitHub. If you are proposing a feature:
+Local development requires Python 3.10 or later and
+[uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-- Explain in detail how it would work.
-- Keep the scope as narrow as possible, to make it easier to implement.
-- Remember that this is a volunteer-driven project, and that contributions are welcome 😊
-
-## Get Started!
-
-Ready to contribute? Here's how to set yourself up for local development.
-
-1. Fork the repo on GitHub.
-
-2. Clone your fork locally:
-
-   ```shell
-   $ git clone git@github.com:your_name_here/skfolio.git
-   ```
-
-3. Install the project in development mode with the development dependencies:
-
-   Using **pip**:
-   ```shell
-   $ pip install --editable ".[dev]"
-   ```
-
-   or using **uv**:
-   ```shell
-   $ uv pip install --editable ".[dev]"
-   ```
-
-4. Create a branch for local development:
+1. Fork the repository on GitHub and clone your fork:
 
    ```shell
-   $ git checkout -b name-of-your-bugfix-or-feature
-   ```
-   Now you can make your changes locally.
-
-   To name your branch, you can use the convention: 
-   `category/reference/description-in-kebab-case`
-   with category: `feature`, `fix`, `refactor`, `chore` and reference: 
-   `issue-<issue number>` or `no-ref`. For example: `feature/issue-34/factor-model`
-
-
-5. Add unit tests for your implementation and check that your changes pass all tests:
-
-   Using **pip**:
-   ```shell
-   $ pytest
-   ```
-   or using **uv**:
-   ```shell
-   $ uv run pytest
+   git clone git@github.com:your-name/skfolio.git
+   cd skfolio
    ```
 
-6. Then run linting and formatting with:
-
-   Using **pip**:
-   ```shell
-   $ ruff check --fix
-   $ ruff format
-   ```
-   or using **uv**:
-   ```shell
-   $ uv run ruff check --fix
-   $ uv run ruff format
-   ```
-
-7. If you added some documentation, you should test that it builds correctly:
-   
-   Using **pip**:
-   ```shell
-   $ pip install --editable ".[docs]"
-   $ cd docs
-   $ sphinx-build . _build
-   ```
-   or using **uv**:
-   ```shell
-   $ uv pip install --editable ".[docs]"
-   $ cd docs
-   $ uv run sphinx-build . _build
-   ```
-
-8. Commit your changes and push your branch to GitHub:
+2. Create a virtual environment and install the development dependencies:
 
    ```shell
-   $ git add .
-   $ git commit -m "feat(something): your detailed description of your changes"
-   $ git push origin name-of-your-bugfix-or-feature
+   uv venv
+   uv pip install --editable ".[dev]"
    ```
 
-   Note: the commit message should follow [the conventional commits](https://www.conventionalcommits.org).
- 
-
-9. Submit a pull request through the GitHub website or using the GitHub CLI:
+3. Create a branch for your changes:
 
    ```shell
-   $ gh pr create --fill
+   git checkout -b name-of-your-bugfix-or-feature
    ```
 
+   A recommended branch name is
+   `category/reference/description-in-kebab-case`, where `category` is one of
+   `feature`, `fix`, `refactor`, or `chore`, and `reference` is an issue such as
+   `issue-34` or `no-ref`. For example:
+   `feature/issue-34/factor-model`.
 
-## Pull Request Guidelines
+## Tests and code quality
 
-We like to have the pull request open as soon as possible, that's a great place to discuss any piece of work, even unfinished. You can use draft pull request if it's still a work in progress. Here are a few guidelines to follow:
+Add tests for new behavior and bug fixes. While developing, you can run a focused
+test file:
 
-1. Include tests for feature or bug fixes.
-2. Update the documentation for significant features.
-3. Ensure tests are passing on CI.
+```shell
+uv run pytest tests/path/to/test_file.py
+```
 
+Run the complete test suite when appropriate:
+
+```shell
+uv run pytest
+```
+
+Format and lint your changes with:
+
+```shell
+uv run ruff check --fix
+uv run ruff format
+```
+
+## Documentation
+
+If your change affects the documentation, install the documentation dependencies:
+
+```shell
+uv pip install --editable ".[dev,docs]"
+cd docs
+```
+
+For a fast build without executing the tutorials:
+
+```shell
+uv run sphinx-build -b html -D plot_gallery=0 . _build
+```
+
+To execute a single tutorial, replace the filename in `filename_pattern`:
+
+```shell
+uv run sphinx-build -b html -D 'sphinx_gallery_conf.filename_pattern=plot_characteristics_factor_model\.py$' -D sphinx_gallery_conf.run_stale_examples=True . _build
+```
+
+To execute the complete gallery locally when needed:
+
+```shell
+uv run sphinx-build -b html . _build
+```
+
+The complete gallery can take about 30 minutes and is also executed by the
+documentation deployment workflow.
+
+Sphinx-Gallery generates `docs/auto_examples` and `docs/jupyterlite_contents`.
+Edit the source tutorials under `examples` rather than editing these generated files.
+
+## Submit your changes
+
+Commit your changes using a message that follows
+[Conventional Commits](https://www.conventionalcommits.org):
+
+Use `type(scope): description`, where the scope is optional. Common types are:
+
+- `feat`: New functionality.
+- `fix`: Bug fix.
+- `docs`: Documentation changes.
+- `test`: Test changes.
+- `refactor`: Code changes that preserve behavior.
+- `perf`: Performance improvements.
+- `build`: Packaging or dependency changes.
+- `ci`: Continuous integration changes.
+- `chore`: Repository maintenance.
+
+Add `!` for a breaking change, for example
+`feat!: remove deprecated parameter`.
+
+```shell
+git add .
+git commit -m "feat(scope): describe your change"
+git push origin name-of-your-bugfix-or-feature
+```
+
+Open a pull request through GitHub, or use the GitHub CLI:
+
+```shell
+gh pr create --fill
+```
+
+Draft pull requests are welcome and are a good place to discuss work in progress.
+Before requesting a review:
+
+- Include tests for feature changes and bug fixes.
+- Update the documentation when behavior or public APIs change.
+- Keep the pull request focused on one coherent change.
+- Confirm that the relevant local checks pass.
+- Ensure that continuous integration passes.
 
 [gh-issues]: https://github.com/skfolio/skfolio/issues

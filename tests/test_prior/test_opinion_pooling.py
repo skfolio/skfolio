@@ -137,7 +137,7 @@ def test_is_linear_pooling(X, is_linear_pooling, expected):
     np.testing.assert_almost_equal(sw[:5], expected, 5)
 
 
-def test_factor_model(X, y):
+def test_factor_model(X, factors):
     view_1 = EntropyPooling(mean_views=["QUAL >= 0.04"])
     view_2 = EntropyPooling(mean_views=["QUAL <= -0.01"])
 
@@ -147,14 +147,14 @@ def test_factor_model(X, y):
     )
     model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
 
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.return_distribution_.sample_weight
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
 
 
-def test_factor_synthetic_data(X, y):
+def test_factor_synthetic_data(X, factors):
     factor_synth = SyntheticData(
         n_samples=10_000,
         distribution_estimator=VineCopula(
@@ -173,7 +173,7 @@ def test_factor_synthetic_data(X, y):
     )
 
     model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.return_distribution_.sample_weight
     assert np.all(sw >= 0)

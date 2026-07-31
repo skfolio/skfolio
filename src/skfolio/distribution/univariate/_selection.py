@@ -66,7 +66,7 @@ def select_univariate_dist(
 
     X = np.asarray(X)
     if X.ndim != 2 or X.shape[1] != 1:
-        raise ValueError("X must contains one column for Univariate Distribution")
+        raise ValueError("X must contain one column for Univariate Distribution")
 
     results = {}
     for dist in distribution_candidates:

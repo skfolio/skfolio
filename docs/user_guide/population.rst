@@ -11,7 +11,7 @@ Population
 
 A :class:`Population` is a list of portfolios (:class:`~skfolio.portfolio.Portfolio`
 or :class:`~skfolio.portfolio.MultiPeriodPortfolio` or both).
-`Population` inherits from the build-in `list` class and extends it by adding new
+`Population` inherits from the built-in `list` class and extends it by adding new
 functionalities to improve portfolio manipulation and analysis.
 
 
@@ -56,7 +56,7 @@ Let's explore some of the methods:
 
     population.set_portfolio_params(compounded=True)
 
-    fronts = population.non_denominated_sort()
+    fronts = population.non_dominated_sort()
 
     population.plot_measures(
         x=RiskMeasure.ANNUALIZED_VARIANCE,

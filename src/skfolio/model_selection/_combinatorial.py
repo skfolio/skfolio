@@ -62,10 +62,10 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
 
     To avoid data leakage, purging and embargoing can be performed.
 
-    Purging consist of removing from the training set all observations whose labels
+    Purging consists of removing from the training set all observations whose labels
     overlapped in time with those labels included in the testing set.
 
-    Embargoing consist of removing from the training set all observations that
+    Embargoing consists of removing from the training set all observations that
     immediately follow an observation in the testing set, since financial features
     often incorporate series that exhibit serial correlation (like ARMA processes).
 
@@ -545,7 +545,7 @@ def optimal_folds_number(
     This is a combinatorial problem with :math:`\frac{T\times(T-3)}{2}` combinations,
     with :math:`T` the number of observations.
 
-    We reduce the search space by using the combinatorial symetry
+    We reduce the search space by using the combinatorial symmetry
     :math:`{n \choose k}={n \choose n-k}` and skipping cost computation above 1e5.
 
     Parameters

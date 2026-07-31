@@ -12,7 +12,7 @@ from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 class TestInverseVolatility:
-    def test_fit(self, X, y):
+    def test_fit(self, X, factors):
         model = InverseVolatility()
         model.fit(X)
         np.testing.assert_almost_equal(sum(model.weights_), 1)
@@ -21,7 +21,7 @@ class TestInverseVolatility:
         np.testing.assert_almost_equal(model.weights_, w)
 
         model = InverseVolatility(prior_estimator=TimeSeriesFactorModel())
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):

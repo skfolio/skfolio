@@ -37,17 +37,17 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
     min_n_assets : int, optional
         The minimum number of assets to select. If `min_n_assets` is reached before the
         end of the current non-dominated front, we return the remaining assets of this
-        front. This is because all assets in the same front have same rank.
+        front. This is because all assets in the same front have the same rank.
         The default (`None`) is to select the first front.
 
     threshold : float, default=0.0
-        Asset pair with a correlation below this threshold are included in the
+        Asset pairs with a correlation below this threshold are included in the
         non-domination sorting. The default value is `0.0`.
 
     fitness_measures : list[Measure], optional
         A list of :ref:`measure <measures_ref>` used to compute the portfolio fitness.
         The fitness is used to compare portfolios in terms of domination, compute the
-        pareto fronts and run the portfolio selection using non-denominated sorting.
+        Pareto fronts and run the portfolio selection using non-dominated sorting.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
     Attributes
@@ -141,7 +141,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
                     )
                 )
 
-        fronts = population.non_denominated_sort(
+        fronts = population.non_dominated_sort(
             first_front_only=self.min_n_assets is None
         )
         new_assets_idx = set()

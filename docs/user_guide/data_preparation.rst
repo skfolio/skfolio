@@ -8,6 +8,7 @@ Data Preparation
 
 Most `fit` methods of `skfolio` estimators take the assets returns as input `X`.
 Therefore, the choice of methodology to convert prices to returns is left to the user.
+For datasets with missing returns or a changing asset universe, see :ref:`missing_data`.
 
 There are two different notions of return:
 
@@ -17,7 +18,7 @@ Linear return (or simple return) is defined as:
 
 .. math:: R^{Lin}_{t} = \frac{S_{t}}{S_{t-1}} - 1
 
-**Linear returns aggregates across securities**, meaning that the linear return
+**Linear returns aggregate across securities**, meaning that the linear return
 of a portfolio is the sum of the weighted linear returns of its components:
 
 .. math:: R^{Lin}_{t} = \sum_{i=1}^{N} w_{i} \times  R^{Lin}_{i,t}
@@ -32,7 +33,7 @@ Logarithmic return (or continuously compounded return) is defined as:
 
 .. math:: R^{Log}_{t} = ln\Biggl(\frac{S_{t}}{S_{t-1}}\Biggr)
 
-**Logarithmic returns aggregates across time**, meaning that the logarithmic return over
+**Logarithmic returns aggregate across time**, meaning that the logarithmic return over
 k periods is the sum of all single-period logarithmic returns:
 
 .. math:: R^{Log}_{t..k} = ln\Biggl(\frac{S_{t+k}}{S_{t}}\Biggr) = \sum_{j=1}^{k} ln\Biggl(\frac{S_{t+j}}{S_{t+j-1}}\Biggr)= \sum_{j=1}^{k-1} R^{Log}_{t+j}
@@ -127,6 +128,43 @@ to logarithmic returns should be reformed inside the estimator.
 For bonds and options, the general procedure will be implemented in a future release. In the meantime
 you can use your own custom :ref:`prior estimator <prior>`.
 
+.. _periodicity_convention:
+
+Periodicity Convention
+======================
+skfolio estimators work in the periodicity of the input `X`. With daily returns,
+moment estimators produce daily expected returns and covariance, prior estimators
+produce daily return scenarios, and optimizers consume these per-period inputs
+directly. Nothing is projected to the investment horizon inside the optimization.
+When horizon projection is needed, it is performed inside the prior estimator (see
+:class:`~skfolio.prior.EmpiricalPrior` with `investment_horizon` above), not by
+scaling the optimization inputs.
+
+This convention has several benefits:
+
+* It avoids the incorrect moment projection described in the pitfall above.
+* Variance-based and scenario-based risk measures stay consistent within a single
+  optimization: scenario-based measures (e.g. CVaR, CDaR) consume the return
+  scenarios directly, and scenarios have no meaningful horizon-scaled equivalent.
+* For ratio objectives such as maximizing the Sharpe ratio, consistent scaling of
+  the return-based inputs changes the objective value but not the optimal weights,
+  so projecting the inputs adds conversion risk without changing the solution.
+* Walk-forward and online evaluation rebalance in units of observations, so
+  per-period inputs compose with any rebalancing frequency without rescaling.
+
+Quantities that are paid once rather than earned per period must be converted to
+the periodicity of `X`. A transaction cost is paid once per rebalancing while a
+position earns its expected return on every period it is held, so the one-off cost
+is divided by the expected investment duration: for a 10 basis point cost, daily
+returns and a one-month expected holding period, `transaction_costs=0.001 / 21`
+(see :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`).
+Management fees accrue with holding time, so a stated annual fee converts directly
+to the return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily returns).
+
+Annualization happens only at reporting time. :class:`~skfolio.portfolio.Portfolio`
+computes measures on the per-observation return series and scales them for display
+in the annualized variants (e.g. `annualized_sharpe_ratio`), using its
+`annualization_factor` parameter.
 
 
 .. rubric:: References

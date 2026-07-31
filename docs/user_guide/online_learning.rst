@@ -17,6 +17,11 @@ Examples of supported estimators include
 optimizers such as :class:`~skfolio.optimization.MeanRisk` when they embed
 incremental moment estimators through a prior estimator.
 
+Online learning is also where native NaN-aware estimators are especially useful:
+they can update from available observations while preserving estimator state. Pipeline
+based pre-selection and imputation are not currently available in `skfolio` online
+learning workflows. See :ref:`missing_data` for details.
+
 
 How Online Evaluation Works
 ***************************
@@ -167,6 +172,18 @@ For portfolio optimizers, the main entry points are
 This is useful when a portfolio estimator embeds incremental moment estimators such as
 :class:`~skfolio.moments.EWMu` and
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
+
+During online portfolio evaluation, each rebalance is solved after the estimator has
+incorporated the observations available at that date. If the optimization problem cannot
+be solved and `raise_on_failure=False`, `online_predict` records that rebalance as a
+:class:`~skfolio.portfolio.FailedPortfolio` and continues with the next window. When the
+estimator uses previous weights, the last valid allocation remains the reference for
+later rebalances.
+
+To hold the last allocation instead of producing a failed rebalance, configure
+`fallback="previous_weights"`. Other fallback estimators are not available with
+`partial_fit`, because they would not have learned from the same sequence of past
+observations.
 
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`

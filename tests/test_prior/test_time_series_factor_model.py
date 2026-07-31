@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import numpy as np
 import pytest
 from sklearn import config_context
@@ -12,17 +10,31 @@ from skfolio.prior import (
     LoadingMatrixRegression,
     TimeSeriesFactorModel,
 )
+from skfolio.utils.stats import safe_cholesky
 
 
-def test_factor_model(X, y):
+def test_factor_model(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
     model = TimeSeriesFactorModel()
-    model.fit(X, y)
+    with pytest.raises(TypeError, match="missing 1 required keyword-only argument"):
+        model.fit(X_test, factors_test)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
     assert model.return_distribution_.mu.shape == (20,)
+    sqrt = model.return_distribution_.covariance_sqrt
+    reconstructed = sum(component @ component.T for component in sqrt.components)
+    if sqrt.diagonal is not None:
+        reconstructed = reconstructed + np.diag(sqrt.diagonal**2)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        reconstructed,
         model.return_distribution_.covariance,
         15,
+    )
+    assert model.return_distribution_.factor_model.loading_matrix.shape == (20, 5)
+    np.testing.assert_equal(
+        model.return_distribution_.factor_model.factor_names,
+        ["MTUM", "QUAL", "SIZE", "USMV", "VLUE"],
     )
 
     model = TimeSeriesFactorModel(
@@ -30,16 +42,39 @@ def test_factor_model(X, y):
             linear_regressor=LassoCV(cv=5, fit_intercept=False), n_jobs=-1
         ),
     )
-    model.fit(X, y)
+    model.fit(X_test, factors=factors_test)
     assert model.return_distribution_
+    chol = safe_cholesky(model.return_distribution_.covariance)
     np.testing.assert_almost_equal(
-        model.return_distribution_.cholesky @ model.return_distribution_.cholesky.T,
+        chol @ chol.T,
         model.return_distribution_.covariance,
         15,
     )
 
 
-def test_black_litterman_factor_model(X, y):
+def test_factor_model_with_factor_families(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = TimeSeriesFactorModel(factor_families=factor_families)
+    model.fit(X_test, factors=factors_test)
+
+    np.testing.assert_array_equal(
+        model.return_distribution_.factor_model.factor_families,
+        factor_families,
+    )
+
+
+def test_factor_model_factor_families_length_error(X, factors):
+    X_test = X.iloc[-50:]
+    factors_test = factors.loc[X_test.index]
+    model = TimeSeriesFactorModel(factor_families=["style", "quality"])
+
+    with pytest.raises(ValueError, match=r"`factor_families` must have length 5"):
+        model.fit(X_test, factors=factors_test)
+
+
+def test_black_litterman_factor_model(X, factors):
     factor_views = ["MTUM - QUAL == 0.03 ", "SIZE - USMV== 0.04", "VLUE == 0.06 "]
     n_observations = X.shape[0]
     model = TimeSeriesFactorModel(
@@ -47,7 +82,7 @@ def test_black_litterman_factor_model(X, y):
             views=factor_views, tau=1 / n_observations
         ),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     assert model.return_distribution_.mu.shape == (20,)
     assert model.return_distribution_.covariance.shape == (20, 20)
@@ -93,7 +128,7 @@ def test_black_litterman_factor_model(X, y):
     )
 
 
-def test_metadata_routing_error(X, y, implied_vol):
+def test_metadata_routing_error(X, factors, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(
@@ -106,10 +141,12 @@ def test_metadata_routing_error(X, y, implied_vol):
         with pytest.raises(
             ValueError, match="The following assets are missing from `implied_vol`"
         ):
-            model.fit(X, y, implied_vol=implied_vol)
+            model.fit(X, factors=factors, implied_vol=implied_vol)
 
 
 def test_metadata_routing(X, implied_vol):
+    X_test = X.iloc[-300:, :6]
+    implied_vol_test = implied_vol.loc[X_test.index, X_test.columns]
     with config_context(enable_metadata_routing=True):
         model = TimeSeriesFactorModel(
             factor_prior_estimator=EmpiricalPrior(
@@ -120,9 +157,9 @@ def test_metadata_routing(X, implied_vol):
         )
 
         with pytest.raises(ValueError):
-            model.fit(X, X)
+            model.fit(X_test, factors=X_test)
 
-        model.fit(X, X, implied_vol=implied_vol)
+        model.fit(X_test, factors=X_test, implied_vol=implied_vol_test)
 
     # noinspection PyUnresolvedReferences
-    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+    assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (6,)

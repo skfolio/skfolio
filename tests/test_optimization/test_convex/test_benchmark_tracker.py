@@ -3,14 +3,16 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn import config_context
 
 from skfolio.measures import RiskMeasure
 from skfolio.optimization import BenchmarkTracker, MeanRisk, ObjectiveFunction
+from skfolio.prior import TimeSeriesFactorModel
 
 
 @pytest.fixture
-def benchmark_returns(y):
-    return y["MTUM"]
+def benchmark_returns(factors):
+    return factors["MTUM"]
 
 
 def test_benchmark_tracker(X, benchmark_returns):
@@ -43,6 +45,40 @@ def test_benchmark_tracker_vs_manual(X, benchmark_returns):
     model2.fit(excess_returns)
 
     np.testing.assert_almost_equal(model1.weights_, model2.weights_, decimal=6)
+
+
+def test_benchmark_tracker_factor_constraint(X, factors, benchmark_returns):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
+    with config_context(enable_metadata_routing=True):
+        model = BenchmarkTracker(
+            prior_estimator=TimeSeriesFactorModel(),
+            linear_constraints=["Momentum == 0"],
+        )
+        model.fit(X, benchmark_returns, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_benchmark_tracker_factor_family_constraint(X, factors, benchmark_returns):
+    factor_returns = factors.rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    with config_context(enable_metadata_routing=True):
+        model = BenchmarkTracker(
+            prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+            linear_constraints=["style <= -0.05"],
+        )
+        model.fit(X, benchmark_returns, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
 
 
 @pytest.mark.parametrize(
@@ -101,6 +137,34 @@ def test_benchmark_tracker_dict_min_weights_with_dataframe_y(X, benchmark_return
 
     assert portfolio.weights.shape == (X.shape[1],)
     np.testing.assert_array_less(0.01 - 1e-6, portfolio.weights)
+
+
+def test_benchmark_tracker_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+    benchmark_returns = pd.Series(np.full(len(X), 0.005), index=X.index)
+
+    model = BenchmarkTracker(
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X, benchmark_returns)
+
+    return_distribution = model.prior_estimator_.return_distribution_
+    assert return_distribution.n_assets == X.shape[1]
+    assert return_distribution.n_investable_assets == np.count_nonzero(investable_mask)
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns.to_numpy())
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[~investable_mask], 0)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+
+    portfolio = model.predict(X)
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
 
 
 def test_benchmark_tracker_errors(X, benchmark_returns):

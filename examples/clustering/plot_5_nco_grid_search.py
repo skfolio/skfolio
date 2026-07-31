@@ -57,7 +57,7 @@ model_nco = NestedClustersOptimization(
 # ================
 # We find the model parameters that maximizes the out-of-sample Sharpe ratio using
 # `GridSearchCV` with `WalkForward` cross-validation on the training set.
-# The `WalkForward` are chosen to simulate a three months (60 business days) rolling
+# The `WalkForward` splits are chosen to simulate a three-month (60 business days) rolling
 # portfolio fitted on the previous year (252 business days):
 cv = WalkForward(train_size=252, test_size=60)
 

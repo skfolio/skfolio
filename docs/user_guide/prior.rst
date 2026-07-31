@@ -11,7 +11,7 @@ pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample weight, Ch
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:
@@ -40,6 +40,11 @@ The :class:`ReturnDistribution` is a dataclass containing:
     * `returns`: (Estimated) asset returns of shape (n_observations, n_assets)
     * `sample_weight` : Sample weight for each observation of shape (n_observations,) (optional)
     * `cholesky` : Lower-triangular Cholesky factor of the covariance (optional)
+
+When native NaN-aware moment estimators are used, a prior can keep the full asset
+universe in `return_distribution_` while non-investable assets are represented by NaNs
+in :math:`\mu`, :math:`\Sigma`, or both. See :ref:`missing_data` for the full
+missing-data and investability convention.
 
 .. note::
 
@@ -126,9 +131,9 @@ i.e., the dimensionality of the estimation problem, making portfolio optimizatio
 more robust against noise in the data. Factor models also provide a decomposition of
 financial risk into systematic and security-specific components.
 
-To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
-returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
-array (more than one factor). This is for consistency with the scikit-learn API.
+The `fit` method takes `X` as the asset
+returns and `factors` as the factor returns. Pass factor returns with the `factors` keyword
+argument.
 
 Tutorials:
     * :ref:`Factor Model <sphx_glr_auto_examples_mean_risk_plot_13_factor_model.py>`
@@ -146,16 +151,16 @@ Tutorials:
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(prices, factor_prices)
+    X, factors = prices_to_returns(prices, factor_prices)
 
     model = TimeSeriesFactorModel()
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.return_distribution_)
 
 
 The loading matrix (betas) of the factors is estimated using a
 `loading_matrix_estimator`. By default, we use the :class:`LoadingMatrixRegression`
-which fits the factors using a :class:`sklean.linear_model.LassoCV` on each asset
+which fits the factors using a :class:`sklearn.linear_model.LassoCV` on each asset
 separately.
 
 Synthetic Data
@@ -194,7 +199,7 @@ Tutorials:
     prices = load_sp500_dataset()
     X = prices_to_returns(prices, factors)
    
-    # Instanciate the SyntheticData model and fit it
+    # Instantiate the SyntheticData model and fit it
     model = SyntheticData()
     model.fit(X)
     print(model.return_distribution_)
@@ -398,7 +403,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
-    X, y = prices_to_returns(prices, factor_prices)
+    X, factors = prices_to_returns(prices, factor_prices)
 
     views = [
         "MTUM - QUAL == 0.0003",
@@ -409,7 +414,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
     model = TimeSeriesFactorModel(
         factor_prior_estimator=BlackLitterman(views=views),
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.return_distribution_)
 
 
@@ -418,7 +423,7 @@ estimated via a Black & Litterman model that incorporates the analyst's views on
 
 By combining :class:`SyntheticData` with :class:`TimeSeriesFactorModel` you can generate
 synthetic data of your factors then project them to your assets.
-This is often used for factor stress test.
+This is often used for factor stress testing.
 
 .. code-block:: python
 
@@ -432,7 +437,7 @@ This is often used for factor stress test.
     # Load historical prices and convert them to returns
     prices = load_sp500_dataset()
     factors = load_factors_dataset()
-    X, y = prices_to_returns(prices, factors)
+    X, factors = prices_to_returns(prices, factors)
 
 
     # Minimum CVaR optimization on Stressed Factors
@@ -444,14 +449,14 @@ This is often used for factor stress test.
     )
     factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_prior)
     model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     print(model.weights_)
 
     # Stress Test the Portfolio
     factor_model.set_params(factor_prior_estimator__sample_args=dict(
         conditioning={"QUAL": -0.5}
     ))
-    factor_model.fit(X,y)
+    factor_model.fit(X, factors=factors)
     stressed_dist = factor_model.return_distribution_
     stressed_ptf = model.predict(stressed_dist)
 
@@ -490,10 +495,10 @@ This can be achieved by combining :class:`EntropyPooling` with :class:`Synthetic
 **Example:**
 
 Instead of applying extreme Entropy Pooling views directly to asset returns, we can
-embed it within a Factor Model.
-This allows us to impose views on factor data such at the quality factor "QUAL".
+embed it within a time-series factor model.
+This allows us to impose views on factor data such as the quality factor "QUAL".
 This can be achieved by combining :class:`EntropyPooling` with :class:`SyntheticData`
-and with :class:`FactorModel`:
+and with :class:`TimeSeriesFactorModel`:
 
 .. code-block:: python
 
@@ -501,7 +506,7 @@ and with :class:`FactorModel`:
     from skfolio.preprocessing import prices_to_returns
     from skfolio.distribution import VineCopula
     from skfolio.optimization import MeanRisk
-    from skfolio.prior import FactorModel, SyntheticData
+    from skfolio.prior import EntropyPooling, SyntheticData, TimeSeriesFactorModel
     from skfolio import RiskMeasure
 
     # Load historical prices and convert them to returns
@@ -521,5 +526,6 @@ and with :class:`FactorModel`:
         cvar_views=["QUAL == 0.10"],
     )
 
-    factor_entropy_pooling.fit(X, factors)
+    factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooling)
+    factor_model.fit(X, factors=factors)
 

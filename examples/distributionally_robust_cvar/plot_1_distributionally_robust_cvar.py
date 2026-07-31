@@ -8,16 +8,16 @@ model.
 
 The Distributionally Robust CVaR model constructs a Wasserstein ball in the space of
 multivariate and non-discrete probability distributions centered at the uniform
-distribution on the training samples, and find the allocation that minimize the CVaR of
+distribution on the training samples, and finds the allocation that minimizes the CVaR of
 the worst-case distribution within this Wasserstein ball.
 
 Mohajerin Esfahani and Kuhn (2018) proved that for piecewise linear objective functions,
 which is the case of CVaR (Rockafellar and Uryasev), the distributionally robust
-optimization problem over Wasserstein ball can be reformulated as finite convex
+optimization problem over a Wasserstein ball can be reformulated as finite convex
 programs.
 
 It's advised to use a solver that handles a high number of constraints like `Mosek`.
-For accessibility, this example uses the default open source solver `CLARABEL`, so to
+For accessibility, this example uses the default open source solver `CLARABEL`, so, to
 increase convergence speed, we only use 3 years of data.
 
 The radius of the Wasserstein ball is controlled with the `wasserstein_ball_radius`

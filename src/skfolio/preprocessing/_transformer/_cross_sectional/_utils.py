@@ -7,34 +7,17 @@
 from __future__ import annotations
 
 import numbers
+import warnings
 
 import numpy as np
 from sklearn.utils import check_array
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray
+from skfolio.utils.stats import safe_divide
 
 # Scaling constant for MAD under normality (MAD multiplied by this value is consistent
 # with the STD).
 _MAD_CONSISTENCY = 1.4826022185056018
-
-
-def _safe_divide(
-    numerator: FloatArray | float, denominator: FloatArray | float
-) -> FloatArray:
-    """Return an element-wise division with safe zero handling.
-
-    Division is performed only where the denominator is non-zero. All other entries are
-    set to zero. Any non-finite intermediate is coerced to zero so the returned array is
-    always finite.
-    """
-    numerator = np.asarray(numerator, dtype=np.float64)
-    denominator = np.asarray(denominator, dtype=np.float64)
-    quotient = np.zeros(
-        np.broadcast_shapes(numerator.shape, denominator.shape), dtype=np.float64
-    )
-    np.divide(numerator, denominator, out=quotient, where=denominator != 0)
-    np.nan_to_num(quotient, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
-    return quotient
 
 
 def _cs_weighted_mean(
@@ -47,13 +30,17 @@ def _cs_weighted_mean(
     non-estimation cells.
     """
     if cs_weights is None:
-        return np.nanmean(X, axis=1, keepdims=True)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", message="Mean of empty slice", category=RuntimeWarning
+            )
+            return np.nanmean(X, axis=1, keepdims=True)
 
     weighted_X = np.zeros_like(X)
     np.multiply(cs_weights, X, out=weighted_X, where=estimation_mask)
     weighted_sum = weighted_X.sum(axis=1, keepdims=True)
     total_weight = np.sum(cs_weights, axis=1, keepdims=True)
-    return _safe_divide(weighted_sum, total_weight)
+    return safe_divide(weighted_sum, total_weight)
 
 
 def _cs_equal_weighted_std(
@@ -67,7 +54,7 @@ def _cs_equal_weighted_std(
     sample_size = np.sum(estimation_mask, axis=1, keepdims=True)
     degrees_of_freedom = np.maximum(sample_size - 1.0, 0.0)
     return np.sqrt(
-        _safe_divide(
+        safe_divide(
             np.sum(residuals * residuals, axis=1, keepdims=True),
             degrees_of_freedom,
         )
@@ -90,11 +77,11 @@ def _cs_recenter_rescale(
     - `X` must be NaN-masked at non-finite entries (i.e. `X[~finite_mask]` is NaN).
     - When `cs_weights` is provided, weights must already be zero outside the
       estimation universe (typically via :func:`_prepare_cs_estimation_inputs`).
-    - Each observation must contain at least one estimation asset.
     """
+    has_estimation_asset = estimation_mask.any(axis=1)
     centered_X = X - _cs_weighted_mean(X, cs_weights, estimation_mask)
     if not scale:
-        return centered_X
+        return _mask_empty_cross_sections(centered_X, has_estimation_asset)
 
     equal_weighted_std = _cs_equal_weighted_std(centered_X, 0.0, estimation_mask)
 
@@ -107,7 +94,9 @@ def _cs_recenter_rescale(
         out=scaled_X,
         where=finite_mask & (equal_weighted_std > atol),
     )
-    return np.where(finite_mask, scaled_X, np.nan)
+    return _mask_empty_cross_sections(
+        np.where(finite_mask, scaled_X, np.nan), has_estimation_asset
+    )
 
 
 def _validate_cs_weights(
@@ -139,10 +128,18 @@ def _prepare_cs_estimation_inputs(
         cs_weights = np.where(finite_mask, cs_weights, 0.0)
         estimation_mask = finite_mask & (cs_weights > 0)
 
-    if not estimation_mask.any(axis=1).all():
-        raise ValueError("Each observation must contain at least one estimation asset.")
-
     return cs_weights, finite_mask, estimation_mask
+
+
+def _mask_empty_cross_sections(
+    X: FloatArray, has_estimation_asset: BoolArray
+) -> FloatArray:
+    """Set observations without estimation assets to NaN and return `X`."""
+    empty_cross_sections = ~has_estimation_asset
+    if not np.any(empty_cross_sections):
+        return X
+    X[empty_cross_sections] = np.nan
+    return X
 
 
 def _mask_non_estimation_values(
@@ -159,8 +156,6 @@ def _mask_non_estimation_values(
     else:
         masked_X = np.where((cs_weights > 0) & np.isfinite(X), X, np.nan)
 
-    if not np.isfinite(masked_X).any(axis=1).all():
-        raise ValueError("Each observation must contain at least one estimation asset.")
     return masked_X
 
 

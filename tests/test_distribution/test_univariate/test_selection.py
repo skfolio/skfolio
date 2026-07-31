@@ -67,7 +67,7 @@ def test_invalid_X_shape():
     X_invalid = np.array([1, 2, 3])
     candidate = Gaussian(loc=None, scale=None)
     with pytest.raises(
-        ValueError, match="X must contains one column for Univariate Distributio"
+        ValueError, match="X must contain one column for Univariate Distributio"
     ):
         select_univariate_dist(X_invalid, [candidate])
 

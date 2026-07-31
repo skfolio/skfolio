@@ -105,7 +105,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix and
+        containing estimates of expected asset returns, covariance matrix and
         returns. The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -708,7 +708,7 @@ def _compute_weights(
                         d_aug = cov_nearest(d_aug)
                 except Exception:
                     raise ValueError(
-                        f"Schur complement failed with gamma={gamma:0.4f}. Chose a "
+                        f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
                     ) from None
 

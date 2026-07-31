@@ -84,7 +84,7 @@ class FailedPortfolio(Portfolio):
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
-    annualized_factor : float, default=252.0
+    annualization_factor : float, default=252.0
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
@@ -161,7 +161,7 @@ class FailedPortfolio(Portfolio):
         transaction_costs: skt.MultiInput = None,
         management_fees: skt.MultiInput = None,
         risk_free_rate: float = 0,
-        annualized_factor: float = 252,
+        annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
         sample_weight: FloatArray | None = None,
@@ -174,6 +174,7 @@ class FailedPortfolio(Portfolio):
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        **kwargs,
     ):
         super().__init__(
             X=X,
@@ -184,7 +185,7 @@ class FailedPortfolio(Portfolio):
             risk_free_rate=risk_free_rate,
             name=name,
             tag=tag,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
             sample_weight=sample_weight,
@@ -198,6 +199,7 @@ class FailedPortfolio(Portfolio):
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
             fallback_chain=fallback_chain,
+            **kwargs,
         )
 
         self.optimization_error = optimization_error

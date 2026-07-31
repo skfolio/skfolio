@@ -153,7 +153,7 @@ class CovarianceForecastEvaluation:
     n_portfolios : int
         Number of test portfolios.
 
-    name : str or None, default=None
+    name : str, optional
         Display name for the evaluation.
 
     Examples
@@ -365,7 +365,7 @@ class CovarianceForecastEvaluation:
             window,
         )
         if title is None:
-            title = f"Rolling Calibration Diagnostics ({window}-observation window)"
+            title = f"Rolling Calibration Diagnostics ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -419,7 +419,7 @@ class CovarianceForecastEvaluation:
                 window,
             )
         if title is None:
-            title = f"Rolling Portfolio QLIKE Loss ({window}-observation window)"
+            title = f"Rolling Portfolio QLIKE Loss ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -474,7 +474,7 @@ class CovarianceForecastEvaluation:
             )
 
         if title is None:
-            title = f"Rolling Exceedance Rate ({window}-observation window)"
+            title = f"Rolling Exceedance Rate ({window} observations)"
 
         fig = _plot_lines(
             series_map,
@@ -508,7 +508,7 @@ class CovarianceForecastComparison:
     evaluations : list of CovarianceForecastEvaluation
         Evaluation results to compare.
 
-    names : list of str or None, default=None
+    names : list of str, optional
         Override display names. When provided, must have the same length as
         `evaluations`. When `None`, defaults to each evaluation's
         :attr:`~CovarianceForecastEvaluation.name` (falling back to
@@ -677,7 +677,7 @@ class CovarianceForecastComparison:
             all_bands.update(est_bands)
 
         if title is None:
-            title = f"Rolling Calibration Diagnostics ({window}-observation window)"
+            title = f"Rolling Calibration Diagnostics ({window} observations)"
 
         return _plot_lines(
             all_series,
@@ -731,7 +731,7 @@ class CovarianceForecastComparison:
                 )
 
         if title is None:
-            title = f"Rolling Portfolio QLIKE Loss ({window}-observation window)"
+            title = f"Rolling Portfolio QLIKE Loss ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -782,7 +782,7 @@ class CovarianceForecastComparison:
         if title is None:
             title = (
                 f"Rolling Exceedance Rate (confidence_level={confidence_level}, "
-                f"{window}-observation window)"
+                f"{window} observations)"
             )
         fig = _plot_lines(
             series_map,
@@ -1155,6 +1155,7 @@ def _rolling(
     series : Series
         Rolling statistic with the warmup period removed.
     """
+    _validate_rolling_window(window, len(observations))
     series = pd.Series(arr, index=observations)
     if stats_type == "std":
         return series.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1222,6 +1223,7 @@ def _rolling_portfolio_band(
     p95 : Series
         Rolling 95th percentile across portfolios.
     """
+    _validate_rolling_window(window, len(observations))
     df = pd.DataFrame(arr, index=observations)
     if stats_type == "std":
         rolled = df.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1232,6 +1234,15 @@ def _rolling_portfolio_band(
         rolled.quantile(0.05, axis=1),
         rolled.quantile(0.95, axis=1),
     )
+
+
+def _validate_rolling_window(window: int, n_observations: int) -> None:
+    """Validate rolling window length against available observations."""
+    if window > n_observations:
+        raise ValueError(
+            "`window` must be less than or equal to the number of evaluation "
+            f"observations; got window={window} and n_observations={n_observations}."
+        )
 
 
 def _median_portfolio_stats(arr: FloatArray, stats_func: Callable) -> dict[str, object]:

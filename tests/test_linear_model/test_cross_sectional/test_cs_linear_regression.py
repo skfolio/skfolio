@@ -56,7 +56,7 @@ def compute_valid_mask(X, y, weights):
     """Compute validity mask for (observation, asset) pairs.
 
     Under the weight-driven contract, positive-weight rows are guaranteed to
-    have finite X and y, so this reduces to ``weights > 0``.
+    have finite X and y, so this reduces to `weights > 0`.
     """
     return np.isfinite(weights) & (weights > 0)
 

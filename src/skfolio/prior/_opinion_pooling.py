@@ -18,9 +18,10 @@ import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
 import skfolio.measures as sm
-from skfolio.prior._base import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
-from skfolio.utils.composition import BaseComposition
+from skfolio.base import BaseComposition
+from skfolio.prior._base import BasePrior
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 
@@ -222,7 +223,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     opinion_probabilities_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -347,7 +348,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

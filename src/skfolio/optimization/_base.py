@@ -27,12 +27,17 @@ import sklearn.base as skb
 from sklearn.utils.validation import check_is_fitted
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _PREVIOUS_WEIGHTS,
+    _RISK_FREE_RATE,
+    _TRANSACTION_COSTS,
+)
 from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.prior import ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.tools import input_to_array
 
 
@@ -43,9 +48,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     ----------
     portfolio_params : dict, optional
         Portfolio parameters forwarded to the resulting `Portfolio` in `predict`.
-        If not provided and if available on the estimator, the following
-        attributes are propagated to the portfolio by default: `name`,
-        `transaction_costs`, `management_fees`, `previous_weights` and `risk_free_rate`.
+        If not provided and if available on the estimator, the following attributes are
+        propagated to the portfolio by default: `name`, `transaction_costs`,
+        `management_fees`, `previous_weights` and `risk_free_rate`.
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
@@ -106,7 +111,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
     weights_: FloatArray
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
     error_: str | list[str] | None
@@ -210,7 +215,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         for fb in fallback:
             try:
                 fb = _validate_fallback(fb)
-                if fb == _ParamKey.PREVIOUS_WEIGHTS.value:
+                if fb == _PREVIOUS_WEIGHTS:
                     self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
                     return
 
@@ -270,12 +275,16 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
                     "Provide valid previous weights or remove this fallback."
                 )
-            self.weights_ = self._clean_previous_weights(n_assets=n_assets)
-            self.fallback_ = _ParamKey.PREVIOUS_WEIGHTS.value
-            self.fallback_chain_.append((_ParamKey.PREVIOUS_WEIGHTS.value, "success"))
+            investable_mask = getattr(self, "investable_mask_", None)
+            if investable_mask is not None:
+                n_assets = int(np.count_nonzero(investable_mask))
+            weights = self._clean_previous_weights(n_assets=n_assets)
+            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+            self.fallback_ = _PREVIOUS_WEIGHTS
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
 
         except Exception as error:
-            self.fallback_chain_.append((_ParamKey.PREVIOUS_WEIGHTS.value, str(error)))
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))
             raise
 
     @abstractmethod
@@ -324,10 +333,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
         # Set the default portfolio parameters equal to the optimization parameters
         for param in [
-            _ParamKey.TRANSACTION_COSTS.value,
-            _ParamKey.MANAGEMENT_FEES.value,
-            _ParamKey.PREVIOUS_WEIGHTS.value,
-            _ParamKey.RISK_FREE_RATE.value,
+            _TRANSACTION_COSTS,
+            _MANAGEMENT_FEES,
+            _PREVIOUS_WEIGHTS,
+            _RISK_FREE_RATE,
         ]:
             if param not in ptf_kwargs and hasattr(self, param):
                 ptf_kwargs[param] = getattr(self, param)
@@ -387,7 +396,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         -------
         score : float
             The Sharpe Ratio of the portfolio if the prediction is a single `Portfolio`
-            or the mean of all the portfolios Sharpe Ratios if the prediction is a
+            or the mean of all the portfolio Sharpe Ratios if the prediction is a
             `Population` of `Portfolio`.
         """
         result = self.predict(X)
@@ -398,7 +407,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     def fit_predict(self, X):
         """Perform `fit` on `X` and returns the predicted `Portfolio` or
         `Population` of `Portfolio` on `X` based on the fitted `weights`.
-        For factor models, use `fit(X, y)` then `predict(X)` separately.
+        For factor models, use `fit(X, factors=...)` then `predict(X)` separately.
 
         If fitting fails and `raise_on_failure=False`, this returns a
         `FailedPortfolio`.
@@ -424,9 +433,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         transaction costs, a maximum turnover, or a fallback depending on
         `previous_weights` are present.
         """
-        if _has_transaction_cost(
-            getattr(self, _ParamKey.TRANSACTION_COSTS.value, None)
-        ):
+        if _has_transaction_cost(getattr(self, _TRANSACTION_COSTS, None)):
             return True
 
         if getattr(self, "max_turnover", None) is not None:
@@ -439,10 +446,77 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
             for fb in fallback:
                 fb = _validate_fallback(fb)
-                if fb == _ParamKey.PREVIOUS_WEIGHTS.value or fb.needs_previous_weights:
+                if fb == _PREVIOUS_WEIGHTS or fb.needs_previous_weights:
                     return True
 
         return False
+
+    def _prepare_investable_distribution(
+        self, return_distribution: ReturnDistribution, slim: bool = False
+    ) -> ReturnDistribution:
+        """Prepare the return distribution used by the optimizer.
+
+        The input `return_distribution` is defined on the full asset universe. This
+        method stores its `investable_mask` in `investable_mask_`, then returns the
+        distribution restricted to assets that can be used in the optimization problem.
+        Downstream helpers use `investable_mask_` to map user inputs and optimized
+        weights between the full universe and the investable subset.
+
+        Parameters
+        ----------
+        return_distribution : ReturnDistribution
+            Full-universe return distribution. Non-investable assets may be represented
+            by NaNs in `mu`, `covariance` or both.
+
+        slim : bool, default=False
+            If True, drop heavy diagnostic fields from the nested factor model when the
+            investable subset is built.
+
+        Returns
+        -------
+        ReturnDistribution
+            Return distribution restricted to investable assets.
+        """
+        self.investable_mask_ = return_distribution.investable_mask
+        return return_distribution.investable_subset(slim=slim)
+
+    def _expand_weights_to_full_universe(self, weights: FloatArray) -> FloatArray:
+        """Expand investable-subset weights to the full asset universe.
+
+        Optimization is performed on the investable subset prepared by
+        `_prepare_investable_distribution`. This method maps the optimized weights back
+        to the full universe, filling non-investable positions with zero so that
+        `weights_` stays aligned with the original assets passed to `fit`.
+
+        If `investable_mask_` is missing or None, all assets are investable and
+        `weights` is returned unchanged.
+
+        Parameters
+        ----------
+        weights : ndarray of shape (n_investable_assets,) or (..., n_investable_assets)
+            Optimized weights on the investable subset.
+
+        Returns
+        -------
+        ndarray of shape (n_assets,) or (..., n_assets)
+            Weights aligned with the full asset universe.
+        """
+        investable_mask = getattr(self, "investable_mask_", None)
+
+        if investable_mask is None:
+            return weights
+
+        n_full_universe = len(investable_mask)
+
+        if weights.ndim == 1:
+            full_weights = np.zeros(n_full_universe, dtype=weights.dtype)
+            full_weights[investable_mask] = weights
+        else:
+            full_weights = np.zeros(
+                (*weights.shape[:-1], n_full_universe), dtype=weights.dtype
+            )
+            full_weights[..., investable_mask] = weights
+        return full_weights
 
     def _clean_input(
         self,
@@ -453,17 +527,21 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     ) -> float | FloatArray:
         """Convert input to a cleaned float or 1D ndarray.
 
+        When `investable_mask_` has been set (by `_prepare_investable_distribution`),
+        dictionary keys are resolved against the full-universe names and the result is
+        subsetted and array-like inputs sized for the full universe are sliced to match.
+
         Parameters
         ----------
         value : float | dict | array-like | None
             Input value to clean.
 
         n_assets : int
-            Number of assets. Used to verify the shape of the converted array.
+            Number of investable assets. Used to verify the shape of the converted array.
 
         fill_value : Any
-            When `value` is a dictionary, keys not present in the asset names are
-            filled with `fill_value` in the converted array.
+            When `value` is a dictionary, keys not present in the asset names are filled
+            with `fill_value` in the converted array.
 
         name : str
             Name used for error messages.
@@ -482,9 +560,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             n_assets=n_assets,
             fill_value=fill_value,
             dim=1,
-            assets_names=(
-                self.feature_names_in_ if hasattr(self, "feature_names_in_") else None
-            ),
+            assets_names=getattr(self, "feature_names_in_", None),
+            investable_mask=getattr(self, "investable_mask_", None),
             name=name,
         )
 
@@ -509,36 +586,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             self.previous_weights,
             n_assets=n_assets,
             fill_value=0,
-            name=_ParamKey.PREVIOUS_WEIGHTS.value,
+            name=_PREVIOUS_WEIGHTS,
         )
         if np.isscalar(previous_weights):
             previous_weights = np.full(n_assets, float(previous_weights))
         return previous_weights
-
-
-def _has_transaction_cost(x: Any) -> bool:
-    """Return True if any non-zero transaction cost is present in `x`.
-
-    Accepts scalars, arrays, nested mappings, or structures convertible to arrays.
-    Zero or empty values are treated as no cost.
-    """
-    if x is None:
-        return False
-
-    if isinstance(x, Mapping):
-        # Empty dict -> no costs; otherwise recurse
-        return any(_has_transaction_cost(v) for v in x.values())
-
-    try:
-        arr = np.asarray(x, dtype=float)
-    except Exception:
-        # If coercion fails, assume non-zero to be conservative
-        return True
-
-    if arr.size == 0:
-        return False
-
-    return not np.allclose(arr, 0.0, atol=1e-15, rtol=1e-18, equal_nan=False)
 
 
 def _validate_fallback(
@@ -564,13 +616,38 @@ def _validate_fallback(
         If `fallback` is not a string and not an instance of `BaseOptimization`.
     """
     if isinstance(fallback, str):
-        if fallback != _ParamKey.PREVIOUS_WEIGHTS.value:
+        if fallback != _PREVIOUS_WEIGHTS:
             raise ValueError(
                 f"Unsupported string fallback: {fallback!r}. Only 'previous_weights' is allowed."
             )
-        return _ParamKey.PREVIOUS_WEIGHTS.value
+        return _PREVIOUS_WEIGHTS
     if not isinstance(fallback, BaseOptimization):
         raise TypeError(
             f"Fallback estimators must inherit from BaseOptimization (got {type(fallback).__name__})."
         )
     return fallback
+
+
+def _has_transaction_cost(x: Any) -> bool:
+    """Return True if any non-zero transaction cost is present in `x`.
+
+    Accepts scalars, arrays, nested mappings, or structures convertible to arrays.
+    Zero or empty values are treated as no cost.
+    """
+    if x is None:
+        return False
+
+    if isinstance(x, Mapping):
+        # Empty dict -> no costs; otherwise recurse
+        return any(_has_transaction_cost(v) for v in x.values())
+
+    try:
+        arr = np.asarray(x, dtype=float)
+    except Exception:
+        # If coercion fails, assume non-zero to be conservative
+        return True
+
+    if arr.size == 0:
+        return False
+
+    return not np.allclose(arr, 0.0, atol=1e-15, rtol=1e-18, equal_nan=False)

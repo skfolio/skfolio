@@ -56,7 +56,7 @@ benchmark = MeanRisk()
 # %%
 # Pipeline
 # ========
-# Then, we create a Minimum Variance model with pre-selection using `Pipepline`:
+# Then, we create a Minimum Variance model with pre-selection using `Pipeline`:
 set_config(transform_output="pandas")
 
 model = Pipeline([("pre_selection", SelectKExtremes()), ("optimization", benchmark)])

@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import warnings
 from collections.abc import Iterator
 
 import numpy as np
@@ -105,11 +104,7 @@ class WalkForward(sks.BaseCrossValidator):
         use all past observations.
         The default is `False`.
 
-    expend_train : bool, optional
-        Deprecated alias for `expand_train`. If provided, a `FutureWarning`
-        is raised.
-
-        reduce_test : bool, default=False
+    reduce_test : bool, default=False
         If set to `True`, the last train/test split will be returned even if the
         test set is partial (i.e., it contains fewer observations than `test_size`),
         otherwise, it will be ignored.
@@ -248,36 +243,16 @@ class WalkForward(sks.BaseCrossValidator):
         freq: str | pd.offsets.BaseOffset | None = None,
         freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
         previous: bool = False,
-        expend_train: bool | None = None,
+        expand_train: bool = False,
         reduce_test: bool = False,
         purged_size: int = 0,
-        *,
-        expand_train: bool | None = None,
     ):
-        # TODO: expend_train is depreciated and replaced by expand_train, remove in next version
-        if expand_train is not None and expend_train is not None:
-            if expand_train != expend_train:
-                raise ValueError(
-                    "`expand_train` and `expend_train` must match when both are "
-                    "provided."
-                )
-        if expend_train is not None:
-            warnings.warn(
-                "`expend_train` is deprecated and will be removed in a future "
-                "release. Use `expand_train` instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-        if expand_train is None:
-            expand_train = False if expend_train is None else expend_train
-
         self.test_size = test_size
         self.train_size = train_size
         self.freq = freq
         self.freq_offset = freq_offset
         self.previous = previous
         self.expand_train = expand_train
-        self.expend_train = expand_train
         self.reduce_test = reduce_test
         self.purged_size = purged_size
 

@@ -35,7 +35,10 @@ from skfolio.model_selection._online._validation import (
     _validate_scoring,
     _validate_sizes,
 )
-from skfolio.model_selection._validation import _is_portfolio_optimization_estimator
+from skfolio.model_selection._validation import (
+    _is_portfolio_optimization_estimator,
+    _validate_entry_rebalancing_params,
+)
 from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 __all__ = ["OnlineGridSearch", "OnlineRandomizedSearch"]
@@ -119,7 +122,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    n_jobs : int or None, default=None
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -133,6 +136,14 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         Parameters forwarded to
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
         portfolio estimators.
+
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of
+        each candidate's online path. This is useful when the strategy starts with no
+        existing position, while later portfolios represent regular rebalancing from
+        the previously predicted weights. For example, the entry rebalancing can use
+        lower `transaction_costs` or require a valid initial solution with
+        `fallback=None`. Only supported for portfolio optimization estimators.
 
     return_predictions : bool, default=False
         If `True`, store
@@ -203,6 +214,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         error_score=np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
     ):
@@ -219,6 +231,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self.error_score = error_score
         self.return_predictions = return_predictions
         self.portfolio_params = portfolio_params
+        self.entry_rebalancing_params = entry_rebalancing_params
         self.n_jobs = n_jobs
         self.verbose = verbose
 
@@ -271,6 +284,14 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         )
         self.multimetric_ = isinstance(self.scoring, dict)
         _validate_scoring(self.scoring, self.is_portfolio_estimator_)
+        if (
+            self.entry_rebalancing_params is not None
+            and not self.is_portfolio_estimator_
+        ):
+            raise ValueError(
+                "`entry_rebalancing_params` is only supported for portfolio "
+                "optimization estimators."
+            )
 
         routed_params = _route_params(
             self.estimator,
@@ -299,6 +320,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
                 return_predictions=self.return_predictions,
                 error_score=self.error_score,
                 portfolio_params=self.portfolio_params,
+                entry_rebalancing_params=self.entry_rebalancing_params,
             )
             for candidate_params in candidate_params_list
         )
@@ -506,7 +528,15 @@ class OnlineGridSearch(BaseOnlineSearch):
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
         portfolio estimators.
 
-    n_jobs : int or None, default=None
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of
+        each candidate's online path. This is useful when the strategy starts with no
+        existing position, while later portfolios represent regular rebalancing from
+        the previously predicted weights. For example, the entry rebalancing can use
+        lower `transaction_costs` or require a valid initial solution with
+        `fallback=None`. Only supported for portfolio optimization estimators.
+
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -607,6 +637,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         error_score=np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
     ):
@@ -624,6 +655,7 @@ class OnlineGridSearch(BaseOnlineSearch):
             error_score=error_score,
             return_predictions=return_predictions,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
             n_jobs=n_jobs,
             verbose=verbose,
         )
@@ -634,7 +666,7 @@ class OnlineGridSearch(BaseOnlineSearch):
 
 
 class OnlineRandomizedSearch(BaseOnlineSearch):
-    """Online randomized search on hyper parameters.
+    """Online randomized search on hyperparameters.
 
     Each sampled parameter combination is evaluated by running a full online
     walk-forward pass. Unlike :class:`OnlineGridSearch`, not all parameters are tried
@@ -733,7 +765,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         * A callable receives `cv_results_` and must return the best
           candidate index.
 
-    random_state : int, RandomState instance or None, default=None
+    random_state : int, RandomState instance, optional
         Pseudo random number generator state used for random uniform sampling
         from lists of possible values instead of scipy.stats distributions.
         Pass an int for reproducible output across multiple function calls.
@@ -753,7 +785,15 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
         portfolio estimators.
 
-    n_jobs : int or None, default=None
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of
+        each candidate's online path. This is useful when the strategy starts with no
+        existing position, while later portfolios represent regular rebalancing from
+        the previously predicted weights. For example, the entry rebalancing can use
+        lower `transaction_costs` or require a valid initial solution with
+        `fallback=None`. Only supported for portfolio optimization estimators.
+
+    n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
 
     verbose : int, default=0
@@ -857,6 +897,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         error_score=np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
+        entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
     ):
@@ -874,6 +915,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
             error_score=error_score,
             return_predictions=return_predictions,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
             n_jobs=n_jobs,
             verbose=verbose,
         )
@@ -906,6 +948,7 @@ def _evaluate_candidate(
     reduce_test: bool,
     return_predictions: bool,
     portfolio_params: dict | None,
+    entry_rebalancing_params: dict | None,
     error_score: float | Literal["raise"],
 ) -> dict[str, Any]:
     """Evaluate a single parameter combination.
@@ -915,6 +958,7 @@ def _evaluate_candidate(
     """
     candidate = sk.clone(estimator)
     candidate.set_params(**candidate_params)
+    _validate_entry_rebalancing_params(candidate, entry_rebalancing_params)
 
     result: dict[str, Any] = {"params": candidate_params}
     start = time.perf_counter()
@@ -934,6 +978,7 @@ def _evaluate_candidate(
             reduce_test=reduce_test,
             refit_last=True,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
         )
     except Exception as e:
         if error_score != "raise":

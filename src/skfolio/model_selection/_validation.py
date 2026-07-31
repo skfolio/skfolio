@@ -52,6 +52,7 @@ def cross_val_predict(
     pre_dispatch: str = "2*n_jobs",
     column_indices: IntArray | None = None,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> MultiPeriodPortfolio | Population:
     """Generate cross-validated `Portfolios` estimates.
 
@@ -136,6 +137,21 @@ def cross_val_predict(
     portfolio_params :  dict, optional
         Additional portfolio parameters passed to `MultiPeriodPortfolio`.
 
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of each
+        sequential path. This is useful when the strategy starts with no existing
+        position, while later portfolios represent regular rebalancing from the
+        previously predicted weights. For example, the entry rebalancing can relax
+        `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
+        caused by recurring rebalancing constraints. The first portfolio is included in
+        the result. The regular estimator parameters are used for all subsequent
+        optimizations. When provided, `cross_val_predict` evaluates a sequential
+        strategy path and propagates `previous_weights` between portfolios. This is only
+        supported for sequential CV strategies such as
+        :class:`~skfolio.model_selection.WalkForward`,
+        :class:`~sklearn.model_selection.TimeSeriesSplit` and
+        :class:`~skfolio.model_selection.MultipleRandomizedCV`.
+
     Returns
     -------
     predictions : MultiPeriodPortfolio | Population
@@ -184,9 +200,20 @@ def cross_val_predict(
     # estimator can be a Pipeline
     last_step = _get_last_step(estimator)
 
-    if getattr(last_step, "needs_previous_weights", False) and isinstance(
+    is_sequential_cv = isinstance(
         cv, WalkForward | MultipleRandomizedCV | sks.TimeSeriesSplit
-    ):
+    )
+    use_sequential_path = (
+        getattr(last_step, "needs_previous_weights", False)
+        or entry_rebalancing_params is not None
+    )
+    if entry_rebalancing_params is not None and not is_sequential_cv:
+        raise ValueError(
+            "`entry_rebalancing_params` is only supported with sequential CV "
+            "strategies: `WalkForward`, `TimeSeriesSplit` and `MultipleRandomizedCV`."
+        )
+
+    if use_sequential_path and is_sequential_cv:
         if isinstance(cv, MultipleRandomizedCV):
             splits = list(cv.split(X, y, **routed_params.splitter.split))
             path_ids = cv.get_path_ids()
@@ -205,6 +232,7 @@ def cross_val_predict(
                     routed_params=routed_params,
                     method=method,
                     path_splits=paths[pid],
+                    entry_rebalancing_params=entry_rebalancing_params,
                 )
                 for pid in sorted(paths.keys())
             )
@@ -214,10 +242,11 @@ def cross_val_predict(
             if n_jobs not in (None, 1):
                 warnings.warn(
                     "Parallel processing has been disabled because the optimization "
-                    "method requires sequential processing of previous weights. To "
-                    "suppress this warning, set `n_jobs=None`, or disable sequential "
-                    "processing of previous weights by setting your Optimization's "
-                    "`needs_previous_weights` attribute to False.",
+                    "method requires sequential processing of previous weights or "
+                    "`entry_rebalancing_params`. To suppress this warning, set "
+                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable "
+                    "sequential processing of previous weights by setting your "
+                    "Optimization's `needs_previous_weights` attribute to False.",
                     stacklevel=2,
                 )
             predictions = _run_path(
@@ -227,6 +256,7 @@ def cross_val_predict(
                 routed_params=routed_params,
                 method=method,
                 path_splits=splits,
+                entry_rebalancing_params=entry_rebalancing_params,
             )
 
     else:
@@ -338,86 +368,70 @@ def _route_params(
     -------
     routed_params : Bunch
         Routed parameters with `.estimator_params` attribute and, when `cv` is provided,
-        `.splitter.split`.
+        `.splitter.split`. Values are plain dictionaries, so the result can be passed to
+        worker processes.
 
     Raises
     ------
-    RuntimeError
-        If metadata routing returns an unexpected non-empty internal payload for the
-        requested estimator or splitter method.
+    UnsetMetadataPassedError
+        If metadata routing is enabled and `params` contains metadata that the estimator
+        has not explicitly requested.
     """
     params = params or {}
 
-    if _routing_enabled():
-        # For estimators, a MetadataRouter is created in get_metadata_routing
-        # methods. For these router methods, we create the router to use
-        # `process_routing` on it.
-        router = skm.MetadataRouter(owner=owner)
-        if cv is not None:
-            router.add(
-                splitter=cv,
-                method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
-            )
-        router.add(
-            estimator=estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
-        )
-        request_method = f"set_{callee}_request"
-        try:
-            routed_params = skm.process_routing(router, "fit", **params)
-        except ske.UnsetMetadataPassedError as e:
-            # The default exception would mention `fit` since in the above
-            # `process_routing` code, we pass `fit` as the caller. However,
-            # the user is not calling `fit` directly, so we change the message
-            # to make it more suitable for this case.
-            unrequested_params = sorted(e.unrequested_params)
-            raise ske.UnsetMetadataPassedError(
-                message=(
-                    f"{unrequested_params} are passed to `{owner}` but are"
-                    " not explicitly set as requested or not requested for"
-                    f" {owner}'s estimator: "
-                    f"{estimator.__class__.__name__}. Call"
-                    f" `.{request_method}({{metadata}}=True)` on the estimator"
-                    f" for each metadata in {unrequested_params} that you want"
-                    " to use and `metadata=False` if you are not using it. See the"
-                    " Metadata Routing User guide"
-                    " <https://scikit-learn.org/stable/metadata_routing.html>"
-                    " for more information."
-                ),
-                unrequested_params=e.unrequested_params,
-                routed_params=e.routed_params,
-            ) from None
-        estimator = getattr(routed_params, "estimator", None)
-        if estimator is None:
-            routed_params.estimator_params = {}
-        elif hasattr(estimator, callee):
-            routed_params.estimator_params = getattr(estimator, callee)
-        elif len(estimator) == 0:
-            routed_params.estimator_params = {}
-        else:
-            raise RuntimeError(
-                "Metadata routing returned an unexpected estimator payload for "
-                f"`{owner}` and callee `{callee}`."
-            )
-
-        if cv is not None:
-            splitter = getattr(routed_params, "splitter", None)
-            if splitter is None:
-                routed_params.splitter = sku.Bunch(split={})
-            elif hasattr(splitter, "split"):
-                pass
-            elif len(splitter) == 0:
-                routed_params.splitter = sku.Bunch(split={})
-            else:
-                raise RuntimeError(
-                    "Metadata routing returned an unexpected splitter payload for "
-                    f"`{owner}`."
-                )
-    else:
-        routed_params = sku.Bunch()
-        routed_params.estimator_params = params
+    if not params or not _routing_enabled():
+        # With routing disabled the parameters are passed through unchanged, and with no
+        # metadata there is nothing to route. `process_routing` is bypassed because it
+        # returns a placeholder object that cannot be pickled when metadata is empty.
+        routed_params = sku.Bunch(estimator_params=params)
         if cv is not None:
             routed_params.splitter = sku.Bunch(split={})
+        return routed_params
+
+    # For estimators, a MetadataRouter is created in get_metadata_routing
+    # methods. For these router methods, we create the router to use
+    # `process_routing` on it.
+    router = skm.MetadataRouter(owner=owner)
+    if cv is not None:
+        router.add(
+            splitter=cv,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="split"),
+        )
+    router.add(
+        estimator=estimator,
+        method_mapping=skm.MethodMapping().add(caller="fit", callee=callee),
+    )
+    try:
+        router_params = skm.process_routing(router, "fit", **params)
+    except ske.UnsetMetadataPassedError as e:
+        # The default exception would mention `fit` since in the above
+        # `process_routing` code, we pass `fit` as the caller. However,
+        # the user is not calling `fit` directly, so we change the message
+        # to make it more suitable for this case.
+        unrequested_params = sorted(e.unrequested_params)
+        request_method = f"set_{callee}_request"
+        raise ske.UnsetMetadataPassedError(
+            message=(
+                f"{unrequested_params} are passed to `{owner}` but are"
+                " not explicitly set as requested or not requested for"
+                f" {owner}'s estimator: "
+                f"{estimator.__class__.__name__}. Call"
+                f" `.{request_method}({{metadata}}=True)` on the estimator"
+                f" for each metadata in {unrequested_params} that you want"
+                " to use and `metadata=False` if you are not using it. See the"
+                " Metadata Routing User guide"
+                " <https://scikit-learn.org/stable/metadata_routing.html>"
+                " for more information."
+            ),
+            unrequested_params=e.unrequested_params,
+            routed_params=e.routed_params,
+        ) from None
+
+    # Keep only the payload as plain dictionaries: the result is passed to worker
+    # processes.
+    routed_params = sku.Bunch(estimator_params=dict(router_params.estimator[callee]))
+    if cv is not None:
+        routed_params.splitter = sku.Bunch(split=dict(router_params.splitter.split))
 
     return routed_params
 
@@ -476,6 +490,56 @@ def _is_portfolio_optimization_estimator(
     return isinstance(_get_last_step(estimator), BaseOptimization)
 
 
+def _apply_entry_rebalancing_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    entry_rebalancing_params: dict | None,
+) -> dict | None:
+    """Apply temporary parameters to the final optimization estimator.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        Portfolio optimization estimator or pipeline whose last step is an
+        optimization estimator.
+
+    entry_rebalancing_params : dict, optional
+        Parameters to apply while constructing the first portfolio.
+
+    Returns
+    -------
+    previous_params : dict | None
+        Original parameter values to restore after the first optimization, or `None`
+        when no temporary parameters were provided.
+    """
+    if entry_rebalancing_params is None:
+        return None
+
+    _validate_entry_rebalancing_params(estimator, entry_rebalancing_params)
+    last_step = _get_last_step(estimator)
+    valid_params = last_step.get_params(deep=True)
+    previous_params = {name: valid_params[name] for name in entry_rebalancing_params}
+    last_step.set_params(**entry_rebalancing_params)
+    return previous_params
+
+
+def _validate_entry_rebalancing_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    entry_rebalancing_params: dict | None,
+) -> None:
+    """Validate parameters applied only to the first portfolio."""
+    if entry_rebalancing_params is None:
+        return
+
+    last_step = _get_last_step(estimator)
+    valid_params = last_step.get_params(deep=True)
+    unknown_params = sorted(set(entry_rebalancing_params) - set(valid_params))
+    if unknown_params:
+        raise ValueError(
+            "`entry_rebalancing_params` contains invalid parameter names for "
+            f"{last_step.__class__.__name__}: {unknown_params}."
+        )
+
+
 def _run_path(
     estimator: skb.BaseEstimator | Pipeline,
     X: ArrayLike,
@@ -483,6 +547,7 @@ def _run_path(
     routed_params: sku.Bunch,
     method: str,
     path_splits: list[tuple[IntArray, IntArray, IntArray | None]],
+    entry_rebalancing_params: dict | None = None,
 ) -> list[Portfolio]:
     """Run sequential fit/predict along a single path of ordered splits.
 
@@ -512,6 +577,9 @@ def _run_path(
         Sequence of `(train_idx, test_idx[, column_indices])` describing one
         path of folds. `column_indices` can be `None`.
 
+    entry_rebalancing_params : dict, optional
+        Parameters applied only while constructing the first portfolio in the path.
+
     Returns
     -------
     list[Portfolio]
@@ -520,10 +588,12 @@ def _run_path(
     use_dict = _asset_names_enabled(X)
     predictions = []
     prev_weights = _get_last_step(estimator).previous_weights
-    for train, test, *column_indices in path_splits:
+    for i, (train, test, *column_indices) in enumerate(path_splits):
         est = sk.clone(estimator)
         last_step = _get_last_step(est)
         last_step.set_params(previous_weights=prev_weights)
+        if i == 0:
+            _apply_entry_rebalancing_params(est, entry_rebalancing_params)
         ptf = fit_and_predict(
             est,
             X,

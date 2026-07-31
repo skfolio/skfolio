@@ -20,25 +20,25 @@ import sklearn.utils.parallel as skp
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio.base import BaseComposition
 from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
 from skfolio.optimization._base import BaseOptimization
 from skfolio.optimization.convex import MeanRisk
 from skfolio.typing import ArrayLike
-from skfolio.utils.composition import BaseComposition
 from skfolio.utils.tools import check_estimator, fit_single_estimator
 
 
 class StackingOptimization(BaseOptimization, BaseComposition):
     """Stack of optimizations with a final optimization.
 
-    Stacking Optimization is an ensemble method that consists in stacking the output of
+    Stacking Optimization is an ensemble method that consists of stacking the output of
     individual portfolio optimizations with a final portfolio optimization.
 
-    The weights are the dot-product of individual optimizations weights with the final
+    The weights are the dot-product of individual optimization weights with the final
     optimization weights.
 
-    Stacking allows to use the strength of each individual portfolio optimization by
+    Stacking uses the strength of each individual portfolio optimization by
     using their output as input of a final portfolio optimization.
 
     To avoid data leakage, out-of-sample estimates are used to fit the outer
@@ -310,7 +310,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

@@ -24,9 +24,9 @@ from skfolio.utils.stats import (
     corr_to_cov,
     cov_nearest,
     cov_to_corr,
+    cs_pearson_correlation,
     cs_rank,
-    cs_rank_correlation,
-    cs_weighted_correlation,
+    cs_spearman_correlation,
     inverse_multiply,
     is_cholesky_dec,
     minimize_relative_weight_deviation,
@@ -36,6 +36,7 @@ from skfolio.utils.stats import (
     rand_weights,
     rand_weights_dirichlet,
     safe_cholesky,
+    safe_divide,
     sample_unique_subsets,
     squared_mahalanobis_dist,
     squared_standardized_euclidean_dist,
@@ -115,7 +116,8 @@ def test_n_bins_knuth(returns):
 
 
 def test_cov_nearest(nasdaq_X):
-    cov = np.cov(np.array(nasdaq_X).T)
+    X = nasdaq_X.iloc[:100, :150]
+    cov = np.cov(np.array(X).T)
     corr, _ = cov_to_corr(cov)
     _, _ = np.linalg.eigh(corr)
     assert not is_cholesky_dec(cov)
@@ -534,6 +536,16 @@ class TestCovToCorr:
         assert isinstance(corr, np.ndarray)
         assert isinstance(std, np.ndarray)
 
+    def test_zero_variance_returns_nan_off_diagonal_and_unit_diagonal(self):
+        cov = np.array([[0.0, 0.0], [0.0, 4.0]])
+
+        corr, std = cov_to_corr(cov)
+
+        np.testing.assert_allclose(std, np.array([0.0, 2.0]))
+        np.testing.assert_allclose(np.diag(corr), 1.0)
+        assert np.isnan(corr[0, 1])
+        assert np.isnan(corr[1, 0])
+
     #  Should raise a ValueError when given a 1D ndarray as input
     def test_1d_input(self):
         # Arrange
@@ -574,6 +586,39 @@ class TestCorrToCov:
 
         with pytest.raises(ValueError):
             corr_to_cov(corr, std)
+
+
+class TestSafeDivide:
+    def test_scalar_division(self):
+        assert safe_divide(6.0, 2.0) == 3.0
+
+    def test_zero_denominator_uses_fill_value(self):
+        assert np.isnan(safe_divide(1.0, 0.0, np.nan))
+
+    def test_near_zero_denominator_uses_fill_value(self):
+        assert np.isnan(safe_divide(1.0, 1e-14, np.nan, atol=1e-12))
+
+    def test_array_broadcasting(self):
+        result = safe_divide(
+            np.array([1.0, 2.0, 3.0]),
+            np.array([1.0, 0.0, 2.0]),
+            np.nan,
+        )
+        expected = np.array([1.0, np.nan, 1.5])
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+
+    def test_non_finite_outputs_use_fill_value(self):
+        result = safe_divide(
+            np.array([np.nan, np.inf, 4.0]),
+            np.array([2.0, 2.0, 0.0]),
+            -1.0,
+        )
+        expected = np.array([-1.0, -1.0, -1.0])
+        np.testing.assert_allclose(result, expected)
+
+    def test_negative_atol_raises(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            safe_divide(1.0, 1.0, atol=-1e-12)
 
     #  Should raise a ValueError when the input correlation matrix is not a
     #  2D array
@@ -931,30 +976,30 @@ class TestSquaredMahalanobisDist:
             squared_mahalanobis_dist(returns, cov, mean=mean)
 
 
-class TestCsWeightedCorrelation:
-    """Tests for cs_weighted_correlation."""
+class TestCsPearsonCorrelation:
+    """Tests for cs_pearson_correlation."""
 
     def test_perfect_correlation(self):
         a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         b = np.array([2.0, 4.0, 6.0, 8.0, 10.0])
-        assert_allclose(cs_weighted_correlation(a, b), 1.0)
+        assert_allclose(cs_pearson_correlation(a, b), 1.0)
 
     def test_perfect_negative_correlation(self):
         a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         b = np.array([10.0, 8.0, 6.0, 4.0, 2.0])
-        assert_allclose(cs_weighted_correlation(a, b), -1.0)
+        assert_allclose(cs_pearson_correlation(a, b), -1.0)
 
     def test_zero_correlation(self):
         a = np.array([1.0, -1.0, 1.0, -1.0])
         b = np.array([1.0, 1.0, -1.0, -1.0])
-        assert_allclose(cs_weighted_correlation(a, b), 0.0, atol=1e-12)
+        assert_allclose(cs_pearson_correlation(a, b), 0.0, atol=1e-12)
 
     def test_matches_numpy_corrcoef(self):
         rng = np.random.default_rng(42)
         a = rng.standard_normal(100)
         b = rng.standard_normal(100)
         expected = np.corrcoef(a, b)[0, 1]
-        assert_allclose(cs_weighted_correlation(a, b), expected)
+        assert_allclose(cs_pearson_correlation(a, b), expected)
 
     def test_equal_weights_matches_unweighted(self):
         rng = np.random.default_rng(7)
@@ -962,22 +1007,22 @@ class TestCsWeightedCorrelation:
         b = rng.standard_normal(50)
         w = np.ones(50) * 3.0
         assert_allclose(
-            cs_weighted_correlation(a, b, weights=w),
-            cs_weighted_correlation(a, b),
+            cs_pearson_correlation(a, b, weights=w),
+            cs_pearson_correlation(a, b),
         )
 
     def test_weighted_shifts_result(self):
         a = np.array([1.0, 2.0, 3.0, 10.0])
         b = np.array([1.0, 2.0, 3.0, -5.0])
-        corr_equal = cs_weighted_correlation(a, b)
+        corr_equal = cs_pearson_correlation(a, b)
         w_down_outlier = np.array([1.0, 1.0, 1.0, 0.01])
-        corr_weighted = cs_weighted_correlation(a, b, weights=w_down_outlier)
+        corr_weighted = cs_pearson_correlation(a, b, weights=w_down_outlier)
         assert corr_weighted > corr_equal
 
     def test_nan_handling(self):
         a = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
         b = np.array([2.0, np.nan, 6.0, 8.0, 10.0])
-        result = cs_weighted_correlation(a, b)
+        result = cs_pearson_correlation(a, b)
         valid = np.array([True, False, False, True, True])
         expected = np.corrcoef(a[valid], b[valid])[0, 1]
         assert_allclose(result, expected)
@@ -985,24 +1030,24 @@ class TestCsWeightedCorrelation:
     def test_min_count(self):
         a = np.array([1.0, 2.0])
         b = np.array([3.0, 4.0])
-        assert np.isnan(cs_weighted_correlation(a, b, min_count=3))
-        assert np.isfinite(cs_weighted_correlation(a, b, min_count=2))
+        assert np.isnan(cs_pearson_correlation(a, b, min_count=3))
+        assert np.isfinite(cs_pearson_correlation(a, b, min_count=2))
 
     def test_constant_vector_returns_nan(self):
         a = np.array([5.0, 5.0, 5.0, 5.0])
         b = np.array([1.0, 2.0, 3.0, 4.0])
-        assert np.isnan(cs_weighted_correlation(a, b))
+        assert np.isnan(cs_pearson_correlation(a, b))
 
     def test_shape_mismatch_raises(self):
         with pytest.raises(ValueError, match="broadcastable"):
-            cs_weighted_correlation(np.ones(3), np.ones(4))
+            cs_pearson_correlation(np.ones(3), np.ones(4))
 
     def test_2d_vectorized_over_factors(self):
         rng = np.random.default_rng(42)
         n_assets, n_factors = 50, 4
         a = rng.standard_normal((n_assets, n_factors))
         b = rng.standard_normal((n_assets, n_factors))
-        result = cs_weighted_correlation(a, b, axis=0)
+        result = cs_pearson_correlation(a, b, axis=0)
         assert result.shape == (n_factors,)
         for k in range(n_factors):
             expected = np.corrcoef(a[:, k], b[:, k])[0, 1]
@@ -1013,7 +1058,7 @@ class TestCsWeightedCorrelation:
         n_time, n_assets, n_factors = 10, 50, 3
         a = rng.standard_normal((n_time, n_assets, n_factors))
         b = rng.standard_normal((n_time, n_assets, n_factors))
-        result = cs_weighted_correlation(a, b, axis=1)
+        result = cs_pearson_correlation(a, b, axis=1)
         assert result.shape == (n_time, n_factors)
         for t in range(n_time):
             for k in range(n_factors):
@@ -1026,7 +1071,7 @@ class TestCsWeightedCorrelation:
         a = rng.standard_normal((n_time, n_assets, n_factors))
         b = rng.standard_normal((n_time, n_assets, n_factors))
         w = rng.uniform(0.1, 1.0, size=(n_time, n_assets))
-        result = cs_weighted_correlation(a, b, weights=w, axis=1)
+        result = cs_pearson_correlation(a, b, weights=w, axis=1)
         assert result.shape == (n_time, n_factors)
         for val in result.ravel():
             assert -1.0 <= val <= 1.0 or np.isnan(val)
@@ -1036,12 +1081,12 @@ class TestCsWeightedCorrelation:
         b = np.array([[1.0, 4.0, 9.0], [9.0, 4.0, 1.0]])
         w = np.array([1.0, 2.0, 3.0])
 
-        result = cs_weighted_correlation(a, b, weights=w, axis=1)
+        result = cs_pearson_correlation(a, b, weights=w, axis=1)
 
         expected = np.array(
             [
-                cs_weighted_correlation(a[0], b[0], weights=w),
-                cs_weighted_correlation(a[1], b[1], weights=w),
+                cs_pearson_correlation(a[0], b[0], weights=w),
+                cs_pearson_correlation(a[1], b[1], weights=w),
             ]
         )
         assert_allclose(result, expected)
@@ -1049,15 +1094,110 @@ class TestCsWeightedCorrelation:
     def test_scalar_output_for_1d(self):
         a = np.array([1.0, 2.0, 3.0])
         b = np.array([4.0, 5.0, 6.0])
-        result = cs_weighted_correlation(a, b)
+        result = cs_pearson_correlation(a, b)
         assert isinstance(result, float)
 
     def test_nan_row_in_batch(self):
         a = np.array([[1.0, 2.0], [np.nan, np.nan], [3.0, 4.0]])
         b = np.array([[5.0, 6.0], [np.nan, np.nan], [7.0, 8.0]])
-        result = cs_weighted_correlation(a, b, axis=0, min_count=3)
+        result = cs_pearson_correlation(a, b, axis=0, min_count=3)
         assert result.shape == (2,)
         assert all(np.isnan(result))
+
+    def test_2d_3d_fast_path_matches_1d_results(self):
+        rng = np.random.default_rng(43)
+        a = rng.normal(size=(7, 8))
+        b = rng.normal(size=(7, 8, 4))
+        weights = rng.random(size=(7, 8)) + 0.1
+        a[rng.random(a.shape) < 0.1] = np.nan
+        b[rng.random(b.shape) < 0.1] = np.nan
+
+        result = cs_pearson_correlation(a, b, weights=weights, axis=1)
+        expected = np.empty((a.shape[0], b.shape[2]))
+        for t in range(a.shape[0]):
+            for k in range(b.shape[2]):
+                expected[t, k] = cs_pearson_correlation(
+                    a[t], b[t, :, k], weights=weights[t]
+                )
+
+        assert_allclose(result, expected, equal_nan=True, atol=1e-12)
+
+    def test_2d_3d_fast_path_is_stable_with_large_offsets(self):
+        rng = np.random.default_rng(44)
+        a = 1e12 + rng.normal(size=(3, 100))
+        b = 1e12 + rng.normal(size=(3, 100, 2))
+        weights = rng.random(size=(3, 100)) + 0.1
+
+        result = cs_pearson_correlation(a, b, weights=weights, axis=1)
+        expected = np.empty((a.shape[0], b.shape[2]))
+        for t in range(a.shape[0]):
+            for k in range(b.shape[2]):
+                expected[t, k] = cs_pearson_correlation(
+                    a[t], b[t, :, k], weights=weights[t]
+                )
+
+        assert np.nanmax(np.abs(result)) <= 1.0
+        assert_allclose(result, expected, equal_nan=True, atol=1e-6)
+
+    def test_2d_3d_fast_path_is_symmetric(self):
+        rng = np.random.default_rng(45)
+        a = rng.normal(size=(6, 9))
+        b = rng.normal(size=(6, 9, 3))
+        weights = rng.random(size=(6, 9)) + 0.1
+
+        result = cs_pearson_correlation(a, b, weights=weights, axis=1)
+        symmetric = cs_pearson_correlation(b, a, weights=weights, axis=1)
+
+        assert_allclose(result, symmetric, equal_nan=True, atol=1e-12)
+
+    def test_2d_3d_fast_path_accepts_1d_weights(self):
+        rng = np.random.default_rng(46)
+        a = rng.normal(size=(5, 7))
+        b = rng.normal(size=(5, 7, 2))
+        weights = rng.random(7) + 0.1
+
+        result = cs_pearson_correlation(a, b, weights=weights, axis=1)
+        expected = np.empty((a.shape[0], b.shape[2]))
+        for t in range(a.shape[0]):
+            for k in range(b.shape[2]):
+                expected[t, k] = cs_pearson_correlation(
+                    a[t], b[t, :, k], weights=weights
+                )
+
+        assert_allclose(result, expected, equal_nan=True, atol=1e-12)
+
+    def test_3d_weights_use_generic_path(self):
+        rng = np.random.default_rng(47)
+        a_2d = rng.normal(size=(5, 7))
+        a = np.broadcast_to(a_2d[:, :, np.newaxis], (5, 7, 3)).copy()
+        b = rng.normal(size=(5, 7, 3))
+        weights = rng.random(size=(5, 7, 3)) + 0.1
+
+        result = cs_pearson_correlation(a, b, weights=weights, axis=1)
+        expected = np.empty((a.shape[0], a.shape[2]))
+        for t in range(a.shape[0]):
+            for k in range(a.shape[2]):
+                expected[t, k] = cs_pearson_correlation(
+                    a[t, :, k], b[t, :, k], weights=weights[t, :, k]
+                )
+
+        assert_allclose(result, expected, equal_nan=True, atol=1e-12)
+
+    def test_weighted_min_count_uses_positive_finite_weights(self):
+        a = np.array([1.0, 2.0, 3.0, 4.0])
+        b = np.array([1.0, 2.0, 3.0, 4.0])
+        weights = np.array([1.0, 1.0, 0.0, np.nan])
+
+        assert np.isnan(cs_pearson_correlation(a, b, weights=weights, min_count=3))
+        assert np.isfinite(cs_pearson_correlation(a, b, weights=weights, min_count=2))
+
+    def test_negative_weights_raise(self):
+        a = np.array([1.0, 2.0, 3.0])
+        b = np.array([1.0, 2.0, 3.0])
+        weights = np.array([1.0, -1.0, 1.0])
+
+        with pytest.raises(ValueError, match="non-negative"):
+            cs_pearson_correlation(a, b, weights=weights)
 
 
 class TestCsRank:
@@ -1106,8 +1246,8 @@ class TestCsRank:
         assert all(np.isnan(result))
 
 
-class TestCsRankCorrelation:
-    """Tests for cs_rank_correlation."""
+class TestCsSpearmanCorrelation:
+    """Tests for cs_spearman_correlation."""
 
     def test_matches_scipy_spearmanr_1d(self):
         from scipy.stats import spearmanr
@@ -1116,17 +1256,17 @@ class TestCsRankCorrelation:
         a = rng.standard_normal(100)
         b = rng.standard_normal(100)
         expected = spearmanr(a, b).statistic
-        assert_allclose(cs_rank_correlation(a, b), expected, rtol=1e-10)
+        assert_allclose(cs_spearman_correlation(a, b), expected, rtol=1e-10)
 
     def test_perfect_monotonic(self):
         a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         b = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
-        assert_allclose(cs_rank_correlation(a, b), 1.0)
+        assert_allclose(cs_spearman_correlation(a, b), 1.0)
 
     def test_perfect_negative_monotonic(self):
         a = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         b = np.array([50.0, 40.0, 30.0, 20.0, 10.0])
-        assert_allclose(cs_rank_correlation(a, b), -1.0)
+        assert_allclose(cs_spearman_correlation(a, b), -1.0)
 
     def test_2d_vectorized(self):
         from scipy.stats import spearmanr
@@ -1135,7 +1275,7 @@ class TestCsRankCorrelation:
         n_assets, n_factors = 50, 3
         a = rng.standard_normal((n_assets, n_factors))
         b = rng.standard_normal((n_assets, n_factors))
-        result = cs_rank_correlation(a, b, axis=0)
+        result = cs_spearman_correlation(a, b, axis=0)
         assert result.shape == (n_factors,)
         for k in range(n_factors):
             expected = spearmanr(a[:, k], b[:, k]).statistic
@@ -1148,7 +1288,7 @@ class TestCsRankCorrelation:
         n_time, n_assets, n_factors = 5, 30, 2
         a = rng.standard_normal((n_time, n_assets, n_factors))
         b = rng.standard_normal((n_time, n_assets, n_factors))
-        result = cs_rank_correlation(a, b, axis=1)
+        result = cs_spearman_correlation(a, b, axis=1)
         assert result.shape == (n_time, n_factors)
         for t in range(n_time):
             for k in range(n_factors):
@@ -1158,7 +1298,7 @@ class TestCsRankCorrelation:
     def test_scalar_output_for_1d(self):
         a = np.array([1.0, 2.0, 3.0])
         b = np.array([4.0, 5.0, 6.0])
-        result = cs_rank_correlation(a, b)
+        result = cs_spearman_correlation(a, b)
         assert isinstance(result, float)
 
     def test_pairwise_nan_matches_spearmanr(self):
@@ -1170,4 +1310,4 @@ class TestCsRankCorrelation:
         valid = np.isfinite(a) & np.isfinite(b)
         expected = spearmanr(a[valid], b[valid]).statistic
 
-        assert_allclose(cs_rank_correlation(a, b), expected)
+        assert_allclose(cs_spearman_correlation(a, b), expected)

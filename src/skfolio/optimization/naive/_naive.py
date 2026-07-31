@@ -30,7 +30,7 @@ class InverseVolatility(BaseOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -135,7 +135,7 @@ class InverseVolatility(BaseOptimization):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -260,7 +260,7 @@ class EqualWeighted(BaseOptimization):
 class Random(BaseOptimization):
     """Random weight estimator.
 
-    The assets weight are drawn from a Dirichlet distribution and sum to one.
+    The asset weights are drawn from a Dirichlet distribution and sum to one.
 
     Parameters
     ----------

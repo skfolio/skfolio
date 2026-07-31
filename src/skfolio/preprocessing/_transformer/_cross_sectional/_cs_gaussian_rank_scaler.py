@@ -168,9 +168,9 @@ class CSGaussianRankScaler(BaseCSTransformer):
         Raises
         ------
         ValueError
-            If `min_group_size` is not an integer `>= 1`, `atol` is not finite or `< 0`,
-             `X` is not a non-empty 2D array, `cs_weights` is invalid, `cs_groups` is
-             invalid, or any observation has no estimation asset.
+            If `min_group_size` is not an integer `>= 1`, `atol` is not finite or
+            `< 0`, `X` is not a non-empty 2D array, `cs_weights` is invalid, or
+            `cs_groups` is invalid.
         """
         self._validate_params()
 

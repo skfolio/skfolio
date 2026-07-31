@@ -9,6 +9,7 @@ A population is a collection of portfolios.
 from __future__ import annotations
 
 import inspect
+import warnings
 from typing import Any
 
 import numpy as np
@@ -22,7 +23,7 @@ from skfolio.measures import BaseMeasure, RatioMeasure
 from skfolio.portfolio import BasePortfolio, FailedPortfolio, MultiPeriodPortfolio
 from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.figure import kde_trace
-from skfolio.utils.sorting import non_denominated_sort
+from skfolio.utils.sorting import non_dominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
 
 
@@ -248,7 +249,7 @@ class Population(list):
         df.columns = deduplicate_names(names)
         return df
 
-    def non_denominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
+    def non_dominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
         """Fast non-dominated sorting.
         Sort the portfolios into different non-domination levels.
         Complexity O(MN^2) where M is the number of objectives and N the number of
@@ -274,14 +275,30 @@ class Population(list):
             ]
         ):
             raise ValueError(
-                "Cannot compute non denominated sorting with Portfolios "
+                "Cannot compute non-dominated sorting with Portfolios "
                 "containing mixed `fitness_measures`"
             )
         fitnesses = np.array([portfolio.fitness for portfolio in self])
-        fronts = non_denominated_sort(
+        fronts = non_dominated_sort(
             fitnesses=fitnesses, first_front_only=first_front_only
         )
         return fronts
+
+    # TODO remove deprecated non_denominated_sort in v2.0
+    def non_denominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
+        """Alias of :meth:`non_dominated_sort`.
+
+        .. deprecated::
+            `non_denominated_sort` is deprecated and will be removed in version 2.0.
+            Use :meth:`non_dominated_sort` instead.
+        """
+        warnings.warn(
+            "`Population.non_denominated_sort` is deprecated and will be removed in "
+            "version 2.0. Use `Population.non_dominated_sort` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.non_dominated_sort(first_front_only=first_front_only)
 
     def filter(
         self, names: skt.Names | None = None, tags: skt.Tags | None = None
@@ -600,7 +617,7 @@ class Population(list):
 
         Parameters
         ----------
-        measure : ct.Measure, default=RatioMeasure.SHARPE_RATIO
+        measure : Measure, default=RatioMeasure.SHARPE_RATIO
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
@@ -972,7 +989,7 @@ class Population(list):
             The list of measure to show on point hover.
 
         show_fronts : bool, default=False
-            If this is set to True, the pareto fronts are highlighted.
+            If this is set to True, the Pareto fronts are highlighted.
             The default is `False`.
 
         color_scale : Measure | str, optional
@@ -1022,7 +1039,7 @@ class Population(list):
             df["tag"] = df["tag"].astype(str).replace("None", "")
 
         if show_fronts:
-            fronts = self.non_denominated_sort(first_front_only=False)
+            fronts = self.non_dominated_sort(first_front_only=False)
             df["front"] = str(-1)
             for i, front in enumerate(fronts):
                 for idx in front:
@@ -1160,7 +1177,7 @@ class Population(list):
 
         Parameters
         ----------
-        measure : ct.Measure, default = RatioMeasure.SHARPE_RATIO
+        measure : Measure, default = RatioMeasure.SHARPE_RATIO
            The measure.
 
         window : int, default=30

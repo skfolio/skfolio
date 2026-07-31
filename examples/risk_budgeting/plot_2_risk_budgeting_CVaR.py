@@ -30,7 +30,7 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # %%
 # Risk Budget
 # ===========
-# We chose the following risk budget: 1.5 on Apples, 0.2 on General Electric and
+# We chose the following risk budget: 1.5 on Apple, 0.2 on General Electric and
 # JPMorgan and 1.0 on the remaining assets:
 risk_budget = {asset_name: 1 for asset_name in X.columns}
 risk_budget["AAPL"] = 1.5

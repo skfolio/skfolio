@@ -11,7 +11,7 @@ from sklearn import config_context
 from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import make_pipeline
 
-from skfolio import MultiPeriodPortfolio
+from skfolio import FailedPortfolio, MultiPeriodPortfolio
 from skfolio.metrics import (
     diagonal_calibration_ratio,
     mahalanobis_calibration_ratio,
@@ -26,6 +26,7 @@ from skfolio.model_selection import (
 )
 from skfolio.moments import EWCovariance, EWMu, RegimeAdjustedEWCovariance
 from skfolio.optimization import InverseVolatility, MeanRisk, ObjectiveFunction
+from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import EmpiricalPrior
 from skfolio.typing import BoolArray
 from skfolio.uncertainty_set import (
@@ -54,6 +55,69 @@ def _make_regime_online_estimator(**kwargs):
         ),
         **kwargs,
     )
+
+
+class PreviousWeightsAwareOptimization(BaseOptimization):
+    """Optimization estimator whose weights reveal the previous weights it used."""
+
+    def __init__(
+        self,
+        portfolio_params: dict | None = None,
+        fallback=None,
+        previous_weights=None,
+        raise_on_failure: bool = True,
+        fail_on_counts: tuple[int, ...] = (),
+        scale: float = 1.0,
+    ):
+        super().__init__(
+            portfolio_params=portfolio_params,
+            fallback=fallback,
+            previous_weights=previous_weights,
+            raise_on_failure=raise_on_failure,
+        )
+        self.fail_on_counts = fail_on_counts
+        self.scale = scale
+
+    @property
+    def needs_previous_weights(self) -> bool:
+        return True
+
+    def fit(self, X, y=None):
+        return self.partial_fit(X, y)
+
+    def partial_fit(self, X, y=None):
+        X_arr = np.asarray(X)
+        n_assets = X_arr.shape[1]
+        self.n_features_in_ = n_assets
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.asarray(X.columns, dtype=object)
+
+        count = getattr(self, "_partial_fit_count_", 0)
+        if count in self.fail_on_counts:
+            self.weights_ = None
+            self.error_ = "forced failure"
+            self._partial_fit_count_ = count + 1
+            return self
+
+        previous_weights = self._previous_weights_array(X, n_assets)
+        increment = np.zeros(n_assets)
+        increment[count % n_assets] = 1.0
+
+        self.weights_ = previous_weights + self.scale * increment
+        self._partial_fit_count_ = count + 1
+        return self
+
+    def _previous_weights_array(self, X, n_assets: int):
+        if self.previous_weights is None:
+            return np.zeros(n_assets)
+        if np.isscalar(self.previous_weights):
+            return np.full(n_assets, float(self.previous_weights))
+        if isinstance(self.previous_weights, dict):
+            return np.asarray(
+                [self.previous_weights.get(asset, 0.0) for asset in X.columns],
+                dtype=float,
+            )
+        return np.asarray(self.previous_weights, dtype=float)
 
 
 def _make_inactive_block(
@@ -250,6 +314,102 @@ class TestOnlinePredict:
             np.testing.assert_almost_equal(
                 pred[i - 1].weights, pred[i].previous_weights
             )
+
+    def test_previous_weights_used_by_partial_fit(self, X):
+        """partial_fit uses the weights from the previous online prediction."""
+        pred = online_predict(
+            PreviousWeightsAwareOptimization(),
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+        )
+
+        assert len(pred.portfolios) >= 2
+        first_expected = np.zeros(X.shape[1])
+        first_expected[0] = 1.0
+        second_expected = first_expected.copy()
+        second_expected[1] = 1.0
+
+        np.testing.assert_array_equal(pred[0].weights, first_expected)
+        np.testing.assert_array_equal(pred[1].previous_weights, first_expected)
+        np.testing.assert_array_equal(pred[1].weights, second_expected)
+
+    def test_entry_rebalancing_params(self, X):
+        """entry_rebalancing_params only affect the first optimization."""
+        pred = online_predict(
+            PreviousWeightsAwareOptimization(),
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+            entry_rebalancing_params={"scale": 2.0},
+        )
+
+        assert len(pred.portfolios) >= 2
+        first_expected = np.zeros(X.shape[1])
+        first_expected[0] = 2.0
+        second_expected = first_expected.copy()
+        second_expected[1] = 1.0
+
+        np.testing.assert_array_equal(pred[0].weights, first_expected)
+        np.testing.assert_array_equal(pred[1].previous_weights, first_expected)
+        np.testing.assert_array_equal(pred[1].weights, second_expected)
+
+    def test_failed_portfolio_does_not_update_previous_weights(self, X):
+        """Failed online predictions do not propagate NaN previous weights."""
+        pred = online_predict(
+            PreviousWeightsAwareOptimization(
+                fail_on_counts=(1,),
+                raise_on_failure=False,
+            ),
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+        )
+
+        assert len(pred.portfolios) >= 3
+        first_expected = np.zeros(X.shape[1])
+        first_expected[0] = 1.0
+        third_expected = first_expected.copy()
+        third_expected[2] = 1.0
+
+        assert isinstance(pred[1], FailedPortfolio)
+        np.testing.assert_array_equal(pred[2].previous_weights, first_expected)
+        np.testing.assert_array_equal(pred[2].weights, third_expected)
+
+    def test_online_fallback_chain_persists_after_later_updates(self, X):
+        """Fallback diagnostics stay attached to each online portfolio."""
+        previous_weights = {asset: 1 / X.shape[1] for asset in X.columns}
+        model = _make_online_estimator(
+            min_weights=1.0,
+            fallback="previous_weights",
+            previous_weights=previous_weights,
+        )
+
+        pred = online_predict(
+            model,
+            X,
+            warmup_size=400,
+            test_size=300,
+            reduce_test=True,
+        )
+
+        assert len(pred.portfolios) >= 2
+        assert pred.n_failed_portfolios == 0
+        assert pred.n_fallback_portfolios == len(pred.portfolios)
+
+        first_chain = pred[0].fallback_chain
+        assert first_chain is not None
+        assert "Solver 'CLARABEL' failed" in first_chain[0][1]
+        assert first_chain[-1] == ("previous_weights", "success")
+
+        # Later partial_fit calls reset estimator diagnostics before solving, but
+        # already-created portfolios must keep their own fallback audit trail.
+        for portfolio in pred.portfolios:
+            assert portfolio.fallback_chain is not None
+            assert portfolio.fallback_chain[-1] == ("previous_weights", "success")
 
     def test_previous_weights_differ(self, X):
         """Transaction costs with previous_weights produce different portfolios."""
