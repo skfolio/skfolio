@@ -124,12 +124,6 @@ mode = "init"
 # Version commits created before the `v` prefix was added to `commit_message`.
 exclude_commit_patterns = ['^\d+\.\d+\.\d+ \[skip ci\]']
 
-[tool.semantic_release.publish]
-upload_to_vcs_release = true
-
-[tool.semantic_release.remote]
-token = { env = "GH_TOKEN" }
-
 [tool.ruff]
 include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py"]
 line-length = 88
