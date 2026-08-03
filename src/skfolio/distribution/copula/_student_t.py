@@ -95,15 +95,15 @@ class StudentTCopula(BaseBivariateCopula):
     >>> model = StudentTCopula()
     >>>
     >>> # Fit the model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     StudentTCopula(rho=0.327, dof=5.14)
-    >>> print(model.lower_tail_dependence)
-    0.1270
-    >>> print(model.upper_tail_dependence)
-    0.1270
+    >>> print(f"{model.lower_tail_dependence:.4f}")
+    0.1271
+    >>> print(f"{model.upper_tail_dependence:.4f}")
+    0.1271
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC

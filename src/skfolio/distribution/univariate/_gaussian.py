@@ -65,11 +65,11 @@ class Gaussian(BaseUnivariateDist):
     >>> model = Gaussian()
     >>>
     >>> # Fit the Gaussian model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
-    Gaussian(0.00035, 0.0115)
+    Gaussian(loc=0.00035, scale=0.012)
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
     >>> log_likelihood = model.score_samples(X)

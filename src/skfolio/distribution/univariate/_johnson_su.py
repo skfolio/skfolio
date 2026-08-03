@@ -78,11 +78,11 @@ class JohnsonSU(BaseUnivariateDist):
     >>> model = JohnsonSU()
     >>>
     >>> # Fit the model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
-    JohnsonSU(0.0742, 1.08, 0.00115, 0.00774)
+    JohnsonSU(a=0.074, b=1.1, loc=0.0012, scale=0.0077)
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
     >>> log_likelihood = model.score_samples(X)

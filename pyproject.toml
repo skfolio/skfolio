@@ -149,4 +149,13 @@ convention = "numpy"
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",
+    "--doctest-modules",
+]
+doctest_optionflags = [
+    "NORMALIZE_WHITESPACE",
+    "ELLIPSIS",
+]
+testpaths = [
+    "tests",
+    "src/skfolio/distribution",
 ]

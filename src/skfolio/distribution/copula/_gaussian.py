@@ -77,15 +77,15 @@ class GaussianCopula(BaseBivariateCopula):
     >>> model = GaussianCopula()
     >>>
     >>> # Fit the model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     GaussianCopula(rho=0.327)
-    >>> print(model.lower_tail_dependence)
-    0.0
-    >>> print(model.upper_tail_dependence)
-    0.0
+    >>> print(f"{model.lower_tail_dependence:.4f}")
+    0.0000
+    >>> print(f"{model.upper_tail_dependence:.4f}")
+    0.0000
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC

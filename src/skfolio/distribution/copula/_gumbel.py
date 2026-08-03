@@ -109,15 +109,15 @@ class GumbelCopula(BaseBivariateCopula):
     >>> model = GumbelCopula()
     >>>
     >>> # Fit the model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     GumbelCopula(theta=1.27, rot=180°)
-    >>> print(model.lower_tail_dependence)
+    >>> print(f"{model.lower_tail_dependence:.4f}")
     0.2735
-    >>> print(model.upper_tail_dependence)
-    0.0
+    >>> print(f"{model.upper_tail_dependence:.4f}")
+    0.0000
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC

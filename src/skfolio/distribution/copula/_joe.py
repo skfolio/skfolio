@@ -113,15 +113,15 @@ class JoeCopula(BaseBivariateCopula):
     >>> model = JoeCopula()
     >>>
     >>> # Fit the model to the data.
-    >>> model.fit(X)
+    >>> _ = model.fit(X)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     JoeCopula(theta=1.48, rot=180°)
-    >>> print(model.lower_tail_dependence)
+    >>> print(f"{model.lower_tail_dependence:.4f}")
     0.4021
-    >>> print(model.upper_tail_dependence)
-    0.0
+    >>> print(f"{model.upper_tail_dependence:.4f}")
+    0.0000
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC

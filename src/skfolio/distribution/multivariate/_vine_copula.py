@@ -201,20 +201,22 @@ class VineCopula(BaseMultivariateDist):
     >>> # Instanciate the VineCopula model
     >>> vine = VineCopula()
     >>> # Fit the model
-    >>> vine.fit(X)
+    >>> _ = vine.fit(X)
     >>> # Display the vine trees and fitted copulas
     >>> vine.display_vine()
+    Root Nodes
+    ...
     >>> # Log-likelihood, AIC and BIC
-    >>> vine.score(X)
-    >>> vine.aic(X)
-    >>> vine.bic(X)
+    >>> _ = vine.score(X)
+    >>> _ = vine.aic(X)
+    >>> _ = vine.bic(X)
     >>>
     >>> # Generate 10 samples from the fitted vine copula
     >>> samples = vine.sample(n_samples=10)
     >>>
     >>> # Set QUAL, SIZE and MTUM as central
     >>> vine = VineCopula(central_assets=["QUAL", "SIZE", "MTUM"])
-    >>> vine.fit(X)
+    >>> _ = vine.fit(X)
     >>> # Sample by conditioning on QUAL and SIZE returns
     >>> samples = vine.sample(
     ...    n_samples=4,
@@ -223,7 +225,7 @@ class VineCopula(BaseMultivariateDist):
     ...        "SIZE": -0.2,
     ...        "MTUM": (None, -0.3) # MTUM sampled between -Inf and -30%
     ...    },
-    ...)
+    ... )
     >>> # Plots Scatter matrix of sampled returns vs historical X
     >>> fig = vine.plot_scatter_matrix(X=X)
     >>> fig.show()
