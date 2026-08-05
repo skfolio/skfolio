@@ -77,10 +77,11 @@ class StudentT(BaseUnivariateDist):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    StudentT(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
-    StudentT(2.75, 0.000618, 0.00681)
+    StudentT(loc=0.00062, scale=0.0068, df=2.7)
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
     >>> log_likelihood = model.score_samples(X)
@@ -95,7 +96,6 @@ class StudentT(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     dof_: float

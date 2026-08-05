@@ -78,14 +78,15 @@ class GaussianCopula(BaseBivariateCopula):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    GaussianCopula(...)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     GaussianCopula(rho=0.327)
     >>> print(model.lower_tail_dependence)
-    0.0
+    0
     >>> print(model.upper_tail_dependence)
-    0.0
+    0
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC
@@ -102,15 +103,12 @@ class GaussianCopula(BaseBivariateCopula):
     >>>
     >>> # Plot the tail concentration function.
     >>> fig = model.plot_tail_concentration()
-    >>> fig.show()
     >>>
     >>> # Plot a 2D contour of the estimated PDF.
     >>> fig = model.plot_pdf_2d()
-    >>> fig.show()
     >>>
     >>> # Plot a 3D surface of the estimated PDF.
     >>> fig = model.plot_pdf_3d()
-    >>> fig.show()
 
     References
     ----------

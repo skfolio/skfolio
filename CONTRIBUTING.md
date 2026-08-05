@@ -136,5 +136,13 @@ We like to have the pull request open as soon as possible, that's a great place 
 2. Update the documentation for significant features.
 3. Ensure tests are passing on CI.
 
+### Docstring examples
+
+Examples in public docstrings are run as doctests. They provide a basic check
+that the documented workflow works, but do not replace tests in `tests/`.
+
+Keep examples simple and readable. Avoid code written only to satisfy doctest.
+Put exact numerical checks, edge cases, and regression tests in `tests/`.
+
 
 [gh-issues]: https://github.com/skfolio/skfolio/issues
