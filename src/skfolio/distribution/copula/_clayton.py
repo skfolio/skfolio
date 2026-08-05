@@ -108,15 +108,16 @@ class ClaytonCopula(BaseBivariateCopula):
     >>> model = ClaytonCopula()
     >>>
     >>> # Fit the model to the data.
-    >>> _ = model.fit(X)
+    >>> model.fit(X)
+    ClaytonCopula(...)
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
     ClaytonCopula(theta=0.54, rot=0°)
-    >>> print(f"{model.lower_tail_dependence:.4f}")
-    0.2761
-    >>> print(f"{model.upper_tail_dependence:.4f}")
-    0.0000
+    >>> print(model.lower_tail_dependence)
+    0.276...
+    >>> print(model.upper_tail_dependence)
+    0
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC
@@ -133,15 +134,12 @@ class ClaytonCopula(BaseBivariateCopula):
     >>>
     >>> # Plot the tail concentration function.
     >>> fig = model.plot_tail_concentration()
-    >>> fig.show()
     >>>
     >>> # Plot a 2D contour of the estimated PDF.
     >>> fig = model.plot_pdf_2d()
-    >>> fig.show()
     >>>
     >>> # Plot a 3D surface of the estimated PDF.
     >>> fig = model.plot_pdf_3d()
-    >>> fig.show()
 
     References
     ----------

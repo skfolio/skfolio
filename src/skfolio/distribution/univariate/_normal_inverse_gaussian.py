@@ -79,7 +79,8 @@ class NormalInverseGaussian(BaseUnivariateDist):
     >>> model = NormalInverseGaussian()
     >>>
     >>> # Fit the model to the data.
-    >>> _ = model.fit(X)
+    >>> model.fit(X)
+    NormalInverseGaussian(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
@@ -98,7 +99,6 @@ class NormalInverseGaussian(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     a_: float

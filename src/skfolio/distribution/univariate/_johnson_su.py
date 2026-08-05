@@ -78,7 +78,8 @@ class JohnsonSU(BaseUnivariateDist):
     >>> model = JohnsonSU()
     >>>
     >>> # Fit the model to the data.
-    >>> _ = model.fit(X)
+    >>> model.fit(X)
+    JohnsonSU(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
@@ -97,7 +98,6 @@ class JohnsonSU(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     a_: float

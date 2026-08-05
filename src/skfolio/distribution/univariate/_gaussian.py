@@ -65,7 +65,8 @@ class Gaussian(BaseUnivariateDist):
     >>> model = Gaussian()
     >>>
     >>> # Fit the Gaussian model to the data.
-    >>> _ = model.fit(X)
+    >>> model.fit(X)
+    Gaussian(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
@@ -84,7 +85,6 @@ class Gaussian(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     loc_: float

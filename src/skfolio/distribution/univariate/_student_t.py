@@ -76,7 +76,8 @@ class StudentT(BaseUnivariateDist):
     >>> model = StudentT()
     >>>
     >>> # Fit the model to the data.
-    >>> _ = model.fit(X)
+    >>> model.fit(X)
+    StudentT(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
@@ -95,7 +96,6 @@ class StudentT(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     dof_: float

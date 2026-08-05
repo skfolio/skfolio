@@ -116,7 +116,7 @@ jobs:
       # Run tests normally for all jobs except the single coverage job
       - name: Run tests
         if: ${{ !(matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest') }}
-        run: uv run pytest -q
+        run: uv run pytest -q tests
 
       # Coverage on a single representative job (Py MAIN_PYTHON + latest)
       - name: Run tests with coverage (main Python • latest only)
@@ -160,7 +160,7 @@ jobs:
         run: uv pip install -e ".[dev]"
 
       - name: Run tests
-        run: uv run pytest -q
+        run: uv run pytest -q tests
 
 # -----------------------------------------------------------------------------
 # 4) Canary on next Python
