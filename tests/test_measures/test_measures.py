@@ -825,3 +825,46 @@ def test_correlation(returns, sample_weight, expected):
     np.testing.assert_almost_equal(
         skm.correlation(returns, sample_weight=sample_weight), expected
     )
+
+
+def test_expected_max_sharpe_ratio():
+    # No dispersion, or a single trial, means no selection to correct for
+    assert skm.expected_max_sharpe_ratio(1, 0.5) == 0.0
+    assert skm.expected_max_sharpe_ratio(50, 0.0) == 0.0
+
+    # The hurdle grows with the number of trials and scales with their dispersion
+    assert skm.expected_max_sharpe_ratio(100, 0.5) > skm.expected_max_sharpe_ratio(
+        10, 0.5
+    )
+    np.testing.assert_almost_equal(
+        skm.expected_max_sharpe_ratio(10, 1.0) * 0.5,
+        skm.expected_max_sharpe_ratio(10, 0.5),
+    )
+
+    with pytest.raises(ValueError):
+        skm.expected_max_sharpe_ratio(0, 0.5)
+
+
+def test_deflated_sharpe_ratio():
+    rng = np.random.default_rng(0)
+    n_trials, n_periods = 40, 1000
+    # A search over trials that have no skill whatsoever
+    trials = rng.normal(0, 0.01, size=(n_periods, n_trials))
+    sharpes = skm.mean(trials) / skm.standard_deviation(trials)
+    winner = trials[:, sharpes.argmax()]
+
+    dsr = skm.deflated_sharpe_ratio(winner, sharpes)
+    assert 0 <= dsr <= 1
+    # The winner of a skill-less search must not survive deflation ...
+    assert dsr < 0.95
+    # ... though it looks significant when its selection is ignored
+    assert skm.deflated_sharpe_ratio(winner, [sharpes.max()]) > dsr
+
+    # More trials set a higher hurdle, hence a lower probability
+    assert skm.deflated_sharpe_ratio(winner, sharpes[:10]) > dsr
+
+    # NaNs in the trial Sharpe ratios are dropped, not propagated
+    sharpes_with_nan = np.append(sharpes, np.nan)
+    np.testing.assert_almost_equal(
+        skm.deflated_sharpe_ratio(winner, sharpes_with_nan), dsr
+    )
