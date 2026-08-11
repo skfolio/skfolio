@@ -877,8 +877,13 @@ def test_deflated_sharpe_ratio_zero_dispersion():
     # Its standard deviation is floating-point residue rather than an exact zero, so
     # the ratio comes out finite (~1e16) and reaches the deflation arithmetic, which
     # answered 1.0 -- certainty of an edge, from the one input that cannot show one.
-    flat = np.full(250, 0.001)
-    assert np.isnan(skm.deflated_sharpe_ratio(flat, sharpes))
+    # Checked across values and lengths, not at one point: the residue depends on both,
+    # so a guard calibrated on a single series passes while still leaking elsewhere.
+    for value in (1e-7, 1e-4, 0.001, 0.01, 1.0, 100.0):
+        for n in (3, 10, 250, 5000):
+            assert np.isnan(skm.deflated_sharpe_ratio(np.full(n, value), sharpes)), (
+                f"leaked at value={value}, n={n}"
+            )
     assert np.isnan(skm.deflated_sharpe_ratio(np.zeros(250), sharpes))
 
     # The guard is relative to the scale of the data: a real but very quiet series

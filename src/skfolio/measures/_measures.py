@@ -1238,8 +1238,12 @@ def deflated_sharpe_ratio(
     # i.e. certainty of a real edge, for the one input that carries no information
     # about one. Compare against the resolution of a float at the scale of the data,
     # so a genuinely low-volatility series still gets a number.
+    # The residue grows with the number of terms summed, so the floor is n eps rather
+    # than eps: measured at most 1.96 eps x scale over constant series spanning values
+    # 1e-7..1e3 and lengths 3..10000, while a real series with sigma=1e-12 sits more
+    # than ten orders of magnitude above n eps x scale.
     scale = np.nanmax(np.abs(returns)) if n else 0.0
-    if sd <= np.finfo(float).eps * scale:
+    if not sd > n * np.finfo(float).eps * scale:
         return np.nan
 
     trial_srs = np.asarray(trial_sharpe_ratios, dtype=float)
