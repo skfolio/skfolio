@@ -868,3 +868,20 @@ def test_deflated_sharpe_ratio():
     np.testing.assert_almost_equal(
         skm.deflated_sharpe_ratio(winner, sharpes_with_nan), dsr
     )
+
+
+def test_deflated_sharpe_ratio_zero_dispersion():
+    sharpes = [0.5, 1.0, 1.5, 2.0]
+
+    # A constant series has no dispersion, so no Sharpe ratio and no deflated one.
+    # Its standard deviation is floating-point residue rather than an exact zero, so
+    # the ratio comes out finite (~1e16) and reaches the deflation arithmetic, which
+    # answered 1.0 -- certainty of an edge, from the one input that cannot show one.
+    flat = np.full(250, 0.001)
+    assert np.isnan(skm.deflated_sharpe_ratio(flat, sharpes))
+    assert np.isnan(skm.deflated_sharpe_ratio(np.zeros(250), sharpes))
+
+    # The guard is relative to the scale of the data: a real but very quiet series
+    # still gets a number.
+    quiet = np.random.default_rng(1).normal(0, 1e-8, 250)
+    assert 0 <= skm.deflated_sharpe_ratio(quiet, sharpes) <= 1
