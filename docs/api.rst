@@ -654,6 +654,7 @@ Classes
     model_selection.OnlineRandomizedSearch
     model_selection.CovarianceForecastEvaluation
     model_selection.CovarianceForecastComparison
+    model_selection.MultipleTestingResult
 
 
 Functions
@@ -670,6 +671,7 @@ Functions
     model_selection.online_covariance_forecast_evaluation
     model_selection.covariance_forecast_evaluation
     model_selection.optimal_folds_number
+    model_selection.multiple_testing_hurdle
 
 .. _metrics_ref:
 
