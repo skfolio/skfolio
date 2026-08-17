@@ -500,6 +500,7 @@ TUTORIAL_ORDER = {
         "plot_15_mip_cardinality_constraints.py",
         "plot_16_mip_threshold_constraints.py",
         "plot_17_failure_and_fallbacks.py",
+        "plot_18_graphical_lasso.py",
     ),
     "factor_models": (
         "plot_characteristics_factor_model.py",
