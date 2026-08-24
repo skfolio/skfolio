@@ -44,6 +44,12 @@ More than 40 attributes and methods are available, including all the
 etc.). The attributes are computed only when requested, then cached in `slots` for
 enhanced performance.
 
+Measures are computed on the per-observation return series, in the periodicity of
+the returns. The annualized variants (e.g. `annualized_sharpe_ratio`,
+`annualized_mean`) scale them for reporting using the `annualization_factor`
+parameter (default 252). Optimization inputs are never annualized, only reported
+measures are (see :ref:`Periodicity Convention <periodicity_convention>`).
+
 **Example:**
 
 .. code-block:: python

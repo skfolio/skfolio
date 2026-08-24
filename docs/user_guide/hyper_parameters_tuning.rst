@@ -121,7 +121,7 @@ favorable properties.
 where each setting is sampled from a distribution over possible parameter values.
 This has two main benefits over an exhaustive search:
 
-* A budget can be chosen independent of the number of parameters and possible values.
+* A budget can be chosen independently of the number of parameters and possible values.
 * Adding parameters that do not influence the performance does not decrease efficiency.
 
 Specifying how parameters should be sampled is done using a dictionary, very
@@ -259,8 +259,8 @@ parameters of composite or nested estimators using a dedicated
 
 **Example:**
 
-In the below example, we search the optimal parameter `alpha` of the nested estimator
-:class:`~skfolio.moments.EWMu`:
+In the below example, we search for the optimal parameter `half_life` of the nested
+estimator :class:`~skfolio.moments.EWMu`:
 
 .. code-block:: python
 
@@ -278,12 +278,12 @@ In the below example, we search the optimal parameter `alpha` of the nested esti
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(alpha=0.2)),
+        prior_estimator=EmpiricalPrior(mu_estimator=EWMu(half_life=40)),
     )
 
     print(model.get_params(deep=True))
 
-    param_grid = {"prior_estimator__mu_estimator__alpha": [0.001, 0.01, 0.01, 0.1]}
+    param_grid = {"prior_estimator__mu_estimator__half_life": [10, 20, 30, 40]}
 
     grid_search = GridSearchCV(
         estimator=model,
@@ -298,7 +298,7 @@ In the below example, we search the optimal parameter `alpha` of the nested esti
 
 **Example:**
 
-The same logic applies for `Pipeline`. Here we search the optimal risk measure of
+The same logic applies to `Pipeline`. Here we search for the optimal risk measure of
 :class:`~skfolio.optimization.MeanRisk` which is part of a `Pipeline`:
 
 .. code-block:: python

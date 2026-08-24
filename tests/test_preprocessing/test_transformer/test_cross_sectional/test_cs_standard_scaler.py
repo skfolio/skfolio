@@ -77,7 +77,7 @@ def _reference_transform(
         est_row, finite_row = estimation[t], finite[t]
         est_idx = np.flatnonzero(est_row)
         if est_idx.size == 0:
-            raise ValueError("each observation needs at least one estimation asset")
+            continue
 
         mu_global = float(np.average(x_row[est_idx], weights=w_row[est_idx]))
         sd_global = _eqw_bessel_std_around(x_row[est_idx], mu_global)
@@ -570,9 +570,19 @@ class TestValidation:
         with pytest.raises(ValueError, match=match):
             CSStandardScaler().fit_transform(X, cs_weights=cs_weights)
 
-    def test_empty_estimation_universe_raises(self):
+    def test_empty_estimation_universe_returns_nan(self):
         X = np.array([[1.0, 2.0, 3.0, 4.0]])
         cs_weights = np.zeros_like(X)
 
-        with pytest.raises(ValueError, match="estimation asset"):
-            CSStandardScaler().fit_transform(X, cs_weights=cs_weights)
+        transformed = CSStandardScaler().fit_transform(X, cs_weights=cs_weights)
+
+        assert np.all(np.isnan(transformed))
+
+    def test_all_nan_row_returns_nan(self):
+        X = np.array([[1.0, 2.0, 4.0, 10.0], [np.nan, np.nan, np.nan, np.nan]])
+
+        transformed = CSStandardScaler().fit_transform(X)
+
+        expected_first_row = CSStandardScaler().fit_transform(X[[0]])[0]
+        np.testing.assert_allclose(transformed[0], expected_first_row, rtol=1e-12)
+        assert np.all(np.isnan(transformed[1]))

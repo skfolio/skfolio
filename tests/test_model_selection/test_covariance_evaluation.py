@@ -294,6 +294,14 @@ class TestPlots:
         fig = evaluation_full.plot_calibration(window=21)
         assert isinstance(fig, go.Figure)
 
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss", "plot_exceedance"],
+    )
+    def test_window_too_large_raises(self, evaluation_full, plot_method):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(evaluation_full, plot_method)(window=201)
+
     def test_custom_title(self, evaluation_full):
         fig = evaluation_full.plot_calibration(title="Custom Title")
         assert fig.layout.title.text == "Custom Title"
@@ -480,6 +488,24 @@ class TestCovarianceForecastComparison:
     def test_custom_window(self, comparison):
         fig = comparison.plot_calibration(window=21)
         assert isinstance(fig, go.Figure)
+
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss", "plot_exceedance"],
+    )
+    def test_window_too_large_raises(self, comparison, plot_method):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(comparison, plot_method)(window=201)
+
+    @pytest.mark.parametrize(
+        "plot_method",
+        ["plot_calibration", "plot_qlike_loss"],
+    )
+    def test_multi_portfolio_window_too_large_raises(
+        self, comparison_multi_portfolio, plot_method
+    ):
+        with pytest.raises(ValueError, match=r"window=201.*n_observations=200"):
+            getattr(comparison_multi_portfolio, plot_method)(window=201)
 
 
 class TestBatchCovarianceForecastEvaluation:

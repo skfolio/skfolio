@@ -49,6 +49,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline
 
+from skfolio import RatioMeasure
+from skfolio.metrics import make_scorer
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import EqualWeighted
 from skfolio.pre_selection import SelectComplete, SelectNonExpiring
@@ -167,7 +169,9 @@ grid_search = GridSearchCV(
             pd.offsets.BusinessDay(i) for i in range(20)
         ],
     },
+    scoring=make_scorer(RatioMeasure.SHARPE_RATIO),
 )
 grid_search.fit(X)
+print(grid_search.best_params_)
 model = grid_search.best_estimator_
 

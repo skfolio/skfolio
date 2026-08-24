@@ -125,7 +125,7 @@ def test_magic_methods(population):
 
 
 def test_non_dominated_sorting(population):
-    fronts = population.non_denominated_sort()
+    fronts = population.non_dominated_sort()
     assert sorted([i for j in fronts for i in j]) == list(range(len(population)))
     for i, front in enumerate(fronts):
         dominates = False
@@ -283,7 +283,7 @@ def test_population_failed_portfolio(small_population, failed_portfolio):
     assert not np.isnan(pop.returns_df()).all().all()
     assert not np.isnan(pop.cumulative_returns_df()).all().all()
     assert not np.isnan(pop.drawdowns_df()).all().all()
-    fronts = pop.non_denominated_sort()
+    fronts = pop.non_dominated_sort()
     assert fronts == [[5, 6, 8], [1, 3, 4], [9, 7], [2], [0]]
     np.testing.assert_almost_equal(
         pop.measures(measure=RatioMeasure.SHARPE_RATIO),

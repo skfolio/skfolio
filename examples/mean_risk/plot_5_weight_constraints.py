@@ -176,7 +176,7 @@ model.weights_
 # The `groups` parameter can be a 2D array-like or a dictionary. If a dictionary is
 # provided, its (key/value)  pair must be the (asset name/asset groups).
 # You can reference these groups and/or the asset names in `linear_constraint`, which
-# is a list if strings following the below patterns:
+# is a list of strings following the below patterns:
 #
 #   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
 #   * "ref1 >= 2.9 * ref2"

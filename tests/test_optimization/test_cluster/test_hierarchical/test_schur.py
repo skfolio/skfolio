@@ -129,9 +129,9 @@ def test_schur_prior_estimator(X):
     )
 
 
-def test_schur_factor_model(X, y):
+def test_schur_factor_model(X, factors):
     model = SchurComplementary(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(

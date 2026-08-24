@@ -316,7 +316,7 @@ population.plot_contribution(measure=RiskMeasure.CVAR)
 # ======================
 # Instead of applying Entropy Pooling directly to asset returns, we can embed it
 # within a Factor Model.
-# This allows us to impose views on factor data such at the quality factor "QUAL":
+# This allows us to impose views on factor data such as the quality factor "QUAL":
 
 factor_entropy_pooling = EntropyPooling(mean_views=["QUAL == 0.0005"])
 
@@ -324,7 +324,7 @@ factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooli
 
 model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 sample_weight = model.prior_estimator_.return_distribution_.sample_weight
@@ -335,7 +335,7 @@ summary(factors, sample_weight)
 # ========================================
 # Rather than applying Entropy Pooling directly to a limited historical factor prior,
 # we generate 100,000 synthetic factor returns using a Vine Copula. This synthetic
-# dataset extrapolate the tail dependencies and allows more extreme EP views that were
+# dataset extrapolates the tail dependencies and allows more extreme EP views that were
 # infeasible with sparse historical data:
 
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)
@@ -354,7 +354,7 @@ model = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model
 )
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 # %%
@@ -418,7 +418,7 @@ factor_entropy_pooling = EntropyPooling(
 
 factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_entropy_pooling)
 
-factor_model.fit(X, factors)
+factor_model.fit(X, factors=factors)
 
 # We retrieve the stressed distribution:
 stressed_dist = factor_model.return_distribution_

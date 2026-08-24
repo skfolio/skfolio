@@ -238,7 +238,7 @@ class TestCombinatorialPurgedCVMaxCombinations:
             CombinatorialPurgedCV(n_folds=50, n_test_folds=25)
 
 
-def optimal_folds_number_full_search(
+def _optimal_folds_number_full_search(
     n_observations: int,
     target_train_size: int,
     target_n_test_paths: int,
@@ -289,12 +289,18 @@ def test_optimal_folds_number(
         target_n_test_paths=target_n_test_paths,
     )
     assert res == expected
+    if n_observations <= 100:
+        assert res == _optimal_folds_number_full_search(
+            n_observations=n_observations,
+            target_train_size=target_train_size,
+            target_n_test_paths=target_n_test_paths,
+        )
 
 
 def test_optimal_folds_number_weight():
-    n_observations = 5000
-    target_train_size = 250
-    target_n_test_paths = 50
+    n_observations = 500
+    target_train_size = 50
+    target_n_test_paths = 20
 
     n_folds, n_test_folds = optimal_folds_number(
         n_observations=n_observations,
@@ -304,10 +310,10 @@ def test_optimal_folds_number_weight():
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
-    assert n_folds == 51
-    assert n_test_folds == 50
-    assert int(avg_train_size) == 98
-    assert n_test_paths == 50
+    assert n_folds == 21
+    assert n_test_folds == 20
+    assert int(avg_train_size) == 23
+    assert n_test_paths == 20
 
     n_folds, n_test_folds = optimal_folds_number(
         n_observations=n_observations,
@@ -318,10 +324,10 @@ def test_optimal_folds_number_weight():
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
-    assert n_folds == 20
-    assert n_test_folds == 19
-    assert int(avg_train_size) == 250
-    assert n_test_paths == 19
+    assert n_folds == 10
+    assert n_test_folds == 9
+    assert int(avg_train_size) == 50
+    assert n_test_paths == 9
 
 
 def test_cross_val_predict_and_grid_search(X):

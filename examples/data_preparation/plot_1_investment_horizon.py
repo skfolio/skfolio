@@ -4,7 +4,7 @@ Investment Horizon
 ==================
 
 This tutorial explores the difference between the general
-procedure using different investment horizon and the simplified procedure as explained
+procedure using different investment horizons and the simplified procedure as explained
 in :ref:`data preparation <data_preparation>`.
 """
 

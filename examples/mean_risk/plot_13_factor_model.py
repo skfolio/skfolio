@@ -12,7 +12,7 @@ weight, Cholesky decomposition).
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
-distribution before optimization, unifying both **Frequentist**, **Bayesian** and
+distribution before optimization, unifying **Frequentist**, **Bayesian** and
 **Information-theoretic** approaches into a single cohesive framework:
 
 1. Frequentist:
@@ -51,9 +51,9 @@ i.e., the dimensionality of the estimation problem, making portfolio optimizatio
 more robust against noise in the data. Factor models also provide a decomposition of
 financial risk into systematic and security-specific components.
 
-To be fully compatible with `scikit-learn`, the `fit` method takes `X` as the assets
-returns and `y` as the factors returns. Note that `y` is in lowercase even for a 2D
-array (more than one factor). This is for consistency with the scikit-learn API.
+The `fit` method takes `X` as the asset
+returns and `factors` as the factor returns. Pass factor returns with the `factors` keyword
+argument.
 
 In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel`
 estimator.
@@ -64,8 +64,9 @@ estimator.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors:
+# prices of 5 ETFs representing common factors:
 from plotly.io import show
+from sklearn import set_config
 from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import train_test_split
 
@@ -76,11 +77,13 @@ from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRegression
 
+set_config(enable_metadata_routing=True)
+
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
 # %%
 # Factor Model
@@ -93,7 +96,7 @@ model_factor_1 = MeanRisk(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="Factor Model 1"),
 )
-model_factor_1.fit(X_train, y_train)
+model_factor_1.fit(X_train, factors=factors_train)
 model_factor_1.weights_
 
 # %%
@@ -115,16 +118,16 @@ model_factor_2 = MeanRisk(
     ),
     portfolio_params=dict(name="Factor Model 2"),
 )
-model_factor_2.fit(X_train, y_train)
+model_factor_2.fit(X_train, factors=factors_train)
 model_factor_2.weights_
 
 # %%
 # We can also change the :ref:`prior estimator <prior>` of the factors.
-# It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing the
-# factors expected returns and covariance matrix.
+# It is used to estimate the :class:`~skfolio.prior.ReturnDistribution` containing
+# expected factor returns and the factor covariance matrix.
 #
-# For example, let's estimate the factors expected returns with James-Stein shrinkage
-# and the factors covariance matrix with the Gerber covariance estimator:
+# For example, let's estimate expected factor returns with James-Stein shrinkage
+# and the factor covariance matrix with the Gerber covariance estimator:
 model_factor_3 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
@@ -135,7 +138,7 @@ model_factor_3 = MeanRisk(
     ),
     portfolio_params=dict(name="Factor Model 3"),
 )
-model_factor_3.fit(X_train, y_train)
+model_factor_3.fit(X_train, factors=factors_train)
 model_factor_3.weights_
 
 # %%

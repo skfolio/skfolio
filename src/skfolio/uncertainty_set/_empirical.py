@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import numpy as np
+import scipy.linalg as sla
 import scipy.stats as st
 import sklearn.utils.metadata_routing as skm
 
@@ -19,8 +20,8 @@ from skfolio.typing import ArrayLike
 from skfolio.uncertainty_set._base import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
-    UncertaintySet,
 )
+from skfolio.uncertainty_set._model import UncertaintySet
 from skfolio.utils.stats import commutation_matrix
 from skfolio.utils.tools import check_estimator
 
@@ -30,26 +31,36 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
 
     Compute the expected returns ellipsoidal uncertainty set [1]_:
 
-    .. math:: U_{\mu}=\left\{\mu\,|\left(\mu-\hat{\mu}\right)S^{-1}\left(\mu-\hat{\mu}\right)^{T}\leq\kappa^{2}\right\}
+    .. math::
+
+        U_{\mu}
+        =
+        \left\{
+            \mu :
+            (\mu - \hat{\mu})^\top S^{-1}(\mu - \hat{\mu})
+            \le \kappa^2
+        \right\}.
 
     Under the assumption that :math:`\Sigma` is given, the distribution of the sample
     estimator :math:`\hat{\mu}` based on an i.i.d. sample
     :math:`R_{t}\sim N(\mu, \Sigma), t=1,...,T` is given by
     :math:`\hat{\mu}\sim N(\mu, \frac{1}{T}\Sigma)`.
 
-    The size of the ellipsoid  :math:`\kappa` (confidence region), is computed using:
+    The radius of the ellipsoid :math:`\kappa` (confidence region) is computed using:
 
-    .. math:: \kappa^2 = \chi^2_{n\_assets} (\beta)
+    .. math:: \kappa^2 = \chi^2_{n_{\text{assets}}}(\beta)
 
-    with :math:`\chi^2_{n\_assets}(\beta)` the inverse cumulative distribution function
-    of the chi-squared distribution with `n_assets` degrees of freedom at the
-    :math:`\beta` confidence level.
+    with :math:`\chi^2_{n_{\text{assets}}}(\beta)` the inverse cumulative distribution
+    function of the chi-squared distribution with :math:`n_{\text{assets}}` degrees of
+    freedom at the :math:`\beta` confidence level.
 
-    The shape of the ellipsoid :math:`S` is computed using:
+    The shape matrix :math:`S` of the ellipsoid is computed using:
 
     .. math:: S = \frac{1}{T}\Sigma
 
     with the option to force the non-diagonal elements of the covariance matrix to zero.
+    The estimator stores the square-root factor as the linear geometry map
+    :math:`L = S^{1/2}`.
 
     Parameters
     ----------
@@ -62,8 +73,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
-        If this is set to True, the non-diagonal elements of the covariance matrix are
-        set to zero.
+        If `True`, the non-diagonal elements of the covariance matrix are set to zero.
 
     n_eff : float, optional
         Effective number of observations used for the mean estimator. If `None`,
@@ -147,13 +157,15 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         n_observations, n_assets = return_distribution.returns.shape
         self.n_eff_ = n_observations if self.n_eff is None else self.n_eff
 
-        k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
+        radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets))
+        covariance = return_distribution.covariance
 
-        sigma = return_distribution.covariance / self.n_eff_
         if self.diagonal:
-            sigma = np.diag(np.diag(sigma))
+            geometry = np.diag(np.sqrt(np.diagonal(covariance) / self.n_eff_))
+        else:
+            geometry = sla.sqrtm(covariance / self.n_eff_).real
 
-        self.uncertainty_set_ = UncertaintySet(k=k, sigma=sigma)
+        self.uncertainty_set_ = UncertaintySet(radius=radius, geometry=geometry, norm=2)
         return self
 
 
@@ -162,28 +174,47 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
 
     Compute the covariance ellipsoidal uncertainty set [1]_:
 
-    .. math:: U_{\Sigma}=\left\{\Sigma\,|\left(\text{vec}(\Sigma)-\text{vec}(\hat{\Sigma})\right)S^{-1}\left(\text{vec}(\Sigma)-\text{vec}(\hat{\Sigma})\right)^{T}\leq k^{2}\,,\,\Sigma\succeq 0\right\}
+    .. math::
+
+        U_{\Sigma}
+        =
+        \left\{
+            \Sigma :
+            d^\top S^{-1} d \le \kappa^2,
+            \Sigma \succeq 0
+        \right\},
+        \quad
+        d =
+        \operatorname{vec}(\Sigma) - \operatorname{vec}(\hat{\Sigma}).
 
     We consider the Wishart distribution for the covariance matrix:
 
     .. math:: \hat{\Sigma}\sim W(\frac{1}{T-1}\Sigma, T-1)
 
-    The size of the ellipsoid  :math:`\kappa` (confidence region), is computed using:
+    The radius of the ellipsoid :math:`\kappa` (confidence region) is computed using:
 
-    .. math:: \kappa^2 = \chi^2_{n\_assets^2} (\beta)
+    .. math:: \kappa^2 = \chi^2_{n_{\text{assets}}^2}(\beta)
 
-    with :math:`\chi^2_{n\_assets^2}(\beta)` the inverse cumulative distribution
-    function of the chi-squared distribution with `n_assets^2` degrees of freedom at
-    the :math:`\beta` confidence level.
+    with :math:`\chi^2_{n_{\text{assets}}^2}(\beta)` the inverse cumulative distribution
+    function of the chi-squared distribution with :math:`n_{\text{assets}}^2` degrees of
+    freedom at the :math:`\beta` confidence level.
 
-    The shape of the ellipsoid :math:`S` is based on a closed form solution of the
-    covariance matrix of the Wishart distributed random variable by using the vector
-    notation :math:`vec(x)`:
+    The shape matrix :math:`S` of the ellipsoid is based on the covariance matrix of the
+    Wishart distributed random variable using the vector notation
+    :math:`\operatorname{vec}(x)`:
 
-    .. math:: \text{Cov}[\text{vec}(\hat{\Sigma})]=\frac{1}{T-1}(I_{n^2} + K_{nn})(\Sigma \otimes \Sigma)
+    .. math::
 
-    with :math:`K_{nn}` denoting a commutation matrix and :math:`\otimes` representing
-    the Kronecker product.
+        \operatorname{Cov}[\operatorname{vec}(\hat{\Sigma})]
+        =
+        \frac{1}{n_{\text{eff}}}
+        (I_{n^2} + K_{nn})(\Sigma \otimes \Sigma).
+
+    where :math:`K_{nn}` denotes a commutation matrix and :math:`\otimes` represents
+    the Kronecker product. If `diagonal` is `True`, the asset covariance estimate is
+    diagonalized and the linear geometry map :math:`L` is built directly from the
+    diagonal of :math:`S`. Otherwise, the estimator stores a full square-root factor
+    :math:`L = S^{1/2}`.
 
     Parameters
     ----------
@@ -191,13 +222,13 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         The :ref:`prior estimator <prior>` used to estimate the assets covariance
         matrix. The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
-    confidence_level : float, default=0.95
+    confidence_level : float , default=0.95
         Confidence level :math:`\beta` of the inverse cumulative distribution function
         of the chi-squared distribution. The default value is `0.95`.
 
     diagonal : bool, default=True
-        If this is set to True, the non-diagonal elements of the covariance matrix are
-        set to zero.
+        If `True`, the non-diagonal elements of the asset covariance matrix are set to
+        zero before building the ellipsoid shape matrix.
 
     n_eff : float, optional
         Effective number of observations used for the covariance estimator. If `None`,
@@ -281,19 +312,21 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         n_observations, n_assets = return_distribution.returns.shape
         self.n_eff_ = n_observations if self.n_eff is None else self.n_eff
 
-        k = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
+        radius = np.sqrt(st.chi2.ppf(q=self.confidence_level, df=n_assets**2))
+        covariance = return_distribution.covariance
 
-        sigma = return_distribution.covariance / self.n_eff_
         if self.diagonal:
-            sigma = np.diag(np.diag(sigma))
-
-        sigma = np.diag(
-            np.diag(
-                self.n_eff_
-                * (np.identity(n_assets**2) + commutation_matrix(sigma))
-                @ np.kron(sigma, sigma)
+            covariance_diag = np.diagonal(covariance)
+            shape_diag = np.kron(covariance_diag, covariance_diag) / self.n_eff_
+            shape_diag[:: n_assets + 1] *= 2
+            geometry = np.diag(np.sqrt(shape_diag))
+        else:
+            shape = (
+                (np.identity(n_assets**2) + commutation_matrix(covariance))
+                @ np.kron(covariance, covariance)
+                / self.n_eff_
             )
-        )
+            geometry = sla.sqrtm(shape).real
 
-        self.uncertainty_set_ = UncertaintySet(k=k, sigma=sigma)
+        self.uncertainty_set_ = UncertaintySet(radius=radius, geometry=geometry, norm=2)
         return self

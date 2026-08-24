@@ -105,7 +105,6 @@ def test_black_litterman(X):
     assert res.mu.shape == (20,)
     assert res.covariance.shape == (20, 20)
     np.testing.assert_almost_equal(res.returns, np.asarray(X))
-    assert res.cholesky is None
     np.testing.assert_almost_equal(
         res.mu,
         np.array(
@@ -599,7 +598,7 @@ def test_black_litterman(X):
     )
 
 
-def test_black_litterman_factor_model(X, y):
+def test_black_litterman_factor_model(X, factors):
     views = ["AAPL - BBY == 0.03 ", "MSFT == 0.06 "]
     factor_views = ["MTUM - QUAL == 0.03 ", "VLUE == 0.06"]
 
@@ -610,7 +609,7 @@ def test_black_litterman_factor_model(X, y):
         ),
     )
 
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     assert model.return_distribution_.covariance.shape == (20, 20)
 
 

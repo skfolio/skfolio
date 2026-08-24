@@ -94,11 +94,11 @@ def test_herc_empirical_prior(X):
     )
 
 
-def test_herc_factor_model(X, y):
+def test_herc_factor_model(X, factors):
     model = HierarchicalEqualRiskContribution(
         risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(

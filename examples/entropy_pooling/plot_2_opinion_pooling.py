@@ -183,7 +183,7 @@ factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooli
 model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
 
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 sample_weight = model.prior_estimator_.return_distribution_.sample_weight
@@ -194,7 +194,7 @@ summary(factors, sample_weight)
 # ========================================
 # Rather than applying Option Pooling directly to a limited historical factor prior,
 # we generate 100,000 synthetic factor returns using a Vine Copula. This synthetic
-# dataset extrapolate the tail dependencies and allows more extreme EP views that were
+# dataset extrapolates the tail dependencies and allows more extreme EP views that were
 # infeasible with sparse historical data:
 
 vine = VineCopula(log_transform=True, n_jobs=-1, random_state=0)
@@ -216,7 +216,7 @@ model = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model
 )
 
-model.fit(X, factors)
+model.fit(X, factors=factors)
 print(model.weights_)
 
 # %%
@@ -288,7 +288,7 @@ factor_opinion_pooling = OpinionPooling(
 
 factor_model = TimeSeriesFactorModel(factor_prior_estimator=factor_opinion_pooling)
 
-factor_model.fit(X, factors)
+factor_model.fit(X, factors=factors)
 
 # We retrieve the stressed distribution:
 stressed_dist = factor_model.return_distribution_

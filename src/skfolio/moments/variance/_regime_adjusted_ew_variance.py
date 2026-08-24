@@ -80,7 +80,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     where :math:`S_i` is the raw internal EWMA accumulator. For assets with a
     long history, the correction is negligible (:math:`\lambda^{n_i} \to 0`).
 
-    The ``min_observations`` parameter controls a warm-up period: an asset's
+    The `min_observations` parameter controls a warm-up period: an asset's
     variance estimate remains NaN in the output until it has accumulated enough
     valid observations for a reliable estimate.
 

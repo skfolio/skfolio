@@ -8,14 +8,27 @@ import sklearn.utils.validation as skv
 from sklearn import config_context
 from sklearn.base import BaseEstimator
 
+from skfolio.containers import AssetPanel
 from skfolio.pre_selection import DropCorrelated
-from skfolio.utils.validation import validate_cross_sectional_data
+from skfolio.utils.validation import validate_asset_panel, validate_cross_sectional_data
 
 
 class DummyEstimator(BaseEstimator):
     """Dummy estimator for testing validation."""
 
     pass
+
+
+def _asset_panel_with_field(values, field="field", active_mask=None):
+    """Create a simple AssetPanel for field validation tests."""
+    panel = AssetPanel(
+        fields={field: np.asarray(values, dtype=float)},
+        asset_names=np.array(["a", "b"]),
+        observations=np.arange(np.asarray(values).shape[0]),
+    )
+    if active_mask is not None:
+        panel.active_mask = np.asarray(active_mask, dtype=bool)
+    return panel
 
 
 def test_validate_data(X):
@@ -26,6 +39,54 @@ def test_validate_data(X):
 
     model = DropCorrelated()
     _ = skv.validate_data(model, X)
+
+
+class TestValidateAssetPanel:
+    """Test suite for validate_asset_panel."""
+
+    def test_finite_or_nan_allows_nan_and_rejects_inf(self):
+        estimator = DummyEstimator()
+        panel = _asset_panel_with_field([[1.0, np.nan], [2.0, np.inf]])
+
+        with pytest.raises(ValueError, match='"field" contains infinite values'):
+            validate_asset_panel(estimator, panel, finite_or_nan=["field"])
+
+    def test_strictly_positive_or_nan_allows_nan_and_rejects_non_positive(self):
+        estimator = DummyEstimator()
+        panel = _asset_panel_with_field([[1.0, np.nan], [0.0, 2.0]])
+
+        with pytest.raises(ValueError, match="non-positive"):
+            validate_asset_panel(estimator, panel, strictly_positive_or_nan=["field"])
+
+    def test_non_negative_or_nan_allows_zero_and_rejects_negative(self):
+        estimator = DummyEstimator()
+        panel = _asset_panel_with_field([[0.0, np.nan], [-1.0, 2.0]])
+
+        with pytest.raises(ValueError, match="negative values"):
+            validate_asset_panel(estimator, panel, non_negative_or_nan=["field"])
+
+    def test_strictly_positive_when_active_rejects_active_nan_and_inf(self):
+        estimator = DummyEstimator()
+        panel = _asset_panel_with_field(
+            [[1.0, np.nan], [np.inf, 2.0]],
+            active_mask=[[True, False], [True, True]],
+        )
+
+        with pytest.raises(ValueError, match="non-finite or non-positive"):
+            validate_asset_panel(
+                estimator, panel, strictly_positive_when_active=["field"]
+            )
+
+    def test_reset_false_still_validates_field_rules(self):
+        estimator = DummyEstimator()
+        panel = _asset_panel_with_field([[1.0, 2.0]])
+        validate_asset_panel(estimator, panel)
+
+        bad_panel = _asset_panel_with_field([[np.inf, 2.0]])
+        with pytest.raises(ValueError, match='"field" contains infinite values'):
+            validate_asset_panel(
+                estimator, bad_panel, finite_or_nan=["field"], reset=False
+            )
 
 
 class TestValidateCrossSectionalData:

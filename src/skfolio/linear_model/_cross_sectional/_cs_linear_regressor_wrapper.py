@@ -53,7 +53,7 @@ class CSLinearRegressorWrapper(BaseCSLinearModel):
         Intercept for each observation. Set to zeros if `fit_intercept=False`.
 
     n_features_in_ : int
-        Number of features seen during :term:`fit`.
+        Number of features seen during `fit`.
 
     n_valid_assets_ : ndarray of shape (n_observations,)
         Number of assets that participated in estimation (those with positive weight)

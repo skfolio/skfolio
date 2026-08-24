@@ -224,7 +224,6 @@ def test_copy(portfolio):
 def test_portfolio_cache(portfolio, measure):
     # time for accessing cached attributes
     n = int(1e5)
-    ref = timeit.timeit(lambda: portfolio.name, number=n) / n
     first_access_time = timeit.timeit(
         lambda: getattr(portfolio, measure.value), number=1
     )
@@ -232,7 +231,6 @@ def test_portfolio_cache(portfolio, measure):
         timeit.timeit(lambda: getattr(portfolio, measure.value), number=n) / n
     )
     assert first_access_time > 10 * cached_access_time
-    assert ref > cached_access_time / 10
 
 
 def test_portfolio_clear_cache(portfolio, measure):

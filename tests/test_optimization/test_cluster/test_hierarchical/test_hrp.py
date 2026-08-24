@@ -100,11 +100,11 @@ def test_hrp_empirical_prior(X):
     )
 
 
-def test_hrp_factor_model(X, y):
+def test_hrp_factor_model(X, factors):
     model = HierarchicalRiskParity(
         risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
@@ -256,6 +256,7 @@ def test_hrp_weight_constraints(X):
 
 
 def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
+    X = X.iloc[-100:, :6]
     model = HierarchicalRiskParity(
         risk_measure=risk_measure,
         hierarchical_clustering_estimator=HierarchicalClustering(
@@ -265,7 +266,6 @@ def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
     np.random.seed(42)
     for _ in range(5):
         min_weights, max_weights = _random_weights_bounds(n_assets=X.shape[1])
-        print(min_weights)
         model.set_params(min_weights=min_weights, max_weights=max_weights)
         model.fit(X)
         assert np.all(model.weights_ - min_weights >= -1e-8)

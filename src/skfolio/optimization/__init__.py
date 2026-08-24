@@ -17,11 +17,10 @@ from skfolio.optimization.convex import (
     ObjectiveFunction,
     RiskBudgeting,
 )
-from skfolio.optimization.ensemble import BaseComposition, StackingOptimization
+from skfolio.optimization.ensemble import StackingOptimization
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
 
 __all__ = [
-    "BaseComposition",
     "BaseHierarchicalOptimization",
     "BaseOptimization",
     "BenchmarkTracker",

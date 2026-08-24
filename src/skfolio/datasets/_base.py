@@ -244,7 +244,7 @@ def load_sp500_index() -> pd.DataFrame:
 def load_factors_dataset() -> pd.DataFrame:
     """Load the prices of 5 factor ETFs.
 
-    This dataset contains daily adjusted closing prices of 5 ETF representing common
+    This dataset contains daily adjusted closing prices of 5 ETFs representing common
     factors, covering the period from 2014-01-02 up to 2022-12-28.
 
     The factors are:

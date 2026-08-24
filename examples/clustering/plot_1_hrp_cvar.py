@@ -11,7 +11,7 @@ Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
-assets in the dendrogram, minimizing the distance between leafs.
+assets in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
@@ -35,7 +35,7 @@ In this example, we will use the CVaR risk measure.
 # ====
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the SPX Index composition and the Factors dataset composed of the daily
-# prices of 5 ETF representing common factors:
+# prices of 5 ETFs representing common factors:
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
@@ -53,8 +53,8 @@ factor_prices = load_factors_dataset()
 prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
-X, y = prices_to_returns(prices, factor_prices)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+X, factors = prices_to_returns(prices, factor_prices)
+X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
 # %%
 # Model
@@ -121,13 +121,13 @@ model2.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
 # %%
 # We can see that the clustering has been greatly affected by the change of the linkage
-# method. However, you will see bellow that the weights remain relatively stable for the
+# method. However, you will see below that the weights remain relatively stable for the
 # reason explained earlier.
 
 # %%
 # Distance Estimator
 # ==================
-# The choice of distance metric has also an important effect on the clustering.
+# The choice of distance metric also has an important effect on the clustering.
 # The default is to use the distance from the pearson correlation matrix.
 # This can be changed using the :ref:`distance estimators <distance>`.
 #
@@ -156,7 +156,7 @@ model4 = HierarchicalRiskParity(
     prior_estimator=TimeSeriesFactorModel(),
     portfolio_params=dict(name="HRP-CVaR-Factor-Model"),
 )
-model4.fit(X_train, y_train)
+model4.fit(X_train, factors=factors_train)
 
 model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
 
@@ -181,7 +181,7 @@ population_test.plot_cumulative_returns()
 # Composition
 # ===========
 # From the below composition, we notice that all models are relatively close to each
-# others as explain earlier:
+# other, as explained earlier:
 population_test.plot_composition()
 
 # %%

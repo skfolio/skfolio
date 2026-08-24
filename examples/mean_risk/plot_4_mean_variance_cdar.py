@@ -51,7 +51,7 @@ print(portfolio.cdar)
 
 # %%
 # The minimum CDaR is 9.72%.
-# Now we find the pareto optimal portfolios that maximizes the Sharpe under CDaR
+# Now we find the Pareto-optimal portfolios that maximize the Sharpe under CDaR
 # constraint ranging from 9.72% to 17%:
 model = MeanRisk(
     risk_measure=RiskMeasure.STANDARD_DEVIATION,
@@ -85,7 +85,7 @@ population.plot_measures(
 # Pareto Optimal Surface
 # ======================
 # Instead of analyzing the Sharpe-CDaR efficient frontier, we can analyze the
-# mean-Variance-CDaR pareto optimal surface:
+# Mean-Variance-CDaR Pareto-optimal surface:
 variance_upper = population_train.max_measure(PerfMeasure.MEAN).variance
 x = np.linspace(start=0.00012, stop=variance_upper, num=10)
 y = np.linspace(start=0.11, stop=0.17, num=10)

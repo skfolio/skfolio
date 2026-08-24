@@ -121,8 +121,8 @@ class CSWinsorizer(BaseCSTransformer):
         Raises
         ------
         ValueError
-            If `low` / `high` are invalid, `X` is not a non-empty 2D array, `cs_weights`
-            is invalid, or any observation has no estimation asset.
+            If `low` / `high` are invalid, `X` is not a non-empty 2D array, or
+            `cs_weights` is invalid.
         """
         self._validate_params()
         X = skv.validate_data(
@@ -136,10 +136,16 @@ class CSWinsorizer(BaseCSTransformer):
         cs_weights = _validate_cs_weights(X=X, cs_weights=cs_weights)
 
         X_estimation = _mask_non_estimation_values(X=X, cs_weights=cs_weights)
-
-        q_lo, q_hi = np.nanpercentile(
-            X_estimation, [self.low * 100, self.high * 100], axis=1, keepdims=True
-        )
+        any_finite = np.isfinite(X_estimation).any(axis=1)
+        q_bounds = np.full((2, X.shape[0], 1), np.nan, dtype=float)
+        if np.any(any_finite):
+            q_bounds[:, any_finite] = np.nanpercentile(
+                X_estimation[any_finite],
+                [self.low * 100, self.high * 100],
+                axis=1,
+                keepdims=True,
+            )
+        q_lo, q_hi = q_bounds
 
         # Numpy clip preserves NaNs from X
         np.clip(X, q_lo, q_hi, out=X)

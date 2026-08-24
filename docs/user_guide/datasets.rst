@@ -6,7 +6,7 @@
 Datasets
 ********
 
-`skfolio` comes with three natives datasets available via:
+`skfolio` comes with three native datasets available via:
 
     * :func:`load_sp500_dataset`
     * :func:`load_sp500_index`
@@ -23,6 +23,11 @@ By default the data directory is set to a folder named "skfolio_data" in the use
 folder. Alternatively, it can be set by the `SKFOLIO_DATA` environment variable.
 If the folder does not already exist, it is automatically created.
 
+For characteristics-based factor models, :func:`make_synthetic_characteristics`
+generates a synthetic :class:`~skfolio.containers.AssetPanel` with the market and
+fundamental fields used by the default descriptors and
+:class:`~skfolio.prior.CharacteristicsFactorModel`. Use it for examples, tests, and
+local prototyping when you do not have a point-in-time fundamentals feed.
 
 .. caution::
     This dataset is provided solely for testing and example purposes. It is a stale
@@ -32,7 +37,7 @@ If the folder does not already exist, it is automatically created.
 
 **Example:**
 
-Loading the SPX 500 dataset, which  contains daily adjusted closing prices for 20
+Loading the S&P 500 dataset, which contains daily adjusted closing prices for 20
 selected constituents of the S&P 500 Index, covering the period from 1990-01-02 to
 2022-12-28:
 
@@ -42,4 +47,13 @@ selected constituents of the S&P 500 Index, covering the period from 1990-01-02 
 
     prices = load_sp500_dataset()
     print(prices.head())
+
+Generating a synthetic characteristics panel:
+
+.. code-block:: python
+
+    from skfolio.datasets import make_synthetic_characteristics
+
+    panel = make_synthetic_characteristics(n_assets=200, n_observations=1000)
+    print(panel.n_assets, panel.n_observations)
 

@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-import warnings
-
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -79,7 +77,7 @@ class EWMu(BaseMu):
     where :math:`S_i` is the raw internal EWMA accumulator. For assets with a long
     history, the correction is negligible (:math:`\lambda^{n_i} \to 0`).
 
-    The ``min_observations`` parameter controls a warm-up period: an asset's
+    The `min_observations` parameter controls a warm-up period: an asset's
     mean estimate remains NaN in the output until it has accumulated enough
     valid observations for a reliable estimate.
 
@@ -108,10 +106,10 @@ class EWMu(BaseMu):
 
     min_observations : int, optional
         Minimum number of valid observations per asset before its mean estimate
-        is considered reliable and exposed in the output ``mu_``. Until this
+        is considered reliable and exposed in the output `mu_`. Until this
         threshold is reached, the asset's mean estimate remains NaN.
 
-        The default (``None``) uses ``int(half_life)`` as the threshold, ensuring
+        The default (`None`) uses `int(half_life)` as the threshold, ensuring
         the late-listing initialization bias has decayed to at most 50%. Set to
         1 to disable warm-up entirely.
 
@@ -128,19 +126,13 @@ class EWMu(BaseMu):
         Truncating to a reasonable window (e.g., 252 trading days) speeds up
         computation without materially affecting results.
 
-        The default (``None``) uses all available data.
-
-    alpha : float, optional
-        .. deprecated:: 0.17.0
-            `alpha` is deprecated and will be removed in a future version.
-            Use `half_life` instead. Note: ``alpha = 1 - decay_factor`` and
-            ``half_life = -ln(2) / ln(1 - alpha)``.
+        The default (`None`) uses all available data.
 
     Attributes
     ----------
     mu_ : ndarray of shape (n_assets,)
        Estimated expected returns of the assets. Contains NaN for assets that are
-       inactive or have not yet accumulated ``min_observations`` valid
+       inactive or have not yet accumulated `min_observations` valid
        observations.
 
     n_features_in_ : int
@@ -189,15 +181,13 @@ class EWMu(BaseMu):
 
     def __init__(
         self,
-        half_life: float | None = None,
+        half_life: float = 40,
         min_observations: int | None = None,
         window_size: int | None = None,
-        alpha: float | None = None,
     ) -> None:
         self.half_life = half_life
         self.min_observations = min_observations
         self.window_size = window_size
-        self.alpha = alpha
 
     def fit(
         self,
@@ -220,9 +210,9 @@ class EWMu(BaseMu):
         active_mask : array-like of shape (n_observations, n_assets), optional
             Boolean mask indicating whether each asset is structurally active at
             each observation. Use this to distinguish between holidays
-            (``active_mask=True`` and NaN return: mean is frozen) and inactive
+            (`active_mask=True` and NaN return: mean is frozen) and inactive
             periods such as pre-listing or post-delisting
-            (``active_mask=False``: mean is set to NaN). If ``None``
+            (`active_mask=False`: mean is set to NaN). If `None`
             (default), all assets are assumed active.
 
         Returns
@@ -257,9 +247,9 @@ class EWMu(BaseMu):
         active_mask : array-like of shape (n_observations, n_assets), optional
             Boolean mask indicating whether each asset is structurally active at
             each observation. Use this to distinguish between holidays
-            (``active_mask=True`` and NaN return: mean is frozen) and inactive
+            (`active_mask=True` and NaN return: mean is frozen) and inactive
             periods such as pre-listing or post-delisting
-            (``active_mask=False``: mean is set to NaN). If ``None``
+            (`active_mask=False`: mean is set to NaN). If `None`
             (default), all assets are assumed active.
 
         Returns
@@ -304,29 +294,9 @@ class EWMu(BaseMu):
 
     def _validate_params(self) -> None:
         """Validate parameters."""
-        if self.alpha is not None and self.half_life is not None:
+        if self.half_life <= 0:
             raise ValueError(
-                "Cannot specify both 'alpha' and 'half_life'. "
-                "Use 'half_life' (alpha is deprecated)."
-            )
-
-        if self.alpha is not None:
-            warnings.warn(
-                "The 'alpha' parameter is deprecated and will be removed in "
-                "a future version. Use 'half_life' instead. "
-                "Conversion: half_life = -ln(2) / ln(1 - alpha).",
-                FutureWarning,
-                stacklevel=4,
-            )
-            if not (0.0 < self.alpha < 1.0):
-                raise ValueError(
-                    f"alpha must satisfy 0 < alpha < 1 (got {self.alpha})."
-                )
-
-        half_life = self._get_half_life()
-        if half_life <= 0:
-            raise ValueError(
-                f"half_life must be positive (got {half_life}). "
+                f"half_life must be positive (got {self.half_life}). "
                 f"Typical values: 10-100 observations."
             )
 
@@ -335,10 +305,8 @@ class EWMu(BaseMu):
                 f"window_size must be a positive integer, got {self.window_size}"
             )
 
-        self._half_life = half_life
-
         if self.min_observations is None:
-            self._min_observations = max(1, int(half_life))
+            self._min_observations = max(1, int(self.half_life))
         else:
             if self.min_observations < 1:
                 raise ValueError(
@@ -346,25 +314,15 @@ class EWMu(BaseMu):
                 )
             self._min_observations = self.min_observations
 
-    def _get_half_life(self) -> float:
-        """Get the effective half-life, handling deprecated alpha."""
-        if self.alpha is not None:
-            decay_factor = 1.0 - self.alpha
-            return -np.log(2) / np.log(decay_factor)
-        elif self.half_life is not None:
-            return self.half_life
-        else:
-            return 40.0
-
     def _initialize(self) -> None:
         """Initialize internal state.
 
-        ``_mu`` is zero-initialized (never NaN) so that EWMA arithmetic needs
+        `_mu` is zero-initialized (never NaN) so that EWMA arithmetic needs
         no NaN-fill step. Active membership is tracked separately;
         NaN is applied only at output time.
         """
         n_assets = self.n_features_in_
-        self._decay = half_life_to_decay_factor(self._half_life)
+        self._decay = half_life_to_decay_factor(self.half_life)
         self._mu = np.zeros(n_assets)
         self._is_active = np.ones(n_assets, dtype=bool)
         self._obs_count = np.zeros(n_assets, dtype=int)

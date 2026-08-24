@@ -7,7 +7,7 @@ This tutorial shows how to incorporate a tracking error constraint into the
 :class:`~skfolio.optimization.MeanRisk` optimization.
 
 The tracking error is defined as the RMSE (root-mean-square error) of the portfolio
-returns compared to a target returns.
+returns compared to target returns.
 
 In this example we will create a long-short portfolio of 20 stocks that tracks the
 SPX Index with a tracking error constraint of 0.30% while minimizing the CVaR

@@ -25,13 +25,14 @@ import skfolio.typing as skt
 from skfolio.measures import BaseMeasure, RatioMeasure
 from skfolio.metrics._scorer import _BaseScorer, _EstimatorScorer
 from skfolio.model_selection._validation import (
+    _apply_entry_rebalancing_params,
     _asset_names_enabled,
     _get_last_step,
     _is_portfolio_optimization_estimator,
     _route_params,
 )
 from skfolio.model_selection._walk_forward import WalkForward
-from skfolio.portfolio import MultiPeriodPortfolio
+from skfolio.portfolio import FailedPortfolio, MultiPeriodPortfolio
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import fit_single_estimator
 
@@ -54,6 +55,7 @@ def online_predict(
     reduce_test: bool = False,
     params: dict | None = None,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> MultiPeriodPortfolio:
     r"""Generate out-of-sample portfolios using online learning.
 
@@ -128,6 +130,15 @@ def online_predict(
         Additional parameters forwarded to the resulting
         :class:`~skfolio.portfolio.MultiPeriodPortfolio`.
 
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio. This is
+        useful when the strategy starts with no existing position, while later
+        portfolios represent regular rebalancing from the previously predicted weights.
+        For example, the entry rebalancing can relax `max_turnover` or use lower
+        `transaction_costs` to avoid a slow ramp from cash caused by recurring
+        rebalancing constraints. The first portfolio is included in the result; the
+        regular estimator parameters are restored before the next online update.
+
     Returns
     -------
     prediction : MultiPeriodPortfolio
@@ -193,6 +204,7 @@ def online_predict(
         purged_size=purged_size,
         reduce_test=reduce_test,
         portfolio_params=portfolio_params,
+        entry_rebalancing_params=entry_rebalancing_params,
     )
 
 
@@ -211,6 +223,7 @@ def online_score(
     params: dict | None = None,
     per_step: bool = False,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> float | dict[str, float] | FloatArray | dict[str, FloatArray]:
     r"""Score an online estimator using walk-forward evaluation.
 
@@ -303,6 +316,15 @@ def online_score(
         :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring a
         portfolio optimization estimator.
 
+    entry_rebalancing_params : dict, optional
+        Estimator parameters applied only while constructing the first portfolio of a
+        portfolio estimator. This is useful when the strategy starts with no existing
+        position, while later portfolios represent regular rebalancing from the
+        previously predicted weights. For example, the entry rebalancing can relax
+        `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
+        caused by recurring rebalancing constraints. The regular estimator parameters
+        are restored before the next online update.
+
     Returns
     -------
     score : float | dict[str, float] | ndarray | dict[str, ndarray]
@@ -373,6 +395,12 @@ def online_score(
     is_portfolio = _is_portfolio_optimization_estimator(estimator)
     _validate_scoring(scoring, is_portfolio)
 
+    if entry_rebalancing_params is not None and not is_portfolio:
+        raise ValueError(
+            "`entry_rebalancing_params` is only supported for portfolio optimization "
+            "estimators."
+        )
+
     if per_step and is_portfolio:
         raise ValueError(
             "per_step=True is not supported for portfolio optimization "
@@ -410,6 +438,7 @@ def online_score(
         purged_size=purged_size,
         reduce_test=reduce_test,
         portfolio_params=portfolio_params,
+        entry_rebalancing_params=entry_rebalancing_params,
     )
     return agg
 
@@ -563,6 +592,7 @@ def _online_predict(
     reduce_test: bool = False,
     refit_last: bool = False,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> MultiPeriodPortfolio:
     """Online prediction.
 
@@ -579,31 +609,43 @@ def _online_predict(
     last_step = _get_last_step(estimator)
     needs_prev_weights = getattr(last_step, "needs_previous_weights", False)
     use_dict = _asset_names_enabled(X)
-    prev_weights = last_step.previous_weights if needs_prev_weights else None
+    previous_params = _apply_entry_rebalancing_params(
+        estimator, entry_rebalancing_params
+    )
+    first_optimization = True
 
     portfolios = []
-    for test_slice in _online_walk_forward(
-        estimator,
-        X,
-        y,
-        warmup_size,
-        test_size,
-        routed_params,
-        freq=freq,
-        freq_offset=freq_offset,
-        previous=previous,
-        purged_size=purged_size,
-        reduce_test=reduce_test,
-        refit_last=refit_last,
-    ):
-        if needs_prev_weights:
-            last_step.set_params(previous_weights=prev_weights)
+    try:
+        for test_slice in _online_walk_forward(
+            estimator,
+            X,
+            y,
+            warmup_size,
+            test_size,
+            routed_params,
+            freq=freq,
+            freq_offset=freq_offset,
+            previous=previous,
+            purged_size=purged_size,
+            reduce_test=reduce_test,
+            refit_last=refit_last,
+        ):
+            portfolio = estimator.predict(X[test_slice])
+            portfolios.append(portfolio)
 
-        portfolio = estimator.predict(X[test_slice])
-        portfolios.append(portfolio)
+            if first_optimization:
+                if previous_params is not None:
+                    last_step.set_params(**previous_params)
+                    previous_params = None
+                first_optimization = False
 
-        if needs_prev_weights:
-            prev_weights = portfolio.weights_dict if use_dict else portfolio.weights
+            if needs_prev_weights and not isinstance(portfolio, FailedPortfolio):
+                prev_weights = portfolio.weights_dict if use_dict else portfolio.weights
+                # _online_walk_forward updates the estimator before yielding again.
+                last_step.set_params(previous_weights=prev_weights)
+    finally:
+        if previous_params is not None:
+            last_step.set_params(**previous_params)
 
     return MultiPeriodPortfolio(portfolios=portfolios, **portfolio_params)
 
@@ -686,6 +728,7 @@ def _evaluate_online(
     reduce_test: bool = False,
     refit_last: bool = False,
     portfolio_params: dict | None = None,
+    entry_rebalancing_params: dict | None = None,
 ) -> tuple[float | dict[str, float], MultiPeriodPortfolio | None]:
     """Unified online evaluation dispatcher.
 
@@ -721,6 +764,7 @@ def _evaluate_online(
             reduce_test=reduce_test,
             refit_last=refit_last,
             portfolio_params=portfolio_params,
+            entry_rebalancing_params=entry_rebalancing_params,
         )
         if multi_scoring:
             agg = {
@@ -759,7 +803,7 @@ def _score_multi_period_portfolio(
     multi_period_portfolio: MultiPeriodPortfolio,
     scoring: BaseMeasure | None,
 ) -> float:
-    """Score a :class:`MultiPeriodPortfolio` using a measure.
+    """Score a :class:`~skfolio.portfolio.MultiPeriodPortfolio` using a measure.
 
     Risk measures are negated so that higher is always better.
 

@@ -38,7 +38,7 @@ print(X_train.head())
 # We create a Maximum Sharpe Ratio model and then fit it on the training set.
 # `portfolio_params` are parameters passed to the :class:`~skfolio.portfolio.Portfolio`
 # returned by the `predict` method. It can be
-# omitted, here we use it to give a name to our maximum Sharpe Ration portfolio:
+# omitted, here we use it to give a name to our maximum Sharpe Ratio portfolio:
 model = MeanRisk(
     risk_measure=RiskMeasure.STANDARD_DEVIATION,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,

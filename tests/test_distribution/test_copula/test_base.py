@@ -35,7 +35,7 @@ def test_validate_X_wrong_shape():
     cop = GaussianCopula()
 
     # 3 columns -> should fail
-    with pytest.raises(ValueError, match="X must contains two columns"):
+    with pytest.raises(ValueError, match="X must contain two columns"):
         data_3cols = np.random.rand(10, 3)
         cop._validate_X(data_3cols, reset=True)
 

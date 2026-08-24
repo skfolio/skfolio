@@ -162,21 +162,9 @@ class BenchmarkTracker(MeanRisk):
         Add a custom objective to the existing objective expression.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        The callable must accept the weights as its first argument. It can optionally
-        accept the estimator instance as its second argument, allowing access to the
-        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
-        expressions.
-
-        For example, the estimator instance can provide its `budget` attribute:
-
-        >>> from skfolio.optimization import MeanRisk
-        >>> def custom_constraints(weights, estimator):
-        ...     return [weights >= estimator.budget / 20]
-        >>> model = MeanRisk(add_constraints=custom_constraints)
-
-        The custom constraint is evaluated when `fit` is called.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
 
     portfolio_params : dict, optional
         Portfolio parameters.
@@ -310,7 +298,7 @@ class BenchmarkTracker(MeanRisk):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -336,7 +324,7 @@ class BenchmarkTracker(MeanRisk):
                 f"DataFrame/array, got shape {y.shape}."
             )
 
-        X, y = skv.validate_data(self, X, y)
+        X, y = skv.validate_data(self, X, y, ensure_all_finite="allow-nan")
 
         excess_returns = X - y[:, np.newaxis]
 

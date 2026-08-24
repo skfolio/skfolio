@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pickle
+
 import numpy as np
 import pytest
 import sklearn.model_selection as sks
@@ -17,13 +19,13 @@ from skfolio.model_selection import (
     WalkForward,
     cross_val_predict,
 )
-from skfolio.model_selection import _validation as msv
 from skfolio.model_selection._validation import _route_params
 from skfolio.moments import (
     EWCovariance,
     ImpliedCovariance,
 )
 from skfolio.optimization import InverseVolatility, MeanRisk, ObjectiveFunction
+from skfolio.optimization._base import BaseOptimization
 from skfolio.pre_selection import SelectKExtremes
 from skfolio.prior import EmpiricalPrior
 
@@ -32,6 +34,55 @@ def assert_weights_dict_subset_equal(d1: dict, d2: dict, tol: float = 1e-15) -> 
     """True iff for every key k in d2 d1.get(k, 0.0) matches d2[k] within tol."""
     for k, b in d2.items():
         assert abs(d1.get(k, 0.0) - b) < tol
+
+
+class PreviousWeightsAwareOptimization(BaseOptimization):
+    """Optimization estimator whose weights reveal previous weights and scale."""
+
+    def __init__(
+        self,
+        portfolio_params: dict | None = None,
+        fallback=None,
+        previous_weights=None,
+        raise_on_failure: bool = True,
+        scale: float = 1.0,
+    ):
+        super().__init__(
+            portfolio_params=portfolio_params,
+            fallback=fallback,
+            previous_weights=previous_weights,
+            raise_on_failure=raise_on_failure,
+        )
+        self.scale = scale
+
+    @property
+    def needs_previous_weights(self) -> bool:
+        return True
+
+    def fit(self, X, y=None):
+        X_arr = np.asarray(X)
+        n_assets = X_arr.shape[1]
+        self.n_features_in_ = n_assets
+        if hasattr(X, "columns"):
+            self.feature_names_in_ = np.asarray(X.columns, dtype=object)
+
+        previous_weights = self._previous_weights_array(X, n_assets)
+        increment = np.zeros(n_assets)
+        increment[0] = self.scale
+        self.weights_ = previous_weights + increment
+        return self
+
+    def _previous_weights_array(self, X, n_assets: int):
+        if self.previous_weights is None:
+            return np.zeros(n_assets)
+        if np.isscalar(self.previous_weights):
+            return np.full(n_assets, float(self.previous_weights))
+        if isinstance(self.previous_weights, dict):
+            return np.asarray(
+                [self.previous_weights.get(asset, 0.0) for asset in X.columns],
+                dtype=float,
+            )
+        return np.asarray(self.previous_weights, dtype=float)
 
 
 def test_validation(X):
@@ -112,22 +163,49 @@ def test_route_params_partial_fit_error_message(X):
     assert "set_fit_request" not in message
 
 
-def test_route_params_raises_on_unexpected_estimator_payload(monkeypatch):
-    malformed = sku.Bunch(estimator=sku.Bunch(unexpected={"foo": "bar"}))
-
-    monkeypatch.setattr(msv, "_routing_enabled", lambda: True)
-    monkeypatch.setattr(msv.skm, "process_routing", lambda *args, **kwargs: malformed)
-
-    with pytest.raises(
-        RuntimeError,
-        match="unexpected estimator payload",
-    ):
-        _route_params(
-            MeanRisk(),
-            params={"foo": np.array([1.0])},
-            owner="cross_val_predict",
-            callee="fit",
+def test_route_params_picklable_without_metadata():
+    # `process_routing` returns a private placeholder that cannot be pickled when no
+    # metadata is passed, which breaks the process-based parallel paths.
+    with config_context(enable_metadata_routing=True):
+        routed_params = _route_params(
+            EWCovariance(),
+            owner="online_score",
+            callee="partial_fit",
+            cv=KFold(2),
         )
+
+    assert isinstance(routed_params, sku.Bunch)
+    assert set(routed_params) == {"estimator_params", "splitter"}
+    assert routed_params.estimator_params == {}
+    assert routed_params.splitter.split == {}
+
+    restored = pickle.loads(pickle.dumps(routed_params))
+    assert restored.estimator_params == {}
+    assert restored.splitter.split == {}
+
+
+def test_route_params_picklable_with_metadata(X):
+    active_mask = np.ones(X.shape, dtype=bool)
+
+    with config_context(enable_metadata_routing=True):
+        routed_params = _route_params(
+            EWCovariance().set_partial_fit_request(active_mask=True),
+            params={"active_mask": active_mask},
+            owner="online_score",
+            callee="partial_fit",
+            cv=KFold(2),
+        )
+
+    assert isinstance(routed_params, sku.Bunch)
+    assert set(routed_params) == {"estimator_params", "splitter"}
+    np.testing.assert_array_equal(
+        routed_params.estimator_params["active_mask"], active_mask
+    )
+    assert routed_params.splitter.split == {}
+
+    restored = pickle.loads(pickle.dumps(routed_params))
+    np.testing.assert_array_equal(restored.estimator_params["active_mask"], active_mask)
+    assert restored.splitter.split == {}
 
 
 def test_cross_val_predict_non_portfolio_estimator_raises(X):
@@ -161,6 +239,36 @@ def test_optim_with_previous_weights_walk_forward(X):
         np.testing.assert_almost_equal(pred[i - 1].weights, pred[i].previous_weights)
         assert_weights_dict_subset_equal(
             pred[i - 1].weights_dict, pred[i].previous_weights_dict
+        )
+
+
+def test_entry_rebalancing_params_walk_forward(X):
+    cv = WalkForward(test_size=300, train_size=400)
+    pred = cross_val_predict(
+        PreviousWeightsAwareOptimization(),
+        X,
+        cv=cv,
+        entry_rebalancing_params={"scale": 2.0},
+    )
+
+    assert len(pred) >= 2
+    first_expected = np.zeros(X.shape[1])
+    first_expected[0] = 2.0
+    second_expected = first_expected.copy()
+    second_expected[0] = 3.0
+
+    np.testing.assert_array_equal(pred[0].weights, first_expected)
+    np.testing.assert_array_equal(pred[1].previous_weights, first_expected)
+    np.testing.assert_array_equal(pred[1].weights, second_expected)
+
+
+def test_entry_rebalancing_params_rejects_non_sequential_cv(X):
+    with pytest.raises(ValueError, match="entry_rebalancing_params"):
+        cross_val_predict(
+            MeanRisk(),
+            X,
+            cv=KFold(),
+            entry_rebalancing_params={"max_weights": 0.1},
         )
 
 

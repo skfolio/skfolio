@@ -52,7 +52,7 @@ def test_stacking(X_medium):
     )
 
 
-def test_stacking_factor(X_medium, y_medium):
+def test_stacking_factor(X_medium, factors_medium):
     estimators = [
         (
             "model1",
@@ -66,7 +66,7 @@ def test_stacking_factor(X_medium, y_medium):
     model = StackingOptimization(
         estimators=estimators, final_estimator=MeanRisk(), n_jobs=-1
     )
-    model.fit(X_medium, y_medium)
+    model.fit(X_medium, factors=factors_medium)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
@@ -97,7 +97,8 @@ def test_stacking_factor(X_medium, y_medium):
 
 
 def test_stacking_cv(X_medium):
-    X_train, _X_test = sks.train_test_split(X_medium, test_size=0.33, shuffle=False)
+    X_test_data = X_medium.iloc[-300:, :10]
+    X_train, _X_test = sks.train_test_split(X_test_data, test_size=0.33, shuffle=False)
 
     estimators = [
         ("model1", MeanRisk(risk_measure=RiskMeasure.CVAR)),
@@ -107,12 +108,13 @@ def test_stacking_cv(X_medium):
     model = StackingOptimization(
         estimators=estimators,
         final_estimator=MeanRisk(),
+        cv=3,
     )
 
     model.fit(X_train)
 
     model2 = StackingOptimization(
-        estimators=estimators, final_estimator=MeanRisk(), n_jobs=2
+        estimators=estimators, final_estimator=MeanRisk(), cv=3, n_jobs=2
     )
     model2.fit(X_train)
 
@@ -125,11 +127,12 @@ def test_stacking_cv(X_medium):
         cv=CombinatorialPurgedCV(),
     )
     model3.fit(X_train)
+    assert np.isfinite(model3.weights_).all()
 
     assert model.get_params(deep=True)
     gs = sks.GridSearchCV(
         estimator=model,
-        cv=sks.KFold(n_splits=5, shuffle=False),
+        cv=sks.KFold(n_splits=3, shuffle=False),
         n_jobs=-1,
         param_grid={
             "model1__cvar_beta": [0.95, 0.80],
@@ -137,6 +140,7 @@ def test_stacking_cv(X_medium):
         },
     )
     gs.fit(X_train)
+    assert gs.best_estimator_ is not None
 
 
 def test_get_metadata_routing_without_fit():

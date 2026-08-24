@@ -165,7 +165,7 @@ class ShrunkMu(BaseMu):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -211,7 +211,7 @@ class ShrunkMu(BaseMu):
         # Calculate Estimators
         match self.method:
             case ShrunkMuMethods.JAMES_STEIN:
-                eigenvalues = np.linalg.eigvals(covariance)
+                eigenvalues = np.linalg.eigvalsh(covariance)
                 self.beta_ = (
                     (np.sum(eigenvalues) - 2 * np.max(eigenvalues))
                     / np.sum((sample_mu - self.mu_target_) ** 2)

@@ -52,6 +52,7 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.ruff_cache/
 
 # Translations
 *.mo
@@ -138,7 +139,10 @@ docs/auto_pyvista_examples
 docs/tutorials/
 docs/gen_modules/
 docs/generated/
-docs/jupyterlite_contents
+docs/_contents
+
+# JupyterLite build cache
+.jupyterlite.doit.db
 
 # Test builds
 sphinx_gallery/tests/tinybuild/gen_modules/
@@ -146,6 +150,9 @@ sphinx_gallery/tests/tinybuild/auto_examples/
 sphinx_gallery/tests/tinybuild/_build/
 sphinx_gallery/tests/tinybuild/tiny_html/
 junit-results.xml
+
+# Local agent instructions
+/AGENTS.md
 
 # Cursor editor workspace
 .cursor/

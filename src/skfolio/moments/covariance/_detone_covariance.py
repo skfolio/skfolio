@@ -42,7 +42,7 @@ class DetoneCovariance(BaseCovariance):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -122,7 +122,7 @@ class DetoneCovariance(BaseCovariance):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

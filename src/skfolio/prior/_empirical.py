@@ -7,26 +7,55 @@
 from __future__ import annotations
 
 import numbers
+import warnings
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import BaseCovariance, BaseMu, EmpiricalCovariance, EmpiricalMu
-from skfolio.prior._base import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, ObjArray
+from skfolio.prior._base import BasePrior
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, BoolArray, StrArray
 from skfolio.utils._array_buffer import _ArrayBuffer
 from skfolio.utils.tools import _call_estimator, check_estimator
 
 _FITTED_ATTR = "return_distribution_"
 
+# Fraction of zero-filled observations above which an investable asset triggers a
+# UserWarning about understated risk in scenario-based measures.
+_ZERO_FILL_WARNING_THRESHOLD = 0.05
 
-# TODO for next release: allow NANs and align NANs policy inside ReturnDistribution dataclass.
+# Maximum number of assets named in the zero-fill warning message.
+_ZERO_FILL_WARNING_MAX_ASSETS = 10
+
+
 class EmpiricalPrior(BasePrior):
     """Empirical Prior estimator.
 
     The Empirical Prior estimates the :class:`~skfolio.prior.ReturnDistribution` by
     fitting a `mu_estimator` and a `covariance_estimator` separately.
+
+    **NaN handling:**
+
+    Missing data (NaN returns) caused by late listings, delistings and holidays is
+    accepted when both `mu_estimator` and `covariance_estimator` support it (for
+    example :class:`~skfolio.moments.EWMu` and
+    :class:`~skfolio.moments.EWCovariance`). The moment estimators receive the data
+    unchanged and apply their own NaN treatment.
+
+    In `return_distribution_.returns`, the scenario columns of non-investable
+    assets (NaN in the estimated `mu` and/or covariance diagonal) are left
+    unchanged and are removed downstream by
+    :meth:`~skfolio.prior.ReturnDistribution.investable_subset`. Missing
+    observations of investable assets are replaced by zero.
+
+    Zero-filling long gaps, such as the pre-listing history of a late-listed
+    asset, understates its risk in scenario-based measures (CVaR, EVaR, CDaR,
+    worst realization, ...). A `UserWarning` is emitted when more than 5% of an
+    investable asset's scenario history is zero-filled. The moments estimation is
+    not affected. To reduce the zero-filled share, set `max_history` or use a
+    factor model prior such as :class:`~skfolio.prior.CharacteristicsFactorModel`.
 
     Parameters
     ----------
@@ -94,7 +123,7 @@ class EmpiricalPrior(BasePrior):
     mu_estimator_: BaseMu
     covariance_estimator_: BaseCovariance
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -116,7 +145,9 @@ class EmpiricalPrior(BasePrior):
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
+            Price returns of the assets. May contain NaN (holidays, late
+            listings, delistings) when both `mu_estimator` and
+            `covariance_estimator` handle missing data.
 
         y : Ignored
             Not used, present for API consistency by convention.
@@ -124,7 +155,7 @@ class EmpiricalPrior(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -148,7 +179,9 @@ class EmpiricalPrior(BasePrior):
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
+            Price returns of the assets. May contain NaN (holidays, late
+            listings, delistings) when both `mu_estimator` and
+            `covariance_estimator` handle missing data.
 
         y : Ignored
             Not used, present for API consistency by convention.
@@ -156,7 +189,7 @@ class EmpiricalPrior(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -255,7 +288,7 @@ class EmpiricalPrior(BasePrior):
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
-        X = skv.validate_data(self, X, ensure_all_finite=True, reset=first_call)
+        X = skv.validate_data(self, X, ensure_all_finite="allow-nan", reset=first_call)
 
         # Accumulate returns with amortized O(1) appends
         if first_call:
@@ -265,12 +298,65 @@ class EmpiricalPrior(BasePrior):
         if self.max_history is not None:
             self._returns_buffer.truncate_to_last(self.max_history)
 
+        # Zero-fill missing observations of investable assets so that the return
+        # scenarios stay usable by scenario-based risk measures. Columns of
+        # non-investable assets are left unchanged and are removed downstream by
+        # `ReturnDistribution.investable_subset`.
+        returns = self._returns_buffer.array
+        investable = np.isfinite(mu) & np.isfinite(np.diag(covariance))
+        missing = np.isnan(returns) & investable
+        if missing.any():
+            self._warn_zero_fill(missing)
+            returns = returns.copy()
+            returns[missing] = 0.0
+
         self.return_distribution_ = ReturnDistribution(
             mu=mu,
             covariance=covariance,
-            returns=self._returns_buffer.array,
+            returns=returns,
         )
         return self
+
+    def _warn_zero_fill(self, missing: BoolArray) -> None:
+        """Warn when the zero-filled share of an investable asset is material.
+
+        A `UserWarning` is emitted for assets whose zero-filled fraction of the
+        current scenario history exceeds 5%. Each asset is reported once per
+        fitted state so that streaming `partial_fit` calls do not repeat the
+        warning.
+
+        Parameters
+        ----------
+        missing : ndarray of shape (n_observations, n_assets)
+            Boolean mask of the zero-filled entries.
+        """
+        fill_ratios = missing.mean(axis=0)
+        new = [
+            i
+            for i in np.flatnonzero(fill_ratios > _ZERO_FILL_WARNING_THRESHOLD)
+            if i not in self._zero_fill_warned_assets
+        ]
+        if not new:
+            return
+        self._zero_fill_warned_assets.update(new)
+
+        names = getattr(self, "feature_names_in_", np.arange(missing.shape[1]))
+        details = ", ".join(
+            f"{names[i]} ({fill_ratios[i]:.1%})"
+            for i in new[:_ZERO_FILL_WARNING_MAX_ASSETS]
+        )
+        if len(new) > _ZERO_FILL_WARNING_MAX_ASSETS:
+            details += f", ... ({len(new)} assets in total)"
+
+        warnings.warn(
+            f"More than {_ZERO_FILL_WARNING_THRESHOLD:.0%} of the return scenarios "
+            f"of the following assets are zero-filled missing observations: "
+            f"{details}. This understates their risk in scenario-based measures "
+            "(CVaR, EVaR, CDaR, ...) but does not affect `mu` and `covariance`. "
+            "Set `max_history` or use a factor model prior to reduce the "
+            "zero-filled share.",
+            stacklevel=2,
+        )
 
     def _validate_params(self) -> None:
         """Validate parameters."""
@@ -302,6 +388,7 @@ class EmpiricalPrior(BasePrior):
                 )
 
     def _initialize(self):
+        self._zero_fill_warned_assets = set()
         self.mu_estimator_ = check_estimator(
             self.mu_estimator,
             default=EmpiricalMu(),

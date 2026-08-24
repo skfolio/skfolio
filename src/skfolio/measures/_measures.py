@@ -277,7 +277,7 @@ def semi_deviation(
     sample_weight: FloatArray | None = None,
     biased: bool = False,
 ) -> float | FloatArray:
-    """Compute the semi deviation (square root of the second lower partial moment).
+    """Compute the semi-deviation (square root of the second lower partial moment).
 
     Parameters
     ----------

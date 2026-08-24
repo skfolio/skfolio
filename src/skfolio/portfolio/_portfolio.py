@@ -1,6 +1,6 @@
 """Portfolio module.
 `Portfolio` is returned by the `predict` method of Optimization estimators.
-It needs to be homogeneous to the convex optimization problems meaning that `Portfolio`
+It must be consistent with the convex optimization problems, meaning that `Portfolio`
 is the dot product of the assets weights with the assets returns.
 """
 
@@ -11,22 +11,30 @@ is the dot product of the assets weights with the assets returns.
 from __future__ import annotations
 
 import numbers
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pandas as pd
 
 import skfolio.typing as skt
-from skfolio._constants import _ParamKey
+from skfolio._constants import (
+    _MANAGEMENT_FEES,
+    _PREVIOUS_WEIGHTS,
+    _TRANSACTION_COSTS,
+)
+from skfolio.attribution import Attribution
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
-from skfolio.typing import ArrayLike, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
     args_names,
     cached_property_slots,
     default_asset_names,
     input_to_array,
 )
+
+if TYPE_CHECKING:
+    from skfolio.prior import FactorModel
 
 
 class Portfolio(BasePortfolio):
@@ -63,6 +71,9 @@ class Portfolio(BasePortfolio):
         indices will be considered as observations.
         Otherwise, we use `["x0", "x1", ..., "x(n_assets - 1)"]` as asset names
         and `[0, 1, ..., n_observations]` as observations.
+        `NaN` values are treated as zero returns for the portfolio return
+        computation (e.g. non-investable assets, delisted assets or trading
+        holidays), while the original `X` is preserved.
 
     weights : array-like of shape (n_assets,) | dict[str, float]
         Portfolio weights.
@@ -93,8 +104,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogeneous to the optimization problems, the periodicity of the
-            transaction costs needs to be homogeneous to the periodicity of the
+            To be consistent with the optimization problems, the periodicity of the
+            transaction costs must match the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `transaction_costs` need to be expressed in **daily** transaction costs.
 
@@ -120,8 +131,8 @@ class Portfolio(BasePortfolio):
 
         .. warning::
 
-            To be homogeneous to the optimization problems, the periodicity of the
-            management fees needs to be homogeneous to the periodicity of the
+            To be consistent with the optimization problems, the periodicity of the
+            management fees must match the periodicity of the
             returns `X`. For example, if `X` is composed of **daily** returns,
             the `management_fees` need to be expressed in **daily** fees.
 
@@ -149,7 +160,7 @@ class Portfolio(BasePortfolio):
         compute domination.
         The default (`None`) is to use the list [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
 
-    annualized_factor : float, default=252.0
+    annualization_factor : float, default=252.0
         Factor used to annualize the below measures using the square-root rule:
 
             * Annualized Mean = Mean * factor
@@ -443,9 +454,9 @@ class Portfolio(BasePortfolio):
             "X",
             "assets",
             "weights",
-            _ParamKey.PREVIOUS_WEIGHTS.value,
-            _ParamKey.TRANSACTION_COSTS.value,
-            _ParamKey.MANAGEMENT_FEES.value,
+            _PREVIOUS_WEIGHTS,
+            _TRANSACTION_COSTS,
+            _MANAGEMENT_FEES,
             "n_assets",
             "total_cost",
             "total_fee",
@@ -456,9 +467,9 @@ class Portfolio(BasePortfolio):
         # read-only
         "X",
         "weights",
-        _ParamKey.PREVIOUS_WEIGHTS.value,
-        _ParamKey.TRANSACTION_COSTS.value,
-        _ParamKey.MANAGEMENT_FEES.value,
+        _PREVIOUS_WEIGHTS,
+        _TRANSACTION_COSTS,
+        _MANAGEMENT_FEES,
         "assets",
         "n_assets",
         "total_cost",
@@ -480,7 +491,7 @@ class Portfolio(BasePortfolio):
         risk_free_rate: float = 0,
         name: str | None = None,
         tag: str | None = None,
-        annualized_factor: float = 252,
+        annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
         sample_weight: FloatArray | None = None,
@@ -494,6 +505,7 @@ class Portfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         fallback_chain: list[tuple[str, str]] | None = None,
+        **kwargs,
     ):
         # extract assets names from X
         assets = None
@@ -531,7 +543,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.PREVIOUS_WEIGHTS.value,
+                name=_PREVIOUS_WEIGHTS,
             )
 
         if transaction_costs is None:
@@ -543,7 +555,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.TRANSACTION_COSTS.value,
+                name=_TRANSACTION_COSTS,
             )
 
         if management_fees is None:
@@ -555,7 +567,7 @@ class Portfolio(BasePortfolio):
                 fill_value=0,
                 dim=1,
                 assets_names=assets,
-                name=_ParamKey.MANAGEMENT_FEES.value,
+                name=_MANAGEMENT_FEES,
             )
 
         # Default observations and assets if X is not a DataFrame
@@ -577,17 +589,8 @@ class Portfolio(BasePortfolio):
             total_fee = (management_fees * weights).sum()
 
         if weights_provided:
-            # Handle NaNs gracefully:
-            # - If an asset has NaN but weight is zero, ignore it
-            # - If weight is non-zero and value is NaN, result is NaN for that observation
-            nan_mask = np.isnan(rets)
-
-            if np.any(nan_mask):
-                irrelevant_nan = nan_mask & (weights == 0)
-                rets_clean = np.where(irrelevant_nan, 0.0, rets)
-                returns = weights @ rets_clean.T - total_cost - total_fee
-            else:
-                returns = weights @ rets.T - total_cost - total_fee
+            rets_clean = np.nan_to_num(rets, nan=0.0) if np.isnan(rets).any() else rets
+            returns = weights @ rets_clean.T - total_cost - total_fee
         else:
             returns = np.full(n_observations, np.nan)
 
@@ -600,7 +603,7 @@ class Portfolio(BasePortfolio):
             compounded=compounded,
             sample_weight=sample_weight,
             risk_free_rate=risk_free_rate,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
             cvar_beta=cvar_beta,
@@ -610,6 +613,7 @@ class Portfolio(BasePortfolio):
             drawdown_at_risk_beta=drawdown_at_risk_beta,
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
+            **kwargs,
         )
         self._loaded = False
         # We save the original array-like object and not the numpy copy for improved
@@ -736,7 +740,7 @@ class Portfolio(BasePortfolio):
 
     # Custom attribute getter (read-only and cached)
     @cached_property_slots
-    def nonzero_assets(self) -> ObjArray:
+    def nonzero_assets(self) -> StrArray:
         """Invested asset :math:`abs(weights) > 0.001%`."""
         return self.assets[self.nonzero_assets_index]
 
@@ -837,18 +841,18 @@ class Portfolio(BasePortfolio):
     def expected_returns_from_assets(
         self, assets_expected_returns: FloatArray
     ) -> float:
-        """Compute the Portfolio expected returns from the assets expected returns,
+        """Compute the portfolio expected return from expected asset returns,
         weights, management costs and transaction fees.
 
         Parameters
         ----------
         assets_expected_returns : ndarray of shape (n_assets,)
-            The vector of assets expected returns.
+            The vector of expected asset returns.
 
         Returns
         -------
         value : float
-            The Portfolio expected returns.
+            The portfolio expected return.
         """
         return (
             self.weights @ assets_expected_returns.T - self.total_cost - self.total_fee
@@ -971,6 +975,345 @@ class Portfolio(BasePortfolio):
             return self.weights[np.where(self.assets == asset)[0][0]]
         except IndexError:
             raise IndexError("{asset} is not a valid asset name.") from None
+
+    def predicted_attribution(
+        self,
+        factor_model: FactorModel,
+        compute_asset_breakdowns: bool = True,
+    ) -> Attribution:
+        r"""Ex-ante (predicted) factor risk and performance attribution.
+
+        Decomposes the portfolio's predicted risk and expected return into contributions
+        from individual factors and an idiosyncratic component using the factor model's
+        latest forecast estimates (`loading_matrix`, `factor_covariance`,
+        `idio_covariance`, `factor_mu`, `idio_mu`).
+
+        The annualization scaling uses `self.annualization_factor`.
+
+        Predicted attribution uses only these latest forecast estimates, so no
+        observation alignment is required. The `factor_model` may therefore cover a
+        different observation window than the portfolio.
+
+        The portfolio may hold a subset of the assets covered by the factor model and
+        weights are zero-filled for missing assets.
+
+        See :func:`~skfolio.attribution.predicted_factor_attribution`
+        for the full mathematical description.
+
+        Parameters
+        ----------
+        factor_model : FactorModel
+            Factor model whose latest forecast estimates are used. Every asset in
+            `self.assets` must appear in `factor_model.asset_names`.
+
+        compute_asset_breakdowns : bool, default=True
+            If `True`, compute per-asset systematic/idiosyncratic decomposition. Set to
+            `False` for faster computation when only portfolio-level results are needed.
+
+        Returns
+        -------
+        attribution : Attribution
+            Component-level, factor-level, and optionally asset-level attribution
+            results.
+
+        Raises
+        ------
+        ValueError
+            If the portfolio is a failed portfolio or if it holds assets not covered by
+            the factor model.
+        """
+        if self._is_failed_portfolio:
+            raise ValueError("Cannot compute factor attribution on a failed portfolio.")
+        aligned_weights = _align_weights(
+            self.weights, self.assets, factor_model.asset_names
+        )
+        return factor_model.predicted_attribution(
+            weights=aligned_weights,
+            annualization_factor=self.annualization_factor,
+            compute_asset_breakdowns=compute_asset_breakdowns,
+        )
+
+    def realized_attribution(
+        self,
+        factor_model: FactorModel,
+        compute_asset_breakdowns: bool = True,
+        compute_uncertainty: bool = True,
+    ) -> Attribution:
+        r"""Realized (ex-post) factor risk and performance attribution.
+
+        Decomposes the portfolio's realized risk and return into contributions from
+        individual factors and an idiosyncratic component using actual historical factor
+        returns, exposures, and residuals.
+
+        The annualization scaling uses `self.annualization_factor`.
+
+        Realized attribution is computed on the overlapping observation window between
+        the portfolio and the factor model. Portfolio observations outside the factor
+        model window, commonly caused by factor-model warmup or exposure lag, are
+        excluded. Missing portfolio observations inside the overlapping window raise
+        `ValueError`. Time-varying exposures follow the as-of indexing convention
+        described in
+        :func:`~skfolio.attribution.realized_factor_attribution`:
+        when `exposure_lag > 0`, exposures known at observation
+        :math:`t-\ell` are aligned with returns at observation :math:`t`.
+
+        The portfolio may hold a subset of the assets covered by the factor model and
+        weights are zero-filled for missing assets.
+
+        See :func:`~skfolio.attribution.realized_factor_attribution`
+        for the full mathematical description.
+
+        Parameters
+        ----------
+        factor_model : FactorModel
+            Factor model containing time-varying fields (`factor_returns`, `exposures`,
+            `idio_returns`) that overlap with the portfolio's observation period. Every
+            asset in `self.assets` must appear in `factor_model.asset_names`.
+
+        compute_asset_breakdowns : bool, default=True
+            If `True`, compute per-asset systematic/idiosyncratic attribution. Set to
+            `False` for faster computation when only portfolio-level results are needed.
+
+        compute_uncertainty : bool, default=True
+            If `True`, compute attribution uncertainty (standard errors on the factor
+            and idiosyncratic mean-return split).
+
+        Returns
+        -------
+        attribution : Attribution
+            Component-level, factor-level, and optionally asset-level attribution
+            results.
+
+        Raises
+        ------
+        ValueError
+            If the portfolio is a failed portfolio, if it holds assets not covered by
+            the factor model, if no portfolio observations overlap with the factor model
+            or if portfolio observations are missing inside the overlapping window.
+        """
+        aligned_weights, portfolio_returns, aligned_factor_model = (
+            _prepare_realized_attribution_inputs(self, factor_model)
+        )
+        return aligned_factor_model.realized_attribution(
+            weights=aligned_weights,
+            portfolio_returns=portfolio_returns,
+            annualization_factor=self.annualization_factor,
+            compute_asset_breakdowns=compute_asset_breakdowns,
+            compute_uncertainty=compute_uncertainty,
+        )
+
+    def rolling_realized_attribution(
+        self,
+        factor_model: FactorModel,
+        window_size: int = 60,
+        step: int = 21,
+        compute_asset_breakdowns: bool = True,
+        compute_asset_factor_contribs: bool = False,
+        compute_uncertainty: bool = True,
+    ) -> Attribution:
+        r"""Rolling realized (ex-post) factor risk and performance attribution.
+
+        Computes :func:`~skfolio.attribution.realized_factor_attribution`
+        over rolling windows, returning an :class:`~skfolio.attribution.Attribution`
+        where all numeric fields carry an additional leading dimension for the number
+        of windows.
+
+        Rolling realized attribution is computed on the overlapping observation window
+        between the portfolio and the factor model. Portfolio observations outside the
+        factor model window, commonly caused by factor-model warmup or exposure lag, are
+        excluded. Missing portfolio observations inside the overlapping window raise
+        `ValueError`. Time-varying exposures follow the as-of indexing convention
+        described in
+        :func:`~skfolio.attribution.rolling_realized_factor_attribution`.
+
+        The portfolio may hold a subset of the assets covered by the factor model and
+        weights are zero-filled for missing assets.
+
+        See :func:`~skfolio.attribution.rolling_realized_factor_attribution`
+        for the full mathematical description.
+
+        Parameters
+        ----------
+        factor_model : FactorModel
+            Factor model containing time-varying fields that overlap with the
+            portfolio's observation period.
+
+        window_size : int, default=60
+            Number of effective return periods in each rolling window.
+
+        step : int, default=21
+            Number of observations to advance between consecutive windows. The default
+            of 21 produces approximately monthly output for daily data.
+
+        compute_asset_breakdowns : bool, default=True
+            If `True`, compute per-asset attribution for each window.
+
+        compute_asset_factor_contribs : bool, default=False
+            If `True`, compute asset-factor matrix for each window.
+
+        compute_uncertainty : bool, default=True
+            If `True`, compute per-window attribution uncertainty.
+
+        Returns
+        -------
+        attribution : Attribution
+            Rolling attribution results.
+
+        Raises
+        ------
+        ValueError
+            If the portfolio is a failed portfolio, if it holds assets not covered by
+            the factor model, if no portfolio observations overlap with the factor model
+            or if `window_size` exceeds the number of overlapping observations.
+        """
+        aligned_weights, portfolio_returns, aligned_factor_model = (
+            _prepare_realized_attribution_inputs(self, factor_model)
+        )
+        return aligned_factor_model.rolling_realized_attribution(
+            weights=aligned_weights,
+            portfolio_returns=portfolio_returns,
+            annualization_factor=self.annualization_factor,
+            window_size=window_size,
+            step=step,
+            compute_asset_breakdowns=compute_asset_breakdowns,
+            compute_asset_factor_contribs=compute_asset_factor_contribs,
+            compute_uncertainty=compute_uncertainty,
+        )
+
+
+def _align_weights(
+    weights: np.ndarray,
+    portfolio_assets: np.ndarray,
+    model_assets: np.ndarray,
+) -> np.ndarray:
+    """Map portfolio weights into the factor model's asset ordering.
+
+    Parameters
+    ----------
+    weights : ndarray of shape (n_portfolio_assets,)
+        Portfolio weight vector.
+
+    portfolio_assets : ndarray of shape (n_portfolio_assets,)
+        Asset names of the portfolio.
+
+    model_assets : ndarray of shape (n_model_assets,)
+        Asset names of the factor model (the target ordering).
+
+    Returns
+    -------
+    aligned : ndarray of shape (n_model_assets,)
+        Weight vector aligned to `model_assets`.  Assets present in the portfolio keep
+        their weight; assets only in the model receive zero.
+
+    Raises
+    ------
+    ValueError
+        If any asset in `portfolio_assets` is not found in `model_assets`.
+    """
+    if np.array_equal(portfolio_assets, model_assets):
+        return weights
+
+    model_indices = pd.Index(model_assets).get_indexer(portfolio_assets)
+    missing_mask = model_indices < 0
+    if np.any(missing_mask):
+        missing = portfolio_assets[missing_mask]
+        raise ValueError(
+            f"Portfolio contains {len(missing)} asset(s) not in the factor "
+            f"model: {missing[:5].tolist()}{'...' if len(missing) > 5 else ''}."
+        )
+
+    aligned_weights = np.zeros(len(model_assets), dtype=weights.dtype)
+    aligned_weights[model_indices] = weights
+    return aligned_weights
+
+
+def _prepare_realized_attribution_inputs(
+    portfolio: Portfolio,
+    factor_model: FactorModel,
+) -> tuple[np.ndarray, np.ndarray, FactorModel]:
+    """Prepare aligned weights and factor model data for realized attribution.
+
+    Parameters
+    ----------
+    portfolio : Portfolio
+        The portfolio to prepare.
+
+    factor_model : FactorModel
+        Factor model to restrict.
+
+    Returns
+    -------
+    aligned_weights : ndarray of shape (n_model_assets,)
+        Weight vector aligned to the factor model's asset ordering.
+
+    portfolio_returns : ndarray of shape (n_observations,)
+        Portfolio returns restricted to the overlapping factor model window.
+
+    aligned_factor_model : FactorModel
+        Factor model restricted to the overlapping portfolio observation window.
+    """
+    if portfolio._is_failed_portfolio:
+        raise ValueError("Cannot compute factor attribution on a failed portfolio.")
+    aligned_weights = _align_weights(
+        portfolio.weights, portfolio.assets, factor_model.asset_names
+    )
+    portfolio_indices, aligned_factor_model = _select_realized_observation_window(
+        observations=portfolio.observations,
+        factor_model=factor_model,
+    )
+    return aligned_weights, portfolio.returns[portfolio_indices], aligned_factor_model
+
+
+def _select_realized_observation_window(
+    observations: np.ndarray,
+    factor_model: FactorModel,
+) -> tuple[np.ndarray, FactorModel]:
+    """Select the overlapping realized attribution observation window.
+
+    Leading or trailing portfolio observations outside the factor model are excluded.
+    Missing portfolio observations inside the overlapping window are treated as a data
+    alignment error.
+    """
+    factor_model_observations = factor_model.observations
+    portfolio_observation_mask = np.isin(observations, factor_model_observations)
+    portfolio_indices = np.flatnonzero(portfolio_observation_mask).astype(
+        np.intp, copy=False
+    )
+
+    if len(portfolio_indices) == 0:
+        raise ValueError(
+            "Portfolio observations not found in FactorModel. "
+            f"First five: {observations[:5].tolist()}"
+        )
+
+    first_index = portfolio_indices[0]
+    last_index = portfolio_indices[-1]
+    internal_missing = observations[first_index : last_index + 1][
+        ~portfolio_observation_mask[first_index : last_index + 1]
+    ]
+    if len(internal_missing) > 0:
+        raise ValueError(
+            f"{len(internal_missing)} portfolio observation(s) inside the "
+            "overlapping factor model window were not found in FactorModel. "
+            f"First five: {internal_missing[:5].tolist()}"
+        )
+
+    selected_observations = observations[portfolio_indices]
+    model_observation_mask = np.isin(factor_model_observations, selected_observations)
+    factor_model_indices = np.flatnonzero(model_observation_mask).astype(
+        np.intp, copy=False
+    )
+    if not np.array_equal(
+        factor_model_observations[factor_model_indices], selected_observations
+    ):
+        raise ValueError(
+            "Portfolio observations inside the overlapping factor model window must be "
+            "a duplicate-free subset of FactorModel observations in the same relative "
+            "order."
+        )
+
+    aligned_factor_model = factor_model.select_observations(factor_model_indices)
+    return portfolio_indices, aligned_factor_model
 
 
 def _get_risk(

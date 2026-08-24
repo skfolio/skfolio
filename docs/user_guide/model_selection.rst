@@ -44,7 +44,7 @@ In `cross_val_predict`, the data is split according to the `cv` parameter.
 The portfolio optimization estimator is fitted on the training set and portfolios are
 predicted on the corresponding test set.
 
-For `scikit-learn` cross-validations methods such as `Kfold` and `skfolio`'s
+For `scikit-learn` cross-validation methods such as `KFold` and `skfolio`'s
 `WalkForward`, the output is a :class:`~skfolio.portfolio.MultiPeriodPortfolio`, where
 each :class:`~skfolio.portfolio.Portfolio` corresponds to the prediction on a single
 train/test split (resulting in K portfolios for `KFold`).
@@ -126,9 +126,9 @@ train/test sets to generate multiple testing paths.
 
 To avoid data leakage, purging and embargoing can be performed.
 
-Purging consist of removing from the training set all observations
+Purging consists of removing from the training set all observations
 whose labels overlapped in time with those labels included in the testing set.
-Embargoing consist of removing from the training set observations that immediately
+Embargoing consists of removing from the training set observations that immediately
 follow an observation in the testing set, since financial features often incorporate
 series that exhibit serial correlation (like ARMA processes).
 
@@ -158,7 +158,7 @@ When used with :func:`cross_val_predict`, the object returned is a
 
 The default parameters of the `CombinatorialPurgedCV` are `n_folds=10` and
 `n_test_folds=8`. You may want to choose these parameters to target a number of test
-paths and an average training size. The later depends on the number of observations.
+paths and an average training size. The latter depends on the number of observations.
 For that, you can use the function :func:`optimal_folds_number` as shown in the example
 :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`.
 

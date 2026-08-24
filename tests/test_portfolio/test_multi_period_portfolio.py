@@ -222,42 +222,43 @@ def measure(request):
     scope="module",
     params=[None, 100, 1],
 )
-def annualized_factor(request):
+def annualization_factor(request):
     return request.param
 
 
-def test_portfolio_annualized(portfolio, annualized_factor):
-    if annualized_factor is not None:
-        portfolio.annualized_factor = annualized_factor
+def test_portfolio_annualized(portfolio, annualization_factor):
+    if annualization_factor is not None:
+        portfolio.annualization_factor = annualization_factor
 
-    if annualized_factor is None:
-        annualized_factor = 252.0
-    assert portfolio.annualized_factor == annualized_factor
+    if annualization_factor is None:
+        annualization_factor = 252.0
+    assert portfolio.annualization_factor == annualization_factor
 
     np.testing.assert_almost_equal(
-        portfolio.annualized_mean, portfolio.mean * annualized_factor
+        portfolio.annualized_mean, portfolio.mean * annualization_factor
     )
     np.testing.assert_almost_equal(
-        portfolio.annualized_variance, portfolio.variance * annualized_factor
+        portfolio.annualized_variance, portfolio.variance * annualization_factor
     )
     np.testing.assert_almost_equal(
-        portfolio.annualized_semi_variance, portfolio.semi_variance * annualized_factor
+        portfolio.annualized_semi_variance,
+        portfolio.semi_variance * annualization_factor,
     )
     np.testing.assert_almost_equal(
         portfolio.annualized_standard_deviation,
-        portfolio.standard_deviation * np.sqrt(annualized_factor),
+        portfolio.standard_deviation * np.sqrt(annualization_factor),
     )
     np.testing.assert_almost_equal(
         portfolio.annualized_semi_deviation,
-        portfolio.semi_deviation * np.sqrt(annualized_factor),
+        portfolio.semi_deviation * np.sqrt(annualization_factor),
     )
     np.testing.assert_almost_equal(
         portfolio.annualized_sharpe_ratio,
-        portfolio.sharpe_ratio * np.sqrt(annualized_factor),
+        portfolio.sharpe_ratio * np.sqrt(annualization_factor),
     )
     np.testing.assert_almost_equal(
         portfolio.annualized_sortino_ratio,
-        portfolio.sortino_ratio * np.sqrt(annualized_factor),
+        portfolio.sortino_ratio * np.sqrt(annualization_factor),
     )
 
 
@@ -467,6 +468,40 @@ def test_weights_per_observation(portfolio):
     assert portfolio.plot_weights_per_observation()
 
 
+def test_long_short_exposure():
+    X = pd.DataFrame(
+        np.zeros((6, 3)),
+        index=pd.date_range("2024-01-01", periods=6),
+        columns=["A", "B", "C"],
+    )
+    portfolio = MultiPeriodPortfolio(
+        portfolios=[
+            Portfolio(X=X.iloc[:2], weights=[0.4, -0.25, -0.15]),
+            FailedPortfolio(X=X.iloc[2:4]),
+            Portfolio(X=X.iloc[4:], weights=[0.1, 0.0, -0.1]),
+        ]
+    )
+
+    expected = pd.DataFrame(
+        {
+            "Long": [0.4, 0.4, np.nan, np.nan, 0.1, 0.1],
+            "Short": [-0.4, -0.4, np.nan, np.nan, -0.1, -0.1],
+            "Net": [0.0, 0.0, np.nan, np.nan, 0.0, 0.0],
+            "Gross": [0.8, 0.8, np.nan, np.nan, 0.2, 0.2],
+        },
+        index=X.index,
+    )
+    pd.testing.assert_frame_equal(
+        portfolio.long_short_exposure,
+        expected,
+        check_freq=False,
+    )
+
+    fig = portfolio.plot_long_short_exposure()
+    assert len(fig.data) == 4
+    assert [trace.name for trace in fig.data] == ["Long", "Short", "Net", "Gross"]
+
+
 def test_mpp_with_failed_ptf_methods(portfolio_and_returns_with_failed_ptf, periods, X):
     portfolio, returns = portfolio_and_returns_with_failed_ptf
 
@@ -613,3 +648,333 @@ def test_fallback_portfolios_include_failed(prices, periods, weights):
     summary = mpp.summary(formatted=False)
     assert summary.loc["Number of Failed Portfolios"] == 1
     assert summary.loc["Number of Fallback Portfolios"] == 2
+
+
+def _make_factor_model(asset_names, n_obs, rng):
+    """Build a minimal FactorModel for attribution tests."""
+    from skfolio.prior import FactorModel
+
+    n_assets = len(asset_names)
+    n_factors = 2
+    factor_names = np.array(["Mom", "Val"])
+    observations = pd.bdate_range("2023-01-01", periods=n_obs)
+
+    loading = rng.standard_normal((n_assets, n_factors)) * 0.5
+    A = rng.standard_normal((n_factors, n_factors))
+    factor_cov = A @ A.T / n_factors
+    factor_mu = rng.standard_normal(n_factors) * 0.001
+    idio_cov = rng.uniform(0.001, 0.01, size=n_assets)
+
+    factor_returns = rng.multivariate_normal(factor_mu, factor_cov, size=n_obs)
+    exposures = np.tile(loading, (n_obs, 1, 1))
+    exposures += rng.standard_normal(exposures.shape) * 0.05
+    idio_returns = rng.standard_normal((n_obs, n_assets)) * np.sqrt(idio_cov)
+
+    return FactorModel(
+        observations=np.asarray(observations),
+        asset_names=asset_names,
+        factor_names=factor_names,
+        factor_families=None,
+        loading_matrix=loading,
+        exposures=exposures,
+        factor_covariance=factor_cov,
+        factor_mu=factor_mu,
+        factor_returns=factor_returns,
+        idio_covariance=idio_cov,
+        idio_mu=None,
+        idio_returns=idio_returns,
+        regression_weights=np.ones((n_obs, n_assets)),
+        idio_variances=np.broadcast_to(idio_cov, (n_obs, n_assets)).copy(),
+    )
+
+
+class TestMultiPeriodPortfolioFactorAttribution:
+    """Tests for MultiPeriodPortfolio.predicted_attribution and realized_attribution."""
+
+    @pytest.fixture()
+    def fm_and_mpp(self):
+        """Build a factor model and a multi-period portfolio with two periods."""
+        rng = np.random.default_rng(99)
+        asset_names = np.array(["A", "B", "C", "D"])
+        n_obs = 60
+
+        fm = _make_factor_model(asset_names, n_obs, rng)
+        obs = fm.observations
+
+        w1 = np.array([0.4, 0.3, 0.2, 0.1])
+        X1 = pd.DataFrame(
+            rng.standard_normal((30, 4)) * 0.01,
+            columns=asset_names,
+            index=obs[:30],
+        )
+        ptf1 = Portfolio(X=X1, weights=w1)
+
+        w2 = np.array([0.1, 0.2, 0.3, 0.4])
+        X2 = pd.DataFrame(
+            rng.standard_normal((30, 4)) * 0.01,
+            columns=asset_names,
+            index=obs[30:60],
+        )
+        ptf2 = Portfolio(X=X2, weights=w2)
+
+        mpp = MultiPeriodPortfolio(portfolios=[ptf1, ptf2])
+        return fm, mpp
+
+    # --- predicted_attribution ---
+
+    def test_predicted_returns_attribution(self, fm_and_mpp):
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        result = mpp.predicted_attribution(fm)
+        assert isinstance(result, Attribution)
+
+    def test_predicted_uses_last_portfolio_weights(self, fm_and_mpp):
+        fm, mpp = fm_and_mpp
+        result_mpp = mpp.predicted_attribution(fm)
+        result_last = mpp[-1].predicted_attribution(fm)
+        np.testing.assert_almost_equal(result_mpp.total.vol, result_last.total.vol)
+
+    def test_predicted_empty_raises(self):
+        mpp = MultiPeriodPortfolio()
+        rng = np.random.default_rng(0)
+        fm = _make_factor_model(np.array(["A"]), 10, rng)
+        with pytest.raises(ValueError, match="empty"):
+            mpp.predicted_attribution(fm)
+
+    def test_predicted_last_failed_raises(self, fm_and_mpp):
+        fm, mpp = fm_and_mpp
+        obs = fm.observations
+        failed = FailedPortfolio(
+            X=pd.DataFrame(
+                np.zeros((5, 4)),
+                columns=["A", "B", "C", "D"],
+                index=obs[55:60],
+            ),
+        )
+        mpp_fail = MultiPeriodPortfolio(portfolios=[mpp[0], failed])
+        with pytest.raises(ValueError, match="FailedPortfolio"):
+            mpp_fail.predicted_attribution(fm)
+
+    def test_predicted_asset_not_in_model_raises(self, fm_and_mpp):
+        fm, _ = fm_and_mpp
+        ptf = Portfolio(
+            X=pd.DataFrame(
+                np.zeros((10, 2)),
+                columns=["UNKNOWN", "OTHER"],
+                index=fm.observations[:10],
+            ),
+            weights=np.array([0.5, 0.5]),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[ptf])
+        with pytest.raises(ValueError, match="not in the factor model"):
+            mpp.predicted_attribution(fm)
+
+    # --- realized_attribution ---
+
+    def test_realized_returns_attribution(self, fm_and_mpp):
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        result = mpp.realized_attribution(fm)
+        assert isinstance(result, Attribution)
+
+    def test_realized_skips_failed_portfolios(self, fm_and_mpp):
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        obs = fm.observations
+        failed = FailedPortfolio(
+            X=pd.DataFrame(
+                np.zeros((5, 4)),
+                columns=["A", "B", "C", "D"],
+                index=obs[25:30],
+            ),
+        )
+        ptf1 = mpp[0]
+        ptf2 = mpp[1]
+        mpp_with_failed = MultiPeriodPortfolio(
+            portfolios=[ptf1, failed, ptf2],
+            check_observations_order=False,
+        )
+        result = mpp_with_failed.realized_attribution(fm)
+        assert isinstance(result, Attribution)
+
+    def test_realized_empty_raises(self):
+        mpp = MultiPeriodPortfolio()
+        rng = np.random.default_rng(0)
+        fm = _make_factor_model(np.array(["A"]), 10, rng)
+        with pytest.raises(ValueError, match="empty"):
+            mpp.realized_attribution(fm)
+
+    def test_realized_all_failed_raises(self, fm_and_mpp):
+        fm, _ = fm_and_mpp
+        obs = fm.observations
+        failed = FailedPortfolio(
+            X=pd.DataFrame(
+                np.zeros((10, 4)),
+                columns=["A", "B", "C", "D"],
+                index=obs[:10],
+            ),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[failed])
+        with pytest.raises(ValueError, match="All child portfolios"):
+            mpp.realized_attribution(fm)
+
+    def test_realized_subset_assets(self, fm_and_mpp):
+        """Child portfolios hold subsets of the factor model's assets."""
+        from skfolio.attribution import Attribution
+
+        fm, _ = fm_and_mpp
+        rng = np.random.default_rng(7)
+        obs = fm.observations
+
+        ptf1 = Portfolio(
+            X=pd.DataFrame(
+                rng.standard_normal((30, 2)) * 0.01,
+                columns=np.array(["A", "B"]),
+                index=obs[:30],
+            ),
+            weights=np.array([0.6, 0.4]),
+        )
+        ptf2 = Portfolio(
+            X=pd.DataFrame(
+                rng.standard_normal((30, 2)) * 0.01,
+                columns=np.array(["C", "D"]),
+                index=obs[30:60],
+            ),
+            weights=np.array([0.5, 0.5]),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[ptf1, ptf2])
+        result = mpp.realized_attribution(fm)
+        assert isinstance(result, Attribution)
+
+    def test_realized_trims_factor_model_warmup(self, fm_and_mpp):
+        """Aggregated returns are restricted to the factor model overlap."""
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        fm_warmup = fm.select_observations(fm.observations[10:50])
+
+        result = mpp.realized_attribution(fm_warmup)
+
+        assert isinstance(result, Attribution)
+
+    def test_realized_internal_missing_observation_raises(self, fm_and_mpp):
+        """Missing dates inside the overlap remain an alignment error."""
+        fm, mpp = fm_and_mpp
+        observations = np.concatenate([fm.observations[:20], fm.observations[21:]])
+        fm_gap = fm.select_observations(observations)
+
+        with pytest.raises(ValueError, match="inside the overlapping"):
+            mpp.realized_attribution(fm_gap)
+
+    def test_realized_asset_not_in_model_raises(self, fm_and_mpp):
+        fm, _ = fm_and_mpp
+        ptf = Portfolio(
+            X=pd.DataFrame(
+                np.zeros((10, 2)),
+                columns=["UNKNOWN", "OTHER"],
+                index=fm.observations[:10],
+            ),
+            weights=np.array([0.5, 0.5]),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[ptf])
+        with pytest.raises(ValueError, match="not in the factor model"):
+            mpp.realized_attribution(fm)
+
+    # --- rolling_realized_attribution ---
+
+    def test_rolling_realized_returns_attribution(self, fm_and_mpp):
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        result = mpp.rolling_realized_attribution(fm, window_size=15, step=10)
+        assert isinstance(result, Attribution)
+        assert result.is_rolling is True
+
+    def test_rolling_realized_window_count(self, fm_and_mpp):
+        fm, mpp = fm_and_mpp
+        result = mpp.rolling_realized_attribution(fm, window_size=15, step=10)
+        n_obs = len(mpp.observations)
+        expected = len(np.arange(0, n_obs - 15 + 1, 10))
+        assert len(result.observations) == expected
+
+    def test_rolling_realized_trims_factor_model_warmup(self, fm_and_mpp):
+        """Rolling windows use only overlapping factor model observations."""
+        fm, mpp = fm_and_mpp
+        fm_warmup = fm.select_observations(fm.observations[5:45])
+
+        result = mpp.rolling_realized_attribution(fm_warmup, window_size=15, step=10)
+
+        expected = len(np.arange(0, 39 - 15 + 1, 10))
+        assert len(result.observations) == expected
+
+    def test_rolling_realized_skips_failed_portfolios(self, fm_and_mpp):
+        from skfolio.attribution import Attribution
+
+        fm, mpp = fm_and_mpp
+        obs = fm.observations
+        failed = FailedPortfolio(
+            X=pd.DataFrame(
+                np.zeros((5, 4)),
+                columns=["A", "B", "C", "D"],
+                index=obs[25:30],
+            ),
+        )
+        ptf1 = mpp[0]
+        ptf2 = mpp[1]
+        mpp_with_failed = MultiPeriodPortfolio(
+            portfolios=[ptf1, failed, ptf2],
+            check_observations_order=False,
+        )
+        result = mpp_with_failed.rolling_realized_attribution(
+            fm, window_size=15, step=10
+        )
+        assert isinstance(result, Attribution)
+
+    def test_rolling_realized_empty_raises(self):
+        mpp = MultiPeriodPortfolio()
+        rng = np.random.default_rng(0)
+        fm = _make_factor_model(np.array(["A"]), 10, rng)
+        with pytest.raises(ValueError, match="empty"):
+            mpp.rolling_realized_attribution(fm, window_size=5, step=2)
+
+    def test_rolling_realized_all_failed_raises(self, fm_and_mpp):
+        fm, _ = fm_and_mpp
+        obs = fm.observations
+        failed = FailedPortfolio(
+            X=pd.DataFrame(
+                np.zeros((10, 4)),
+                columns=["A", "B", "C", "D"],
+                index=obs[:10],
+            ),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[failed])
+        with pytest.raises(ValueError, match="All child portfolios"):
+            mpp.rolling_realized_attribution(fm, window_size=5, step=2)
+
+    def test_rolling_realized_asset_not_in_model_raises(self, fm_and_mpp):
+        fm, _ = fm_and_mpp
+        ptf = Portfolio(
+            X=pd.DataFrame(
+                np.zeros((10, 2)),
+                columns=["UNKNOWN", "OTHER"],
+                index=fm.observations[:10],
+            ),
+            weights=np.array([0.5, 0.5]),
+        )
+        mpp = MultiPeriodPortfolio(portfolios=[ptf])
+        with pytest.raises(ValueError, match="not in the factor model"):
+            mpp.rolling_realized_attribution(fm, window_size=5, step=2)
+
+    def test_rolling_realized_decomposition_additive(self, fm_and_mpp):
+        fm, mpp = fm_and_mpp
+        result = mpp.rolling_realized_attribution(fm, window_size=15, step=10)
+        for i in range(len(result.observations)):
+            sum_vol = (
+                np.sum(result.factors.vol_contrib[i])
+                + result.idio.vol_contrib[i]
+                + result.unattributed.vol_contrib[i]
+            )
+            np.testing.assert_almost_equal(sum_vol, result.total.vol[i], decimal=8)

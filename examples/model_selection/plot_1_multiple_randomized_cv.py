@@ -140,13 +140,13 @@ population.summary()
 # %%
 # Multiple Randomized Cross-Validation
 # ====================================
-# We perform resampling-based cross-validation by drawing 500 subsamples of 50 distinct
+# We perform resampling-based cross-validation by drawing 200 subsamples of 50 distinct
 # assets and contiguous 3-year windows (3 x 252 trading days), then applying our
 # walk-forward split to each subsample. This approach captures both temporal and
 # cross-sectional variability.
 cv_mc = MultipleRandomizedCV(
     walk_forward=walk_forward,
-    n_subsamples=500,
+    n_subsamples=200,
     asset_subset_size=50,
     window_size=3 * 252,
     random_state=0,

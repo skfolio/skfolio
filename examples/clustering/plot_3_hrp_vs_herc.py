@@ -68,9 +68,9 @@ model_herc = HierarchicalEqualRiskContribution(
 # %%
 # Parameter Tuning
 # ================
-# For both HRP and HERC models, we find the parameters that maximizes the average
+# For both HRP and HERC models, we find the parameters that maximize the average
 # out-of-sample Mean-CVaR ratio using `GridSearchCV` with `WalkForward` cross-validation
-# on the training set. The `WalkForward` are chosen to simulate a three months
+# on the training set. The `WalkForward` splits are chosen to simulate a three-month
 # (60 business days) rolling portfolio fitted on the previous year (252 business days):
 cv = WalkForward(train_size=252, test_size=60)
 

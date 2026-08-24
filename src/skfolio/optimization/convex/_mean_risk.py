@@ -18,12 +18,18 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.prior import BasePrior, EmpiricalPrior
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
-from skfolio.utils.tools import _call_estimator, args_names, check_estimator
+from skfolio.utils.tools import (
+    _call_estimator,
+    _filter_supported_params,
+    args_names,
+    check_estimator,
+)
 
 _NON_ANNUALIZED_RISK_MEASURES = [rm for rm in RiskMeasure if not rm.is_annualized]
 _FITTED_ATTR = "weights_"
@@ -99,7 +105,7 @@ class MeanRisk(ConvexOptimization):
     Cost, regularization, uncertainty set, and additional constraints can also be added
     to the optimization problem (see the parameters description).
 
-    The assets expected returns, covariance matrix and returns are estimated from the
+    The expected asset returns, covariance matrix and returns are estimated from the
     :ref:`prior estimator <prior>`.
 
     Parameters
@@ -145,7 +151,7 @@ class MeanRisk(ConvexOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix,
+        containing estimates of expected asset returns, covariance matrix,
         returns and Cholesky decomposition of the covariance.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
 
@@ -277,10 +283,14 @@ class MeanRisk(ConvexOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -304,10 +314,13 @@ class MeanRisk(ConvexOptimization):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogenous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -367,47 +380,61 @@ class MeanRisk(ConvexOptimization):
 
     mu_uncertainty_set_estimator : BaseMuUncertaintySet, optional
         :ref:`Mu Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets expected returns are modelled with an ellipsoidal
+        If provided, the expected asset returns are modelled with a norm-ball
         uncertainty set. It is called worst-case optimization and is a class of robust
         optimization. It reduces the instability that arises from the estimation errors
         of the expected returns.
-        The worst case portfolio expect return is:
+        The worst-case portfolio expected return is:
 
-        .. math:: w^T \cdot \hat{\mu} - \kappa_{\mu} \lVert S_{\mu}^\frac{1}{2} \cdot w \rVert_{2}
+        .. math:: w^T \cdot \hat{\mu} - \kappa_{\mu} \lVert L_{\mu}^T \cdot w \rVert_{q}
 
-        with :math:`\kappa` the size of the ellipsoid (confidence region) and
-        :math:`S` its shape.
+        with :math:`\kappa` the radius of the uncertainty set (confidence region),
+        :math:`L` its linear geometry map and :math:`q` the dual norm. For an
+        ellipsoidal set with shape matrix :math:`S`, :math:`L` is a square-root factor
+        satisfying :math:`S = L L^T` and :math:`q` is :math:`2`.
         The default (`None`) means that no uncertainty set is used.
 
     covariance_uncertainty_set_estimator : BaseCovarianceUncertaintySet, optional
         :ref:`Covariance Uncertainty set estimator <uncertainty_set_estimator>`.
-        If provided, the assets covariance matrix is modelled with an ellipsoidal
-        uncertainty set. It is called worst-case optimization and is a class of robust
-        optimization. It reduces the instability that arises from the estimation errors
-        of the covariance matrix.
+        If provided, covariance estimation uncertainty is included in the optimized
+        variance. This approach is known as worst-case optimization, a form of robust
+        optimization. It reduces sensitivity to covariance estimation errors.
+        Covariance uncertainty is applied when `risk_measure=RiskMeasure.VARIANCE` or
+        when `max_variance` is set.
         The default (`None`) means that no uncertainty set is used.
 
     linear_constraints : array-like of shape (n_constraints,), optional
-        Linear constraints.
-        The linear constraints must match any of following patterns:
+        Linear constraints on portfolio weights or factor exposures.
 
-           * `"2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"`
-           * `"ref1 >= 2.9 * ref2"`
-           * `"ref1 == ref2"`
-           * `"ref1 >= ref1"`
+        Constraint names can reference:
 
-        With `"ref1"`, `"ref2"` ... the assets names or the groups names provided
-        in the parameter `groups`. Assets names can be referenced without the need of
-        `groups` if the input `X` of the `fit` method is a DataFrame with these
-        assets names in columns.
+            * Asset names: individual asset weights (e.g. `"SPX"`, `"AAPL"`)
+            * Group names: sums of weights in groups defined by `groups`
+            * Factor names: portfolio factor exposure (requires factor model prior)
+            * Factor families: sum of portfolio exposures to all factors in one family
+
+        Supported equation patterns include:
+
+            * `"name <= value"` or `"name >= value"`
+            * `"name == value"`
+            * `"a * name1 + b * name2 <= c * name3 + d"`
 
         For example:
 
-            * `"SPX >= 0.10"` --> SPX weight must be greater than 10% (note that you can also use `min_weights`)
-            * `"SX5E + TLT >= 0.2"` --> the sum of SX5E and TLT weights must be greater than 20%
-            * `"US == 0.7"` --> the sum of all US weights must be equal to 70%
-            * `"Equity == 3 * Bond"` --> the sum of all Equity weights must be equal to 3 times the sum of all Bond weights.
-            * `"2*SPX + 3*Europe <= Bond + 0.05"` --> mixing assets and group constraints
+            * `"SPX >= 0.10"` --> SPX weight >= 10%
+            * `"SX5E + SPX >= 0.2"` --> sum of SX5E and SPX weights >= 20%
+            * `"US == 0.7"` --> sum of weights in US group == 70%
+            * `"Equity == 3 * Bond"` --> sum of weights in Equity group == 3x sum of weights in Bond group
+            * `"Momentum <= 0.30"` --> portfolio Momentum exposure <= 30%
+            * `"style <= 0.50"` --> sum of all style factor exposures (Momentum, Value, Size, etc.) <= 50%
+
+        Factor constraints require a prior estimator (e.g.
+        :class:`~skfolio.prior.TimeSeriesFactorModel`,
+        :class:`~skfolio.prior.CharacteristicsFactorModel`)
+        that provides `loading_matrix`, `factor_names` and optionally `factor_families`
+        in its :class:`~skfolio.prior.FactorModel`.
+
+        Asset, group, factor, and factor family names must be unique.
 
     groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
         The assets groups referenced in `linear_constraints`.
@@ -435,7 +462,7 @@ class MeanRisk(ConvexOptimization):
     max_tracking_error : float, optional
         Upper bound constraint on the tracking error.
         The tracking error is defined as the RMSE (root-mean-square error) of the
-        portfolio returns compared to a target returns. If `max_tracking_error` is
+        portfolio returns compared to target returns. If `max_tracking_error` is
         provided, the target returns `y` must be provided in the `fit` method.
 
         .. seealso::
@@ -512,7 +539,7 @@ class MeanRisk(ConvexOptimization):
         CVaR (Conditional Value at Risk) confidence level.
         The default value is `0.95`.
 
-    evar_beta : float, default=0
+    evar_beta : float, default=0.95
         EVaR (Entropic Value at Risk) confidence level.
         The default value is `0.95`.
 
@@ -529,26 +556,49 @@ class MeanRisk(ConvexOptimization):
         It is a function that must take as argument the weights `w` and returns a
         CVXPY expression.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]] | Callable[[cp.Variable, ConvexOptimization], cp.Expression | list[cp.Expression]], optional
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
         Add a custom constraint or a list of constraints to the existing constraints.
-        The callable must accept the weights as its first argument. It can optionally
-        accept the estimator instance as its second argument, allowing access to the
-        estimator's attributes. It must return a CVXPY expression or a list of CVXPY
-        expressions.
+        It must be a function taking the CVXPY weight variable `w` as its first
+        positional argument and, optionally, the estimator instance as its second.
+        It must return a CVXPY expression or a list of CVXPY expressions, evaluated
+        when `fit` is called.
 
-        For example, the estimator instance can provide its `budget` attribute:
+        For example, to require an effective number of assets of at least 20:
 
+        >>> import cvxpy as cp
         >>> from skfolio.optimization import MeanRisk
-        >>> def custom_constraints(weights, estimator):
-        ...     return [weights >= estimator.budget / 20]
-        >>> model = MeanRisk(add_constraints=custom_constraints)
+        >>> model = MeanRisk(add_constraints=lambda w: cp.sum_squares(w) <= 1 / 20)
 
-        The custom constraint is evaluated when `fit` is called.
+        The optional second argument gives access to the estimator's attributes,
+        including quantities estimated during `fit`. For example, to cap each
+        position size in risk units at 20 bps, using the volatilities estimated
+        by the prior:
+
+        >>> import numpy as np
+        >>> def position_risk_cap(w, model):
+        ...     covariance = model.prior_estimator_.return_distribution_.covariance
+        ...     vols = np.sqrt(np.diag(covariance))
+        ...     return cp.multiply(vols, w) <= 0.002
+        >>> model = MeanRisk(add_constraints=position_risk_cap)
 
     overwrite_expected_return : Callable[[cp.Variable], cp.Expression], optional
-        Overwrite the expected return :math:`\mu \cdot w` with a custom expression.
-        It is a function that must take as argument the weights `w` and returns a
-        CVXPY expression.
+        Overwrite the expected return :math:`\mu \cdot w` with a custom CVXPY
+        expression. It must be a function taking the CVXPY weight variable `w` as
+        its first positional argument and, optionally, the estimator instance as
+        its second. It must return a concave CVXPY expression, evaluated when
+        `fit` is called. The custom expression replaces the expected return in the
+        objective function and in the constraints where the expected return is
+        used.
+
+        For example, to adjust the expected return for volatility drag,
+        approximating the portfolio geometric mean return:
+
+        >>> import cvxpy as cp
+        >>> from skfolio.optimization import MeanRisk
+        >>> def geometric_expected_return(w, model):
+        ...     dist = model.prior_estimator_.return_distribution_
+        ...     return dist.mu @ w - 0.5 * cp.quad_form(w, dist.covariance)
+        >>> model = MeanRisk(overwrite_expected_return=geometric_expected_return)
 
     solver : str, default="CLARABEL"
         The solver to use. The default is "CLARABEL" which is written in Rust and has
@@ -593,6 +643,8 @@ class MeanRisk(ConvexOptimization):
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
         and `fallback_chain_` stores each attempt with the associated outcome.
+        With `partial_fit`, only `fallback="previous_weights"` is supported because
+        fallback estimators would not have accumulated the same online state.
 
     raise_on_failure : bool, default=True
         Controls error handling when fitting fails.
@@ -602,6 +654,8 @@ class MeanRisk(ConvexOptimization):
         is set to `None` and subsequent calls to `predict` will return a
         `FailedPortfolio`. When fallbacks are specified, this behavior applies only
         after all fallbacks have been exhausted.
+        With `partial_fit`, only solver failures are handled this way and failures
+        while updating stateful sub-estimators are always raised.
 
     Attributes
     ----------
@@ -852,7 +906,7 @@ class MeanRisk(ConvexOptimization):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -876,12 +930,6 @@ class MeanRisk(ConvexOptimization):
         The optimization problem is solved fresh on each call using the updated
         moments from the prior estimator.
 
-        .. note::
-
-            ``fallback`` and ``efficient_frontier_size`` are not supported with
-            ``partial_fit`` because they require cloning or fallback estimators
-            that would not have learned from previous observations.
-
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
@@ -894,7 +942,7 @@ class MeanRisk(ConvexOptimization):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -958,13 +1006,20 @@ class MeanRisk(ConvexOptimization):
         first_call = not hasattr(self, _FITTED_ATTR)
 
         # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True, reset=first_call)
+        _ = skv.validate_data(
+            self,
+            X,
+            skip_check_array=True,
+            reset=first_call,
+            ensure_all_finite="allow-nan",
+        )
 
         if first_call:
             self._validate_params(method=method)
             self._initialize()
 
         if method == "partial_fit":
+            self._validate_partial_fit_fallback()
             self._validate_partial_fit_estimators()
 
         # Fit or partial_fit the prior estimator
@@ -975,7 +1030,10 @@ class MeanRisk(ConvexOptimization):
             y,
             routed_params=routed_params.prior_estimator,
         )
-        return_distribution = self.prior_estimator_.return_distribution_
+        return_distribution = self._prepare_investable_distribution(
+            self.prior_estimator_.return_distribution_, slim=True
+        )
+
         _, n_assets = return_distribution.returns.shape
 
         # set solvers params
@@ -1063,6 +1121,11 @@ class MeanRisk(ConvexOptimization):
                 X,
                 y,
                 routed_params=routed_params.mu_uncertainty_set_estimator,
+                extra_params=_filter_supported_params(
+                    self.mu_uncertainty_set_estimator_,
+                    method,
+                    return_distribution=return_distribution,
+                ),
             )
             mu_uncertainty_set = self._cvx_mu_uncertainty_set(
                 mu_uncertainty_set=self.mu_uncertainty_set_estimator_.uncertainty_set_,
@@ -1114,7 +1177,10 @@ class MeanRisk(ConvexOptimization):
 
         # weight constraints
         constraints += self._get_weight_constraints(
-            n_assets=n_assets, w=w, factor=factor
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            return_distribution=return_distribution,
         )
 
         parameters_values = []
@@ -1127,7 +1193,7 @@ class MeanRisk(ConvexOptimization):
             model.set_params(
                 objective_function=ObjectiveFunction.MINIMIZE_RISK,
                 efficient_frontier_size=None,
-                portfolio_params=dict(annualized_factor=1),
+                portfolio_params=dict(annualization_factor=1),
             )
             model.fit(X, y, **fit_params)
             min_return = model.problem_values_["expected_return"]
@@ -1163,7 +1229,6 @@ class MeanRisk(ConvexOptimization):
             risk_limit = getattr(self, f"max_{r_m.value}")
 
             if self.risk_measure == r_m or risk_limit is not None:
-                # Add covariance uncertainty set if provided
                 if (
                     r_m == RiskMeasure.VARIANCE
                     and self.covariance_uncertainty_set_estimator_ is not None
@@ -1196,6 +1261,11 @@ class MeanRisk(ConvexOptimization):
                             X,
                             y,
                             routed_params=routed_params.covariance_uncertainty_set_estimator,
+                            extra_params=_filter_supported_params(
+                                self.covariance_uncertainty_set_estimator_,
+                                method,
+                                return_distribution=return_distribution,
+                            ),
                         )
                         args[arg_name] = (
                             self.covariance_uncertainty_set_estimator_.uncertainty_set_
@@ -1276,7 +1346,7 @@ class MeanRisk(ConvexOptimization):
                     # (homogeneous technique)
                     # Schaible,"Parameter-free Convex Equivalent and Dual Programs of
                     # Fractional Programming Problems".
-                    # The condition to work is f1 >= 0, so we need to raise an user
+                    # The condition to work is f1 >= 0, so we need to raise a user
                     # warning when it's not the case.
 
                     constraints += [
@@ -1300,19 +1370,32 @@ class MeanRisk(ConvexOptimization):
         problem = cp.Problem(objective, constraints)
 
         # results
-        self._solve_problem(
-            problem=problem,
-            w=w,
-            factor=factor,
-            parameters_values=parameters_values,
-            expressions={
-                "expected_return": expected_return,
-                "risk": risk,
-                "mu_uncertainty_set": mu_uncertainty_set,
-                "regularization": regularization,
-                "factor": factor,
-            },
-        )
+        expressions = {
+            "expected_return": expected_return,
+            "risk": risk,
+            "mu_uncertainty_set": mu_uncertainty_set,
+            "regularization": regularization,
+            "factor": factor,
+        }
+        self.error_ = None
+        self.fallback_ = None
+        self.fallback_chain_ = None
+        try:
+            self._solve_problem(
+                problem=problem,
+                w=w,
+                factor=factor,
+                parameters_values=parameters_values,
+                expressions=expressions,
+            )
+        except cp.SolverError as solver_error:
+            if method != "partial_fit":
+                raise
+            self._handle_partial_fit_solver_failure(
+                solver_error=solver_error,
+                n_assets=n_assets,
+                problem=problem,
+            )
 
         return self
 
@@ -1322,6 +1405,17 @@ class MeanRisk(ConvexOptimization):
             raise TypeError("risk_measure must be of type `RiskMeasure`")
         if not isinstance(self.objective_function, ObjectiveFunction):
             raise TypeError("objective_function must be of type `ObjectiveFunction`")
+        if self.covariance_uncertainty_set_estimator is not None:
+            covariance_risk_requested = (
+                self.risk_measure == RiskMeasure.VARIANCE
+                or self.max_variance is not None
+            )
+            if not covariance_risk_requested:
+                raise ValueError(
+                    "`covariance_uncertainty_set_estimator` requires "
+                    "`risk_measure=RiskMeasure.VARIANCE` or a `max_variance` "
+                    "constraint."
+                )
         if self.efficient_frontier_size is not None:
             if self.efficient_frontier_size <= 1:
                 raise ValueError(
@@ -1333,18 +1427,54 @@ class MeanRisk(ConvexOptimization):
                     "`objective_function = ObjectiveFunction.MINIMIZE_RISK`"
                 )
 
-        # Validate partial_fit support
         if method == "partial_fit":
             if self.efficient_frontier_size is not None:
                 raise ValueError(
                     "`efficient_frontier_size` is not supported with `partial_fit`."
                 )
 
-            if self.fallback is not None:
-                raise ValueError(
-                    "`fallback` is not supported with `partial_fit` because fallback "
-                    "estimators would not have learned from previous observations."
-                )
+    def _validate_partial_fit_fallback(self) -> None:
+        """Validate fallback support for `partial_fit`."""
+        if self.fallback is None or self.fallback == _PREVIOUS_WEIGHTS:
+            return
+        raise ValueError("`partial_fit` only supports fallback='previous_weights'.")
+
+    def _handle_partial_fit_solver_failure(
+        self, solver_error: cp.SolverError, n_assets: int, problem: cp.Problem
+    ) -> None:
+        """Handle solver failures after online state has been updated."""
+        error = str(solver_error)
+        self.fallback_ = None
+        self.fallback_chain_ = None
+
+        if self.fallback == _PREVIOUS_WEIGHTS:
+            self.fallback_chain_ = [(str(self), error)]
+            try:
+                self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+            except Exception as fallback_error:
+                self.error_ = str(fallback_error)
+                if self.raise_on_failure:
+                    raise
+                warnings.warn(str(fallback_error), stacklevel=2)
+                self.weights_ = None
+            else:
+                self.error_ = None
+            finally:
+                self.problem_values_ = None
+                if self.save_problem:
+                    self.problem_ = problem
+                self._clear_models_cache()
+            return
+
+        self.error_ = error
+        if self.raise_on_failure:
+            raise solver_error
+        warnings.warn(error, stacklevel=2)
+        self.weights_ = None
+        self.problem_values_ = None
+        if self.save_problem:
+            self.problem_ = problem
+        self._clear_models_cache()
 
     def _validate_partial_fit_estimators(self) -> None:
         """Validate incremental support for stateful sub-estimators."""

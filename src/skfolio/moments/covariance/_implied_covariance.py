@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import sklearn as sk
 import sklearn.base as skb
@@ -18,6 +20,7 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio._constants import _ANNUALIZATION_FACTOR_DEFAULT
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.typing import ArrayLike, FloatArray
@@ -69,8 +72,8 @@ class ImpliedCovariance(BaseCovariance):
         matrix used for the correlation estimates prior the volatilities update.
         The default (`None`) is to use :class:`~skfolio.moments.EmpiricalCovariance`.
 
-    annualized_factor : float, default=252
-        Annualized factor (AF) used to covert the implied volatilities into the same
+    annualization_factor : float, default=252
+        Annualization factor (AF) used to convert the implied volatilities into the same
         frequency as the returns using :math:`\frac{IV}{\sqrt{AF}}`.
         The default is 252 which corresponds to **daily** returns and implied volatility
         expressed in **p.a.**
@@ -100,7 +103,7 @@ class ImpliedCovariance(BaseCovariance):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -178,24 +181,43 @@ class ImpliedCovariance(BaseCovariance):
     def __init__(
         self,
         prior_covariance_estimator: BaseCovariance | None = None,
-        annualized_factor: float = 252.0,
+        annualization_factor: float | None = None,
         window_size: int = 20,
         linear_regressor: skb.BaseEstimator | None = None,
         volatility_risk_premium_adj: skt.MultiInput | None = None,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
+        # TODO remove deprecated annualized_factor in v2.0
+        annualized_factor: float | None = None,
     ):
+        if annualized_factor is not None:
+            if annualization_factor is not None:
+                raise ValueError(
+                    "`annualized_factor` is deprecated; pass only "
+                    "`annualization_factor`."
+                )
+            warnings.warn(
+                "`annualized_factor` is deprecated and will be removed in version 2.0. "
+                "Use `annualization_factor` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            annualization_factor = annualized_factor
+        elif annualization_factor is None:
+            annualization_factor = _ANNUALIZATION_FACTOR_DEFAULT
+
         super().__init__(
             nearest=nearest,
             higham=higham,
             higham_max_iteration=higham_max_iteration,
         )
         self.prior_covariance_estimator = prior_covariance_estimator
-        self.annualized_factor = annualized_factor
+        self.annualization_factor = annualization_factor
         self.linear_regressor = linear_regressor
         self.window_size = window_size
         self.volatility_risk_premium_adj = volatility_risk_premium_adj
+        self.annualized_factor = None
 
     def get_metadata_routing(self):
         # noinspection PyTypeChecker
@@ -208,6 +230,27 @@ class ImpliedCovariance(BaseCovariance):
             )
         )
         return router
+
+    def set_params(self, **params) -> ImpliedCovariance:
+        """Set estimator parameters."""
+        # TODO remove deprecated annualized_factor in v2.0
+        if "annualized_factor" in params:
+            annualized_factor = params.pop("annualized_factor")
+            if annualized_factor is not None:
+                if "annualization_factor" in params:
+                    raise ValueError(
+                        "`annualized_factor` is deprecated; pass only "
+                        "`annualization_factor`."
+                    )
+                warnings.warn(
+                    "`annualized_factor` is deprecated and will be removed in version 2.0. "
+                    "Use `annualization_factor` instead.",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                params["annualization_factor"] = annualized_factor
+            params["annualized_factor"] = None
+        return super().set_params(**params)
 
     def fit(
         self, X: ArrayLike, y=None, implied_vol: ArrayLike = None, **fit_params
@@ -228,7 +271,7 @@ class ImpliedCovariance(BaseCovariance):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -277,7 +320,7 @@ class ImpliedCovariance(BaseCovariance):
         X = skv.validate_data(self, X)
         _, n_assets = X.shape
         implied_vol = check_implied_vol(implied_vol=implied_vol, X=X)
-        implied_vol /= np.sqrt(self.annualized_factor)
+        implied_vol /= np.sqrt(self.annualization_factor)
 
         if self.volatility_risk_premium_adj is not None:
             if np.isscalar(self.volatility_risk_premium_adj):

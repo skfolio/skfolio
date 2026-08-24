@@ -13,6 +13,8 @@ import warnings
 from collections.abc import Callable, Iterator, Mapping
 from enum import Enum
 from functools import wraps
+from inspect import signature
+from numbers import Integral, Real
 from typing import Any, Literal
 
 import numpy as np
@@ -22,16 +24,17 @@ import sklearn as sk
 import sklearn.base as skb
 from sklearn.utils import Bunch
 
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio._constants import _PASSTHROUGH
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 
 __all__ = [
     "AutoEnum",
-    "_call_estimator",
     "apply_window_size",
     "args_names",
     "bisection",
     "cache_method",
     "cached_property_slots",
+    "call_asset_panel_transform",
     "check_estimator",
     "deduplicate_names",
     "default_asset_names",
@@ -48,6 +51,24 @@ __all__ = [
 ]
 
 GenericAlias = type(list[int])
+
+
+def call_asset_panel_transform(
+    estimator: skb.BaseEstimator,
+    X: ArrayLike,
+    fit_params: dict,
+    *,
+    method: str,
+) -> FloatArray:
+    """Call an `AssetPanel` transformer with validated fit parameters.
+
+    Metadata routing for descriptors and factor exposures uses the existing `fit`
+    bucket. The selected execution method (`fit_transform` or `partial_fit_transform`)
+    is passed explicitly.
+    """
+    fit_params = fit_params if fit_params is not None else {}
+    fit_params = _check_method_params(X, params=fit_params)
+    return _call_estimator(estimator, method=method, X=X, extra_params=fit_params)
 
 
 class AutoEnum(str, Enum):
@@ -157,8 +178,7 @@ def _check_method_params(
     indices: IntArray | slice | None = None,
     axis: int = 0,
 ):
-    """Check and validate the parameters passed to a specific
-    method like `fit`.
+    """Check and validate the parameters passed to a specific method like `fit`.
 
     Parameters
     ----------
@@ -168,20 +188,18 @@ def _check_method_params(
     params : dict
         Dictionary containing the parameters passed to the method.
 
-    indices : ndarray, slice, or None, default=None
-        Indices or slice to be selected if the parameter has the same size
-        as `X`.
+    indices : ndarray, slice,, optional
+        Indices or slice to be selected if the parameter has the same size as `X`.
 
     axis : int, default=0
-        The axis along which `X` will be sub-sampled. `axis=0` will select
-        rows while `axis=1` will select columns.
+        The axis along which `X` will be sub-sampled. `axis=0` will select rows while
+        `axis=1` will select columns.
 
     Returns
     -------
     method_params_validated : dict
         Validated parameters. We ensure that the values support indexing.
     """
-    # TODO don't raise, check scikit-learn
     n_observations = X.shape[0]
     method_params_validated = {}
     for param_key, param_value in params.items():
@@ -211,8 +229,8 @@ def safe_indexing(
         Data from which to sample rows.
 
     indices : array-like, slice, or None
-        Indices, slice, or None. When ``None``, the entire data is returned.
-        When a ``slice``, standard Python slicing is used (zero-copy for
+        Indices, slice, or None. When `None`, the entire data is returned.
+        When a `slice`, standard Python slicing is used (zero-copy for
         NumPy arrays and :class:`~skfolio.containers.AssetPanel`).
 
     axis : int, default=0
@@ -280,7 +298,7 @@ def safe_split(
 
 
 def cache_method(cache_name: str) -> Callable:
-    """Decorator that caches class methods results into a class dictionary.
+    """Decorator that caches class method results into a class dictionary.
 
     Parameters
     ----------
@@ -343,17 +361,107 @@ def args_names(func: object) -> list[str]:
     ]
 
 
-def check_estimator(
-    estimator: skb.BaseEstimator | None | Literal["passthrough"],
-    default: skb.BaseEstimator | None,
-    check_type: Any,
-):
-    """Check the estimator type and returns its cloned version it provided, otherwise
-     return the default estimator.
+def _is_real_number(value: object) -> bool:
+    """Return True for real-valued numbers, excluding booleans.
+
+    Accepts Python and NumPy real numeric types, such as `int`, `float`, `np.integer`
+    and `np.floating`. Python and NumPy booleans are excluded.
 
     Parameters
     ----------
-    estimator : BaseEstimator, optional
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is a real-valued number and not a boolean; False otherwise.
+    """
+    return isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
+
+
+def _is_integer_number(value: object) -> bool:
+    """Return True for integer-valued numbers, excluding booleans.
+
+    Accepts Python and NumPy integer scalar types, such as `int` and `np.integer`.
+    Python and NumPy booleans are excluded.
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is an integer-valued number and not a boolean; False otherwise.
+    """
+    return isinstance(value, Integral) and not isinstance(value, (bool, np.bool_))
+
+
+def _is_bool(value: object) -> bool:
+    """Return True for boolean scalars (Python or NumPy).
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        True if `value` is `bool` or `np.bool_`; False otherwise.
+    """
+    return isinstance(value, (bool, np.bool_))
+
+
+def _validate_bool(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a boolean."""
+    if not _is_bool(value):
+        raise ValueError(f"{name} must be a boolean, got {value!r}")
+
+
+def _validate_positive_real(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a finite positive real number."""
+    if not _is_real_number(value) or not np.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be a positive number, got {value}")
+
+
+def _validate_non_negative_real(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a finite non-negative real number."""
+    if not _is_real_number(value) or not np.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be a non-negative number, got {value}")
+
+
+def _validate_positive_integer(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a positive integer (>= 1)."""
+    if not _is_integer_number(value) or value < 1:
+        raise ValueError(f"{name} must be a positive integer (>= 1), got {value}")
+
+
+def _validate_non_negative_integer(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a non-negative integer (>= 0)."""
+    if not _is_integer_number(value) or value < 0:
+        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value}")
+
+
+def _validate_unit_interval(value: object, name: str) -> None:
+    """Raise `ValueError` unless `value` is a finite real number in [0, 1]."""
+    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError(f"{name} must be a finite number between 0 and 1, got {value}")
+
+
+def check_estimator(
+    estimator: skb.BaseEstimator | Literal["passthrough"] | None,
+    default: skb.BaseEstimator | None,
+    check_type: Any,
+):
+    """Check the estimator type and return its cloned version if provided, otherwise
+    return the default estimator.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | "passthrough", optional
         Estimator.
 
     default : BaseEstimator, optional
@@ -364,11 +472,13 @@ def check_estimator(
 
     Returns
     -------
-    estimator : Estimator
+    estimator : Estimator | "passthrough"
         The checked estimator or the default.
     """
     if estimator is None:
         return default
+    if estimator == _PASSTHROUGH:
+        return _PASSTHROUGH
     if not isinstance(estimator, check_type):
         raise TypeError(f"Expected type {check_type}, got {type(estimator)}")
     return sk.clone(estimator)
@@ -411,7 +521,7 @@ def input_to_array(
     n_assets: int,
     fill_value: Any,
     dim: int,
-    assets_names: ObjArray | None,
+    assets_names: StrArray | None,
     name: str,
     investable_mask: BoolArray | None = None,
 ) -> FloatArray:
@@ -513,7 +623,7 @@ def input_to_array(
 def validate_input_list(
     items: list[int | str],
     n_assets: int,
-    assets_names: ObjArray | None,
+    assets_names: StrArray | None,
     name: str,
     raise_if_string_missing: bool = True,
 ) -> list[int]:
@@ -621,12 +731,12 @@ def optimal_rounding_decimals(x: float) -> int:
 
 
 def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
-    """Generator to bisect a list of array.
+    """Generator to bisect a list of arrays.
 
     Parameters
     ----------
     x : list[ndarray]
-        A list of array.
+        A list of arrays.
 
     Yields
     ------
@@ -665,7 +775,7 @@ def fit_single_estimator(
     fit_params : dict
         Parameters that will be passed to the estimator method.
 
-    indices : ndarray, slice, or None, default=None
+    indices : ndarray, slice, optional
         Rows or columns to select from X, y, and fit_params.
         The default (`None`) is to select the entire data.
 
@@ -674,7 +784,7 @@ def fit_single_estimator(
         rows while `axis=1` will select columns.
 
     method : str, default="fit"
-        Estimator method to call (e.g. ``"fit"`` or ``"partial_fit"``).
+        Estimator method to call (e.g. `"fit"` or `"partial_fit"`).
 
     Returns
     -------
@@ -733,7 +843,7 @@ def fit_and_predict(
     predictions : array-like or list of array-like
         If `test` is an array, it returns the array-like result of calling
         'estimator.method' on `test`.
-        Otherwise, if `test` is a list of arrays, it returns the list of array-like
+        Otherwise, if `test` is a list of arrays, it returns a list of array-like
         results of calling 'estimator.method' on each test set in `test`.
     """
     fit_params = fit_params if fit_params is not None else {}
@@ -763,7 +873,7 @@ def fit_and_predict(
     return predictions
 
 
-def default_asset_names(n_assets: int) -> ObjArray:
+def default_asset_names(n_assets: int) -> StrArray:
     """Default asset names are `["x0", "x1", ..., "x(n_assets - 1)"]`.
 
     Parameters
@@ -1012,6 +1122,14 @@ def _call_estimator(
                 "sub-estimators that support incremental learning. "
                 "Use a compatible estimator with partial_fit, or call fit instead."
             )
+        if method == "partial_fit_transform":
+            raise TypeError(
+                f"{estimator_name} does not implement partial_fit_transform. "
+                "This meta-estimator can only use partial_fit_transform with "
+                "sub-estimators that support online transformation. "
+                "Use a compatible estimator with partial_fit_transform, or call "
+                "fit_transform instead."
+            )
         raise TypeError(f"{estimator_name} does not implement {method!r}.")
 
     routed: Mapping[str, Any] = (
@@ -1027,3 +1145,31 @@ def _call_estimator(
         )
 
     return method_caller(X, y, **routed, **extra_params)
+
+
+def _filter_supported_params(estimator, method: str, **kwargs):
+    """Return keyword arguments accepted by an estimator method.
+
+    This helper is used for internally generated parameters that should be passed only
+    to estimators whose method signature explicitly accepts them. Parameters with value
+    `None` are omitted.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator exposing the method named by `method`.
+
+    method : str
+        Method name whose signature is inspected.
+
+    **kwargs : dict
+        Candidate keyword arguments.
+
+    Returns
+    -------
+    filtered : dict
+        Keyword arguments whose names are accepted by the estimator method and whose
+        values are not `None`.
+    """
+    params = signature(getattr(estimator, method)).parameters
+    return {k: v for k, v in kwargs.items() if k in params and v is not None}

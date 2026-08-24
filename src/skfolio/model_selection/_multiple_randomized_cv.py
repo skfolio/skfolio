@@ -317,7 +317,7 @@ class MultipleRandomizedCV:
         ----------
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets. Required when the count can be pre-computed
-            (i.e. `window_size` is ``None`` or the inner walk-forward has no frequency).
+            (i.e. `window_size` is `None` or the inner walk-forward has no frequency).
             Ignored after :meth:`split` has been called.
 
         y : array-like of shape (n_observations, n_targets)

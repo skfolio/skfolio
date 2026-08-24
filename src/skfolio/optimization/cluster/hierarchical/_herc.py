@@ -105,7 +105,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
     prior_estimator : BasePrior, optional
         :ref:`Prior estimator <prior>`.
         The prior estimator is used to estimate the :class:`~skfolio.prior.ReturnDistribution`
-        containing the estimation of assets expected returns, covariance matrix and
+        containing estimates of expected asset returns, covariance matrix and
         returns. The moments and returns estimations are used for the risk computation
         and the returns estimation are used by the distance matrix estimator.
         The default (`None`) is to use :class:`~skfolio.prior.EmpiricalPrior`.
@@ -179,10 +179,14 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         .. warning::
 
             Based on the above formula, the periodicity of the transaction costs
-            needs to be homogeneous to the periodicity of :math:`\mu`. For example, if
-            the input `X` is composed of **daily** returns, the `transaction_costs` need
-            to be expressed as **daily** costs.
-            (See :ref:`sphx_glr_auto_examples_mean_risk_plot_6_transaction_costs.py`)
+            must match the periodicity of :math:`\mu`. For example, if the input
+            `X` is composed of **daily** returns, the `transaction_costs` need to be
+            expressed as **daily** costs. A transaction cost is paid once per
+            rebalancing while a position earns its expected return on every period it
+            is held, so the one-off cost is converted by dividing it by the expected
+            investment duration (e.g. `0.001 / 21` for a 10 bps cost with daily
+            returns and a one-month expected holding period).
+            (See :ref:`Periodicity Convention <periodicity_convention>`)
 
     management_fees : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Management fees of the assets. It is used to add linear management fees to the
@@ -207,10 +211,13 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
 
         .. warning::
 
-            Based on the above formula, the periodicity of the management fees needs to
-            be homogeneous to the periodicity of :math:`\mu`. For example, if the input
+            Based on the above formula, the periodicity of the management fees
+            must match the periodicity of :math:`\mu`. For example, if the input
             `X` is composed of **daily** returns, the `management_fees` need to be
-            expressed in **daily** fees.
+            expressed in **daily** fees. Unlike transaction costs, management fees
+            accrue with holding time, so a stated annual fee converts directly to the
+            return periodicity (e.g. `0.02 / 252` for a 2% annual fee on daily
+            returns).
 
         .. note::
 
@@ -373,7 +380,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

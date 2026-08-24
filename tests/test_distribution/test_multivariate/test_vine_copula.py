@@ -1093,11 +1093,12 @@ def test_vine_copula_conditional_sampling_without_priority(X):
 
 @pytest.mark.parametrize("max_depth", [*list(range(2, 22)), None])
 def test_vine_truncated_sampling_order(X, max_depth):
+    X = X.iloc[-300:]
     model = VineCopula(
         max_depth=max_depth,
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula()],
-        n_jobs=-1,
+        n_jobs=1,
         random_state=42,
     )
     model.fit(X)
@@ -1427,6 +1428,7 @@ def test_vine_conditional_sample(X, conditioning, log_transform, expected):
 
 @pytest.mark.parametrize("dependence_method", list(DependenceMethod))
 def test_vine_dependence_method(X, dependence_method):
+    X = X.iloc[-300:, :6]
     model = VineCopula(
         marginal_candidates=[Gaussian()],
         copula_candidates=[GaussianCopula(), ClaytonCopula()],

@@ -12,6 +12,13 @@ the assets returns and stores the portfolio weights in its `weights_` attribute.
 
 `X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
+All optimization inputs (expected returns, covariance, return scenarios) are expressed
+in the periodicity of `X`: with daily returns, the optimizer works with daily moments
+and scenarios rather than annualized ones. Parameters that share the unit of expected
+returns, such as `transaction_costs` and `management_fees`, must be expressed in the
+same periodicity. See :ref:`Periodicity Convention <periodicity_convention>` for the
+rationale and the cost conversion rules.
+
 Naive Allocation
 ****************
 
@@ -166,10 +173,15 @@ Prior Estimator
 ===============
 
 Every portfolio optimization has a parameter named `prior_estimator`.
-The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.PriorModel` containing
-the estimation of assets     expected returns, covariance matrix, returns and Cholesky
+The :ref:`prior estimator <prior>` fits a :class:`~skfolio.prior.ReturnDistribution` containing
+estimates of expected asset returns, covariance matrix, returns and Cholesky
 decomposition of the covariance. It represents the investor’s prior beliefs about the
 model used to estimate such distribution.
+
+When the prior follows the native NaN-aware convention, compatible optimizers solve the
+optimization problem on the investable subset and expand `weights_` back to the full
+input universe. See :ref:`Missing Data and Changing Universes <missing_data>` for
+details.
 
 The available prior estimators are:
 
@@ -193,11 +205,11 @@ Minimum Variance portfolio using a Factor Model:
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
-    model = MeanRisk(prior_estimator=FactorModel())
-    model.fit(X_train, y_train)
+    model = MeanRisk(prior_estimator=TimeSeriesFactorModel())
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -230,13 +242,13 @@ aversion of 2 and a denoised prior covariance matrix:
     from skfolio.moments import DenoiseCovariance, EquilibriumMu
     from skfolio.optimization import MeanRisk, ObjectiveFunction
     from skfolio.preprocessing import prices_to_returns
-    from skfolio.prior import BlackLitterman, EmpiricalPrior, FactorModel
+    from skfolio.prior import BlackLitterman, EmpiricalPrior, TimeSeriesFactorModel
 
     prices = load_sp500_dataset()
     factor_prices = load_factors_dataset()
 
-    X, y = prices_to_returns(prices, factor_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X, factors = prices_to_returns(prices, factor_prices)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
     factor_views = ["MTUM - QUAL == 0.0003 ",
                     "SIZE - USMV == 0.0004",
@@ -244,7 +256,7 @@ aversion of 2 and a denoised prior covariance matrix:
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        prior_estimator=FactorModel(
+        prior_estimator=TimeSeriesFactorModel(
             factor_prior_estimator=BlackLitterman(
                 prior_estimator=EmpiricalPrior(
                     mu_estimator=EquilibriumMu(risk_aversion=2),
@@ -254,7 +266,7 @@ aversion of 2 and a denoised prior covariance matrix:
         )
     )
 
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -308,9 +320,10 @@ For more complex cases and estimators, check the :ref:`API Reference <api>`.
 Worst-Case Optimization
 =======================
 With the `mu_uncertainty_set_estimator` parameter, the expected returns of the assets
-are modeled with an ellipsoidal uncertainty set. This approach is known as worst-case
-optimization and falls under the class of robust optimization. It mitigates the
-instability that arises from estimation errors of the expected returns.
+are modeled with a :ref:`norm-ball uncertainty set <uncertainty_set_estimator>`. This
+approach is known as worst-case optimization and falls under the class of robust
+optimization. It mitigates the instability that arises from estimation errors of the
+expected returns.
 
 **Example:**
 
@@ -343,6 +356,12 @@ uncertainty set for the expected returns of the assets:
     portfolio = model.predict(X_test)
     print(portfolio.annualized_sharpe_ratio)
     print(portfolio.cdar_ratio)
+
+Covariance uncertainty is configured with `covariance_uncertainty_set_estimator`.
+It is applied to the variance risk measure or a `max_variance` constraint. Generic
+estimators use a lifted semidefinite formulation, while
+:class:`~skfolio.uncertainty_set.OrthogonalCovarianceUncertaintySet` uses a compact
+representation in the factor model's orthogonal space.
 
 
 Going Further
@@ -509,7 +528,7 @@ by Marcos Lopez de Prado.
 
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
-in the dendrogram, minimizing the distance between leafs.
+in the dendrogram, minimizing the distance between leaves.
 in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
@@ -810,14 +829,14 @@ Minimize CVaR while constraining the tracking error to 0.30% vs a benchmark:
     spx_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, spx_prices)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, shuffle=False)
+    X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
 
     model = MeanRisk(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         risk_measure=RiskMeasure.CVAR,
         max_tracking_error=0.003,  # 0.30% tracking error constraint
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -874,14 +893,14 @@ Minimize tracking error vs a benchmark's returns:
     benchmark_prices = load_sp500_index()
 
     X, y = prices_to_returns(prices, benchmark_prices)
-    X_train, X_test, y_train, y_test = train_test_split(
+    X_train, X_test, factors_train, factors_test = train_test_split(
         X, y["SP500"], test_size=0.33, shuffle=False
     )
 
     model = BenchmarkTracker(
         risk_measure=RiskMeasure.STANDARD_DEVIATION,
     )
-    model.fit(X_train, y_train)
+    model.fit(X_train, factors=factors_train)
     print(model.weights_)
 
     portfolio = model.predict(X_test)
@@ -963,6 +982,15 @@ Diagnostics are exposed via:
 - `fallback_chain_`: a sequence of attempts with outcomes (`"success"` or the
   error message), starting from the primary estimator.
 
+For online workflows based on `partial_fit`, the estimator first updates its stateful
+components, such as the prior and moment estimators, then solves the next portfolio.
+The `raise_on_failure` policy applies to solver failures at that rebalance. Errors raised
+while updating stateful components are still raised because the estimator state may be
+incomplete. The only fallback supported by `partial_fit` is
+`fallback="previous_weights"`, which reuses the latest valid allocation. Estimator
+fallbacks are reserved for regular `fit`, where each fallback can be fitted on the
+complete training window.
+
 Example: proceed without raising and retrieve failure diagnostics
 
 .. code-block:: python
@@ -988,5 +1016,4 @@ Example: proceed without raising and retrieve failure diagnostics
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
-
 

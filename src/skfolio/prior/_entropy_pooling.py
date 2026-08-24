@@ -30,9 +30,10 @@ from skfolio.measures import (
     PerfMeasure,
     RiskMeasure,
 )
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
@@ -297,7 +298,7 @@ class EntropyPooling(BasePrior):
           documentation for a full list and descriptions:
           https://docs.scipy.org/doc/scipy/reference/optimize.minimize-tnc.html
 
-        - When using a **CVXPY** solver (e.g. ``"CLARABEL"``), supply any
+        - When using a **CVXPY** solver (e.g. `"CLARABEL"`), supply any
           solver-specific parameters here. Refer to the CVXPY solver guide for
           details: https://www.cvxpy.org/tutorial/solvers
 
@@ -422,12 +423,12 @@ class EntropyPooling(BasePrior):
     effective_number_of_scenarios_: float
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     if TYPE_CHECKING:
         _returns: FloatArray
         _prior_sample_weight: FloatArray
-        _groups: ObjArray
+        _groups: StrArray
         _is_fixed_mean: BoolArray
         _is_fixed_variance: BoolArray
         _constraints: dict[str, list[FloatArray] | None]
@@ -483,7 +484,7 @@ class EntropyPooling(BasePrior):
         **fit_params : dict
            Parameters to pass to the underlying estimators.
            Only available if `enable_metadata_routing=True`, which can be
-           set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+           set by using `sklearn.set_config(enable_metadata_routing=True)`.
            See :ref:`Metadata Routing User Guide <metadata_routing>` for
            more details.
 
