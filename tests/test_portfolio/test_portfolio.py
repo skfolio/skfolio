@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import pickle
 import timeit
 import tracemalloc
@@ -126,30 +127,40 @@ def test_concatenate(X, weights):
     assert c.shape == (X.shape[0] * 2,)
 
 
-def _estimate_portfolio_memory(X, weights, n: int) -> float:
-    tracemalloc.start()
-    tracemalloc.clear_traces()
-    start = tracemalloc.get_traced_memory()
-    for _ in range(n):
-        portfolio = Portfolio(X=X, weights=weights)
+def test_garbage_collection(X, weights):
+    def _touch(portfolio):
         _ = portfolio.returns
         _ = portfolio.standard_deviation
         _ = portfolio.fitness
         _ = portfolio.mean_absolute_deviation_ratio
-    end = tracemalloc.get_traced_memory()
+
+    n_repeat = 50
+    _touch(Portfolio(X=X, weights=weights))
+    gc.collect()
+
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
+
+    def _live_size():
+        tracemalloc.clear_traces()
+        baseline = tracemalloc.get_traced_memory()[0]
+        portfolio = Portfolio(X=X, weights=weights)
+        _touch(portfolio)
+        return tracemalloc.get_traced_memory()[0] - baseline
+
+    live = _live_size()
+    assert live > 0
+
+    gc.collect()
     tracemalloc.clear_traces()
-    return end[0] - start[0]
+    baseline = tracemalloc.get_traced_memory()[0]
+    for _ in range(n_repeat):
+        _touch(Portfolio(X=X, weights=weights))
+    gc.collect()
+    residual = tracemalloc.get_traced_memory()[0] - baseline
 
-
-def test_garbage_collection(X, weights):
-    m1 = _estimate_portfolio_memory(X, weights, n=1)
-    m10 = _estimate_portfolio_memory(X, weights, n=10)
-    m100 = _estimate_portfolio_memory(X, weights, n=100)
-    m1000 = _estimate_portfolio_memory(X, weights, n=1000)
-
-    assert m10 < 2 * m1
-    assert m100 < 2 * m1
-    assert m1000 < 2 * m1
+    assert residual < 2 * live
+    tracemalloc.stop()
 
 
 def test_portfolio_annualized(X, weights, annualization_factor):

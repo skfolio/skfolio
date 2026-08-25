@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import tracemalloc
 
 import numpy as np
@@ -753,25 +754,39 @@ def test_clear_cache(X, max_depth):
 
 
 def test_memory_fit(X):
-    model = VineCopula(
-        max_depth=100,
-        marginal_candidates=[Gaussian()],
-        copula_candidates=[GaussianCopula()],
-    )
+    n_observations, n_assets = X.shape
+    col = n_observations * 8
 
-    tracemalloc.start()
+    def _model():
+        return VineCopula(
+            max_depth=100,
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+        )
+
+    _model().fit(X)
+    gc.collect()
+
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    model.fit(X)
+    _model().fit(X)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
-    assert current < 500_000
-    expected_peak = 18_000 * 2 * (20 + 19)  # 18_000 is the memory of a numpy of len(X)
+
+    assert current < col * n_assets * 1.5
+    expected_peak = col * 2 * (2 * n_assets - 1)
     assert peak < expected_peak * 1.5
+    tracemalloc.stop()
 
 
 def test_memory_sample(X):
+    n_samples = 100_000
+    n_assets = X.shape[1]
+    col = n_samples * 8
     model = VineCopula(
         max_depth=None,
         marginal_candidates=[Gaussian()],
@@ -779,20 +794,22 @@ def test_memory_sample(X):
     )
     model.fit(X)
 
-    tracemalloc.start()
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    _ = model.sample(100_000)
+    _ = model.sample(n_samples)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
 
-    # 800_000 is the memory of a numpy of len 100_000
-    expected_current = 800_000 * 20
-    expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
+    expected_current = col * n_assets
+    expected_peak_without_optim = col * 2 * (n_assets * (n_assets + 1) / 2)
 
     assert current < expected_current * 1.5
     assert peak < expected_peak_without_optim * 0.5
+    tracemalloc.stop()
 
 
 @pytest.mark.parametrize(
