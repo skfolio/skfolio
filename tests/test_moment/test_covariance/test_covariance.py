@@ -17,6 +17,7 @@ from skfolio.moments import (
     DetoneCovariance,
     EWCovariance,
     EmpiricalCovariance,
+    GeodesicShrinkageCovariance,
     GerberCovariance,
     GraphicalLassoCV,
     ImpliedCovariance,
@@ -27,6 +28,7 @@ from skfolio.moments.covariance._base import _reduce_to_finite_active_block
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
+    cov_geodesic_interpolation,
     safe_cholesky,
 )
 
@@ -203,7 +205,14 @@ class TestBaseCovarianceMethods:
 
     @pytest.mark.parametrize(
         "estimator_class",
-        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+        [
+            EmpiricalCovariance,
+            EWCovariance,
+            LedoitWolf,
+            OAS,
+            ShrunkCovariance,
+            GeodesicShrinkageCovariance,
+        ],
     )
     def test_mahalanobis_across_estimators(self, X, estimator_class):
         """Test mahalanobis works across all estimator types."""
@@ -290,7 +299,14 @@ class TestBaseCovarianceMethods:
 
     @pytest.mark.parametrize(
         "estimator_class",
-        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+        [
+            EmpiricalCovariance,
+            EWCovariance,
+            LedoitWolf,
+            OAS,
+            ShrunkCovariance,
+            GeodesicShrinkageCovariance,
+        ],
     )
     def test_score_across_estimators(self, X, estimator_class):
         """Test score works across all estimator types."""
@@ -2548,3 +2564,93 @@ class TestShrunkCovariance:
         model = ShrunkCovariance()
         model.fit(X)
         assert model.covariance_.shape == (20, 20)
+
+
+class TestGeodesicShrinkageCovariance:
+    def test_fit(self, X):
+        model = GeodesicShrinkageCovariance()
+        model.fit(X)
+        assert model.covariance_.shape == (20, 20)
+        assert np.all(np.linalg.eigvalsh(model.covariance_) > 0)
+
+    def test_shrinkage_zero_matches_covariance_estimator(self, X):
+        base = EmpiricalCovariance()
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(), shrinkage=0.0
+        )
+        model.fit(X)
+        base.fit(X)
+        np.testing.assert_allclose(model.covariance_, base.covariance_)
+
+    def test_shrinkage_one_matches_target(self):
+        rng = np.random.default_rng(7)
+        X = rng.standard_normal((100, 4)) * 0.01
+
+        model = GeodesicShrinkageCovariance(shrinkage=1.0, target="identity")
+        model.fit(X)
+
+        base = EmpiricalCovariance(nearest=False).fit(X)
+        mu = np.trace(base.covariance_) / base.covariance_.shape[0]
+        expected_target = mu * np.identity(base.covariance_.shape[0])
+        np.testing.assert_allclose(model.covariance_, expected_target, atol=1e-10)
+
+    @pytest.mark.parametrize("target", ["identity", "diagonal"])
+    @pytest.mark.parametrize("shrinkage", [0.1, 0.5, 0.9])
+    def test_matches_manual_geodesic_interpolation(self, target, shrinkage):
+        rng = np.random.default_rng(11)
+        X = rng.standard_normal((150, 5)) * 0.01
+
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=shrinkage,
+            target=target,
+        )
+        model.fit(X)
+
+        start = EmpiricalCovariance(nearest=False).fit(X).covariance_
+        if target == "identity":
+            mu = np.trace(start) / start.shape[0]
+            end = mu * np.identity(start.shape[0])
+        else:
+            end = np.diag(np.diag(start))
+        expected = cov_geodesic_interpolation(start=start, end=end, alpha=shrinkage)
+
+        np.testing.assert_allclose(model.covariance_, expected)
+
+    def test_custom_array_target(self):
+        rng = np.random.default_rng(3)
+        X = rng.standard_normal((100, 3)) * 0.01
+        target = np.identity(3) * 2.0
+
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=0.4,
+            target=target,
+        )
+        model.fit(X)
+
+        start = EmpiricalCovariance(nearest=False).fit(X).covariance_
+        expected = cov_geodesic_interpolation(start=start, end=target, alpha=0.4)
+        np.testing.assert_allclose(model.covariance_, expected)
+
+    def test_wraps_other_covariance_estimator(self, X):
+        model = GeodesicShrinkageCovariance(covariance_estimator=LedoitWolf())
+        model.fit(X)
+        assert isinstance(model.covariance_estimator_, LedoitWolf)
+        assert model.covariance_.shape == (20, 20)
+
+    @pytest.mark.parametrize("shrinkage", [-0.1, 1.1, "a"])
+    def test_invalid_shrinkage_raises(self, shrinkage):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="shrinkage"):
+            GeodesicShrinkageCovariance(shrinkage=shrinkage).fit(X)
+
+    def test_invalid_target_string_raises(self):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="target"):
+            GeodesicShrinkageCovariance(target="not-a-target").fit(X)
+
+    def test_invalid_target_shape_raises(self):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="target"):
+            GeodesicShrinkageCovariance(target=np.identity(2)).fit(X)

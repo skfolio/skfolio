@@ -22,6 +22,7 @@ from skfolio.utils.stats import (
     commutation_matrix,
     compute_optimal_n_clusters,
     corr_to_cov,
+    cov_geodesic_interpolation,
     cov_nearest,
     cov_to_corr,
     cs_pearson_correlation,
@@ -586,6 +587,80 @@ class TestCorrToCov:
 
         with pytest.raises(ValueError):
             corr_to_cov(corr, std)
+
+
+class TestCovGeodesicInterpolation:
+    @pytest.fixture
+    def spd_pair(self):
+        rng = np.random.default_rng(42)
+        n = 6
+        a = rng.normal(size=(n, n))
+        start = a @ a.T + n * np.identity(n)
+        b = rng.normal(size=(n, n))
+        end = b @ b.T + n * np.identity(n)
+        return start, end
+
+    def test_alpha_zero_returns_start(self, spd_pair):
+        start, end = spd_pair
+        result = cov_geodesic_interpolation(start, end, alpha=0.0)
+        np.testing.assert_allclose(result, start)
+
+    def test_alpha_one_returns_end(self, spd_pair):
+        start, end = spd_pair
+        result = cov_geodesic_interpolation(start, end, alpha=1.0)
+        np.testing.assert_allclose(result, end)
+
+    @pytest.mark.parametrize("alpha", [0.1, 0.3, 0.5, 0.7, 0.9])
+    def test_matches_independent_reference(self, spd_pair, alpha):
+        import scipy.linalg as scl
+
+        start, end = spd_pair
+        result = cov_geodesic_interpolation(start, end, alpha=alpha)
+
+        # Independent reference computed with a different set of scipy primitives
+        # (sqrtm / inv / fractional_matrix_power) than the implementation
+        # (eigh-based), mirroring the affine-invariant geodesic formula.
+        start_sqrt = scl.sqrtm(start).real
+        start_inv_sqrt = scl.inv(start_sqrt)
+        middle = start_inv_sqrt @ end @ start_inv_sqrt
+        middle_pow = scl.fractional_matrix_power(middle, alpha).real
+        expected = start_sqrt @ middle_pow @ start_sqrt
+
+        np.testing.assert_allclose(result, expected, atol=1e-8)
+
+    @pytest.mark.parametrize("alpha", [0.0, 0.25, 0.5, 0.75, 1.0])
+    def test_result_is_symmetric_positive_definite(self, spd_pair, alpha):
+        start, end = spd_pair
+        result = cov_geodesic_interpolation(start, end, alpha=alpha)
+        np.testing.assert_allclose(result, result.T)
+        assert np.all(np.linalg.eigvalsh(result) > 0)
+
+    def test_invalid_alpha_raises(self, spd_pair):
+        start, end = spd_pair
+        with pytest.raises(ValueError, match="alpha"):
+            cov_geodesic_interpolation(start, end, alpha=1.5)
+        with pytest.raises(ValueError, match="alpha"):
+            cov_geodesic_interpolation(start, end, alpha=-0.1)
+
+    def test_shape_mismatch_raises(self, spd_pair):
+        start, _ = spd_pair
+        end = np.identity(start.shape[0] + 1)
+        with pytest.raises(ValueError, match="same shape"):
+            cov_geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_symmetric_raises(self, spd_pair):
+        start, end = spd_pair
+        start = start.copy()
+        start[0, 1] += 1.0
+        with pytest.raises(ValueError, match="symmetric"):
+            cov_geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_positive_definite_raises(self, spd_pair):
+        _, end = spd_pair
+        not_pd = np.array([[1.0, 2.0], [2.0, 1.0]])
+        end_2 = end[:2, :2]
+        with pytest.raises(ValueError, match="positive definite"):
+            cov_geodesic_interpolation(not_pd, end_2, alpha=0.5)
 
 
 class TestSafeDivide:

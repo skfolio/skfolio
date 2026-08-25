@@ -409,6 +409,85 @@ def corr_to_cov(corr: FloatArray, std: FloatArray):
     return cov
 
 
+def cov_geodesic_interpolation(
+    start: FloatArray, end: FloatArray, alpha: float
+) -> FloatArray:
+    r"""Interpolate between two SPD matrices along the affine-invariant geodesic.
+
+    Unlike the linear (Euclidean) interpolation used by classical shrinkage
+    estimators, :math:`(1 - \alpha) \cdot S + \alpha \cdot T`, the geodesic
+    interpolation moves `start` (:math:`S`) towards `end` (:math:`T`) along the
+    shortest path on the Riemannian manifold of Symmetric Positive Definite (SPD)
+    matrices equipped with the affine-invariant metric [1]_:
+
+    .. math::
+        \Sigma(\alpha) = S^{1/2} \left(S^{-1/2} \, T \, S^{-1/2}\right)^{\alpha} S^{1/2}
+
+    At :math:`\alpha = 0`, :math:`\Sigma = S`, and at :math:`\alpha = 1`,
+    :math:`\Sigma = T`. Because it follows the natural geometry of the SPD manifold
+    rather than a straight Euclidean line, the interpolated matrix is guaranteed to
+    remain SPD for every :math:`\alpha \in [0, 1]` whenever `start` and `end` are
+    SPD.
+
+    Parameters
+    ----------
+    start : ndarray of shape (n, n)
+        Starting SPD matrix, returned unchanged when `alpha` is 0.
+
+    end : ndarray of shape (n, n)
+        Target SPD matrix, returned unchanged when `alpha` is 1.
+
+    alpha : float
+        Interpolation intensity between 0 and 1 inclusive.
+
+    Returns
+    -------
+    interpolated : ndarray of shape (n, n)
+        The interpolated SPD matrix.
+
+    Raises
+    ------
+    ValueError
+        If `start` and `end` are not square, symmetric, of the same shape, positive
+        definite, or if `alpha` is outside [0, 1].
+
+    References
+    ----------
+    .. [1]  "Positive Definite Matrices".
+        Bhatia, R. (2007). Princeton University Press.
+    """
+    assert_is_symmetric(start)
+    assert_is_symmetric(end)
+    if start.shape != end.shape:
+        raise ValueError(
+            "`start` and `end` must have the same shape, got "
+            f"{start.shape} and {end.shape}"
+        )
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError(f"`alpha` must be between 0 and 1, got {alpha}")
+
+    if alpha == 0.0:
+        return start.copy()
+    if alpha == 1.0:
+        return end.copy()
+
+    eigvals_s, eigvecs_s = np.linalg.eigh(start)
+    if np.any(eigvals_s <= 0):
+        raise ValueError("`start` must be positive definite")
+    sqrt_s = eigvecs_s @ (np.sqrt(eigvals_s)[:, None] * eigvecs_s.T)
+    inv_sqrt_s = eigvecs_s @ ((1.0 / np.sqrt(eigvals_s))[:, None] * eigvecs_s.T)
+
+    middle = inv_sqrt_s @ end @ inv_sqrt_s
+    middle = (middle + middle.T) / 2.0
+    eigvals_m, eigvecs_m = np.linalg.eigh(middle)
+    if np.any(eigvals_m <= 0):
+        raise ValueError("`end` must be positive definite")
+    middle_pow = eigvecs_m @ ((eigvals_m**alpha)[:, None] * eigvecs_m.T)
+
+    interpolated = sqrt_s @ middle_pow @ sqrt_s
+    return (interpolated + interpolated.T) / 2.0
+
+
 _CLIPPING_VALUE = 1e-13
 
 
