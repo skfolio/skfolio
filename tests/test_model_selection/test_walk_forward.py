@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Literal, cast
 
 import numpy as np
 import pandas as pd
@@ -439,6 +440,143 @@ def test_walk_forward_with_period_long(
     )
     assert_split_equal_dates(X_medium.index, cv.split(X_medium), expected)
     assert cv.get_n_splits(X_medium) == len(list(cv.split(X_medium)))
+
+
+@pytest.mark.parametrize(
+    "test_size,train_size,purged_size,error_type,match",
+    [
+        pytest.param(
+            0,
+            2,
+            0,
+            ValueError,
+            r"`test_size` must be >= 1",
+            id="test-size-zero",
+        ),
+        pytest.param(
+            -1,
+            2,
+            0,
+            ValueError,
+            r"`test_size` must be >= 1",
+            id="test-size-negative",
+        ),
+        pytest.param(
+            1.5,
+            2,
+            0,
+            TypeError,
+            r"`test_size` must be an integer",
+            id="test-size-float",
+        ),
+        pytest.param(
+            True,
+            2,
+            0,
+            TypeError,
+            r"`test_size` must be an integer",
+            id="test-size-bool",
+        ),
+        pytest.param(
+            np.bool_(True),
+            2,
+            0,
+            TypeError,
+            r"`test_size` must be an integer",
+            id="test-size-numpy-bool",
+        ),
+        pytest.param(
+            2,
+            0,
+            0,
+            ValueError,
+            r"`train_size` must be >= 1",
+            id="train-size-zero",
+        ),
+        pytest.param(
+            2,
+            -1,
+            0,
+            ValueError,
+            r"`train_size` must be >= 1",
+            id="train-size-negative",
+        ),
+        pytest.param(
+            2,
+            1.5,
+            0,
+            TypeError,
+            r"`train_size` must be an integer when `freq` is None",
+            id="train-size-float",
+        ),
+        pytest.param(
+            2,
+            True,
+            0,
+            TypeError,
+            r"`train_size` must be an integer",
+            id="train-size-bool",
+        ),
+        pytest.param(
+            2,
+            np.bool_(True),
+            0,
+            TypeError,
+            r"`train_size` must be an integer",
+            id="train-size-numpy-bool",
+        ),
+        pytest.param(
+            2,
+            2,
+            -1,
+            ValueError,
+            r"`purged_size` must be >= 0",
+            id="purged-size-negative",
+        ),
+    ],
+)
+@pytest.mark.parametrize("method_name", ["split", "get_n_splits"])
+def test_walk_forward_rejects_invalid_window_sizes(
+    test_size: object,
+    train_size: object,
+    purged_size: object,
+    error_type: type[BaseException],
+    match: str,
+    method_name: Literal["split", "get_n_splits"],
+) -> None:
+    """Reject invalid window sizes before splitting or counting folds."""
+    X = np.arange(20).reshape(10, 2)
+    cv = WalkForward(
+        test_size=cast(int, test_size),
+        train_size=cast(int, train_size),
+        purged_size=cast(int, purged_size),
+    )
+
+    with pytest.raises(error_type, match=match):
+        if method_name == "split":
+            list(cv.split(X))
+        else:
+            cv.get_n_splits(X)
+
+
+@pytest.mark.parametrize("freq", [None, "D"])
+def test_walk_forward_accepts_numpy_integer_window_sizes(freq: str | None) -> None:
+    """Accept NumPy integer sizes for index- and calendar-based windows."""
+    X = pd.DataFrame(
+        np.arange(20).reshape(10, 2),
+        index=pd.date_range("2026-01-01", periods=10),
+    )
+    cv = WalkForward(
+        test_size=cast(int, np.int64(2)),
+        train_size=cast(int, np.int32(2)),
+        freq=freq,
+        purged_size=cast(int, np.int64(1)),
+    )
+
+    splits = list(cv.split(X))
+    assert splits
+    assert cv.get_n_splits(X) == len(splits)
+    assert all(train.size > 0 and test.size > 0 for train, test in splits)
 
 
 def test_walk_forward_without_period():
