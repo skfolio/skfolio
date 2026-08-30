@@ -11,9 +11,7 @@
 from __future__ import annotations
 
 import datetime as dt
-import numbers
 from collections.abc import Iterator
-from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -21,6 +19,7 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 from skfolio.typing import ArrayLike, IntArray
+from skfolio.utils.tools import _is_integer_number, _validate_non_negative_integer
 
 
 class WalkForward(sks.BaseCrossValidator):
@@ -273,41 +272,35 @@ class WalkForward(sks.BaseCrossValidator):
 
         Raises
         ------
-        TypeError
-            If `test_size` is not an integer, or if `train_size` is not an integer
-            when `freq` is `None`.
-
         ValueError
-            If `test_size` or an integer `train_size` is not positive, or if
-            `purged_size` is negative.
+            If a window size has an invalid type, if `test_size` or an integer
+            `train_size` is not positive, or if `purged_size` is not a non-negative
+            integer.
         """
-        if isinstance(self.test_size, bool) or not isinstance(
-            self.test_size, numbers.Integral
-        ):
-            raise TypeError(
+        if not _is_integer_number(self.test_size):
+            raise ValueError(
                 f"`test_size` must be an integer, got {type(self.test_size).__name__}."
             )
         if self.test_size < 1:
             raise ValueError(f"`test_size` must be >= 1, got {self.test_size}.")
 
         train_size = self.train_size
-        if isinstance(train_size, (bool, np.bool_)):
-            raise TypeError(
-                f"`train_size` must be an integer, got {type(train_size).__name__}."
-            )
-        # Integer windows must advance; calendar offsets retain their existing semantics.
-        if isinstance(train_size, numbers.Integral):
+        if _is_integer_number(train_size):
             train_size = int(train_size)
             if train_size < 1:
                 raise ValueError(f"`train_size` must be >= 1, got {train_size}.")
         elif self.freq is None:
-            raise TypeError(
+            raise ValueError(
                 "`train_size` must be an integer when `freq` is None, got "
                 f"{type(train_size).__name__}."
             )
+        elif not isinstance(train_size, (pd.offsets.BaseOffset, dt.timedelta)):
+            raise ValueError(
+                "`train_size` must be an integer, pandas DateOffset, or datetime "
+                f"timedelta when `freq` is set, got {type(train_size).__name__}."
+            )
 
-        if self.purged_size < 0:
-            raise ValueError(f"`purged_size` must be >= 0, got {self.purged_size}.")
+        _validate_non_negative_integer(self.purged_size, "purged_size")
         return int(self.test_size), train_size
 
     def split(
@@ -336,14 +329,10 @@ class WalkForward(sks.BaseCrossValidator):
 
         Raises
         ------
-        TypeError
-            If an observation-based window size is not an integer.
-
         ValueError
-            If a training or test window size is not positive, or if `purged_size`
-            is negative.
+            If a window size has an invalid type, if a training or test window size
+            is not positive, or if `purged_size` is not a non-negative integer.
         """
-        # Use normalized local copies while preserving estimator parameters on `self`.
         test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
@@ -351,7 +340,7 @@ class WalkForward(sks.BaseCrossValidator):
         if self.freq is None:
             return _split_without_period(
                 n_samples=n_samples,
-                train_size=cast(int, train_size),
+                train_size=train_size,
                 test_size=test_size,
                 purged_size=self.purged_size,
                 expand_train=self.expand_train,
@@ -409,22 +398,19 @@ class WalkForward(sks.BaseCrossValidator):
 
         Raises
         ------
-        TypeError
-            If an observation-based window size is not an integer.
-
         ValueError
-            If `X` is `None`, a training or test window size is not positive, or
-            `purged_size` is negative.
+            If `X` is `None`, if a window size has an invalid type, if a training or
+            test window size is not positive, or if `purged_size` is not a
+            non-negative integer.
         """
         if X is None:
             raise ValueError("The 'X' parameter should not be None.")
-        # Use normalized local copies while preserving estimator parameters on `self`.
         test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
 
         if self.freq is None:
-            n = n_samples - cast(int, train_size) - self.purged_size
+            n = n_samples - train_size - self.purged_size
 
             if self.reduce_test and n % test_size != 0:
                 return n // test_size + 1
@@ -461,7 +447,7 @@ class WalkForward(sks.BaseCrossValidator):
         last_allowed_start = n if self.reduce_test else n - test_size
         if first_valid >= last_allowed_start:
             return 0
-        return _special_div(last_allowed_start - int(first_valid), test_size) + 1
+        return _special_div(last_allowed_start - first_valid, test_size) + 1
 
 
 def _split_without_period(
