@@ -625,7 +625,7 @@ def _split_from_period_with_train_offset(
     purged_size: int,
     expand_train: bool,
     reduce_test: bool,
-    ts_index,
+    ts_index: pd.DatetimeIndex,
 ) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with date-offset training windows.
 
@@ -693,18 +693,19 @@ def _split_from_period_with_train_offset(
         if i >= n:
             return
 
+        # Offset windows anchor the test boundary, so purge from training only.
         if i + test_size >= n:
             if not reduce_test:
                 return
             test_indices = np.arange(idx[i], n_samples)
         else:
-            test_indices = np.arange(idx[i], idx[i + test_size] - purged_size)
+            test_indices = np.arange(idx[i], idx[i + test_size])
 
         if expand_train:
             train_start = 0
         else:
             train_start = train_idx[i]
-        train_indices = np.arange(train_start, idx[i])
+        train_indices = np.arange(train_start, idx[i] - purged_size)
         yield train_indices, test_indices
 
         i += test_size

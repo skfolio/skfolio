@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 
 import numpy as np
 import pandas as pd
@@ -360,6 +361,55 @@ def test_walk_forward_with_period(
     )
     assert_split_equal_dates(X_small.index, cv.split(X_small), expected)
     assert cv.get_n_splits(X_small) == len(list(cv.split(X_small)))
+
+
+def test_walk_forward_with_train_offset_purges_training():
+    """Remove purged observations from offset-based training windows only."""
+    X = pd.DataFrame(
+        np.arange(240).reshape(120, 2),
+        index=pd.date_range("2026-01-01", periods=120, freq="D"),
+    )
+    # Cover both offset types and every alignment, window, and final-fold policy.
+    for train_size, previous, expand_train, reduce_test in itertools.product(
+        (pd.DateOffset(months=1), dt.timedelta(days=31)),
+        (False, True),
+        (False, True),
+        (False, True),
+    ):
+        unpurged_cv = WalkForward(
+            test_size=1,
+            train_size=train_size,
+            freq="MS",
+            previous=previous,
+            reduce_test=reduce_test,
+            expand_train=expand_train,
+            purged_size=0,
+        )
+        purged_cv = WalkForward(
+            test_size=1,
+            train_size=train_size,
+            freq="MS",
+            previous=previous,
+            reduce_test=reduce_test,
+            expand_train=expand_train,
+            purged_size=1,
+        )
+        unpurged_splits = list(unpurged_cv.split(X))
+        purged_splits = list(purged_cv.split(X))
+
+        assert purged_cv.get_n_splits(X) == len(purged_splits)
+        assert len(purged_splits) == len(unpurged_splits)
+        for (unpurged_train, unpurged_test), (
+            purged_train,
+            purged_test,
+        ) in zip(unpurged_splits, purged_splits, strict=True):
+            np.testing.assert_array_equal(purged_train, unpurged_train[:-1])
+            np.testing.assert_array_equal(purged_test, unpurged_test)
+
+        # Pin independent boundaries so matching errors in both splitters cannot pass.
+        first_train, first_test = purged_splits[0]
+        np.testing.assert_array_equal(first_train, np.arange(30))
+        np.testing.assert_array_equal(first_test, np.arange(31, 59))
 
 
 @pytest.mark.parametrize(
