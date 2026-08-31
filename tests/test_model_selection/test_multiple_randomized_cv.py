@@ -264,14 +264,53 @@ def test_split_with_window_size():
     assert_split_equal(
         cv.split(X),
         [
-            ([5, 6, 7], [8, 9], [1, 2, 5, 9]),
-            ([7, 8, 9], [10, 11], [1, 2, 5, 9]),
-            ([0, 1, 2], [3, 4], [3, 7, 8, 9]),
-            ([2, 3, 4], [5, 6], [3, 7, 8, 9]),
+            ([12, 13, 14], [15, 16], [1, 2, 5, 9]),
+            ([14, 15, 16], [17, 18], [1, 2, 5, 9]),
+            ([5, 6, 7], [8, 9], [3, 7, 8, 9]),
+            ([7, 8, 9], [10, 11], [3, 7, 8, 9]),
         ],
     )
 
     assert np.array_equal(cv.get_path_ids(), [0, 0, 1, 1])
+
+
+def test_split_with_full_window_size():
+    """Use the sole valid start when the window spans all observations."""
+    X = np.arange(50, dtype=float).reshape(10, 5)
+    cv = MultipleRandomizedCV(
+        walk_forward=WalkForward(test_size=1, train_size=2),
+        n_subsamples=2,
+        asset_subset_size=2,
+        window_size=10,
+        random_state=0,
+    )
+
+    splits = list(cv.split(X))
+
+    assert len(splits) == 16
+    # Both sampled paths cover the full history and therefore start at zero.
+    for path_start in (0, 8):
+        train, test, _ = splits[path_start]
+        np.testing.assert_array_equal(train, [0, 1])
+        np.testing.assert_array_equal(test, [2])
+
+
+def test_split_includes_final_window():
+    """Allow the terminal valid contiguous window to be sampled."""
+    X = np.arange(50, dtype=float).reshape(10, 5)
+    cv = MultipleRandomizedCV(
+        walk_forward=WalkForward(test_size=1, train_size=2),
+        n_subsamples=2,
+        asset_subset_size=2,
+        window_size=4,
+        random_state=9,
+    )
+
+    train, test, _ = next(cv.split(X))
+
+    # A four-observation window in ten has starts 0 through 6; seed 9 selects 6.
+    np.testing.assert_array_equal(train, [6, 7])
+    np.testing.assert_array_equal(test, [8])
 
 
 def test_time_aware_wf(X):

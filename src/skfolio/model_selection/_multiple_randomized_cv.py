@@ -293,7 +293,10 @@ class MultipleRandomizedCV:
                 start_obs = 0
                 X_sample = X
             else:
-                start_obs = rng.randint(low=0, high=n_observations - self.window_size)
+                # randint excludes its upper bound, so include the terminal valid start.
+                start_obs = rng.randint(
+                    low=0, high=n_observations - self.window_size + 1
+                )
                 obs_indices = np.arange(start_obs, start_obs + self.window_size)
                 X_sample, _ = safe_split(X, indices=obs_indices, axis=0)
 
