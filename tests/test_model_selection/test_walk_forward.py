@@ -449,7 +449,7 @@ def test_walk_forward_with_period_long(
             2,
             None,
             0,
-            r"`test_size` must be >= 1",
+            r"test_size must be a positive integer",
             id="test-size-zero",
         ),
         pytest.param(
@@ -457,7 +457,7 @@ def test_walk_forward_with_period_long(
             2,
             None,
             0,
-            r"`test_size` must be >= 1",
+            r"test_size must be a positive integer",
             id="test-size-negative",
         ),
         pytest.param(
@@ -465,7 +465,7 @@ def test_walk_forward_with_period_long(
             2,
             None,
             0,
-            r"`test_size` must be an integer",
+            r"test_size must be a positive integer",
             id="test-size-float",
         ),
         pytest.param(
@@ -473,7 +473,7 @@ def test_walk_forward_with_period_long(
             2,
             None,
             0,
-            r"`test_size` must be an integer",
+            r"test_size must be a positive integer",
             id="test-size-bool",
         ),
         pytest.param(
@@ -481,7 +481,7 @@ def test_walk_forward_with_period_long(
             2,
             None,
             0,
-            r"`test_size` must be an integer",
+            r"test_size must be a positive integer",
             id="test-size-numpy-bool",
         ),
         pytest.param(
@@ -489,7 +489,7 @@ def test_walk_forward_with_period_long(
             0,
             None,
             0,
-            r"`train_size` must be >= 1",
+            r"train_size must be a positive integer",
             id="train-size-zero",
         ),
         pytest.param(
@@ -497,7 +497,7 @@ def test_walk_forward_with_period_long(
             -1,
             None,
             0,
-            r"`train_size` must be >= 1",
+            r"train_size must be a positive integer",
             id="train-size-negative",
         ),
         pytest.param(
@@ -505,7 +505,7 @@ def test_walk_forward_with_period_long(
             1.5,
             None,
             0,
-            r"`train_size` must be an integer when `freq` is None",
+            r"train_size must be an integer when freq is None",
             id="train-size-float",
         ),
         pytest.param(
@@ -513,7 +513,7 @@ def test_walk_forward_with_period_long(
             True,
             None,
             0,
-            r"`train_size` must be an integer",
+            r"train_size must be an integer when freq is None",
             id="train-size-bool",
         ),
         pytest.param(
@@ -521,7 +521,7 @@ def test_walk_forward_with_period_long(
             np.bool_(True),
             None,
             0,
-            r"`train_size` must be an integer",
+            r"train_size must be an integer when freq is None",
             id="train-size-numpy-bool",
         ),
         pytest.param(
@@ -529,7 +529,7 @@ def test_walk_forward_with_period_long(
             "6M",
             "D",
             0,
-            r"`train_size` must be an integer, pandas DateOffset",
+            r"train_size must be an integer, pandas DateOffset",
             id="train-size-string-with-frequency",
         ),
         pytest.param(
@@ -537,7 +537,7 @@ def test_walk_forward_with_period_long(
             True,
             "D",
             0,
-            r"`train_size` must be an integer, pandas DateOffset",
+            r"train_size must be an integer, pandas DateOffset",
             id="train-size-bool-with-frequency",
         ),
         pytest.param(

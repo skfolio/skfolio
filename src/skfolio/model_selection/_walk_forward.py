@@ -19,7 +19,11 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 from skfolio.typing import ArrayLike, IntArray
-from skfolio.utils.tools import _is_integer_number, _validate_non_negative_integer
+from skfolio.utils.tools import (
+    _is_integer_number,
+    _validate_non_negative_integer,
+    _validate_positive_integer,
+)
 
 
 class WalkForward(sks.BaseCrossValidator):
@@ -257,52 +261,6 @@ class WalkForward(sks.BaseCrossValidator):
         self.reduce_test = reduce_test
         self.purged_size = purged_size
 
-    def _validate_window_sizes(
-        self,
-    ) -> tuple[int, int | pd.offsets.BaseOffset | dt.timedelta]:
-        """Validate and normalize window sizes used by the public split methods.
-
-        Returns
-        -------
-        test_size : int
-            Normalized test-window size.
-
-        train_size : int | pandas.offsets.DateOffset | datetime.timedelta
-            Normalized integer training-window size or the unchanged calendar offset.
-
-        Raises
-        ------
-        ValueError
-            If a window size has an invalid type, if `test_size` or an integer
-            `train_size` is not positive, or if `purged_size` is not a non-negative
-            integer.
-        """
-        if not _is_integer_number(self.test_size):
-            raise ValueError(
-                f"`test_size` must be an integer, got {type(self.test_size).__name__}."
-            )
-        if self.test_size < 1:
-            raise ValueError(f"`test_size` must be >= 1, got {self.test_size}.")
-
-        train_size = self.train_size
-        if _is_integer_number(train_size):
-            train_size = int(train_size)
-            if train_size < 1:
-                raise ValueError(f"`train_size` must be >= 1, got {train_size}.")
-        elif self.freq is None:
-            raise ValueError(
-                "`train_size` must be an integer when `freq` is None, got "
-                f"{type(train_size).__name__}."
-            )
-        elif not isinstance(train_size, (pd.offsets.BaseOffset, dt.timedelta)):
-            raise ValueError(
-                "`train_size` must be an integer, pandas DateOffset, or datetime "
-                f"timedelta when `freq` is set, got {type(train_size).__name__}."
-            )
-
-        _validate_non_negative_integer(self.purged_size, "purged_size")
-        return int(self.test_size), train_size
-
     def split(
         self, X: ArrayLike, y=None, groups=None
     ) -> Iterator[tuple[IntArray, IntArray]]:
@@ -448,6 +406,45 @@ class WalkForward(sks.BaseCrossValidator):
         if first_valid >= last_allowed_start:
             return 0
         return _special_div(last_allowed_start - first_valid, test_size) + 1
+
+    def _validate_window_sizes(
+        self,
+    ) -> tuple[int, int | pd.offsets.BaseOffset | dt.timedelta]:
+        """Validate and normalize window sizes used by the public split methods.
+
+        Returns
+        -------
+        test_size : int
+            Normalized test-window size.
+
+        train_size : int | pandas.offsets.DateOffset | datetime.timedelta
+            Normalized integer training-window size or the unchanged calendar offset.
+
+        Raises
+        ------
+        ValueError
+            If a window size has an invalid type, if `test_size` or an integer
+            `train_size` is not positive, or if `purged_size` is not a non-negative
+            integer.
+        """
+        _validate_positive_integer(self.test_size, "test_size")
+
+        train_size = self.train_size
+        if _is_integer_number(train_size):
+            train_size = int(train_size)
+            _validate_positive_integer(train_size, "train_size")
+        elif self.freq is None:
+            raise ValueError(
+                f"train_size must be an integer when freq is None, got {train_size!r}"
+            )
+        elif not isinstance(train_size, (pd.offsets.BaseOffset, dt.timedelta)):
+            raise ValueError(
+                "train_size must be an integer, pandas DateOffset, or datetime "
+                f"timedelta when freq is set, got {train_size!r}"
+            )
+
+        _validate_non_negative_integer(self.purged_size, "purged_size")
+        return int(self.test_size), train_size
 
 
 def _split_without_period(

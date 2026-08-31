@@ -424,31 +424,33 @@ def _validate_bool(value: object, name: str) -> None:
 def _validate_positive_real(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite positive real number."""
     if not _is_real_number(value) or not np.isfinite(value) or value <= 0:
-        raise ValueError(f"{name} must be a positive number, got {value}")
+        raise ValueError(f"{name} must be a positive number, got {value!r}")
 
 
 def _validate_non_negative_real(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite non-negative real number."""
     if not _is_real_number(value) or not np.isfinite(value) or value < 0:
-        raise ValueError(f"{name} must be a non-negative number, got {value}")
+        raise ValueError(f"{name} must be a non-negative number, got {value!r}")
 
 
 def _validate_positive_integer(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a positive integer (>= 1)."""
     if not _is_integer_number(value) or value < 1:
-        raise ValueError(f"{name} must be a positive integer (>= 1), got {value}")
+        raise ValueError(f"{name} must be a positive integer (>= 1), got {value!r}")
 
 
 def _validate_non_negative_integer(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a non-negative integer (>= 0)."""
     if not _is_integer_number(value) or value < 0:
-        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value}")
+        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value!r}")
 
 
 def _validate_unit_interval(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite real number in [0, 1]."""
     if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
-        raise ValueError(f"{name} must be a finite number between 0 and 1, got {value}")
+        raise ValueError(
+            f"{name} must be a finite number between 0 and 1, got {value!r}"
+        )
 
 
 def check_estimator(
