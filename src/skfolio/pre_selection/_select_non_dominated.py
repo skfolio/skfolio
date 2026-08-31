@@ -15,6 +15,7 @@ import skfolio.typing as skt
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
 from skfolio.typing import ArrayLike, BoolArray
+from skfolio.utils.tools import _validate_positive_integer
 
 
 class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
@@ -97,6 +98,8 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectNonDominated
             Fitted estimator.
         """
+        if self.min_n_assets is not None:
+            _validate_positive_integer(self.min_n_assets, "min_n_assets")
         X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
@@ -149,7 +152,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         while i < len(fronts):
             if (
                 self.min_n_assets is not None
-                and len(new_assets_idx) > self.min_n_assets
+                and len(new_assets_idx) >= self.min_n_assets
             ):
                 break
             for idx in fronts[i]:
