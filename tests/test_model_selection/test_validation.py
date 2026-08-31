@@ -218,6 +218,18 @@ def test_cross_val_predict_non_portfolio_estimator_raises(X):
         cross_val_predict(model, X, cv=KFold())
 
 
+def test_cross_val_predict_rejects_empty_splits():
+    """Reject cross-validation schedules that produce no splits."""
+    X = np.ones((6, 2))
+    cv = WalkForward(train_size=5, test_size=2, reduce_test=False)
+
+    # One observation remains after training, which cannot fill a two-row test fold.
+    assert cv.get_n_splits(X) == 0
+    assert not list(cv.split(X))
+    with pytest.raises(ValueError, match="produced no splits"):
+        cross_val_predict(MeanRisk(), X, cv=cv)
+
+
 def test_optim_with_previous_weights_walk_forward(X):
     cv = WalkForward(test_size=300, train_size=400)
 

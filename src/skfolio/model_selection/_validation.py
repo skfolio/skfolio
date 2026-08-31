@@ -177,6 +177,11 @@ def cross_val_predict(
 
     cv = sks.check_cv(cv, y)
     splits = list(cv.split(X, y, **routed_params.splitter.split))
+    if len(splits) == 0:
+        raise ValueError(
+            "The cross-validation strategy produced no splits. Check the number of "
+            "observations and cross-validation parameters."
+        )
 
     portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
 
