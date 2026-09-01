@@ -60,10 +60,20 @@ jobs:
       - name: Install project (dev extras)
         run: uv pip install -e ".[dev]"
 
-      - name: Ruff (lint + format check)
-        run: |
-          uv run ruff check --output-format=github
-          uv run ruff format --check
+      # Hook environments are keyed by the pinned revs in the config, so the cache
+      # is invalidated exactly when a hook is bumped.
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ env.MAIN_PYTHON }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # `.pre-commit-config.yaml` is the single source of truth for lint and format.
+      # Invoking ruff directly here as well would reintroduce the drift this job
+      # exists to prevent: the hook pins a ruff release while the `dev` extra
+      # resolves whatever is current, and the two then enforce different rules.
+      - name: Lint and format (pre-commit)
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux

@@ -224,4 +224,3 @@ corresponding to a train/test fold.
     from skfolio import MultiPeriodPortfolio
 
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
-

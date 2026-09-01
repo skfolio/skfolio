@@ -174,4 +174,3 @@ grid_search = GridSearchCV(
 grid_search.fit(X)
 print(grid_search.best_params_)
 model = grid_search.best_estimator_
-

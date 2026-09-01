@@ -59,7 +59,16 @@ Local development requires Python 3.10 or later and
    uv pip install --editable ".[dev]"
    ```
 
-3. Create a branch for your changes:
+3. Install the git hooks:
+
+   ```shell
+   uv run pre-commit install
+   ```
+
+   These are the same checks CI runs, so installing them catches lint and
+   formatting problems before you push.
+
+4. Create a branch for your changes:
 
    ```shell
    git checkout -b name-of-your-bugfix-or-feature
@@ -92,6 +101,17 @@ Format and lint your changes with:
 uv run ruff check --fix
 uv run ruff format
 ```
+
+To run every check exactly as CI does, including the YAML and end-of-file hooks:
+
+```shell
+uv run pre-commit run --all-files
+```
+
+`.pre-commit-config.yaml` is the single source of truth for linting and formatting:
+CI runs these hooks and nothing else, so a clean run there means a clean lint job.
+Note that `ruff` in the `dev` extra is unpinned and may resolve a newer release than
+the one the hooks pin; the hooks are what the build enforces.
 
 ## Documentation
 

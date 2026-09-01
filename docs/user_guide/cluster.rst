@@ -35,4 +35,3 @@ clusters from a distance matrix. It is used in the following portfolio optimizat
     model = HierarchicalClustering()
     model.fit(distance)
     print(model.linkage_matrix_)
-

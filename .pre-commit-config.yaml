@@ -9,10 +9,17 @@ repos:
         exclude: LICENSE
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    # Keep in sync with the ruff version CI resolves from the `dev` extra.
+    rev: v0.16.5
     hooks:
+      # `[tool.ruff] include` is ignored for paths passed explicitly on the command
+      # line, which is how pre-commit invokes ruff. Without `files`, the hooks would
+      # lint `examples/` and `docs/` — sphinx-gallery sources that the project
+      # deliberately keeps out of scope — and disagree with CI.
       - id: ruff
         name: ruff-lint
         args: [--fix, --exit-non-zero-on-fix]
+        files: ^(src|tests)/.*\.py$
       - id: ruff-format
         name: ruff-format
+        files: ^(src|tests)/.*\.py$
