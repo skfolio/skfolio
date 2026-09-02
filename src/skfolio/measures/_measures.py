@@ -228,9 +228,18 @@ def semi_variance(
     if biased:
         return biased_semi_var
 
-    n_observations = len(returns)
     if sample_weight is None:
-        correction = n_observations / (n_observations - 1)
+        # Count non-NaN observations per column so that the Bessel correction
+        # matches the sample actually used in the numerator, as `variance` does
+        # via `np.nanvar`. Fewer than two observations yields NaN, again
+        # matching `variance`.
+        n_observations = np.sum(~np.isnan(np.asarray(returns, dtype=float)), axis=0)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            correction = np.where(
+                n_observations > 1,
+                n_observations / (n_observations - 1.0),
+                np.nan,
+            )
     else:
         correction = 1.0 / (1.0 - np.sum(sample_weight**2))
     return biased_semi_var * correction
