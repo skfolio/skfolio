@@ -46,7 +46,7 @@ from skfolio.distribution import VineCopula
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import MeanRisk
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import TimeSeriesFactorModel, SyntheticData
+from skfolio.prior import SyntheticData, TimeSeriesFactorModel
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()

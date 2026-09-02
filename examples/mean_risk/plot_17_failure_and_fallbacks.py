@@ -168,6 +168,7 @@ print(pred.n_fallback_portfolios)
 # which contain the fallback statistics:
 print(pred.summary().iloc[-4:])
 
+
 # %%
 # Failure handling
 # ================
@@ -207,6 +208,7 @@ class CustomOptimization(BaseOptimization):
         n_assets = X.shape[1]
         self.weights_ = rand_weights(n_assets)
         return self
+
 
 # %%
 # By default, as with all scikit-learn estimators, failures raise an error during `fit`:
@@ -273,4 +275,3 @@ print(failed_ptf.optimization_error)
 # To replay the optimization on the failed period, we can run:
 
 # model.fit(failed_ptf.X)
-

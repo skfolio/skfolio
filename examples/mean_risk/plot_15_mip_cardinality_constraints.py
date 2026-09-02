@@ -36,11 +36,10 @@ solvers.
 # We load the S&P 500 :ref:`dataset <datasets>` composed of the daily prices of 20
 # assets from the S&P 500 Index composition starting from 2018-01-02 up to 2022-12-28.
 
-import numpy as np
 from plotly.io import show
 from sklearn.model_selection import train_test_split
 
-from skfolio import PerfMeasure, RiskMeasure, RatioMeasure
+from skfolio import PerfMeasure, RatioMeasure, RiskMeasure
 from skfolio.datasets import load_sp500_dataset
 from skfolio.optimization import MeanRisk
 from skfolio.preprocessing import prices_to_returns

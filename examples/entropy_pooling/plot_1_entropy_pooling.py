@@ -107,7 +107,7 @@ from skfolio.measures import (
 )
 from skfolio.optimization import HierarchicalRiskParity, RiskBudgeting
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EntropyPooling, TimeSeriesFactorModel, SyntheticData
+from skfolio.prior import EntropyPooling, SyntheticData, TimeSeriesFactorModel
 from skfolio.utils.figure import plot_kde_distributions
 
 # Load stock price and factor data

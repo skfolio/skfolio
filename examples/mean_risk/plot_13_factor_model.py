@@ -75,7 +75,7 @@ from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.moments import GerberCovariance, ShrunkMu
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRegression
+from skfolio.prior import EmpiricalPrior, LoadingMatrixRegression, TimeSeriesFactorModel
 
 set_config(enable_metadata_routing=True)
 
@@ -83,7 +83,9 @@ prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
 X, factors = prices_to_returns(prices, factor_prices)
-X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
 
 # %%
 # Factor Model
