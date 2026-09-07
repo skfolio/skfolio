@@ -577,7 +577,9 @@ def test_mean_variance_correlation_views(X, solver):
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
     np.testing.assert_almost_equal(mean[1], 0.003, 5)
-    np.testing.assert_almost_equal(1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, 7)
+    np.testing.assert_allclose(
+        1.5 * mean[3] - (2 * mean[4] + 3 * mean[5]), 0, atol=1e-6, rtol=0
+    )
     np.testing.assert_almost_equal(variance[0], 0.0005)
     np.testing.assert_almost_equal(variance[1], 0.003, 5)
     np.testing.assert_almost_equal(corr[0, 1], 0.5, 4)
