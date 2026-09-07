@@ -381,9 +381,24 @@ def test_mean_variance_views(X, solver):
     )
 
 
-def test_mean_cvar_variance_views(X, solver):
+@pytest.mark.parametrize("return_scale", [1.0, 1.0 + 1e-15])
+def test_mean_cvar_variance_views(X, solver, return_scale):
+    # Exercise sensitivity to rounding in the nested CVaR optimization.
+    X = X * return_scale
+    solver_params = None
+    if solver == "TNC":
+        # Relax objective convergence for this tightly constrained case while
+        # retaining the original step size and all accuracy assertions below.
+        solver_params = {
+            "maxfun": 5000,
+            "ftol": 1e-10,
+            "xtol": 1e-8,
+            "gtol": 1e-8,
+            "stepmx": 1,
+        }
     model = EntropyPooling(
         solver=solver,
+        solver_params=solver_params,
         mean_views=[
             "AMD == 0.003",
             "1.5 * BBY == 2*CVX + 3*GE",
