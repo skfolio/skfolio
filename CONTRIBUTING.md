@@ -52,23 +52,19 @@ Local development requires Python 3.10 or later and
    cd skfolio
    ```
 
-2. Create a virtual environment and install the development dependencies:
+2. Install the development environment and Git commit hook:
 
    ```shell
-   uv venv
-   uv pip install --editable ".[dev]"
-   ```
-
-3. Install the git hooks:
-
-   ```shell
+   uv sync
    uv run pre-commit install
    ```
 
-   These are the same checks CI runs, so installing them catches lint and
-   formatting problems before you push.
+   If a hook modifies files, stage them and commit again.
 
-4. Create a branch for your changes:
+   `uv sync` creates `.venv` and installs skfolio in editable mode, including the
+   default `dev` dependency group.
+
+3. Create a branch for your changes:
 
    ```shell
    git checkout -b name-of-your-bugfix-or-feature
@@ -102,23 +98,24 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-To run every check exactly as CI does, including the YAML and end-of-file hooks:
+CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
+
+### Refreshing your environment
+
+To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
 
 ```shell
-uv run pre-commit run --all-files
+uv sync --upgrade
 ```
 
-`.pre-commit-config.yaml` is the single source of truth for linting and formatting:
-CI runs these hooks and nothing else, so a clean run there means a clean lint job.
-Note that `ruff` in the `dev` extra is unpinned and may resolve a newer release than
-the one the hooks pin; the hooks are what the build enforces.
+Add `--group docs` or `--group notebooks` if you use those tools.
 
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
-uv pip install --editable ".[dev,docs]"
+uv sync --group docs
 cd docs
 ```
 

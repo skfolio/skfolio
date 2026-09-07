@@ -27,8 +27,7 @@ updates:
       prefix: "deps(actions)"
       include: "scope"
 
-  # Keeps the hook revs current. Without this the ruff pin drifts from the version
-  # the `dev` extra resolves, which is how the two came to enforce different rules.
+  # Keep the YAML and end-of-file hooks up to date.
   - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:

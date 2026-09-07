@@ -10,11 +10,10 @@ ENV UV_COMPILE_BYTECODE=1
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
 
-# Install the project's dependencies using the lockfile and settings
+# Resolve notebook dependencies from pyproject.toml inside the image
 RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --no-install-project --no-dev --group notebooks
 
 
 # Then, add the rest of the project source code and install it
@@ -22,18 +21,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY . /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --no-dev --group notebooks
 
-# Additionally install the jupyterlab extension
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv add jupyterlab ipywidgets
-
-# Verify Jupyter is installed and in PATH
-RUN which jupyter || echo "Jupyter not found in PATH"
-
-    # Place executables in the environment at the front of the path
+# Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
+
+# Fail the build if the notebook tools are unavailable.
+RUN jupyter lab --version
 
 # Reset the entrypoint, don't invoke `uv`
 ENTRYPOINT []
