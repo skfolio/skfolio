@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import gzip
 import os
-import shutil
-import stat
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Lock
 
 import pandas as pd
 import pytest
@@ -20,7 +20,6 @@ from skfolio.datasets import (
     load_sp500_index,
 )
 from skfolio.datasets._base import (
-    _urlretrieve_atomic,
     clear_data_home,
     download_dataset,
     get_data_home,
@@ -47,7 +46,6 @@ class TestGetDataHome:
 
     #  Creates the skfolio data directory if it does not exist
     def test_create_directory(self, isolated_data_home):
-        shutil.rmtree(isolated_data_home, ignore_errors=True)
         get_data_home()
         assert os.path.exists(isolated_data_home)
 
@@ -81,9 +79,9 @@ class TestClearDataHome:
         assert not os.path.exists(isolated_data_home)
 
     #  Does not raise an error when given a non-existent path.
-    def test_no_error_nonexistent_path(self):
+    def test_no_error_nonexistent_path(self, tmp_path):
         # Set up
-        data_home = "nonexistent/path"
+        data_home = tmp_path / "nonexistent" / "path"
 
         # Execute and assert
         try:
@@ -267,7 +265,7 @@ def _write_valid_gz(path: str) -> None:
         f.write(csv)
 
 
-class TestUrlretrieveAtomic:
+class TestDownloadDatasetCache:
     #  A failed download leaves neither a destination file nor temporary residue,
     #  so the next call retries instead of reading a truncated cache entry.
     @pytest.mark.parametrize("error", [OSError, KeyboardInterrupt])
@@ -283,92 +281,84 @@ class TestUrlretrieveAtomic:
         monkeypatch.setattr(_base.ur, "urlretrieve", interrupted)
 
         with pytest.raises(error):
-            _urlretrieve_atomic("https://example.invalid/x.csv.gz", str(dest))
+            download_dataset("dataset", data_home=tmp_path)
 
         assert not dest.exists()
         assert list(tmp_path.iterdir()) == []
 
-    #  A failed download does not clobber an already-cached file.
-    def test_failure_preserves_existing_file(self, tmp_path, monkeypatch):
-        dest = tmp_path / "dataset.csv.gz"
-        _write_valid_gz(str(dest))
-        original = dest.read_bytes()
-
-        def failing(url, filename):
-            raise OSError("connection lost")
-
-        monkeypatch.setattr(_base.ur, "urlretrieve", failing)
-
-        with pytest.raises(OSError, match="connection lost"):
-            _urlretrieve_atomic("https://example.invalid/x.csv.gz", str(dest))
-
-        assert dest.read_bytes() == original
-
     #  The destination does not exist while the download is in flight, so a
     #  concurrent reader can never observe a partially written file.
-    def test_destination_absent_until_complete(self, tmp_path, monkeypatch):
+    def test_download_is_atomic_and_cached(self, tmp_path, monkeypatch):
         dest = tmp_path / "dataset.csv.gz"
-        observed = {}
 
         def downloading(url, filename):
-            observed["dest_exists_mid_download"] = dest.exists()
+            with open(filename, "wb") as f:
+                f.write(b"\x1f\x8b\x08 truncated")
+            assert not dest.exists()
             _write_valid_gz(filename)
 
         monkeypatch.setattr(_base.ur, "urlretrieve", downloading)
-        _urlretrieve_atomic("https://example.invalid/x.csv.gz", str(dest))
-
-        assert observed["dest_exists_mid_download"] is False
-        assert dest.exists()
-
-    #  `mkstemp` creates files 0600; the cache may be shared through SKFOLIO_DATA,
-    #  so the promoted file keeps the permissions a plain download would have given.
-    def test_promoted_file_is_world_readable(self, tmp_path, monkeypatch):
-        dest = tmp_path / "dataset.csv.gz"
-        monkeypatch.setattr(
-            _base.ur, "urlretrieve", lambda url, filename: _write_valid_gz(filename)
-        )
-
-        _urlretrieve_atomic("https://example.invalid/x.csv.gz", str(dest))
-
-        assert stat.S_IMODE(dest.stat().st_mode) == 0o644
-
-
-class TestDownloadDatasetCache:
-    #  A truncated cache entry is discarded and re-downloaded, rather than failing
-    #  identically on every subsequent call until the user clears the cache by hand.
-    @pytest.mark.parametrize(
-        "corrupt", [b"", b"\x1f\x8b\x08 truncated", b"not gzip at all"]
-    )
-    def test_recovers_from_corrupt_cache(self, tmp_path, monkeypatch, corrupt):
-        cached = tmp_path / "some_dataset.csv.gz"
-        cached.write_bytes(corrupt)
-
-        monkeypatch.setattr(
-            _base.ur, "urlretrieve", lambda url, filename: _write_valid_gz(filename)
-        )
-
-        df = download_dataset("some_dataset", data_home=str(tmp_path))
+        df = download_dataset("dataset", data_home=tmp_path)
 
         assert list(df.columns) == ["A", "B"]
         assert len(df) == 2
-        # The cache entry is now valid, so the next call needs no download.
+        assert list(tmp_path.iterdir()) == [dest]
         monkeypatch.setattr(
             _base.ur,
             "urlretrieve",
             lambda url, filename: pytest.fail("should have used the cache"),
         )
-        assert len(download_dataset("some_dataset", data_home=str(tmp_path))) == 2
+        pd.testing.assert_frame_equal(
+            download_dataset("dataset", data_home=tmp_path), df
+        )
 
-    #  A corrupt cache entry cannot be repaired when downloading is disabled, so the
-    #  error names the offending file instead of surfacing a bare gzip failure.
-    def test_corrupt_cache_reports_clearly_when_download_disabled(self, tmp_path):
-        cached = tmp_path / "some_dataset.csv.gz"
-        cached.write_bytes(b"\x1f\x8b\x08 truncated")
+    def test_concurrent_downloads_with_open_cache(self, tmp_path, monkeypatch):
+        dest = tmp_path / "dataset.csv.gz"
+        downloaded = Barrier(2)
+        publishing = Lock()
+        rename = os.rename
 
-        with pytest.raises(OSError, match="unreadable"):
-            download_dataset(
-                "some_dataset", data_home=str(tmp_path), download_if_missing=False
-            )
+        def downloading(url, filename):
+            _write_valid_gz(filename)
+            # Both callers must see an empty cache before either can publish.
+            downloaded.wait(timeout=10)
+
+        def rename_with_reader(src, dst):
+            with publishing:
+                if dest.exists():
+                    # Keep the winner's file open while the other worker publishes.
+                    with dest.open("rb"):
+                        return rename(src, dst)
+                return rename(src, dst)
+
+        monkeypatch.setattr(_base.ur, "urlretrieve", downloading)
+        monkeypatch.setattr(_base.os, "rename", rename_with_reader)
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(download_dataset, "dataset", data_home=tmp_path)
+                for _ in range(2)
+            ]
+            frames = [future.result(timeout=15) for future in futures]
+
+        assert len(frames[0]) == 2
+        pd.testing.assert_frame_equal(*frames)
+        pd.testing.assert_frame_equal(
+            frames[0], _base.load_gzip_compressed_csv_data(str(dest))
+        )
+        assert list(tmp_path.iterdir()) == [dest]
+
+    def test_publish_error_propagates(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            _base.ur, "urlretrieve", lambda url, filename: _write_valid_gz(filename)
+        )
+
+        def denied(src, dst):
+            raise PermissionError("cannot publish cache")
+
+        monkeypatch.setattr(_base.os, "rename", denied)
+        with pytest.raises(PermissionError, match="cannot publish cache"):
+            download_dataset("dataset", data_home=tmp_path)
+        assert list(tmp_path.iterdir()) == []
 
     #  A missing dataset still reports the original error when downloading is disabled.
     def test_missing_dataset_when_download_disabled(self, tmp_path):

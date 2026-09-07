@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import gzip
 import os
 import shutil
@@ -116,54 +115,6 @@ def load_gzip_compressed_csv_data(
         return df
 
 
-# Failure modes of reading a truncated or empty `.csv.gz` cache entry. Deliberately
-# narrow: a permission or disk error must propagate rather than trigger a re-download.
-_CORRUPT_CACHE_ERRORS = (
-    EOFError,
-    gzip.BadGzipFile,
-    pd.errors.EmptyDataError,
-    pd.errors.ParserError,
-)
-
-
-def _urlretrieve_atomic(url: str, filepath: str) -> None:
-    """Download `url` to `filepath`, making the result appear atomically.
-
-    `urllib.request.urlretrieve` writes directly to its destination, so a reader can
-    observe a partially written file and an interrupted download leaves a truncated
-    one cached for good. Downloading to a temporary file in the same directory and
-    moving it into place with `os.replace` removes both: `os.replace` is atomic on
-    POSIX and Windows when source and destination share a filesystem, so the cache
-    entry either does not exist or is complete.
-
-    Parameters
-    ----------
-    url : str
-        URL to download.
-
-    filepath : str
-        Destination path. Its parent directory must already exist.
-    """
-    fd, tmp_path = tempfile.mkstemp(
-        dir=os.path.dirname(filepath),
-        prefix=f".{os.path.basename(filepath)}.",
-        suffix=".part",
-    )
-    os.close(fd)
-    try:
-        ur.urlretrieve(url, tmp_path)
-        # `mkstemp` creates the file 0600. The cache may be shared between users via
-        # `SKFOLIO_DATA`, so restore the permissions a plain download would have given.
-        os.chmod(tmp_path, 0o644)
-        os.replace(tmp_path, filepath)
-    except BaseException:
-        # Also covers KeyboardInterrupt, which is how an interrupted download
-        # produced the truncated entries this guards against.
-        with contextlib.suppress(OSError):
-            os.remove(tmp_path)
-        raise
-
-
 def download_dataset(
     data_filename: str,
     data_home: str | Path | None = None,
@@ -203,25 +154,21 @@ def download_dataset(
     filepath = os.path.join(data_home, f"{data_filename}.csv.gz")
 
     if os.path.exists(filepath):
-        try:
-            return load_gzip_compressed_csv_data(filepath)
-        except _CORRUPT_CACHE_ERRORS as exc:
-            # A cache entry left behind by an interrupted download is truncated and
-            # would otherwise fail identically on every subsequent call. Discard it
-            # and fall through to a fresh download.
-            if not download_if_missing:
-                raise OSError(
-                    f"The cached dataset '{filepath}' is unreadable and "
-                    "`download_if_missing` is False. Delete it and retry with "
-                    "`download_if_missing=True`."
-                ) from exc
-            with contextlib.suppress(OSError):
-                os.remove(filepath)
+        return load_gzip_compressed_csv_data(filepath)
 
     if not download_if_missing:
         raise OSError("Data not found and `download_if_missing` is False")
 
-    _urlretrieve_atomic(url, filepath)
+    # Keep the temporary download on the same filesystem for an atomic rename.
+    with tempfile.TemporaryDirectory(dir=data_home) as tmp_dir:
+        tmp_path = os.path.join(tmp_dir, "dataset.csv.gz")
+        ur.urlretrieve(url, tmp_path)
+        try:
+            os.rename(tmp_path, filepath)
+        except FileExistsError:
+            # Another Windows worker already populated the cache.
+            pass
+
     return load_gzip_compressed_csv_data(filepath)
 
 
