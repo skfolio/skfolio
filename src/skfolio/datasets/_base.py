@@ -14,6 +14,7 @@ import gzip
 import os
 import shutil
 import sys
+import tempfile
 import urllib.request as ur
 from importlib import resources
 from pathlib import Path
@@ -158,7 +159,16 @@ def download_dataset(
     if not download_if_missing:
         raise OSError("Data not found and `download_if_missing` is False")
 
-    ur.urlretrieve(url, filepath)
+    # Keep the temporary download on the same filesystem for an atomic rename.
+    with tempfile.TemporaryDirectory(dir=data_home) as tmp_dir:
+        tmp_path = os.path.join(tmp_dir, "dataset.csv.gz")
+        ur.urlretrieve(url, tmp_path)
+        try:
+            os.rename(tmp_path, filepath)
+        except FileExistsError:
+            # Another Windows worker already populated the cache.
+            pass
+
     return load_gzip_compressed_csv_data(filepath)
 
 

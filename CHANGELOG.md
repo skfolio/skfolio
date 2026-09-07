@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.0.5 (2026-09-07)
+
+### Bug Fixes
+
+- **datasets**: Make dataset cache writes atomic
+  ([#282](https://github.com/skfolio/skfolio/pull/282),
+  [`acc7a8b`](https://github.com/skfolio/skfolio/commit/acc7a8b67effe78aa79d32703c90814e0a8f429f))
+
+
 ## v1.0.4 (2026-08-31)
 
 ### Bug Fixes
