@@ -20,6 +20,8 @@ jobs:
       name: github-pages
       url: ${{ steps.gh_pages_deployment.outputs.page_url }}
     concurrency: release
+    env:
+      UV_PYTHON_DOWNLOADS: never
 
     steps:
       - uses: actions/checkout@v7
@@ -27,6 +29,7 @@ jobs:
           fetch-depth: 0  # Enable full git history for sitemap last-updated detection
 
       - name: Setup Python
+        id: python
         uses: actions/setup-python@v7
         with:
           python-version: '3.13'
@@ -36,15 +39,15 @@ jobs:
         with:
           version: "latest"
 
-      - name: Set up virtual environment
-        run: uv venv
+      - name: Select Python for uv
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
       - name: Install dependencies
-        run: uv pip install -r pyproject.toml --extra docs
+        run: uv sync --no-dev --group docs
 
       - name: Build Sphinx Docs
         working-directory: ./docs
-        run: uv run sphinx-build . _build
+        run: uv run --no-dev --group docs sphinx-build . _build
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

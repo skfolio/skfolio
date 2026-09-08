@@ -273,4 +273,3 @@ print(failed_ptf.optimization_error)
 # To replay the optimization on the failed period, we can run:
 
 # model.fit(failed_ptf.X)
-

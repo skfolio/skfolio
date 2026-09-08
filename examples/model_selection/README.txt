@@ -20,4 +20,3 @@ Tutorials using :class:`~skfolio.model_selection.CombinatorialPurgedCV`:
     * :ref:`sphx_glr_auto_examples_clustering_plot_5_nco_grid_search.py`
 
 Below are dedicated Model Selection tutorials.
-

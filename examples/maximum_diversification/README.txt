@@ -4,4 +4,3 @@ Maximum Diversification
 -----------------------
 
 Examples concerning the :class:`~skfolio.optimization.MaximumDiversification` optimization.
-

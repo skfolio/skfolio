@@ -34,6 +34,7 @@ defaults:
 
 env:
   MAIN_PYTHON: "3.13"  # primary Python used for linting & coverage
+  UV_PYTHON_DOWNLOADS: never
 
 # -----------------------------------------------------------------------------
 # 1) Lint & format
@@ -47,6 +48,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -54,16 +56,19 @@ jobs:
         with:
           version: latest
 
-      - name: Create venv
-        run: uv venv
+      - name: Select Python for uv
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
-      - name: Install project (dev extras)
-        run: uv pip install -e ".[dev]"
+      # CI intentionally checks against the latest Ruff release.
+      - name: Ruff version
+        run: uvx ruff@latest --version
 
-      - name: Ruff (lint + format check)
-        run: |
-          uv run ruff check --output-format=github
-          uv run ruff format --check
+      - name: Ruff lint
+        run: uvx ruff@latest check --output-format=github
+
+      - name: Ruff format
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: uvx ruff@latest format --check
 
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux
@@ -73,6 +78,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     timeout-minutes: 50
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     permissions:
       contents: read
       # Authenticate protected-branch uploads without exposing a repository token.
@@ -113,21 +120,30 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.deps }}" = "min" ]; then
-            uv pip install -e . --resolution=lowest-direct
-            uv pip install -e ".[dev]"
+            # Resolve runtime requirements alone, then protect that solution
+            # while installing current compatible development tools.
+            uv pip compile pyproject.toml --python .venv --resolution lowest-direct --python-version "$UV_PYTHON" --output-file "$RUNNER_TEMP/skfolio-minimum-runtime.txt"
+            uv pip install --python .venv --editable . --group dev --constraint "$RUNNER_TEMP/skfolio-minimum-runtime.txt"
           else
-            uv pip install -e ".[dev]"
+            uv pip install --python .venv --upgrade --editable . --group dev
           fi
 
-      # Run tests normally for all jobs except the single coverage job
+      - name: List dependencies
+        run: uv pip list --python .venv
+
+      - name: Check dependencies
+        run: uv pip check --python .venv
+
+      # Use the environment installed above; syncing could change the
+      # dependencies selected for the minimum/latest compatibility checks.
       - name: Run tests
         if: ${{ !(matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest') }}
-        run: uv run pytest -q tests
+        run: uv run --no-sync pytest -q tests
 
       # Coverage on a single representative job (Py MAIN_PYTHON + latest)
       - name: Run tests with coverage (main Python • latest only)
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
-        run: uv run pytest -q --cov=skfolio --cov-report=xml
+        run: uv run --no-sync pytest -q --cov=skfolio --cov-report=xml
 
       # Upload failures block same-repo pull requests, where they reveal an
       # authentication or configuration regression before it reaches `main`.
@@ -169,6 +185,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -177,13 +194,21 @@ jobs:
           version: latest
 
       - name: Create venv
-        run: uv venv
+        run: |
+          echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+          uv venv --python "${{ steps.python.outputs.python-path }}"
 
       - name: Install project (latest deps)
-        run: uv pip install -e ".[dev]"
+        run: uv pip install --python .venv --upgrade --editable . --group dev
+
+      - name: List dependencies
+        run: uv pip list --python .venv
+
+      - name: Check dependencies
+        run: uv pip check --python .venv
 
       - name: Run tests
-        run: uv run pytest -q tests
+        run: uv run --no-sync pytest -q tests
 
 # -----------------------------------------------------------------------------
 # 4) Documentation build
@@ -200,6 +225,7 @@ jobs:
           fetch-depth: 0  # sphinx-last-updated-by-git needs the full history
 
       - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -207,15 +233,17 @@ jobs:
         with:
           version: latest
 
-      - name: Create venv
-        run: uv venv
+      - name: Select Python for uv
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
-      - name: Install project (docs extras)
-        run: uv pip install -e ".[docs]"
+      - name: Install documentation environment
+        run: uv sync --no-dev --group docs
 
       # Fast mode checks that the documentation sources build. It skips gallery
       # execution, the JupyterLite site build and the sphinx-llm Markdown sub-build,
       # which the deployment workflow runs in full.
       - name: Build docs in fast mode
         working-directory: ./docs
-        run: SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
+        env:
+          SKFOLIO_DOCS_FAST: "1"
+        run: uv run --no-dev --group docs sphinx-build -b html . _build

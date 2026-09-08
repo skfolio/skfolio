@@ -1,4 +1,4 @@
-default_stages: [pre-commit, pre-push]
+default_stages: [pre-commit]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -8,11 +8,20 @@ repos:
       - id: end-of-file-fixer
         exclude: LICENSE
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+  # Use Ruff from the local development environment. CI checks the latest release.
+  - repo: local
     hooks:
+      # Explicit filenames bypass Ruff's `include`, so match its scope here.
       - id: ruff
         name: ruff-lint
-        args: [--fix, --exit-non-zero-on-fix]
+        entry: uv run ruff check --fix --exit-non-zero-on-fix
+        language: unsupported
+        files: ^(pyproject\.toml|(src|tests)/.*\.py)$
+        require_serial: true
       - id: ruff-format
         name: ruff-format
+        entry: uv run ruff format
+        language: unsupported
+        types: [python]
+        files: ^(src|tests)/.*\.py$
+        require_serial: true
