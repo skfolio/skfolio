@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from urllib.error import URLError
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,6 +25,38 @@ from skfolio.preprocessing import prices_to_returns
 def pytest_configure(config):
     # globally turn off scientific notation in every test session
     np.set_printoptions(suppress=True, precision=6)
+
+
+def pytest_collection_modifyitems(config, items):
+    # Tests that reach the `remote_dataset` fixture, directly or through another
+    # fixture, need a dataset that is not shipped with the package. Mark them so
+    # `-m "not network"` deselects them without having to enumerate them here.
+    for item in items:
+        if "remote_dataset" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.network)
+
+
+@pytest.fixture(scope="session")
+def remote_dataset() -> Callable[..., pd.DataFrame]:
+    """Load a dataset from the remote GitHub dataset folder.
+
+    The local cache is preferred so a warm run never touches the network. When the
+    dataset is neither cached nor reachable, the test is skipped rather than failed,
+    which keeps the suite green offline.
+    """
+
+    def _load(loader: Callable[..., pd.DataFrame], **kwargs) -> pd.DataFrame:
+        try:
+            return loader(download_if_missing=False, **kwargs)
+        except OSError:
+            # Not in the local cache: fall through to a single download attempt.
+            pass
+        try:
+            return loader(**kwargs)
+        except (URLError, TimeoutError) as exc:
+            pytest.skip(f"{loader.__name__} is not cached and unreachable: {exc}")
+
+    return _load
 
 
 @pytest.fixture
@@ -53,8 +88,8 @@ def returns(X):
 
 
 @pytest.fixture(scope="module")
-def implied_vol():
-    implied_vol = load_sp500_implied_vol_dataset()
+def implied_vol(remote_dataset):
+    implied_vol = remote_dataset(load_sp500_implied_vol_dataset)
     implied_vol = implied_vol.loc[pd.Timestamp(2014, 1, 3) :]
     return implied_vol
 

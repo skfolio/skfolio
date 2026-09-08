@@ -67,8 +67,8 @@ def returns():
 
 
 @pytest.fixture(scope="module")
-def nasdaq_X():
-    prices = load_nasdaq_dataset()
+def nasdaq_X(remote_dataset):
+    prices = remote_dataset(load_nasdaq_dataset)
     nasdaq_X = prices_to_returns(prices)
     return nasdaq_X
 

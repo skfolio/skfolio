@@ -177,6 +177,9 @@ doctest_optionflags = [
     "NORMALIZE_WHITESPACE",
     "ELLIPSIS",
 ]
+markers = [
+    "network: needs a dataset downloaded from the remote GitHub dataset folder (deselect with `-m \"not network\"`)",
+]
 testpaths = [
     "tests",
     "src/skfolio/distribution",
