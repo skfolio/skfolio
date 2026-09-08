@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.0.6 (2026-09-08)
+
+### Bug Fixes
+
+- **deps**: Correct minimum requirements and simplify development setup and pre-commit
+  ([#280](https://github.com/skfolio/skfolio/pull/280),
+  [`30a6d9a`](https://github.com/skfolio/skfolio/commit/30a6d9ab1c088852537eb860f1910ae2974d8d3f))
+
+### Additional Release Information
+
+- **deps**: Contributor dependencies have moved from dev/docs extras to uv dependency groups. Use uv
+  sync for development (see CONTRIBUTING.md).
+
+
 ## v1.0.5 (2026-09-07)
 
 ### Bug Fixes
