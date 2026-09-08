@@ -1269,7 +1269,10 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            args[arg_name] = w - target_weights
+                            # Risk is computed on normalized active weights. Multiplying
+                            # the target by the ratio factor preserves that meaning in
+                            # homogeneous coordinates and is a no-op when factor is 1.
+                            args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
