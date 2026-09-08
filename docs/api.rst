@@ -745,6 +745,18 @@ Classes
     distance.CovarianceDistance
     distance.DistanceCorrelation
     distance.MutualInformation
+    distance.GraphDistance
+
+Enum
+----
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: enum.rst
+
+    distance.GraphMode
 
 .. _cluster_ref:
 

@@ -23,6 +23,7 @@ Available estimators are:
     * :class:`CovarianceDistance`
     * :class:`DistanceCorrelation`
     * :class:`MutualInformation`
+    * :class:`GraphDistance`
 
 **Example:**
 
@@ -37,5 +38,29 @@ Available estimators are:
 
     model = PearsonDistance()
     model.fit(X)
+    print(model.codependence_)
+    print(model.distance_)
+
+**Graph adjacency example:**
+
+:class:`GraphDistance` supports asset-to-asset adjacency matrices only. Dependency
+graph mode is not implemented.
+
+.. code-block:: python
+
+    import numpy as np
+
+    from skfolio.distance import GraphDistance
+
+    adjacency_matrix = np.array(
+        [
+            [1.0, 0.8, 0.2],
+            [0.8, 1.0, 0.5],
+            [0.2, 0.5, 1.0],
+        ]
+    )
+
+    model = GraphDistance()
+    model.fit(X.iloc[:, :3], adjacency_matrix=adjacency_matrix)
     print(model.codependence_)
     print(model.distance_)

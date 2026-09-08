@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
 from sklearn.exceptions import UnsetMetadataPassedError
@@ -10,6 +11,8 @@ from sklearn.exceptions import UnsetMetadataPassedError
 from skfolio.distance import (
     CovarianceDistance,
     DistanceCorrelation,
+    GraphDistance,
+    GraphMode,
     KendallDistance,
     MutualInformation,
     NBinsMethod,
@@ -188,3 +191,76 @@ class TestMutualInformation:
         assert distance.n_bins_method == NBinsMethod.FREEDMAN
         assert distance.n_bins is None
         assert distance.normalize is True
+
+
+class TestGraphDistance:
+    def test_graph_distance(self, X):
+        adjacency_matrix = np.array(
+            [
+                [2.0, 1.0, 0.0],
+                [1.0, 2.0, 0.5],
+                [0.0, 0.5, 2.0],
+            ]
+        )
+        distance = GraphDistance()
+        distance.fit(X.iloc[:, :3], adjacency_matrix=adjacency_matrix)
+
+        expected_codependence = adjacency_matrix / 2.0
+        np.testing.assert_almost_equal(distance.codependence_, expected_codependence)
+        np.testing.assert_almost_equal(
+            distance.distance_, np.sqrt(1 - expected_codependence)
+        )
+        assert distance.codependence_.shape == (3, 3)
+        assert distance.distance_.shape == (3, 3)
+        assert np.all(distance.codependence_ >= 0)
+        assert np.all(distance.codependence_ <= 1)
+        assert np.all(distance.distance_ >= 0)
+        assert np.all(distance.distance_ <= 1)
+
+    def test_default_parameters(self):
+        distance = GraphDistance()
+        assert distance.mode == GraphMode.ASSET
+
+    def test_adjacency_matrix_required(self, X):
+        distance = GraphDistance()
+        with pytest.raises(ValueError, match="adjacency_matrix"):
+            distance.fit(X.iloc[:, :3])
+
+    def test_adjacency_matrix_shape_must_match_assets(self, X):
+        distance = GraphDistance()
+        with pytest.raises(ValueError, match="shape"):
+            distance.fit(X.iloc[:, :3], adjacency_matrix=np.ones((2, 2)))
+
+        with pytest.raises(ValueError, match="shape"):
+            distance.fit(X.iloc[:, :3], adjacency_matrix=np.ones((3, 2)))
+
+    def test_adjacency_matrix_labels_must_match_assets_order(self, X):
+        assets = list(X.columns[:3])
+        adjacency_matrix = pd.DataFrame(
+            np.eye(3), index=assets[::-1], columns=assets[::-1]
+        )
+        distance = GraphDistance()
+        with pytest.raises(ValueError, match="assets order"):
+            distance.fit(X.iloc[:, :3], adjacency_matrix=adjacency_matrix)
+
+    def test_constant_adjacency_matrix(self, X):
+        adjacency_matrix = np.ones((3, 3))
+        distance = GraphDistance()
+        distance.fit(X.iloc[:, :3], adjacency_matrix=adjacency_matrix)
+
+        np.testing.assert_array_equal(distance.codependence_, np.ones((3, 3)))
+        np.testing.assert_array_equal(distance.distance_, np.zeros((3, 3)))
+
+    def test_zero_diagonal_adjacency_matrix(self, X):
+        adjacency_matrix = np.array(
+            [
+                [0.0, 2.0, 1.0],
+                [2.0, 0.0, 0.5],
+                [1.0, 0.5, 0.0],
+            ]
+        )
+        distance = GraphDistance()
+        distance.fit(X.iloc[:, :3], adjacency_matrix=adjacency_matrix)
+
+        np.testing.assert_array_equal(np.diag(distance.codependence_), np.ones(3))
+        np.testing.assert_array_equal(np.diag(distance.distance_), np.zeros(3))
