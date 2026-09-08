@@ -33,7 +33,7 @@ defaults:
     shell: bash   # consistent shell across Linux/macOS/Windows
 
 env:
-  MAIN_PYTHON: "3.13"  # primary Python used for linting & coverage
+  MAIN_PYTHON: "3.14"  # Python for lint, coverage, cross-OS tests, and docs
   UV_PYTHON_DOWNLOADS: never
 
 # -----------------------------------------------------------------------------
