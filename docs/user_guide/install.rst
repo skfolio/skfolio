@@ -32,11 +32,11 @@ Dependencies
 `skfolio` requires:
 
 - python (>= 3.10)
-- numpy (>= 1.23.4)
+- numpy (>= 1.23.5)
 - scipy (>= 1.15.2)
-- pandas (>= 1.4.1)
+- pandas (>= 2.1.0)
 - cvxpy-base (>= 1.5.0)
-- clarabel (>= 0.9.0)
+- clarabel (>= 0.10.0)
 - scikit-learn (>= 1.6.0)
 - joblib (>= 1.3.2)
-- plotly (>= 5.22.0)
+- plotly (>= 6.0.0)

@@ -28,5 +28,3 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" -t "${{ github.ref_name }}" -n "Automated release" || true
           gh release upload "${{ github.ref_name }}" sbom.spdx.json --clobber
-
-
