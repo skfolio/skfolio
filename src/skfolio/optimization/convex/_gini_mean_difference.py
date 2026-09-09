@@ -14,6 +14,7 @@ from skfolio.typing import FloatArray
 
 _GMD_ABSOLUTE_TOLERANCE = 1e-8
 _GMD_RELATIVE_TOLERANCE = 1e-8
+_GMD_MASTER_FEASIBILITY_TOLERANCE = 5e-8
 _GMD_MAX_ITERATIONS = 500
 
 
@@ -196,6 +197,17 @@ class _GiniMeanDifference:
         if permutation in self._permutations:
             previous_factor = self._cut_normalization_factors[permutation]
             if normalization_factor >= previous_factor:
+                # The maximally violated facet is already present and is scaled at
+                # least as strongly as required by the current homogeneous factor.
+                # A small remaining violation is therefore solver feasibility error,
+                # not an incomplete epigraph. Keep a narrow allowance above the
+                # separation tolerance, while rejecting material violations.
+                master_tolerance = max(
+                    normalized_tolerance, _GMD_MASTER_FEASIBILITY_TOLERANCE
+                )
+                if violation <= master_tolerance:
+                    self._converged = True
+                    return None
                 raise cp.SolverError(
                     "GMD constraint generation found a duplicate violated permutation "
                     f"with violation {violation:.3e}"
