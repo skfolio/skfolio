@@ -24,10 +24,8 @@ from skfolio.linear_model import CSLinearRegression
 from skfolio.moments import EWCovariance
 from skfolio.moments.variance import EWVariance
 from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior, ReturnDistribution
-from skfolio.utils._factor_tools import (
-    _neutralize_exposures,
-    _resolve_factor_name,
-)
+from skfolio.prior._characteristics_factor_model import _neutralize_exposures
+from skfolio.utils._factor_tools import _resolve_factor_name
 
 from .conftest import make_panel, passthrough_factor
 

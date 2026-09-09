@@ -6,14 +6,16 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
-from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.typing import AnyArray, ArrayLike, FloatArray
+
+if TYPE_CHECKING:
+    from skfolio.containers import AssetPanel, AssetPanelView
 
 __all__ = ["validate_asset_panel", "validate_cross_sectional_data"]
 
@@ -291,6 +293,12 @@ def validate_asset_panel(
         strictly_positive_when_active = None
     if non_negative_or_nan is not None and len(non_negative_or_nan) == 0:
         non_negative_or_nan = None
+
+    # Imported here rather than at module scope: `skfolio.containers` imports
+    # `skfolio.utils.tools`, so a module-level import would close a package-level
+    # cycle between `skfolio.utils` and `skfolio.containers`. Annotations are
+    # postponed, so the `TYPE_CHECKING` import above covers the signature.
+    from skfolio.containers import AssetPanel, AssetPanelView
 
     if not isinstance(asset_panel, (AssetPanel, AssetPanelView)):
         raise TypeError(
