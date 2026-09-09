@@ -234,6 +234,22 @@ def test_stable_ties_and_duplicate_violated_permutation():
         generator.separate(normalization_factor=1.0)
 
 
+def test_small_duplicate_violation_is_treated_as_master_feasibility_error():
+    returns = np.array([[0.0, 2.0], [1.0, 0.0], [2.0, 1.0]])
+    weights = cp.Variable(2)
+    generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
+    weights.value = np.array([1.0, 0.0])
+    generator.expression.value = 0.0
+    generator.reset()
+
+    assert generator.separate(normalization_factor=1.0) is not None
+    exact_value = _pairwise_gmd(returns @ weights.value)
+    generator.expression.value = exact_value - 2e-8
+
+    assert generator.separate(normalization_factor=1.0) is None
+    assert generator.converged
+
+
 def test_maximum_iterations_and_invalid_values_are_not_silent():
     returns = np.array([[0.0, 2.0], [1.0, 0.0], [2.0, 1.0]])
     weights = cp.Variable(2)
@@ -466,7 +482,9 @@ def test_small_factor_maximum_gmd_with_different_primary_risk():
 
     assert _pairwise_gmd(returns @ unconstrained.weights_) > 8e-4
     assert float(model.problem_values_["factor"]) < 1e-5
-    assert _pairwise_gmd(returns @ model.weights_) <= risk_limit + 1.1e-8
+    # The active risk limit and the epigraph facet are separate solver constraints.
+    # Allow the bounded master-feasibility residual in addition to separation error.
+    assert _pairwise_gmd(returns @ model.weights_) <= risk_limit + 5e-8
 
 
 def test_invalid_ratio_factor_uses_solver_failure_lifecycle():
