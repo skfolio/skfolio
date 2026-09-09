@@ -175,22 +175,28 @@ class EWVariance(BaseVariance):
     >>> # Batch fitting
     >>> model = EWVariance(half_life=40)
     >>> model.fit(X)
+    EWVariance()
     >>> print(model.variance_.shape)
+    (20,)
     >>>
     >>> # Streaming updates with partial_fit
     >>> model2 = EWVariance(half_life=20)
     >>> model2.partial_fit(X[:100])  # Initial fit
+    EWVariance(half_life=20)
     >>> model2.partial_fit(X[100:200])  # Update with new data
+    EWVariance(half_life=20)
     >>> model2.partial_fit(X[200:])  # Continue updating
+    EWVariance(half_life=20)
     >>>
     >>> # NaN-aware fitting with active_mask
     >>> # Asset 2 is listed starting from observation 50
     >>> active_mask = np.ones(X.shape, dtype=bool)
     >>> active_mask[:50, 2] = False
     >>> X_nan = X.copy()
-    >>> X_nan[:50, 2] = np.nan
+    >>> X_nan.iloc[:50, 2] = np.nan
     >>> model3 = EWVariance(half_life=40)
     >>> model3.fit(X_nan, active_mask=active_mask)
+    EWVariance()
     """
 
     def __init__(

@@ -170,7 +170,7 @@ def online_predict(
     >>> from skfolio.prior import EmpiricalPrior
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>>
     >>> model = MeanRisk(
     ...     prior_estimator=EmpiricalPrior(
@@ -359,7 +359,7 @@ def online_score(
     >>> from skfolio.preprocessing import prices_to_returns
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>> score = online_score(EWCovariance(), X, warmup_size=252)
 
     Portfolio optimization estimator:
@@ -375,7 +375,7 @@ def online_score(
     ...         covariance_estimator=EWCovariance(half_life=40),
     ...     ),
     ... )
-    >>> score = online_score(  # doctest: +SKIP
+    >>> score = online_score(
     ...     model,
     ...     X,
     ...     warmup_size=252,

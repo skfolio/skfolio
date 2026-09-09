@@ -451,15 +451,20 @@ class MaximumDiversification(MeanRisk):
     >>> # Maximum diversification optimization
     >>> model = MaximumDiversification()
     >>> model.fit(X)
+    MaximumDiversification()
     >>> print(model.weights_)
+    [0.0821 0.0697 0.0243 ... 0.0945 0.0893 0.0143]
     >>>
     >>> portfolio = model.predict(X)
     >>> print(portfolio.diversification)
+    1.87...
     >>>
-    >>> # Maximum diversification with an upper weight constraint
-    >>> model = MaximumDiversification(max_weights=0.20)
+    >>> # Limit each asset to 8% of the portfolio
+    >>> model = MaximumDiversification(max_weights=0.08)
     >>> model.fit(X)
+    MaximumDiversification(max_weights=0.08)
     >>> print(model.weights_)
+    [0.08   0.0706 0.0288 ... 0.08   0.08   0.0289]
     """
 
     def __init__(

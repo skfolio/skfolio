@@ -660,7 +660,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     >>> from skfolio.moments import EWMu, RegimeAdjustedEWCovariance
     >>> from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior
     >>>
-    >>> characteristics = make_synthetic_characteristics()
+    >>> characteristics = make_synthetic_characteristics(
+    ...     n_assets=100, n_observations=504, n_industries=5, random_state=0
+    ... )
     >>>
     >>> # Market and industry factors.
     >>> market_factor = GlobalFactor()
@@ -728,21 +730,54 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     ...     n_jobs=-1,
     ... )
     >>> model.fit(characteristics=characteristics)
+    CharacteristicsFactorModel(...)
     >>>
     >>> # Inspect the fitted factor model and diagnostics.
     >>> fm = model.factor_model_
-    >>> fm.summary()
+    >>> fm.summary().head(3)
+                 annualized_mean  annualized_vol  ...  coverage  stability
+    market              0.250...        0.188...  ...       1.0        1.0
+    Real Estate        -0.000...        0.083...  ...       1.0        1.0
+    Software           -0.107...        0.118...  ...       1.0        1.0
+    <BLANKLINE>
+    [3 rows x 9 columns]
     >>> fm.idio_calibration_summary()
-    >>> fm.idio_vol_ic
-    >>> fm.idio_tail_rate()
-    >>> fm.factor_returns_df
-    >>> fm.exposures_df
+    mean_cs_std                0.997...
+    median_cs_std              0.988...
+    mean_cs_excess_kurtosis    0.116...
+    mean_cs_skewness           0.012...
+    mean_tail_rate_3sigma      0.003...
+    Name: idio_calibration, dtype: float64
+    >>> fm.idio_vol_ic.tail(3)
+    2016-12-02    0.418...
+    2016-12-05    0.496...
+    2016-12-06    0.488...
+    Name: Idio Vol IC (Spearman), dtype: float64
+    >>> fm.idio_tail_rate().tail(3)
+    2016-12-02    0.000000
+    2016-12-05    0.000000
+    2016-12-06    0.011...
+    Name: Tail Rate, dtype: float64
+    >>> fm.factor_returns_df.head(3)
+                  market  Real Estate  ...  earnings_yield  non_linear_size
+    2015-07-27 -0.001...     0.001...  ...        0.000...        -0.002...
+    2015-07-28  0.010...     0.000...  ...        0.003...         0.001...
+    2015-07-29 -0.006...     0.011...  ...       -0.000...         0.002...
+    <BLANKLINE>
+    [3 rows x 11 columns]
+    >>> # Last three size exposures for the first three assets.
+    >>> fm.exposures_df["size"].iloc[-3:, :3]
+    asset         A00000    A00001    A00002
+    2016-12-02 -2.314... -1.344... -0.283...
+    2016-12-05 -2.312... -1.339... -0.283...
+    2016-12-06 -2.313... -1.339... -0.287...
 
     Use :meth:`partial_fit` for online updates:
 
     >>> model.fit(characteristics=characteristics[:400])
-    >>> for start in range(400, len(characteristics), 5):
-    ...     model.partial_fit(characteristics=characteristics[start : start + 5])
+    CharacteristicsFactorModel(...)
+    >>> model.partial_fit(characteristics=characteristics[400:405])
+    CharacteristicsFactorModel(...)
     """
 
     # Request `characteristics` by default when this estimator is used inside a sklearn

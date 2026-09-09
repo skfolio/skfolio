@@ -227,8 +227,11 @@ class NestedClustersOptimization(BaseOptimization):
     ...     outer_estimator=outer_estimator,
     ... )
     >>> model.fit(X)
+    NestedClustersOptimization(...)
     >>> print(model.weights_)
+    [0.0327 0.0029 0.     ... 0.0864 0.0236 0.0736]
     >>> print(model.clustering_estimator_.labels_)
+    [4 4 3 4 2 3 4 1 3 0 1 1 4 0 1 0 2 1 4 2]
 
     References
     ----------

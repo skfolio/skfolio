@@ -334,20 +334,24 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     >>> from skfolio.optimization import DistributionallyRobustCVaR
     >>> from skfolio.preprocessing import prices_to_returns
     >>>
-    >>> # Load recent historical prices and convert them to returns
-    >>> prices = load_sp500_dataset()["2020":]
-    >>> X = prices_to_returns(prices)
+    >>> # Use the most recent 252 daily returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices).tail(252)
     >>>
     >>> # Distributionally robust CVaR optimization
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
     >>> model.fit(X)
+    DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
     >>> print(model.weights_)
+    [0.     0.     0.0706 ... 0.0706 0.0706 0.0706]
     >>>
     >>> # Increasing the radius increases the uncertainty around the distribution,
     >>> # which brings the weights closer to equal weighting
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.10)
     >>> model.fit(X)
+    DistributionallyRobustCVaR(wasserstein_ball_radius=0.1)
     >>> print(model.weights_)
+    [0.05 0.05 0.05 ... 0.05 0.05 0.05]
 
     References
     ----------

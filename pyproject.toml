@@ -173,6 +173,10 @@ addopts = [
     "-n=4",
     "--dist=worksteal",
 ]
+# `ELLIPSIS` is how an example documents a value that is not bit-stable: write the
+# leading digits that are stable across BLAS, CPU architecture and solver version and
+# end with `...` (`0.869...`). That keeps the published example readable and honest
+# about its own precision, without rounding the call itself.
 doctest_optionflags = [
     "NORMALIZE_WHITESPACE",
     "ELLIPSIS",
@@ -180,7 +184,10 @@ doctest_optionflags = [
 markers = [
     "network: needs a dataset downloaded from the remote GitHub dataset folder (deselect with `-m \"not network\"`)",
 ]
+# `--doctest-modules` applies to the whole source root, so every docstring example
+# is executed and its documented output verified. The few that cannot be are listed,
+# with a reason each, in `SKIPPED` in `src/skfolio/conftest.py`.
 testpaths = [
     "tests",
-    "src/skfolio/distribution",
+    "src",
 ]

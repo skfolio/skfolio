@@ -87,7 +87,7 @@ class StudentT(BaseUnivariateDist):
     >>> log_likelihood = model.score_samples(X)
     >>> score = model.score(X)
     >>> cdf = model.cdf(X)
-    >>> ppf = model.ppf(X)
+    >>> ppf = model.ppf([0.01, 0.05, 0.5, 0.95, 0.99])
     >>> aic = model.aic(X)
     >>> bic = model.bic(X)
     >>>
