@@ -15,7 +15,7 @@ from skfolio.uncertainty_set import (
 
 class TestBootstrapMuUncertaintySet:
     def test_fit(self, X):
-        model = BootstrapMuUncertaintySet()
+        model = BootstrapMuUncertaintySet(seed=42)
         model.fit(X)
         np.testing.assert_almost_equal(model.uncertainty_set_.radius, 5.604501123581913)
         np.testing.assert_almost_equal(
@@ -25,7 +25,7 @@ class TestBootstrapMuUncertaintySet:
             np.array(
                 [
                     [
-                        1.30559015e-07,
+                        1.39919678e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -38,7 +38,7 @@ class TestBootstrapMuUncertaintySet:
                     ],
                     [
                         0.00000000e00,
-                        5.26628755e-07,
+                        5.58537502e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -51,7 +51,7 @@ class TestBootstrapMuUncertaintySet:
                     [
                         0.00000000e00,
                         0.00000000e00,
-                        1.69447847e-07,
+                        1.67361847e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -64,7 +64,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        2.59822980e-07,
+                        2.66162131e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -77,7 +77,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        1.54717635e-07,
+                        1.50144227e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -90,7 +90,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        2.24606860e-07,
+                        2.26308221e-07,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -103,7 +103,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        9.55288679e-08,
+                        9.34421406e-08,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -116,7 +116,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        4.79065829e-08,
+                        4.79060931e-08,
                         0.00000000e00,
                         0.00000000e00,
                     ],
@@ -129,7 +129,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        1.18267526e-07,
+                        1.15293461e-07,
                         0.00000000e00,
                     ],
                     [
@@ -142,7 +142,7 @@ class TestBootstrapMuUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        5.61971181e-08,
+                        5.25031279e-08,
                     ],
                 ]
             ),
@@ -150,6 +150,21 @@ class TestBootstrapMuUncertaintySet:
 
         model = EmpiricalMuUncertaintySet(diagonal=False)
         model.fit(X)
+
+    def test_seed_makes_the_bootstrap_reproducible(self, X):
+        """`seed=None` draws from the global NumPy RNG, so it is not reproducible.
+
+        `stationary_bootstrap` calls `np.random.seed(seed)`, which with `None` reseeds
+        from OS entropy. Any assertion on bootstrap output must therefore pin `seed`,
+        or it only passes while the sampling noise happens to fit inside the
+        tolerance.
+        """
+        first = BootstrapMuUncertaintySet(seed=42).fit(X)
+        second = BootstrapMuUncertaintySet(seed=42).fit(X)
+
+        np.testing.assert_array_equal(
+            first.uncertainty_set_.geometry, second.uncertainty_set_.geometry
+        )
 
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
@@ -173,7 +188,7 @@ class TestBootstrapMuUncertaintySet:
 
 class TestBootstrapCovarianceUncertaintySet:
     def test_fit(self, X):
-        model = BootstrapCovarianceUncertaintySet()
+        model = BootstrapCovarianceUncertaintySet(seed=42)
         model.fit(X)
         np.testing.assert_almost_equal(model.uncertainty_set_.radius, 21.15732657569969)
         np.testing.assert_almost_equal(
@@ -183,7 +198,7 @@ class TestBootstrapCovarianceUncertaintySet:
             np.array(
                 [
                     [
-                        7.43059442e-10,
+                        7.45191137e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -196,7 +211,7 @@ class TestBootstrapCovarianceUncertaintySet:
                     ],
                     [
                         0.00000000e00,
-                        9.81212261e-10,
+                        9.61007843e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -209,7 +224,7 @@ class TestBootstrapCovarianceUncertaintySet:
                     [
                         0.00000000e00,
                         0.00000000e00,
-                        8.86266409e-10,
+                        9.17238818e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -222,7 +237,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        5.79691855e-10,
+                        6.30304305e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -235,7 +250,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        7.19047519e-10,
+                        7.59943831e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -248,7 +263,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        6.68327332e-10,
+                        7.14995484e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -261,7 +276,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        6.51800272e-10,
+                        6.73925644e-10,
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
@@ -274,7 +289,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        2.21389783e-10,
+                        2.29038255e-10,
                         0.00000000e00,
                         0.00000000e00,
                     ],
@@ -287,7 +302,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        7.52747813e-10,
+                        7.87354582e-10,
                         0.00000000e00,
                     ],
                     [
@@ -300,7 +315,7 @@ class TestBootstrapCovarianceUncertaintySet:
                         0.00000000e00,
                         0.00000000e00,
                         0.00000000e00,
-                        2.39404329e-10,
+                        2.49854202e-10,
                     ],
                 ]
             ),
