@@ -146,6 +146,9 @@ class InverseVolatility(BaseOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
+        # `X` is unchanged; validation only records its fitted feature metadata.
+        _ = skv.validate_data(self, X, skip_check_array=True)
+
         # fitting prior estimator
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
