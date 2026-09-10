@@ -1,4 +1,4 @@
-"""Doctest configuration for the `skfolio` package.
+"""Doctest configuration for the source-tree examples.
 
 `pyproject.toml` runs `--doctest-modules` over `src`, so every example in every
 docstring is executed and its documented output verified. The few that cannot be are

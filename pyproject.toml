@@ -183,7 +183,7 @@ doctest_optionflags = [
 ]
 # `--doctest-modules` applies to the whole source root, so every docstring example
 # is executed and its documented output verified. The few that cannot be are listed,
-# with a reason each, in `SKIPPED` in `src/skfolio/conftest.py`.
+# with a reason each, in `SKIPPED` in `src/conftest.py`.
 testpaths = [
     "tests",
     "src",
