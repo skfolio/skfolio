@@ -301,6 +301,22 @@ def test_missing_or_non_finite_separation_values_are_not_silent(monkeypatch):
             generator.separate(normalization_factor=1.0)
 
 
+def test_non_finite_normalized_gmd_is_rejected():
+    returns = np.array([[-1e300], [1e300]])
+    weights = cp.Variable(1)
+    generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
+    weights.value = np.ones(1)
+    generator.expression.value = 0.0
+    generator.reset()
+
+    # Homogeneous GMD and normalized returns are finite, but normalized GMD
+    # overflows when the ordered weighted sum combines both observations.
+    with np.errstate(over="ignore"):
+        with pytest.raises(cp.SolverError, match="non-finite normalized value"):
+            generator.separate(normalization_factor=1e-8)
+    assert not generator.converged
+
+
 @pytest.mark.parametrize(
     ("context", "objective_function"),
     [
@@ -500,6 +516,29 @@ def test_invalid_ratio_factor_uses_solver_failure_lifecycle():
             w=weights,
             factor=factor,
             expressions={"factor": factor},
+            problem=problem,
+            solver="CLARABEL",
+            solver_params={},
+            risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
+            scale_objective=cp.Constant(1),
+        )
+
+
+@pytest.mark.parametrize("invalid_weight", [np.nan, np.inf, -np.inf])
+def test_non_finite_solver_weights_are_rejected(monkeypatch, invalid_weight):
+    weights = cp.Variable(2)
+    problem = cp.Problem(cp.Minimize(cp.sum_squares(weights)))
+
+    def solve(**kwargs):
+        # Bypass CVXPY's assignment validation to simulate invalid solver output.
+        weights.save_value(np.array([invalid_weight, 1.0]))
+
+    monkeypatch.setattr(problem, "solve", solve)
+    with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
+        _solve(
+            w=weights,
+            factor=cp.Constant(1),
+            expressions={},
             problem=problem,
             solver="CLARABEL",
             solver_params={},
