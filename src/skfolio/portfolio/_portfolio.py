@@ -516,6 +516,13 @@ class Portfolio(BasePortfolio):
 
         # We don't perform extensive checks (like in check_X) for faster instantiation.
         rets = np.asarray(X)
+        if (
+            isinstance(X, pd.DataFrame)
+            and rets.dtype == object
+            and all(pd.api.types.is_numeric_dtype(dtype) for dtype in X.dtypes)
+        ):
+            # Nullable numeric columns otherwise expose pd.NA in an object array.
+            rets = X.to_numpy(dtype=float, na_value=np.nan)
         if rets.ndim != 2:
             raise ValueError("`X` must be a 2D array-like")
 
