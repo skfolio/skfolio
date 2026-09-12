@@ -130,7 +130,7 @@ insertion_flag = "<!-- version list -->"
 exclude_commit_patterns = ['^v?\d+\.\d+\.\d+ \[skip ci\]']
 
 [tool.ruff]
-include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
+include = ["pyproject.toml", "conftest.py", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
 line-length = 88
 src = ["src"]
 target-version = "py310"
@@ -180,6 +180,9 @@ addopts = [
 doctest_optionflags = [
     "NORMALIZE_WHITESPACE",
     "ELLIPSIS",
+]
+markers = [
+    "network: needs a dataset downloaded from the remote GitHub dataset folder (deselect with `-m \"not network\"`)",
 ]
 # `--doctest-modules` applies to the whole source root, so every docstring example
 # is executed and its documented output verified. The few that cannot be are listed,
