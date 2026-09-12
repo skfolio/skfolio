@@ -130,7 +130,7 @@ insertion_flag = "<!-- version list -->"
 exclude_commit_patterns = ['^v?\d+\.\d+\.\d+ \[skip ci\]']
 
 [tool.ruff]
-include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
+include = ["pyproject.toml", "conftest.py", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
 line-length = 88
 src = ["src"]
 target-version = "py310"

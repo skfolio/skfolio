@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from urllib.error import URLError
-
 import numpy as np
 import pandas as pd
 import pytest
@@ -27,36 +24,11 @@ def pytest_configure(config):
     np.set_printoptions(suppress=True, precision=6)
 
 
-def pytest_collection_modifyitems(config, items):
-    # Tests that reach the `remote_dataset` fixture, directly or through another
-    # fixture, need a dataset that is not shipped with the package. Mark them so
-    # `-m "not network"` deselects them without having to enumerate them here.
+def pytest_collection_modifyitems(items) -> None:
+    """Mark unit tests that depend on a remote dataset, including via fixtures."""
     for item in items:
-        if "remote_dataset" in getattr(item, "fixturenames", ()):
+        if isinstance(item, pytest.Function) and "remote_dataset" in item.fixturenames:
             item.add_marker(pytest.mark.network)
-
-
-@pytest.fixture(scope="session")
-def remote_dataset() -> Callable[..., pd.DataFrame]:
-    """Load a dataset from the remote GitHub dataset folder.
-
-    The local cache is preferred so a warm run never touches the network. When the
-    dataset is neither cached nor reachable, the test is skipped rather than failed,
-    which keeps the suite green offline.
-    """
-
-    def _load(loader: Callable[..., pd.DataFrame], **kwargs) -> pd.DataFrame:
-        try:
-            return loader(download_if_missing=False, **kwargs)
-        except OSError:
-            # Not in the local cache: fall through to a single download attempt.
-            pass
-        try:
-            return loader(**kwargs)
-        except (URLError, TimeoutError) as exc:
-            pytest.skip(f"{loader.__name__} is not cached and unreachable: {exc}")
-
-    return _load
 
 
 @pytest.fixture
