@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.2 (2026-09-13)
+
+### Bug Fixes
+
+- **measures**: Correct semi-variance normalization with NaNs
+  ([#285](https://github.com/skfolio/skfolio/pull/285),
+  [`77bd86c`](https://github.com/skfolio/skfolio/commit/77bd86cedbca91668dc7f0ce02cc4bdfe3d311c6))
+
+
 ## v1.2.1 (2026-09-13)
 
 ### Bug Fixes
