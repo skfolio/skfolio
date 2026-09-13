@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.3 (2026-09-13)
+
+### Bug Fixes
+
+- **optimization**: Validate prediction feature order
+  ([#309](https://github.com/skfolio/skfolio/pull/309),
+  [`f2358a3`](https://github.com/skfolio/skfolio/commit/f2358a3a8a3b9361b5441d1d5f6b225e74627a8a))
+
+
 ## v1.2.2 (2026-09-13)
 
 ### Bug Fixes
