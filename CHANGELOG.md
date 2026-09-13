@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-09-13)
+
+### Features
+
+- Add weight drift and backtesting and evaluation user guide
+  ([#286](https://github.com/skfolio/skfolio/pull/286),
+  [`25294e7`](https://github.com/skfolio/skfolio/commit/25294e7b720c833e9839b568d0fffd992507452f))
+
+
 ## v1.1.0 (2026-09-12)
 
 ### Build System
