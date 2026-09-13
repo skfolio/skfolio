@@ -1,7 +1,5 @@
 """Portfolio module.
 `Portfolio` is returned by the `predict` method of Optimization estimators.
-It must be consistent with the convex optimization problems, meaning that `Portfolio`
-is the dot product of the assets weights with the assets returns.
 """
 
 # Copyright (c) 2023-2026
@@ -27,6 +25,7 @@ from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
+    _get_liquidation_turnover_and_cost,
     args_names,
     cached_property_slots,
     default_asset_names,
@@ -43,24 +42,23 @@ class Portfolio(BasePortfolio):
 
     `Portfolio` is returned by the `predict` method of Optimization estimators.
 
-    Its formulation is **consistent** with the convex optimization problems: portfolio
-    returns are computed as a **dot product** of weights and asset returns, minus costs.
-    This formulation is **not perfectly replicable** due to weight drift when asset
-    prices move, except in the ideal case of periodic rebalancing with zero transaction
-    costs.
+    By default, each observation is evaluated at the target `weights`. Portfolio
+    returns are the dot product of those weights and the asset returns, minus
+    transaction costs and management fees. This constant-weight convention
+    (`weight_drift=False`) is consistent with the optimizer's linear portfolio return
+    definition and evaluates allocation skill independently of subsequent changes in
+    weights caused by relative asset returns.
 
-    This design choice is analogous to using **non-compounded vs compounded returns** to
-    compare trading strategies. `skfolio` focuses on **allocation skill**, which
-    corresponds to an **expectation-based (ex-ante) evaluation**, rather than on
-    **realized capital growth**, which corresponds to a **path-dependent (ex-post)
-    evaluation** along a single return path.
+    With `weight_drift=True`, the portfolio starts at the target weights and holds the
+    resulting positions throughout the observation window of `X`. Position values
+    change with asset returns, so portfolio weights evolve with the relative
+    performance of the assets. Combined with `compounded=True`, this produces a
+    compounded wealth path for evaluating realized capital growth and other
+    path-dependent quantities.
 
-    Weight drift introduces **path dependence**: early winners get larger weights, early
-    losers shrink, and outcomes depend on return ordering. Two portfolios with the same
-    expected returns and covariances can end with very different performance due only to
-    the sequence of returns, which contaminates the comparison. Likewise, a volatile
-    asset can dominate portfolio results because it moved early, not because it has a
-    higher expected return.
+    `weight_drift` changes the observation-level portfolio return series, while
+    `compounded` changes how that series is accumulated. See
+    :ref:`backtesting_and_evaluation`.
 
     Parameters
     ----------
@@ -138,8 +136,10 @@ class Portfolio(BasePortfolio):
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous portfolio weights.
-        Previous weights are used to compute the total portfolio cost.
-        If `transaction_costs` is 0, `previous_weights` will have no impact.
+        Previous weights are used to compute turnover and transaction costs.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation. To specify their transaction costs, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and `X` must be a DataFrame with assets names
@@ -175,8 +175,19 @@ class Portfolio(BasePortfolio):
         Risk-free rate. The default value is `0.0`.
 
     compounded : bool, default=False
-        If this is set to True, cumulative returns are compounded.
+        If `True`, cumulative returns are compounded.
         The default is `False`.
+
+    weight_drift : bool, default=False
+        If `True`, the portfolio starts at the target `weights` and the
+        weights used for subsequent observations evolve with asset returns following
+        the self-financing identity
+        :math:`u_{t+1} = u_t \circ (1 + r_t) / (1 + u_t \cdot r_t)`.
+        Drift accumulates over the entire window of `X`, and the implicit cash position
+        :math:`1 - \sum_i w_i` earns zero. The same transaction-cost and management-fee
+        formulas are used with either setting. With the default (`False`), every
+        observation is evaluated at the target `weights`. This attribute is read-only.
+        See :ref:`backtesting_and_evaluation`.
 
     sample_weight : ndarray of shape (n_observations,), optional
         Sample weights for each observation. If None, equal weights are assumed.
@@ -446,6 +457,19 @@ class Portfolio(BasePortfolio):
         Gini Mean Difference ratio.
         It is the excess mean (mean - risk_free_rate) divided by the Gini Mean
         Difference.
+
+    ending_weights : ndarray of shape (n_assets,)
+        Asset weights immediately after the final observation. With
+        `weight_drift=False`, they equal the target `weights`. With
+        `weight_drift=True`, they reflect the effect of asset returns through the final
+        observation. They are calculated before transaction costs and management fees.
+        In a sequential evaluation, the `ending_weights` of a successful `Portfolio`
+        are used as `previous_weights` for the next optimization. A `FailedPortfolio`
+        contains only NaN ending weights.
+
+    turnover : float
+        Total absolute weight change, assuming full liquidation of positions in
+        assets absent from `X`.
     """
 
     _read_only_attrs: ClassVar[set] = BasePortfolio._read_only_attrs.copy()
@@ -460,6 +484,8 @@ class Portfolio(BasePortfolio):
             "n_assets",
             "total_cost",
             "total_fee",
+            "weight_drift",
+            "ending_weights",
         }
     )
 
@@ -474,9 +500,16 @@ class Portfolio(BasePortfolio):
         "n_assets",
         "total_cost",
         "total_fee",
+        "weight_drift",
+        "ending_weights",
         # custom getter (read-only and cached)
         "_nonzero_assets",
         "_nonzero_assets_index",
+        # private state
+        "_original_named_inputs",
+        "_liquidation_turnover",
+        # private cache
+        "_weights_path",
         # read-write
         "fallback_chain",
     }
@@ -494,6 +527,7 @@ class Portfolio(BasePortfolio):
         annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
+        weight_drift: bool = False,
         sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
@@ -522,9 +556,23 @@ class Portfolio(BasePortfolio):
         n_observations, n_assets = rets.shape
 
         weights_provided = weights is not None
+        # Preserve excluded assets and their cost rates when reconstructing a portfolio.
+        original_named_inputs = {}
+        if isinstance(previous_weights, dict):
+            original_named_inputs[_PREVIOUS_WEIGHTS] = previous_weights.copy()
+        if isinstance(transaction_costs, dict):
+            original_named_inputs[_TRANSACTION_COSTS] = transaction_costs.copy()
+
+        liquidation_turnover = 0.0
+        liquidation_cost = 0.0
         if not weights_provided:
             weights = np.full(n_assets, np.nan)
         else:
+            liquidation_turnover, liquidation_cost = _get_liquidation_turnover_and_cost(
+                previous_weights=previous_weights,
+                transaction_costs=transaction_costs,
+                assets_names=assets,
+            )
             weights = input_to_array(
                 items=weights,
                 n_assets=n_assets,
@@ -571,7 +619,7 @@ class Portfolio(BasePortfolio):
             )
 
         # Default observations and assets if X is not a DataFrame
-        if observations is None or len(observations) == 0:
+        if observations is None:
             observations = np.arange(n_observations)
 
         if assets is None or len(assets) == 0:
@@ -582,15 +630,27 @@ class Portfolio(BasePortfolio):
             total_cost = 0
         else:
             total_cost = (transaction_costs * abs(previous_weights - weights)).sum()
+        total_cost += liquidation_cost
 
         if np.isscalar(management_fees) and management_fees == 0:
             total_fee = 0
         else:
             total_fee = (management_fees * weights).sum()
 
+        ending_weights = weights.copy()
         if weights_provided:
-            rets_clean = np.nan_to_num(rets, nan=0.0) if np.isnan(rets).any() else rets
-            returns = weights @ rets_clean.T - total_cost - total_fee
+            rets_clean = _nan_to_zero(rets)
+            if weight_drift and n_observations > 0:
+                position_values, wealth = _position_values_and_wealth(
+                    returns=rets_clean,
+                    weights=weights,
+                    observations=observations,
+                )
+                previous_wealth = np.concatenate(([1.0], wealth[:-1]))
+                returns = wealth / previous_wealth - 1 - total_cost - total_fee
+                ending_weights = position_values[-1] / wealth[-1]
+            else:
+                returns = weights @ rets_clean.T - total_cost - total_fee
         else:
             returns = np.full(n_observations, np.nan)
 
@@ -616,6 +676,8 @@ class Portfolio(BasePortfolio):
             **kwargs,
         )
         self._loaded = False
+        self._original_named_inputs = original_named_inputs
+        self._liquidation_turnover = liquidation_turnover
         # We save the original array-like object and not the numpy copy for improved
         # memory
         self.X = X
@@ -627,32 +689,63 @@ class Portfolio(BasePortfolio):
         self.previous_weights = previous_weights
         self.total_cost = total_cost
         self.total_fee = total_fee
+        self.weight_drift = weight_drift
+        self.ending_weights = ending_weights
         # Keep attribute name aligned with Optimization API (fallback_chain_)
         self.fallback_chain = fallback_chain
         self._loaded = True
+        self._weights_path = None
 
     @property
     def _is_failed_portfolio(self) -> bool:
         return self.__class__.__name__ == "FailedPortfolio"
 
+    def _get_init_params(self) -> dict:
+        params = super()._get_init_params()
+        params.update(self._original_named_inputs)
+        return params
+
+    def _check_compatible_parameters(self, other: Portfolio) -> None:
+        """Check that portfolios differ only in weights, name or tag."""
+        assets = set(self.assets)
+        for name in args_names(self.__init__):
+            if name in ("weights", "name", "tag"):
+                continue
+            if not np.array_equal(getattr(self, name), getattr(other, name)):
+                raise ValueError(
+                    f"Cannot combine two Portfolios with different `{name}`"
+                )
+        # Aligned arrays do not include positions and rates outside X.
+        for name in (_PREVIOUS_WEIGHTS, _TRANSACTION_COSTS):
+            named = self._original_named_inputs.get(name, {})
+            other_named = other._original_named_inputs.get(name, {})
+            excluded_assets = (named.keys() | other_named.keys()) - assets
+            if any(
+                named.get(asset, 0) != other_named.get(asset, 0)
+                for asset in excluded_assets
+            ):
+                raise ValueError(
+                    f"Cannot combine two Portfolios with different `{name}`"
+                )
+
     def __neg__(self):
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = -self.weights
         return self.__class__(**args)
 
     def __abs__(self):
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = np.abs(self.weights)
         return self.__class__(**args)
 
     def __round__(self, n: int):
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = np.round(self.weights, n)
         return self.__class__(**args)
 
@@ -665,15 +758,8 @@ class Portfolio(BasePortfolio):
             return self.copy()
         if other._is_failed_portfolio:
             return other.copy()
-        args = args_names(self.__init__)
-        for arg in args:
-            if arg not in [
-                "weights",
-                "name",
-                "tag",
-            ] and not np.array_equal(getattr(self, arg), getattr(other, arg)):
-                raise ValueError(f"Cannot add two Portfolios with different `{arg}`")
-        args = {arg: getattr(self, arg) for arg in args}
+        self._check_compatible_parameters(other=other)
+        args = self._get_init_params()
         args["weights"] = self.weights + other.weights
         return self.__class__(**args)
 
@@ -686,17 +772,8 @@ class Portfolio(BasePortfolio):
             return self.copy()
         if other._is_failed_portfolio:
             return other.copy()
-        args = args_names(self.__init__)
-        for arg in args:
-            if arg not in [
-                "weights",
-                "name",
-                "tag",
-            ] and not np.array_equal(getattr(self, arg), getattr(other, arg)):
-                raise ValueError(
-                    f"Cannot subtract two Portfolios with different `{arg}`"
-                )
-        args = {arg: getattr(self, arg) for arg in args}
+        self._check_compatible_parameters(other=other)
+        args = self._get_init_params()
         args["weights"] = self.weights - other.weights
         return self.__class__(**args)
 
@@ -708,7 +785,7 @@ class Portfolio(BasePortfolio):
             )
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = other * self.weights
         return self.__class__(**args)
 
@@ -722,7 +799,7 @@ class Portfolio(BasePortfolio):
             )
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = np.floor_divide(self.weights, other)
         return self.__class__(**args)
 
@@ -734,7 +811,7 @@ class Portfolio(BasePortfolio):
             )
         if self._is_failed_portfolio:
             return self.copy()
-        args = {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        args = self._get_init_params()
         args["weights"] = self.weights / other
         return self.__class__(**args)
 
@@ -780,16 +857,78 @@ class Portfolio(BasePortfolio):
         }
 
     @property
-    def weights_per_observation(self) -> pd.DataFrame:
-        """DataFrame of the Portfolio weights per observation."""
-        idx = self.nonzero_assets_index
-        weights = self.weights[idx]
-        assets = self.assets[idx]
-        df = pd.DataFrame(
-            np.ones((len(self.observations), len(assets))) * weights,
-            index=self.observations,
-            columns=assets,
+    def ending_weights_dict(self) -> dict[str, float]:
+        """Dict mapping asset name to ending weight; includes zeros."""
+        return {
+            asset: float(weight)
+            for asset, weight in zip(self.assets, self.ending_weights, strict=True)
+        }
+
+    @property
+    def turnover(self) -> float:
+        """Total absolute weight traded at the start of the period.
+
+        In a sequential evaluation, `previous_weights` come from the last successful
+        Portfolio. With `weight_drift=False`, target turnover compares successive
+        target allocations. With `weight_drift=True`, executed turnover compares the
+        previous period's ending weights with the new target allocation. When
+        `previous_weights` is None, it defaults to zero. Turnover includes the full
+        absolute weight of positions in assets absent from `X`.
+        """
+        if self._is_failed_portfolio:
+            return np.nan
+        return (
+            float(np.abs(self.weights - self.previous_weights).sum())
+            + self._liquidation_turnover
         )
+
+    def _get_weights_path(self) -> FloatArray:
+        """Return the portfolio's weight path across the observation window.
+
+        Returns
+        -------
+        weights_path : ndarray of shape (n_observations, n_assets)
+            Row `t` contains the asset weights at the start of observation `t`. The
+            first row contains the target `weights`, and each subsequent row reflects
+            asset returns from the preceding observations. `ending_weights` contains
+            the weights immediately after the final observation. The matrix is built
+            on first use and cached in `_weights_path`.
+        """
+        if self._weights_path is not None:
+            return self._weights_path
+
+        if self._is_failed_portfolio:
+            path = np.full((self.n_observations, self.n_assets), np.nan)
+        elif self.n_observations == 0:
+            path = np.empty((0, self.n_assets))
+        else:
+            position_values, wealth = _position_values_and_wealth(
+                returns=_nan_to_zero(np.asarray(self.X)),
+                weights=self.weights,
+                observations=self.observations,
+            )
+            previous_values = np.vstack((self.weights, position_values[:-1]))
+            previous_wealth = np.concatenate(([1.0], wealth[:-1]))
+            path = previous_values / previous_wealth[:, None]
+        self._weights_path = path
+        return path
+
+    @property
+    def weights_per_observation(self) -> pd.DataFrame:
+        """DataFrame of asset weights at the start of each observation.
+
+        With `weight_drift=False`, every row contains the target `weights`. With
+        `weight_drift=True`, each row incorporates the effect of preceding asset
+        returns. `ending_weights` contains the weights immediately after the final
+        observation.
+        """
+        idx = self.nonzero_assets_index
+        assets = self.assets[idx]
+        if self.weight_drift:
+            weights = self._get_weights_path()[:, idx]
+        else:
+            weights = np.ones((len(self.observations), len(assets))) * self.weights[idx]
+        df = pd.DataFrame(weights, index=self.observations, columns=assets)
         return df
 
     @property
@@ -879,6 +1018,10 @@ class Portfolio(BasePortfolio):
     ) -> FloatArray | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure.
 
+        With `weight_drift=True`, the contributions are finite-difference sensitivities
+        to the target weights. Because drifted returns are nonlinear in the target
+        weights, the contributions are not guaranteed to sum exactly to the measure.
+
         Parameters
         ----------
         measure : Measure
@@ -913,11 +1056,8 @@ class Portfolio(BasePortfolio):
                     spacing = 1e-1
                 else:
                     spacing = 1e-5
-            args = {
-                arg: getattr(self, arg)
-                for arg in args_names(self.__init__)
-                if arg != "weights"
-            }
+            args = self._get_init_params()
+            args.pop("weights")
 
             contribution, assets = _compute_contribution(
                 args=args,
@@ -1047,6 +1187,9 @@ class Portfolio(BasePortfolio):
 
         The annualization scaling uses `self.annualization_factor`.
 
+        Realized attribution uses the target weights when `weight_drift=False` and the
+        weights held during each observation when `weight_drift=True`.
+
         Realized attribution is computed on the overlapping observation window between
         the portfolio and the factor model. Portfolio observations outside the factor
         model window, commonly caused by factor-model warmup or exposure lag, are
@@ -1126,6 +1269,9 @@ class Portfolio(BasePortfolio):
         described in
         :func:`~skfolio.attribution.rolling_realized_factor_attribution`.
 
+        Each rolling window uses the target weights when `weight_drift=False` and the
+        weights held during its observations when `weight_drift=True`.
+
         The portfolio may hold a subset of the assets covered by the factor model and
         weights are zero-filled for missing assets.
 
@@ -1181,6 +1327,64 @@ class Portfolio(BasePortfolio):
         )
 
 
+def _nan_to_zero(returns: np.ndarray) -> np.ndarray:
+    """Replace NaN asset returns by zero, returning the input when it has no NaN."""
+    if np.isnan(returns).any():
+        return np.nan_to_num(returns, nan=0.0)
+    return returns
+
+
+def _position_values_and_wealth(
+    returns: np.ndarray,
+    weights: np.ndarray,
+    observations: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Position values and wealth of the drifted weights, starting from unit wealth.
+
+    Each position grows with its own asset return and is not rebalanced within the
+    window. Both outputs are gross of transaction costs and management fees. They serve
+    to derive the drifted weights `position_values / wealth` and the single-period
+    returns `wealth[t] / wealth[t - 1] - 1`, which are both scale-free.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations, n_assets)
+        Asset returns without NaN.
+
+    weights : ndarray of shape (n_assets,)
+        Weights held on the first observation. The implicit cash position
+        `1 - weights.sum()` earns zero.
+
+    observations : ndarray of shape (n_observations,)
+        Observation labels, used in the error message.
+
+    Returns
+    -------
+    position_values : ndarray of shape (n_observations, n_assets)
+        Value of each position at the end of each observation.
+
+    wealth : ndarray of shape (n_observations,)
+        Portfolio wealth at the end of each observation, positions plus cash.
+
+    Raises
+    ------
+    ValueError
+        If the wealth is non-positive at some observation, in which case the drifted
+        weights are undefined from that observation on.
+    """
+    position_values = np.cumprod(1 + returns, axis=0) * weights
+    cash = 1 - weights.sum()
+    wealth = position_values.sum(axis=1) + cash
+    non_positive = np.flatnonzero(wealth <= 0)
+    if non_positive.size:
+        raise ValueError(
+            "The portfolio wealth is non-positive at observation "
+            f"{observations[non_positive[0]]!r}, so the drifted weights are undefined "
+            "from that observation on."
+        )
+    return position_values, wealth
+
+
 def _align_weights(
     weights: np.ndarray,
     portfolio_assets: np.ndarray,
@@ -1190,8 +1394,8 @@ def _align_weights(
 
     Parameters
     ----------
-    weights : ndarray of shape (n_portfolio_assets,)
-        Portfolio weight vector.
+    weights : ndarray of shape (..., n_portfolio_assets)
+        Portfolio weights. The last axis corresponds to `portfolio_assets`.
 
     portfolio_assets : ndarray of shape (n_portfolio_assets,)
         Asset names of the portfolio.
@@ -1201,9 +1405,9 @@ def _align_weights(
 
     Returns
     -------
-    aligned : ndarray of shape (n_model_assets,)
-        Weight vector aligned to `model_assets`.  Assets present in the portfolio keep
-        their weight; assets only in the model receive zero.
+    aligned : ndarray of shape (..., n_model_assets)
+        Weights aligned to `model_assets`. Assets present in the portfolio keep their
+        weight; assets only in the model receive zero.
 
     Raises
     ------
@@ -1221,9 +1425,10 @@ def _align_weights(
             f"Portfolio contains {len(missing)} asset(s) not in the factor "
             f"model: {missing[:5].tolist()}{'...' if len(missing) > 5 else ''}."
         )
-
-    aligned_weights = np.zeros(len(model_assets), dtype=weights.dtype)
-    aligned_weights[model_indices] = weights
+    aligned_weights = np.zeros(
+        (*weights.shape[:-1], len(model_assets)), dtype=weights.dtype
+    )
+    aligned_weights[..., model_indices] = weights
     return aligned_weights
 
 
@@ -1243,8 +1448,11 @@ def _prepare_realized_attribution_inputs(
 
     Returns
     -------
-    aligned_weights : ndarray of shape (n_model_assets,)
-        Weight vector aligned to the factor model's asset ordering.
+    aligned_weights : ndarray
+        Weights aligned to the factor model's asset ordering: the target weights of
+        shape `(n_model_assets,)` when `weight_drift=False`, or the weights held during
+        each observation of shape `(n_observations, n_model_assets)` when
+        `weight_drift=True`.
 
     portfolio_returns : ndarray of shape (n_observations,)
         Portfolio returns restricted to the overlapping factor model window.
@@ -1254,12 +1462,17 @@ def _prepare_realized_attribution_inputs(
     """
     if portfolio._is_failed_portfolio:
         raise ValueError("Cannot compute factor attribution on a failed portfolio.")
-    aligned_weights = _align_weights(
-        portfolio.weights, portfolio.assets, factor_model.asset_names
-    )
     portfolio_indices, aligned_factor_model = _select_realized_observation_window(
         observations=portfolio.observations,
         factor_model=factor_model,
+    )
+    weights = (
+        portfolio._get_weights_path()[portfolio_indices]
+        if portfolio.weight_drift
+        else portfolio.weights
+    )
+    aligned_weights = _align_weights(
+        weights, portfolio.assets, factor_model.asset_names
     )
     return aligned_weights, portfolio.returns[portfolio_indices], aligned_factor_model
 

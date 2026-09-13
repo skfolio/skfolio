@@ -2,6 +2,72 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-09-13)
+
+### Features
+
+- Add weight drift and backtesting and evaluation user guide
+  ([#286](https://github.com/skfolio/skfolio/pull/286),
+  [`25294e7`](https://github.com/skfolio/skfolio/commit/25294e7b720c833e9839b568d0fffd992507452f))
+
+
+## v1.1.0 (2026-09-12)
+
+### Build System
+
+- Keep doctest configuration out of wheels ([#308](https://github.com/skfolio/skfolio/pull/308),
+  [`553f7a5`](https://github.com/skfolio/skfolio/commit/553f7a542189c6cabf52b159b0f8d1133afc6b52))
+
+### Chores
+
+- Remove the unreferenced Makefile ([#281](https://github.com/skfolio/skfolio/pull/281),
+  [`110c204`](https://github.com/skfolio/skfolio/commit/110c2049e6b0f70aaf0b0d0d7acae998ce42a3a8))
+
+- **deps**: Bump https://github.com/pre-commit/pre-commit-hooks
+  ([#289](https://github.com/skfolio/skfolio/pull/289),
+  [`b17dd58`](https://github.com/skfolio/skfolio/commit/b17dd586ee2c10363e5b86d61d5a8dcce051264b))
+
+- **lint**: Bring examples under the ruff gate ([#284](https://github.com/skfolio/skfolio/pull/284),
+  [`94ea5d5`](https://github.com/skfolio/skfolio/commit/94ea5d584296c71a45bba7139a3d7e50dc38d9c7))
+
+### Continuous Integration
+
+- Run the publishing workflows only on the canonical repository
+  ([#294](https://github.com/skfolio/skfolio/pull/294),
+  [`5ded7e2`](https://github.com/skfolio/skfolio/commit/5ded7e2cac2afc11ab9265e27dd5bdf3d7112d55))
+
+### Documentation
+
+- Comment the two cycle-breaking deferred imports
+  ([#306](https://github.com/skfolio/skfolio/pull/306),
+  [`029ae0b`](https://github.com/skfolio/skfolio/commit/029ae0bdaf0021fcce34abc2805365edc3a473c1))
+
+### Features
+
+- **exceptions**: Add a SkfolioError base class
+  ([#305](https://github.com/skfolio/skfolio/pull/305),
+  [`bfc864c`](https://github.com/skfolio/skfolio/commit/bfc864c2c90cd33e768adbab896c8c23335e25d3))
+
+### Refactoring
+
+- **utils**: Break import-time package cycles ([#279](https://github.com/skfolio/skfolio/pull/279),
+  [`085485b`](https://github.com/skfolio/skfolio/commit/085485b0f35576c1b36b4c4253cb7b944fee0c6f))
+
+### Testing
+
+- Make the suite hermetic and scope sklearn config
+  ([#291](https://github.com/skfolio/skfolio/pull/291),
+  [`bd55f43`](https://github.com/skfolio/skfolio/commit/bd55f43d1505252771fe161ae98b46dc4208242a))
+
+- **docs**: Execute and verify the docstring examples
+  ([#283](https://github.com/skfolio/skfolio/pull/283),
+  [`b500f88`](https://github.com/skfolio/skfolio/commit/b500f88569e98d3e8d1f40770151b5e1b0cd30bd))
+
+- **prior**: Stabilize entropy pooling tests and update CI to Python 3.14
+  ([#290](https://github.com/skfolio/skfolio/pull/290),
+  [`0ea53ad`](https://github.com/skfolio/skfolio/commit/0ea53ad2a4b415ba65f2c04da9382a1d5fc27d1a))
+
+
 ## v1.0.6 (2026-09-08)
 
 ### Bug Fixes

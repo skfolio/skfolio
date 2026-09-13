@@ -779,6 +779,32 @@ class TestMultiPeriodPortfolioFactorAttribution:
         result = mpp.realized_attribution(fm)
         assert isinstance(result, Attribution)
 
+    def test_drifted_realized_attribution_uses_each_child_path(self, fm_and_mpp):
+        fm, mpp = fm_and_mpp
+        drifted_children = [
+            Portfolio(X=ptf.X, weights=ptf.weights, weight_drift=True) for ptf in mpp
+        ]
+        drifted = MultiPeriodPortfolio(drifted_children)
+
+        weight_parts = []
+        for portfolio in drifted_children:
+            values = np.cumprod(1 + portfolio.X, axis=0) * portfolio.weights
+            wealth = values.sum(axis=1)
+            weight_parts.append(
+                np.vstack((portfolio.weights, values[:-1]))
+                / np.r_[1, wealth[:-1]][:, None]
+            )
+        expected = fm.realized_attribution(
+            weights=np.vstack(weight_parts),
+            portfolio_returns=drifted.returns,
+            annualization_factor=drifted.annualization_factor,
+            compute_uncertainty=True,
+        )
+        result = drifted.realized_attribution(fm)
+
+        np.testing.assert_allclose(result.total.vol, expected.total.vol)
+        np.testing.assert_allclose(result.total.mu_contrib, expected.total.mu_contrib)
+
     def test_realized_skips_failed_portfolios(self, fm_and_mpp):
         from skfolio.attribution import Attribution
 
@@ -821,7 +847,8 @@ class TestMultiPeriodPortfolioFactorAttribution:
         with pytest.raises(ValueError, match="All child portfolios"):
             mpp.realized_attribution(fm)
 
-    def test_realized_subset_assets(self, fm_and_mpp):
+    @pytest.mark.parametrize("weight_drift", [False, True])
+    def test_realized_subset_assets(self, fm_and_mpp, weight_drift):
         """Child portfolios hold subsets of the factor model's assets."""
         from skfolio.attribution import Attribution
 
@@ -836,6 +863,7 @@ class TestMultiPeriodPortfolioFactorAttribution:
                 index=obs[:30],
             ),
             weights=np.array([0.6, 0.4]),
+            weight_drift=weight_drift,
         )
         ptf2 = Portfolio(
             X=pd.DataFrame(
@@ -844,6 +872,7 @@ class TestMultiPeriodPortfolioFactorAttribution:
                 index=obs[30:60],
             ),
             weights=np.array([0.5, 0.5]),
+            weight_drift=weight_drift,
         )
         mpp = MultiPeriodPortfolio(portfolios=[ptf1, ptf2])
         result = mpp.realized_attribution(fm)
@@ -869,7 +898,8 @@ class TestMultiPeriodPortfolioFactorAttribution:
         with pytest.raises(ValueError, match="inside the overlapping"):
             mpp.realized_attribution(fm_gap)
 
-    def test_realized_asset_not_in_model_raises(self, fm_and_mpp):
+    @pytest.mark.parametrize("weight_drift", [False, True])
+    def test_realized_asset_not_in_model_raises(self, fm_and_mpp, weight_drift):
         fm, _ = fm_and_mpp
         ptf = Portfolio(
             X=pd.DataFrame(
@@ -878,6 +908,7 @@ class TestMultiPeriodPortfolioFactorAttribution:
                 index=fm.observations[:10],
             ),
             weights=np.array([0.5, 0.5]),
+            weight_drift=weight_drift,
         )
         mpp = MultiPeriodPortfolio(portfolios=[ptf])
         with pytest.raises(ValueError, match="not in the factor model"):

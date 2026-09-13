@@ -778,8 +778,9 @@ class TestPortfolioFactorAttribution:
         with pytest.raises(ValueError, match="inside the overlapping"):
             ptf.realized_attribution(fm_gap)
 
+    @pytest.mark.parametrize("weight_drift", [False, True])
     def test_realized_attribution_asset_not_in_model_raises(
-        self, factor_model_and_portfolio
+        self, factor_model_and_portfolio, weight_drift
     ):
         fm, _ = factor_model_and_portfolio
         X_bad = pd.DataFrame(
@@ -787,7 +788,9 @@ class TestPortfolioFactorAttribution:
             columns=["UNKNOWN_1", "UNKNOWN_2"],
             index=fm.observations,
         )
-        ptf_bad = Portfolio(X=X_bad, weights=np.array([0.5, 0.5]))
+        ptf_bad = Portfolio(
+            X=X_bad, weights=np.array([0.5, 0.5]), weight_drift=weight_drift
+        )
         with pytest.raises(ValueError, match="not in the factor model"):
             ptf_bad.realized_attribution(fm)
 
@@ -820,6 +823,35 @@ class TestPortfolioFactorAttribution:
         np.testing.assert_almost_equal(
             result.total.vol, result_from_factor_model.total.vol
         )
+
+    def test_drifted_realized_attribution_uses_held_weights(
+        self, factor_model_and_portfolio
+    ):
+        factor_model, ptf = factor_model_and_portfolio
+        drifted = Portfolio(X=ptf.X, weights=ptf.weights, weight_drift=True)
+        asset_returns = np.asarray(ptf.X)
+        values = np.cumprod(1 + asset_returns, axis=0) * ptf.weights
+        wealth = values.sum(axis=1)
+        expected_weights = (
+            np.vstack((ptf.weights, values[:-1])) / np.r_[1, wealth[:-1]][:, None]
+        )
+
+        result = drifted.realized_attribution(factor_model)
+        expected = factor_model.realized_attribution(
+            weights=expected_weights,
+            portfolio_returns=drifted.returns,
+            annualization_factor=drifted.annualization_factor,
+            compute_uncertainty=True,
+        )
+        np.testing.assert_allclose(result.total.vol, expected.total.vol)
+        np.testing.assert_allclose(result.total.mu_contrib, expected.total.mu_contrib)
+
+        predicted = drifted.predicted_attribution(factor_model)
+        target_based = factor_model.predicted_attribution(
+            weights=drifted.weights,
+            annualization_factor=drifted.annualization_factor,
+        )
+        np.testing.assert_allclose(predicted.total.vol, target_based.total.vol)
 
     def test_realized_attribution_compute_uncertainty_false_no_regression_inputs(
         self, factor_model_and_portfolio

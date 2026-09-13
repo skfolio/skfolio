@@ -2414,3 +2414,76 @@ class TestFactorConstraints:
         ).sum()
 
         assert family_exposure <= -0.05
+
+
+@pytest.mark.parametrize(
+    "objective", [ObjectiveFunction.MAXIMIZE_RETURN, ObjectiveFunction.MAXIMIZE_RATIO]
+)
+def test_liquidation_cost_with_zero_cost_on_selected_assets(
+    objective, fixed_return_distribution_prior
+):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 2)), columns=["A", "B"]
+    )
+    mu = np.array([0.02, 0.04])
+    model = MeanRisk(
+        objective_function=objective,
+        prior_estimator=fixed_return_distribution_prior(
+            mu=mu, covariance=np.diag([0.03, 0.04])
+        ),
+        previous_weights={"EXIT": 1.0},
+        transaction_costs={"EXIT": 0.01},
+    ).fit(X)
+    assert model.predict(X).total_cost == pytest.approx(0.01)
+    assert model.problem_values_["expected_return"] == pytest.approx(
+        model.weights_ @ mu - 0.01, abs=1e-7
+    )
+
+
+@pytest.mark.parametrize("named", [False, True])
+@pytest.mark.parametrize("max_turnover", [None, 0.4])
+def test_liquidation_cost_of_non_investable_assets(
+    nan_investable_test_data, fixed_return_distribution_prior, named, max_turnover
+):
+    X, mu, covariance, mask = nan_investable_test_data
+    previous = np.array([0.0, 0.0, 1.0, 0.0])
+    costs = np.array([0.0, 0.0, 0.001, 0.0])
+    if named:
+        previous = dict(zip(X.columns, previous, strict=True))
+        costs = dict(zip(X.columns, costs, strict=True))
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+        previous_weights=previous,
+        transaction_costs=costs,
+        max_turnover=max_turnover,
+    ).fit(X)
+    portfolio = model.predict(X=X)
+    assert portfolio.total_cost == pytest.approx(0.001)
+    assert portfolio.turnover == pytest.approx(2.0)
+    assert model.problem_values_["expected_return"] == pytest.approx(
+        model.weights_[mask] @ mu[mask] - 0.001, abs=1e-7
+    )
+    if max_turnover is not None:
+        assert np.all(np.abs(model.weights_[mask]) <= max_turnover + 1e-7)
+
+
+def test_max_turnover_exempts_forced_liquidations(fixed_return_distribution_prior):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (60, 3)), columns=list("ABC")
+    )
+    mu = np.array([0.03, 0.02, 0.01])
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=np.eye(3)),
+        previous_weights={"EXIT": 1.0},
+        transaction_costs=0.001,
+        max_turnover=0.4,
+    ).fit(X=X)
+    portfolio = model.predict(X=X)
+    np.testing.assert_allclose(model.weights_, [0.4, 0.4, 0.2], atol=1e-7)
+    assert portfolio.turnover == pytest.approx(2.0)
+    assert portfolio.total_cost == pytest.approx(0.002)
+    assert model.problem_values_["expected_return"] == pytest.approx(
+        model.weights_ @ mu - portfolio.total_cost, abs=1e-7
+    )

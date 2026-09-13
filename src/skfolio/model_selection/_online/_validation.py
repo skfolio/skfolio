@@ -26,12 +26,16 @@ from skfolio.measures import BaseMeasure, RatioMeasure
 from skfolio.metrics._scorer import _BaseScorer, _EstimatorScorer
 from skfolio.model_selection._validation import (
     _apply_entry_rebalancing_params,
-    _asset_names_enabled,
     _get_last_step,
+    _has_asset_names,
     _is_portfolio_optimization_estimator,
+    _propagate_previous_weights,
+    _resolve_evaluation_portfolio_params,
     _route_params,
+    _sync_measure_params_to_portfolios,
 )
 from skfolio.model_selection._walk_forward import WalkForward
+from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, MultiPeriodPortfolio
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.tools import fit_single_estimator
@@ -127,17 +131,40 @@ def online_predict(
         routing.
 
     portfolio_params : dict, optional
-        Additional parameters forwarded to the resulting
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio`.
+        Portfolio parameters for the evaluation.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the returned `MultiPeriodPortfolio` and to
+        each `Portfolio` it contains. A value passed here takes precedence over the
+        optimizer's `portfolio_params`. When omitted here, it is inherited from the
+        optimizer's `portfolio_params`. When omitted from both, `risk_free_rate` falls
+        back to the optimizer's `risk_free_rate` parameter when it has one. These
+        parameters only affect how the portfolios are measured, not the optimization.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`.
+        Failed and empty portfolios do not update the previous holdings.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        returned `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio. This is
-        useful when the strategy starts with no existing position, while later
-        portfolios represent regular rebalancing from the previously predicted weights.
-        For example, the entry rebalancing can relax `max_turnover` or use lower
-        `transaction_costs` to avoid a slow ramp from cash caused by recurring
-        rebalancing constraints. The first portfolio is included in the result; the
-        regular estimator parameters are restored before the next online update.
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio. This is useful when the strategy starts with no existing position,
+        while later portfolios represent regular rebalancing from the previously
+        predicted weights. For example, the entry rebalancing can relax `max_turnover`
+        or use lower `transaction_costs` to avoid a slow ramp from cash caused by
+        recurring rebalancing constraints. The first portfolio is included in the
+        result. The regular optimizer parameters are restored before the next online
+        update.
 
     Returns
     -------
@@ -159,6 +186,15 @@ def online_predict(
     --------
     :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
         Online evaluation of portfolio optimization using `online_predict`.
+
+    Notes
+    -----
+    When the estimator needs previous weights, each portfolio's `ending_weights` are
+    passed as `previous_weights` to the next update. Otherwise, previous weights are
+    assigned to the predicted portfolios afterward for turnover and cost calculations.
+    Ending weights equal the target `weights` when `weight_drift=False` and the
+    weights after the last observation when `weight_drift=True`. Failed and empty
+    portfolios are skipped when propagating holdings, preserving the last valid weights.
 
     Examples
     --------
@@ -312,18 +348,40 @@ def online_score(
         `ValueError` for portfolio optimization estimators.
 
     portfolio_params : dict, optional
-        Additional parameters forwarded to the resulting
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring a
-        portfolio optimization estimator.
+        Portfolio parameters for the evaluation of a portfolio optimizer.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the scored `MultiPeriodPortfolio` and to
+        each `Portfolio` it contains. A value passed here takes precedence over the
+        optimizer's `portfolio_params`. When omitted here, it is inherited from the
+        optimizer's `portfolio_params`. When omitted from both, `risk_free_rate` falls
+        back to the optimizer's `risk_free_rate` parameter when it has one. These
+        parameters only affect how the portfolios are measured, not the optimization,
+        so they can change the score.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`.
+        Failed and empty portfolios do not update the previous holdings.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio of a
-        portfolio estimator. This is useful when the strategy starts with no existing
-        position, while later portfolios represent regular rebalancing from the
-        previously predicted weights. For example, the entry rebalancing can relax
-        `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
-        caused by recurring rebalancing constraints. The regular estimator parameters
-        are restored before the next online update.
+        Portfolio optimizer parameters applied only while constructing its first
+        portfolio. This is useful when the strategy starts with no existing position,
+        while later portfolios represent regular rebalancing from the previously
+        predicted weights. For example, the entry rebalancing can relax `max_turnover`
+        or use lower `transaction_costs` to avoid a slow ramp from cash caused by
+        recurring rebalancing constraints. The regular optimizer parameters are
+        restored before the next online update.
 
     Returns
     -------
@@ -605,10 +663,13 @@ def _online_predict(
     multi_period_portfolio : MultiPeriodPortfolio
         Predicted portfolios aggregated across test windows.
     """
-    portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
+    estimator, portfolio_params, explicit_measure_param_names = (
+        _resolve_evaluation_portfolio_params(
+            estimator, portfolio_params, clone_estimator=False
+        )
+    )
     last_step = _get_last_step(estimator)
     needs_prev_weights = getattr(last_step, "needs_previous_weights", False)
-    use_dict = _asset_names_enabled(X)
     previous_params = _apply_entry_rebalancing_params(
         estimator, entry_rebalancing_params
     )
@@ -631,6 +692,11 @@ def _online_predict(
             refit_last=refit_last,
         ):
             portfolio = estimator.predict(X[test_slice])
+            if needs_prev_weights and isinstance(portfolio, Population):
+                raise ValueError(
+                    "Sequential propagation of `previous_weights` requires one "
+                    "Portfolio per fold. The estimator returned a Population."
+                )
             portfolios.append(portfolio)
 
             if first_optimization:
@@ -639,15 +705,28 @@ def _online_predict(
                     previous_params = None
                 first_optimization = False
 
-            if needs_prev_weights and not isinstance(portfolio, FailedPortfolio):
-                prev_weights = portfolio.weights_dict if use_dict else portfolio.weights
+            if (
+                needs_prev_weights
+                and not isinstance(portfolio, FailedPortfolio)
+                and portfolio.n_observations
+            ):
                 # _online_walk_forward updates the estimator before yielding again.
-                last_step.set_params(previous_weights=prev_weights)
+                last_step.set_params(
+                    previous_weights=(
+                        portfolio.ending_weights_dict
+                        if _has_asset_names(X=portfolio.X)
+                        else portfolio.ending_weights
+                    )
+                )
     finally:
         if previous_params is not None:
             last_step.set_params(**previous_params)
 
-    return MultiPeriodPortfolio(portfolios=portfolios, **portfolio_params)
+    if not needs_prev_weights:
+        portfolios = _propagate_previous_weights(portfolios=portfolios)
+    mpp = MultiPeriodPortfolio(portfolios=portfolios, **portfolio_params)
+    _sync_measure_params_to_portfolios(mpp, explicit_measure_param_names)
+    return mpp
 
 
 def _online_score(
