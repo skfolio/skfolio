@@ -48,9 +48,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     ----------
     portfolio_params : dict, optional
         Portfolio parameters forwarded to the resulting `Portfolio` in `predict`.
-        If not provided and if available on the estimator, the following attributes are
-        propagated to the portfolio by default: `name`, `transaction_costs`,
-        `management_fees`, `previous_weights` and `risk_free_rate`.
+        Unless set in this dictionary, `transaction_costs`, `management_fees`,
+        `previous_weights` and `risk_free_rate` are forwarded from the optimizer when
+        available, and `name` defaults to the optimizer class name.
+        For example, `portfolio_params={"weight_drift": True}` evaluates the predicted
+        portfolios with drifted weights instead of the target weights on every
+        observation.
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
@@ -62,9 +65,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         and `fallback_chain_` stores each attempt with the associated outcome.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets,), optional
-        Previous asset weights. Some estimators use this to compute costs or turnover.
-        Additionally, when `fallback="previous_weights"`, failures will fall back to
-        these weights if provided.
+        Previous asset weights. Some portfolio optimizers use this to compute costs or
+        turnover. Additionally, when `fallback="previous_weights"`, failures will fall
+        back to these weights if provided.
 
     raise_on_failure : bool, default=True
         Controls error handling when fitting fails.
@@ -428,11 +431,15 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     def needs_previous_weights(self) -> bool:
         """Whether `previous_weights` must be propagated between folds/rebalances.
 
-        Used by `cross_val_predict` to decide whether to run sequentially and pass
-        the weights from the previous rebalancing to the next. This is `True` when
+        Used by `cross_val_predict` and `online_predict` to decide whether to run
+        sequentially and pass the weights from the previous rebalancing to the next.
+        This is `True` when `portfolio_params` sets `weight_drift=True`, or when
         transaction costs, a maximum turnover, or a fallback depending on
         `previous_weights` are present.
         """
+        if (getattr(self, "portfolio_params", None) or {}).get("weight_drift", False):
+            return True
+
         if _has_transaction_cost(getattr(self, _TRANSACTION_COSTS, None)):
             return True
 

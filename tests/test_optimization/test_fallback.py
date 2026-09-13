@@ -581,3 +581,14 @@ def test_fallback_needs_previous_weights(X):
         fallback=[MeanRisk(), MeanRisk(max_turnover=0.5)],
     )
     assert model.needs_previous_weights is True
+
+
+def test_weight_drift_needs_previous_weights():
+    assert MeanRisk().needs_previous_weights is False
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": True}).needs_previous_weights is True
+    )
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": False}).needs_previous_weights
+        is False
+    )
