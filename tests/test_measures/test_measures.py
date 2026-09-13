@@ -388,9 +388,7 @@ def test_semi_deviation_sample_weight(returns, biased, min_acceptable_return):
 
 @pytest.mark.parametrize("measure", [skm.semi_variance, skm.semi_deviation])
 def test_semi_measures_nan_correction_matches_dropping_nans(measure):
-    # The Bessel correction must be applied over the non-NaN sample, matching
-    # `variance` (which delegates to `np.nanvar`), so padding a series with NaNs
-    # must not change the result.
+    # Padding a series with NaNs must not change the result.
     returns = np.array([np.nan, 0.1, -0.5, np.nan, np.nan, -0.3, 0.8])
     np.testing.assert_almost_equal(
         measure(returns), measure(returns[~np.isnan(returns)]), 10
@@ -411,8 +409,7 @@ def test_semi_measures_nan_correction_matches_dropping_nans(measure):
 
 @pytest.mark.parametrize("measure", [skm.semi_variance, skm.semi_deviation])
 def test_semi_measures_insufficient_observations(measure):
-    # Fewer than two non-NaN observations cannot support a Bessel correction,
-    # so the unbiased estimate is undefined. `variance` already returns NaN.
+    # Match variance's behavior for fewer than two valid observations.
     assert np.isnan(skm.variance(np.array([0.1])))
     assert np.isnan(measure(np.array([0.1])))
     assert np.isnan(measure(np.array([np.nan, 0.1, np.nan])))
