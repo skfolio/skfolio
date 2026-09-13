@@ -466,7 +466,11 @@ def test_population_plot_measures_color_scale_and_tags(X):
     # Tags drive the color when neither fronts nor a color scale are requested and
     # the legend is placed outside the plotting area.
     fig = population.plot_measures(x=RiskMeasure.STANDARD_DEVIATION, y=PerfMeasure.MEAN)
-    assert fig.data[0].name == "odd"
+    # Untagged portfolios become the empty tag, and whether plotly gives that
+    # group a trace of its own varies by version, so assert on the set of names.
+    trace_names = {trace.name for trace in fig.data}
+    assert "odd" in trace_names
+    assert trace_names <= {"", "odd"}
     assert fig.layout.legend.x == 1.02
 
     # A measure color scale is added to the hover data, drives the color and moves

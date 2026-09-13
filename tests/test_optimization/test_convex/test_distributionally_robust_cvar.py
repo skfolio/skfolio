@@ -156,9 +156,11 @@ def test_sample_weight(X_small, view_params, expected_weights):
 
 
 def test_distributionally_robust_cvar_non_default_solver():
+    # Any solver other than CLARABEL falls through to empty params. SCIPY ships
+    # with cvxpy, so it is available wherever skfolio is installed.
     rng = np.random.default_rng(0)
     X = rng.normal(0.0005, 0.01, (60, 6))
-    model = DistributionallyRobustCVaR(solver="SCS")
+    model = DistributionallyRobustCVaR(solver="SCIPY")
     model.fit(X)
     assert model._solver_params == {}
     np.testing.assert_almost_equal(np.sum(model.weights_), 1.0, 4)

@@ -2735,7 +2735,12 @@ class TestRegressionDataEdgeCases:
         assert np.isfinite(
             t_stats[["factor_0", "factor_2", "factor_3"]].to_numpy()
         ).all()
-        assert np.isfinite(fm.exposure_condition_number).all()
+        # The design is exactly singular, so the condition number blows up.
+        # Whether LAPACK reports a huge finite value or an outright `inf` varies
+        # by platform and BLAS build, so assert only that it flags the singularity.
+        cond = fm.exposure_condition_number.to_numpy()
+        assert not np.isnan(cond).any()
+        assert (cond > 1e12).all()
 
 
 class TestResolveCSWeightingEdgeCases:

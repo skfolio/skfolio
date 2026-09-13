@@ -2560,7 +2560,9 @@ def test_custom_solver_params_and_scales(X_tiny):
 
 @pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
 def test_non_default_solver(X_tiny):
-    model = MeanRisk(solver="SCS")
+    # Any solver other than CLARABEL and SCIP falls through to empty params.
+    # SCIPY ships with cvxpy and handles the CVaR LP.
+    model = MeanRisk(solver="SCIPY", risk_measure=RiskMeasure.CVAR)
     model.fit(X_tiny)
     assert model._solver_params == {}
     np.testing.assert_almost_equal(np.sum(model.weights_), 1.0, 4)
