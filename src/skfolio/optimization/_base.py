@@ -354,7 +354,6 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             )
 
         if not isinstance(X, ReturnDistribution):
-            # Learned weights are positional, so validate their fitted asset mapping.
             _ = validate_data(self, X, reset=False, skip_check_array=True)
 
         # Optimization estimators can return a 1D or a 2D array of weights.
