@@ -826,7 +826,9 @@ class Attribution:
         title = f"{component_label} Exposure"
 
         if self.is_rolling:
-            if self.observations is None:
+            if (
+                self.observations is None
+            ):  # pragma: no cover - is_rolling implies observations is not None
                 raise ValueError("observations required for rolling exposure chart")
             customdata = None
             band_width = None

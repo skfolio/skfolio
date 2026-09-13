@@ -188,3 +188,46 @@ class TestMutualInformation:
         assert distance.n_bins_method == NBinsMethod.FREEDMAN
         assert distance.n_bins is None
         assert distance.normalize is True
+
+    def test_knuth_n_bins_method(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins_method=NBinsMethod.KNUTH)
+        distance.fit(X)
+        assert distance.codependence_.shape == (3, 3)
+        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
+        np.testing.assert_allclose(np.diag(distance.distance_), 0.0, atol=1e-12)
+
+    def test_invalid_n_bins_method(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins_method="invalid")
+        with pytest.raises(ValueError, match="n_bins_method invalid is not valid"):
+            distance.fit(X)
+
+    def test_not_normalized(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins=5, normalize=False)
+        distance.fit(X)
+        normalized = MutualInformation(n_bins=5, normalize=True).fit(X)
+        assert distance.codependence_.shape == (3, 3)
+        assert np.all(distance.distance_ >= 0)
+        # Un-normalized mutual information is the raw score, which is not bounded by 1
+        assert not np.allclose(distance.codependence_, normalized.codependence_)
+        assert np.all(distance.codependence_ >= 0)
+
+
+class TestBaseDistance:
+    def test_abstract_methods_via_minimal_subclass(self):
+        from skfolio.distance._base import BaseDistance
+
+        class _Minimal(BaseDistance):
+            def __init__(self):
+                super().__init__()
+
+            def fit(self, X, y=None):
+                return super().fit(X, y)
+
+        estimator = _Minimal()
+        assert estimator.fit(np.zeros((3, 2))) is None

@@ -822,7 +822,7 @@ class EntropyPooling(BasePrior):
                         corr_view,
                     )
                 )
-        except KeyError as e:
+        except KeyError as e:  # pragma: no cover - unreachable: asset names are validated by the regex in _parse_correlation_view
             raise ValueError(f"Asset {e.args[0]} is missing from the assets.") from None
 
         fix = np.zeros(n_assets, dtype=bool)
@@ -1057,7 +1057,7 @@ class EntropyPooling(BasePrior):
                         bounds += [(-1000, 1000)] * s
                     case "inequality":
                         bounds += [(0, None)] * s
-                    case _:
+                    case _:  # pragma: no cover - unreachable: every key of self._constraints is handled above
                         raise KeyError(f"constrain {name}")
 
         a = np.hstack(a)

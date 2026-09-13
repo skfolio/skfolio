@@ -18,6 +18,7 @@ from skfolio import (
 from skfolio.model_selection import cross_val_predict
 from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
+    ConvexOptimization,
     EqualWeighted,
     MeanRisk,
     ObjectiveFunction,
@@ -2414,3 +2415,319 @@ class TestFactorConstraints:
         ).sum()
 
         assert family_exposure <= -0.05
+
+
+@pytest.fixture(scope="module")
+def X_tiny():
+    rng = np.random.default_rng(0)
+    return pd.DataFrame(rng.normal(0.0005, 0.01, (60, 6)), columns=list("ABCDEF"))
+
+
+def test_annualized_risk_measure_is_converted():
+    with pytest.warns(UserWarning, match="annualized risk measure"):
+        model = MeanRisk(risk_measure=RiskMeasure.ANNUALIZED_VARIANCE)
+    assert model.risk_measure == RiskMeasure.VARIANCE
+
+
+def test_zero_thresholds_are_ignored(X_tiny):
+    model = MeanRisk(
+        solver="SCIP", cardinality=3, threshold_long=0.0, threshold_short=0.0
+    )
+    model.fit(X_tiny)
+    assert np.sum(np.abs(model.weights_) > 1e-8) <= 3
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+def test_mip_constraints_require_mip_solver(X_tiny):
+    model = MeanRisk(cardinality=2)
+    with pytest.raises(ValueError, match="require a mixed-integer solver"):
+        model.fit(X_tiny)
+
+
+@pytest.mark.parametrize(
+    "params,match",
+    [
+        (dict(max_long=0), "`max_long` must be strictly positive"),
+        (dict(max_short=-0.5), "`max_short` must be strictly positive"),
+        (dict(budget=1, max_budget=1), "`max_budget`and `budget` cannot be provided"),
+        (
+            dict(budget=1, min_budget=0.5),
+            "`min_budget`and `budget` cannot be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, max_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=0.05),
+            "Cardinality and Threshold constraint can only be applied",
+        ),
+        (
+            dict(solver="SCIP", group_cardinalities={"g1": 1}),
+            "you must also also provide 'groups'",
+        ),
+        (
+            dict(solver="SCIP", threshold_short=-0.05, min_weights=-1),
+            "When 'threshold_short' is provided, 'threshold_long' must also",
+        ),
+        (
+            dict(left_inequality=np.ones(6), right_inequality=np.ones(1)),
+            "`left_inequality` must be a 2D array, got 1D",
+        ),
+        (
+            dict(left_inequality=np.ones((1, 6)), right_inequality=np.ones((1, 1))),
+            "`right_inequality` must be a 1D array, got 2D",
+        ),
+        (
+            dict(left_inequality=np.ones((1, 5)), right_inequality=np.ones(1)),
+            "with n_assets=6, got 5",
+        ),
+        (
+            dict(left_inequality=np.ones((2, 6)), right_inequality=np.ones(1)),
+            "must have same number of rows",
+        ),
+        (dict(min_return=[]), "should have same length"),
+        (dict(solver="NOT_A_SOLVER"), "The solver NOT_A_SOLVER is not installed"),
+    ],
+)
+def test_convex_optimization_input_validation(X_tiny, params, match):
+    model = MeanRisk(**params)
+    with pytest.raises(ValueError, match=match):
+        model.fit(X_tiny)
+
+
+def test_linear_constraints_require_asset_names(X_tiny):
+    model = MeanRisk(linear_constraints=["A >= 0.1"])
+    with pytest.raises(ValueError, match="you must provide either `groups` or `X`"):
+        model.fit(X_tiny.to_numpy())
+
+
+def test_linear_constraints_with_non_investable_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+    model = MeanRisk(
+        linear_constraints=["A >= 0.5"],
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+    assert model.weights_[0] >= 0.5 - 1e-6
+    assert model.weights_[2] == 0.0
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+def test_inequality_constraints_with_non_investable_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+    prior = fixed_return_distribution_prior(mu=mu, covariance=covariance)
+
+    # A + B <= 0.3, expressed on the full universe (4 assets, "C" non-investable).
+    model = MeanRisk(
+        left_inequality=np.array([[1.0, 1.0, 0.0, 0.0]]),
+        right_inequality=np.array([0.3]),
+        prior_estimator=prior,
+    )
+    model.fit(X)
+    assert model.weights_[0] + model.weights_[1] <= 0.3 + 1e-6
+    assert model.weights_[2] == 0.0
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+    model = MeanRisk(
+        left_inequality=np.ones((1, 3)),
+        right_inequality=np.array([1.0]),
+        prior_estimator=prior,
+    )
+    with pytest.raises(ValueError, match="with n_total_assets=4, got 3"):
+        model.fit(X)
+
+
+def test_custom_solver_params_and_scales(X_tiny):
+    solver_params = {"tol_gap_abs": 1e-8, "tol_gap_rel": 1e-8}
+    model = MeanRisk(
+        solver_params=solver_params,
+        scale_objective=2.0,
+        scale_constraints=3.0,
+        save_problem=True,
+    )
+    model.fit(X_tiny)
+    assert model._solver_params == solver_params
+    assert float(model._scale_objective.value) == 2.0
+    assert float(model._scale_constraints.value) == 3.0
+    assert isinstance(model.problem_, cp.Problem)
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+@pytest.mark.filterwarnings("ignore:Solution may be inaccurate")
+def test_non_default_solver(X_tiny):
+    model = MeanRisk(solver="SCS")
+    model.fit(X_tiny)
+    assert model._solver_params == {}
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0, 4)
+
+
+def test_unimplemented_fourth_moment_risks():
+    model = MeanRisk()
+    w = cp.Variable(2)
+    with pytest.raises(NotImplementedError):
+        model._fourth_central_moment_risk(w=w, factor=cp.Constant(1))
+    with pytest.raises(NotImplementedError):
+        model._fourth_lower_partial_moment_risk(w=w, factor=cp.Constant(1))
+
+
+def test_convex_optimization_abstract_fit_is_a_noop(X_tiny):
+    # `BaseOptimization.__init_subclass__` wraps every subclass `fit` with the
+    # fallback chain, which discards the return value and yields the estimator.
+    model = MeanRisk()
+    assert ConvexOptimization.fit(model, X_tiny) is model
+
+
+def test_mip_threshold_short_with_group_cardinalities(X_tiny):
+    model = MeanRisk(
+        min_weights=-0.5,
+        max_weights=0.8,
+        threshold_long=0.1,
+        threshold_short=-0.05,
+        groups=[["g1", "g1", "g1", "g2", "g2", "g2"]],
+        group_cardinalities={"g1": 2},
+        solver="SCIP",
+    )
+    model.fit(X_tiny)
+    w = model.weights_
+    assert np.sum(np.abs(w[:3]) > 1e-8) <= 2
+    assert not np.any((w > 1e-8) & (w < 0.1 - 1e-8))
+    assert not np.any((w < -1e-8) & (w > -0.05 + 1e-8))
+    np.testing.assert_almost_equal(np.sum(w), 1.0)
+
+
+@pytest.mark.parametrize(
+    "risk_measure,match",
+    [
+        (RiskMeasure.VARIANCE, "maximum Sharpe Ratio portfolio"),
+        (RiskMeasure.SEMI_VARIANCE, "maximum Sortino Ratio portfolio"),
+    ],
+)
+def test_maximize_ratio_with_overwrite_expected_return_warns(
+    X_tiny, risk_measure, match
+):
+    mu = X_tiny.mean().to_numpy()
+    model = MeanRisk(
+        risk_measure=risk_measure,
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        overwrite_expected_return=lambda w: w @ mu,
+    )
+    with pytest.warns(UserWarning, match=match):
+        model.fit(X_tiny)
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+def test_evar_default_scales(X_tiny):
+    model = MeanRisk(risk_measure=RiskMeasure.EVAR)
+    model.fit(X_tiny)
+    assert float(model._scale_objective.value) == 1.0
+    assert float(model._scale_constraints.value) == 1e-2
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0, 5)
+
+
+def test_max_tracking_error_requires_y(X_tiny):
+    model = MeanRisk(max_tracking_error=0.01)
+    with pytest.raises(ValueError, match="`y` must also be provided"):
+        model.fit(X_tiny)
+
+
+def test_max_tracking_error_with_dataframe_y(X_tiny):
+    model = MeanRisk(max_tracking_error=0.01)
+    with pytest.raises(ValueError, match="single-column DataFrame or a Series"):
+        model.fit(X_tiny, X_tiny[["A", "B"]])
+
+    model.fit(X_tiny, X_tiny[["A"]])
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+def test_efficient_frontier_with_negative_expected_returns(X_tiny):
+    model = MeanRisk(efficient_frontier_size=3)
+    with pytest.raises(ValueError, match="only negative expected returns"):
+        model.fit(X_tiny - 0.05)
+
+
+@pytest.mark.parametrize(
+    "params,error,match",
+    [
+        (
+            dict(risk_measure="variance"),
+            TypeError,
+            "risk_measure must be of type `RiskMeasure`",
+        ),
+        (
+            dict(objective_function="minimize_risk"),
+            TypeError,
+            "objective_function must be of type `ObjectiveFunction`",
+        ),
+        (
+            dict(efficient_frontier_size=1),
+            ValueError,
+            "`efficient_frontier_size` must be strictly greater than one",
+        ),
+        (
+            dict(
+                efficient_frontier_size=3,
+                objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+            ),
+            ValueError,
+            "must be used only with",
+        ),
+    ],
+)
+def test_mean_risk_validate_params(X_tiny, params, error, match):
+    # `set_params` bypasses the enum conversion performed in `__init__`.
+    model = MeanRisk().set_params(**params)
+    with pytest.raises(error, match=match):
+        model.fit(X_tiny)
+
+
+def test_partial_fit_rejects_efficient_frontier(X_tiny):
+    model = _make_online_mean_risk(efficient_frontier_size=3)
+    with pytest.raises(ValueError, match="not supported with `partial_fit`"):
+        model.partial_fit(X_tiny)
+
+
+def test_partial_fit_solver_failure_raises(X_tiny):
+    model = _make_online_mean_risk(min_weights=1.0)
+    with pytest.raises(cp.SolverError):
+        model.partial_fit(X_tiny)
+    assert "Solver 'CLARABEL' failed" in model.error_
+    # The failed solve never reaches the point where problem values are recorded.
+    assert not hasattr(model, "problem_values_")
+
+
+def test_partial_fit_solver_failure_saves_problem(X_tiny):
+    model = _make_online_mean_risk(
+        min_weights=1.0, raise_on_failure=False, save_problem=True
+    )
+    with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+        model.partial_fit(X_tiny)
+    assert model.weights_ is None
+    assert isinstance(model.problem_, cp.Problem)
+
+
+def test_partial_fit_previous_weights_fallback_failure_raises(X_tiny):
+    model = _make_online_mean_risk(min_weights=1.0, fallback="previous_weights")
+    with pytest.raises(RuntimeError, match="'previous_weights' is None"):
+        model.partial_fit(X_tiny)
+    assert "previous_weights" in model.error_
+    assert model.problem_values_ is None
+    assert model.fallback_chain_[-1][0] == "previous_weights"
+
+
+def test_partial_fit_previous_weights_fallback_saves_problem(X_tiny):
+    previous_weights = np.full(X_tiny.shape[1], 1 / X_tiny.shape[1])
+    model = _make_online_mean_risk(
+        min_weights=1.0,
+        fallback="previous_weights",
+        previous_weights=previous_weights,
+        save_problem=True,
+    )
+    model.partial_fit(X_tiny)
+    np.testing.assert_array_equal(model.weights_, previous_weights)
+    assert model.error_ is None
+    assert isinstance(model.problem_, cp.Problem)

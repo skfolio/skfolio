@@ -942,3 +942,55 @@ class TestOnlineScoringValidation:
 
         with pytest.raises(TypeError, match="response_method=None"):
             online_score(est, X, warmup_size=400, test_size=50, scoring=scorer)
+
+
+def test_online_score_per_step_rejected_for_portfolio_estimator(X):
+    with pytest.raises(
+        ValueError, match="per_step=True is not supported for portfolio optimization"
+    ):
+        online_score(
+            _make_online_estimator(), X, warmup_size=400, test_size=50, per_step=True
+        )
+
+
+def test_online_score_component_estimator_rejects_non_callable_scoring(X):
+    with pytest.raises(
+        TypeError, match="`scoring` must be `None`, a callable, or a dict"
+    ):
+        online_score(
+            EWCovariance(half_life=30),
+            X,
+            warmup_size=400,
+            test_size=50,
+            scoring="sharpe_ratio",
+        )
+
+
+def test_online_predict_not_enough_observations_restores_entry_params(X):
+    X_short = X.iloc[:100]
+    model = PreviousWeightsAwareOptimization(scale=1.0)
+    with pytest.raises(
+        ValueError, match="Not enough observations for at least one test window"
+    ):
+        online_predict(
+            model,
+            X_short,
+            warmup_size=90,
+            test_size=20,
+            entry_rebalancing_params={"scale": 2.0},
+        )
+    assert model.scale == 1.0
+
+
+def test_online_score_component_estimator_rejects_entry_rebalancing_params(X):
+    with pytest.raises(
+        ValueError,
+        match="`entry_rebalancing_params` is only supported for portfolio optimization",
+    ):
+        online_score(
+            EWCovariance(half_life=30),
+            X,
+            warmup_size=400,
+            test_size=50,
+            entry_rebalancing_params={"half_life": 20},
+        )

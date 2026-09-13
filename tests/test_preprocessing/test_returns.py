@@ -78,3 +78,22 @@ def test_returns_drop_inceptions_nan(prices):
 
     X = prices_to_returns(X=prices, drop_inceptions_nan=False)
     assert X.shape[0] == prices.shape[0] - 1
+
+
+def test_returns_requires_dataframe_inputs():
+    index = pd.date_range("2026-01-01", periods=3)
+    prices = pd.DataFrame({"asset": [100.0, 101.0, 102.0]}, index=index)
+
+    with pytest.raises(TypeError, match="`X` must be a DataFrame"):
+        prices_to_returns(X=prices.to_numpy())
+
+    with pytest.raises(TypeError, match="`y` must be a DataFrame"):
+        prices_to_returns(X=prices, y=prices["asset"])
+
+
+@pytest.mark.parametrize("nan_threshold", [0.0, -0.5, 1.5])
+def test_returns_invalid_nan_threshold(nan_threshold):
+    index = pd.date_range("2026-01-01", periods=3)
+    prices = pd.DataFrame({"asset": [100.0, 101.0, 102.0]}, index=index)
+    with pytest.raises(ValueError, match="`nan_threshold` must be between 0 and 1"):
+        prices_to_returns(X=prices, nan_threshold=nan_threshold)

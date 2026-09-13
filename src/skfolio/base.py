@@ -170,7 +170,8 @@ class BaseComposition(skb.BaseEstimator, ABC):
             # elements of length 2
             with suppress(TypeError):
                 item_names, _ = zip(*items, strict=True)
-                for name in params:
+                # Iterate over a snapshot: `pop` mutates `params` inside the loop.
+                for name in list(params):
                     if "__" not in name and name in item_names:
                         self._replace_estimator(attr, name, params.pop(name))
 

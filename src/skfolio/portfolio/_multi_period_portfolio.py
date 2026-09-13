@@ -439,14 +439,14 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     def __floor__(self):
         return self.__class__(
-            portfolios=[np.floor(p) for p in self],
+            portfolios=[p.__floor__() for p in self],
             tag=self.tag,
             fitness_measures=self.fitness_measures,
         )
 
     def __trunc__(self):
         return self.__class__(
-            portfolios=[np.trunc(p) for p in self],
+            portfolios=[p.__trunc__() for p in self],
             tag=self.tag,
             fitness_measures=self.fitness_measures,
         )

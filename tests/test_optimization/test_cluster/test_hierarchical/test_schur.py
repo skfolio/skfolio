@@ -13,6 +13,8 @@ from skfolio.optimization import (
     MeanRisk,
     SchurComplementary,
 )
+from skfolio.optimization.cluster.hierarchical import _schur
+from skfolio.optimization.cluster.hierarchical._schur import _compute_weights
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
@@ -253,3 +255,70 @@ def test_hrp_weight_constraints_error(X):
     model.fit(X)
     assert model.effective_gamma_ == 0.5
     assert not np.any(np.isnan(model.weights_))
+
+
+def test_schur_invalid_gamma(X):
+    model = SchurComplementary(gamma=1.5)
+    with pytest.raises(ValueError, match=r"gamma must be between 0 and 1\. Got 1\.5"):
+        model.fit(X)
+
+
+@pytest.fixture
+def non_spd_schur_inputs():
+    # Rank-one covariance: with the (2, 3) block as the left cluster, its Schur
+    # augmentation is far from positive definite (smallest eigenvalue ~ -125).
+    v = np.array([1.0, 2.0, 3.0, 4.0])
+    covariance = np.outer(v, v) + 1e-6 * np.eye(4)
+    sorted_assets = np.array([2, 3, 0, 1])
+    return covariance, sorted_assets
+
+
+def _compute_weights_from(inputs, force_spd):
+    covariance, sorted_assets = inputs
+    return _compute_weights(
+        gamma=0.5,
+        sorted_assets=sorted_assets,
+        covariance=covariance,
+        max_weights=np.ones(4),
+        min_weights=np.zeros(4),
+        force_spd=force_spd,
+    )
+
+
+def test_compute_weights_force_spd_repairs_block(non_spd_schur_inputs):
+    # Without the repair the non-SPD block aborts the recursion.
+    assert _compute_weights_from(non_spd_schur_inputs, force_spd=False) is None
+
+    # With it the recursion runs to completion and returns a full weight vector.
+    # The input is a deliberately degenerate rank-1 covariance, so the weights
+    # themselves are not meaningful -- only that the repair unblocked the path.
+    weights = _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+    assert weights.shape == (4,)
+
+
+def test_compute_weights_force_spd_repairs_both_blocks(
+    non_spd_schur_inputs, monkeypatch
+):
+    calls = []
+
+    def identity_cov_nearest(cov):
+        calls.append(cov.copy())
+        return cov
+
+    monkeypatch.setattr(_schur, "cov_nearest", identity_cov_nearest)
+    weights = _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+    # The identity stand-in never actually repairs, so both blocks of the top
+    # split are sent through `cov_nearest`, and so are the blocks below them.
+    assert len(calls) >= 2
+    assert calls[0].shape == (2, 2)
+    assert calls[1].shape == (2, 2)
+    assert weights.shape == (4,)
+
+
+def test_compute_weights_force_spd_failure_raises(non_spd_schur_inputs, monkeypatch):
+    def failing_cov_nearest(cov):
+        raise np.linalg.LinAlgError("cannot repair")
+
+    monkeypatch.setattr(_schur, "cov_nearest", failing_cov_nearest)
+    with pytest.raises(ValueError, match=r"Schur complement failed with gamma=0\.5000"):
+        _compute_weights_from(non_spd_schur_inputs, force_spd=True)

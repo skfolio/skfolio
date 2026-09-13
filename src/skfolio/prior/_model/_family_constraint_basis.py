@@ -960,7 +960,7 @@ def compute_family_constraint_basis(
         raise ValueError("constrained_families must contain at least one family.")
 
     if n_factors <= len(parsed_constraints):
-        raise ValueError(
+        raise ValueError(  # pragma: no cover - unreachable: families are disjoint with >= 2 factors each, so n_factors >= 2 * n_constraints
             f"n_factors={n_factors} must exceed number of "
             f"constraints={len(parsed_constraints)}."
         )

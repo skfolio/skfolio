@@ -425,3 +425,59 @@ def test_fallback_previous_weights_propagation(X):
         assert_weights_dict_subset_equal(
             pred[i - 1].weights_dict, pred[i].previous_weights_dict
         )
+
+
+class _NoShuffleAttributeCV:
+    """Minimal cross-validator without a `shuffle` attribute."""
+
+    def __init__(self, reverse_first_train: bool = False, duplicate: bool = False):
+        self.reverse_first_train = reverse_first_train
+        self.duplicate = duplicate
+
+    def split(self, X, y=None, groups=None):
+        n = X.shape[0]
+        half = n // 2
+        first, second = np.arange(half), np.arange(half, n)
+        train = first[::-1] if self.reverse_first_train else first
+        yield train, second
+        if self.duplicate:
+            yield first, second
+        else:
+            yield second, first
+
+    def get_n_splits(self, X=None, y=None, groups=None):
+        return 2
+
+
+def test_cross_val_predict_rejects_shuffled_kfold(X_small):
+    with pytest.raises(ValueError, match="setting `shuffle=False`"):
+        cross_val_predict(
+            InverseVolatility(),
+            X_small,
+            cv=KFold(n_splits=3, shuffle=True, random_state=0),
+        )
+
+
+def test_cross_val_predict_rejects_unsorted_folds_without_shuffle_attribute(X_small):
+    with pytest.raises(ValueError, match="only works with un-shuffled folds"):
+        cross_val_predict(
+            InverseVolatility(),
+            X_small,
+            cv=_NoShuffleAttributeCV(reverse_first_train=True),
+        )
+
+
+def test_cross_val_predict_rejects_duplicated_test_indices(X_small):
+    with pytest.raises(ValueError, match="non-duplicated test indices"):
+        cross_val_predict(
+            InverseVolatility(), X_small, cv=_NoShuffleAttributeCV(duplicate=True)
+        )
+
+
+def test_cross_val_predict_sequential_path_warns_when_n_jobs_set(X_small):
+    cv = WalkForward(test_size=50, train_size=100)
+    with pytest.warns(UserWarning, match="Parallel processing has been disabled"):
+        pred = cross_val_predict(
+            PreviousWeightsAwareOptimization(), X_small, cv=cv, n_jobs=2
+        )
+    assert len(pred) == cv.get_n_splits(X_small)

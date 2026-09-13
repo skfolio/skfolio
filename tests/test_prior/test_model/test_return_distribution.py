@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skfolio.prior import ReturnDistribution
+from skfolio.prior import FactorModel, ReturnDistribution
 
 
 def _make_return_distribution(**overrides) -> ReturnDistribution:
@@ -58,3 +58,41 @@ def test_return_distribution_requires_an_investable_asset():
 
     with pytest.raises(ValueError, match="All assets are non-investable"):
         _ = distribution.investable_mask
+
+
+def _make_factor_model(n_assets: int) -> FactorModel:
+    return FactorModel(
+        observations=np.arange(3),
+        asset_names=np.array([f"asset_{i}" for i in range(n_assets)]),
+        factor_names=np.array(["f0"]),
+        factor_families=None,
+        loading_matrix=np.ones((n_assets, 1)),
+        exposures=None,
+        factor_covariance=np.array([[0.01]]),
+        factor_mu=np.array([0.001]),
+        factor_returns=None,
+        idio_covariance=np.full(n_assets, 0.02),
+        idio_mu=None,
+        idio_returns=None,
+        idio_variances=None,
+    )
+
+
+def test_return_distribution_rejects_factor_model_on_other_universe():
+    """The factor model loading matrix must cover the same assets as `mu`."""
+    with pytest.raises(ValueError, match="same asset universe"):
+        _make_return_distribution(factor_model=_make_factor_model(n_assets=3))
+
+
+def test_investable_subset_slices_factor_model_along_assets():
+    """Non-investable assets are dropped from the nested factor model as well."""
+    distribution = _make_return_distribution(
+        mu=np.array([0.01, np.nan]), factor_model=_make_factor_model(n_assets=2)
+    )
+
+    subset = distribution.investable_subset()
+
+    assert subset.n_assets == 1
+    np.testing.assert_array_equal(subset.factor_model.asset_names, ["asset_0"])
+    assert subset.factor_model.loading_matrix.shape == (1, 1)
+    np.testing.assert_array_equal(subset.factor_model.idio_covariance, [0.02])

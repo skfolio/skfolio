@@ -94,7 +94,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
 
         try:
             field = X.fields[self.category]
-        except KeyError as err:
+        except KeyError as err:  # pragma: no cover - validate_asset_panel guarantees it
             raise ValueError(
                 f"Field '{self.category}' is not in the AssetPanel."
             ) from err

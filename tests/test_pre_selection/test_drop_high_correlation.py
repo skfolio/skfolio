@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from sklearn import config_context
 
 from skfolio.pre_selection import DropCorrelated
@@ -28,3 +29,10 @@ def test_drop_high_correlation(X):
 
         new_new_X = model.fit_transform(new_X)
         assert new_new_X.shape == new_X.shape
+
+
+@pytest.mark.parametrize("threshold", [-1.5, 1.5])
+def test_drop_high_correlation_invalid_threshold(threshold):
+    X = np.random.default_rng(0).standard_normal((20, 4))
+    with pytest.raises(ValueError, match="`threshold` must be between -1 and 1"):
+        DropCorrelated(threshold=threshold).fit(X)

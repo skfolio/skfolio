@@ -302,3 +302,23 @@ class TestCharacteristicsFactorModelWithDerived:
             return np.corrcoef(loadings[:, size_idx], loadings[:, nlsize_idx])[0, 1]
 
         assert abs(_size_nlsize_corr(neutralized_model)) < abs(_size_nlsize_corr(model))
+
+
+def test_default_outlier_transformer_winsorizes(simple_panel, size_exposure):
+    """Test that the default (None) outlier transformer applies winsorization."""
+    from skfolio.preprocessing import CSWinsorizer
+
+    nlsize = DerivedFactor(source="size", func=lambda x: x**3, family="style")
+    with_default = DerivedFactor(
+        source="size", func=lambda x: x**3, family="style", outlier_transformer=None
+    )
+    result_passthrough = nlsize.fit_transform(
+        simple_panel, source_exposure=size_exposure
+    )
+    result_default = with_default.fit_transform(
+        simple_panel, source_exposure=size_exposure
+    )
+
+    assert isinstance(with_default.outlier_transformer_, CSWinsorizer)
+    assert result_default.shape == result_passthrough.shape
+    assert np.all(np.isfinite(result_default))

@@ -3,7 +3,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from skfolio.distribution import Gaussian, StudentT, select_univariate_dist
+from skfolio.distribution import (
+    BaseUnivariateDist,
+    Gaussian,
+    SelectionCriterion,
+    StudentT,
+    select_univariate_dist,
+)
 
 
 @pytest.fixture
@@ -81,3 +87,25 @@ def test_invalid_candidate_type(gaussian_data):
         ValueError, match="Each candidate must inherit from `BaseUnivariateDist`"
     ):
         select_univariate_dist(gaussian_data, [invalid_candidate])
+
+
+def test_select_univariate_default_candidates(gaussian_data):
+    selected = select_univariate_dist(gaussian_data)
+    assert isinstance(selected, BaseUnivariateDist)
+
+
+def test_select_univariate_bic_criterion(gaussian_data):
+    selected = select_univariate_dist(
+        gaussian_data,
+        [Gaussian(), StudentT()],
+        selection_criterion=SelectionCriterion.BIC,
+    )
+    assert isinstance(selected, Gaussian)
+
+
+def test_select_univariate_invalid_criterion(gaussian_data):
+    # The enum class exposes `.AIC`/`.BIC` but is neither member.
+    with pytest.raises(ValueError, match="not implemented"):
+        select_univariate_dist(
+            gaussian_data, [Gaussian()], selection_criterion=SelectionCriterion
+        )

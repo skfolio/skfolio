@@ -1590,3 +1590,95 @@ def test_vine_plot_raise(X):
 #             )
 #         trees.append(edges)
 #     return trees
+
+
+@pytest.fixture
+def small_returns():
+    rng = np.random.default_rng(0)
+    return rng.standard_normal((100, 3)) * 0.01
+
+
+@pytest.fixture
+def small_uniforms():
+    rng = np.random.default_rng(0)
+    return rng.random((100, 3))
+
+
+@pytest.fixture
+def small_model(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    return model.fit(small_returns)
+
+
+def test_vine_score_samples_log_transform(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        log_transform=True,
+        random_state=0,
+    )
+    model.fit(small_returns)
+    scores = model.score_samples(small_returns)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_score_samples_without_marginals(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0
+    )
+    model.fit(small_uniforms)
+    scores = model.score_samples(small_uniforms)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_sample_without_marginals_bounds_conditioning(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False,
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    model.fit(small_uniforms)
+    sample = model.sample(n_samples=20, conditioning={0: (0.2, 0.8)})
+    assert sample.shape == (20, 3)
+    assert np.all((sample[:, 0] >= 0.2) & (sample[:, 0] <= 0.8))
+
+
+def test_vine_conditioning_raise(small_model):
+    with pytest.raises(ValueError, match="`conditioning` must be a dictionary"):
+        small_model.sample(n_samples=5, conditioning=[0.5])
+    with pytest.raises(ValueError, match="it must beof length 2"):
+        small_model.sample(n_samples=5, conditioning={0: (0.1, 0.2, 0.3)})
+    with pytest.raises(ValueError, match="lower bound must be lower than"):
+        small_model.sample(n_samples=5, conditioning={0: (0.5, -0.5)})
+    with pytest.raises(ValueError, match="Conditioning values should be numbers"):
+        small_model.sample(n_samples=5, conditioning={0: "abc"})
+
+
+def test_vine_conditioning_keys_not_in_X(small_model, monkeypatch):
+    # `validate_input_list` already rejects unknown keys; bypass it so the vine's
+    # own guard on the resolved indices is exercised.
+    from skfolio.distribution.multivariate import _vine_copula
+
+    monkeypatch.setattr(_vine_copula, "validate_input_list", lambda **kwargs: [99])
+    with pytest.raises(ValueError, match="keys of `conditioning` must be asset"):
+        small_model.sample(n_samples=5, conditioning={0: 0.5})
+
+
+def test_vine_sampling_order_incomplete(small_model):
+    # A fitted state inconsistent with the trees is detected by the sanity check.
+    small_model.n_features_in_ = 4
+    with pytest.raises(ValueError, match="Sampling order computation failed"):
+        small_model._sampling_order()
+
+
+def test_vine_plot_marginal_distributions_raise_ndim(small_model):
+    with pytest.raises(ValueError, match="X should be an 2D array"):
+        small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))

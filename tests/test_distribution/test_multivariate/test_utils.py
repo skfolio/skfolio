@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from skfolio.distribution.multivariate._utils import (
+    BaseNode,
     ChildNode,
     DependenceMethod,
     Edge,
@@ -68,3 +70,68 @@ def test_dependence(X):
     assert np.isclose(
         _dependence(X, DependenceMethod.WASSERSTEIN_DISTANCE), 0.012640552370723
     )
+
+
+def test_edge_cond_sets_add_wrong_type():
+    ecs = EdgeCondSets(conditioned=(1, 2), conditioning={0})
+    with pytest.raises(TypeError, match="Cannot add a EdgeCondSets"):
+        _ = ecs + 5
+
+
+def test_edge_cond_sets_repr():
+    assert repr(EdgeCondSets(conditioned=(1, 2), conditioning={0})) == "(1, 2) | {0}"
+    assert repr(EdgeCondSets(conditioned=(1, 2), conditioning=set())) == "(1, 2)"
+
+
+class DummyNode(BaseNode):
+    """Minimal concrete node forwarding to the abstract clear_cache body."""
+
+    def clear_cache(self, **kwargs):
+        return super().clear_cache(**kwargs)
+
+
+def test_base_node_clear_cache_body():
+    node = DummyNode(ref=0)
+    assert node.clear_cache() is None
+    assert repr(node) == "Node(0)"
+
+
+def test_child_node_get_var_none():
+    edge = Edge(RootNode(ref=0, central=False), RootNode(ref=1, central=False))
+    child = ChildNode(ref=edge)
+    with pytest.raises(ValueError, match="is_left cannot be None for Child Nodes"):
+        child.get_var(None)
+    assert child.get_var(True) == 0
+    assert child.get_var(False) == 1
+
+
+def test_edge_shared_node_is_left_wrong_order():
+    a, b, c = (RootNode(ref=i, central=False) for i in range(3))
+    edge1 = Edge(a, b)
+    edge2 = Edge(c, a)
+    with pytest.raises(ValueError, match="Edges are not correctly ordered"):
+        edge1.shared_node_is_left(edge2)
+    assert edge1.share_one_node(edge2)
+
+
+def test_edge_repr_without_copula():
+    edge = Edge(RootNode(ref=0, central=False), RootNode(ref=1, central=False))
+    assert repr(edge) == "Edge((0, 1))"
+
+
+def test_tree_set_edges_from_mst_nan_dependence():
+    # A constant margin makes Kendall's tau undefined (NaN).
+    nodes = [
+        RootNode(ref=0, central=False, pseudo_values=np.full(5, 0.5)),
+        RootNode(ref=1, central=False, pseudo_values=np.linspace(0.1, 0.9, 5)),
+    ]
+    tree = Tree(level=0, nodes=nodes)
+    with pytest.raises(RuntimeError, match="dependence_matrix contains NaNs"):
+        tree.set_edges_from_mst(DependenceMethod.KENDALL_TAU)
+
+
+def test_dependence_raise():
+    with pytest.raises(ValueError, match="X must be a 2D array with exactly 2 columns"):
+        _dependence(np.zeros((5, 3)), DependenceMethod.KENDALL_TAU)
+    with pytest.raises(ValueError, match="Dependence method foo not valid"):
+        _dependence(np.zeros((5, 2)), "foo")

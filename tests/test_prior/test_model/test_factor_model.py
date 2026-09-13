@@ -1,5 +1,6 @@
 """Tests for FactorModel"""
 
+import warnings
 from dataclasses import replace
 
 import numpy as np
@@ -12,6 +13,10 @@ from skfolio.prior import (
     CorrelationMethod,
     FactorModel,
     ReturnDistribution,
+)
+from skfolio.prior._model._factor_model import (
+    _exceedance_agg,
+    _selector_to_positions,
 )
 from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraint,
@@ -2496,3 +2501,339 @@ class TestEffectiveFactorCovariance:
         )
 
         np.testing.assert_allclose(systematic_effective, systematic_full, atol=1e-12)
+
+
+# ------------------------------------------------------------------
+# Summary without exposures / idio data
+# ------------------------------------------------------------------
+class TestSummaryWithoutExposures:
+    def test_single_observation_without_exposures_fills_nan(self):
+        fm = _make_factor_model(n_obs=1, with_time_series=False)
+        factor_returns = np.array([[0.01, -0.02, 0.0, 0.03]])
+        fm = replace(fm, factor_returns=factor_returns)
+
+        with warnings.catch_warnings():
+            # a single observation has no degrees of freedom for the std
+            warnings.simplefilter("ignore", RuntimeWarning)
+            summary = fm.summary()
+
+        assert set(summary.columns) == _SUMMARY_COLUMNS
+        np.testing.assert_allclose(
+            summary["annualized_mean"].to_numpy(), factor_returns[0] * 252.0
+        )
+        for column in (
+            "autocorrelation",
+            "mean_abs_t_stat",
+            "t_stat_exceedance_rate",
+            "mean_vif",
+            "stability",
+            "coverage",
+        ):
+            assert summary[column].isna().all(), column
+
+    def test_multiple_observations_without_exposures_keeps_autocorrelation(self):
+        rng = np.random.default_rng(0)
+        fm = _make_factor_model(n_obs=10, with_time_series=False)
+        fm = replace(fm, factor_returns=rng.standard_normal((10, 4)) * 0.01)
+
+        summary = fm.summary()
+
+        assert np.isfinite(summary["autocorrelation"]).all()
+        assert summary["mean_vif"].isna().all()
+        assert summary["stability"].isna().all()
+
+
+class TestIdioReturnsDataFrame:
+    def test_idio_returns_df(self, factor_model):
+        df = factor_model.idio_returns_df
+        assert df.shape == (50, 30)
+        np.testing.assert_array_equal(df.columns, factor_model.asset_names)
+        np.testing.assert_array_equal(df.index, factor_model.observations)
+        np.testing.assert_array_equal(df.to_numpy(), factor_model.idio_returns)
+
+
+class TestEffectiveFactorFamilies:
+    def test_passthrough_without_basis(self, factor_model_with_families):
+        fm = factor_model_with_families
+        assert fm.family_constraint_basis is None
+        np.testing.assert_array_equal(fm.effective_factor_families, fm.factor_families)
+
+    def test_none_without_families(self, factor_model):
+        assert factor_model.effective_factor_families is None
+
+
+class TestCovarianceSqrtFullIdioCovariance:
+    def test_full_idio_covariance_adds_cholesky_component(self, factor_model):
+        fm = replace(
+            factor_model, idio_covariance=np.diag(factor_model.idio_covariance)
+        )
+
+        sqrt = fm.covariance_sqrt
+
+        assert sqrt.diagonal is None
+        assert len(sqrt.components) == 2
+        reconstructed = sum(c @ c.T for c in sqrt.components)
+        expected = (
+            fm.loading_matrix @ fm.factor_covariance @ fm.loading_matrix.T
+            + fm.idio_covariance
+        )
+        np.testing.assert_allclose(reconstructed, expected)
+
+
+class TestEnrichAssetPanelTypeError:
+    def test_rejects_non_panel(self, factor_model):
+        with pytest.raises(TypeError, match="must be an AssetPanel or AssetPanelView"):
+            factor_model.enrich_asset_panel(pd.DataFrame(factor_model.idio_returns))
+
+
+class TestSelectAssetsSelectors:
+    def test_explicit_full_selection_with_slim(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        sub = fm.select_assets(np.arange(len(fm.asset_names)), slim=True)
+
+        assert sub is not fm
+        assert sub.exposures is None
+        assert sub.idio_returns is None
+        assert sub.benchmark_weights is None
+        assert sub.asset_names is fm.asset_names
+        assert sub.regression_weights is fm.regression_weights
+        assert sub.loading_matrix is fm.loading_matrix
+
+    def test_scalar_and_negative_positions(self, factor_model):
+        fm = factor_model
+        last = fm.select_assets(-1)
+        np.testing.assert_array_equal(last.asset_names, fm.asset_names[[-1]])
+        np.testing.assert_array_equal(last.loading_matrix, fm.loading_matrix[[-1]])
+
+        tail = fm.select_assets([-2, -1])
+        np.testing.assert_array_equal(tail.asset_names, fm.asset_names[-2:])
+
+        single_label = fm.select_assets("asset_3")
+        np.testing.assert_array_equal(single_label.asset_names, ["asset_3"])
+
+    def test_two_dimensional_selector_raises(self, factor_model):
+        with pytest.raises(ValueError, match="`assets` must be a 1D selector"):
+            factor_model.select_assets(np.zeros((2, 2), dtype=int))
+
+    def test_boolean_mask_wrong_length_raises(self, factor_model):
+        with pytest.raises(
+            ValueError, match="Boolean `assets` selector must have length 30, got 5"
+        ):
+            factor_model.select_assets(np.ones(5, dtype=bool))
+
+
+class TestSelectorToPositions:
+    def test_none_selects_everything(self):
+        labels = np.array(["a", "b", "c"])
+        np.testing.assert_array_equal(
+            _selector_to_positions(None, labels, axis_name="obs"), [0, 1, 2]
+        )
+
+    def test_scalar_selectors(self):
+        labels = np.array(["a", "b", "c"])
+        np.testing.assert_array_equal(
+            _selector_to_positions(1, labels, axis_name="obs"), [1]
+        )
+        np.testing.assert_array_equal(
+            _selector_to_positions("c", labels, axis_name="obs"), [2]
+        )
+        np.testing.assert_array_equal(
+            _selector_to_positions(-1, labels, axis_name="obs"), [2]
+        )
+
+    def test_negative_positions_are_wrapped_without_mutating_input(self):
+        labels = np.array(["a", "b", "c", "d"])
+        selector = np.array([-1, 0, -3])
+        positions = _selector_to_positions(selector, labels, axis_name="obs")
+        np.testing.assert_array_equal(positions, [3, 0, 1])
+        np.testing.assert_array_equal(selector, [-1, 0, -3])
+
+    def test_invalid_selectors_raise(self):
+        labels = np.array(["a", "b", "c"])
+        with pytest.raises(ValueError, match="`obs` must be a 1D selector"):
+            _selector_to_positions(np.zeros((1, 1)), labels, axis_name="obs")
+        with pytest.raises(
+            ValueError, match="Boolean `obs` selector must have length 3"
+        ):
+            _selector_to_positions(np.array([True, False]), labels, axis_name="obs")
+
+
+class TestPlotFactorCumulativeReturns:
+    def test_returns_figure_with_one_trace_per_factor(self, factor_model):
+        fig = factor_model.plot_factor_cumulative_returns()
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == len(factor_model.factor_names)
+        assert "Cumulative" in fig.layout.title.text
+        expected = np.cumsum(factor_model.factor_returns[:, 0])
+        np.testing.assert_allclose(np.asarray(fig.data[0].y), expected)
+
+    def test_factor_subset_and_custom_title(self, factor_model):
+        fig = factor_model.plot_factor_cumulative_returns(
+            factors=["factor_1"], title="My title"
+        )
+        assert len(fig.data) == 1
+        assert fig.layout.title.text == "My title"
+
+    def test_requires_factor_returns(self, factor_model_no_ts):
+        with pytest.raises(ValueError, match="factor_returns"):
+            factor_model_no_ts.plot_factor_cumulative_returns()
+
+
+class TestPlotExposureDistribution:
+    def test_pooled_histogram(self, factor_model):
+        fig = factor_model.plot_exposure_distribution("factor_0", n_bins=10)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert fig.data[0].nbinsx == 10
+        assert "all observations" in fig.layout.title.text
+        assert len(fig.data[0].x) == factor_model.exposures[:, :, 0].size
+
+    def test_single_observation_histogram(self, factor_model):
+        fig = factor_model.plot_exposure_distribution("factor_2", observation_idx=-1)
+        assert str(factor_model.observations[-1]) in fig.layout.title.text
+        np.testing.assert_allclose(
+            np.asarray(fig.data[0].x), factor_model.exposures[-1, :, 2]
+        )
+
+    def test_drops_non_finite_and_custom_title(self, factor_model):
+        exposures = factor_model.exposures.copy()
+        exposures[0, :3, 1] = np.nan
+        fm = replace(factor_model, exposures=exposures)
+        fig = fm.plot_exposure_distribution("factor_1", observation_idx=0, title="T")
+        assert fig.layout.title.text == "T"
+        assert len(fig.data[0].x) == fm.exposures.shape[1] - 3
+
+    def test_unknown_factor_and_missing_exposures_raise(
+        self, factor_model, factor_model_no_ts
+    ):
+        with pytest.raises(ValueError):
+            factor_model.plot_exposure_distribution("unknown")
+        with pytest.raises(ValueError, match="exposures"):
+            factor_model_no_ts.plot_exposure_distribution("factor_0")
+
+
+class TestRegressionDataEdgeCases:
+    def test_all_currency_factors_raise(self):
+        fm = _make_factor_model(factor_families=["currency"] * 4)
+        with pytest.raises(
+            ValueError, match="No cross-sectional regression factors are available"
+        ):
+            _ = fm.cs_regression_t_stats
+
+    def test_singular_design_falls_back_to_pseudo_inverse(self, factor_model):
+        exposures = factor_model.exposures.copy()
+        exposures[:, :, 1] = 0.0  # exactly singular Gram matrix at every observation
+        fm = replace(factor_model, exposures=exposures)
+
+        vif = fm.exposure_vif
+        t_stats = fm.cs_regression_t_stats
+
+        assert vif.shape == (49, 4)
+        np.testing.assert_allclose(vif["factor_1"].to_numpy(), 0.0)
+        assert np.isfinite(vif[["factor_0", "factor_2", "factor_3"]].to_numpy()).all()
+        assert t_stats.shape == (49, 4)
+        assert np.isfinite(
+            t_stats[["factor_0", "factor_2", "factor_3"]].to_numpy()
+        ).all()
+        assert np.isfinite(fm.exposure_condition_number).all()
+
+
+class TestResolveCSWeightingEdgeCases:
+    def test_type_errors(self, factor_model):
+        with pytest.raises(TypeError, match="`cs_weighting` must be a `CSWeighting`"):
+            factor_model._resolve_cs_weighting("benchmark", latest=True)
+        with pytest.raises(
+            TypeError, match="`fallback_cs_weighting` must be a `CSWeighting`"
+        ):
+            factor_model._resolve_cs_weighting(
+                CSWeighting.BENCHMARK, latest=True, fallback_cs_weighting="identity"
+            )
+
+    def test_inverse_idio_variance_latest_uses_covariance_diagonal(self, factor_model):
+        fm = replace(
+            factor_model, idio_covariance=np.diag(factor_model.idio_covariance)
+        )
+        weights = fm._resolve_cs_weighting(
+            CSWeighting.INVERSE_IDIO_VARIANCE, latest=True
+        )
+        expected = factor_model._resolve_cs_weighting(
+            CSWeighting.INVERSE_IDIO_VARIANCE, latest=True
+        )
+        np.testing.assert_allclose(weights, expected)
+        np.testing.assert_allclose(weights, 1.0 / factor_model.idio_covariance)
+
+    def test_inverse_idio_variance_requires_positive_variances(self, factor_model):
+        idio_cov = factor_model.idio_covariance.copy()
+        idio_cov[0] = 0.0
+        fm = replace(factor_model, idio_covariance=idio_cov)
+        with pytest.raises(
+            ValueError, match="Idiosyncratic variances must be positive"
+        ):
+            fm._resolve_cs_weighting(CSWeighting.INVERSE_IDIO_VARIANCE, latest=True)
+
+    def test_one_dimensional_idio_variances_are_broadcast(self, factor_model):
+        fm = replace(factor_model, idio_variances=factor_model.idio_covariance)
+        weights = fm._resolve_cs_weighting(
+            CSWeighting.INVERSE_IDIO_VARIANCE, latest=False
+        )
+        assert weights.shape == (50, 30)
+        np.testing.assert_allclose(
+            weights, np.tile(1.0 / factor_model.idio_covariance, (50, 1))
+        )
+
+
+class TestExposureICPearsonWeighted:
+    def test_pearson_uses_regression_weights(self, factor_model_with_weights):
+        fm = factor_model_with_weights
+        weighted = fm.exposure_ic_summary(correlation_method=CorrelationMethod.PEARSON)
+        unweighted = replace(fm, regression_weights=None).exposure_ic_summary(
+            correlation_method=CorrelationMethod.PEARSON
+        )
+        assert weighted.shape == (4, 4)
+        assert np.isfinite(weighted.to_numpy()).all()
+        assert not np.allclose(
+            weighted["mean_ic"].to_numpy(), unweighted["mean_ic"].to_numpy()
+        )
+
+    def test_rejects_non_enum_method(self, factor_model):
+        with pytest.raises(
+            TypeError, match="correlation_method must be a `CorrelationMethod`"
+        ):
+            factor_model.exposure_ic_summary(correlation_method="spearman")
+
+
+class TestAttributionUncertaintyInputs:
+    def test_requires_regression_weights_and_idio_variances(self, factor_model):
+        n_assets = len(factor_model.asset_names)
+        n_obs = len(factor_model.observations)
+        with pytest.raises(
+            ValueError, match="`compute_uncertainty=True` requires both"
+        ):
+            factor_model.realized_attribution(
+                weights=np.ones(n_assets) / n_assets,
+                portfolio_returns=np.zeros(n_obs),
+                compute_uncertainty=True,
+            )
+
+
+class TestWeightShapeValidation:
+    @pytest.mark.parametrize("field_name", ["regression_weights", "benchmark_weights"])
+    def test_wrong_shape_raises(self, factor_model, field_name):
+        with pytest.raises(
+            ValueError,
+            match=rf"`{field_name}` must have shape \(50, 30\), got \(5, 30\)",
+        ):
+            replace(factor_model, **{field_name: np.ones((5, 30))})
+
+
+class TestExceedanceAgg:
+    def test_rates_ignore_non_finite_and_fill_empty_columns(self):
+        agg = _exceedance_agg(2.0)
+        raw_t = np.array(
+            [
+                [3.0, 1.0, np.nan],
+                [np.nan, -2.5, np.nan],
+                [1.0, 0.0, np.nan],
+            ]
+        )
+        np.testing.assert_allclose(agg(raw_t), [0.5, 1.0 / 3.0, 0.0])

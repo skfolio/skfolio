@@ -935,3 +935,12 @@ class TestPredictedNaNHandling:
             result.total.vol,
             decimal=10,
         )
+
+
+def test_asset_names_length_mismatch_raises(simple_factor_model):
+    """`asset_names` must match the number of assets in the loading matrix."""
+    model = {**simple_factor_model, "asset_names": ["IBM", "JPM"]}
+    with pytest.raises(
+        ValueError, match=r"`asset_names` length 2 does not match n_assets=3\."
+    ):
+        predicted_factor_attribution(**model)

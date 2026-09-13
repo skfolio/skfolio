@@ -44,3 +44,13 @@ def test_measure_enum_membership_by_value():
     """Measure enums expose value-based membership checks."""
     assert RiskMeasure.has("variance")
     assert not RiskMeasure.has("not_a_measure")
+
+
+@pytest.mark.parametrize("name", ["is_perf", "is_risk", "is_ratio"])
+def test_base_measure_classification_is_abstract(name):
+    """The abstract base properties have no behavior; subclasses must override."""
+    from skfolio.measures._enums import BaseMeasure
+
+    for enum in (PerfMeasure, RiskMeasure, ExtraRiskMeasure):
+        assert name in enum.__dict__
+    assert getattr(BaseMeasure, name).fget(PerfMeasure.MEAN) is None

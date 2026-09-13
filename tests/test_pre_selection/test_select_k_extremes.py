@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from sklearn import config_context
 
 from skfolio import PerfMeasure
@@ -30,3 +31,10 @@ def test_select_k_extremes(X):
         new_X = model.fit_transform(X)
         lowest = X.columns[np.argsort(means)][:10]
         assert set(new_X.columns) == set(lowest)
+
+
+@pytest.mark.parametrize("k", [0, -1])
+def test_select_k_extremes_non_positive_k(k):
+    X = np.random.default_rng(0).standard_normal((20, 4))
+    with pytest.raises(ValueError, match="`k` must be strictly positive"):
+        SelectKExtremes(k=k).fit(X)

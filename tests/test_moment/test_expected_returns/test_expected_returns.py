@@ -736,3 +736,34 @@ class TestShrunkMu:
         # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
+
+
+def test_equilibrium_mu_with_explicit_weights(X):
+    n_assets = X.shape[1]
+    weights = np.ones(n_assets) / n_assets
+    model = EquilibriumMu(weights=weights).fit(X)
+    model_default = EquilibriumMu().fit(X)
+    np.testing.assert_allclose(model.mu_, model_default.mu_)
+
+    weights = np.zeros(n_assets)
+    weights[0] = 1.0
+    model = EquilibriumMu(weights=weights).fit(X)
+    np.testing.assert_allclose(
+        model.mu_, model.risk_aversion * model.covariance_estimator_.covariance_[:, 0]
+    )
+
+
+def test_ew_mu_invalid_window_size(X):
+    model = EWMu(window_size=0)
+    with pytest.raises(
+        ValueError, match="window_size must be a positive integer, got 0"
+    ):
+        model.fit(X)
+
+
+def test_shrunk_mu_invalid_method_type(X):
+    model = ShrunkMu(method="james_stein")
+    with pytest.raises(
+        ValueError, match="`method` must be of type ShrunkMuMethods, got str"
+    ):
+        model.fit(X)

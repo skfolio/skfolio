@@ -14,7 +14,10 @@ from skfolio.model_selection import (
     OnlineRandomizedSearch,
     online_score,
 )
-from skfolio.model_selection._online._search import _rank_scores
+from skfolio.model_selection._online._search import (
+    _check_refit_for_multimetric,
+    _rank_scores,
+)
 from skfolio.model_selection._online._validation import (
     _score_multi_period_portfolio,
     _validate_sizes,
@@ -755,4 +758,105 @@ class TestSearchFloatSizeRejection:
             test_size=50.0,
         )
         with pytest.raises(TypeError, match="test_size must be an integer"):
+            search.fit(X)
+
+
+def test_rank_scores_empty():
+    ranks = _rank_scores(np.array([]))
+    assert ranks.dtype == np.int32
+    assert ranks.shape == (0,)
+
+
+def test_check_refit_for_multimetric_false_is_accepted():
+    assert _check_refit_for_multimetric(False, {"a": None, "b": None}) is None
+
+
+class TestOnlineGridSearchRefitEdgeCases:
+    def test_multi_metric_callable_refit(self, X):
+        """Multi-metric search with a callable refit selects by the callable."""
+        from skfolio.metrics import (
+            diagonal_calibration_ratio,
+            mahalanobis_calibration_ratio,
+        )
+
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            scoring={
+                "mahalanobis": mahalanobis_calibration_ratio,
+                "diagonal": diagonal_calibration_ratio,
+            },
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 1,
+        )
+        search.fit(X)
+
+        assert search.best_index_ == 1
+        assert search.best_params_ == {"half_life": 40}
+        assert not hasattr(search, "best_score_")
+        assert search.best_estimator_.half_life == 40
+
+    def test_callable_refit_non_integer_raises(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 0.5,
+        )
+        with pytest.raises(TypeError, match="best_index_ returned is not an integer"):
+            search.fit(X)
+
+    def test_callable_refit_out_of_range_raises(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 2,
+        )
+        with pytest.raises(IndexError, match="best_index_ index out of range"):
+            search.fit(X)
+
+    @pytest.mark.filterwarnings("ignore:Estimator fit failed:UserWarning")
+    def test_callable_refit_selecting_failed_candidate_warns(self, X):
+        """Selecting a failed candidate leaves `best_estimator_` unset."""
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, -1]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 1,
+            error_score=np.nan,
+        )
+        with pytest.warns(UserWarning, match="`best_estimator_` is not available"):
+            search.fit(X)
+
+        assert search.best_index_ == 1
+        assert not hasattr(search, "best_estimator_")
+
+    def test_error_score_raise_propagates(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [-1]},
+            warmup_size=WARMUP,
+            test_size=50,
+            error_score="raise",
+        )
+        with pytest.raises(ValueError, match="half_life must be positive"):
+            search.fit(X)
+
+    @pytest.mark.parametrize("error_score", ["foo", True])
+    def test_invalid_error_score_raises(self, X, error_score):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20]},
+            warmup_size=WARMUP,
+            test_size=50,
+            error_score=error_score,
+        )
+        with pytest.raises(
+            ValueError, match="error_score must be the string 'raise' or a real number"
+        ):
             search.fit(X)

@@ -633,3 +633,47 @@ def test_metadata_routing(X, implied_vol):
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_black_litterman_views_must_be_1d(X):
+    model = BlackLitterman(views=[["AAPL == 0.01"]])
+    with pytest.raises(ValueError, match=r"`views` must be a 1D array, got a 2D array"):
+        model.fit(X)
+
+
+def test_black_litterman_requires_groups_or_dataframe(X):
+    model = BlackLitterman(views=["x0 == 0.01"])
+    with pytest.raises(ValueError, match="You must provide either `groups`"):
+        model.fit(np.asarray(X))
+
+
+def test_black_litterman_rejects_inequality_views(X):
+    model = BlackLitterman(views=["AAPL >= 0.01"])
+    with pytest.raises(ValueError, match=r"Inequalities .* are not supported in views"):
+        model.fit(X)
+
+
+def test_black_litterman_view_confidences(X):
+    views = ["AAPL - BBY == 0.03", "MSFT == 0.06"]
+    ref = BlackLitterman(views=views).fit(X)
+    model = BlackLitterman(views=views, view_confidences=[0.5, 0.0]).fit(X)
+    posterior = model.return_distribution_
+    assert posterior.mu.shape == (20,)
+    assert np.all(np.isfinite(posterior.mu))
+    assert np.all(np.isfinite(posterior.covariance))
+    # Lower confidence than the default omega moves the posterior mean less
+    prior_mu = model.prior_estimator_.return_distribution_.mu
+    assert np.linalg.norm(posterior.mu - prior_mu) < np.linalg.norm(
+        ref.return_distribution_.mu - prior_mu
+    )
+
+
+@pytest.mark.parametrize("view_confidences", [[1.5, 0.5], [-0.1, 0.5]])
+def test_black_litterman_view_confidences_out_of_range(X, view_confidences):
+    model = BlackLitterman(
+        views=["AAPL - BBY == 0.03", "MSFT == 0.06"], view_confidences=view_confidences
+    )
+    with pytest.raises(
+        ValueError, match="all values of view_confidences must be between 0 and 1"
+    ):
+        model.fit(X)

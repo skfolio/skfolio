@@ -252,7 +252,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         if last_error is not None:
             # Defer raising to the caller which decides based on raise_on_failure
             raise last_error
-        raise RuntimeError(
+        raise RuntimeError(  # pragma: no cover - unreachable: last_error is never None
             "All fallback estimators failed; inspect 'fallback_chain_' for details."
         )
 

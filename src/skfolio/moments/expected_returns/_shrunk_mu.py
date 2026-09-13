@@ -239,7 +239,7 @@ class ShrunkMu(BaseMu):
                     (u - n_assets / (n_observations - n_assets)) * w - v**2
                 ) / (u * w - v**2)
                 self.beta_ = (1 - self.alpha_) * v / u
-            case _:
+            case _:  # pragma: no cover - unreachable: every ShrunkMuMethods member handled above
                 raise ValueError(f"method {self.method} is not valid")
 
         self.mu_ = self.alpha_ * sample_mu + self.beta_ * self.mu_target_
