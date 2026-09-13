@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.1 (2026-09-13)
+
+### Bug Fixes
+
+- **model-selection**: Raise ValueError for empty CV schedules
+  ([#270](https://github.com/skfolio/skfolio/pull/270),
+  [`72d1dc5`](https://github.com/skfolio/skfolio/commit/72d1dc55869eca6553f80cead11b68c6ed34e153))
+
+
 ## v1.2.0 (2026-09-13)
 
 ### Features
