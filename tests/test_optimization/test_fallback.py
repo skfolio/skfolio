@@ -661,3 +661,14 @@ def test_invalid_type_fallback_raises(X):
 def test_needs_previous_weights_transaction_costs(transaction_costs, expected):
     model = MeanRisk(transaction_costs=transaction_costs)
     assert model.needs_previous_weights is expected
+
+
+def test_weight_drift_needs_previous_weights():
+    assert MeanRisk().needs_previous_weights is False
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": True}).needs_previous_weights is True
+    )
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": False}).needs_previous_weights
+        is False
+    )
