@@ -105,33 +105,53 @@ Portfolio
 constant-weight convention, portfolio returns are the dot product of the asset weights
 and asset returns minus costs:
 
-    .. math::   r_p = R \cdot w^{T} - c^{T} \cdot | w - w_{prev} | - f^{T} \cdot w
+.. math::
 
-with :math:`r_p` the vector of portfolio returns , :math:`R` the matrix of assets
-returns, :math:`w` the vector of assets weights, :math:`c` the vector of assets
-transaction costs, :math:`f` the vector of assets management fees and :math:`w_{prev}`
-the assets previous weights.
+   r_p = R \cdot w^{T} - c^{T} \cdot |w-w_{prev}| - f^{T} \cdot w
 
-By default, the target weights are held on every observation. This constant-weight
-convention is consistent with the convex optimization problems: it evaluates the target
-allocation the optimizer selected. It measures **allocation skill**, an
-expectation-based (ex-ante) evaluation whose return distribution does not depend on the
-order of the observations.
+with :math:`r_p` the vector of portfolio returns, :math:`R` the matrix of asset
+returns, :math:`w` the vector of asset weights, :math:`c` the vector of asset
+transaction costs, :math:`f` the vector of asset management fees and
+:math:`w_{prev}` the previous asset weights.
 
-With `weight_drift=True`, each position grows with its own asset return and the held
-weights drift away from the targets between the first and the last observation of `X`
-(buy-and-hold). The implicit cash position earns zero. Early winners take a larger
-weight and early losers a smaller one, so the return series depends on the order of the
-observations. Combined with `compounded=True`, it measures **realized capital growth**,
-a path-dependent (ex-post) evaluation along the historical return path.
+By default, each observation is evaluated at the target weights, consistent with
+the optimizer's linear portfolio return definition. This convention evaluates
+**allocation skill**, the expected return and risk of the selected target allocation,
+independently of subsequent weight drift.
+
+Because the same target weights are applied to every observation, reordering the
+observations does not change the resulting distribution of portfolio returns.
+
+Economically, evaluating every observation at the target weights is equivalent to
+restoring those weights after each observation. The transaction costs of these
+implicit within-window trades are not charged. The transaction-cost term in the
+formula above instead applies to the trade from `previous_weights` to the target
+weights when the `Portfolio` is created.
+
+With `weight_drift=True`, the portfolio starts at the target weights and holds the
+resulting positions throughout the observation window of `X`. Position values change
+with asset returns, so portfolio weights evolve with the relative performance of the
+assets.
+
+In a long-only portfolio, an asset's weight increases when its return exceeds the
+portfolio return and decreases when its return falls below it. More generally, the
+weights applied to later observations depend on earlier asset returns, so the
+resulting portfolio return series depends on the order of the observations.
+
+With `weight_drift=True` and `compounded=True`, returns computed from drifted weights
+are compounded into a wealth index for evaluating **realized capital growth** and
+other path-dependent measures.
 
 Both weight conventions use the same transaction-cost and management-fee formulas.
-In a sequential evaluation, drift can still change transaction costs at later
-rebalancing dates because one portfolio's `ending_weights` become the next portfolio's
-`previous_weights`. Management fees remain based on the target weights.
-`weight_drift` changes the return series, `compounded` changes how that series is
-summarized. See :ref:`backtesting_and_evaluation` for the choice between
-`weight_drift=False` and `weight_drift=True`.
+In a sequential evaluation, transaction costs are computed relative to the previous
+target weights with `weight_drift=False`, or the previous period's ending weights,
+including drift, with `weight_drift=True`. Management fees use the target weights
+under both settings.
+
+`weight_drift` therefore changes the observation-level portfolio return series,
+while `compounded` changes how that series is accumulated. See
+:ref:`backtesting_and_evaluation` for a detailed discussion of the evaluation
+objectives and the choice between `weight_drift=False` and `weight_drift=True`.
 
 **Example:**
 
@@ -188,7 +208,7 @@ summarized. See :ref:`backtesting_and_evaluation` for the choice between
 Attributes and Methods
 ----------------------
 :class:`Portfolio` inherits all the attributes and methods from :class:`BasePortfolio`.
-In addition, it also implements weights related methods:
+It also provides methods for analyzing portfolio weights:
 
 .. code-block:: python
 
@@ -207,7 +227,7 @@ In addition, it also implements weights related methods:
     portfolio.get_weight("Asset A")
     >>> 0.6
 
-    # Held weights and trading diagnostics
+    # Weight paths and trading diagnostics
     portfolio.weights_per_observation
     portfolio.ending_weights
     portfolio.turnover
@@ -224,16 +244,18 @@ Multi Period Portfolio
 list of :class:`Portfolio`. Its return series concatenates the return series of those
 portfolios in list order. Its performance and risk measures are computed from that
 concatenated series.
-A `MultiPeriodPortfolio` is returned by :func:`~skfolio.model_selection.cross_val_predict`.
+
+A `MultiPeriodPortfolio` is returned by
+:func:`~skfolio.model_selection.cross_val_predict`.
 Its `turnover` series holds the turnover of each `Portfolio`, and
 `ending_weights_dict` maps each `Portfolio` to its weights at the end of its observation
 window. With `weight_drift=False`, these are the target weights. With
 `weight_drift=True`, they are the held weights after applying the final observation's
 asset returns.
 
-For example, calling `cross_val_predict` with :class:`~skfolio.model_selection.WalkForward`
-will return a `MultiPeriodPortfolio` composed of multiple test `Portfolio`, each
-corresponding to a train/test fold.
+For example, calling `cross_val_predict` with
+:class:`~skfolio.model_selection.WalkForward` will return a `MultiPeriodPortfolio`
+composed of multiple test `Portfolio`, each corresponding to a train/test fold.
 
 .. code-block:: python
 

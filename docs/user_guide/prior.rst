@@ -137,7 +137,7 @@ returns and `factors` as the factor returns. Pass factor returns with the `facto
 argument.
 
 Tutorials:
-    * :ref:`Factor Model <sphx_glr_auto_examples_mean_risk_plot_13_factor_model.py>`
+    * :ref:`Time-Series Factor Model <sphx_glr_auto_examples_mean_risk_plot_13_factor_model.py>`
     * :ref:`Black & Litterman Factor Model <sphx_glr_auto_examples_mean_risk_plot_14_black_litterman_factor_model.py>`
     * :ref:`Hierarchical Risk Parity - CVaR <sphx_glr_auto_examples_clustering_plot_1_hrp_cvar.py>`
     * :ref:`Minimize CVaR on Stressed Factors - CVaR <sphx_glr_auto_examples_synthetic_data_plot_3_min_CVaR_stressed_factors.py>`

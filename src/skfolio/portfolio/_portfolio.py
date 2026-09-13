@@ -42,24 +42,23 @@ class Portfolio(BasePortfolio):
 
     `Portfolio` is returned by the `predict` method of Optimization estimators.
 
-    By default, the portfolio returns are the dot product of the target `weights` and
-    the asset returns, minus transaction costs and management fees. The target weights
-    are held on every observation of `X`, consistent with the convex optimization
-    problems where the weights are the decision variables. This constant-weight
-    evaluation (`weight_drift=False`) measures **allocation skill**: an
-    expectation-based (ex-ante) evaluation whose return distribution does not depend
-    on the order of the observations.
+    By default, each observation is evaluated at the target `weights`. Portfolio
+    returns are the dot product of those weights and the asset returns, minus
+    transaction costs and management fees. This constant-weight convention
+    (`weight_drift=False`) is consistent with the optimizer's linear portfolio return
+    definition and evaluates allocation skill independently of subsequent changes in
+    weights caused by relative asset returns.
 
-    With `weight_drift=True`, each position grows with its own asset return and the held
-    weights drift away from the targets over the window of `X` (buy-and-hold). This is
-    the position of a fund that trades to the targets once and holds until the next
-    rebalancing date. Combined with `compounded=True`, it measures **realized capital
-    growth**: a path-dependent (ex-post) evaluation along the historical return path.
+    With `weight_drift=True`, the portfolio starts at the target weights and holds the
+    resulting positions throughout the observation window of `X`. Position values
+    change with asset returns, so portfolio weights evolve with the relative
+    performance of the assets. Combined with `compounded=True`, this produces a
+    compounded wealth path for evaluating realized capital growth and other
+    path-dependent quantities.
 
-    `weight_drift` changes the return series, `compounded` changes how that series is
-    summarized. See :ref:`backtesting_and_evaluation` for the choice between
-    constant-weight (`weight_drift=False`) and drifted-weight (`weight_drift=True`)
-    evaluation.
+    `weight_drift` changes the observation-level portfolio return series, while
+    `compounded` changes how that series is accumulated. See
+    :ref:`backtesting_and_evaluation`.
 
     Parameters
     ----------
@@ -176,20 +175,19 @@ class Portfolio(BasePortfolio):
         Risk-free rate. The default value is `0.0`.
 
     compounded : bool, default=False
-        If this is set to True, cumulative returns are compounded.
+        If `True`, cumulative returns are compounded.
         The default is `False`.
 
     weight_drift : bool, default=False
-        If this is set to True, the weights held on each observation drift with the
-        asset returns following the self-financing identity
-        :math:`u_{t+1} = u_t \circ (1 + r_t) / (1 + u_t \cdot r_t)`, starting from
-        `weights` on the first observation of `X`. The portfolio returns are those of
-        the drifted weights. Drift accumulates over the whole window of
-        `X`, and the implicit cash position :math:`1 - \sum_i w_i` earns zero.
-        The same transaction-cost and management-fee formulas are used with either
-        setting. The default (`False`) is to hold the target `weights` on every
-        observation. This attribute is read-only. See
-        :ref:`backtesting_and_evaluation`.
+        If `True`, the portfolio starts at the target `weights` and the
+        weights used for subsequent observations evolve with asset returns following
+        the self-financing identity
+        :math:`u_{t+1} = u_t \circ (1 + r_t) / (1 + u_t \cdot r_t)`.
+        Drift accumulates over the entire window of `X`, and the implicit cash position
+        :math:`1 - \sum_i w_i` earns zero. The same transaction-cost and management-fee
+        formulas are used with either setting. With the default (`False`), every
+        observation is evaluated at the target `weights`. This attribute is read-only.
+        See :ref:`backtesting_and_evaluation`.
 
     sample_weight : ndarray of shape (n_observations,), optional
         Sample weights for each observation. If None, equal weights are assumed.
@@ -461,12 +459,13 @@ class Portfolio(BasePortfolio):
         Difference.
 
     ending_weights : ndarray of shape (n_assets,)
-        Asset weights at the end of the observation window. With `weight_drift=False`,
-        they equal the target `weights`. With `weight_drift=True`, they are the held
-        weights after applying the final observation's asset returns. A sequential
-        evaluation uses the `ending_weights` of a successful `Portfolio` as
-        `previous_weights` for the next optimization. A `FailedPortfolio` contains only
-        NaN ending weights.
+        Asset weights immediately after the final observation. With
+        `weight_drift=False`, they equal the target `weights`. With
+        `weight_drift=True`, they reflect the effect of asset returns through the final
+        observation. They are calculated before transaction costs and management fees.
+        In a sequential evaluation, the `ending_weights` of a successful `Portfolio`
+        are used as `previous_weights` for the next optimization. A `FailedPortfolio`
+        contains only NaN ending weights.
 
     turnover : float
         Total absolute weight change, assuming full liquidation of positions in
@@ -870,11 +869,11 @@ class Portfolio(BasePortfolio):
         """Total absolute weight traded at the start of the period.
 
         In a sequential evaluation, `previous_weights` come from the last successful
-        Portfolio. With `weight_drift=False`, they are its target weights, so this is
-        target turnover. With `weight_drift=True`, they include the intervening drift,
-        so this is executed turnover. When `previous_weights` is None, it defaults to
-        zero. Turnover includes the full absolute weight of positions in assets
-        absent from `X`.
+        Portfolio. With `weight_drift=False`, target turnover compares successive
+        target allocations. With `weight_drift=True`, executed turnover compares the
+        previous period's ending weights with the new target allocation. When
+        `previous_weights` is None, it defaults to zero. Turnover includes the full
+        absolute weight of positions in assets absent from `X`.
         """
         if self._is_failed_portfolio:
             return np.nan
@@ -884,15 +883,16 @@ class Portfolio(BasePortfolio):
         )
 
     def _get_weights_path(self) -> FloatArray:
-        """Drifted weights held during each observation, for all assets.
+        """Return the portfolio's weight path across the observation window.
 
         Returns
         -------
         weights_path : ndarray of shape (n_observations, n_assets)
-            Row `t` holds the drifted weights during observation `t`, starting from
-            `weights` in the first row. With `weight_drift=True`, the row that would
-            follow the last one is `ending_weights`. The matrix is built on first use
-            and cached in `_weights_path`.
+            Row `t` contains the asset weights at the start of observation `t`. The
+            first row contains the target `weights`, and each subsequent row reflects
+            asset returns from the preceding observations. `ending_weights` contains
+            the weights immediately after the final observation. The matrix is built
+            on first use and cached in `_weights_path`.
         """
         if self._weights_path is not None:
             return self._weights_path
@@ -915,11 +915,11 @@ class Portfolio(BasePortfolio):
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
-        """DataFrame of the weights held during each observation.
+        """DataFrame of asset weights at the start of each observation.
 
-        With `weight_drift=False`, every row equals the target `weights`. With
-        `weight_drift=True`, the rows drift with asset returns. In both cases,
-        `ending_weights` contains the weights of the row that would follow the final
+        With `weight_drift=False`, every row contains the target `weights`. With
+        `weight_drift=True`, each row incorporates the effect of preceding asset
+        returns. `ending_weights` contains the weights immediately after the final
         observation.
         """
         idx = self.nonzero_assets_index
@@ -1018,9 +1018,9 @@ class Portfolio(BasePortfolio):
     ) -> FloatArray | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure.
 
-        With `weight_drift=True`, the contributions are the sensitivities of the measure
-        to the target weights. The drifted returns are not linear in the targets, so the
-        contributions sum to the measure only to first order in the drift.
+        With `weight_drift=True`, the contributions are finite-difference sensitivities
+        to the target weights. Because drifted returns are nonlinear in the target
+        weights, the contributions are not guaranteed to sum exactly to the measure.
 
         Parameters
         ----------

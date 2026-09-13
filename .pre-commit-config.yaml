@@ -13,6 +13,9 @@ repos:
     hooks:
       - id: ruff
         name: ruff-lint
+        # Match the source and test scope configured in pyproject.toml.
+        files: ^(src|tests)/.*\.py$
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
         name: ruff-format
+        files: ^(src|tests)/.*\.py$
