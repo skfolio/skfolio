@@ -160,13 +160,18 @@ class EWMu(BaseMu):
     >>> # Batch fitting
     >>> model = EWMu(half_life=40)
     >>> model.fit(X)
+    EWMu()
     >>> print(model.mu_.shape)
+    (20,)
     >>>
     >>> # Streaming updates with partial_fit
     >>> model2 = EWMu(half_life=20)
     >>> model2.partial_fit(X[:100])  # Initial fit
+    EWMu(half_life=20)
     >>> model2.partial_fit(X[100:200])  # Update with new data
+    EWMu(half_life=20)
     >>> model2.partial_fit(X[200:])  # Continue updating
+    EWMu(half_life=20)
     >>>
     >>> # NaN-aware fitting with active_mask
     >>> import numpy as np
@@ -174,9 +179,10 @@ class EWMu(BaseMu):
     >>> active_mask = np.ones(X.shape, dtype=bool)
     >>> active_mask[:50, 2] = False
     >>> X_nan = X.copy()
-    >>> X_nan[:50, 2] = np.nan
+    >>> X_nan.iloc[:50, 2] = np.nan
     >>> model3 = EWMu(half_life=40)
     >>> model3.fit(X_nan, active_mask=active_mask)
+    EWMu()
     """
 
     def __init__(

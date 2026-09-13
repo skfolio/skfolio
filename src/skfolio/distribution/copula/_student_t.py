@@ -85,7 +85,7 @@ class StudentTCopula(BaseBivariateCopula):
     >>>
     >>> # Load historical prices and convert them to returns
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>> X = X[["AAPL", "JPM"]]
     >>>
     >>> # Convert returns to pseudo observation in the interval [0,1]
@@ -100,11 +100,11 @@ class StudentTCopula(BaseBivariateCopula):
     >>>
     >>> # Display the fitted parameter and tail dependence coefficients
     >>> print(model.fitted_repr)
-    StudentTCopula(rho=0.327, dof=5.14)
+    StudentTCopula(rho=0.385, dof=4.90)
     >>> print(model.lower_tail_dependence)
-    0.127...
+    0.157...
     >>> print(model.upper_tail_dependence)
-    0.127...
+    0.157...
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, Partial Derivative,
     >>> # Inverse Partial Derivative, AIC, and BIC

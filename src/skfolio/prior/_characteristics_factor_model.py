@@ -32,6 +32,7 @@ from skfolio.base import BaseComposition
 from skfolio.containers import AssetPanel, InactivePolicy
 from skfolio.factor_exposure import BaseFactorExposure, DerivedFactor
 from skfolio.linear_model import BaseCSLinearModel, CSLinearRegression
+from skfolio.linear_model._cross_sectional._utils import _cs_neutralize
 from skfolio.moments import (
     BaseCovariance,
     EWCovariance,
@@ -39,7 +40,7 @@ from skfolio.moments import (
     RegimeAdjustedEWCovariance,
 )
 from skfolio.moments.variance import BaseVariance, RegimeAdjustedEWVariance
-from skfolio.preprocessing import CSWinsorizer
+from skfolio.preprocessing import CSStandardScaler, CSWinsorizer
 from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import FactorModel, ReturnDistribution
@@ -47,9 +48,13 @@ from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.typing import AnyArray, BoolArray, FloatArray, StrArray
+from skfolio.typing import AnyArray, BoolArray, FloatArray, ObjArray, StrArray
 from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
-from skfolio.utils._factor_tools import _neutralize_exposures
+from skfolio.utils._factor_tools import (
+    _expand_factor_names,
+    _factor_name_maps,
+    _resolve_factor_name,
+)
 from skfolio.utils.equations import _validate_factor_names_and_families
 from skfolio.utils.stats import corr_to_cov, cov_nearest, cov_to_corr, safe_divide
 from skfolio.utils.tools import (
@@ -660,7 +665,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     >>> from skfolio.moments import EWMu, RegimeAdjustedEWCovariance
     >>> from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior
     >>>
-    >>> characteristics = make_synthetic_characteristics()
+    >>> characteristics = make_synthetic_characteristics(
+    ...     n_assets=100, n_observations=504, n_industries=5, random_state=0
+    ... )
     >>>
     >>> # Market and industry factors.
     >>> market_factor = GlobalFactor()
@@ -728,21 +735,54 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     ...     n_jobs=-1,
     ... )
     >>> model.fit(characteristics=characteristics)
+    CharacteristicsFactorModel(...)
     >>>
     >>> # Inspect the fitted factor model and diagnostics.
     >>> fm = model.factor_model_
-    >>> fm.summary()
+    >>> fm.summary().head(3)
+                 annualized_mean  annualized_vol  ...  coverage  stability
+    market              0.250...        0.188...  ...       1.0        1.0
+    Real Estate        -0.000...        0.083...  ...       1.0        1.0
+    Software           -0.107...        0.118...  ...       1.0        1.0
+    <BLANKLINE>
+    [3 rows x 9 columns]
     >>> fm.idio_calibration_summary()
-    >>> fm.idio_vol_ic
-    >>> fm.idio_tail_rate()
-    >>> fm.factor_returns_df
-    >>> fm.exposures_df
+    mean_cs_std                0.997...
+    median_cs_std              0.988...
+    mean_cs_excess_kurtosis    0.116...
+    mean_cs_skewness           0.012...
+    mean_tail_rate_3sigma      0.003...
+    Name: idio_calibration, dtype: float64
+    >>> fm.idio_vol_ic.tail(3)
+    2016-12-02    0.418...
+    2016-12-05    0.496...
+    2016-12-06    0.488...
+    Name: Idio Vol IC (Spearman), dtype: float64
+    >>> fm.idio_tail_rate().tail(3)
+    2016-12-02    0.000000
+    2016-12-05    0.000000
+    2016-12-06    0.011...
+    Name: Tail Rate, dtype: float64
+    >>> fm.factor_returns_df.head(3)
+                  market  Real Estate  ...  earnings_yield  non_linear_size
+    2015-07-27 -0.001...     0.001...  ...        0.000...        -0.002...
+    2015-07-28  0.010...     0.000...  ...        0.003...         0.001...
+    2015-07-29 -0.006...     0.011...  ...       -0.000...         0.002...
+    <BLANKLINE>
+    [3 rows x 11 columns]
+    >>> # Last three size exposures for the first three assets.
+    >>> fm.exposures_df["size"].iloc[-3:, :3]
+    asset         A00000    A00001    A00002
+    2016-12-02 -2.314... -1.344... -0.283...
+    2016-12-05 -2.312... -1.339... -0.283...
+    2016-12-06 -2.313... -1.339... -0.287...
 
     Use :meth:`partial_fit` for online updates:
 
     >>> model.fit(characteristics=characteristics[:400])
-    >>> for start in range(400, len(characteristics), 5):
-    ...     model.partial_fit(characteristics=characteristics[start : start + 5])
+    CharacteristicsFactorModel(...)
+    >>> model.partial_fit(characteristics=characteristics[400:405])
+    CharacteristicsFactorModel(...)
     """
 
     # Request `characteristics` by default when this estimator is used inside a sklearn
@@ -2792,7 +2832,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         # Exclude pairs with missing alpha (e.g. assets within the alpha estimator
         # warmup) or missing exposures by zeroing their regression weights, mirroring
-        # `_cross_sectional_neutralize`. The regression weights derive from the lagged
+        # `_cs_neutralize`. The regression weights derive from the lagged
         # exposures and returns, so they can be positive where the current alpha or
         # exposure is non-finite, which the regressor rejects.
         valid = np.isfinite(alpha)[np.newaxis, :] & np.all(
@@ -3090,3 +3130,75 @@ def _assemble_asset_return_scenarios(
         sample_weight = sample_weight[-n_scenarios:].copy()
 
     return asset_return_scenarios, sample_weight
+
+
+def _neutralize_exposures(
+    cs_regressor: BaseCSLinearModel,
+    neutralize_against: dict[str, list[str]],
+    exposures: FloatArray,
+    benchmark_weights: FloatArray,
+    factor_names: ObjArray,
+    factor_families: ObjArray,
+) -> None:
+    """Neutralize factor exposures against specified factors or families.
+
+    For each entry in `neutralize_against`, the key's exposures are regressed against
+    the target factors and replaced in-place by standardized residuals. Keys and targets
+    accept factor names or family names. Entries are processed in insertion order, so
+    later entries see exposures already modified by earlier entries.
+
+    Parameters
+    ----------
+    cs_regressor : BaseCSLinearModel
+        Cross-sectional linear regressor used for residualization.
+
+    neutralize_against : dict of {str: list[str]}
+        Mapping from factor name or family name to the factor names or family names it
+        must be neutralized against. A family key neutralizes each factor in that family
+        independently against the same targets.
+
+    exposures : ndarray of shape (n_observations, n_assets, n_factors)
+        Factor exposures. Neutralized columns are overwritten in-place.
+
+    benchmark_weights : ndarray of shape (n_observations, n_assets)
+        Cross-sectional weights for neutralization and residual scaling.
+
+    factor_names : ndarray of shape (n_factors,)
+        Factor names.
+
+    factor_families : ndarray of shape (n_factors,)
+        Family label for each factor.
+
+    Raises
+    ------
+    ValueError
+        If a key or target is neither a factor name nor a family name, or if a key
+        resolves to factors that overlap with its neutralization targets.
+    """
+    factor_to_idx, family_to_idx = _factor_name_maps(factor_names, factor_families)
+
+    for key, targets in neutralize_against.items():
+        neutralize_idx = _resolve_factor_name(key, factor_to_idx, family_to_idx)
+        targets_list = _expand_factor_names(targets, factor_to_idx, family_to_idx)
+        targets_idx = set(targets_list)
+
+        overlap = neutralize_idx & targets_idx
+        if overlap:
+            overlap_names = sorted(factor_names[i] for i in overlap)
+            raise ValueError(
+                f"`neutralize_against` key '{key}' resolves to factors "
+                f"that overlap with its targets: {overlap_names}. "
+                f"A factor cannot be neutralized against itself."
+            )
+
+        x = exposures[:, :, targets_list]
+        for factor_idx in sorted(neutralize_idx):
+            neutralized, cs_weights = _cs_neutralize(
+                y=exposures[:, :, factor_idx],
+                x=x,
+                cs_weights=benchmark_weights,
+                cs_regressor=cs_regressor,
+            )
+            exposures[:, :, factor_idx] = CSStandardScaler().fit_transform(
+                neutralized, cs_weights=cs_weights
+            )

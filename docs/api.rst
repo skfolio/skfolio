@@ -1117,6 +1117,22 @@ Functions
     stats.symmetric_step_up_matrix
     stats.symmetrize
 
+.. _validation_ref:
+
+:mod:`skfolio.utils.validation`: Validation
+===========================================
+
+Functions
+---------
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    validation.validate_asset_panel
+    validation.validate_cross_sectional_data
+
 .. _distribution_ref:
 
 :mod:`skfolio.distribution`: Distribution Estimators

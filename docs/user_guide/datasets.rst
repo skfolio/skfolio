@@ -56,4 +56,3 @@ Generating a synthetic characteristics panel:
 
     panel = make_synthetic_characteristics(n_assets=200, n_observations=1000)
     print(panel.n_assets, panel.n_observations)
-

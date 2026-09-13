@@ -54,7 +54,9 @@ prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
 X, factors = prices_to_returns(prices, factor_prices)
-X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
 
 # %%
 # Model
@@ -103,7 +105,7 @@ show(fig)
 # linkage method is set to the Ward variance minimization algorithm, which is more
 # stable and has better properties than the single-linkage method.
 #
-# However, since the HRP optimization doesn’t utilize the full cluster structure but
+# However, since the HRP optimization doesn't utilize the full cluster structure but
 # only their orders, the allocation remains relatively stable regardless of the chosen
 # linkage method.
 

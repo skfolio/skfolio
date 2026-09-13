@@ -73,7 +73,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     ...        'asset3': [3, 4, 5, 6],
     ...        'asset4': [4, 5, 6, 7]
     ...    }, index=pd.date_range("2023-01-01", periods=4, freq="D")
-    ...)
+    ... )
     >>> expiration_dates = {
     ...    'asset1': pd.Timestamp("2023-01-10"),
     ...    'asset2': pd.Timestamp("2023-01-02"),
@@ -83,7 +83,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     >>> selector = SelectNonExpiring(
     ...    expiration_dates=expiration_dates,
     ...    expiration_lookahead=pd.DateOffset(days=5)
-    ...)
+    ... )
     >>> selector.fit_transform(X)
                asset1  asset4
     2023-01-01      1      4

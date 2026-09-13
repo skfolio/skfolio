@@ -227,9 +227,9 @@ class WalkForward(sks.BaseCrossValidator):
     >>> cv = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
     >>>
     >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
-    >>> ...     print(f"Fold {i}:")
-    >>> ...     print(f"  Train: size={len(train_index)}")
-    >>> ...     print(f"  Test:  size={len(test_index)}")
+    ...     print(f"Fold {i}:")
+    ...     print(f"  Train: size={len(train_index)}")
+    ...     print(f"  Test:  size={len(test_index)}")
     Fold 0:
       Train: size=256
       Test:  size=59

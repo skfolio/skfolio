@@ -102,19 +102,19 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  index=[0 1]
       Test:   index=[2]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 1:
       Train:  index=[1 2]
       Test:   index=[3]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 2:
       Train:  index=[0 1]
       Test:   index=[2]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     Fold 3:
       Train:  index=[1 2]
       Test:   index=[3]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     >>> print(f"Path ids: {cv.get_path_ids()}")
     Path ids: [0 0 1 1]
     >>>
@@ -135,19 +135,19 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  index=[4 5]
       Test:   index=[6]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 1:
       Train:  index=[5 6]
       Test:   index=[7]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 2:
       Train:  index=[5 6]
       Test:   index=[7]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     Fold 3:
       Train:  index=[6 7]
       Test:   index=[8]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     >>>
     >>> # Walk Forward with time-based (calendar) rebalancing.
     >>> # Rebalance every 3 months on the third Friday, and train on the last 12 months.
@@ -169,29 +169,29 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  size=256
       Test:   size=59
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 1:
       Train:  size=253
       Test:   size=61
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 2:
       Train:  size=251
       Test:   size=69
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 3:
       Train:  size=256
       Test:   size=59
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     Fold 4:
       Train:  size=253
       Test:   size=61
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     Fold 5:
       Train:  size=251
       Test:   size=69
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     >>> print(f"Path ids: {cv.get_path_ids()}")
-    [0 0 0 1 1 1]
+    Path ids: [0 0 0 1 1 1]
     """
 
     if TYPE_CHECKING:
