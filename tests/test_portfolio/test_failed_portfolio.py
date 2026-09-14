@@ -336,6 +336,12 @@ def test_weights_per_observation(portfolio):
     assert np.isnan(df).all().all()
 
 
+def test_constructor_sample_weight_error(X: pd.DataFrame):
+    """Apply shared constructor validation to failed portfolios."""
+    with pytest.raises(ValueError, match="sample_weight must have the same length as"):
+        FailedPortfolio(X=X, sample_weight=np.array([0.5, 0.5]))
+
+
 def test_cross_val_predict(X):
     walk_forward = WalkForward(test_size=1, train_size=12, freq="WOM-3FRI")
 
