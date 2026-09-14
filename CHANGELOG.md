@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.2.3 (2026-09-13)
+
+### Bug Fixes
+
+- **optimization**: Validate prediction feature order
+  ([#309](https://github.com/skfolio/skfolio/pull/309),
+  [`f2358a3`](https://github.com/skfolio/skfolio/commit/f2358a3a8a3b9361b5441d1d5f6b225e74627a8a))
+
+
+## v1.2.2 (2026-09-13)
+
+### Bug Fixes
+
+- **measures**: Correct semi-variance normalization with NaNs
+  ([#285](https://github.com/skfolio/skfolio/pull/285),
+  [`77bd86c`](https://github.com/skfolio/skfolio/commit/77bd86cedbca91668dc7f0ce02cc4bdfe3d311c6))
+
+
+## v1.2.1 (2026-09-13)
+
+### Bug Fixes
+
+- **model-selection**: Raise ValueError for empty CV schedules
+  ([#270](https://github.com/skfolio/skfolio/pull/270),
+  [`72d1dc5`](https://github.com/skfolio/skfolio/commit/72d1dc55869eca6553f80cead11b68c6ed34e153))
+
+
 ## v1.2.0 (2026-09-13)
 
 ### Features

@@ -146,6 +146,8 @@ class InverseVolatility(BaseOptimization):
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
+        _ = skv.validate_data(self, X, skip_check_array=True)
+
         # fitting prior estimator
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,

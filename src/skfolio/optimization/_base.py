@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 import skfolio.typing as skt
 from skfolio._constants import (
@@ -355,6 +355,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return FailedPortfolio(
                 name=name, optimization_error=self.error_, **ptf_kwargs
             )
+
+        if not isinstance(X, ReturnDistribution):
+            _ = validate_data(self, X, reset=False, skip_check_array=True)
 
         # Optimization estimators can return a 1D or a 2D array of weights.
         # For a 1D array we return a portfolio.
