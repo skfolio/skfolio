@@ -7,6 +7,9 @@ from skfolio.moments.covariance._denoise_covariance import DenoiseCovariance
 from skfolio.moments.covariance._detone_covariance import DetoneCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.moments.covariance._ew_covariance import EWCovariance
+from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
+    GeodesicShrinkageCovariance,
+)
 from skfolio.moments.covariance._gerber_covariance import GerberCovariance
 from skfolio.moments.covariance._graphical_lasso_cv import GraphicalLassoCV
 from skfolio.moments.covariance._implied_covariance import ImpliedCovariance
@@ -26,6 +29,7 @@ __all__ = [
     "DetoneCovariance",
     "EWCovariance",
     "EmpiricalCovariance",
+    "GeodesicShrinkageCovariance",
     "GerberCovariance",
     "GraphicalLassoCV",
     "ImpliedCovariance",

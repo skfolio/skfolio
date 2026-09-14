@@ -706,6 +706,7 @@ Classes
     moments.LedoitWolf
     moments.OAS
     moments.ShrunkCovariance
+    moments.GeodesicShrinkageCovariance
     moments.GraphicalLassoCV
     moments.ImpliedCovariance
     moments.RegimeAdjustedEWCovariance
