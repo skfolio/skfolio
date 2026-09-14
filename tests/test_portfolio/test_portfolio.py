@@ -380,6 +380,28 @@ def test_portfolio_diversification(portfolio):
     np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
+@pytest.mark.parametrize(
+    "dtype", ["Float64", {"A": "Float64"}], ids=["nullable", "mixed"]
+)
+@pytest.mark.parametrize("with_missing", [False, True])
+def test_nullable_portfolio_diversification(dtype, with_missing):
+    ordinary = pd.DataFrame(
+        [[0.01, 0.02], [0.03, 0.04], [0.05, 0.02]], columns=["A", "B"]
+    )
+    if with_missing:
+        ordinary.iloc[1, 0] = np.nan
+    nullable = ordinary.astype(dtype)
+    original = nullable.copy(deep=True)
+    weights = [0.5, 0.5]
+
+    expected = Portfolio(X=ordinary, weights=weights)
+    portfolio = Portfolio(X=nullable, weights=weights)
+
+    np.testing.assert_allclose(portfolio.diversification, expected.diversification)
+    assert portfolio.X is nullable
+    pd.testing.assert_frame_equal(nullable, original)
+
+
 def test_portfolio_slots(portfolio):
     for attr in portfolio._slots():
         if attr[0] == "_":
@@ -985,9 +1007,11 @@ class TestPortfolioNaNReturns:
 
     def test_original_X_preserved_with_nan(self):
         rets = np.array([[0.01, np.nan], [0.02, np.nan]])
+        original = rets.copy()
         weights = np.array([1.0, 0.0])
         ptf = Portfolio(X=rets, weights=weights)
-        np.testing.assert_array_equal(np.asarray(ptf.X), rets)
+        assert ptf.X is rets
+        np.testing.assert_array_equal(rets, original)
 
     def test_nullable_float_returns_match_numpy_nan(self):
         """Treat nullable floating returns like ordinary floating returns."""
