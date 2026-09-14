@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -417,25 +417,13 @@ class MultiPeriodPortfolio(BasePortfolio):
         return value in self._portfolios
 
     def __neg__(self):
-        return self.__class__(
-            portfolios=[-p for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._copy_with_portfolios([-p for p in self])
 
     def __abs__(self):
-        return self.__class__(
-            portfolios=[abs(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._copy_with_portfolios([abs(p) for p in self])
 
     def __round__(self, n: int):
-        return self.__class__(
-            portfolios=[p.__round__(n) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._copy_with_portfolios([p.__round__(n) for p in self])
 
     def __floor__(self):
         return self.__class__(
@@ -459,10 +447,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             )
         if len(self) != len(other):
             raise TypeError("Cannot add two MultiPeriodPortfolio of different sizes")
-        return self.__class__(
-            portfolios=[p1 + p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._copy_with_portfolios(
+            [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __sub__(self, other):
@@ -475,42 +462,58 @@ class MultiPeriodPortfolio(BasePortfolio):
             raise TypeError(
                 "Cannot subtract two MultiPeriodPortfolio of different sizes"
             )
-        return self.__class__(
-            portfolios=[p1 - p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._copy_with_portfolios(
+            [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p * other for p in self]
         else:
             portfolios = [p * a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._copy_with_portfolios(portfolios)
 
     __rmul__ = __mul__
 
     def __floordiv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p // other for p in self]
         else:
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._copy_with_portfolios(portfolios)
 
     def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
             portfolios = [p / a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._copy_with_portfolios(portfolios)
 
-    # Private method
+    # Private methods
+    def _check_compatible_parameters(self, other: MultiPeriodPortfolio) -> None:
+        """Check that portfolios differ only in children, name or tag."""
+        params: dict[str, Any] = self._get_init_params()
+        other_params: dict[str, Any] = other._get_init_params()
+        for name, value in params.items():
+            if name in ("portfolios", "name", "tag"):
+                continue
+            if not np.array_equal(value, other_params[name]):
+                raise ValueError(
+                    f"Cannot combine two MultiPeriodPortfolios with different `{name}`"
+                )
+
+    def _copy_with_portfolios(
+        self, portfolios: list[Portfolio]
+    ) -> MultiPeriodPortfolio:
+        """Reconstruct with transformed children and unchanged public state."""
+        params: dict[str, Any] = self._get_init_params()
+        params["portfolios"] = portfolios
+        return self.__class__(**params)
+
     def _set_portfolios(self, portfolios: list[Portfolio] | None = None) -> None:
         """Set the returns, observations and portfolios list.
 
