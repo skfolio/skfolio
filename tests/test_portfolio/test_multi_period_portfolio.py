@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import operator
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -34,6 +38,45 @@ def _portfolio_returns(asset_returns: FloatArray, weights: FloatArray) -> FloatA
 
 def _dominate(fitness_1: FloatArray, fitness_2: FloatArray) -> bool:
     return np.all(fitness_1 >= fitness_2) and np.any(fitness_1 > fitness_2)
+
+
+def _configured_multi_period_portfolio(
+    portfolios: list[Portfolio],
+) -> MultiPeriodPortfolio:
+    """Create a multi-period portfolio with nondefault public configuration."""
+    sample_weight = np.arange(1, sum(p.n_observations for p in portfolios) + 1)
+    sample_weight = sample_weight / sample_weight.sum()
+    return MultiPeriodPortfolio(
+        portfolios=portfolios,
+        name="configured",
+        tag="left-tag",
+        risk_free_rate=0.001,
+        annualization_factor=12,
+        fitness_measures=[PerfMeasure.MEAN, RiskMeasure.CVAR],
+        compounded=True,
+        sample_weight=sample_weight,
+        min_acceptable_return=0.002,
+        value_at_risk_beta=0.91,
+        entropic_risk_measure_theta=2,
+        entropic_risk_measure_beta=0.92,
+        cvar_beta=0.93,
+        evar_beta=0.94,
+        drawdown_at_risk_beta=0.96,
+        cdar_beta=0.97,
+        edar_beta=0.98,
+        check_observations_order=True,
+    )
+
+
+def _assert_same_multi_period_configuration(
+    actual: MultiPeriodPortfolio, expected: MultiPeriodPortfolio
+) -> None:
+    """Assert equality for every constructor field except child portfolios."""
+    actual_params: dict[str, Any] = actual._get_init_params()
+    expected_params: dict[str, Any] = expected._get_init_params()
+    for name, expected_value in expected_params.items():
+        if name != "portfolios":
+            np.testing.assert_equal(actual_params[name], expected_value)
 
 
 @pytest.fixture(scope="module")
@@ -339,6 +382,124 @@ def test_mpp_magic_methods(portfolio, periods):
     mpp.portfolios = [mpp[0], p_1]
     assert mpp[0] != p_1
     assert mpp[1] == p_1
+
+
+def test_mpp_arithmetic_preserves_configuration(
+    portfolio: MultiPeriodPortfolio,
+) -> None:
+    """Preserve public configuration across every successful arithmetic path."""
+    mpp = _configured_multi_period_portfolio(portfolio.portfolios)
+    scalar: Any = 2
+    factors: list[Any] = [2, 3, 4]
+    original_weights = [p.weights.copy() for p in mpp]
+    operations: list[tuple[MultiPeriodPortfolio, list[Portfolio]]] = [
+        (operator.neg(mpp), [operator.neg(p) for p in mpp]),
+        (abs(mpp), [abs(p) for p in mpp]),
+        (round(mpp, 2), [round(p, 2) for p in mpp]),
+        (operator.add(mpp, mpp), [operator.add(p, p) for p in mpp]),
+        (operator.sub(mpp, mpp), [operator.sub(p, p) for p in mpp]),
+        (operator.mul(mpp, scalar), [operator.mul(p, scalar) for p in mpp]),
+        (operator.mul(scalar, mpp), [operator.mul(scalar, p) for p in mpp]),
+        (
+            operator.mul(mpp, factors),
+            [operator.mul(p, factor) for p, factor in zip(mpp, factors, strict=True)],
+        ),
+        (operator.floordiv(mpp, 2), [operator.floordiv(p, 2) for p in mpp]),
+        (
+            operator.floordiv(mpp, factors),
+            [
+                operator.floordiv(p, factor)
+                for p, factor in zip(mpp, factors, strict=True)
+            ],
+        ),
+        (operator.truediv(mpp, 2), [operator.truediv(p, 2) for p in mpp]),
+        (
+            operator.truediv(mpp, factors),
+            [
+                operator.truediv(p, factor)
+                for p, factor in zip(mpp, factors, strict=True)
+            ],
+        ),
+    ]
+
+    for result, expected_portfolios in operations:
+        _assert_same_multi_period_configuration(result, mpp)
+        for result_portfolio, expected_portfolio in zip(
+            result, expected_portfolios, strict=True
+        ):
+            np.testing.assert_allclose(
+                result_portfolio.weights, expected_portfolio.weights
+            )
+            np.testing.assert_allclose(
+                result_portfolio.returns, expected_portfolio.returns
+            )
+
+    for child, weights in zip(mpp, original_weights, strict=True):
+        np.testing.assert_array_equal(child.weights, weights)
+
+
+@pytest.mark.parametrize("operation", [operator.add, operator.sub])
+def test_mpp_binary_arithmetic_preserves_left_identity(
+    portfolio: MultiPeriodPortfolio,
+    operation: Callable[
+        [MultiPeriodPortfolio, MultiPeriodPortfolio], MultiPeriodPortfolio
+    ],
+) -> None:
+    """Keep left identity metadata when compatible operands have other labels."""
+    left = _configured_multi_period_portfolio(portfolio.portfolios)
+    right = _configured_multi_period_portfolio(portfolio.portfolios)
+    right.name = "right"
+    right.tag = "right-tag"
+
+    result = operation(left, right)
+
+    _assert_same_multi_period_configuration(result, left)
+
+
+@pytest.mark.parametrize("operation", [operator.add, operator.sub])
+@pytest.mark.parametrize(
+    ("parameter", "other_value"),
+    [
+        ("risk_free_rate", 0.003),
+        ("annualization_factor", 52),
+        ("fitness_measures", [RiskMeasure.VARIANCE]),
+        ("compounded", False),
+        ("sample_weight", None),
+        ("min_acceptable_return", 0.004),
+        ("value_at_risk_beta", 0.81),
+        ("entropic_risk_measure_theta", 3),
+        ("entropic_risk_measure_beta", 0.82),
+        ("cvar_beta", 0.83),
+        ("evar_beta", 0.84),
+        ("drawdown_at_risk_beta", 0.86),
+        ("cdar_beta", 0.87),
+        ("edar_beta", 0.88),
+        ("check_observations_order", False),
+    ],
+)
+def test_mpp_binary_arithmetic_rejects_conflicting_configuration(
+    portfolio: MultiPeriodPortfolio,
+    operation: Callable[
+        [MultiPeriodPortfolio, MultiPeriodPortfolio], MultiPeriodPortfolio
+    ],
+    parameter: str,
+    other_value: Any,
+) -> None:
+    """Reject binary arithmetic with incompatible measurement configuration."""
+    left = _configured_multi_period_portfolio(portfolio.portfolios)
+    right = _configured_multi_period_portfolio(portfolio.portfolios)
+    setattr(right, parameter, other_value)
+    left_before = left.copy()
+    right_before = right.copy()
+
+    with pytest.raises(ValueError, match=rf"different `{parameter}`"):
+        operation(left, right)
+
+    _assert_same_multi_period_configuration(left, left_before)
+    _assert_same_multi_period_configuration(right, right_before)
+    for current, previous in ((left, left_before), (right, right_before)):
+        for child, previous_child in zip(current, previous, strict=True):
+            np.testing.assert_array_equal(child.weights, previous_child.weights)
 
 
 def test_portfolio_dominate(X):
