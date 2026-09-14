@@ -14,6 +14,7 @@ import numpy as np
 import scipy.optimize as sco
 
 from skfolio.typing import ArrayLike, FloatArray
+from skfolio.utils.stats import safe_divide
 
 
 def mean(
@@ -228,9 +229,11 @@ def semi_variance(
     if biased:
         return biased_semi_var
 
-    n_observations = len(returns)
     if sample_weight is None:
-        correction = n_observations / (n_observations - 1)
+        # Apply the Bessel correction using each column's non-NaN count.
+        returns = np.asarray(returns, dtype=float)
+        n_observations = np.count_nonzero(~np.isnan(returns), axis=0)
+        correction = safe_divide(n_observations, n_observations - 1, fill_value=np.nan)
     else:
         correction = 1.0 / (1.0 - np.sum(sample_weight**2))
     return biased_semi_var * correction
