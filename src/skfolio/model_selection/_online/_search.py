@@ -951,7 +951,8 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ... )
     >>> search.fit(X)
     OnlineRandomizedSearch(...)
-    >>> search.best_params_
+    >>> # The drawn values are NumPy scalars; `float` prints the same on any NumPy.
+    >>> {k: float(v) for k, v in sorted(search.best_params_.items())}
     {'prior_estimator__covariance_estimator__half_life': 63.31...,
      'prior_estimator__mu_estimator__half_life': 14.18...}
     >>> search.best_estimator_

@@ -55,14 +55,15 @@ def pytest_collection_modifyitems(items) -> None:
 
 @pytest.fixture(autouse=True)
 def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
-    """Keep doctest settings, file writes, and remote dataset handling local.
+    """Pin the reader's defaults and keep file writes and datasets local.
 
-    Unit tests configure NumPy output globally, so doctests use their own output
-    settings to render consistently regardless of test order. The temporary
-    directory keeps examples that write files (`AssetPanel.save("asset_panel")`) out
-    of the working tree. Optimizer and SyntheticData arrays use four decimal places;
-    other arrays keep eight to preserve small values. NumPy scalars
-    display as plain numbers, including inside dictionaries.
+    Examples run with NumPy's documented defaults, so their output is what a reader
+    gets by pasting them into a fresh session; an example that needs rounding does it
+    in the example. The options are pinned rather than left alone because a unit test
+    calling `np.set_printoptions` globally would otherwise change the documented
+    output when both test trees run in one session. `sklearn.config_context` pins
+    sklearn's default for the same reason. The temporary directory keeps examples
+    that write files (`AssetPanel.save("asset_panel")`) out of the working tree.
     """
     if request.node.name in NETWORK_DOCTESTS:
         monkeypatch.setattr(
@@ -71,18 +72,8 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
             partial(remote_dataset, _base.download_dataset),
         )
     monkeypatch.chdir(tmp_path)
-    compact_arrays = request.node.name.startswith(
-        ("skfolio.optimization.", "skfolio.prior._synthetic_data.")
-    )
     with (
-        np.printoptions(
-            precision=4 if compact_arrays else 8,
-            suppress=compact_arrays
-            or request.node.name.startswith(
-                ("skfolio.alpha.", "skfolio.prior._entropy_pooling.")
-            ),
-            legacy="1.25",
-        ),
+        np.printoptions(precision=8, suppress=False, legacy=False),
         sklearn.config_context(transform_output="default"),
     ):
         yield

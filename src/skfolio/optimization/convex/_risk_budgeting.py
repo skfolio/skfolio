@@ -480,7 +480,7 @@ class RiskBudgeting(ConvexOptimization):
     >>> model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
     >>> model.fit(X)
     RiskBudgeting()
-    >>> print(model.weights_)
+    >>> print(model.weights_.round(4))
     [0.0422 0.0314 0.0343 ... 0.0473 0.0603 0.0565]
     >>>
     >>> # CVaR risk budgeting with custom asset budgets
@@ -494,7 +494,7 @@ class RiskBudgeting(ConvexOptimization):
     ... )
     >>> model.fit(X)
     RiskBudgeting(...)
-    >>> print(model.weights_)
+    >>> print(model.weights_.round(4))
     [0.0623 0.0319 0.0347 ... 0.0502 0.0659 0.0595]
     >>>
     >>> portfolio = model.predict(X)

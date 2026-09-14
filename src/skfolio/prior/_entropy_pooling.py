@@ -397,7 +397,8 @@ class EntropyPooling(BasePrior):
     >>> print(entropy_pooling.effective_number_of_scenarios_)
     687...
     >>> print(entropy_pooling.return_distribution_.sample_weight)
-    [0.00010... 0.00009... ... 0.00010... 0.00010...]
+    [1.0...e-04 9.4...e-05 8.7...e-05 ... 1.0...e-04
+     1.0...e-04 1.0...e-04]
     >>>
     >>> # CVaR Hierarchical Risk Parity optimization on Entropy Pooling
     >>> model = HierarchicalRiskParity(

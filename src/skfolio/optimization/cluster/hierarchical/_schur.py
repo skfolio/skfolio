@@ -288,7 +288,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     >>> model = SchurComplementary(gamma=0.5)
     >>> model.fit(X)
     SchurComplementary()
-    >>> print(model.weights_)
+    >>> print(model.weights_.round(4))
     [0.0358 0.0061 0.0262 ... 0.0426 0.1129 0.048 ]
     >>>
     >>> # Advanced model:
@@ -305,7 +305,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     ... )
     >>> model.fit(X)
     SchurComplementary(...)
-    >>> print(model.weights_)
+    >>> print(model.weights_.round(4))
     [0.0323 0.0095 0.0234 ... 0.0402 0.0515 0.0605]
     """
 
