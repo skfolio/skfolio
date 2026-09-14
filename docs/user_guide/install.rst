@@ -32,7 +32,7 @@ Dependencies
 `skfolio` requires:
 
 - python (>= 3.10)
-- numpy (>= 1.23.5)
+- numpy (>= 1.24.0)
 - scipy (>= 1.15.2)
 - pandas (>= 2.1.0)
 - cvxpy-base (>= 1.5.0)

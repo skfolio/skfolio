@@ -11,7 +11,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-22.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Same reasoning as the release job it chains from: only the canonical repository
+    # publishes the documentation site.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+          && github.repository == 'skfolio/skfolio' }}
     permissions:
       contents: read
       pages: write

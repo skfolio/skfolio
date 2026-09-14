@@ -16,33 +16,38 @@ __all__ = [
     "GroupNotFoundError",
     "NonPositiveVarianceError",
     "OptimizationError",
+    "SkfolioError",
     "SolverError",
 ]
 
 
-class OptimizationError(Exception):
+class SkfolioError(Exception):
+    """Base class for all custom skfolio exceptions."""
+
+
+class OptimizationError(SkfolioError):
     """Optimization Did not converge."""
 
 
-class SolverError(Exception):
+class SolverError(SkfolioError):
     """Solver error."""
 
 
-class EquationToMatrixError(Exception):
+class EquationToMatrixError(SkfolioError):
     """Error while processing equations."""
 
 
-class GroupNotFoundError(Exception):
+class GroupNotFoundError(SkfolioError):
     """Group name not found in the groups."""
 
 
-class FactorNotFoundError(Exception):
+class FactorNotFoundError(SkfolioError):
     """Factor name not found in factor_groups or loading_matrix not provided."""
 
 
-class DuplicateGroupsError(Exception):
+class DuplicateGroupsError(SkfolioError):
     """Group name appear in multiple group levels."""
 
 
-class NonPositiveVarianceError(Exception):
+class NonPositiveVarianceError(SkfolioError):
     """Variance negative or null."""

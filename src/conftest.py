@@ -1,4 +1,4 @@
-"""Doctest configuration for the `skfolio` package.
+"""Doctest configuration for the source-tree examples.
 
 `pyproject.toml` runs `--doctest-modules` over `src`, so every example in every
 docstring is executed and its documented output verified. The few that cannot be are
@@ -7,10 +7,20 @@ listed in `SKIPPED` below, each with the reason it is there.
 
 from __future__ import annotations
 
+from functools import partial
+
 import numpy as np
 import pytest
 import sklearn
 from _pytest.doctest import DoctestItem
+
+from skfolio.datasets import _base
+
+NETWORK_DOCTESTS = {
+    "skfolio.datasets._base.load_ftse100_dataset",
+    "skfolio.datasets._base.load_nasdaq_dataset",
+    "skfolio.datasets._base.load_sp500_implied_vol_dataset",
+}
 
 SKIPPED = {
     "skfolio.attribution._predicted.predicted_factor_attribution": (
@@ -33,24 +43,33 @@ SKIPPED = {
 
 
 def pytest_collection_modifyitems(items) -> None:
-    """Skip the doctests listed in `SKIPPED`."""
+    """Mark remote dataset examples and skip unsupported doctests."""
     for item in items:
-        if isinstance(item, DoctestItem) and item.name in SKIPPED:
+        if not isinstance(item, DoctestItem):
+            continue
+        if item.name in NETWORK_DOCTESTS:
+            item.add_marker(pytest.mark.network)
+        if item.name in SKIPPED:
             item.add_marker(pytest.mark.skip(reason=SKIPPED[item.name]))
 
 
 @pytest.fixture(autouse=True)
-def _doctest_environment(request, tmp_path, monkeypatch):
-    """Keep readable output settings and file writes local to each doctest.
+def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
+    """Keep doctest settings, file writes, and remote dataset handling local.
 
-    `tests/conftest.py` sets `np.set_printoptions(suppress=True, precision=6)` and a
-    few test modules call `sklearn.set_config(...)` without restoring it. Both leak
-    into whatever runs next and change how documented output renders. The temporary
+    Unit tests configure NumPy output globally, so doctests use their own output
+    settings to render consistently regardless of test order. The temporary
     directory keeps examples that write files (`AssetPanel.save("asset_panel")`) out
     of the working tree. Optimizer and SyntheticData arrays use four decimal places;
     other arrays keep eight to preserve small values. NumPy scalars
     display as plain numbers, including inside dictionaries.
     """
+    if request.node.name in NETWORK_DOCTESTS:
+        monkeypatch.setattr(
+            _base,
+            "download_dataset",
+            partial(remote_dataset, _base.download_dataset),
+        )
     monkeypatch.chdir(tmp_path)
     compact_arrays = request.node.name.startswith(
         ("skfolio.optimization.", "skfolio.prior._synthetic_data.")

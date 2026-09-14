@@ -12,7 +12,10 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only the canonical repository publishes releases. Skip this job on forks.
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success'
+          && github.repository == 'skfolio/skfolio' }}
     concurrency: release
     permissions:
       id-token: write

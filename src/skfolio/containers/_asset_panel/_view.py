@@ -324,6 +324,10 @@ class AssetPanelView(_BaseAssetPanel):
         panel : AssetPanel
             Panel containing only the view's observations and selected fields.
         """
+        # Imported here rather than at module scope: `_panel` imports
+        # `AssetPanelView` from this module, so a module-level import would close a
+        # cycle between `_view` and `_panel`. Annotations are postponed, so the
+        # `TYPE_CHECKING` import above covers the signature.
         from skfolio.containers._asset_panel._panel import AssetPanel
 
         field_names = _normalize_field_names(self.keys(), fields)

@@ -70,6 +70,23 @@ jobs:
         if: ${{ !cancelled() && steps.python.outcome == 'success' }}
         run: uvx ruff@latest format --check
 
+      - name: Check distribution contents
+        run: |
+          uv build
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from tarfile import open as open_tar
+          from zipfile import ZipFile
+
+          with ZipFile(next(Path("dist").glob("*.whl"))) as wheel:
+              unexpected = [name for name in wheel.namelist() if PurePosixPath(name).name == "conftest.py"]
+              assert not unexpected, f"Test configuration shipped in wheel: {unexpected}"
+          with open_tar(next(Path("dist").glob("*.tar.gz"))) as sdist:
+              names = {name.partition("/")[2] for name in sdist.getnames()}
+              missing = {"conftest.py", "src/conftest.py"} - names
+              assert not missing, f"Missing source test configuration: {sorted(missing)}"
+          PY
+
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux
 # -----------------------------------------------------------------------------

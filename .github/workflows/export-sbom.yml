@@ -10,6 +10,8 @@ permissions:
 jobs:
   sbom:
     runs-on: ubuntu-latest
+    # A `v*` tag pushed to a fork would otherwise create a GitHub Release there.
+    if: ${{ github.repository == 'skfolio/skfolio' }}
     steps:
       - uses: actions/checkout@v7
       - name: Export SBOM (SPDX JSON) from Dependency Graph

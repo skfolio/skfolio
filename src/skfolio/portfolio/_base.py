@@ -42,6 +42,7 @@ from __future__ import annotations
 import warnings
 from abc import abstractmethod
 from collections.abc import Callable
+from functools import partial
 from typing import ClassVar
 
 import numpy as np
@@ -73,6 +74,31 @@ _MEASURES = {
     e for enu in [PerfMeasure, RiskMeasure, ExtraRiskMeasure, RatioMeasure] for e in enu
 }
 _MEASURES_VALUES = {e.value: e for e in _MEASURES}
+
+_MEASURE_LOCAL_PARAMS = frozenset(
+    {
+        "value_at_risk_beta",
+        "cvar_beta",
+        "entropic_risk_measure_theta",
+        "entropic_risk_measure_beta",
+        "evar_beta",
+        "drawdown_at_risk_beta",
+        "cdar_beta",
+        "edar_beta",
+    }
+)
+_MEASURE_GLOBAL_PARAMS = frozenset(
+    {
+        "min_acceptable_return",
+        "compounded",
+        _RISK_FREE_RATE,
+    }
+)
+_PORTFOLIO_MEASURE_PARAMS = (
+    _MEASURE_GLOBAL_PARAMS
+    | _MEASURE_LOCAL_PARAMS
+    | {"annualization_factor", "fitness_measures"}
+)
 
 
 class BasePortfolio:
@@ -382,23 +408,11 @@ class BasePortfolio:
         "returns",
         "cumulative_returns",
         "drawdowns",
-        "min_acceptable_return",
-        "compounded",
-        _RISK_FREE_RATE,
         "sample_weight",
-    }
+    } | set(_MEASURE_GLOBAL_PARAMS)
 
     # Arguments locally used in measures computation
-    _measure_local_args: ClassVar[set] = {
-        "value_at_risk_beta",
-        "cvar_beta",
-        "entropic_risk_measure_theta",
-        "entropic_risk_measure_beta",
-        "evar_beta",
-        "drawdown_at_risk_beta",
-        "cdar_beta",
-        "edar_beta",
-    }
+    _measure_local_args: ClassVar[set] = set(_MEASURE_LOCAL_PARAMS)
 
     # ruff: noqa: RUF023
     __slots__ = {
@@ -539,10 +553,13 @@ class BasePortfolio:
 
     def __reduce__(self):
         # For fast serialization and deserialization
-        # We don't want to serialize generic slots but only init arguments
-        return self.__class__, tuple(
-            [getattr(self, arg) for arg in args_names(self.__init__)]
-        )
+        # We don't want to serialize generic slots but only init arguments.
+        # Save them by name so constructor parameter order can change.
+        return partial(type(self), **self._get_init_params()), ()
+
+    def _get_init_params(self) -> dict:
+        """Return the parameters needed to reconstruct this portfolio."""
+        return {arg: getattr(self, arg) for arg in args_names(self.__init__)}
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
@@ -1291,25 +1308,45 @@ def _warn_deprecated_annualized_factor(stacklevel: int = 2) -> None:
 
 
 # TODO remove deprecated annualized_factor in v2.0
+def _normalize_annualization_factor_alias(params: dict, *, stacklevel: int = 2) -> dict:
+    """Normalize the deprecated `annualized_factor` key in a parameters dictionary."""
+    params = params.copy()
+    if "annualized_factor" not in params:
+        return params
+
+    annualized_factor = params.pop("annualized_factor")
+    annualization_factor = params.get("annualization_factor")
+    if annualization_factor is not None and annualized_factor is not None:
+        raise ValueError(
+            "`annualized_factor` is deprecated; pass only `annualization_factor`."
+        )
+    if annualized_factor is not None:
+        _warn_deprecated_annualized_factor(stacklevel=stacklevel)
+        params["annualization_factor"] = annualized_factor
+    elif "annualization_factor" not in params:
+        # Preserve an explicit deprecated `None` so it can override a value from a
+        # lower-precedence parameter source and resolve to the constructor default.
+        params["annualization_factor"] = None
+    return params
+
+
 def _resolve_annualization_factor(
     annualization_factor: float | None,
     kwargs: dict,
     *,
     owner_name: str,
 ) -> float:
-    annualized_factor = kwargs.pop("annualized_factor", None)
+    params = {"annualization_factor": annualization_factor}
+    if "annualized_factor" in kwargs:
+        params["annualized_factor"] = kwargs.pop("annualized_factor")
     if len(kwargs) != 0:
         key = next(iter(kwargs))
         raise TypeError(
             f"{owner_name}.__init__() got an unexpected keyword argument '{key}'"
         )
-    if annualization_factor is not None and annualized_factor is not None:
-        raise ValueError(
-            "`annualized_factor` is deprecated; pass only `annualization_factor`."
-        )
-    if annualized_factor is not None:
-        _warn_deprecated_annualized_factor(stacklevel=5)
-        return annualized_factor
+    annualization_factor = _normalize_annualization_factor_alias(params, stacklevel=6)[
+        "annualization_factor"
+    ]
     if annualization_factor is None:
         return _ANNUALIZATION_FACTOR_DEFAULT
     return annualization_factor

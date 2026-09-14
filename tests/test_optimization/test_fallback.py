@@ -14,6 +14,7 @@ from skfolio.optimization import (
     BaseOptimization,
     EqualWeighted,
     HierarchicalRiskParity,
+    InverseVolatility,
     MeanRisk,
     ObjectiveFunction,
 )
@@ -112,6 +113,22 @@ def test_fallback(X):
     ptf = model.predict(X)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_fallback_inverse_volatility(X):
+    model = MeanRisk(solver="NOT_A_SOLVER", fallback=InverseVolatility()).fit(X)
+    expected_weights = 1 / np.std(X.to_numpy(), axis=0)
+    expected_weights /= expected_weights.sum()
+
+    assert isinstance(model.fallback_, InverseVolatility)
+    assert model.fallback_chain_[-1] == ("InverseVolatility()", "success")
+    assert model.n_features_in_ == X.shape[1]
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    np.testing.assert_allclose(model.weights_, expected_weights)
+
+    portfolio = model.predict(X)
+    assert isinstance(portfolio, Portfolio)
+    np.testing.assert_allclose(portfolio.returns, X.to_numpy() @ expected_weights)
 
 
 def test_fallback_with_clone(X):
@@ -581,3 +598,14 @@ def test_fallback_needs_previous_weights(X):
         fallback=[MeanRisk(), MeanRisk(max_turnover=0.5)],
     )
     assert model.needs_previous_weights is True
+
+
+def test_weight_drift_needs_previous_weights():
+    assert MeanRisk().needs_previous_weights is False
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": True}).needs_previous_weights is True
+    )
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": False}).needs_previous_weights
+        is False
+    )

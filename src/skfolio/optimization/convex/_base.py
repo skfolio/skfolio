@@ -35,7 +35,12 @@ from skfolio.uncertainty_set import (
     UncertaintySet,
 )
 from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
-from skfolio.utils.tools import AutoEnum, cache_method, input_to_array
+from skfolio.utils.tools import (
+    AutoEnum,
+    _get_liquidation_turnover_and_cost,
+    cache_method,
+    input_to_array,
+)
 
 INSTALLED_SOLVERS = cp.installed_solvers()
 
@@ -220,6 +225,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -279,6 +290,8 @@ class ConvexOptimization(BaseOptimization, ABC):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -1354,16 +1367,25 @@ class ConvexOptimization(BaseOptimization, ABC):
             name=_TRANSACTION_COSTS,
         )
         if np.all(transaction_costs == 0):
-            return cp.Constant(0)
+            cost = cp.Constant(0)
+        else:
+            previous_weights = self._clean_previous_weights(n_assets=n_assets)
+            if np.isscalar(transaction_costs):
+                cost = transaction_costs * cp.norm(previous_weights * factor - w, 1)
+            else:
+                cost = cp.norm(
+                    cp.multiply(transaction_costs, (previous_weights * factor - w)), 1
+                )
 
-        previous_weights = self._clean_previous_weights(n_assets=n_assets)
-
-        if np.isscalar(transaction_costs):
-            return transaction_costs * cp.norm(previous_weights * factor - w, 1)
-        return cp.norm(
-            cp.multiply(transaction_costs, (previous_weights * factor - w)),
-            1,
+        _, liquidation_cost = _get_liquidation_turnover_and_cost(
+            previous_weights=self.previous_weights,
+            transaction_costs=self.transaction_costs,
+            assets_names=getattr(self, "feature_names_in_", None),
+            investable_mask=getattr(self, "investable_mask_", None),
         )
+        if liquidation_cost:
+            cost += liquidation_cost * factor
+        return cost
 
     @cache_method("_cvx_cache")
     def _cvx_management_fee(
@@ -1425,7 +1447,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _turnover(
         self, n_assets: int, w: cp.Variable, factor: skt.Factor
     ) -> cp.Expression:
-        """Expression of the portfolio turnover.
+        """Per-asset turnover in the investable optimization universe.
 
         Parameters
         ----------
