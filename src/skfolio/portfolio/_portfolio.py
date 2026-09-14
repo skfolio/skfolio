@@ -543,8 +543,6 @@ class Portfolio(BasePortfolio):
         **kwargs,
     ):
         weights_provided = weights is not None
-        # Failed portfolios need only the input's shape and labels, even when
-        # invalid returns caused the optimization to fail.
         rets = _to_numpy_returns(X) if weights_provided else None
         # extract assets names from X
         assets = None
