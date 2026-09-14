@@ -240,16 +240,36 @@ def predicted_factor_attribution(
     >>> from skfolio.attribution import predicted_factor_attribution
     >>> import numpy as np
     >>>
+    >>> loading_matrix = np.array(
+    ...     [
+    ...         [1.0, 0.5, 0.2],
+    ...         [0.8, 1.0, 0.1],
+    ...         [0.3, 0.2, 1.0],
+    ...     ]
+    ... )
+    >>> factor_cov = np.array(
+    ...     [
+    ...         [0.00016, 0.00004, 0.00000],
+    ...         [0.00004, 0.00012, 0.00000],
+    ...         [0.00000, 0.00000, 0.00008],
+    ...     ]
+    ... )
+    >>> idio_cov = np.array([0.00004, 0.00006, 0.00008])
+    >>> asset_names = ["AAPL", "GOOGL", "MSFT"]
+    >>>
     >>> # Volatility attribution only
     >>> attribution = predicted_factor_attribution(
     ...     weights=np.array([0.4, 0.3, 0.3]),
     ...     loading_matrix=loading_matrix,
     ...     factor_covariance=factor_cov,
     ...     idio_covariance=idio_cov,
+    ...     asset_names=asset_names,
     ...     factor_names=["Momentum", "Value", "Size"],
     ... )
     >>> print(f"Total volatility: {attribution.total.vol:.2%}")
+    Total volatility: 21.77%
     >>> print(f"Factor exposures: {attribution.factors.exposure}")
+    Factor exposures: [0.73 0.56 0.41]
     >>>
     >>> # With families
     >>> attribution = predicted_factor_attribution(
@@ -257,11 +277,14 @@ def predicted_factor_attribution(
     ...     loading_matrix=loading_matrix,
     ...     factor_covariance=factor_cov,
     ...     idio_covariance=idio_cov,
+    ...     asset_names=asset_names,
     ...     factor_names=["Momentum", "Value", "Size"],
     ...     factor_families=["Style", "Style", "Size"],
     ... )
     >>> print(f"Family names: {attribution.families.names}")
+    Family names: ['Style' 'Size']
     >>> print(f"Family vol contribs: {attribution.families.vol_contrib}")
+    Family vol contribs: [0.18012563 0.01556767]
     >>>
     >>> # Volatility and return attribution
     >>> attribution = predicted_factor_attribution(
@@ -269,10 +292,18 @@ def predicted_factor_attribution(
     ...     loading_matrix=loading_matrix,
     ...     factor_covariance=factor_cov,
     ...     idio_covariance=idio_cov,
+    ...     asset_names=asset_names,
     ...     factor_names=["Momentum", "Value", "Size"],
-    ...     factor_mu=np.array([0.05, 0.03, 0.02]),
+    ...     factor_mu=np.array([0.0002, 0.00012, 0.00008]),
     ... )
     >>> attribution.summary_df()
+                  Volatility Contribution  ... Expected Return Contribution
+    Component                              ...
+    Systematic                     19.57%  ...                        6.20%
+    Idiosyncratic                   2.20%  ...                        0.00%
+    Total                          21.77%  ...                        6.20%
+    <BLANKLINE>
+    [3 rows x 3 columns]
     """
     # Validate weights
     weights = np.asarray(weights, dtype=float)

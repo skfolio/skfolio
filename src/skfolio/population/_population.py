@@ -744,8 +744,32 @@ class Population(list):
 
         Examples
         --------
+        >>> from skfolio import RiskMeasure
+        >>> from skfolio.datasets import load_sp500_dataset
+        >>> from skfolio.measures import RatioMeasure
+        >>> from skfolio.optimization import InverseVolatility, RiskBudgeting
+        >>> from skfolio.population import Population
+        >>> from skfolio.preprocessing import prices_to_returns
+        >>>
+        >>> prices = load_sp500_dataset()
+        >>> X = prices_to_returns(prices)
+        >>>
+        >>> benchmark = InverseVolatility(
+        ...     portfolio_params=dict(name="Benchmark", tag="Benchmark")
+        ... )
+        >>> benchmark.fit(X)
+        InverseVolatility(portfolio_params={'name': 'Benchmark', 'tag': 'Benchmark'})
+        >>> model = RiskBudgeting(
+        ...     risk_measure=RiskMeasure.VARIANCE,
+        ...     portfolio_params=dict(name="Risk Parity Model", tag="Risk Parity Model"),
+        ... )
+        >>> model.fit(X)
+        RiskBudgeting(portfolio_params={'name': 'Risk Parity Model',
+                                        'tag': 'Risk Parity Model'})
+        >>>
+        >>> population = Population([benchmark.predict(X), model.predict(X)])
         >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
-        >>> fig = population.plot_measure_box(
+        >>> fig = population.boxplot_measure(
         ...     measure=RatioMeasure.SHARPE_RATIO,
         ...     tag_list=["Benchmark", "Risk Parity Model"]
         ... )
