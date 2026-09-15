@@ -1269,7 +1269,8 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            args[arg_name] = w - target_weights
+                            # Scale the target too; final weights are w / factor.
+                            args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":
