@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.6 (2026-09-15)
+
+### Bug Fixes
+
+- **optimization**: Normalize target weights in maximum-ratio optimization
+  ([#318](https://github.com/skfolio/skfolio/pull/318),
+  [`fecc0b7`](https://github.com/skfolio/skfolio/commit/fecc0b780f5db4b801030bace8265cb94ba40b52))
+
+
 ## v1.2.5 (2026-09-15)
 
 ### Bug Fixes
