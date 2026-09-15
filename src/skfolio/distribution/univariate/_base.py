@@ -39,7 +39,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
     @abstractmethod
     def _scipy_params(self) -> dict[str, float]:
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
-        pass
+        ...
 
     @property
     def n_params(self) -> int:
@@ -71,7 +71,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         self : BaseUnivariateDist
             Returns the instance itself.
         """
-        pass
+        ...
 
     def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
         """Validate and convert the input data X.

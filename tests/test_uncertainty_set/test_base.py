@@ -2,43 +2,7 @@
 
 from __future__ import annotations
 
-import numpy as np
-
-from skfolio.uncertainty_set import (
-    BaseCovarianceUncertaintySet,
-    BaseMuUncertaintySet,
-    EmpiricalCovarianceUncertaintySet,
-)
-
-
-class _MinimalMuUncertaintySet(BaseMuUncertaintySet):
-    def __init__(self, prior_estimator=None):
-        super().__init__(prior_estimator=prior_estimator)
-
-    def fit(self, X, y=None, **fit_params):
-        super().fit(X, y, **fit_params)
-        return self
-
-
-class _MinimalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
-    def __init__(self, prior_estimator=None):
-        super().__init__(prior_estimator=prior_estimator)
-
-    def fit(self, X, y=None, **fit_params):
-        super().fit(X, y, **fit_params)
-        return self
-
-
-def test_base_mu_uncertainty_set_abstract_fit_is_no_op():
-    model = _MinimalMuUncertaintySet()
-    assert model.fit(np.zeros((3, 2))) is model
-    assert model.prior_estimator is None
-
-
-def test_base_covariance_uncertainty_set_abstract_fit_is_no_op():
-    model = _MinimalCovarianceUncertaintySet()
-    assert model.fit(np.zeros((3, 2))) is model
-    assert model.prior_estimator is None
+from skfolio.uncertainty_set import EmpiricalCovarianceUncertaintySet
 
 
 def test_validate_X_y_without_y(X_small):

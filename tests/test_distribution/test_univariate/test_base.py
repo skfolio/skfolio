@@ -101,25 +101,6 @@ def test_qq_plot(dummy_model):
     assert "Test Q-Q Plot" in fig.layout.title.text
 
 
-class ForwardingUnivariate(BaseUnivariateDist):
-    """Concrete univariate estimator forwarding to the abstract base bodies."""
-
-    _scipy_model = norm
-
-    @property
-    def _scipy_params(self) -> dict[str, float]:
-        return super()._scipy_params
-
-    def fit(self, X, y=None):
-        return super().fit(X, y)
-
-
-def test_abstract_bodies_return_none():
-    model = ForwardingUnivariate()
-    assert model._scipy_params is None
-    assert model.fit(np.zeros((3, 1))) is None
-
-
 def test_validate_X_wrong_shape(dummy_model):
     with pytest.raises(ValueError, match="X should contain a single column"):
         dummy_model._validate_X(np.zeros((3, 2)), reset=True)

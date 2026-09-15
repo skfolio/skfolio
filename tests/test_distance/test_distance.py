@@ -216,18 +216,3 @@ class TestMutualInformation:
         # Un-normalized mutual information is the raw score, which is not bounded by 1
         assert not np.allclose(distance.codependence_, normalized.codependence_)
         assert np.all(distance.codependence_ >= 0)
-
-
-class TestBaseDistance:
-    def test_abstract_methods_via_minimal_subclass(self):
-        from skfolio.distance._base import BaseDistance
-
-        class _Minimal(BaseDistance):
-            def __init__(self):
-                super().__init__()
-
-            def fit(self, X, y=None):
-                return super().fit(X, y)
-
-        estimator = _Minimal()
-        assert estimator.fit(np.zeros((3, 2))) is None

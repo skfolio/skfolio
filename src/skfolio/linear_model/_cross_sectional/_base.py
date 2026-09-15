@@ -80,7 +80,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
         self : BaseCSLinearModel
             Fitted estimator.
         """
-        pass
+        ...
 
     def predict(self, X: ArrayLike) -> FloatArray:
         r"""Predict using the cross-sectional linear model.

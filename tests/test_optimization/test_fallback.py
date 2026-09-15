@@ -612,11 +612,6 @@ def test_subclass_without_fit_keeps_parent_wrapped_fit():
     assert ChildWithoutFit.fit._fallback_wrapped is True
 
 
-def test_abstract_fit_is_a_noop(X):
-    model = CustomOptimization()
-    assert BaseOptimization.fit(model, X) is None
-
-
 def test_fallback_empty_list_raises_primary_error(X):
     model = CustomOptimization(fail=True, fallback=[])
     with pytest.raises(RuntimeError, match="CustomOptimization forced failure"):

@@ -16,7 +16,6 @@ from skfolio.model_selection import (
 )
 from skfolio.model_selection._combinatorial import (
     _MAX_COMBINATIONS,
-    BaseCombinatorialCV,
     _avg_train_size,
     _n_test_paths,
 )
@@ -416,20 +415,6 @@ def test_combinatorial_purged_cv_regression():
         # Should contain valid indices
         for test_array in test:
             assert np.all((test_array >= 0) & (test_array < len(X)))
-
-
-def test_base_combinatorial_cv_abstract_bodies_return_none():
-    class _MinimalCV(BaseCombinatorialCV):
-        def split(self, X, y=None):
-            return super().split(X, y)
-
-        def get_path_ids(self):
-            return super().get_path_ids()
-
-    cv = _MinimalCV()
-    assert cv.split(np.zeros((4, 2))) is None
-    assert cv.get_path_ids() is None
-    assert repr(cv) == "_MinimalCV()"
 
 
 @pytest.mark.parametrize(

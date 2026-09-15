@@ -1072,11 +1072,39 @@ class TestMultiPeriodPortfolioArithmetic:
         for p, q in zip(neg, mpp, strict=True):
             np.testing.assert_array_equal(p.weights, -q.weights)
 
-    def test_floor(self, mpp):
-        assert isinstance(math.floor(mpp), MultiPeriodPortfolio)
+    @pytest.mark.parametrize(
+        "operation,expected",
+        [
+            (math.floor, [[-2.0, -1.0, 0.0, 2.0], [1.0, 0.0, -1.0, -2.0]]),
+            (math.trunc, [[-1.0, 0.0, 0.0, 2.0], [1.0, 0.0, 0.0, -1.0]]),
+        ],
+        ids=["floor", "trunc"],
+    )
+    def test_rounding_weights(self, operation, expected):
+        X = np.random.default_rng(0).normal(0, 0.01, (8, 4))
+        weights = [[-1.8, -0.2, 0.2, 2.8], [1.8, 0.2, -0.2, -1.8]]
+        mpp = MultiPeriodPortfolio(
+            portfolios=[
+                Portfolio(X=X[:4], weights=weights[0]),
+                Portfolio(X=X[4:], weights=weights[1]),
+            ],
+            tag="rounding",
+        )
 
-    def test_trunc(self, mpp):
-        assert isinstance(math.trunc(mpp), MultiPeriodPortfolio)
+        result = operation(mpp)
+
+        assert isinstance(result, MultiPeriodPortfolio)
+        assert result is not mpp
+        assert result.tag == mpp.tag
+        assert len(result) == 2
+        for original, rounded, before, after in zip(
+            mpp, result, weights, expected, strict=True
+        ):
+            assert isinstance(rounded, Portfolio)
+            assert rounded is not original
+            np.testing.assert_array_equal(original.weights, before)
+            np.testing.assert_array_equal(rounded.weights, after)
+            np.testing.assert_allclose(rounded.returns, original.X @ after)
 
     def test_add_errors(self, mpp):
         with pytest.raises(

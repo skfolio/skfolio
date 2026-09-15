@@ -1379,7 +1379,7 @@ class MeanRisk(ConvexOptimization):
                     + regularization * self._scale_objective
                     + custom_objective * self._scale_objective
                 )
-            case _:  # pragma: no cover - unreachable: every ObjectiveFunction member is handled above
+            case _:
                 raise ValueError(
                     f"objective_function {self.objective_function} is not valid"
                 )

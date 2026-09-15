@@ -208,21 +208,13 @@ def test_apply_copula_rotation_unsupported():
         _apply_copula_rotation(X, rotation="foo")
 
 
-def test_apply_rotation_cdf_unsupported(monkeypatch):
-    # The rotation helper rejects unknown rotations first; bypass it so the
-    # defensive branch of the CDF adjustment is exercised on its own.
-    from skfolio.distribution.copula import _utils
-
-    monkeypatch.setattr(_utils, "_apply_copula_rotation", lambda X, rotation: X)
+def test_apply_rotation_cdf_unsupported():
     X = np.random.default_rng(0).random((10, 2))
     with pytest.raises(ValueError, match="Unsupported rotation: foo"):
         _apply_rotation_cdf(dummy_cdf, X=X, rotation="foo")
 
 
-def test_apply_rotation_partial_derivatives_unsupported(monkeypatch):
-    from skfolio.distribution.copula import _utils
-
-    monkeypatch.setattr(_utils, "_apply_copula_rotation", lambda X, rotation: X)
+def test_apply_rotation_partial_derivatives_unsupported():
     X = np.random.default_rng(0).random((10, 2))
     with pytest.raises(ValueError, match="Unsupported rotation: foo"):
         _apply_rotation_partial_derivatives(

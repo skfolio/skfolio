@@ -1235,13 +1235,6 @@ class TestPortfolioMeasures:
         assert x.min() >= np.percentile(portfolio.returns, 1.0) - 1e-12
         assert x.max() <= np.percentile(portfolio.returns, 99.0) + 1e-12
 
-    def test_base_portfolio_abstract_members_have_no_behavior(self, X, weights):
-        from skfolio.portfolio._base import BasePortfolio
-
-        portfolio = Portfolio(X=X, weights=weights)
-        assert BasePortfolio.composition.fget(portfolio) is None
-        assert BasePortfolio.contribution(portfolio, PerfMeasure.MEAN) is None
-
 
 def test_failed_portfolio_floor_and_trunc_are_copies(X):
     # A failed portfolio has no weights to round, so both return a plain copy.

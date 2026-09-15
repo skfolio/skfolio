@@ -35,8 +35,7 @@ class BaseDistance(skb.BaseEstimator, ABC):
     distance_: FloatArray
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self): ...
 
     @abstractmethod
     def fit(self, X: ArrayLike, y=None) -> BaseDistance:
@@ -55,4 +54,4 @@ class BaseDistance(skb.BaseEstimator, ABC):
         self : BaseDistance
             Fitted estimator.
         """
-        pass
+        ...

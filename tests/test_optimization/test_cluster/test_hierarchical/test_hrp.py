@@ -7,7 +7,7 @@ from sklearn import clone, config_context
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
-from skfolio.optimization import BaseHierarchicalOptimization, HierarchicalRiskParity
+from skfolio.optimization import HierarchicalRiskParity
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 from skfolio.typing import FloatArray
 
@@ -568,10 +568,3 @@ def test_hierarchical_clean_input_none():
     model = HierarchicalRiskParity()
     with pytest.raises(ValueError, match="Cannot convert None to array"):
         model._clean_input(None, n_assets=3, fill_value=0, name="min_weights")
-
-
-def test_hierarchical_abstract_fit_is_a_noop(small_X):
-    # `BaseOptimization.__init_subclass__` wraps every subclass `fit` with the
-    # fallback chain, which discards the return value and yields the estimator.
-    model = HierarchicalRiskParity()
-    assert BaseHierarchicalOptimization.fit(model, small_X) is model

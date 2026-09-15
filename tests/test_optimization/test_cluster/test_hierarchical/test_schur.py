@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -265,8 +267,8 @@ def test_schur_invalid_gamma(X):
 
 @pytest.fixture
 def non_spd_schur_inputs():
-    # Rank-one covariance: with the (2, 3) block as the left cluster, its Schur
-    # augmentation is far from positive definite (smallest eigenvalue ~ -125).
+    # The covariance is positive definite, but nearly rank one. Its left Schur
+    # block has negative variances, which correlation clipping cannot repair.
     v = np.array([1.0, 2.0, 3.0, 4.0])
     covariance = np.outer(v, v) + 1e-6 * np.eye(4)
     sorted_assets = np.array([2, 3, 0, 1])
@@ -285,34 +287,46 @@ def _compute_weights_from(inputs, force_spd):
     )
 
 
-def test_compute_weights_force_spd_repairs_block(non_spd_schur_inputs):
-    # Without the repair the non-SPD block aborts the recursion.
+def test_compute_weights_rejects_unrepairable_block(non_spd_schur_inputs):
     assert _compute_weights_from(non_spd_schur_inputs, force_spd=False) is None
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        with pytest.raises(
+            ValueError, match=r"Schur complement failed with gamma=0\.5000"
+        ):
+            _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+    assert not [
+        warning for warning in caught if issubclass(warning.category, RuntimeWarning)
+    ]
 
-    # With it the recursion runs to completion and returns a full weight vector.
-    # The input is a deliberately degenerate rank-1 covariance, so the weights
-    # themselves are not meaningful -- only that the repair unblocked the path.
-    weights = _compute_weights_from(non_spd_schur_inputs, force_spd=True)
-    assert weights.shape == (4,)
 
-
-def test_compute_weights_force_spd_repairs_both_blocks(
-    non_spd_schur_inputs, monkeypatch
-):
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+@pytest.mark.parametrize(
+    "bad_left,bad_right", [(True, False), (False, True), (True, True)]
+)
+def test_compute_weights_force_spd_repairs_blocks(monkeypatch, bad_left, bad_right):
+    # Simulate indefinite augmented blocks with positive variances so the real
+    # correlation-clipping repair can run. Exercise left, right, and both repairs.
+    bad_block = np.array([[1.0, 1.1], [1.1, 1.0]])
+    blocks = [bad_block if bad else np.eye(2) for bad in (bad_left, bad_right)]
+    augmented = iter(blocks)
+    monkeypatch.setattr(_schur, "_schur_augmentation", lambda *a, **kw: next(augmented))
     calls = []
+    cov_nearest = _schur.cov_nearest
 
-    def identity_cov_nearest(cov):
+    def record_repair(cov):
         calls.append(cov.copy())
-        return cov
+        return cov_nearest(cov)
 
-    monkeypatch.setattr(_schur, "cov_nearest", identity_cov_nearest)
-    weights = _compute_weights_from(non_spd_schur_inputs, force_spd=True)
-    # The identity stand-in never actually repairs, so both blocks of the top
-    # split are sent through `cov_nearest`, and so are the blocks below them.
-    assert len(calls) >= 2
-    assert calls[0].shape == (2, 2)
-    assert calls[1].shape == (2, 2)
-    assert weights.shape == (4,)
+    monkeypatch.setattr(_schur, "cov_nearest", record_repair)
+    weights = _compute_weights_from((np.eye(4), np.arange(4)), force_spd=True)
+
+    assert len(calls) == bad_left + bad_right
+    for block in calls:
+        np.testing.assert_array_equal(block, bad_block)
+    assert np.all(np.isfinite(weights))
+    np.testing.assert_allclose(weights.sum(), 1.0)
+    assert np.all((weights >= 0) & (weights <= 1))
 
 
 def test_compute_weights_force_spd_failure_raises(non_spd_schur_inputs, monkeypatch):
@@ -322,3 +336,35 @@ def test_compute_weights_force_spd_failure_raises(non_spd_schur_inputs, monkeypa
     monkeypatch.setattr(_schur, "cov_nearest", failing_cov_nearest)
     with pytest.raises(ValueError, match=r"Schur complement failed with gamma=0\.5000"):
         _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_compute_weights_uses_repaired_blocks_in_later_splits(monkeypatch):
+    bad_block = np.eye(4)
+    bad_block[0, 1] = bad_block[1, 0] = 1.1
+    root_blocks = iter([bad_block, np.eye(4)])
+    schur_augmentation = _schur._schur_augmentation
+    later_blocks = []
+
+    def augment(a, b, d, gamma):
+        if len(a) == 4:
+            return next(root_blocks)
+        later_blocks.append(a.copy())
+        return schur_augmentation(a, b, d, gamma=gamma)
+
+    monkeypatch.setattr(_schur, "_schur_augmentation", augment)
+    weights = _compute_weights(
+        gamma=0.5,
+        sorted_assets=np.arange(8),
+        covariance=np.eye(8),
+        max_weights=np.ones(8),
+        min_weights=np.zeros(8),
+        force_spd=True,
+    )
+
+    assert len(later_blocks) == 4
+    for block in later_blocks:
+        assert np.all(np.linalg.eigvalsh(block) > 0)
+    assert np.all(np.isfinite(weights))
+    np.testing.assert_allclose(weights.sum(), 1.0)
+    assert np.all((weights >= 0) & (weights <= 1))

@@ -54,51 +54,6 @@ def test_n_params():
     assert cop.n_params == 1
 
 
-class DummyCopula(BaseBivariateCopula):
-    """Minimal concrete copula forwarding to the abstract base bodies."""
-
-    _n_params = 0
-
-    @property
-    def lower_tail_dependence(self) -> float:
-        return super().lower_tail_dependence
-
-    @property
-    def upper_tail_dependence(self) -> float:
-        return super().upper_tail_dependence
-
-    @property
-    def fitted_repr(self) -> str:
-        return super().fitted_repr
-
-    def fit(self, X, y=None):
-        return super().fit(X, y)
-
-    def cdf(self, X):
-        return super().cdf(X)
-
-    def partial_derivative(self, X, first_margin=False):
-        return super().partial_derivative(X, first_margin=first_margin)
-
-    def inverse_partial_derivative(self, X, first_margin=False):
-        return super().inverse_partial_derivative(X, first_margin=first_margin)
-
-    def score_samples(self, X):
-        return super().score_samples(X)
-
-
-def test_abstract_bodies_return_none(random_data):
-    cop = DummyCopula()
-    assert cop.lower_tail_dependence is None
-    assert cop.upper_tail_dependence is None
-    assert cop.fitted_repr is None
-    assert cop.fit(random_data) is None
-    assert cop.cdf(random_data) is None
-    assert cop.partial_derivative(random_data) is None
-    assert cop.inverse_partial_derivative(random_data) is None
-    assert cop.score_samples(random_data) is None
-
-
 def test_plot_tail_concentration_with_X_default_title(random_data):
     cop = GaussianCopula().fit(random_data)
     fig = cop.plot_tail_concentration(X=random_data)

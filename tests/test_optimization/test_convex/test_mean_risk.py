@@ -18,7 +18,6 @@ from skfolio import (
 from skfolio.model_selection import cross_val_predict
 from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
-    ConvexOptimization,
     EqualWeighted,
     MeanRisk,
     ObjectiveFunction,
@@ -2577,13 +2576,6 @@ def test_unimplemented_fourth_moment_risks():
         model._fourth_lower_partial_moment_risk(w=w, factor=cp.Constant(1))
 
 
-def test_convex_optimization_abstract_fit_is_a_noop(X_tiny):
-    # `BaseOptimization.__init_subclass__` wraps every subclass `fit` with the
-    # fallback chain, which discards the return value and yields the estimator.
-    model = MeanRisk()
-    assert ConvexOptimization.fit(model, X_tiny) is model
-
-
 def test_mip_threshold_short_with_group_cardinalities(X_tiny):
     model = MeanRisk(
         min_weights=-0.5,
@@ -2690,6 +2682,13 @@ def test_mean_risk_validate_params(X_tiny, params, error, match):
 def test_partial_fit_rejects_efficient_frontier(X_tiny):
     model = _make_online_mean_risk(efficient_frontier_size=3)
     with pytest.raises(ValueError, match="not supported with `partial_fit`"):
+        model.partial_fit(X_tiny)
+
+
+def test_partial_fit_rejects_changed_invalid_objective(X_tiny):
+    model = _make_online_mean_risk().partial_fit(X_tiny)
+    model.set_params(objective_function="invalid")
+    with pytest.raises(ValueError, match="objective_function invalid is not valid"):
         model.partial_fit(X_tiny)
 
 

@@ -132,8 +132,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
     """Handles parameter management for ensemble estimators."""
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self): ...
 
     def _get_params(self, attr, deep=True):
         out = super().get_params(deep=deep)

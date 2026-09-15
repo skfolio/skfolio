@@ -174,7 +174,6 @@ class _FixedShapeLoadingMatrix(BaseLoadingMatrix):
         self.intercepts_shape = intercepts_shape
 
     def fit(self, X, y, **fit_params):
-        super().fit(X, y, **fit_params)
         n_assets = np.shape(X)[1]
         n_factors = np.shape(y)[1]
         loading_shape = self.loading_shape or (n_assets, n_factors)

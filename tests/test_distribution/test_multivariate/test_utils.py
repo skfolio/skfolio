@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from skfolio.distribution.multivariate._utils import (
-    BaseNode,
     ChildNode,
     DependenceMethod,
     Edge,
@@ -83,16 +82,8 @@ def test_edge_cond_sets_repr():
     assert repr(EdgeCondSets(conditioned=(1, 2), conditioning=set())) == "(1, 2)"
 
 
-class DummyNode(BaseNode):
-    """Minimal concrete node forwarding to the abstract clear_cache body."""
-
-    def clear_cache(self, **kwargs):
-        return super().clear_cache(**kwargs)
-
-
-def test_base_node_clear_cache_body():
-    node = DummyNode(ref=0)
-    assert node.clear_cache() is None
+def test_root_node_repr():
+    node = RootNode(ref=0, central=False)
     assert repr(node) == "Node(0)"
 
 

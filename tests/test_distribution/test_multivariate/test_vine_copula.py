@@ -1662,14 +1662,9 @@ def test_vine_conditioning_raise(small_model):
         small_model.sample(n_samples=5, conditioning={0: "abc"})
 
 
-def test_vine_conditioning_keys_not_in_X(small_model, monkeypatch):
-    # `validate_input_list` already rejects unknown keys; bypass it so the vine's
-    # own guard on the resolved indices is exercised.
-    from skfolio.distribution.multivariate import _vine_copula
-
-    monkeypatch.setattr(_vine_copula, "validate_input_list", lambda **kwargs: [99])
-    with pytest.raises(ValueError, match="keys of `conditioning` must be asset"):
-        small_model.sample(n_samples=5, conditioning={0: 0.5})
+def test_vine_conditioning_keys_not_in_X(small_model):
+    with pytest.raises(ValueError, match="99 is not in"):
+        small_model.sample(n_samples=5, conditioning={99: 0.5})
 
 
 def test_vine_sampling_order_incomplete(small_model):

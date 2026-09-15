@@ -2551,20 +2551,8 @@ class TestShrunkCovariance:
         assert model.covariance_.shape == (20, 20)
 
 
-class _SuperCallingCovariance(BaseCovariance):
-    """Concrete subclass delegating `fit` to the abstract base implementation."""
-
-    def fit(self, X, y=None, **fit_params):
-        super().fit(X, y, **fit_params)
-        return self
-
-
 class TestBaseCovarianceEdgeCases:
     """Edge cases of the `BaseCovariance` inference and sanity-check helpers."""
-
-    def test_abstract_fit_is_no_op(self):
-        model = _SuperCallingCovariance()
-        assert model.fit(np.zeros((3, 2))) is model
 
     def test_score_without_finite_fitted_assets_raises(self, X_small):
         model = EmpiricalCovariance().fit(np.asarray(X_small))

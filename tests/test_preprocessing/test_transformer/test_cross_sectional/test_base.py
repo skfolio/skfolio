@@ -67,23 +67,3 @@ class TestFitValidation:
     def test_fit_validates_parameters(self, estimator, shape, match):
         with pytest.raises(ValueError, match=match):
             estimator.fit(np.ones(shape))
-
-
-class TestAbstractBase:
-    """The abstract base methods have no behavior; subclasses must override."""
-
-    def test_base_init_and_transform_have_no_behavior(self):
-        from skfolio.preprocessing._transformer._cross_sectional._base import (
-            BaseCSTransformer,
-        )
-
-        class Delegating(BaseCSTransformer):
-            def __init__(self):
-                super().__init__()
-
-            def transform(self, X, cs_weights=None, cs_groups=None):
-                return super().transform(X, cs_weights=cs_weights, cs_groups=cs_groups)
-
-        transformer = Delegating()
-        assert transformer.get_params() == {}
-        assert transformer.transform(np.ones((1, 3))) is None
