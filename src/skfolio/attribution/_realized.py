@@ -227,31 +227,56 @@ def realized_factor_attribution(
 
     Examples
     --------
-    >>> from skfolio.attribution import realized_factor_attribution
     >>> import numpy as np
-    >>>
-    >>> # Static exposures and weights
-    >>> attribution = realized_factor_attribution(
-    ...     factor_returns=factor_returns,  # (252, 3)
-    ...     portfolio_returns=portfolio_returns,  # (252,)
-    ...     exposures=loading_matrix,  # (10, 3)
-    ...     weights=weights,  # (10,)
-    ...     idio_returns=residuals,  # (252, 10)
-    ...     factor_names=["Momentum", "Value", "Size"],
-    ... )
-    >>> print(f"Total volatility: {attribution.total.vol:.2%}")
-    >>> print(f"Factor contributions: {attribution.factors.vol_contrib}")
-    >>>
-    >>> # Time-varying weights (e.g., from rebalancing)
+    >>> from skfolio.attribution import realized_factor_attribution
+    >>> # Simulated daily returns: 10 assets, 3 factors.
+    >>> rng = np.random.default_rng(0)
+    >>> factor_returns = rng.standard_normal((252, 3)) * 0.01
+    >>> loading_matrix = rng.uniform(0.5, 1.5, size=(10, 3))
+    >>> weights = np.full(10, 1.0 / 10)
+    >>> residuals = rng.standard_normal((252, 10)) * 0.005
+    >>> asset_returns = factor_returns @ loading_matrix.T + residuals
+    >>> portfolio_returns = asset_returns @ weights
+    >>> asset_names = [f"Asset_{i}" for i in range(10)]
+    >>> factor_names = ["Momentum", "Value", "Size"]
+
+    Compute attribution with fixed weights (annualized by default):
+
     >>> attribution = realized_factor_attribution(
     ...     factor_returns=factor_returns,
     ...     portfolio_returns=portfolio_returns,
     ...     exposures=loading_matrix,
-    ...     weights=daily_weights,  # (252, 10)
+    ...     weights=weights,
     ...     idio_returns=residuals,
-    ...     factor_names=["Momentum", "Value", "Size"],
+    ...     asset_names=asset_names,
+    ...     factor_names=factor_names,
     ... )
-    >>> print(f"Exposure std (shows position dynamism): {attribution.factors.exposure_std}")
+    >>> print(f"Annualized volatility: {attribution.total.vol:.2%}")
+    Annualized volatility: 26.16%
+    >>> print(f"Factor contributions: {attribution.factors.vol_contrib}")
+    Factor contributions: [0.07630795 0.11148071 0.07271759]
+
+    Simulate daily rebalancing with a different set of asset weights for each day:
+
+    >>> daily_weights = weights + rng.uniform(-0.02, 0.02, size=(252, 10))
+    >>> # Normalize each day's weights to sum to one.
+    >>> daily_weights /= daily_weights.sum(axis=1, keepdims=True)
+    >>> # Apply each day's weights to that day's asset returns.
+    >>> portfolio_returns = (asset_returns * daily_weights).sum(axis=1)
+    >>> attribution = realized_factor_attribution(
+    ...     factor_returns=factor_returns,
+    ...     portfolio_returns=portfolio_returns,
+    ...     exposures=loading_matrix,
+    ...     weights=daily_weights,
+    ...     idio_returns=residuals,
+    ...     asset_names=asset_names,
+    ...     factor_names=factor_names,
+    ... )
+
+    Inspect the standard deviation of each factor exposure over time:
+
+    >>> print(attribution.factors.exposure_std)
+    [0.0122634  0.00836653 0.01058102]
     """
     factor_returns = np.asarray(factor_returns, dtype=float)
     portfolio_returns = np.asarray(portfolio_returns, dtype=float)
@@ -477,29 +502,58 @@ def rolling_realized_factor_attribution(
 
     Examples
     --------
-    >>> from skfolio.attribution import rolling_realized_factor_attribution
     >>> import numpy as np
     >>> import pandas as pd
-    >>>
-    >>> # Rolling attribution with 60-day windows, advancing 21 days (monthly)
+    >>> from skfolio.attribution import rolling_realized_factor_attribution
+    >>> # Simulated daily returns: 10 assets, 3 factors.
+    >>> rng = np.random.default_rng(0)
+    >>> factor_returns = rng.standard_normal((252, 3)) * 0.01
+    >>> loading_matrix = rng.uniform(0.5, 1.5, size=(10, 3))
+    >>> weights = np.full(10, 1.0 / 10)
+    >>> residuals = rng.standard_normal((252, 10)) * 0.005
+    >>> asset_returns = factor_returns @ loading_matrix.T + residuals
+    >>> portfolio_returns = asset_returns @ weights
+    >>> asset_names = [f"Asset_{i}" for i in range(10)]
+    >>> factor_names = ["Momentum", "Value", "Size"]
+
+    Use 60 business days per window, advancing by 21 (approximately monthly):
+
     >>> dates = pd.bdate_range("2023-01-01", periods=252)
     >>> attribution = rolling_realized_factor_attribution(
-    ...     factor_returns=factor_returns,  # (252, 3)
-    ...     portfolio_returns=portfolio_returns,  # (252,)
-    ...     exposures=loading_matrix,  # (10, 3)
-    ...     weights=weights,  # (10,)
-    ...     idio_returns=residuals,  # (252, 10)
-    ...     factor_names=["Momentum", "Value", "Size"],
+    ...     factor_returns=factor_returns,
+    ...     portfolio_returns=portfolio_returns,
+    ...     exposures=loading_matrix,
+    ...     weights=weights,
+    ...     idio_returns=residuals,
+    ...     asset_names=asset_names,
+    ...     factor_names=factor_names,
     ...     observations=dates,
     ...     window_size=60,
     ...     step=21,
     ... )
     >>> print(f"Number of windows: {len(attribution.observations)}")
-    >>> print(f"Total vol over time: {attribution.total.vol}")
-    >>>
-    >>> # Get MultiIndex DataFrame of factor attribution over time
+    Number of windows: 10
+
+    Annualized volatility in each window:
+
+    >>> print(attribution.total.vol)
+    [0.26478682 0.28232785 0.28856211 0.27556505 0.2311759  0.23023946
+     0.22712558 0.26810224 0.26441032 0.28657536]
+
+    Inspect the first two windows as a numeric DataFrame:
+
     >>> df = attribution.factors_df(formatted=False)
-    >>> print(df.head())
+    >>> print(df.head(6))  # Index: window end date, factor
+                      Exposure Mean  ...  Correlation with Portfolio
+    Observation Factor                   ...
+    2023-03-24  Momentum       0.898797  ...                    0.687795
+                Value          1.054506  ...                    0.572425
+                Size           0.912125  ...                    0.564114
+    2023-04-24  Momentum       0.898797  ...                    0.545547
+                Value          1.054506  ...                    0.689650
+                Size           0.912125  ...                    0.561379
+    <BLANKLINE>
+    [6 rows x 8 columns]
     """
     factor_returns = np.asarray(factor_returns, dtype=float)
     portfolio_returns = np.asarray(portfolio_returns, dtype=float)
