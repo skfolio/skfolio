@@ -744,34 +744,31 @@ class Population(list):
 
         Examples
         --------
-        >>> from skfolio import RiskMeasure
-        >>> from skfolio.datasets import load_sp500_dataset
-        >>> from skfolio.measures import RatioMeasure
-        >>> from skfolio.optimization import InverseVolatility, RiskBudgeting
-        >>> from skfolio.population import Population
-        >>> from skfolio.preprocessing import prices_to_returns
-        >>>
-        >>> prices = load_sp500_dataset()
-        >>> X = prices_to_returns(prices)
-        >>>
-        >>> benchmark = InverseVolatility(
-        ...     portfolio_params=dict(name="Benchmark", tag="Benchmark")
+        >>> import numpy as np
+        >>> from skfolio import Population, Portfolio, RatioMeasure, RiskMeasure
+        >>> rng = np.random.default_rng(0)
+        >>> # Daily returns for two assets.
+        >>> X = rng.normal(0.0005, [0.02, 0.01], size=(252, 2))
+        >>> population = Population(
+        ...     [
+        ...         Portfolio(X, weights=[0.6, 0.4], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.7, 0.3], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.8, 0.2], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.4, 0.6], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.3, 0.7], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.2, 0.8], tag="Asset 2 tilt"),
+        ...     ]
         ... )
-        >>> benchmark.fit(X)
-        InverseVolatility(portfolio_params={'name': 'Benchmark', 'tag': 'Benchmark'})
-        >>> model = RiskBudgeting(
-        ...     risk_measure=RiskMeasure.VARIANCE,
-        ...     portfolio_params=dict(name="Risk Parity Model", tag="Risk Parity Model"),
-        ... )
-        >>> model.fit(X)
-        RiskBudgeting(portfolio_params={'name': 'Risk Parity Model',
-                                        'tag': 'Risk Parity Model'})
-        >>>
-        >>> population = Population([benchmark.predict(X), model.predict(X)])
+
+        Plot all portfolios in one box:
+
         >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
+
+        Plot one box per tag:
+
         >>> fig = population.boxplot_measure(
         ...     measure=RatioMeasure.SHARPE_RATIO,
-        ...     tag_list=["Benchmark", "Risk Parity Model"]
+        ...     tag_list=["Asset 1 tilt", "Asset 2 tilt"],
         ... )
         """
         if tag_list is None:
