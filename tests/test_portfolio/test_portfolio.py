@@ -13,6 +13,7 @@ import pytest
 
 import skfolio.measures as mt
 from skfolio import (
+    BasePortfolio,
     ExtraRiskMeasure,
     FailedPortfolio,
     MultiPeriodPortfolio,
@@ -584,6 +585,67 @@ def test_sample_weight_error(portfolio, sample_weight):
 
     with pytest.raises(ValueError, match="sample_weight must be a 1D array"):
         portfolio.sample_weight = [[1]]
+
+
+def test_constructor_sample_weight():
+    """Apply valid sample weights during portfolio construction."""
+    returns = np.array([0.018, 0.008, 0.032])
+    sample_weight = np.array([0.2, 0.3, 0.5])
+    expected_mean = sample_weight @ returns
+
+    base_portfolio = BasePortfolio(
+        returns=returns,
+        observations=np.arange(returns.size, dtype=float),
+        sample_weight=sample_weight,
+    )
+    portfolio = Portfolio(
+        X=returns[:, np.newaxis],
+        weights=np.array([1.0]),
+        sample_weight=sample_weight,
+    )
+
+    np.testing.assert_array_equal(base_portfolio.sample_weight, sample_weight)
+    np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
+    assert base_portfolio.mean == pytest.approx(expected_mean)
+    assert portfolio.mean == pytest.approx(expected_mean)
+
+
+@pytest.mark.parametrize(
+    ("sample_weight", "match"),
+    [
+        pytest.param(
+            np.array([0.5, 0.5]),
+            "sample_weight must have the same length as",
+            id="wrong-length",
+        ),
+        pytest.param(
+            np.array([[0.2, 0.3, 0.5]]),
+            "sample_weight must be a 1D array",
+            id="wrong-dimension",
+        ),
+        pytest.param(
+            np.ones(3),
+            "sample_weight must sum to one",
+            id="wrong-sum",
+        ),
+    ],
+)
+def test_constructor_sample_weight_error(sample_weight: np.ndarray, match: str):
+    """Reject invalid sample weights at the shared constructor boundary."""
+    returns = np.array([0.018, 0.008, 0.032])
+
+    with pytest.raises(ValueError, match=match):
+        BasePortfolio(
+            returns=returns,
+            observations=np.arange(returns.size, dtype=float),
+            sample_weight=sample_weight,
+        )
+    with pytest.raises(ValueError, match=match):
+        Portfolio(
+            X=returns[:, np.newaxis],
+            weights=np.array([1.0]),
+            sample_weight=sample_weight,
+        )
 
 
 def test_weight_dict(X, weights):
