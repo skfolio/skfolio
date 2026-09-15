@@ -1038,13 +1038,60 @@ class TestPortfolioNaNReturns:
         original = rets.copy()
         weights = np.array([1.0, 0.0])
         ptf = Portfolio(X=rets, weights=weights)
-        np.testing.assert_array_equal(np.asarray(ptf.X), rets)
+        assert ptf.X is rets
+        np.testing.assert_array_equal(rets, original)
+
+    def test_nullable_float_returns_match_numpy_nan(self):
+        """Treat nullable floating returns like ordinary floating returns."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        columns = ["left", "right"]
+        ordinary = pd.DataFrame(
+            [[0.01, 0.0], [np.nan, 0.01], [0.02, 0.02]],
+            index=observations,
+            columns=columns,
+        )
+        nullable = ordinary.astype("Float64")
+        weights = np.array([0.5, 0.5])
+        # The missing left return contributes zero without changing either label axis.
+        expected = np.array([0.005, 0.005, 0.02])
+
+        ordinary_portfolio = Portfolio(X=ordinary, weights=weights)
+        nullable_portfolio = Portfolio(X=nullable, weights=weights)
+
+        np.testing.assert_allclose(ordinary_portfolio.returns, expected)
+        np.testing.assert_allclose(nullable_portfolio.returns, expected)
+        assert nullable_portfolio.assets.tolist() == columns
+        np.testing.assert_array_equal(nullable_portfolio.observations, observations)
+        assert nullable_portfolio.X is nullable
+
+    def test_mixed_nullable_float_returns_match_float(self):
+        """Handle nullable and NumPy-backed floating columns together."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        X = pd.DataFrame(
+            {
+                "left": pd.Series(
+                    [0.01, pd.NA, 0.02], index=observations, dtype="Float64"
+                ),
+                "right": pd.Series(
+                    [0.0, 0.01, 0.02], index=observations, dtype="float64"
+                ),
+            }
+        )
+
+        portfolio = Portfolio(X=X, weights=np.array([0.5, 0.5]))
+
+        np.testing.assert_allclose(portfolio.returns, [0.005, 0.005, 0.02])
 
 
 class TestPortfolioValidation:
-    def test_non_2d_X_raises(self):
-        with pytest.raises(ValueError, match="`X` must be a 2D array-like"):
+    def test_non_2d_X_with_weights_raises(self):
+        # With weights, the returns conversion rejects a 1D input first.
+        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
             Portfolio(X=np.arange(5.0), weights=np.array([1.0]))
+
+    def test_non_2d_X_without_weights_raises(self):
+        with pytest.raises(ValueError, match="`X` must be a 2D array-like"):
+            Portfolio(X=np.arange(5.0), weights=None)
 
     def test_unexpected_keyword_argument_raises(self, X, weights):
         with pytest.raises(
@@ -1202,46 +1249,3 @@ def test_failed_portfolio_floor_and_trunc_are_copies(X):
     for result in (math.floor(failed), math.trunc(failed)):
         assert isinstance(result, FailedPortfolio)
         assert result is not failed
-        assert ptf.X is rets
-        np.testing.assert_array_equal(rets, original)
-
-    def test_nullable_float_returns_match_numpy_nan(self):
-        """Treat nullable floating returns like ordinary floating returns."""
-        observations = pd.date_range("2024-01-01", periods=3)
-        columns = ["left", "right"]
-        ordinary = pd.DataFrame(
-            [[0.01, 0.0], [np.nan, 0.01], [0.02, 0.02]],
-            index=observations,
-            columns=columns,
-        )
-        nullable = ordinary.astype("Float64")
-        weights = np.array([0.5, 0.5])
-        # The missing left return contributes zero without changing either label axis.
-        expected = np.array([0.005, 0.005, 0.02])
-
-        ordinary_portfolio = Portfolio(X=ordinary, weights=weights)
-        nullable_portfolio = Portfolio(X=nullable, weights=weights)
-
-        np.testing.assert_allclose(ordinary_portfolio.returns, expected)
-        np.testing.assert_allclose(nullable_portfolio.returns, expected)
-        assert nullable_portfolio.assets.tolist() == columns
-        np.testing.assert_array_equal(nullable_portfolio.observations, observations)
-        assert nullable_portfolio.X is nullable
-
-    def test_mixed_nullable_float_returns_match_float(self):
-        """Handle nullable and NumPy-backed floating columns together."""
-        observations = pd.date_range("2024-01-01", periods=3)
-        X = pd.DataFrame(
-            {
-                "left": pd.Series(
-                    [0.01, pd.NA, 0.02], index=observations, dtype="Float64"
-                ),
-                "right": pd.Series(
-                    [0.0, 0.01, 0.02], index=observations, dtype="float64"
-                ),
-            }
-        )
-
-        portfolio = Portfolio(X=X, weights=np.array([0.5, 0.5]))
-
-        np.testing.assert_allclose(portfolio.returns, [0.005, 0.005, 0.02])
