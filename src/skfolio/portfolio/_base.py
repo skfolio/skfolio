@@ -650,14 +650,14 @@ class BasePortfolio:
     @abstractmethod
     def composition(self) -> pd.DataFrame:
         """DataFrame of the Portfolio composition."""
-        pass
+        ...
 
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
     ) -> FloatArray | pd.DataFrame:
         """Compute the contribution of each asset to a given measure."""
-        pass
+        ...
 
     # Custom attribute setter and getter
     @property

@@ -8,6 +8,7 @@ import pytest
 from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraint,
     FamilyConstraintBasis,
+    _stack_family_full_indices,
     compute_family_constraint_basis,
 )
 
@@ -757,3 +758,9 @@ class TestEdgeCases:
                 ),
                 constraint_ratios=np.array([[np.nan]]),
             )
+
+
+def test_stack_family_full_indices_returns_empty_array_without_families():
+    stacked = _stack_family_full_indices(())
+    assert stacked.dtype == int
+    assert stacked.shape == (0,)

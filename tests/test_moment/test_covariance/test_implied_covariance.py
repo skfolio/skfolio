@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn.linear_model as skl
 from sklearn import config_context
@@ -304,3 +305,55 @@ def test_implied_covariance_ledoit_wolf(X, implied_vol):
     np.fill_diagonal(model_led_ref.covariance_, 0)
 
     np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_, 3)
+
+
+@pytest.fixture
+def synthetic_implied_vol(X):
+    """Deterministic implied volatilities aligned with `X` (no download needed)."""
+    rng = np.random.default_rng(0)
+    return pd.DataFrame(
+        rng.uniform(0.1, 0.4, size=X.shape), index=X.index, columns=X.columns
+    )
+
+
+def test_implied_covariance_set_params_annualization_conflict():
+    model = ImpliedCovariance()
+    with pytest.raises(
+        ValueError,
+        match="`annualized_factor` is deprecated; pass only `annualization_factor`",
+    ):
+        model.set_params(annualized_factor=12, annualization_factor=252)
+
+
+def test_implied_covariance_volatility_risk_premium_adj_missing_assets(
+    X, synthetic_implied_vol
+):
+    # A dict covering only some assets is rejected by `input_to_array`, which
+    # fills the gaps with NaN and refuses them.
+    model = ImpliedCovariance(volatility_risk_premium_adj={"AAPL": 1.0})
+    with pytest.raises(ValueError, match=r"`volatility_risk_premium_adj` contains NaN"):
+        model.fit(X, implied_vol=synthetic_implied_vol)
+
+
+def test_implied_covariance_volatility_risk_premium_adj_scalar_nan(
+    X, synthetic_implied_vol
+):
+    # A scalar NaN bypasses `input_to_array` and reaches the estimator's own guard.
+    model = ImpliedCovariance(volatility_risk_premium_adj=np.nan)
+    with pytest.raises(
+        ValueError,
+        match="volatility_risk_premium_adj must contain a value for each assets",
+    ):
+        model.fit(X, implied_vol=synthetic_implied_vol)
+
+
+def test_implied_covariance_implied_vol_must_be_2d(X):
+    model = ImpliedCovariance()
+    with pytest.raises(ValueError, match="must be 2D array of shape"):
+        model.fit(X, implied_vol=np.ones(len(X)))
+
+
+def test_implied_covariance_implied_vol_shape_mismatch(X):
+    model = ImpliedCovariance()
+    with pytest.raises(ValueError, match=r"implied_vol.shape == .* expected"):
+        model.fit(X, implied_vol=np.ones((len(X), 3)))

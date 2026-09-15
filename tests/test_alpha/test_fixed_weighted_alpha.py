@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skfolio._constants import _IDIO_VARIANCES
+from skfolio._constants import _EXPOSURES, _IDIO_VARIANCES
 from skfolio.alpha import FixedWeightedAlpha, ForecastUnit
 from skfolio.descriptor import Passthrough
 from skfolio.preprocessing import CSStandardScaler
@@ -281,3 +281,65 @@ class TestValidation:
 
         with pytest.raises(ValueError, match="sum\\(abs\\(weights\\)\\)"):
             model.fit(alpha_deterministic_panel)
+
+
+class TestNeutralizationAndReset:
+    """Test exposure-based neutralization and refitting."""
+
+    def test_neutralize_against_requires_exposures_field(
+        self, alpha_deterministic_panel
+    ):
+        """Neutralization adds the exposures field to the required inputs."""
+        model = FixedWeightedAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_scale=0.01,
+            neutralize_against=["market"],
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+
+        with pytest.raises(ValueError, match=_EXPOSURES):
+            model.fit(alpha_deterministic_panel)
+
+    def test_neutralize_against_market_removes_cross_sectional_mean(
+        self, alpha_deterministic_panel
+    ):
+        """Neutralizing against a constant exposure de-means each cross-section."""
+        panel = alpha_deterministic_panel.copy(deep=True)
+        panel.add_3d_field(
+            name=_EXPOSURES,
+            values=np.ones((panel.n_observations, panel.n_assets, 1)),
+            third_axis_name="factor",
+            third_axis_labels=["market"],
+            third_axis_groups=["market"],
+        )
+        model = FixedWeightedAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_scale=0.01,
+            neutralize_against=["market"],
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+
+        alphas = model.fit_transform(panel)
+
+        assert alphas.shape == (panel.n_observations, panel.n_assets)
+        np.testing.assert_allclose(alphas.mean(axis=1), 0.0, atol=1e-12)
+
+    def test_refit_resets_fitted_state(self, alpha_deterministic_panel):
+        """A second `fit` discards the previous `alpha_` and starts fresh."""
+        model = FixedWeightedAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_scale=0.01,
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+        model.fit(alpha_deterministic_panel[:10])
+        first_alpha = model.alpha_.copy()
+
+        model.fit(alpha_deterministic_panel)
+
+        np.testing.assert_allclose(
+            model.alpha_, 0.01 * alpha_deterministic_panel["signal"][-1]
+        )
+        assert not np.allclose(model.alpha_, first_alpha)

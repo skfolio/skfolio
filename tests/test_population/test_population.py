@@ -415,3 +415,70 @@ def test_population_failed_portfolio(small_population, failed_portfolio):
     assert pop.plot_measures(x=PerfMeasure.MEAN, y=RiskMeasure.STANDARD_DEVIATION)
     assert pop.plot_rolling_measure(measure=RatioMeasure.SHARPE_RATIO)
     assert pop.plot_returns_distribution()
+
+
+def test_population_composition_and_contribution_sub_ptf_names(
+    small_population, multi_period_portfolio
+):
+    small_population.append(multi_period_portfolio)
+
+    comp = small_population.composition(display_sub_ptf_name=True)
+    assert all(
+        f"{multi_period_portfolio.name}_{p.name}" in comp.columns
+        for p in multi_period_portfolio
+    )
+    # Without sub-portfolio names, the duplicated columns are de-duplicated by
+    # `pd.concat` with a positional suffix.
+    expected = {multi_period_portfolio.name} | {
+        f"{multi_period_portfolio.name}_{i}"
+        for i in range(1, len(multi_period_portfolio))
+    }
+    comp = small_population.composition(display_sub_ptf_name=False)
+    assert set(comp.columns) - {p.name for p in small_population[:-1]} == expected
+
+    contrib = small_population.contribution(
+        measure=RiskMeasure.VARIANCE, display_sub_ptf_name=True
+    )
+    assert all(
+        f"{multi_period_portfolio.name}_{p.name}" in contrib.columns
+        for p in multi_period_portfolio
+    )
+    contrib = small_population.contribution(
+        measure=RiskMeasure.VARIANCE, display_sub_ptf_name=False
+    )
+    assert set(contrib.columns) - {p.name for p in small_population[:-1]} == expected
+
+
+def test_population_plot_measures_color_scale_and_tags(X):
+    n_assets = X.shape[1]
+    population = Population(
+        [
+            Portfolio(
+                X=X,
+                weights=rand_weights(n=n_assets, zeros=n_assets - 10, seed=i),
+                name=f"ptf_{i}",
+                tag="odd" if i % 2 else None,
+            )
+            for i in range(6)
+        ]
+    )
+
+    # Tags drive the color when neither fronts nor a color scale are requested and
+    # the legend is placed outside the plotting area.
+    fig = population.plot_measures(x=RiskMeasure.STANDARD_DEVIATION, y=PerfMeasure.MEAN)
+    # Untagged portfolios become the empty tag, and whether plotly gives that
+    # group a trace of its own varies by version, so assert on the set of names.
+    trace_names = {trace.name for trace in fig.data}
+    assert "odd" in trace_names
+    assert trace_names <= {"", "odd"}
+    assert fig.layout.legend.x == 1.02
+
+    # A measure color scale is added to the hover data, drives the color and moves
+    # the legend inside the plotting area.
+    fig = population.plot_measures(
+        x=RiskMeasure.STANDARD_DEVIATION,
+        y=PerfMeasure.MEAN,
+        color_scale=RatioMeasure.SHARPE_RATIO,
+    )
+    assert fig.layout.coloraxis.colorbar.title.text == str(RatioMeasure.SHARPE_RATIO)
+    assert fig.layout.legend.x == 0.02

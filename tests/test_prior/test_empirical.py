@@ -380,3 +380,39 @@ class TestNaNHandling:
         )
         model.fit(X_arr)
         assert np.isfinite(model.weights_).all()
+
+
+def test_log_normal_requires_investment_horizon(X):
+    model = EmpiricalPrior(is_log_normal=True)
+    with pytest.raises(
+        ValueError,
+        match="`investment_horizon` must be provided when `is_log_normal` is `True`",
+    ):
+        model.fit(X)
+
+
+def test_investment_horizon_requires_log_normal(X):
+    model = EmpiricalPrior(investment_horizon=252)
+    with pytest.raises(
+        ValueError,
+        match="`investment_horizon` must be `None` when `is_log_normal` is `False`",
+    ):
+        model.fit(X)
+
+
+def test_max_history_must_be_positive(X):
+    model = EmpiricalPrior(max_history=0)
+    with pytest.raises(
+        ValueError, match="`max_history` must be a positive integer or None, got 0"
+    ):
+        model.fit(X)
+
+
+def test_zero_fill_warning_truncates_long_asset_list(X):
+    """More than ten heavily zero-filled assets are summarised with a total."""
+    X_arr = np.asarray(X).copy()
+    X_arr[:-100, :12] = np.nan
+
+    model = _make_short_warmup_ew_prior()
+    with pytest.warns(UserWarning, match=r"\.\.\. \(12 assets in total\)"):
+        model.fit(X_arr)

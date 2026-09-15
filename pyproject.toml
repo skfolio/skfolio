@@ -166,6 +166,11 @@ max-line-length = 320
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.coverage.report]
+# Empty abstract bodies use ellipsis. Keep abstract methods with implementations
+# (including constructors) in coverage, and preserve the default exclusions.
+exclude_also = ['^\s*(?:def .+: )?\.\.\.\s*$']
+
 [tool.pytest.ini_options]
 addopts = [
     "--import-mode=importlib",

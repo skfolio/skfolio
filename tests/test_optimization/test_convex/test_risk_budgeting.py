@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import cvxpy as cp
 import numpy as np
 import pytest
 from sklearn import config_context
@@ -291,3 +292,23 @@ def test_risk_budgeting_negative_weight_constraints(X_small):
         ),
     ):
         model.fit(X_small)
+
+
+def test_risk_budgeting_invalid_risk_measure_type(X):
+    # `set_params` bypasses the enum conversion performed in `__init__`.
+    model = RiskBudgeting().set_params(risk_measure="variance")
+    with pytest.raises(TypeError, match="risk_measure must be of type `RiskMeasure`"):
+        model.fit(X)
+
+
+def test_risk_budgeting_non_default_solver():
+    # Any solver other than CLARABEL falls through to empty params. Risk budgeting
+    # needs an exponential cone, which none of the always-available solvers
+    # support, but the params are set before the solve, so the branch is still
+    # exercised by the failing solve.
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0005, 0.01, (60, 6))
+    model = RiskBudgeting(solver="SCIPY")
+    with pytest.raises(cp.SolverError):
+        model.fit(X)
+    assert model._solver_params == {}

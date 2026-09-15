@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
+import sklearn.base as skb
 
 from skfolio import MultiPeriodPortfolio, RiskMeasure
 from skfolio.distribution import VineCopula
@@ -76,3 +78,28 @@ def test_optimization_synthetic_data(X):
     prediction = cross_val_predict(model, X, cv=cv, n_jobs=-1)
     assert isinstance(prediction, MultiPeriodPortfolio)
     assert len(prediction) == cv.get_n_splits(X)
+
+
+class _NoSampleEstimator(skb.BaseEstimator):
+    def fit(self, X, y=None):
+        return self
+
+
+class _SampleWithoutNSamplesEstimator(skb.BaseEstimator):
+    def fit(self, X, y=None):
+        return self
+
+    def sample(self):
+        return None
+
+
+def test_distribution_estimator_without_sample_method(X):
+    model = SyntheticData(distribution_estimator=_NoSampleEstimator())
+    with pytest.raises(ValueError, match="must implement a `sample` method"):
+        model.fit(X)
+
+
+def test_distribution_estimator_sample_without_n_samples(X):
+    model = SyntheticData(distribution_estimator=_SampleWithoutNSamplesEstimator())
+    with pytest.raises(ValueError, match="must have `n_samples` as parameter"):
+        model.fit(X)

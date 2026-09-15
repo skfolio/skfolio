@@ -29,9 +29,7 @@ class BaseMu(skb.BaseEstimator, ABC):
     mu_: FloatArray
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self): ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None):
-        pass
+    def fit(self, X: ArrayLike, y=None): ...

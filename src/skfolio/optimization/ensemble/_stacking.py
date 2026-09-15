@@ -358,8 +358,9 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         # we need to set the random state of the cv if there is one and we
         # need to take a copy.
         if self.cv in ["prefit", "ignore"]:
+            # Convert predicted portfolios to return arrays before stacking.
             X_pred = np.array(
-                [estimator.predict(X) for estimator in self.estimators_]
+                [np.asarray(estimator.predict(X)) for estimator in self.estimators_]
             ).T
         else:
             cv = sks.check_cv(self.cv)

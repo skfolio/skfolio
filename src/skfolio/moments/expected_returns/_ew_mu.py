@@ -270,13 +270,13 @@ class EWMu(BaseMu):
         active_mask = _validate_mask(X=X, mask=active_mask, name="active_mask")
 
         if first_call:
+            self._validate_params()
             if self.window_size is not None:
                 X = apply_window_size(X, window_size=self.window_size)
                 if active_mask is not None:
                     active_mask = apply_window_size(
                         active_mask, window_size=self.window_size
                     )
-            self._validate_params()
             self._initialize()
 
         if active_mask is not None:

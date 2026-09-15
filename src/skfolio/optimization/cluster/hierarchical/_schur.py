@@ -699,23 +699,27 @@ def _compute_weights(
                 a_aug = _schur_augmentation(a, b, d, gamma=gamma)
                 d_aug = _schur_augmentation(d, b.T, a, gamma=gamma)
 
-                covariance[np.ix_(left_cluster, left_cluster)] = a_aug
-                covariance[np.ix_(right_cluster, right_cluster)] = d_aug
-
             if not force_spd:
                 if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
                     return None
             else:
                 try:
-                    if not is_cholesky_dec(a_aug):
-                        a_aug = cov_nearest(a_aug)
-                    if not is_cholesky_dec(a_aug):
-                        d_aug = cov_nearest(d_aug)
+                    # A block with non-positive variances cannot be repaired by
+                    # correlation clipping. Report the failure before NaNs spread.
+                    with np.errstate(invalid="raise", divide="raise", over="raise"):
+                        if not is_cholesky_dec(a_aug):
+                            a_aug = cov_nearest(a_aug)
+                        if not is_cholesky_dec(d_aug):
+                            d_aug = cov_nearest(d_aug)
                 except Exception:
                     raise ValueError(
                         f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
                     ) from None
+
+            # Subsequent splits must use the repaired blocks too.
+            covariance[np.ix_(left_cluster, left_cluster)] = a_aug
+            covariance[np.ix_(right_cluster, right_cluster)] = d_aug
 
             left_variance = _naive_portfolio_variance(a_aug)
             right_variance = _naive_portfolio_variance(d_aug)

@@ -29,9 +29,7 @@ class BasePrior(skb.BaseEstimator, ABC):
     return_distribution_: ReturnDistribution
 
     @abstractmethod
-    def __init__(self):
-        pass
+    def __init__(self): ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y=None, **fit_params): ...

@@ -1795,3 +1795,61 @@ class TestLateListingPSD:
         assert np.all(eigvals >= -1e-10), (
             f"Non-PD (DCC) with half_life={half_life}: min eigval={eigvals.min():.2e}"
         )
+
+
+class TestRegimeAdjustedEWCovarianceValidation:
+    """Parameter validation branches of `RegimeAdjustedEWCovariance`."""
+
+    def test_regime_portfolio_weights_3d_raises(self, X_synth):
+        model = RegimeAdjustedEWCovariance(
+            regime_target=RegimeAdjustmentTarget.PORTFOLIO,
+            regime_portfolio_weights=np.ones((1, 1, 5)),
+        )
+        with pytest.raises(
+            ValueError, match="regime_portfolio_weights must be 1D or 2D"
+        ):
+            model.fit(X_synth)
+
+    def test_invalid_regime_min_observations(self, X_synth):
+        model = RegimeAdjustedEWCovariance(regime_min_observations=0)
+        with pytest.raises(
+            ValueError, match=r"regime_min_observations must be >= 1 \(got 0\)"
+        ):
+            model.fit(X_synth)
+
+    def test_invalid_half_life(self, X_synth):
+        model = RegimeAdjustedEWCovariance(half_life=0)
+        with pytest.raises(ValueError, match=r"half_life must be positive \(got 0\)"):
+            model.fit(X_synth)
+
+    def test_invalid_corr_half_life(self, X_synth):
+        model = RegimeAdjustedEWCovariance(half_life=10, corr_half_life=0)
+        with pytest.raises(
+            ValueError, match=r"corr_half_life must be positive \(got 0\)"
+        ):
+            model.fit(X_synth)
+
+
+class TestRegimeAdjustedEWCovarianceDegenerateInputs:
+    """Degenerate inputs handled without error."""
+
+    def test_separate_decay_all_nan_returns_nan_covariance(self):
+        X = np.full((30, 3), np.nan)
+        model = RegimeAdjustedEWCovariance(half_life=10, corr_half_life=20)
+        model.fit(X)
+        assert model.covariance_.shape == (3, 3)
+        assert np.all(np.isnan(model.covariance_))
+        assert model.regime_multiplier_ == 1.0
+
+    def test_portfolio_weights_on_missing_asset_skip_regime_update(self, X_synth):
+        X = X_synth.copy()
+        X[100:105, 0] = np.nan
+        model = RegimeAdjustedEWCovariance(
+            half_life=10,
+            regime_target=RegimeAdjustmentTarget.PORTFOLIO,
+            regime_portfolio_weights=[1.0, 0.0, 0.0, 0.0, 0.0],
+        )
+        model.fit(X)
+        assert model.covariance_.shape == (5, 5)
+        assert np.all(np.isfinite(model.covariance_))
+        assert np.isfinite(model.regime_multiplier_)

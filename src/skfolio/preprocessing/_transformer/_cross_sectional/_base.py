@@ -36,7 +36,7 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     @abstractmethod
     def __init__(self):
         """Initialize the transformer."""
-        pass
+        ...
 
     def _validate_params(self) -> None:
         """Validate estimator-specific parameters."""
@@ -107,7 +107,7 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
         X_transformed : ndarray of shape (n_observations, n_assets)
             Transformed values.
         """
-        pass
+        ...
 
     def fit_transform(
         self,

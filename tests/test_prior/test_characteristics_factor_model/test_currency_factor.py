@@ -32,14 +32,29 @@ class StaticCurrencyFactor(BaseFactorExposure, stateless=True):
         return exposures
 
 
-def _make_currency_data(n_obs=80, n_assets=6):
+def _make_currency_data(n_obs=80, n_assets=6, active_mask=None):
     rng = np.random.default_rng(42)
     beta = np.linspace(0.6, 1.4, n_assets)
     local_factor_returns = rng.normal(0.0, 0.01, size=n_obs)
     local_returns = local_factor_returns[:, None] * beta[None, :]
     beta_field = np.broadcast_to(beta, local_returns.shape).copy()
 
-    panel, X = make_panel(local_returns, extra_fields={"beta": beta_field})
+    if active_mask is not None:
+        # Fields default to `InactivePolicy.MISSING`, so they must be NaN
+        # outside the active universe.
+        local_returns[~active_mask] = np.nan
+        beta_field[~active_mask] = np.nan
+        market_cap = np.ones_like(local_returns)
+        market_cap[~active_mask] = np.nan
+    else:
+        market_cap = None
+
+    panel, X = make_panel(
+        local_returns,
+        extra_fields={"beta": beta_field},
+        market_cap=market_cap,
+        active_mask=active_mask,
+    )
 
     currency_names = np.array(["USD", "EUR"])
     currency_codes = np.array([0, 0, 0, 1, 1, 1])
@@ -322,3 +337,104 @@ def test_currency_family_cannot_be_constrained():
 
     with np.testing.assert_raises_regex(ValueError, "constrained_families"):
         model.fit(X, characteristics=panel)
+
+
+def test_currency_exposures_are_masked_for_inactive_assets():
+    active_mask = np.ones((80, 6), dtype=bool)
+    active_mask[:10, 0] = False  # asset_0 is listed only from observation 10
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data(active_mask=active_mask)
+    )
+    model = _make_model(currency_factor)
+    model.fit(X, characteristics=panel, currency_excess_returns=currency_returns)
+
+    fm = model.factor_model_
+    ccy_columns = [i for i, f in enumerate(fm.factor_families) if f == _CURRENCY]
+    assert len(ccy_columns) == 2
+    # exposures follow the fitted observations (first observation lost to the lag)
+    assert np.isnan(fm.exposures[:9, 0][:, ccy_columns]).all()
+    assert np.isfinite(fm.exposures[9:, 0][:, ccy_columns]).all()
+    assert np.isfinite(fm.exposures[:, 1:][:, :, ccy_columns]).all()
+
+
+def test_metadata_routing_includes_currency_factor():
+    _panel, _X, _local_factor_returns, _currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    router = _make_model(currency_factor).get_metadata_routing()
+    assert "currency_factor" in router._route_mappings
+
+    router_without = _make_model(None).get_metadata_routing()
+    assert "currency_factor" not in router_without._route_mappings
+
+
+def test_currency_returns_must_be_a_dataframe():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(currency_factor)
+
+    with np.testing.assert_raises_regex(
+        ValueError, "`currency_excess_returns` must be a pd.DataFrame"
+    ):
+        model.fit(
+            X,
+            characteristics=panel,
+            currency_excess_returns=currency_returns.to_numpy(),
+        )
+
+
+def test_currency_returns_must_have_same_number_of_observations():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(currency_factor)
+
+    with np.testing.assert_raises_regex(
+        ValueError, "must have the same number of observations"
+    ):
+        model.fit(
+            X, characteristics=panel, currency_excess_returns=currency_returns.iloc[1:]
+        )
+
+
+def test_currency_returns_index_must_match_observations():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(currency_factor)
+    shifted = currency_returns.copy()
+    shifted.index = currency_returns.index + 1
+
+    with np.testing.assert_raises_regex(
+        ValueError, "`currency_excess_returns.index` must match"
+    ):
+        model.fit(X, characteristics=panel, currency_excess_returns=shifted)
+
+
+def test_currency_returns_must_contain_every_currency_factor():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(currency_factor)
+
+    with np.testing.assert_raises_regex(
+        ValueError, "`currency_excess_returns` is missing currency factor columns"
+    ):
+        model.fit(
+            X, characteristics=panel, currency_excess_returns=currency_returns[["USD"]]
+        )
+
+
+def test_currency_returns_must_be_finite():
+    panel, X, _local_factor_returns, currency_returns, currency_factor = (
+        _make_currency_data()
+    )
+    model = _make_model(currency_factor)
+    with_nan = currency_returns.copy()
+    with_nan.iloc[5, 1] = np.nan
+
+    with np.testing.assert_raises_regex(
+        ValueError, "`currency_excess_returns` must contain only finite values"
+    ):
+        model.fit(X, characteristics=panel, currency_excess_returns=with_nan)
