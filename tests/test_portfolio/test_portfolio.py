@@ -386,6 +386,28 @@ def test_portfolio_diversification(portfolio):
     np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
+@pytest.mark.parametrize(
+    "dtype", ["Float64", {"A": "Float64"}], ids=["nullable", "mixed"]
+)
+@pytest.mark.parametrize("with_missing", [False, True])
+def test_nullable_portfolio_diversification(dtype, with_missing):
+    ordinary = pd.DataFrame(
+        [[0.01, 0.02], [0.03, 0.04], [0.05, 0.02]], columns=["A", "B"]
+    )
+    if with_missing:
+        ordinary.iloc[1, 0] = np.nan
+    nullable = ordinary.astype(dtype)
+    original = nullable.copy(deep=True)
+    weights = [0.5, 0.5]
+
+    expected = Portfolio(X=ordinary, weights=weights)
+    portfolio = Portfolio(X=nullable, weights=weights)
+
+    np.testing.assert_allclose(portfolio.diversification, expected.diversification)
+    assert portfolio.X is nullable
+    pd.testing.assert_frame_equal(nullable, original)
+
+
 def test_portfolio_slots(portfolio):
     for attr in portfolio._slots():
         if attr[0] == "_":
@@ -1013,6 +1035,7 @@ class TestPortfolioNaNReturns:
 
     def test_original_X_preserved_with_nan(self):
         rets = np.array([[0.01, np.nan], [0.02, np.nan]])
+        original = rets.copy()
         weights = np.array([1.0, 0.0])
         ptf = Portfolio(X=rets, weights=weights)
         np.testing.assert_array_equal(np.asarray(ptf.X), rets)
@@ -1179,3 +1202,46 @@ def test_failed_portfolio_floor_and_trunc_are_copies(X):
     for result in (math.floor(failed), math.trunc(failed)):
         assert isinstance(result, FailedPortfolio)
         assert result is not failed
+        assert ptf.X is rets
+        np.testing.assert_array_equal(rets, original)
+
+    def test_nullable_float_returns_match_numpy_nan(self):
+        """Treat nullable floating returns like ordinary floating returns."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        columns = ["left", "right"]
+        ordinary = pd.DataFrame(
+            [[0.01, 0.0], [np.nan, 0.01], [0.02, 0.02]],
+            index=observations,
+            columns=columns,
+        )
+        nullable = ordinary.astype("Float64")
+        weights = np.array([0.5, 0.5])
+        # The missing left return contributes zero without changing either label axis.
+        expected = np.array([0.005, 0.005, 0.02])
+
+        ordinary_portfolio = Portfolio(X=ordinary, weights=weights)
+        nullable_portfolio = Portfolio(X=nullable, weights=weights)
+
+        np.testing.assert_allclose(ordinary_portfolio.returns, expected)
+        np.testing.assert_allclose(nullable_portfolio.returns, expected)
+        assert nullable_portfolio.assets.tolist() == columns
+        np.testing.assert_array_equal(nullable_portfolio.observations, observations)
+        assert nullable_portfolio.X is nullable
+
+    def test_mixed_nullable_float_returns_match_float(self):
+        """Handle nullable and NumPy-backed floating columns together."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        X = pd.DataFrame(
+            {
+                "left": pd.Series(
+                    [0.01, pd.NA, 0.02], index=observations, dtype="Float64"
+                ),
+                "right": pd.Series(
+                    [0.0, 0.01, 0.02], index=observations, dtype="float64"
+                ),
+            }
+        )
+
+        portfolio = Portfolio(X=X, weights=np.array([0.5, 0.5]))
+
+        np.testing.assert_allclose(portfolio.returns, [0.005, 0.005, 0.02])
