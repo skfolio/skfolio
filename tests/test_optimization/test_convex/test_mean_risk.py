@@ -7,6 +7,7 @@ import pytest
 import sklearn.model_selection as sks
 from sklearn import clone, config_context
 
+import skfolio.optimization.convex._base as sco
 from skfolio import (
     FailedPortfolio,
     MultiPeriodPortfolio,
@@ -265,11 +266,7 @@ def test_mean_risk_minimize_risk_2(
     risk_measure2,
 ):
     precision = precisions[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     model = MeanRisk(
@@ -366,11 +363,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
 ):
     precision = precisions2[risk_measure2]
     max_risk_arg = f"max_{risk_measure2.value}"
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     min_risk_model = MeanRisk(
@@ -472,11 +465,7 @@ def test_mean_risk_utility2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize utility
     risk_aversion = 3
@@ -536,11 +525,7 @@ def test_mean_risk_ratio2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize ratio
     model = MeanRisk(
@@ -1945,6 +1930,25 @@ def test_raise_on_failure_multi(X):
     )
 
 
+def test_non_constraint_generator_parameter_sweep_reuses_problem(X, monkeypatch):
+    problem_ids = []
+    original_solve = sco._solve_with_constraint_generation
+
+    def record_problem(**kwargs):
+        assert not kwargs["constraint_generators"]
+        problem_ids.append(id(kwargs["problem"]))
+        return original_solve(**kwargs)
+
+    monkeypatch.setattr(sco, "_solve_with_constraint_generation", record_problem)
+    MeanRisk(
+        risk_measure=RiskMeasure.VARIANCE,
+        min_return=[0.0005, 0.0001],
+    ).fit(X)
+
+    assert len(problem_ids) == 2
+    assert len(set(problem_ids)) == 1
+
+
 def test_raise_on_failure_off_multi_all_fail(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_return=[0.003, 0.004], raise_on_failure=False)
@@ -2065,6 +2069,25 @@ def test_target_weights_with_standard_deviation_mip(X):
     tracking_error = np.sqrt(weight_diff @ cov_matrix @ weight_diff)
     np.testing.assert_almost_equal(
         tracking_error, np.sqrt(model.problem_values_["risk"]), decimal=5
+    )
+
+
+def test_target_weights_maximum_ratio_uses_normalized_active_weights(X):
+    target_weights = np.zeros(X.shape[1])
+    target_weights[:3] = [0.2, -0.1, -0.1]
+    model = MeanRisk(
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        target_weights=target_weights,
+        min_weights=-0.5,
+    ).fit(X)
+
+    active_returns = X.to_numpy() @ (model.weights_ - target_weights)
+    np.testing.assert_allclose(
+        model.problem_values_["risk"],
+        np.std(active_returns, ddof=1),
+        rtol=1e-5,
+        atol=1e-9,
     )
 
 

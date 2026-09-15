@@ -1243,6 +1243,7 @@ class MeanRisk(ConvexOptimization):
 
         # risk and risk constraints
         risk = None
+        constraint_generators = []
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
             risk_limit = getattr(self, f"max_{r_m.value}")
 
@@ -1269,9 +1270,14 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            args[arg_name] = w - target_weights
+                            # Risk is computed on normalized active weights. Multiplying
+                            # the target by the ratio factor preserves that meaning in
+                            # homogeneous coordinates and is a no-op when factor is 1.
+                            args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
+                    elif arg_name == "constraint_generators":
+                        args[arg_name] = constraint_generators
                     elif arg_name == "covariance_uncertainty_set":
                         _call_estimator(
                             self.covariance_uncertainty_set_estimator_,
@@ -1405,6 +1411,7 @@ class MeanRisk(ConvexOptimization):
                 factor=factor,
                 parameters_values=parameters_values,
                 expressions=expressions,
+                constraint_generators=constraint_generators,
             )
         except cp.SolverError as solver_error:
             if method != "partial_fit":
