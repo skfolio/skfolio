@@ -801,29 +801,26 @@ class EntropyPooling(BasePrior):
         assets = self._groups[0]
         _, n_assets = self._returns.shape
         asset_to_index = {asset: i for i, asset in enumerate(assets)}
-        try:
-            views = []
-            for view in self.correlation_views:
-                res = _parse_correlation_view(view, assets=assets)
-                expression = res["expression"]
-                corr_view = expression["constant"]
-                if "prior_assets" in expression:
-                    i, j = (asset_to_index[a] for a in expression["prior_assets"])
-                    corr_view += (
-                        self._covariance[i, j]
-                        / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
-                        * expression["multiplier"]
-                    )
-                    corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
-                views.append(
-                    (
-                        (asset_to_index[a] for a in res["assets"]),
-                        res["operator"],
-                        corr_view,
-                    )
+        views = []
+        for view in self.correlation_views:
+            res = _parse_correlation_view(view, assets=assets)
+            expression = res["expression"]
+            corr_view = expression["constant"]
+            if "prior_assets" in expression:
+                i, j = (asset_to_index[a] for a in expression["prior_assets"])
+                corr_view += (
+                    self._covariance[i, j]
+                    / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
+                    * expression["multiplier"]
                 )
-        except KeyError as e:
-            raise ValueError(f"Asset {e.args[0]} is missing from the assets.") from None
+                corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
+            views.append(
+                (
+                    (asset_to_index[a] for a in res["assets"]),
+                    res["operator"],
+                    corr_view,
+                )
+            )
 
         fix = np.zeros(n_assets, dtype=bool)
         for (i, j), op, corr_view in views:
@@ -1057,7 +1054,8 @@ class EntropyPooling(BasePrior):
                         bounds += [(-1000, 1000)] * s
                     case "inequality":
                         bounds += [(0, None)] * s
-                    case _:
+                    # All constraint kinds created by this estimator are handled.
+                    case _:  # pragma: no cover
                         raise KeyError(f"constrain {name}")
 
         a = np.hstack(a)

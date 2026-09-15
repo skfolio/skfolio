@@ -19,12 +19,16 @@ from skfolio._constants import (
     _REGRESSION_WEIGHTS,
 )
 from skfolio.exceptions import DuplicateGroupsError
-from skfolio.factor_exposure import DerivedFactor
+from skfolio.factor_exposure import BaseFactorExposure, DerivedFactor
 from skfolio.linear_model import CSLinearRegression
 from skfolio.moments import EWCovariance
-from skfolio.moments.variance import EWVariance
+from skfolio.moments.variance import BaseVariance, EWVariance
 from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior, ReturnDistribution
-from skfolio.prior._characteristics_factor_model import _neutralize_exposures
+from skfolio.prior._characteristics_factor_model import (
+    _cap_weights_from_mask,
+    _neutralize_exposures,
+    _validate_covariance_readiness,
+)
 from skfolio.utils._factor_tools import _resolve_factor_name
 
 from .conftest import make_panel, passthrough_factor
@@ -590,3 +594,193 @@ class TestNeutralizeExposureValidation:
                     assert corr < 0.15, (
                         f"t={t}, style={si}, industry={ii}: corr={corr:.3f}"
                     )
+
+
+class _FitOnlyVariance(BaseVariance):
+    """Variance estimator without incremental learning support."""
+
+    def fit(self, X, y=None, **fit_params):
+        self.variance_ = np.nanvar(np.asarray(X, dtype=float), axis=0)
+        return self
+
+
+class _FlatFactor(BaseFactorExposure, stateless=True):
+    """Factor exposure estimator returning an invalid 1-D exposure array."""
+
+    def __init__(self) -> None:
+        super().__init__(family="style")
+
+    def fit_transform(self, X, y=None, **fit_params):
+        return np.ones(X.n_observations)
+
+
+class _FamilylessFactor(BaseFactorExposure, stateless=True):
+    """Factor exposure estimator whose family is not a string."""
+
+    def __init__(self) -> None:
+        super().__init__(family=None)
+
+    def fit_transform(self, X, y=None, **fit_params):
+        return np.ones((X.n_observations, X.n_assets))
+
+
+def _make_beta_model(**overrides) -> CharacteristicsFactorModel:
+    params = dict(
+        factors=[("beta", passthrough_factor("beta", family="market"))],
+        factor_prior_estimator=EmpiricalPrior(),
+        idio_variance_estimator=EWVariance(half_life=2, min_observations=1),
+        exposure_lag=1,
+        benchmark_mcap_power=0,
+        regression_mcap_power=0,
+        min_regression_assets=2,
+    )
+    params.update(overrides)
+    return CharacteristicsFactorModel(**params)
+
+
+def _make_beta_data(n_obs=12, n_assets=5, seed=42):
+    rng = np.random.default_rng(seed)
+    returns = rng.normal(0, 0.01, size=(n_obs, n_assets))
+    exposures = rng.normal(size=(n_obs, n_assets))
+    return returns, exposures
+
+
+class TestEstimatorApi:
+    def test_named_factors_exposes_factor_estimators(self):
+        beta = passthrough_factor("beta", family="market")
+        model = _make_beta_model(factors=[("beta", beta)])
+
+        named = model.named_factors
+
+        assert list(named.keys()) == ["beta"]
+        assert named.beta is beta
+
+    def test_set_params_replaces_factor_estimator_and_regular_params(self):
+        model = _make_beta_model()
+        new_beta = passthrough_factor("beta", family="style")
+
+        result = model.set_params(beta=new_beta, exposure_lag=2)
+
+        assert result is model
+        assert model.factors[0][1] is new_beta
+        assert model.exposure_lag == 2
+
+    def test_get_history_requires_initialized_history(self):
+        model = _make_beta_model()
+        model._history = None
+        with pytest.raises(AttributeError, match="History has not been initialized"):
+            model._get_history()
+
+
+class TestFactorsValidation:
+    @pytest.mark.parametrize("factors", [[], None])
+    def test_empty_factors_raise(self, factors):
+        model = _make_beta_model(factors=factors)
+        with pytest.raises(ValueError, match="Invalid 'factors' attribute"):
+            model._validate_factors()
+
+    def test_factor_without_string_family_raises(self):
+        returns, _ = _make_beta_data()
+        panel, X = make_panel(returns)
+        model = _make_beta_model(factors=[("flat", _FamilylessFactor())])
+
+        with pytest.raises(
+            ValueError, match="Factor 'flat' is missing the required 'family'"
+        ):
+            model.fit(X, characteristics=panel)
+
+    def test_factor_returning_invalid_dimension_raises(self):
+        returns, _ = _make_beta_data()
+        panel, X = make_panel(returns)
+        model = _make_beta_model(factors=[("flat", _FlatFactor())])
+
+        with pytest.raises(
+            ValueError,
+            match="Factor estimator 'flat' returned exposure with 1 dimensions",
+        ):
+            model.fit(X, characteristics=panel)
+
+
+class TestSubEstimatorValidation:
+    def test_cs_regressor_with_intercept_raises(self):
+        returns, exposures = _make_beta_data()
+        panel, X = make_panel(returns, extra_fields={"beta": exposures})
+        model = _make_beta_model(cs_regressor=CSLinearRegression(fit_intercept=True))
+
+        with pytest.raises(
+            ValueError, match=r"`cs_regressor\.fit_intercept` must be set to `False`"
+        ):
+            model.fit(X, characteristics=panel)
+
+    def test_idio_variance_estimator_without_partial_fit_raises(self):
+        returns, exposures = _make_beta_data()
+        panel, X = make_panel(returns, extra_fields={"beta": exposures})
+        model = _make_beta_model(idio_variance_estimator=_FitOnlyVariance())
+
+        with pytest.raises(
+            TypeError, match=r"_FitOnlyVariance\) does not implement `partial_fit`"
+        ):
+            model.fit(X, characteristics=panel)
+
+
+class TestDataValidation:
+    def test_observation_with_all_non_finite_estimation_returns_raises(self):
+        returns, exposures = _make_beta_data()
+        returns[3] = np.nan
+        panel, X = make_panel(returns, extra_fields={"beta": exposures})
+        model = _make_beta_model()
+
+        with pytest.raises(
+            ValueError,
+            match=r"Found 1 observation\(s\) where all returns in the estimation "
+            r"universe are non-finite .*: \[3\]",
+        ):
+            model.fit(X, characteristics=panel)
+
+    def test_insufficient_regression_coverage_reports_diagnostics(self):
+        n_obs, n_assets = 14, 5
+        returns, exposures = _make_beta_data(n_obs=n_obs, n_assets=n_assets)
+        exposures[:, 0] = np.nan  # asset_0 never has a usable exposure
+        returns[:, 1] = np.nan  # asset_1 never has a usable return
+        panel, X = make_panel(returns, extra_fields={"beta": exposures})
+        model = _make_beta_model(min_regression_assets=n_assets + 1)
+
+        with pytest.raises(ValueError) as exc_info:
+            model.fit(X, characteristics=panel)
+
+        message = str(exc_info.value)
+        assert (
+            f"{n_obs - 1} observation(s) after warmup have fewer than "
+            f"min_regression_assets={n_assets + 1} regression-eligible assets"
+        ) in message
+        assert "Minimum eligible assets observed: 3" in message
+        assert f"({n_obs - 1 - 10} more omitted)" in message
+        assert "5 estimation-universe assets, 1.0 with NaN returns" in message
+        assert "top NaN-exposure factors by avg count: [beta (1.0)]" in message
+
+
+class TestModuleHelpers:
+    def test_cap_weights_from_mask_requires_market_cap_for_nonzero_power(self):
+        mask = np.array([[True, False]])
+        np.testing.assert_array_equal(
+            _cap_weights_from_mask(power=0, market_cap=None, weight_mask=mask),
+            [[1.0, 0.0]],
+        )
+        with pytest.raises(
+            ValueError, match="market_cap must be provided when power != 0"
+        ):
+            _cap_weights_from_mask(power=0.5, market_cap=None, weight_mask=mask)
+
+    def test_validate_covariance_readiness_requires_finite_idio_variance(self):
+        with pytest.raises(
+            ValueError, match="finite idiosyncratic covariance for the current"
+        ):
+            _validate_covariance_readiness(
+                factor_covariance=np.eye(2),
+                latest_idio_variances=np.array([np.nan, np.nan]),
+            )
+        # A single finite idio variance is enough for the model to proceed.
+        _validate_covariance_readiness(
+            factor_covariance=np.eye(2),
+            latest_idio_variances=np.array([np.nan, 0.01]),
+        )

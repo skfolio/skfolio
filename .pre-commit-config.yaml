@@ -2,7 +2,7 @@ default_stages: [pre-commit]
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-yaml
       - id: end-of-file-fixer
@@ -16,12 +16,12 @@ repos:
         name: ruff-lint
         entry: uv run ruff check --fix --exit-non-zero-on-fix
         language: unsupported
-        files: ^(pyproject\.toml|(src|tests|examples)/.*\.py)$
+        files: ^(pyproject\.toml|conftest\.py|(src|tests|examples)/.*\.py)$
         require_serial: true
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format
         language: unsupported
         types: [python]
-        files: ^(src|tests|examples)/.*\.py$
+        files: ^(conftest\.py|(src|tests|examples)/.*\.py)$
         require_serial: true

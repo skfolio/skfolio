@@ -92,7 +92,7 @@ EXAMPLE_DESCRIPTIONS = {
         "Integrating market equilibrium and views via Black-Litterman"
     ),
     "auto_examples/mean_risk/plot_13_factor_model": (
-        "Modeling returns and covariance with factor-based priors"
+        "Time-series factor models for portfolio optimization"
     ),
     "auto_examples/mean_risk/plot_14_black_litterman_factor_model": (
         "Enhancing Black-Litterman with factor-model priors"
@@ -487,10 +487,11 @@ extensions = [
     "jupyterlite_sphinx",
 ]
 
-# `sphinx-llm` builds the docs a second time with the markdown builder
-# (`sphinx-build -b markdown`), re-running this conf. Keep the extension list identical
-# so the sequential sub-build can reuse the primary build's doctree environment.
-_is_markdown_subbuild = "markdown" in sys.argv
+# `sphinx-llm` builds the docs a second time with `llms-markdown` (`markdown` before
+# version 1.0), re-running this conf. Keep the extension list identical so the
+# sequential sub-build can reuse the primary build's doctree environment.
+_markdown_builders = ("markdown", "llms-markdown")
+_is_markdown_subbuild = any(builder in sys.argv for builder in _markdown_builders)
 
 # Fast mode checks that the documentation sources build. It skips gallery execution,
 # the JupyterLite site build and the sphinx-llm Markdown sub-build, which the
@@ -974,7 +975,7 @@ jupyterlite_content_dir = "_contents"
 def _html_builders_only(handler):
     """No-op a `build-finished` handler unless the active builder emits HTML.
 
-    The `sphinx-llm` extension runs a second `sphinx-build -b markdown` pass through
+    The `sphinx-llm` extension runs a second pass with a Markdown builder through
     this conf. The handlers below manipulate (or assume the existence of) HTML build
     output and would crash or be pointless under another builder.
     """
@@ -1027,7 +1028,7 @@ def patch_markdown_builder(app):
     documents. Excluding those asset trees matches the HTML builder and prevents
     static reStructuredText fragments from entering the LLM artifacts.
     """
-    if app.builder.name != "markdown":
+    if app.builder.name not in _markdown_builders:
         return
     from docutils import nodes
     from sphinx_markdown_builder.builder import MarkdownBuilder
@@ -2111,12 +2112,10 @@ _PLOTLY_PLACEHOLDER = "[plotly figure stripped from llms output]"
 _LLMS_HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
 _LLMS_EXCESS_BLANK_LINES_RE = re.compile(r"\n{3,}")
 _LLMS_SITE_URL_RE = re.compile(
-    r"(?P<prefix>\]\(https://skfolio\.org/)"
-    r"(?P<path>[^)\r\n]*\\[^)\r\n]*)(?=\))"
+    r"(?P<prefix>\]\(https://skfolio\.org/)" r"(?P<path>[^)\r\n]*\\[^)\r\n]*)(?=\))"
 )
 _LLMS_TRUNCATED_SECONDARY_LINK_RE = re.compile(
-    r"\[(?P<label>[^\]\r\n]+)\]\("
-    r"https://skfolio\.org(?:/[^)\r\n]*)?\.\.\.(?=\r?$)",
+    r"\[(?P<label>[^\]\r\n]+)\]\(" r"https://skfolio\.org(?:/[^)\r\n]*)?\.\.\.(?=\r?$)",
     flags=re.MULTILINE,
 )
 

@@ -584,12 +584,6 @@ def rolling_realized_factor_attribution(
 
     # Compute rolling windows: each window spans [start, start + window_size)
     window_starts = np.arange(0, n_observations - window_size + 1, step)
-    n_windows = len(window_starts)
-
-    if n_windows == 0:
-        raise ValueError(
-            f"No valid windows: n_observations={n_observations}, window_size={window_size}, step={step}."
-        )
 
     # Label each window by the last observation it contains
     window_labels = observations[window_starts + window_size - 1]

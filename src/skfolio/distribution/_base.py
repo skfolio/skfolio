@@ -49,13 +49,13 @@ class BaseDistribution(skb.BaseEstimator, ABC):
     @abstractmethod
     def n_params(self) -> int:
         """Number of model parameters."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
         """String representation of the fitted model."""
-        pass
+        ...
 
     @abstractmethod
     def fit(self, X: ArrayLike, y=None) -> BaseDistribution:
@@ -74,7 +74,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         self : BaseDistribution
             Returns the instance itself.
         """
-        pass
+        ...
 
     @abstractmethod
     def score_samples(self, X: ArrayLike) -> FloatArray:
@@ -90,7 +90,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         density : ndarray of shape (n_observations,)
             Log-likelihood values for each observation in X.
         """
-        pass
+        ...
 
     def sample(self, n_samples: int = 1):
         """Generate random samples from the fitted model.

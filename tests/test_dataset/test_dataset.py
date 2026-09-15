@@ -202,8 +202,8 @@ class TestLoadFactorsDataset:
 
 
 class TestLoadFtse100Dataset:
-    def test_load_ftse100_dataset_success(self):
-        df = load_ftse100_dataset()
+    def test_load_ftse100_dataset_success(self, remote_dataset):
+        df = remote_dataset(load_ftse100_dataset)
 
         # Check if the returned object is a pandas DataFrame
         assert isinstance(df, pd.DataFrame)
@@ -213,16 +213,16 @@ class TestLoadFtse100Dataset:
         assert not df.empty
 
     #  Returns a pandas DataFrame with the correct shape
-    def test_load_ftse100_dataset_shape(self):
-        df = load_ftse100_dataset()
+    def test_load_ftse100_dataset_shape(self, remote_dataset):
+        df = remote_dataset(load_ftse100_dataset)
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (5960, 64)
 
 
 class TestNasdaqDataset:
-    def test_load_nasdaq_dataset_success(self):
-        df = load_nasdaq_dataset()
+    def test_load_nasdaq_dataset_success(self, remote_dataset):
+        df = remote_dataset(load_nasdaq_dataset)
 
         # Check if the returned object is a pandas DataFrame
         assert isinstance(df, pd.DataFrame)
@@ -232,16 +232,16 @@ class TestNasdaqDataset:
         assert not df.empty
 
     #  Returns a pandas DataFrame with the correct shape
-    def test_load_nasdaq_dataset_shape(self):
-        df = load_nasdaq_dataset()
+    def test_load_nasdaq_dataset_shape(self, remote_dataset):
+        df = remote_dataset(load_nasdaq_dataset)
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (1362, 1455)
 
 
 class TestSp500ImpliedVolDataset:
-    def test_load_sp500_implied_vol_dataset_success(self):
-        df = load_sp500_implied_vol_dataset()
+    def test_load_sp500_implied_vol_dataset_success(self, remote_dataset):
+        df = remote_dataset(load_sp500_implied_vol_dataset)
 
         # Check if the returned object is a pandas DataFrame
         assert isinstance(df, pd.DataFrame)
@@ -251,8 +251,8 @@ class TestSp500ImpliedVolDataset:
         assert not df.empty
 
     #  Returns a pandas DataFrame with the correct shape
-    def test_load_sp500_implied_vol_dataset_shape(self):
-        df = load_sp500_implied_vol_dataset()
+    def test_load_sp500_implied_vol_dataset_shape(self, remote_dataset):
+        df = remote_dataset(load_sp500_implied_vol_dataset)
 
         # Check if the shape of the DataFrame is correct
         assert df.shape == (3270, 20)
@@ -366,3 +366,23 @@ class TestDownloadDatasetCache:
             download_dataset(
                 "some_dataset", data_home=str(tmp_path), download_if_missing=False
             )
+
+    #  On Windows, `os.rename` raises `FileExistsError` when another worker already
+    #  published the cache entry; the freshly downloaded copy is then dropped and the
+    #  existing entry is read instead.
+    def test_publish_race_reads_existing_cache(self, tmp_path, monkeypatch):
+        dest = tmp_path / "dataset.csv.gz"
+        monkeypatch.setattr(
+            _base.ur, "urlretrieve", lambda url, filename: _write_valid_gz(filename)
+        )
+
+        def already_published(src, dst):
+            _write_valid_gz(dst)
+            raise FileExistsError(dst)
+
+        monkeypatch.setattr(_base.os, "rename", already_published)
+        df = download_dataset("dataset", data_home=tmp_path)
+
+        assert list(df.columns) == ["A", "B"]
+        assert len(df) == 2
+        assert list(tmp_path.iterdir()) == [dest]

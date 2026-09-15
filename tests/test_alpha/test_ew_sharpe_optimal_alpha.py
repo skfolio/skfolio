@@ -926,3 +926,56 @@ class TestRegression:
             rtol=1e-10,
             err_msg="Coefficient values changed - check for computation changes",
         )
+
+
+class TestDegenerateRegressions:
+    """Test EWLS behavior when no or degenerate regression observations exist."""
+
+    def test_all_nan_scores_keep_alpha_none(self, alpha_deterministic_panel):
+        """Without a single valid regression observation, `alpha_` stays None."""
+        panel = alpha_deterministic_panel.copy(deep=True)
+        panel["signal"][:] = np.nan
+
+        model = EWSharpeOptimalAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            horizon=1,
+            half_life=5,
+            outlier_transformer="passthrough",
+            scoring_transformer="passthrough",
+        )
+        model.fit(panel)
+
+        assert model._n_valid_regression_obs == 0
+        assert model.alpha_ is None
+
+    def test_singular_normal_matrix_falls_back_to_pseudo_inverse(
+        self, alpha_deterministic_panel
+    ):
+        """Collinear descriptors without ridge use the minimum-norm solution."""
+        model = EWSharpeOptimalAlpha(
+            descriptors=[
+                ("first", Passthrough("signal")),
+                ("second", Passthrough("signal")),
+            ],
+            horizon=1,
+            half_life=5,
+            ridge_scale=0.0,
+        )
+        model.fit(alpha_deterministic_panel)
+
+        assert np.all(np.isfinite(model.coef_))
+        # The minimum-norm solution splits the loading equally between duplicates.
+        np.testing.assert_allclose(model.coef_[0], model.coef_[1])
+        assert model.alpha_ is not None
+        assert np.all(np.isfinite(model.alpha_))
+
+    def test_solve_ewls_coefficients_with_zero_normal_matrix(self):
+        """A zero normal matrix is singular and yields zero coefficients."""
+        model = EWSharpeOptimalAlpha(
+            descriptors=[("signal", Passthrough("signal"))],
+            ridge_scale=0.0,
+        )
+        model._ew_normal_matrix = np.zeros((2, 2))
+        model._ew_target_cross_product = np.array([1.0, -1.0])
+
+        np.testing.assert_array_equal(model._solve_ewls_coefficients(), [0.0, 0.0])

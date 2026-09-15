@@ -64,3 +64,10 @@ def test_drop_high_correlation_rejects_non_boolean_absolute():
     model = DropCorrelated().set_params(absolute="yes")
     with pytest.raises(ValueError, match="absolute must be a boolean"):
         model.fit(np.ones((2, 2)))
+
+
+@pytest.mark.parametrize("threshold", [-1.5, 1.5])
+def test_drop_high_correlation_invalid_threshold(threshold):
+    X = np.random.default_rng(0).standard_normal((20, 4))
+    with pytest.raises(ValueError, match="`threshold` must be between -1 and 1"):
+        DropCorrelated(threshold=threshold).fit(X)

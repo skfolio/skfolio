@@ -69,5 +69,4 @@ class BaseVariance(skb.BaseEstimator, ABC):
         self,
         X: ArrayLike,
         y: ArrayLike | None = None,
-    ):
-        pass
+    ): ...
