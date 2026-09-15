@@ -2392,8 +2392,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...
 
 
 def _mip_weight_constraints_no_short_threshold(

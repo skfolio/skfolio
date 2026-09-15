@@ -251,13 +251,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 self.fallback_chain_.append((str(fb), str(err)))
                 continue
 
-        # All fallbacks failed
-        if last_error is not None:
-            # Defer raising to the caller which decides based on raise_on_failure
-            raise last_error
-        raise RuntimeError(
-            "All fallback estimators failed; inspect 'fallback_chain_' for details."
-        )
+        # All fallbacks failed. The caller decides based on raise_on_failure.
+        raise last_error
 
     def _fallback_to_previous_weights_or_raise(self, n_assets: int) -> None:
         """Fallback to `previous_weights` or raise if unavailable/invalid.
@@ -291,8 +286,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             raise
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
-        pass
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None): ...
 
     def predict(self, X: ArrayLike | ReturnDistribution) -> Portfolio | Population:
         """Predict the `Portfolio` or a `Population` of portfolios on `X`.

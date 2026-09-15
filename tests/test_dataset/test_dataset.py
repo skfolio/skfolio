@@ -366,3 +366,23 @@ class TestDownloadDatasetCache:
             download_dataset(
                 "some_dataset", data_home=str(tmp_path), download_if_missing=False
             )
+
+    #  On Windows, `os.rename` raises `FileExistsError` when another worker already
+    #  published the cache entry; the freshly downloaded copy is then dropped and the
+    #  existing entry is read instead.
+    def test_publish_race_reads_existing_cache(self, tmp_path, monkeypatch):
+        dest = tmp_path / "dataset.csv.gz"
+        monkeypatch.setattr(
+            _base.ur, "urlretrieve", lambda url, filename: _write_valid_gz(filename)
+        )
+
+        def already_published(src, dst):
+            _write_valid_gz(dst)
+            raise FileExistsError(dst)
+
+        monkeypatch.setattr(_base.os, "rename", already_published)
+        df = download_dataset("dataset", data_home=tmp_path)
+
+        assert list(df.columns) == ["A", "B"]
+        assert len(df) == 2
+        assert list(tmp_path.iterdir()) == [dest]

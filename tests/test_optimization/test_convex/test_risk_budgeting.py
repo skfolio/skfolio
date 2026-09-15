@@ -437,3 +437,27 @@ def test_infeasible_problem_is_not_retried(X_small):
         warnings.simplefilter("error", UserWarning)
         with pytest.raises(cp.SolverError, match=r"Solver 'CLARABEL' failed"):
             model.fit(X_small)
+
+
+def test_risk_budgeting_invalid_risk_measure_type(X):
+    # `set_params` bypasses the enum conversion performed in `__init__`.
+    model = RiskBudgeting().set_params(risk_measure="variance")
+    with pytest.raises(TypeError, match="risk_measure must be of type `RiskMeasure`"):
+        model.fit(X)
+
+
+def test_risk_budgeting_non_default_solver():
+    # Any solver other than CLARABEL falls through to empty params. Risk budgeting
+    # needs an exponential cone, which SCIPY does not support, so the primary solve
+    # fails and the fallback solver finishes the problem. The params are set before
+    # the solve either way, so the branch is exercised.
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0005, 0.01, (60, 6))
+    model = RiskBudgeting(solver="SCIPY")
+    with pytest.warns(
+        UserWarning,
+        match=r"Solver 'SCIPY' failed\. Retrying with the fallback solver 'SCS'\.",
+    ):
+        model.fit(X)
+    assert model._solver_params == {}
+    assert model.solver_ == "SCS"

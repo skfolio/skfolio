@@ -36,13 +36,12 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]:
-        pass
+    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]: ...
 
     @abstractmethod
     def get_path_ids(self) -> IntArray:
         """Return the path id of each test sets in each split."""
-        pass
+        ...
 
     __repr__ = sks.BaseCrossValidator.__repr__
 

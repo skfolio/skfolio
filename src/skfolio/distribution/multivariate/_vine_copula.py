@@ -752,11 +752,6 @@ class VineCopula(BaseMultivariateDist):
 
         missing_central_vars = set(conditioning_vars).difference(self.central_assets_)
 
-        if not set(conditioning_vars).issubset(set(range(n_assets))):
-            raise ValueError(
-                "The keys of `conditioning` must be asset indices or names "
-                "from the input X."
-            )
         if len(conditioning_vars) >= n_assets:
             raise ValueError(
                 "`conditioning` must be provided for strictly fewer assets "

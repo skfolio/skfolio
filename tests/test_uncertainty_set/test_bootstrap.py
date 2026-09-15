@@ -116,3 +116,15 @@ class TestBootstrapCovarianceUncertaintySet:
 
         # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_bootstrap_covariance_full_geometry(X_small):
+    X_sub = X_small.iloc[:, :4]
+    model = BootstrapCovarianceUncertaintySet(
+        diagonal=False, n_bootstrap_samples=20, seed=42
+    )
+    model.fit(X_sub)
+    geometry = model.uncertainty_set_.geometry
+    assert geometry.shape == (16, 16)
+    assert np.all(np.isfinite(geometry))
+    np.testing.assert_allclose(geometry, geometry.T, atol=1e-12)

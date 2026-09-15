@@ -107,6 +107,8 @@ def test_ending_weights_follow_selected_convention(returns):
         drifted.weights_per_observation.iloc[-1].to_numpy(),
     )
     assert drifted._weights_path is not None
+    # Once built, the path is cached and returned as the same object.
+    assert drifted._get_weights_path() is drifted._weights_path
 
 
 def test_weight_drift_and_compounded_are_independent(returns):
