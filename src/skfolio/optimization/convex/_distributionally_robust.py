@@ -230,6 +230,10 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         The solver to use. The default is "CLARABEL" which is written in Rust and has
         better numerical stability and performance than ECOS and SCS. Cvxpy will replace
         its default solver "ECOS" by "CLARABEL" in future releases.
+        When the chosen solver fails on a problem that is neither infeasible nor
+        unbounded, the solve is retried once with the fallback solver "SCS", whose
+        first-order iterations succeed on some ill-conditioned instances that stall an
+        interior point method. `solver_` reports which one produced the solution.
         For more details about available solvers, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
 
@@ -289,6 +293,10 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
+
+    solver_ : str
+        The solver that produced the solution. It differs from `solver` when that one
+        failed and the fallback solver succeeded on the retry.
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.

@@ -35,10 +35,6 @@ SKIPPED = {
     "skfolio.population._population.Population.boxplot_measure": (
         "illustrative fragment: `population` is never defined"
     ),
-    "skfolio.prior._opinion_pooling.OpinionPooling": (
-        "example raises: the pooling itself fits, but `RiskBudgeting(CVaR)` on the "
-        "pooled distribution hits `SolverError: Solver 'CLARABEL' failed`"
-    ),
 }
 
 

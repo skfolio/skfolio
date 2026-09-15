@@ -186,6 +186,10 @@ class BenchmarkTracker(MeanRisk):
     problem_values_ :  dict[str, float]
         Expression values retrieved from the CVXPY problem.
 
+    solver_ : str
+        The solver that produced the solution. It differs from `solver` when that one
+        failed and the fallback solver succeeded on the retry.
+
     prior_estimator_ : BasePrior
         Fitted `prior_estimator` on excess returns.
 
