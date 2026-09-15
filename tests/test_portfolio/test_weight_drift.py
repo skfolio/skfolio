@@ -149,6 +149,33 @@ def test_weight_drift_treats_nan_asset_returns_as_zero(returns):
     )
 
 
+@pytest.mark.parametrize(
+    "dtype", ["Float64", {"A": "Float64"}], ids=["nullable", "mixed"]
+)
+@pytest.mark.parametrize("with_missing", [False, True])
+def test_nullable_weight_drift(returns, dtype, with_missing):
+    if with_missing:
+        returns.iloc[1, 0] = np.nan
+    nullable = returns.astype(dtype)
+    original = nullable.copy(deep=True)
+    weights = np.array([0.5, 0.3, 0.2])
+    path, gross_returns, ending_weights = _drift_loop(
+        returns.fillna(0).to_numpy(), weights
+    )
+
+    portfolio = Portfolio(X=nullable, weights=weights, weight_drift=True)
+
+    pd.testing.assert_frame_equal(
+        portfolio.weights_per_observation,
+        pd.DataFrame(path, index=returns.index, columns=returns.columns),
+        check_freq=False,
+    )
+    np.testing.assert_allclose(portfolio.returns, gross_returns)
+    np.testing.assert_allclose(portfolio.ending_weights, ending_weights)
+    assert portfolio.X is nullable
+    pd.testing.assert_frame_equal(nullable, original)
+
+
 def test_costs_fees_and_turnover_are_unchanged(returns):
     weights = np.array([0.5, 0.3, 0.2])
     previous_weights = np.array([0.4, 0.4, 0.2])

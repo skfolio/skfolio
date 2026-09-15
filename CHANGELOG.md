@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.4 (2026-09-14)
+
+### Bug Fixes
+
+- **portfolio**: Support nullable pandas returns in Portfolio
+  ([#310](https://github.com/skfolio/skfolio/pull/310),
+  [`307a9a4`](https://github.com/skfolio/skfolio/commit/307a9a411379d5348a5e5214a09118f29ee0fbea))
+
+
 ## v1.2.3 (2026-09-13)
 
 ### Bug Fixes

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pandas as pd
+import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio._constants import (
@@ -23,7 +24,7 @@ from skfolio._constants import (
 from skfolio.attribution import Attribution
 from skfolio.measures import RiskMeasure, effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
-from skfolio.typing import ArrayLike, FloatArray, IntArray, StrArray
+from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
     _get_liquidation_turnover_and_cost,
     args_names,
@@ -541,6 +542,8 @@ class Portfolio(BasePortfolio):
         fallback_chain: list[tuple[str, str]] | None = None,
         **kwargs,
     ):
+        weights_provided = weights is not None
+        rets = _to_numpy_returns(X) if weights_provided else None
         # extract assets names from X
         assets = None
         observations = None
@@ -548,14 +551,12 @@ class Portfolio(BasePortfolio):
             assets = np.asarray(X.columns, dtype=object)
             observations = np.asarray(X.index)
 
-        # We don't perform extensive checks (like in check_X) for faster instantiation.
-        rets = np.asarray(X)
-        if rets.ndim != 2:
+        shape = rets.shape if weights_provided else np.shape(X)
+        if len(shape) != 2:
             raise ValueError("`X` must be a 2D array-like")
 
-        n_observations, n_assets = rets.shape
+        n_observations, n_assets = shape
 
-        weights_provided = weights is not None
         # Preserve excluded assets and their cost rates when reconstructing a portfolio.
         original_named_inputs = {}
         if isinstance(previous_weights, dict):
@@ -903,7 +904,7 @@ class Portfolio(BasePortfolio):
             path = np.empty((0, self.n_assets))
         else:
             position_values, wealth = _position_values_and_wealth(
-                returns=_nan_to_zero(np.asarray(self.X)),
+                returns=_nan_to_zero(_to_numpy_returns(self.X)),
                 weights=self.weights,
                 observations=self.observations,
             )
@@ -934,9 +935,10 @@ class Portfolio(BasePortfolio):
     @property
     def diversification(self) -> float:
         """Weighted average of volatility divided by the portfolio volatility."""
-        return (
-            self.weights @ np.std(np.asarray(self.X), axis=0) / self.standard_deviation
-        )
+        if self._is_failed_portfolio:
+            return np.nan
+        rets = _to_numpy_returns(self.X)
+        return self.weights @ np.std(rets, axis=0) / self.standard_deviation
 
     @property
     def sric(self) -> float:
@@ -1327,18 +1329,35 @@ class Portfolio(BasePortfolio):
         )
 
 
-def _nan_to_zero(returns: np.ndarray) -> np.ndarray:
+def _to_numpy_returns(X: ArrayLike) -> FloatArray:
+    """Convert real numeric returns to float64, preserving missing values."""
+    if isinstance(X, pd.DataFrame) and all(dtype.kind in "biuf" for dtype in X.dtypes):
+        # Convert real pandas dtypes directly, avoiding nullable object arrays.
+        # Leave other dtypes to check_array so complex values are not cast away.
+        X = X.to_numpy(dtype=float, na_value=np.nan)
+    return skv.check_array(
+        X,
+        dtype=float,
+        ensure_all_finite="allow-nan",
+        ensure_min_samples=0,
+        ensure_min_features=0,
+    )
+
+
+def _nan_to_zero(returns: FloatArray) -> FloatArray:
     """Replace NaN asset returns by zero, returning the input when it has no NaN."""
-    if np.isnan(returns).any():
-        return np.nan_to_num(returns, nan=0.0)
+    mask = np.isnan(returns)
+    if mask.any():
+        returns = returns.copy()
+        returns[mask] = 0.0
     return returns
 
 
 def _position_values_and_wealth(
-    returns: np.ndarray,
-    weights: np.ndarray,
-    observations: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    returns: FloatArray,
+    weights: FloatArray,
+    observations: AnyArray,
+) -> tuple[FloatArray, FloatArray]:
     """Position values and wealth of the drifted weights, starting from unit wealth.
 
     Each position grows with its own asset return and is not rebalanced within the
@@ -1386,10 +1405,10 @@ def _position_values_and_wealth(
 
 
 def _align_weights(
-    weights: np.ndarray,
-    portfolio_assets: np.ndarray,
-    model_assets: np.ndarray,
-) -> np.ndarray:
+    weights: FloatArray,
+    portfolio_assets: StrArray,
+    model_assets: StrArray,
+) -> FloatArray:
     """Map portfolio weights into the factor model's asset ordering.
 
     Parameters
@@ -1435,7 +1454,7 @@ def _align_weights(
 def _prepare_realized_attribution_inputs(
     portfolio: Portfolio,
     factor_model: FactorModel,
-) -> tuple[np.ndarray, np.ndarray, FactorModel]:
+) -> tuple[FloatArray, FloatArray, FactorModel]:
     """Prepare aligned weights and factor model data for realized attribution.
 
     Parameters
@@ -1478,9 +1497,9 @@ def _prepare_realized_attribution_inputs(
 
 
 def _select_realized_observation_window(
-    observations: np.ndarray,
+    observations: AnyArray,
     factor_model: FactorModel,
-) -> tuple[np.ndarray, FactorModel]:
+) -> tuple[IntArray, FactorModel]:
     """Select the overlapping realized attribution observation window.
 
     Leading or trailing portfolio observations outside the factor model are excluded.
@@ -1542,7 +1561,7 @@ def _get_risk(
 def _compute_contribution(
     args: dict,
     weights: FloatArray,
-    assets: FloatArray,
+    assets: StrArray,
     measure: skt.Measure,
     h: float,
     drop_zero_weights: bool,
