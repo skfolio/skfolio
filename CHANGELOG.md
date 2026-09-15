@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.2.5 (2026-09-15)
+
+### Bug Fixes
+
+- **pre-selection**: Apply absolute correlations
+  ([#311](https://github.com/skfolio/skfolio/pull/311),
+  [`74ad22d`](https://github.com/skfolio/skfolio/commit/74ad22d85a0e6c7bb6fd79562b062fff906702a7))
+
+### Testing
+
+- Expand coverage and fix edge-case failures ([#313](https://github.com/skfolio/skfolio/pull/313),
+  [`4aceaf5`](https://github.com/skfolio/skfolio/commit/4aceaf510581b6102924b7cb2c42ba81b0d7fe77))
+
+
 ## v1.2.4 (2026-09-14)
 
 ### Bug Fixes
