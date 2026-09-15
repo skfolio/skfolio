@@ -1269,9 +1269,7 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            # Risk is computed on normalized active weights. Multiplying
-                            # the target by the ratio factor preserves that meaning in
-                            # homogeneous coordinates and is a no-op when factor is 1.
+                            # Scale the target too; final weights are w / factor.
                             args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor

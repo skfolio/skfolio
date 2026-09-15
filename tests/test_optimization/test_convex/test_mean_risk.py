@@ -2068,20 +2068,28 @@ def test_target_weights_with_standard_deviation_mip(X):
     )
 
 
-def test_target_weights_maximum_ratio_uses_normalized_active_weights(X):
+@pytest.mark.parametrize(
+    "risk_measure",
+    [
+        RiskMeasure.STANDARD_DEVIATION,
+        RiskMeasure.VARIANCE,
+        RiskMeasure.CVAR,
+    ],
+)
+def test_target_weights_maximum_ratio_uses_normalized_active_weights(X, risk_measure):
     target_weights = np.zeros(X.shape[1])
     target_weights[:3] = [0.2, -0.1, -0.1]
     model = MeanRisk(
         objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
-        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        risk_measure=risk_measure,
         target_weights=target_weights,
         min_weights=-0.5,
     ).fit(X)
 
-    active_returns = X.to_numpy() @ (model.weights_ - target_weights)
+    active_portfolio = Portfolio(X=X, weights=model.weights_ - target_weights)
     np.testing.assert_allclose(
         model.problem_values_["risk"],
-        np.std(active_returns, ddof=1),
+        getattr(active_portfolio, risk_measure.value),
         rtol=1e-5,
         atol=1e-9,
     )
