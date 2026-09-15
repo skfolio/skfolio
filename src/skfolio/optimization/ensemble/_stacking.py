@@ -358,9 +358,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         # we need to set the random state of the cv if there is one and we
         # need to take a copy.
         if self.cv in ["prefit", "ignore"]:
-            # `predict` returns Portfolios. Convert each one explicitly: relying on
-            # numpy to call `__array__` on the nested elements only works from
-            # numpy 2 onwards, and raises an inhomogeneous-shape error before that.
+            # Convert predicted portfolios to return arrays before stacking.
             X_pred = np.array(
                 [np.asarray(estimator.predict(X)) for estimator in self.estimators_]
             ).T
