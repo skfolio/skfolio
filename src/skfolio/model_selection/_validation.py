@@ -224,22 +224,7 @@ def cross_val_predict(
             "observations and cross-validation parameters."
         )
 
-    # We ensure that the folds are not shuffled
-    if not isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
-        try:
-            if cv.shuffle:
-                raise ValueError(
-                    "`cross_val_predict` only works with cross-validation setting"
-                    " `shuffle=False`"
-                )
-        except AttributeError:
-            # If we cannot find the attribute shuffle, we check if the first folds
-            # are shuffled
-            for fold in splits[0]:
-                if not np.all(np.diff(fold) > 0):
-                    raise ValueError(
-                        "`cross_val_predict` only works with un-shuffled folds"
-                    ) from None
+    _check_unshuffled_folds(cv, splits)
 
     # estimator can be a Pipeline
     last_step = _get_last_step(estimator)
@@ -258,72 +243,293 @@ def cross_val_predict(
         )
 
     if use_sequential_path and is_sequential_cv:
-        if isinstance(cv, MultipleRandomizedCV):
-            splits = list(cv.split(X, y, **routed_params.splitter.split))
-            path_ids = cv.get_path_ids()
-            paths = defaultdict(list)
-            for (train, test, col_idx), pid in zip(splits, path_ids, strict=True):
-                paths[pid].append((train, test, col_idx))
+        predictions = _predict_sequential(
+            estimator=estimator,
+            X=X,
+            y=y,
+            cv=cv,
+            splits=splits,
+            routed_params=routed_params,
+            method=method,
+            n_jobs=n_jobs,
+            verbose=verbose,
+            pre_dispatch=pre_dispatch,
+            entry_rebalancing_params=entry_rebalancing_params,
+        )
+    else:
+        predictions = _predict_independent(
+            estimator=estimator,
+            X=X,
+            y=y,
+            splits=splits,
+            routed_params=routed_params,
+            method=method,
+            n_jobs=n_jobs,
+            verbose=verbose,
+            pre_dispatch=pre_dispatch,
+        )
 
-            parallel = skp.Parallel(
-                n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
-            )
-            predictions = parallel(
-                skp.delayed(_run_path)(
-                    estimator=estimator,
-                    X=X,
-                    y=y,
-                    routed_params=routed_params,
-                    method=method,
-                    path_splits=paths[pid],
-                    entry_rebalancing_params=entry_rebalancing_params,
-                )
-                for pid in sorted(paths.keys())
-            )
-            predictions = [ptf for path in predictions for ptf in path]
+    pred = _assemble_predictions(
+        cv=cv,
+        predictions=predictions,
+        splits=splits,
+        portfolio_params=portfolio_params,
+    )
 
-        else:
-            if n_jobs not in (None, 1):
-                warnings.warn(
-                    "Parallel processing has been disabled because the optimization "
-                    "method requires sequential processing of previous weights or "
-                    "`entry_rebalancing_params`. To suppress this warning, set "
-                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable the "
-                    "options that require previous weights, such as `weight_drift`, "
-                    "transaction costs, `max_turnover`, or a previous-weights fallback.",
-                    stacklevel=2,
+    if is_sequential_cv and not use_sequential_path:
+        for path in pred if isinstance(pred, Population) else [pred]:
+            path.portfolios = _propagate_previous_weights(portfolios=path.portfolios)
+
+    _sync_measure_params_to_portfolios(pred, explicit_measure_param_names)
+    return pred
+
+
+def _check_unshuffled_folds(cv: sks.BaseCrossValidator, splits: list) -> None:
+    """Check that the cross-validation folds are in chronological order.
+
+    Portfolios are concatenated by fold order, so a shuffled split would silently
+    produce a portfolio whose periods are out of order.
+
+    Parameters
+    ----------
+    cv : cross-validator
+        The cross-validation splitter.
+
+    splits : list
+        The splits it produced.
+
+    Raises
+    ------
+    ValueError
+        If the splitter shuffles, or if its first fold is not increasing.
+    """
+    if not isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
+        try:
+            if cv.shuffle:
+                raise ValueError(
+                    "`cross_val_predict` only works with cross-validation setting"
+                    " `shuffle=False`"
                 )
-            predictions = _run_path(
+        except AttributeError:
+            # If we cannot find the attribute shuffle, we check if the first folds
+            # are shuffled
+            for fold in splits[0]:
+                if not np.all(np.diff(fold) > 0):
+                    raise ValueError(
+                        "`cross_val_predict` only works with un-shuffled folds"
+                    ) from None
+
+
+def _predict_sequential(
+    estimator: BaseOptimization | Pipeline,
+    X: ArrayLike,
+    y: ArrayLike,
+    cv: sks.BaseCrossValidator,
+    splits: list,
+    routed_params: sku.Bunch,
+    method: str,
+    n_jobs: int | None,
+    verbose: int,
+    pre_dispatch: str,
+    entry_rebalancing_params: dict | None,
+) -> list:
+    """Fit and predict each fold in order, carrying holdings from one to the next.
+
+    Independent paths of a `MultipleRandomizedCV` are still run in parallel; within a
+    path the fits must stay sequential, since each one needs the previous ending
+    weights.
+
+    Parameters
+    ----------
+    estimator : BaseOptimization | Pipeline
+        The estimator to fit.
+
+    X : array-like of shape (n_observations, n_assets)
+        Price returns of the assets.
+
+    y : array-like
+        Target data, if any.
+
+    cv : cross-validator
+        The cross-validation splitter.
+
+    splits : list
+        The splits it produced.
+
+    routed_params : Bunch
+        The routed metadata.
+
+    method : str
+        The estimator method to call.
+
+    n_jobs : int | None
+        Number of jobs to run in parallel.
+
+    verbose : int
+        The verbosity level.
+
+    pre_dispatch : str
+        Number of jobs dispatched during parallel execution.
+
+    entry_rebalancing_params : dict | None
+        The entry rebalancing parameters.
+
+    Returns
+    -------
+    predictions : list
+        One prediction per split, in split order.
+    """
+    if isinstance(cv, MultipleRandomizedCV):
+        splits = list(cv.split(X, y, **routed_params.splitter.split))
+        path_ids = cv.get_path_ids()
+        paths = defaultdict(list)
+        for (train, test, col_idx), pid in zip(splits, path_ids, strict=True):
+            paths[pid].append((train, test, col_idx))
+
+        parallel = skp.Parallel(
+            n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
+        )
+        predictions = parallel(
+            skp.delayed(_run_path)(
                 estimator=estimator,
                 X=X,
                 y=y,
                 routed_params=routed_params,
                 method=method,
-                path_splits=splits,
+                path_splits=paths[pid],
                 entry_rebalancing_params=entry_rebalancing_params,
             )
+            for pid in sorted(paths.keys())
+        )
+        predictions = [ptf for path in predictions for ptf in path]
 
     else:
-        # We clone the estimator to make sure that all the folds are independent
-        # and that it is pickle-able.
-        parallel = skp.Parallel(
-            n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch
-        )
-        # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
-        predictions = parallel(
-            skp.delayed(fit_and_predict)(
-                sk.clone(estimator),
-                X,
-                y,
-                train=train,
-                test=test,
-                fit_params=routed_params.estimator_params,
-                method=method,
-                column_indices=column_indices[0] if column_indices else None,
+        if n_jobs not in (None, 1):
+            warnings.warn(
+                "Parallel processing has been disabled because the optimization "
+                "method requires sequential processing of previous weights or "
+                "`entry_rebalancing_params`. To suppress this warning, set "
+                "`n_jobs=None`, remove `entry_rebalancing_params`, or disable the "
+                "options that require previous weights, such as `weight_drift`, "
+                "transaction costs, `max_turnover`, or a previous-weights fallback.",
+                stacklevel=2,
             )
-            for train, test, *column_indices in splits
+        predictions = _run_path(
+            estimator=estimator,
+            X=X,
+            y=y,
+            routed_params=routed_params,
+            method=method,
+            path_splits=splits,
+            entry_rebalancing_params=entry_rebalancing_params,
         )
 
+    return predictions
+
+
+def _predict_independent(
+    estimator: BaseOptimization | Pipeline,
+    X: ArrayLike,
+    y: ArrayLike,
+    splits: list,
+    routed_params: sku.Bunch,
+    method: str,
+    n_jobs: int | None,
+    verbose: int,
+    pre_dispatch: str,
+) -> list:
+    """Fit and predict every fold independently, in parallel.
+
+    Parameters
+    ----------
+    estimator : BaseOptimization | Pipeline
+        The estimator to fit.
+
+    X : array-like of shape (n_observations, n_assets)
+        Price returns of the assets.
+
+    y : array-like
+        Target data, if any.
+
+    splits : list
+        The splits to run.
+
+    routed_params : Bunch
+        The routed metadata.
+
+    method : str
+        The estimator method to call.
+
+    n_jobs : int | None
+        Number of jobs to run in parallel.
+
+    verbose : int
+        The verbosity level.
+
+    pre_dispatch : str
+        Number of jobs dispatched during parallel execution.
+
+    Returns
+    -------
+    predictions : list
+        One prediction per split, in split order.
+    """
+    # We clone the estimator to make sure that all the folds are independent
+    # and that it is pickle-able.
+    parallel = skp.Parallel(n_jobs=n_jobs, verbose=verbose, pre_dispatch=pre_dispatch)
+    # TODO remove when https://github.com/joblib/joblib/issues/1071 is fixed
+    predictions = parallel(
+        skp.delayed(fit_and_predict)(
+            sk.clone(estimator),
+            X,
+            y,
+            train=train,
+            test=test,
+            fit_params=routed_params.estimator_params,
+            method=method,
+            column_indices=column_indices[0] if column_indices else None,
+        )
+        for train, test, *column_indices in splits
+    )
+
+    return predictions
+
+
+def _assemble_predictions(
+    cv: sks.BaseCrossValidator,
+    predictions: list,
+    splits: list,
+    portfolio_params: dict,
+) -> Population | MultiPeriodPortfolio:
+    """Gather the per-fold predictions into the returned object.
+
+    A combinatorial or randomized splitter yields one portfolio per path, so the
+    result is a `Population`; a plain splitter yields a single `MultiPeriodPortfolio`.
+
+    Parameters
+    ----------
+    cv : cross-validator
+        The cross-validation splitter.
+
+    predictions : list
+        The per-fold predictions.
+
+    splits : list
+        The splits they came from.
+
+    portfolio_params : dict
+        Parameters passed to the created portfolios.
+
+    Returns
+    -------
+    pred : Population | MultiPeriodPortfolio
+        The assembled prediction.
+
+    Raises
+    ------
+    ValueError
+        If the test folds of a non-combinatorial splitter overlap.
+    """
     if isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
         path_ids = cv.get_path_ids()
         path_nb = np.max(path_ids) + 1
@@ -363,11 +569,6 @@ def cross_val_predict(
             **portfolio_params,
         )
 
-    if is_sequential_cv and not use_sequential_path:
-        for path in pred if isinstance(pred, Population) else [pred]:
-            path.portfolios = _propagate_previous_weights(portfolios=path.portfolios)
-
-    _sync_measure_params_to_portfolios(pred, explicit_measure_param_names)
     return pred
 
 

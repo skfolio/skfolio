@@ -22,7 +22,14 @@ from skfolio.attribution._model import (
     FamilyBreakdown,
 )
 from skfolio.attribution._utils import _cov_with_centered, _validate_no_nan
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
+from skfolio.typing import (
+    AnyArray,
+    ArrayLike,
+    BoolArray,
+    FloatArray,
+    IntArray,
+    StrArray,
+)
 from skfolio.utils.stats import safe_divide
 
 if TYPE_CHECKING:
@@ -293,18 +300,11 @@ def realized_factor_attribution(
     if factor_families is not None:
         factor_families = np.asarray(factor_families)
 
-    if compute_uncertainty:
-        if regression_weights is None or idio_variances is None:
-            raise ValueError(
-                "`compute_uncertainty=True` requires both `regression_weights` "
-                "and `idio_variances` to be provided."
-            )
-        regression_weights = np.asarray(regression_weights, dtype=float)
-        idio_variances = np.asarray(idio_variances, dtype=float)
-        _validate_no_nan(regression_weights, "regression_weights")
-    else:
-        regression_weights = None
-        idio_variances = None
+    regression_weights, idio_variances = _resolve_uncertainty_inputs(
+        compute_uncertainty=compute_uncertainty,
+        regression_weights=regression_weights,
+        idio_variances=idio_variances,
+    )
 
     _validate_attribution_inputs(
         factor_returns=factor_returns,
@@ -620,6 +620,119 @@ def rolling_realized_factor_attribution(
 
     n_observations, _ = factor_returns.shape
 
+    _validate_rolling_window(
+        observations=observations,
+        n_observations=n_observations,
+        window_size=window_size,
+        step=step,
+    )
+
+    # Compute rolling windows: each window spans [start, start + window_size)
+    window_starts = np.arange(0, n_observations - window_size + 1, step)
+
+    # Label each window by the last observation it contains
+    window_labels = observations[window_starts + window_size - 1]
+
+    weights_is_static = weights.ndim == 1
+
+    results = _attribution_per_window(
+        window_starts=window_starts,
+        window_size=window_size,
+        factor_returns=factor_returns,
+        portfolio_returns=portfolio_returns,
+        exposures=exposures,
+        weights=weights,
+        idio_returns=idio_returns,
+        factor_names=factor_names,
+        asset_names=asset_names,
+        factor_families=factor_families,
+        annualization_factor=annualization_factor,
+        compute_asset_breakdowns=compute_asset_breakdowns,
+        regression_weights=regression_weights,
+        idio_variances=idio_variances,
+        family_constraint_basis=family_constraint_basis,
+        exposure_is_static=exposure_is_static,
+        weights_is_static=weights_is_static,
+    )
+
+    return _stack_rolling_results(
+        results=results,
+        factor_families=factor_families,
+        compute_asset_breakdowns=compute_asset_breakdowns,
+        compute_asset_factor_contribs=compute_asset_factor_contribs,
+        window_labels=window_labels,
+    )
+
+
+def _resolve_uncertainty_inputs(
+    compute_uncertainty: bool,
+    regression_weights: FloatArray | None,
+    idio_variances: FloatArray | None,
+) -> tuple[FloatArray | None, FloatArray | None]:
+    """Return the uncertainty inputs, or `(None, None)` when uncertainty is off.
+
+    Parameters
+    ----------
+    compute_uncertainty : bool
+        Whether to compute uncertainty.
+
+    regression_weights : ndarray | None
+        The regression weights.
+
+    idio_variances : ndarray | None
+        The idiosyncratic variances.
+
+    Returns
+    -------
+    regression_weights : ndarray | None
+        The validated regression weights, or `None`.
+
+    idio_variances : ndarray | None
+        The idiosyncratic variances, or `None`.
+
+    Raises
+    ------
+    ValueError
+        If uncertainty is requested without both inputs.
+    """
+    if not compute_uncertainty:
+        return None, None
+    if regression_weights is None or idio_variances is None:
+        raise ValueError(
+            "`compute_uncertainty=True` requires both `regression_weights` "
+            "and `idio_variances` to be provided."
+        )
+    regression_weights = np.asarray(regression_weights, dtype=float)
+    idio_variances = np.asarray(idio_variances, dtype=float)
+    _validate_no_nan(regression_weights, "regression_weights")
+    return regression_weights, idio_variances
+
+
+def _validate_rolling_window(
+    observations: AnyArray, n_observations: int, window_size: int, step: int
+) -> None:
+    """Check the rolling window parameters against the observation axis.
+
+    Parameters
+    ----------
+    observations : ndarray
+        The observation labels.
+
+    n_observations : int
+        Number of observations, after any exposure lag.
+
+    window_size : int
+        Number of observations per window.
+
+    step : int
+        Number of observations between two window starts.
+
+    Raises
+    ------
+    ValueError
+        If the labels do not match the observation count, or if the window does not
+        fit, or if `window_size` or `step` is too small.
+    """
     if len(observations) != n_observations:
         raise ValueError(
             f"`observations` length {len(observations)} does not match n_observations={n_observations}."
@@ -636,17 +749,87 @@ def rolling_realized_factor_attribution(
     if step < 1:
         raise ValueError(f"`step` must be >= 1, got {step}.")
 
-    # Compute rolling windows: each window spans [start, start + window_size)
-    window_starts = np.arange(0, n_observations - window_size + 1, step)
 
-    # Label each window by the last observation it contains
-    window_labels = observations[window_starts + window_size - 1]
+def _attribution_per_window(
+    window_starts: IntArray,
+    window_size: int,
+    factor_returns: FloatArray,
+    portfolio_returns: FloatArray,
+    exposures: FloatArray,
+    weights: FloatArray,
+    idio_returns: FloatArray,
+    factor_names: AnyArray,
+    asset_names: AnyArray,
+    factor_families: AnyArray | None,
+    annualization_factor: float,
+    compute_asset_breakdowns: bool,
+    regression_weights: FloatArray | None,
+    idio_variances: FloatArray | None,
+    family_constraint_basis: FloatArray | None,
+    exposure_is_static: bool,
+    weights_is_static: bool,
+) -> list[Attribution]:
+    """Run the single-window attribution on each rolling window.
 
-    weights_is_static = weights.ndim == 1
+    Parameters
+    ----------
+    window_starts : ndarray
+        The first observation index of each window.
 
+    window_size : int
+        Number of observations per window.
+
+    factor_returns : ndarray of shape (n_observations, n_factors)
+        Factor returns.
+
+    portfolio_returns : ndarray of shape (n_observations,)
+        Portfolio returns.
+
+    exposures : ndarray
+        Factor exposures, static or per observation.
+
+    weights : ndarray
+        Asset weights, static or per observation.
+
+    idio_returns : ndarray of shape (n_observations, n_assets)
+        Idiosyncratic returns.
+
+    factor_names : ndarray
+        Factor names.
+
+    asset_names : ndarray
+        Asset names.
+
+    factor_families : ndarray | None
+        Factor family of each factor.
+
+    annualization_factor : float
+        The annualization factor.
+
+    compute_asset_breakdowns : bool
+        Whether to compute the asset breakdown.
+
+    regression_weights : ndarray | None
+        The regression weights, when computing uncertainty.
+
+    idio_variances : ndarray | None
+        The idiosyncratic variances, when computing uncertainty.
+
+    family_constraint_basis : ndarray | None
+        The family constraint basis.
+
+    exposure_is_static : bool
+        Whether `exposures` is shared by every observation.
+
+    weights_is_static : bool
+        Whether `weights` is shared by every observation.
+
+    Returns
+    -------
+    results : list[Attribution]
+        One single-window attribution per window, in window order.
+    """
     has_uncertainty = regression_weights is not None
-
-    # Compute attribution for each window
     results = []
     for start in window_starts:
         end = start + window_size
@@ -672,7 +855,40 @@ def rolling_realized_factor_attribution(
             ),
         )
         results.append(attr)
+    return results
 
+
+def _stack_rolling_results(
+    results: list[Attribution],
+    factor_families: AnyArray | None,
+    compute_asset_breakdowns: bool,
+    compute_asset_factor_contribs: bool,
+    window_labels: AnyArray,
+) -> Attribution:
+    """Stack the per-window attributions into one rolling `Attribution`.
+
+    Parameters
+    ----------
+    results : list[Attribution]
+        The per-window attributions.
+
+    factor_families : ndarray | None
+        Factor family of each factor.
+
+    compute_asset_breakdowns : bool
+        Whether the asset breakdown was computed.
+
+    compute_asset_factor_contribs : bool
+        Whether the asset-by-factor contributions were computed.
+
+    window_labels : ndarray
+        The label of each window, its last observation.
+
+    Returns
+    -------
+    attribution : Attribution
+        The rolling attribution, every field carrying a leading window axis.
+    """
     systematic = _stack_dataclass([r.systematic for r in results])
     idio = _stack_dataclass([r.idio for r in results])
     unattributed = _stack_dataclass([r.unattributed for r in results])
@@ -697,7 +913,6 @@ def rolling_realized_factor_attribution(
         )
     else:
         asset_factor_contribs = None
-
     return Attribution(
         systematic=systematic,
         idio=idio,
