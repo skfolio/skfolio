@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.8 (2026-09-16)
+
+### Bug Fixes
+
+- **portfolio**: Prevent multi-period arithmetic from resetting settings
+  ([#317](https://github.com/skfolio/skfolio/pull/317),
+  [`efbddac`](https://github.com/skfolio/skfolio/commit/efbddacb9eeb07e1c7b982968c1804a2a6637342))
+
+
 ## v1.2.7 (2026-09-16)
 
 ### Bug Fixes
