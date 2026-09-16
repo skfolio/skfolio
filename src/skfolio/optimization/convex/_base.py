@@ -839,7 +839,74 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
-        # Constraints
+        constraints += self._bound_constraints(
+            w=w,
+            factor=factor,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            allow_negative_weights=allow_negative_weights,
+        )
+        constraints += self._budget_constraints(w=w, factor=factor)
+
+        if is_mip:
+            constraints += self._mip_constraints(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+                groups=groups,
+            )
+
+        constraints += self._linear_constraints(
+            w=w,
+            factor=factor,
+            groups=groups,
+            assets_names=assets_names,
+            investable_mask=investable_mask,
+            return_distribution=return_distribution,
+        )
+        constraints += self._inequality_constraints(
+            n_assets=n_assets, w=w, factor=factor, investable_mask=investable_mask
+        )
+
+        return constraints
+
+    def _bound_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: np.ndarray | None,
+        max_weights: np.ndarray | None,
+        allow_negative_weights: bool,
+    ) -> list[cpc.Constraint]:
+        """Per-asset weight bounds and the long and short exposure caps.
+
+        Parameters
+        ----------
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Cvxpy variable or constant.
+
+        min_weights : ndarray | None
+            The cleaned `min_weights`.
+
+        max_weights : ndarray | None
+            The cleaned `max_weights`.
+
+        allow_negative_weights : bool
+            Whether to allow negative weights.
+
+        Returns
+        -------
+        constraints : list[cvxpy Constraint]
+            The bound constraints.
+        """
+        constraints = []
         if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
@@ -875,6 +942,27 @@ class ConvexOptimization(BaseOptimization, ABC):
                 <= max_short * factor * self._scale_constraints
             )
 
+        return constraints
+
+    def _budget_constraints(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> list[cpc.Constraint]:
+        """Constraints on the sum of the weights.
+
+        Parameters
+        ----------
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Cvxpy variable or constant.
+
+        Returns
+        -------
+        constraints : list[cvxpy Constraint]
+            The budget constraints.
+        """
+        constraints = []
         if self.min_budget is not None:
             constraints.append(
                 cp.sum(w) * self._scale_constraints
@@ -901,72 +989,157 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
-        if is_mip:
-            is_short = np.any(min_weights < 0)
+        return constraints
 
-            if max_weights is None or min_weights is None:
-                raise ValueError(
-                    "'max_weights' and 'min_weights' must be provided with cardinality "
-                    "constraint"
-                )
-            if np.all(min_weights > 0):
-                raise ValueError(
-                    "Cardinality and Threshold constraint can only be applied "
-                    "if 'min_weights' are not all strictly positive (you allow some "
-                    "weights to be 0)"
-                )
+    def _mip_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: np.ndarray | None,
+        max_weights: np.ndarray | None,
+        threshold_long: np.ndarray | None,
+        threshold_short: np.ndarray | None,
+        groups: np.ndarray | None,
+    ) -> list[cpc.Constraint]:
+        """Cardinality and threshold constraints, which need integer variables.
 
-            if self.group_cardinalities is not None and groups is None:
-                raise ValueError(
-                    "When 'group_cardinalities' is provided, you must also "
-                    "also provide 'groups'"
-                )
+        Parameters
+        ----------
+        n_assets : int
+            Number of investable assets.
 
-            if (
-                self.threshold_long is not None
-                and self.threshold_short is None
-                and is_short
-            ):
-                raise ValueError(
-                    "When 'threshold_long' is provided and 'min_weights' can be negative "
-                    "(short positions are allowed), then 'threshold_short' must also be "
-                    "provided"
-                )
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
 
-            if threshold_short is not None and threshold_long is None:
-                raise ValueError(
-                    "When 'threshold_short' is provided, 'threshold_long' must also be "
-                    "provided"
-                )
+        factor : cvxpy Variable | cvxpy Constant
+            Cvxpy variable or constant.
 
-            if self.threshold_short is not None and is_short:
-                constraints += _mip_weight_constraints_threshold_short(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                    threshold_short=threshold_short,
-                )
-            else:
-                constraints += _mip_weight_constraints_no_short_threshold(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                )
+        min_weights : ndarray | None
+            The cleaned `min_weights`.
 
+        max_weights : ndarray | None
+            The cleaned `max_weights`.
+
+        threshold_long : ndarray | None
+            The cleaned `threshold_long`.
+
+        threshold_short : ndarray | None
+            The cleaned `threshold_short`.
+
+        groups : ndarray | None
+            The cleaned `groups`.
+
+        Returns
+        -------
+        constraints : list[cvxpy Constraint]
+            The mixed-integer constraints.
+        """
+        constraints = []
+        is_short = np.any(min_weights < 0)
+
+        if max_weights is None or min_weights is None:
+            raise ValueError(
+                "'max_weights' and 'min_weights' must be provided with cardinality "
+                "constraint"
+            )
+        if np.all(min_weights > 0):
+            raise ValueError(
+                "Cardinality and Threshold constraint can only be applied "
+                "if 'min_weights' are not all strictly positive (you allow some "
+                "weights to be 0)"
+            )
+
+        if self.group_cardinalities is not None and groups is None:
+            raise ValueError(
+                "When 'group_cardinalities' is provided, you must also "
+                "also provide 'groups'"
+            )
+
+        if (
+            self.threshold_long is not None
+            and self.threshold_short is None
+            and is_short
+        ):
+            raise ValueError(
+                "When 'threshold_long' is provided and 'min_weights' can be negative "
+                "(short positions are allowed), then 'threshold_short' must also be "
+                "provided"
+            )
+
+        if threshold_short is not None and threshold_long is None:
+            raise ValueError(
+                "When 'threshold_short' is provided, 'threshold_long' must also be "
+                "provided"
+            )
+
+        if self.threshold_short is not None and is_short:
+            constraints += _mip_weight_constraints_threshold_short(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                scale_constraints=self._scale_constraints,
+                cardinality=self.cardinality,
+                group_cardinalities=self.group_cardinalities,
+                max_weights=max_weights,
+                groups=groups,
+                min_weights=min_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+            )
+        else:
+            constraints += _mip_weight_constraints_no_short_threshold(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                scale_constraints=self._scale_constraints,
+                cardinality=self.cardinality,
+                group_cardinalities=self.group_cardinalities,
+                max_weights=max_weights,
+                groups=groups,
+                min_weights=min_weights,
+                threshold_long=threshold_long,
+            )
+
+        return constraints
+
+    def _linear_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        groups: np.ndarray | None,
+        assets_names: np.ndarray | None,
+        investable_mask: np.ndarray | None,
+        return_distribution: ReturnDistribution | None,
+    ) -> list[cpc.Constraint]:
+        """Constraints expressed as equations over asset groups or factors.
+
+        Parameters
+        ----------
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Cvxpy variable or constant.
+
+        groups : ndarray | None
+            The cleaned `groups`.
+
+        assets_names : ndarray | None
+            The asset names seen during `fit`, when available.
+
+        investable_mask : ndarray | None
+            The investable asset mask, when available.
+
+        return_distribution : ReturnDistribution | None
+            The return distribution, used for factor constraints.
+
+        Returns
+        -------
+        constraints : list[cvxpy Constraint]
+            The linear constraints.
+        """
+        constraints = []
         if self.linear_constraints is not None:
             if groups is None:
                 if assets_names is None:
@@ -1016,6 +1189,37 @@ class ConvexOptimization(BaseOptimization, ABC):
                     <= 0
                 )
 
+        return constraints
+
+    def _inequality_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        investable_mask: np.ndarray | None,
+    ) -> list[cpc.Constraint]:
+        """Constraints given directly as the matrix inequality `A @ w <= b`.
+
+        Parameters
+        ----------
+        n_assets : int
+            Number of investable assets.
+
+        w : cvxpy Variable
+            The CVXPY Variable representing assets weights.
+
+        factor : cvxpy Variable | cvxpy Constant
+            Cvxpy variable or constant.
+
+        investable_mask : ndarray | None
+            The investable asset mask, when available.
+
+        Returns
+        -------
+        constraints : list[cvxpy Constraint]
+            The inequality constraints.
+        """
+        constraints = []
         if self.left_inequality is not None and self.right_inequality is not None:
             left_inequality = np.asarray(self.left_inequality)
             right_inequality = np.asarray(self.right_inequality)
