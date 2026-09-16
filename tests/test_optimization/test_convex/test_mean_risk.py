@@ -1930,16 +1930,16 @@ def test_raise_on_failure_multi(X):
     )
 
 
-def test_non_constraint_generator_parameter_sweep_reuses_problem(X, monkeypatch):
+def test_non_gmd_parameter_sweep_reuses_problem(X, monkeypatch):
     problem_ids = []
-    original_solve = sco._solve_with_constraint_generation
+    original_solve = sco._solve
 
     def record_problem(**kwargs):
-        assert not kwargs["constraint_generators"]
+        assert kwargs["gmd"] is None
         problem_ids.append(id(kwargs["problem"]))
         return original_solve(**kwargs)
 
-    monkeypatch.setattr(sco, "_solve_with_constraint_generation", record_problem)
+    monkeypatch.setattr(sco, "_solve", record_problem)
     MeanRisk(
         risk_measure=RiskMeasure.VARIANCE,
         min_return=[0.0005, 0.0001],

@@ -70,12 +70,13 @@ def _solve_pairwise_reference(
     *,
     risk_aversion: float = 3.0,
     risk_limit: float | None = None,
+    unrestricted: bool = False,
 ) -> tuple[np.ndarray, float, float]:
     """Solve a small independent reference problem for one MeanRisk context."""
     n_assets = returns.shape[1]
     mu = returns.mean(axis=0)
     weights = cp.Variable(n_assets)
-    constraints: list[cp.Constraint] = [weights >= 0]
+    constraints: list[cp.Constraint] = [] if unrestricted else [weights >= 0]
     ratio_scale = 1.0
 
     if context == "maximum_ratio":
@@ -150,7 +151,6 @@ def test_permutation_cut_is_reduced_to_asset_coefficients():
 
     assert constraint.args[0].size == 1
     np.testing.assert_allclose(constraint.violation(), max(3 * expected, 0))
-    assert generator.n_cuts == 2
 
 
 @pytest.mark.parametrize(
@@ -177,14 +177,6 @@ def test_permutation_cut_is_reduced_to_asset_coefficients():
             },
             "tolerances",
         ),
-        (
-            {
-                "returns": np.ones((2, 2)),
-                "weights": cp.Variable(2),
-                "max_iterations": 0,
-            },
-            "strictly positive",
-        ),
     ],
 )
 def test_generator_validates_inputs(kwargs, match):
@@ -206,12 +198,14 @@ def test_separation_oracle_finds_maximizing_permutation():
     )
     weights.value = candidate
     generator.expression.value = enumerated - 1e-4
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
 
-    assert generator.separate(normalization_factor=1.0) is not None
-    np.testing.assert_allclose(generator.violation, 1e-4, atol=1e-14)
-    assert generator.n_iterations == 1
-    assert not generator.converged
+    assert (
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
+        is not None
+    )
+    assert generator._stable_permutation(portfolio_returns) in cuts
+    np.testing.assert_allclose(generator.evaluate(1.0), enumerated, atol=1e-14)
 
 
 def test_stable_ties_and_duplicate_violated_permutation():
@@ -227,11 +221,14 @@ def test_stable_ties_and_duplicate_violated_permutation():
     generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
     weights.value = np.array([1.0, 0.0])
     generator.expression.value = 0.0
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
 
-    assert generator.separate(normalization_factor=1.0) is not None
+    assert (
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
+        is not None
+    )
     with pytest.raises(cp.SolverError, match="duplicate violated permutation"):
-        generator.separate(normalization_factor=1.0)
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
 
 
 def test_small_duplicate_violation_is_treated_as_master_feasibility_error():
@@ -240,37 +237,29 @@ def test_small_duplicate_violation_is_treated_as_master_feasibility_error():
     generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
     weights.value = np.array([1.0, 0.0])
     generator.expression.value = 0.0
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
 
-    assert generator.separate(normalization_factor=1.0) is not None
+    assert (
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
+        is not None
+    )
     exact_value = _pairwise_gmd(returns @ weights.value)
     generator.expression.value = exact_value - 2e-8
 
-    assert generator.separate(normalization_factor=1.0) is None
-    assert generator.converged
-
-
-def test_maximum_iterations_and_invalid_values_are_not_silent():
-    returns = np.array([[0.0, 2.0], [1.0, 0.0], [2.0, 1.0]])
-    weights = cp.Variable(2)
-    generator = _GiniMeanDifference(
-        returns, weights, cp.Constant(1.0), max_iterations=1
+    assert (
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
+        is None
     )
-    generator.reset()
-    generator.expression.value = 0.0
-    weights.value = np.array([1.0, 0.0])
-    assert generator.separate(normalization_factor=1.0) is not None
 
-    weights.value = np.array([0.0, 1.0])
-    with pytest.raises(cp.SolverError, match="maximum of 1 iterations"):
-        generator.separate(normalization_factor=1.0)
 
+def test_missing_weight_values_are_not_silent():
+    returns = np.array([[0.0, 2.0], [1.0, 0.0], [2.0, 1.0]])
     missing_weights = cp.Variable(2)
     generator = _GiniMeanDifference(returns, missing_weights, cp.Constant(1.0))
     generator.expression.value = 0.0
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
     with pytest.raises(cp.SolverError, match="invalid weight values"):
-        generator.separate(normalization_factor=1.0)
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
 
 
 def test_missing_or_non_finite_separation_values_are_not_silent(monkeypatch):
@@ -278,17 +267,15 @@ def test_missing_or_non_finite_separation_values_are_not_silent(monkeypatch):
     weights = cp.Variable(2)
     generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
     weights.value = np.array([0.5, 0.5])
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
 
     with pytest.raises(cp.SolverError, match=r"epigraph.*finite scalar"):
-        generator.separate(normalization_factor=1.0)
-    with pytest.raises(cp.SolverError, match="establish convergence"):
-        _ = generator.exact_value
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
 
     generator.expression.value = 0.0
     generator._returns[0, 0] = np.inf
     with pytest.raises(cp.SolverError, match="invalid portfolio returns"):
-        generator.separate(normalization_factor=1.0)
+        generator._separate(normalization_factor=1.0, cut_normalization_factors=cuts)
 
     generator._returns[0, 0] = 0.0
     monkeypatch.setattr(
@@ -298,7 +285,9 @@ def test_missing_or_non_finite_separation_values_are_not_silent(monkeypatch):
     )
     with np.errstate(over="ignore"):
         with pytest.raises(cp.SolverError, match="non-finite separation value"):
-            generator.separate(normalization_factor=1.0)
+            generator._separate(
+                normalization_factor=1.0, cut_normalization_factors=cuts
+            )
 
 
 def test_non_finite_normalized_gmd_is_rejected():
@@ -307,14 +296,15 @@ def test_non_finite_normalized_gmd_is_rejected():
     generator = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
     weights.value = np.ones(1)
     generator.expression.value = 0.0
-    generator.reset()
+    cuts = {generator._initial_permutation: 1.0}
 
     # Homogeneous GMD and normalized returns are finite, but normalized GMD
     # overflows when the ordered weighted sum combines both observations.
     with np.errstate(over="ignore"):
         with pytest.raises(cp.SolverError, match="non-finite normalized value"):
-            generator.separate(normalization_factor=1e-8)
-    assert not generator.converged
+            generator._separate(
+                normalization_factor=1e-8, cut_normalization_factors=cuts
+            )
 
 
 @pytest.mark.parametrize(
@@ -583,7 +573,6 @@ def test_construction_failure_cannot_leak_generator_state():
     with pytest.raises(TypeError, match="add_objective"):
         model.fit(returns)
 
-    assert not hasattr(model, "_constraint_generators")
     cloned = clone(model).set_params(add_objective=None)
     cloned.fit(returns[::-1])
     np.testing.assert_allclose(
@@ -779,29 +768,35 @@ def test_save_problem_all_parameter_targets_fail_cleanly():
 
 
 def test_failed_parameter_target_cuts_do_not_poison_next_target(monkeypatch):
-    original_reset = _GiniMeanDifference.reset
-    original_separate = _GiniMeanDifference.separate
-    reset_count = 0
+    original_solve = _GiniMeanDifference.solve
+    original_separate = _GiniMeanDifference._separate
+    solve_count = 0
     calls_for_target = 0
+    base_constraint_counts = []
 
-    def reset(self):
-        nonlocal reset_count, calls_for_target
-        reset_count += 1
+    def solve(self, problem, solver, solver_params, factor):
+        nonlocal solve_count, calls_for_target
+        solve_count += 1
         calls_for_target = 0
-        original_reset(self)
+        base_constraint_counts.append(len(problem.constraints))
+        return original_solve(self, problem, solver, solver_params, factor)
 
-    def fail_second_target_after_a_cut(self, normalization_factor):
+    def fail_second_target_after_a_cut(
+        self, normalization_factor, cut_normalization_factors
+    ):
         nonlocal calls_for_target
         calls_for_target += 1
-        if reset_count == 2:
+        if solve_count == 2:
             if calls_for_target == 1:
                 permutation = tuple(np.roll(np.arange(len(self._returns)), 1))
                 return self._create_cut(permutation, normalization_factor)
             raise cp.SolverError("forced failure after generated cut")
-        return original_separate(self, normalization_factor)
+        return original_separate(self, normalization_factor, cut_normalization_factors)
 
-    monkeypatch.setattr(_GiniMeanDifference, "reset", reset)
-    monkeypatch.setattr(_GiniMeanDifference, "separate", fail_second_target_after_a_cut)
+    monkeypatch.setattr(_GiniMeanDifference, "solve", solve)
+    monkeypatch.setattr(
+        _GiniMeanDifference, "_separate", fail_second_target_after_a_cut
+    )
     model = MeanRisk(
         risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
         min_return=[0.0002, 0.0003, 0.0004],
@@ -810,9 +805,10 @@ def test_failed_parameter_target_cuts_do_not_poison_next_target(monkeypatch):
     with pytest.warns(UserWarning, match="forced failure after generated cut"):
         model.fit(_make_returns())
 
-    assert reset_count == 3
+    assert solve_count == 3
+    assert len(set(base_constraint_counts)) == 1
     assert model.error_[0] is None
-    assert model.error_[1] == "forced failure after generated cut"
+    assert model.error_[1].endswith("forced failure after generated cut")
     assert model.error_[2] is None
     assert np.isnan(model.weights_[1]).all()
     assert np.isfinite(model.weights_[[0, 2]]).all()
@@ -976,10 +972,10 @@ def test_scip_time_limited_master_fails_cleanly():
 
 
 def test_constraint_generation_failure_uses_existing_failure_lifecycle(monkeypatch):
-    def fail_separation(self, normalization_factor):
+    def fail_separation(self, normalization_factor, cut_normalization_factors):
         raise cp.SolverError("forced GMD separation failure")
 
-    monkeypatch.setattr(_GiniMeanDifference, "separate", fail_separation)
+    monkeypatch.setattr(_GiniMeanDifference, "_separate", fail_separation)
     model = MeanRisk(
         risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE, raise_on_failure=False
     )
@@ -987,5 +983,244 @@ def test_constraint_generation_failure_uses_existing_failure_lifecycle(monkeypat
         model.fit(_make_returns())
 
     assert model.weights_ is None
-    assert model.error_ == "forced GMD separation failure"
+    assert model.error_.endswith("forced GMD separation failure")
     assert not hasattr(model, "problem_values_")
+
+
+def test_default_gmd_converges_beyond_former_cut_limit(monkeypatch):
+    # Hugo's regression required 558 master solves, exceeding the former 500-cut
+    # ceiling. A bounded problem must keep the asset-space formulation throughout.
+    returns = np.random.default_rng(42).normal(0.0005, 0.01, (500, 20))
+
+    def unexpected_fallback(self):
+        pytest.fail("A bounded GMD master should not need a quadratic fallback")
+
+    monkeypatch.setattr(
+        _GiniMeanDifference, "_pairwise_constraints", unexpected_fallback
+    )
+    model = MeanRisk(
+        risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE, save_problem=True
+    ).fit(returns)
+
+    assert model.problem_.status == cp.OPTIMAL
+    assert model.problem_.size_metrics.num_scalar_variables == returns.shape[1] + 1
+    exact_risk = _pairwise_gmd(returns @ model.weights_)
+    np.testing.assert_allclose(model.problem_values_["risk"], exact_risk, atol=1e-12)
+    np.testing.assert_allclose(
+        model.problem_values_["objective"], exact_risk, atol=5e-8
+    )
+    np.testing.assert_allclose(model.weights_.sum(), 1.0, atol=1e-8)
+    assert model.weights_.min() >= -1e-8
+
+
+@pytest.mark.parametrize(
+    ("context", "objective_function", "risk_limit"),
+    [
+        ("maximum_return_under_risk", ObjectiveFunction.MAXIMIZE_RETURN, 0.01),
+        ("maximum_utility", ObjectiveFunction.MAXIMIZE_UTILITY, None),
+    ],
+)
+@pytest.mark.parametrize(
+    "solver",
+    [
+        "CLARABEL",
+        pytest.param(
+            "SCIP",
+            marks=pytest.mark.skipif(
+                "SCIP" not in cp.installed_solvers(), reason="SCIP is not installed"
+            ),
+        ),
+    ],
+)
+def test_unbounded_relaxation_matches_finite_pairwise_optimum(
+    monkeypatch, context, objective_function, risk_limit, solver
+):
+    returns = np.random.default_rng(42).normal(0.0005, 0.01, (40, 6))
+    _, reference_risk, reference_return = _solve_pairwise_reference(
+        returns, context, risk_limit=risk_limit, risk_aversion=1.0, unrestricted=True
+    )
+    original_fallback = _GiniMeanDifference._pairwise_constraints
+    fallback_count = 0
+
+    def fallback(self):
+        nonlocal fallback_count
+        fallback_count += 1
+        return original_fallback(self)
+
+    monkeypatch.setattr(_GiniMeanDifference, "_pairwise_constraints", fallback)
+    model = MeanRisk(
+        risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
+        objective_function=objective_function,
+        min_weights=None,
+        max_weights=None,
+        max_gini_mean_difference=risk_limit,
+        risk_aversion=1.0,
+        save_problem=True,
+        solver=solver,
+    ).fit(returns)
+
+    assert fallback_count == 1
+    assert model.problem_.status == cp.OPTIMAL
+    actual_risk = _pairwise_gmd(returns @ model.weights_)
+    actual_return = returns.mean(axis=0) @ model.weights_
+    np.testing.assert_allclose(model.problem_values_["risk"], actual_risk, atol=1e-12)
+    if risk_limit is None:
+        np.testing.assert_allclose(
+            actual_return - actual_risk, reference_return - reference_risk, atol=1e-8
+        )
+    else:
+        assert actual_risk <= risk_limit + 1e-8
+        np.testing.assert_allclose(actual_return, reference_return, atol=1e-8)
+
+
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_truly_unbounded_gmd_problem_is_not_accepted(raise_on_failure):
+    base = np.random.default_rng(4).normal(0, 0.01, 20)
+    # The long-short direction has positive return and zero GMD.
+    returns = np.column_stack((base, base + 0.001))
+    model = MeanRisk(
+        risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        min_weights=None,
+        max_weights=None,
+        max_gini_mean_difference=0.02,
+        raise_on_failure=raise_on_failure,
+        save_problem=True,
+    )
+    if raise_on_failure:
+        with pytest.raises(cp.SolverError, match="status 'unbounded"):
+            model.fit(returns)
+    else:
+        with pytest.warns(UserWarning, match="status 'unbounded"):
+            model.fit(returns)
+        assert model.weights_ is None
+        assert "status 'unbounded" in model.error_
+    assert not hasattr(model, "problem_")
+
+
+@pytest.mark.parametrize("risk_limits", [[0.01, 0.001], [0.01, 0.001, 0.012]])
+def test_pairwise_fallback_is_target_local_and_restores_saved_solution(
+    monkeypatch, risk_limits
+):
+    returns = np.random.default_rng(42).normal(0.0005, 0.01, (40, 6))
+    original_fallback = _GiniMeanDifference._pairwise_constraints
+    fallback_count = 0
+
+    def fallback(self):
+        nonlocal fallback_count
+        fallback_count += 1
+        return original_fallback(self)
+
+    monkeypatch.setattr(_GiniMeanDifference, "_pairwise_constraints", fallback)
+    model = MeanRisk(
+        risk_measure=RiskMeasure.VARIANCE,
+        objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
+        min_weights=None,
+        max_weights=None,
+        max_gini_mean_difference=risk_limits,
+        raise_on_failure=False,
+        save_problem=True,
+    )
+    with pytest.warns(UserWarning, match="status 'infeasible"):
+        model.fit(returns)
+
+    assert fallback_count == len(risk_limits)
+    assert model.error_[0] is None
+    assert model.error_[1] is not None
+    assert np.isnan(model.weights_[1]).all()
+    successful_index = 0 if len(risk_limits) == 2 else 2
+    assert model.error_[successful_index] is None
+    last_limit = risk_limits[successful_index]
+    assert model.problem_.status == cp.OPTIMAL
+    assert float(model.problem_.parameters()[0].value) == last_limit
+    weights = model.weights_[successful_index]
+    np.testing.assert_allclose(_pairwise_gmd(returns @ weights), last_limit, atol=1e-8)
+    # A GMD constraint must not replace the selected variance risk report. Its
+    # epigraph can be loose because this problem maximizes return.
+    reported_risk = model.problem_values_[successful_index]["risk"]
+    assert reported_risk >= np.var(returns @ weights, ddof=1) - 1e-9
+    assert reported_risk != pytest.approx(last_limit)
+    for constraint in model.problem_.constraints:
+        assert np.max(constraint.violation()) <= 1e-7
+
+
+@pytest.mark.parametrize("factor_value", [0.0, 1e-14, -1.0])
+@pytest.mark.parametrize("variable_factor", [False, True])
+def test_gmd_solve_rejects_invalid_normalization_factor(factor_value, variable_factor):
+    returns = _make_returns(n_observations=5, n_assets=3)
+    weights = cp.Variable(3)
+    gmd = _GiniMeanDifference(returns, weights, cp.Constant(1.0))
+    factor = cp.Variable() if variable_factor else cp.Constant(factor_value)
+    constraints = [weights == np.full(3, 1 / 3), gmd.initial_constraint]
+    if variable_factor:
+        constraints.append(factor == factor_value)
+    problem = cp.Problem(
+        cp.Minimize(gmd.expression),
+        constraints,
+    )
+    with pytest.raises(
+        cp.SolverError, match="invalid homogeneous normalization factor"
+    ):
+        gmd.solve(problem, "CLARABEL", {}, factor)
+
+
+def test_inaccurate_master_warns_after_successful_separation(monkeypatch):
+    original_solve = cp.Problem.solve
+
+    def solve(self, *args, **kwargs):
+        result = original_solve(self, *args, **kwargs)
+        if self.status == cp.OPTIMAL:
+            self._status = cp.OPTIMAL_INACCURATE
+        return result
+
+    monkeypatch.setattr(cp.Problem, "solve", solve)
+    returns = _make_returns(n_observations=20)
+    model = MeanRisk(risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE, save_problem=True)
+    with pytest.warns(UserWarning, match="Solution may be inaccurate"):
+        model.fit(returns)
+
+    assert model.problem_.status == cp.OPTIMAL_INACCURATE
+    exact_risk = _pairwise_gmd(returns @ model.weights_)
+    np.testing.assert_allclose(model.problem_values_["risk"], exact_risk, atol=1e-12)
+    np.testing.assert_allclose(
+        model.problem_values_["objective"], exact_risk, atol=5e-8
+    )
+
+
+def test_unrestricted_ratio_recovers_from_nonpositive_relaxation_factor(monkeypatch):
+    rng = np.random.default_rng(20260)
+    returns = rng.normal(size=(18, 3))
+    returns = (
+        (returns - returns.mean(axis=0)) * 0.01 + np.linspace(0.0002, 0.0012, 3)
+    ) * 0.01
+    _, reference_risk, reference_return = _solve_pairwise_reference(
+        returns, "maximum_ratio", unrestricted=True
+    )
+    original_fallback = _GiniMeanDifference._pairwise_constraints
+    fallback_count = 0
+
+    def fallback(self):
+        nonlocal fallback_count
+        fallback_count += 1
+        return original_fallback(self)
+
+    monkeypatch.setattr(_GiniMeanDifference, "_pairwise_constraints", fallback)
+    model = MeanRisk(
+        risk_measure=RiskMeasure.GINI_MEAN_DIFFERENCE,
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        min_weights=None,
+        max_weights=None,
+        save_problem=True,
+    ).fit(returns)
+
+    # Another solver version may choose a normalizable point in the initial flat
+    # relaxation and need no fallback. Either path must recover the same optimum.
+    assert fallback_count <= 1
+    assert model.problem_values_["factor"] > 0
+    actual_risk = _pairwise_gmd(returns @ model.weights_)
+    actual_return = returns.mean(axis=0) @ model.weights_
+    np.testing.assert_allclose(
+        actual_return / actual_risk, reference_return / reference_risk, rtol=1e-6
+    )
+    np.testing.assert_allclose(model.problem_values_["risk"], actual_risk, atol=1e-12)
+    np.testing.assert_allclose(model.weights_.sum(), 1.0, atol=1e-8)
