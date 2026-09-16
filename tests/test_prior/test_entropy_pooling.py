@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import operator
+import types
 
 import numpy as np
 import pytest
+import scipy.optimize as sco
+import sklearn.utils.metadata_routing as skm
 
 import skfolio.measures as sm
+import skfolio.prior._entropy_pooling as ep_module
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
-from skfolio.exceptions import GroupNotFoundError
+from skfolio.exceptions import GroupNotFoundError, SolverError
 from skfolio.moments import ShrunkCovariance, ShrunkMu
 from skfolio.prior import (
     EmpiricalPrior,
@@ -1271,3 +1275,86 @@ def test_small_prior():
     evil_float = 1e-5
     X = np.array([[evil_float, 0.0], [0.0, evil_float], [0.0, 1.0]])
     model.fit(X)
+
+
+def test_get_metadata_routing():
+    router = EntropyPooling(prior_estimator=EmpiricalPrior()).get_metadata_routing()
+    assert isinstance(router, skm.MetadataRouter)
+
+
+def test_add_constraint_ignores_empty_constraints():
+    model = EntropyPooling()
+    model._constraints = {"equality": None}
+    model._add_constraint(a=np.empty((5, 0)), b=np.empty(0), name="equality")
+    assert model._constraints["equality"] is None
+
+
+def test_add_variance_views_without_views_is_noop():
+    model = EntropyPooling()
+    assert model._add_variance_views(mean=np.zeros(2)) is None
+
+
+def test_cvar_view_below_root_bracket(X):
+    model = EntropyPooling(cvar_views=["AAPL == 0.0005"])
+    with pytest.raises(
+        ValueError, match=r"eta\[0\] must be between 0 and the CVaR view 0.0005"
+    ):
+        model.fit(X)
+
+
+def test_cvar_root_finding_failure(X, monkeypatch):
+    def failing_root_scalar(*args, **kwargs):
+        return types.SimpleNamespace(converged=False, root=np.nan)
+
+    monkeypatch.setattr(
+        ep_module,
+        "sco",
+        types.SimpleNamespace(minimize=sco.minimize, root_scalar=failing_root_scalar),
+    )
+    model = EntropyPooling(cvar_views=["AAPL == 0.05"])
+    with pytest.raises(RuntimeError, match="Failed to solve the CVaR view problem"):
+        model.fit(X)
+
+
+def test_multi_cvar_minimize_failure(X, monkeypatch):
+    def failing_powell(*args, **kwargs):
+        if kwargs.get("method") == "Powell":
+            return sco.OptimizeResult(success=False, x=kwargs["x0"])
+        return sco.minimize(*args, **kwargs)
+
+    monkeypatch.setattr(
+        ep_module,
+        "sco",
+        types.SimpleNamespace(minimize=failing_powell, root_scalar=sco.root_scalar),
+    )
+    model = EntropyPooling(cvar_views=["AAPL == 0.05", "AMD == 0.06"])
+    with pytest.raises(ValueError, match="Failed to solve the multi-CVaR view problem"):
+        model.fit(X)
+
+
+def test_conflicting_views_dual_solver_error(X):
+    model = EntropyPooling(solver="TNC", mean_views=["AAPL == 0.01", "AAPL == 0.02"])
+    with pytest.raises(SolverError, match="Dual problem with Solver 'TNC' failed"):
+        model.fit(X)
+
+
+def test_conflicting_views_primal_solver_error(X):
+    model = EntropyPooling(
+        solver="CLARABEL", mean_views=["AAPL == 0.01", "AAPL == 0.02"]
+    )
+    with pytest.raises(
+        SolverError, match="Primal problem with Solver 'CLARABEL' failed"
+    ):
+        model.fit(X)
+
+
+def test_parse_correlation_view_prior_expression_errors():
+    assets = ["AAPL", "AMD"]
+    with pytest.raises(ValueError, match="Invalid prior expression format"):
+        _parse_correlation_view("(AAPL, AMD) == prior(AAPL, XXX)", assets=assets)
+
+    with pytest.raises(ValueError, match="Invalid pre-multiplier 'a'"):
+        _parse_correlation_view("(AAPL, AMD) == a * prior(AAPL, AMD)", assets=assets)
+
+    with pytest.raises(ValueError, match="Invalid constant 'b'"):
+        _parse_correlation_view("(AAPL, AMD) == prior(AAPL, AMD) + b", assets=assets)

@@ -679,3 +679,68 @@ class _VectorAlpha(BaseAlpha):
 
     def partial_fit(self, X, y=None, **fit_params):
         return self.fit(X, y, **fit_params)
+
+
+class _FitOnlyAlpha(BaseAlpha):
+    """Minimal alpha estimator without incremental learning support."""
+
+    def fit(self, X, y=None, **fit_params):
+        self.alpha_ = np.zeros(X.n_assets)
+        return self
+
+
+class TestAlphaPartialFit:
+    N_OBS = 200
+    N_ASSETS = 10
+
+    def _data(self):
+        rng = np.random.default_rng(0)
+        beta = rng.uniform(0.5, 1.5, size=self.N_ASSETS)
+        f = rng.normal(0, 0.01, size=self.N_OBS)
+        eps = rng.normal(0, 0.005, size=(self.N_OBS, self.N_ASSETS))
+        returns = beta[None, :] * f[:, None] + eps
+        beta_field = np.broadcast_to(beta, returns.shape).copy()
+        panel, X = make_panel(returns, extra_fields={"beta": beta_field})
+        return panel, X
+
+    def _model(self, alpha_estimator):
+        return CharacteristicsFactorModel(
+            factors=[("beta", passthrough_factor("beta", family="market"))],
+            alpha_estimator=alpha_estimator,
+            exposure_lag=1,
+            benchmark_mcap_power=0,
+            regression_mcap_power=0,
+            min_regression_assets=self.N_ASSETS,
+        )
+
+    def test_partial_fit_passes_full_batch_to_alpha_estimator(self):
+        panel, X = self._data()
+        alpha = np.linspace(-0.01, 0.01, self.N_ASSETS)
+        split = self.N_OBS // 2
+
+        model_full = self._model(_VectorAlpha(alpha))
+        model_full.fit(X, characteristics=panel)
+
+        model_pf = self._model(_VectorAlpha(alpha))
+        model_pf.partial_fit(X.iloc[:split], characteristics=panel[:split])
+        model_pf.partial_fit(X.iloc[split:], characteristics=panel[split:])
+
+        np.testing.assert_allclose(
+            model_pf.factor_model_.idio_mu, model_full.factor_model_.idio_mu
+        )
+        np.testing.assert_allclose(
+            model_pf.return_distribution_.mu, model_full.return_distribution_.mu
+        )
+        assert np.any(model_pf.factor_model_.idio_mu != 0)
+
+    def test_alpha_estimator_without_partial_fit_raises(self):
+        panel, X = self._data()
+        split = self.N_OBS // 2
+        model = self._model(_FitOnlyAlpha())
+        model.partial_fit(X.iloc[:split], characteristics=panel[:split])
+
+        with pytest.raises(
+            ValueError,
+            match="provide an alpha_estimator that also implements `partial_fit`",
+        ):
+            model.partial_fit(X.iloc[split:], characteristics=panel[split:])

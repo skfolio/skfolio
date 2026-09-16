@@ -528,9 +528,9 @@ class BasePortfolio:
             kwargs,
             owner_name=type(self).__name__,
         )
-        self._sample_weight = sample_weight
         self.returns = np.asarray(returns)
         self.observations = np.asarray(observations)
+        self.sample_weight = sample_weight
         self.risk_free_rate = risk_free_rate
         self.tag = tag
         self.compounded = compounded
@@ -650,14 +650,14 @@ class BasePortfolio:
     @abstractmethod
     def composition(self) -> pd.DataFrame:
         """DataFrame of the Portfolio composition."""
-        pass
+        ...
 
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
     ) -> FloatArray | pd.DataFrame:
         """Compute the contribution of each asset to a given measure."""
-        pass
+        ...
 
     # Custom attribute setter and getter
     @property
@@ -701,7 +701,7 @@ class BasePortfolio:
         self.annualization_factor = value
 
     @property
-    def sample_weight(self) -> float:
+    def sample_weight(self) -> FloatArray | None:
         """Observations sample weights."""
         return self._sample_weight
 

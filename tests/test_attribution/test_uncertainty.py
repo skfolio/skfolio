@@ -1200,3 +1200,158 @@ class TestPlotReturnContribUncertainty:
         bar = fig.data[0]
         assert not _error_y_has_visible_interval(bar)
         assert bar.hovertemplate is not None
+
+
+class TestUncertaintyEdgeBranches:
+    """Exposure lag with a constraint basis, static-basis and currency branches."""
+
+    @staticmethod
+    def _industry_model(**kwargs):
+        return TestAttributionUncertaintyBasketNeutral._create_industry_model(**kwargs)
+
+    @staticmethod
+    def _common(m):
+        return dict(
+            factor_returns=m["factor_returns"],
+            portfolio_returns=m["portfolio_returns"],
+            exposures=m["exposures"],
+            weights=m["weights"],
+            idio_returns=m["idio_returns"],
+            factor_names=m["factor_names"],
+            asset_names=m["asset_names"],
+            factor_families=m["factor_families"],
+            regression_weights=m["regression_weights"],
+            idio_variances=m["idio_variances"],
+            compute_uncertainty=True,
+            annualization_factor=1,
+        )
+
+    def test_basis_is_lag_aligned_single(self):
+        m = self._industry_model()
+        result = realized_factor_attribution(
+            **self._common(m), family_constraint_basis=m["bnb"], exposure_lag=1
+        )
+        assert np.isfinite(result.systematic.mu_uncertainty)
+        assert result.factors.mu_contrib_uncertainty.shape == (6,)
+
+    def test_basis_is_lag_aligned_rolling(self):
+        m = self._industry_model(n_obs=120)
+        result = rolling_realized_factor_attribution(
+            **self._common(m),
+            family_constraint_basis=m["bnb"],
+            exposure_lag=1,
+            observations=np.arange(120),
+            window_size=60,
+            step=30,
+        )
+        assert result.is_rolling
+        # 120 observations minus one lag leaves 119 effective periods -> 2 windows
+        assert len(result.observations) == 2
+        assert np.all(np.isfinite(result.systematic.mu_uncertainty))
+
+    def test_static_exposures_with_basis(self):
+        from skfolio.prior._model._family_constraint_basis import (
+            compute_family_constraint_basis,
+        )
+
+        rng = np.random.default_rng(0)
+        n_obs, n_assets, n_style, n_industry = 60, 12, 2, 3
+        style_exp = rng.standard_normal((n_assets, n_style)) * 0.5
+        ind_exp = np.zeros((n_assets, n_industry))
+        ind_exp[np.arange(n_assets), np.arange(n_assets) % n_industry] = 1.0
+        exposures = np.concatenate([style_exp, ind_exp], axis=1)
+        n_factors = n_style + n_industry
+        factor_names = np.array(
+            [f"Style{k}" for k in range(n_style)]
+            + [f"Ind{k}" for k in range(n_industry)]
+        )
+        factor_families = np.array(["Style"] * n_style + ["Industry"] * n_industry)
+        bnb, _ = compute_family_constraint_basis(
+            constrained_families=[("Industry", None)],
+            factor_exposures=np.broadcast_to(exposures, (n_obs, n_assets, n_factors)),
+            benchmark_weights=np.ones((n_obs, n_assets)) / n_assets,
+            factor_names=factor_names,
+            factor_families=factor_families,
+        )
+        factor_returns = rng.standard_normal((n_obs, n_factors)) * 0.01
+        idio_returns = rng.standard_normal((n_obs, n_assets)) * 0.005
+        weights = np.ones(n_assets) / n_assets
+        portfolio_returns = (factor_returns @ exposures.T + idio_returns) @ weights
+
+        result = realized_factor_attribution(
+            factor_returns=factor_returns,
+            portfolio_returns=portfolio_returns,
+            exposures=exposures,
+            weights=weights,
+            idio_returns=idio_returns,
+            factor_names=factor_names,
+            asset_names=np.array([f"A{i}" for i in range(n_assets)]),
+            factor_families=factor_families,
+            regression_weights=np.ones((n_obs, n_assets)),
+            idio_variances=np.full((n_obs, n_assets), 0.005**2),
+            compute_uncertainty=True,
+            family_constraint_basis=bnb,
+            annualization_factor=1,
+        )
+        assert np.isfinite(result.systematic.mu_uncertainty)
+        assert result.systematic.mu_uncertainty > 0
+        assert np.all(np.isfinite(result.factors.mu_contrib_uncertainty))
+
+    def test_currency_family_static_exposures(self, static_uncertainty_model):
+        result = realized_factor_attribution(
+            **static_uncertainty_model,
+            factor_families=np.array(["Style", "Style", "currency"]),
+            annualization_factor=1,
+        )
+        # Currency factors are excluded from the regression and reported as NaN
+        assert np.isnan(result.factors.mu_contrib_uncertainty[2])
+        assert np.all(np.isfinite(result.factors.mu_contrib_uncertainty[:2]))
+        assert np.isfinite(result.systematic.mu_uncertainty)
+
+    def test_currency_family_time_varying_exposures(
+        self, time_varying_uncertainty_model
+    ):
+        result = realized_factor_attribution(
+            **time_varying_uncertainty_model,
+            factor_families=np.array(["Style", "Style", "currency"]),
+            annualization_factor=1,
+        )
+        assert np.isnan(result.factors.mu_contrib_uncertainty[2])
+        assert np.all(np.isfinite(result.factors.mu_contrib_uncertainty[:2]))
+        assert np.isfinite(result.systematic.mu_uncertainty)
+
+    def test_compute_attribution_uncertainty_shape_mismatch(self):
+        from skfolio.attribution._realized import _compute_attribution_uncertainty
+
+        with pytest.raises(
+            ValueError,
+            match=r"`idio_variances` must have the same shape as `regression_weights`\.",
+        ):
+            _compute_attribution_uncertainty(
+                exposures=np.ones((4, 2)),
+                ptf_factor=np.ones(2),
+                regression_weights=np.ones((10, 4)),
+                idio_variances=np.ones((10, 3)),
+                factor_families=None,
+                annualization_factor=1.0,
+            )
+
+
+class TestPlotReturnContribUncertaintyTopN:
+    """Aggregated `Other` bar has no SE and therefore no error bar."""
+
+    def test_other_bar_has_no_error_bar(self, static_uncertainty_model):
+        result = realized_factor_attribution(
+            **static_uncertainty_model, annualization_factor=1
+        )
+        fig = result.plot_return_contrib(
+            top_n=1, include_idio=True, confidence_level=0.95
+        )
+        bar = fig.data[0]
+        names = list(bar.x)
+        assert "Other" in names
+        other_idx = names.index("Other")
+        assert bar.error_y.array[other_idx] is None
+        assert bar.error_y.arrayminus[other_idx] is None
+        # The retained factor still carries a finite interval
+        assert bar.error_y.array[0] is not None

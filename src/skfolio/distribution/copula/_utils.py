@@ -446,8 +446,6 @@ def _apply_rotation_cdf(
             cdf = np.sum(X, axis=1) - 1 + cdf
         case CopulaRotation.R270:
             cdf = X[:, 0] - cdf
-        case _:
-            raise ValueError(f"Unsupported rotation: {rotation}")
 
     return cdf
 
@@ -507,6 +505,4 @@ def _apply_rotation_partial_derivatives(
                 z = 1 - func(X=rotated_X, first_margin=not first_margin, **kwargs)
             else:
                 z = func(X=rotated_X, first_margin=not first_margin, **kwargs)
-        case _:
-            raise ValueError(f"Unsupported rotation: {rotation}")
     return z

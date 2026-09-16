@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+from sklearn import config_context
 from sklearn.base import BaseEstimator
 from sklearn.linear_model import Ridge, SGDRegressor
 
@@ -877,3 +878,117 @@ class TestRegression:
             rtol=1e-5,
             err_msg="Coefficient values changed - check for computation changes",
         )
+
+
+class TestFittedPredictorEdgeCases:
+    """Test paths that depend on an already fitted predictor or calibration."""
+
+    def test_metadata_routing_includes_predictor(self):
+        """The router maps fit/partial_fit callers onto the predictor."""
+        with config_context(enable_metadata_routing=True):
+            model = PredictorAlpha(
+                predictor=Ridge(alpha=1.0).set_fit_request(sample_weight=True),
+                descriptors=[("signal", Passthrough("signal"))],
+            )
+
+            routing = model.get_metadata_routing()
+
+            # `sample_weight` is only consumed through the predictor's `fit`, which
+            # is reached both from `fit` and from `partial_fit`.
+            assert routing.consumes(method="fit", params=["sample_weight"]) == {
+                "sample_weight"
+            }
+            assert routing.consumes(method="partial_fit", params=["sample_weight"]) == {
+                "sample_weight"
+            }
+
+    def test_fitted_predictor_forecasts_without_new_training_samples(
+        self, alpha_deterministic_panel
+    ):
+        """A fitted predictor still publishes alpha when a chunk has no targets."""
+        model = PredictorAlpha(
+            predictor=SGDRegressor(random_state=0),
+            descriptors=[("signal", Passthrough("signal"))],
+            horizon=1,
+            calibrate_to_return_units=False,
+        )
+        model.partial_fit(alpha_deterministic_panel[:12])
+        assert model._predictor_fitted
+
+        chunk = alpha_deterministic_panel[12:].copy(deep=True)
+        chunk[_IDIO_RETURNS][:] = np.nan
+        model.partial_fit(chunk)
+
+        assert model.alpha_ is not None
+        assert model.alpha_.shape == (alpha_deterministic_panel.n_assets,)
+        assert np.all(np.isfinite(model.alpha_))
+
+    def test_idio_sharpe_prediction_requires_idio_variances(
+        self, alpha_deterministic_panel
+    ):
+        """IDIO_SHARPE forecasts cannot be converted without idio variances."""
+        model = PredictorAlpha(
+            predictor=Ridge(alpha=1.0),
+            descriptors=[("signal", Passthrough("signal"))],
+            forecast_unit=ForecastUnit.IDIO_SHARPE,
+            calibrate_to_return_units=False,
+        )
+        model.fit(alpha_deterministic_panel)
+
+        with pytest.raises(ValueError, match="idio_variances are required"):
+            model._predict_uncalibrated_alpha(
+                scores=alpha_deterministic_panel["signal"][-1][:, np.newaxis],
+                idio_variances=None,
+            )
+
+    def test_calibration_skips_zero_alpha_observations(self):
+        """An all-zero alpha cross-section carries no calibration information."""
+        model = PredictorAlpha(
+            predictor=Ridge(alpha=1.0),
+            descriptors=[("signal", Passthrough("signal"))],
+            half_life=1,
+        )
+        model._calibration_decay = 0.5
+        model._calibration_normal = 0.0
+        model._calibration_cross = 0.0
+        model._n_valid_calibration_obs = 0
+        model.calibration_coef_ = np.nan
+
+        model._update_calibration(
+            uncalibrated_alpha=np.zeros((2, 3)),
+            forward_return=np.ones((2, 3)),
+            idio_variances=np.ones((2, 3)),
+            estimation_weights=np.ones((2, 3)),
+        )
+
+        assert model._n_valid_calibration_obs == 0
+        assert np.isnan(model.calibration_coef_)
+
+    def test_calibrated_alpha_is_none_without_calibration_coefficient(
+        self, alpha_deterministic_panel
+    ):
+        """A fitted predictor without a finite calibration coefficient has no alpha."""
+        panel = alpha_deterministic_panel.copy(deep=True)
+        panel[_IDIO_VARIANCES][:] = np.nan
+
+        model = PredictorAlpha(
+            predictor=Ridge(alpha=1.0),
+            descriptors=[("signal", Passthrough("signal"))],
+            horizon=1,
+            calibrate_to_return_units=True,
+        )
+        model.fit(panel)
+
+        assert model._predictor_fitted
+        assert np.isnan(model.calibration_coef_)
+        assert model.alpha_ is None
+
+    def test_none_predictor_raises(self, alpha_deterministic_panel):
+        """The predictor is mandatory."""
+        model = PredictorAlpha(
+            predictor=None,
+            descriptors=[("signal", Passthrough("signal"))],
+        )
+
+        with pytest.raises(ValueError, match="predictor cannot be None"):
+            model.fit(alpha_deterministic_panel)

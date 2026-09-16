@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import operator
 from collections.abc import Callable
 from typing import Any
@@ -95,6 +96,18 @@ def _assert_same_multi_period_configuration(
     for name, expected_value in expected_params.items():
         if name != "portfolios":
             np.testing.assert_equal(actual_params[name], expected_value)
+
+
+def _sample_weight_portfolios() -> list[Portfolio]:
+    """Create portfolios spanning three observations for sample-weight tests."""
+    weights = np.array([0.6, 0.4])
+    return [
+        Portfolio(
+            X=np.array([[0.01, 0.03], [0.02, -0.01]]),
+            weights=weights,
+        ),
+        Portfolio(X=np.array([[0.04, 0.02]]), weights=weights),
+    ]
 
 
 @pytest.fixture(scope="module")
@@ -408,6 +421,8 @@ def test_mpp_magic_methods(portfolio, periods):
         pytest.param(operator.neg, id="negate"),
         pytest.param(abs, id="absolute"),
         pytest.param(lambda p: round(p, 2), id="round"),
+        pytest.param(math.floor, id="floor"),
+        pytest.param(math.trunc, id="truncate"),
         pytest.param(lambda p: p + p, id="add"),
         pytest.param(lambda p: p - p, id="subtract"),
         pytest.param(lambda p: p * 2, id="multiply"),
@@ -658,6 +673,57 @@ def test_portfolio_clear_cache(portfolio, periods, measure):
             assert m != new_m
         if isinstance(measure, RatioMeasure):
             assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+
+
+def test_constructor_sample_weight():
+    """Validate sample weights after multi-period observations are installed."""
+    portfolios = _sample_weight_portfolios()
+    sample_weight = np.array([0.2, 0.3, 0.5])
+    expected_returns = np.concatenate([portfolio.returns for portfolio in portfolios])
+    expected_mean = sample_weight @ expected_returns
+
+    portfolio = MultiPeriodPortfolio(
+        portfolios=portfolios,
+        sample_weight=sample_weight,
+    )
+
+    np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
+    assert portfolio.mean == pytest.approx(expected_mean)
+
+
+@pytest.mark.parametrize(
+    ("sample_weight", "match"),
+    [
+        pytest.param(
+            np.array([0.5, 0.5]),
+            "sample_weight must have the same length as",
+            id="wrong-length",
+        ),
+        pytest.param(
+            np.array([[0.2, 0.3, 0.5]]),
+            "sample_weight must be a 1D array",
+            id="wrong-dimension",
+        ),
+        pytest.param(
+            np.ones(3),
+            "sample_weight must sum to one",
+            id="wrong-sum",
+        ),
+    ],
+)
+def test_constructor_sample_weight_error(sample_weight: np.ndarray, match: str):
+    """Reject invalid weights after deriving multi-period observations."""
+    with pytest.raises(ValueError, match=match):
+        MultiPeriodPortfolio(
+            portfolios=_sample_weight_portfolios(),
+            sample_weight=sample_weight,
+        )
+
+
+def test_empty_constructor_sample_weight_error():
+    """Reject nonempty sample weights for an empty multi-period portfolio."""
+    with pytest.raises(ValueError, match="sample_weight must have the same length as"):
+        MultiPeriodPortfolio(sample_weight=np.array([1.0]))
 
 
 def test_portfolio_read_only(portfolio, periods):
@@ -1248,3 +1314,133 @@ class TestMultiPeriodPortfolioFactorAttribution:
                 + result.unattributed.vol_contrib[i]
             )
             np.testing.assert_almost_equal(sum_vol, result.total.vol[i], decimal=8)
+
+
+def _two_period_portfolios(X: pd.DataFrame) -> tuple[Portfolio, Portfolio]:
+    """Two non-overlapping single-period portfolios on the first 20 assets."""
+    n_assets = X.shape[1]
+    p_1 = Portfolio(
+        X=X["2018-01":"2018-02"], weights=rand_weights(n=n_assets, seed=1), name="p_1"
+    )
+    p_2 = Portfolio(
+        X=X["2018-03":"2018-04"], weights=rand_weights(n=n_assets, seed=2), name="p_2"
+    )
+    return p_1, p_2
+
+
+class TestMultiPeriodPortfolioContainer:
+    def test_setitem_non_portfolio_raises(self, X):
+        mpp = MultiPeriodPortfolio(portfolios=list(_two_period_portfolios(X)))
+        with pytest.raises(TypeError, match="Cannot set a value with type"):
+            mpp[0] = 1
+
+    def test_non_portfolio_items_raise(self):
+        with pytest.raises(
+            TypeError, match="`portfolios` items must be of type `Portfolio`, got int"
+        ):
+            MultiPeriodPortfolio(portfolios=[1])
+
+    def test_check_observations_order_accepts_ordered_portfolios(self, X):
+        p_1, p_2 = _two_period_portfolios(X)
+        mpp = MultiPeriodPortfolio(portfolios=[p_1, p_2], check_observations_order=True)
+        assert len(mpp) == 2
+
+    def test_check_observations_order_rejects_overlap(self, X):
+        p_1, p_2 = _two_period_portfolios(X)
+        with pytest.raises(
+            ValueError, match="Portfolios observations should not overlap"
+        ):
+            MultiPeriodPortfolio(portfolios=[p_2, p_1], check_observations_order=True)
+
+    def test_append_checks_observations_order(self, X):
+        p_1, p_2 = _two_period_portfolios(X)
+        mpp = MultiPeriodPortfolio(portfolios=[p_2], check_observations_order=True)
+        with pytest.raises(
+            ValueError, match="Portfolios observations should not overlap"
+        ):
+            mpp.append(p_1)
+        mpp = MultiPeriodPortfolio(portfolios=[p_1], check_observations_order=True)
+        mpp.append(p_2)
+        assert len(mpp) == 2
+
+
+class TestMultiPeriodPortfolioArithmetic:
+    @pytest.fixture
+    def mpp(self, X):
+        return MultiPeriodPortfolio(portfolios=list(_two_period_portfolios(X)))
+
+    def test_neg(self, mpp):
+        neg = -mpp
+        assert isinstance(neg, MultiPeriodPortfolio)
+        for p, q in zip(neg, mpp, strict=True):
+            np.testing.assert_array_equal(p.weights, -q.weights)
+
+    @pytest.mark.parametrize(
+        "operation,expected",
+        [
+            (math.floor, [[-2.0, -1.0, 0.0, 2.0], [1.0, 0.0, -1.0, -2.0]]),
+            (math.trunc, [[-1.0, 0.0, 0.0, 2.0], [1.0, 0.0, 0.0, -1.0]]),
+        ],
+        ids=["floor", "trunc"],
+    )
+    def test_rounding_weights(self, operation, expected):
+        X = np.random.default_rng(0).normal(0, 0.01, (8, 4))
+        weights = [[-1.8, -0.2, 0.2, 2.8], [1.8, 0.2, -0.2, -1.8]]
+        mpp = MultiPeriodPortfolio(
+            portfolios=[
+                Portfolio(X=X[:4], weights=weights[0]),
+                Portfolio(X=X[4:], weights=weights[1]),
+            ],
+            tag="rounding",
+        )
+
+        result = operation(mpp)
+
+        assert isinstance(result, MultiPeriodPortfolio)
+        assert result is not mpp
+        assert result.tag == mpp.tag
+        assert len(result) == 2
+        for original, rounded, before, after in zip(
+            mpp, result, weights, expected, strict=True
+        ):
+            assert isinstance(rounded, Portfolio)
+            assert rounded is not original
+            np.testing.assert_array_equal(original.weights, before)
+            np.testing.assert_array_equal(rounded.weights, after)
+            np.testing.assert_allclose(rounded.returns, original.X @ after)
+
+    def test_add_errors(self, mpp):
+        with pytest.raises(
+            TypeError, match="Cannot add a MultiPeriodPortfolio with an object of type"
+        ):
+            _ = mpp + 1
+        with pytest.raises(
+            TypeError, match="Cannot add two MultiPeriodPortfolio of different sizes"
+        ):
+            _ = mpp + MultiPeriodPortfolio(portfolios=[mpp[0]])
+
+    def test_sub_errors(self, mpp):
+        with pytest.raises(
+            TypeError,
+            match="Cannot subtract a MultiPeriodPortfolio with an object of type",
+        ):
+            _ = mpp - 1
+        with pytest.raises(
+            TypeError,
+            match="Cannot subtract two MultiPeriodPortfolio of different sizes",
+        ):
+            _ = mpp - MultiPeriodPortfolio(portfolios=[mpp[0]])
+
+    def test_elementwise_scaling(self, mpp):
+        factors = [2.0, 4.0]
+        for op, expected in [
+            (mpp * factors, [p.weights * f for p, f in zip(mpp, factors, strict=True)]),
+            (
+                mpp // factors,
+                [p.weights // f for p, f in zip(mpp, factors, strict=True)],
+            ),
+            (mpp / factors, [p.weights / f for p, f in zip(mpp, factors, strict=True)]),
+        ]:
+            assert isinstance(op, MultiPeriodPortfolio)
+            for p, w in zip(op, expected, strict=True):
+                np.testing.assert_array_almost_equal(p.weights, w)

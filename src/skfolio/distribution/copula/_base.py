@@ -89,19 +89,19 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     @abstractmethod
     def lower_tail_dependence(self) -> float:
         """Theoretical lower tail dependence coefficient."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def upper_tail_dependence(self) -> float:
         """Theoretical upper tail dependence coefficient."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        pass
+        ...
 
     @abstractmethod
     def fit(self, X: ArrayLike, y=None) -> BaseBivariateCopula:
@@ -122,7 +122,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         self : BaseBivariateCopula
             Returns the instance itself.
         """
-        pass
+        ...
 
     @abstractmethod
     def cdf(self, X: ArrayLike) -> FloatArray:
@@ -140,7 +140,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
         """
-        pass
+        ...
 
     @abstractmethod
     def partial_derivative(
@@ -172,7 +172,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         p : ndarray of shape (n_observations,)
             h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
-        pass
+        ...
 
     @abstractmethod
     def inverse_partial_derivative(
@@ -222,7 +222,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         .. [1] "Multivariate Models and Dependence Concepts", Joe, H. (1997)
         .. [2] "An Introduction to Copulas", Nelsen, R. B. (2006)
         """
-        pass
+        ...
 
     @abstractmethod
     def score_samples(self, X: ArrayLike) -> FloatArray:
@@ -240,7 +240,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         density : ndarray of shape (n_observations,)
             The log-likelihood of each sample under the fitted copula.
         """
-        pass
+        ...
 
     def sample(self, n_samples: int = 1):
         """Generate random samples from the bivariate copula using the inverse

@@ -373,7 +373,8 @@ class MultiPeriodPortfolio(BasePortfolio):
             annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
-            sample_weight=sample_weight,
+            # Defer validation until the combined observations are available.
+            sample_weight=None,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
             cvar_beta=cvar_beta,
@@ -387,6 +388,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         )
         self.check_observations_order = check_observations_order
         self._set_portfolios(portfolios=portfolios)
+        self.sample_weight = sample_weight
 
     def __len__(self) -> int:
         return len(self.portfolios)
@@ -426,18 +428,10 @@ class MultiPeriodPortfolio(BasePortfolio):
         return self._create_from_child_portfolios([round(p, n) for p in self])
 
     def __floor__(self):
-        return self.__class__(
-            portfolios=[np.floor(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__floor__() for p in self])
 
     def __trunc__(self):
-        return self.__class__(
-            portfolios=[np.trunc(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__trunc__() for p in self])
 
     def __add__(self, other):
         if not isinstance(other, self.__class__):

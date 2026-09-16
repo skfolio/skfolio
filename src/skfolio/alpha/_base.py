@@ -58,8 +58,7 @@ class BaseAlpha(skb.BaseEstimator, ABC):
     asset_names_: ObjArray
 
     @abstractmethod
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha:
-        pass
+    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha: ...
 
 
 class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):

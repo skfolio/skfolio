@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import math
 import pickle
 import timeit
 import tracemalloc
@@ -12,7 +13,9 @@ import pytest
 
 import skfolio.measures as mt
 from skfolio import (
+    BasePortfolio,
     ExtraRiskMeasure,
+    FailedPortfolio,
     MultiPeriodPortfolio,
     PerfMeasure,
     Portfolio,
@@ -317,6 +320,10 @@ def test_portfolio_magic_methods(X, weights):
     assert np.array_equal(ptf.weights, np.round(ptf_1.weights, 2))
     ptf = ptf_1 // 2
     assert np.array_equal(ptf.weights, ptf_1.weights // 2)
+    ptf = math.floor(ptf_1)
+    assert np.array_equal(ptf.weights, np.floor(ptf_1.weights))
+    ptf = math.trunc(ptf_1)
+    assert np.array_equal(ptf.weights, np.trunc(ptf_1.weights))
     assert ptf_1 == ptf_1
     assert ptf_1 != ptf_2
     assert (ptf_1 > ptf_2) is ptf_1.dominates(ptf_2)
@@ -580,6 +587,76 @@ def test_sample_weight_error(portfolio, sample_weight):
         portfolio.sample_weight = [[1]]
 
 
+@pytest.mark.parametrize(
+    "sample_weight",
+    [
+        pytest.param(np.array([0.2, 0.3, 0.5]), id="array"),
+        pytest.param([0.2, 0.3, 0.5], id="list"),
+    ],
+)
+def test_constructor_sample_weight(sample_weight):
+    """Apply valid sample weights during portfolio construction."""
+    returns = np.array([0.018, 0.008, 0.032])
+    expected_mean = np.average(returns, weights=sample_weight)
+    expected_variance = np.cov(returns, aweights=sample_weight).item()
+
+    base_portfolio = BasePortfolio(
+        returns=returns,
+        observations=np.arange(returns.size, dtype=float),
+        sample_weight=sample_weight,
+    )
+    portfolio = Portfolio(
+        X=returns[:, np.newaxis],
+        weights=np.array([1.0]),
+        sample_weight=sample_weight,
+    )
+
+    np.testing.assert_array_equal(base_portfolio.sample_weight, sample_weight)
+    np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
+    assert base_portfolio.mean == pytest.approx(expected_mean)
+    assert portfolio.mean == pytest.approx(expected_mean)
+    assert base_portfolio.variance == pytest.approx(expected_variance)
+    assert portfolio.variance == pytest.approx(expected_variance)
+
+
+@pytest.mark.parametrize(
+    ("sample_weight", "match"),
+    [
+        pytest.param(
+            np.array([0.5, 0.5]),
+            "sample_weight must have the same length as",
+            id="wrong-length",
+        ),
+        pytest.param(
+            np.array([[0.2, 0.3, 0.5]]),
+            "sample_weight must be a 1D array",
+            id="wrong-dimension",
+        ),
+        pytest.param(
+            np.ones(3),
+            "sample_weight must sum to one",
+            id="wrong-sum",
+        ),
+    ],
+)
+def test_constructor_sample_weight_error(sample_weight: np.ndarray, match: str):
+    """Reject invalid sample weights at the shared constructor boundary."""
+    returns = np.array([0.018, 0.008, 0.032])
+
+    with pytest.raises(ValueError, match=match):
+        BasePortfolio(
+            returns=returns,
+            observations=np.arange(returns.size, dtype=float),
+            sample_weight=sample_weight,
+        )
+    with pytest.raises(ValueError, match=match):
+        Portfolio(
+            X=returns[:, np.newaxis],
+            weights=np.array([1.0]),
+            sample_weight=sample_weight,
+        )
+
+
 def test_weight_dict(X, weights):
     portfolio = Portfolio(X=X, weights=weights, previous_weights=np.arange(20))
     np.testing.assert_almost_equal(
@@ -748,6 +825,28 @@ class TestPortfolioFactorAttribution:
         assert isinstance(result, Attribution)
 
     # --- realized_attribution ---
+
+    def test_predicted_attribution_on_failed_portfolio_raises(
+        self, factor_model_and_portfolio
+    ):
+        fm, ptf = factor_model_and_portfolio
+        failed = FailedPortfolio(X=ptf.X)
+        with pytest.raises(
+            ValueError,
+            match=r"Cannot compute factor attribution on a failed portfolio\.",
+        ):
+            failed.predicted_attribution(fm)
+
+    def test_realized_attribution_observations_out_of_order_raises(
+        self, factor_model_and_portfolio
+    ):
+        fm, ptf = factor_model_and_portfolio
+        X_reversed = pd.DataFrame(
+            np.asarray(ptf.X), columns=ptf.assets, index=fm.observations[::-1]
+        )
+        ptf_reversed = Portfolio(X=X_reversed, weights=ptf.weights)
+        with pytest.raises(ValueError, match="duplicate-free subset"):
+            ptf_reversed.realized_attribution(fm)
 
     def test_realized_attribution_returns_attribution(self, factor_model_and_portfolio):
         from skfolio.attribution import Attribution
@@ -1053,3 +1152,164 @@ class TestPortfolioNaNReturns:
         portfolio = Portfolio(X=X, weights=np.array([0.5, 0.5]))
 
         np.testing.assert_allclose(portfolio.returns, [0.005, 0.005, 0.02])
+
+
+class TestPortfolioValidation:
+    def test_non_2d_X_with_weights_raises(self):
+        # With weights, the returns conversion rejects a 1D input first.
+        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
+            Portfolio(X=np.arange(5.0), weights=np.array([1.0]))
+
+    def test_non_2d_X_without_weights_raises(self):
+        with pytest.raises(ValueError, match="`X` must be a 2D array-like"):
+            Portfolio(X=np.arange(5.0), weights=None)
+
+    def test_unexpected_keyword_argument_raises(self, X, weights):
+        with pytest.raises(
+            TypeError,
+            match=r"Portfolio.__init__\(\) got an unexpected keyword argument 'foo'",
+        ):
+            Portfolio(X=X, weights=weights, foo=1)
+
+    def test_management_fees_from_dict(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights, management_fees={"AAPL": 0.001})
+        expected = np.zeros(X.shape[1])
+        expected[list(X.columns).index("AAPL")] = 0.001
+        np.testing.assert_array_equal(portfolio.management_fees, expected)
+
+    def test_repr_uses_name(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights, name="my_ptf")
+        assert repr(portfolio) == "<Portfolio my_ptf>"
+
+    def test_get_weight_unknown_asset_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(IndexError, match="is not a valid asset name"):
+            portfolio.get_weight("NOT_AN_ASSET")
+
+
+class TestPortfolioComparison:
+    def test_gt_with_non_portfolio_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(TypeError, match="`>` not supported between instances"):
+            _ = portfolio > 1
+
+    def test_ge_with_non_portfolio_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(TypeError, match="`>=` not supported between instances"):
+            _ = portfolio >= 1
+
+    def test_ge_is_eq_or_gt(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        other = Portfolio(X=X, weights=weights * 0.5)
+        assert portfolio >= Portfolio(X=X, weights=weights)
+        assert (portfolio >= other) is (
+            portfolio == other or portfolio.dominates(other)
+        )
+
+
+class TestPortfolioArithmeticErrors:
+    @pytest.fixture
+    def portfolio(self, X, weights):
+        return Portfolio(X=X, weights=weights)
+
+    def test_add_non_portfolio_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Cannot add a Portfolio with an object of type"
+        ):
+            _ = portfolio + 1
+
+    def test_add_portfolios_with_different_parameters_raises(self, portfolio, X):
+        other = Portfolio(X=X, weights=portfolio.weights, risk_free_rate=0.01)
+        with pytest.raises(
+            ValueError,
+            match="Cannot combine two Portfolios with different `risk_free_rate`",
+        ):
+            _ = portfolio + other
+
+    def test_sub_non_portfolio_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Cannot add a Portfolio with an object of type"
+        ):
+            _ = portfolio - 1
+
+    def test_sub_portfolios_with_different_parameters_raises(self, portfolio, X):
+        other = Portfolio(X=X, weights=portfolio.weights, risk_free_rate=0.01)
+        with pytest.raises(
+            ValueError,
+            match="Cannot combine two Portfolios with different `risk_free_rate`",
+        ):
+            _ = portfolio - other
+
+    def test_mul_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be multiplied by a number"
+        ):
+            _ = portfolio * "2"
+
+    def test_floordiv_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be floor divided by a number"
+        ):
+            _ = portfolio // "2"
+
+    def test_truediv_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be divided by a number"
+        ):
+            _ = portfolio / "2"
+
+
+class TestPortfolioMeasures:
+    def test_fitness_measures_setter_validation(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a non-empty list of Measure"
+        ):
+            portfolio.fitness_measures = []
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a non-empty list of Measure"
+        ):
+            portfolio.fitness_measures = PerfMeasure.MEAN
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a list of Measure"
+        ):
+            portfolio.fitness_measures = [PerfMeasure.MEAN, "variance"]
+
+    def test_measures_df(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        df = portfolio.measures_df
+        expected_index = [
+            m.value for enum in (PerfMeasure, RiskMeasure, RatioMeasure) for m in enum
+        ]
+        assert list(df.columns) == ["measures"]
+        assert list(df.index) == expected_index
+        assert df.loc["mean", "measures"] == portfolio.mean
+
+    def test_get_measure_with_non_measure_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(ValueError, match=r"mean is not a Measure\."):
+            portfolio.get_measure("mean")
+
+    def test_get_measure_failure_warns_and_returns_nan(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        portfolio.value_at_risk_beta = "not a number"
+        with pytest.warns(
+            UserWarning, match="Unable to calculate the portfolio 'value_at_risk'"
+        ):
+            value = portfolio.get_measure(ExtraRiskMeasure.VALUE_AT_RISK)
+        assert np.isnan(value)
+
+    def test_plot_returns_distribution_with_percentile_cutoff(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        fig = portfolio.plot_returns_distribution(percentile_cutoff=1.0)
+        x = np.asarray(fig.data[0].x)
+        assert x.min() >= np.percentile(portfolio.returns, 1.0) - 1e-12
+        assert x.max() <= np.percentile(portfolio.returns, 99.0) + 1e-12
+
+
+def test_failed_portfolio_floor_and_trunc_are_copies(X):
+    # A failed portfolio has no weights to round, so both return a plain copy.
+    failed = FailedPortfolio(X=X)
+    for result in (math.floor(failed), math.trunc(failed)):
+        assert isinstance(result, FailedPortfolio)
+        assert result is not failed

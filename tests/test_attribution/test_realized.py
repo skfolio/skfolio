@@ -1025,3 +1025,114 @@ class TestRollingRealizedFactorAttribution:
         np.testing.assert_array_equal(
             result1.factors.vol_contrib, result2.factors.vol_contrib
         )
+
+
+class TestRealizedInputValidation:
+    """Shape validation branches of realized_factor_attribution."""
+
+    def test_static_exposures_wrong_n_factors(self, static_realized_model):
+        m = {
+            **static_realized_model,
+            "exposures": static_realized_model["exposures"][:, :2],
+        }
+        with pytest.raises(
+            ValueError, match=r"`exposures` has 2 factors, expected 3\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_time_varying_exposures_wrong_n_observations(
+        self, time_varying_realized_model
+    ):
+        m = {
+            **time_varying_realized_model,
+            "exposures": time_varying_realized_model["exposures"][:-1],
+        }
+        with pytest.raises(
+            ValueError, match=r"`exposures` has 99 observations, expected 100\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_time_varying_exposures_wrong_n_factors(self, time_varying_realized_model):
+        m = {
+            **time_varying_realized_model,
+            "exposures": time_varying_realized_model["exposures"][:, :, :2],
+        }
+        with pytest.raises(
+            ValueError, match=r"`exposures` has 2 factors, expected 3\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_static_weights_wrong_length(self, static_realized_model):
+        m = {**static_realized_model, "weights": np.ones(4) / 4}
+        with pytest.raises(
+            ValueError, match=r"`weights` length 4 does not match n_assets=5\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_time_varying_weights_wrong_n_observations(
+        self, time_varying_realized_model
+    ):
+        m = {
+            **time_varying_realized_model,
+            "weights": time_varying_realized_model["weights"][:-1],
+        }
+        with pytest.raises(
+            ValueError, match=r"`weights` has 99 observations, expected 100\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_time_varying_weights_wrong_n_assets(self, time_varying_realized_model):
+        m = {
+            **time_varying_realized_model,
+            "weights": time_varying_realized_model["weights"][:, :4],
+        }
+        with pytest.raises(ValueError, match=r"`weights` has 4 assets, expected 5\."):
+            realized_factor_attribution(**m)
+
+    def test_idio_returns_must_be_2d(self, static_realized_model):
+        m = {**static_realized_model, "idio_returns": np.zeros(100)}
+        with pytest.raises(
+            ValueError,
+            match=r"`idio_returns` must be 2D \(n_observations, n_assets\), got 1D\.",
+        ):
+            realized_factor_attribution(**m)
+
+    def test_idio_returns_wrong_n_observations(self, static_realized_model):
+        m = {
+            **static_realized_model,
+            "idio_returns": static_realized_model["idio_returns"][:-1],
+        }
+        with pytest.raises(
+            ValueError, match=r"`idio_returns` has 99 observations, expected 100\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_idio_returns_wrong_n_assets(self, static_realized_model):
+        m = {
+            **static_realized_model,
+            "idio_returns": static_realized_model["idio_returns"][:, :4],
+        }
+        with pytest.raises(
+            ValueError, match=r"`idio_returns` has 4 assets, expected 5\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_asset_names_wrong_length(self, static_realized_model):
+        m = {**static_realized_model, "asset_names": np.array(["A", "B"])}
+        with pytest.raises(
+            ValueError, match=r"`asset_names` length 2 does not match n_assets=5\."
+        ):
+            realized_factor_attribution(**m)
+
+    def test_constant_portfolio_returns_raise(self, static_realized_model):
+        m = {**static_realized_model, "portfolio_returns": np.zeros(100)}
+        with pytest.raises(ValueError, match="Non-positive total volatility"):
+            realized_factor_attribution(**m)
+
+    def test_rolling_factor_returns_must_be_2d(self, rolling_static_model):
+        m = {**rolling_static_model, "factor_returns": np.zeros(200)}
+        with pytest.raises(
+            ValueError,
+            match=r"`factor_returns` must be 2D \(n_observations, n_factors\), got 1D\.",
+        ):
+            rolling_realized_factor_attribution(**m, window_size=60, step=30)

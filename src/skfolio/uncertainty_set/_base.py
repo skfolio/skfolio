@@ -45,8 +45,7 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y=None, **fit_params): ...
 
 
 class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
@@ -99,5 +98,4 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y=None, **fit_params): ...

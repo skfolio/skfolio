@@ -23,18 +23,6 @@ NETWORK_DOCTESTS = {
 }
 
 SKIPPED = {
-    "skfolio.attribution._predicted.predicted_factor_attribution": (
-        "illustrative fragment: `factor_returns` is never defined"
-    ),
-    "skfolio.attribution._realized.realized_factor_attribution": (
-        "illustrative fragment: `factor_returns` is never defined"
-    ),
-    "skfolio.attribution._realized.rolling_realized_factor_attribution": (
-        "illustrative fragment: `factor_returns` is never defined"
-    ),
-    "skfolio.population._population.Population.boxplot_measure": (
-        "illustrative fragment: `population` is never defined"
-    ),
     "skfolio.prior._opinion_pooling.OpinionPooling": (
         "example raises: the pooling itself fits, but `RiskBudgeting(CVaR)` on the "
         "pooled distribution hits `SolverError: Solver 'CLARABEL' failed`"

@@ -1,5 +1,7 @@
 """Tests for skfolio.attribution module."""
 
+from dataclasses import replace
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -1256,3 +1258,369 @@ class TestAttributionPlotColors:
         )
         assert n_bar == n_sc
         assert c_bar == c_sc
+
+
+class TestAttributionPostInitValidation:
+    """Tests for Attribution.__post_init__ consistency checks."""
+
+    @staticmethod
+    def _single(model):
+        return predicted_factor_attribution(**model)
+
+    @staticmethod
+    def _rolling(model):
+        return rolling_realized_factor_attribution(**model, window_size=60, step=30)
+
+    # === Single-point ===
+
+    def test_single_component_field_must_be_scalar(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError,
+            match=r"Single-point attribution requires `systematic.vol` to be a scalar",
+        ):
+            replace(result, systematic=replace(result.systematic, vol=np.ones(2)))
+
+    def test_single_breakdown_field_must_be_1d(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError,
+            match=r"requires `factors.exposure` to be 1D \(n_items,\), got 2D",
+        ):
+            replace(
+                result,
+                factors=replace(
+                    result.factors, exposure=result.factors.exposure[np.newaxis, :]
+                ),
+            )
+
+    def test_single_breakdown_field_wrong_length(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError, match=r"`factors.exposure` has shape \(5,\), expected \(2,\)"
+        ):
+            replace(result, factors=replace(result.factors, exposure=np.ones(5)))
+
+    def test_single_exposure_std_wrong_shape(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError,
+            match=r"`factors.exposure_std` has shape \(5,\), expected \(2,\)",
+        ):
+            replace(result, factors=replace(result.factors, exposure_std=np.ones(5)))
+
+    def test_single_weight_std_wrong_shape(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError, match=r"`assets.weight_std` has shape \(7,\), expected \(3,\)"
+        ):
+            replace(result, assets=replace(result.assets, weight_std=np.ones(7)))
+
+    def test_single_mu_contrib_uncertainty_wrong_shape(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        with pytest.raises(
+            ValueError,
+            match=r"`factors.mu_contrib_uncertainty` has shape \(5,\), expected \(2,\)",
+        ):
+            replace(
+                result,
+                factors=replace(result.factors, mu_contrib_uncertainty=np.ones(5)),
+            )
+
+    def test_single_asset_factor_contribs_must_be_2d(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"requires `asset_factor_contribs.vol_contrib` to be 2D",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(
+                    afc, vol_contrib=afc.vol_contrib[np.newaxis]
+                ),
+            )
+
+    def test_single_asset_factor_contribs_wrong_shape(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"`asset_factor_contribs.vol_contrib` has shape \(1, 2\), expected \(3, 2\)",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(afc, vol_contrib=np.ones((1, 2))),
+            )
+
+    def test_single_asset_factor_contribs_asset_names_mismatch(
+        self, simple_factor_model
+    ):
+        result = self._single(simple_factor_model)
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"`asset_factor_contribs.asset_names` does not match `assets.names`",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(
+                    afc, asset_names=np.array(["X", "Y", "Z"])
+                ),
+            )
+
+    def test_single_asset_factor_contribs_factor_names_mismatch(
+        self, simple_factor_model
+    ):
+        result = self._single(simple_factor_model)
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"`asset_factor_contribs.factor_names` does not match `factors.names`",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(afc, factor_names=np.array(["X", "Y"])),
+            )
+
+    def test_no_factors(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        no_factors = replace(result, factors=None, asset_by_factor_contrib=None)
+        assert no_factors.n_factors == 0
+        with pytest.raises(
+            ValueError, match=r"`factors_df\(\)` requires factor attribution"
+        ):
+            no_factors.factors_df()
+
+    # === Rolling ===
+
+    def test_rolling_component_field_must_be_1d(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        with pytest.raises(
+            ValueError,
+            match=r"Rolling attribution requires `systematic.vol` to be a 1D array, got float\.",
+        ):
+            replace(result, systematic=replace(result.systematic, vol=0.1))
+
+    def test_rolling_component_field_wrong_length(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`systematic.vol` has shape \({n + 1},\), expected \({n},\)",
+        ):
+            replace(result, systematic=replace(result.systematic, vol=np.ones(n + 1)))
+
+    def test_rolling_mu_uncertainty_must_be_1d(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=r"requires `systematic.mu_uncertainty` to be a 1D array, got ndarray with ndim=2",
+        ):
+            replace(
+                result,
+                systematic=replace(result.systematic, mu_uncertainty=np.ones((n, 1))),
+            )
+
+    def test_rolling_mu_uncertainty_wrong_length(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`systematic.mu_uncertainty` has shape \({n + 1},\), expected \({n},\)",
+        ):
+            replace(
+                result,
+                systematic=replace(result.systematic, mu_uncertainty=np.ones(n + 1)),
+            )
+
+    def test_rolling_breakdown_field_must_be_2d(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        with pytest.raises(
+            ValueError,
+            match=r"Rolling attribution requires `factors.exposure` to be 2D \(n_windows, n_items\), got 1D",
+        ):
+            replace(result, factors=replace(result.factors, exposure=np.ones(3)))
+
+    def test_rolling_breakdown_field_wrong_shape(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`factors.exposure` has shape \({n}, 4\), expected \({n}, 3\)",
+        ):
+            replace(result, factors=replace(result.factors, exposure=np.ones((n, 4))))
+
+    def test_rolling_exposure_std_wrong_shape(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`factors.exposure_std` has shape \({n}, 4\), expected \({n}, 3\)",
+        ):
+            replace(
+                result, factors=replace(result.factors, exposure_std=np.ones((n, 4)))
+            )
+
+    def test_rolling_weight_std_wrong_shape(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`assets.weight_std` has shape \({n}, 7\), expected \({n}, 5\)",
+        ):
+            replace(result, assets=replace(result.assets, weight_std=np.ones((n, 7))))
+
+    def test_rolling_mu_contrib_uncertainty_wrong_shape(self, rolling_static_model):
+        result = self._rolling(rolling_static_model)
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`factors.mu_contrib_uncertainty` has shape \({n}, 4\), expected \({n}, 3\)",
+        ):
+            replace(
+                result,
+                factors=replace(result.factors, mu_contrib_uncertainty=np.ones((n, 4))),
+            )
+
+    @staticmethod
+    def _with_afc(result):
+        """Attach a consistent rolling asset-by-factor contribution."""
+        n = len(result.observations)
+        shape = (n, len(result.assets.names), len(result.factors.names))
+        afc = AssetByFactorContribution(
+            asset_names=result.assets.names,
+            factor_names=result.factors.names,
+            vol_contrib=np.zeros(shape),
+            mu_contrib=np.zeros(shape),
+        )
+        return replace(result, asset_by_factor_contrib=afc)
+
+    def test_rolling_asset_factor_contribs_must_be_3d(self, rolling_static_model):
+        result = self._with_afc(self._rolling(rolling_static_model))
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"requires `asset_factor_contribs.vol_contrib` to be 3D",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(afc, vol_contrib=afc.vol_contrib[0]),
+            )
+
+    def test_rolling_asset_factor_contribs_wrong_shape(self, rolling_static_model):
+        result = self._with_afc(self._rolling(rolling_static_model))
+        afc = result.asset_by_factor_contrib
+        n = len(result.observations)
+        with pytest.raises(
+            ValueError,
+            match=rf"`asset_factor_contribs.vol_contrib` has shape \({n}, 1, 3\), expected \({n}, 5, 3\)",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(afc, vol_contrib=np.ones((n, 1, 3))),
+            )
+
+    def test_rolling_asset_factor_contribs_asset_names_mismatch(
+        self, rolling_static_model
+    ):
+        result = self._with_afc(self._rolling(rolling_static_model))
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"`asset_factor_contribs.asset_names` does not match `assets.names`",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(
+                    afc, asset_names=np.array([f"X{i}" for i in range(5)])
+                ),
+            )
+
+    def test_rolling_asset_factor_contribs_factor_names_mismatch(
+        self, rolling_static_model
+    ):
+        result = self._with_afc(self._rolling(rolling_static_model))
+        afc = result.asset_by_factor_contrib
+        with pytest.raises(
+            ValueError,
+            match=r"`asset_factor_contribs.factor_names` does not match `factors.names`",
+        ):
+            replace(
+                result,
+                asset_by_factor_contrib=replace(
+                    afc, factor_names=np.array(["X", "Y", "Z"])
+                ),
+            )
+
+
+class TestPlotHelpers:
+    """Tests for private plotting helpers and rolling chart branches."""
+
+    def test_plot_exposure_rolling_without_std(self, rolling_static_model):
+        result = rolling_realized_factor_attribution(
+            **rolling_static_model, window_size=60, step=30
+        )
+        fig = result.plot_exposure(show_std=False)
+        assert isinstance(fig, go.Figure)
+        assert all(trace.fill is None for trace in fig.data)
+        assert fig.layout.title.text == "Factor Exposure Over Time"
+        assert all("Exposure Std" not in trace.hovertemplate for trace in fig.data)
+
+    def test_breakdown_to_df_rolling_requires_observations(self, rolling_static_model):
+        result = rolling_realized_factor_attribution(
+            **rolling_static_model, window_size=60, step=30
+        )
+        with pytest.raises(
+            ValueError, match="observations must be provided for rolling attribution"
+        ):
+            result.factors._to_df(is_realized=True, formatted=False, observations=None)
+
+    def test_plot_contribution_chart_rolling_requires_observations(
+        self, rolling_static_model
+    ):
+        from skfolio.attribution._model._attribution import _plot_contribution_chart
+
+        result = rolling_realized_factor_attribution(
+            **rolling_static_model, window_size=60, step=30
+        )
+        with pytest.raises(
+            ValueError, match="observations required for rolling contribution chart"
+        ):
+            _plot_contribution_chart(
+                data=result.factors,
+                idio=result.idio,
+                top_n=None,
+                include_idio=True,
+                is_rolling=True,
+                is_realized=True,
+                is_risk=True,
+                observations=None,
+            )
+
+    def test_colors_for_names_fallback_for_unknown_name(self):
+        from skfolio.attribution._model._attribution import (
+            _EXTENDED_QUALITATIVE,
+            _colors_for_names,
+        )
+
+        colors = _colors_for_names(["Known", "Unknown"], {"Known": "#123456"})
+        assert colors[0] == "#123456"
+        assert colors[1] in _EXTENDED_QUALITATIVE
+        # Deterministic fallback
+        assert _colors_for_names(["Unknown"], {}) == [colors[1]]
+
+    @pytest.mark.parametrize(
+        "color,expected",
+        [
+            ("#ff0000", "rgba(255,0,0,0.5)"),
+            ("rgb(1,2,3)", "rgba(1,2,3,0.5)"),
+            ("rgba(1,2,3,0.9)", "rgba(1,2,3,0.5)"),
+            ("blue", "blue"),
+        ],
+    )
+    def test_color_with_alpha(self, color, expected):
+        from skfolio.attribution._model._attribution import _color_with_alpha
+
+        assert _color_with_alpha(color, 0.5) == expected

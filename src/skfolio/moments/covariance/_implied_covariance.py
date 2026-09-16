@@ -398,9 +398,6 @@ class ImpliedCovariance(BaseCovariance):
             implied_vol=implied_vol, window_size=window_size
         )
 
-        if realised_vol.shape != implied_vol.shape:
-            raise ValueError("`realised_vol`and `implied_vol` must have same shape")
-
         assert realised_vol.shape[0] == n_folds
 
         rv = np.log(realised_vol)

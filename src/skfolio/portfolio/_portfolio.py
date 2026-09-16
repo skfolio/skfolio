@@ -750,6 +750,20 @@ class Portfolio(BasePortfolio):
         args["weights"] = np.round(self.weights, n)
         return self.__class__(**args)
 
+    def __floor__(self):
+        if self._is_failed_portfolio:
+            return self.copy()
+        args = self._get_init_params()
+        args["weights"] = np.floor(self.weights)
+        return self.__class__(**args)
+
+    def __trunc__(self):
+        if self._is_failed_portfolio:
+            return self.copy()
+        args = self._get_init_params()
+        args["weights"] = np.trunc(self.weights)
+        return self.__class__(**args)
+
     def __add__(self, other):
         if not isinstance(other, Portfolio):
             raise TypeError(

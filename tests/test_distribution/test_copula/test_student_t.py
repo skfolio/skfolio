@@ -360,3 +360,27 @@ def test_fitted_repr(fitted_model):
     assert rho_str in rep, f"fitted_repr does not contain formatted rho: {rho_str}"
     dof_str = f"dof={fitted_model.dof_:0.2f}"
     assert dof_str in rep, f"fitted_repr does not contain formatted dof: {dof_str}"
+
+
+def test_student_t_copula_fit_itau_optimization_failure(random_data, monkeypatch):
+    from skfolio.distribution.copula import _student_t
+
+    def failing_minimize_scalar(*args, **kwargs):
+        return _student_t.so.OptimizeResult(success=False, message="boom", x=3.0)
+
+    monkeypatch.setattr(_student_t.so, "minimize_scalar", failing_minimize_scalar)
+    with pytest.raises(RuntimeError, match="Optimization failed: boom"):
+        StudentTCopula(itau=True).fit(random_data)
+
+
+def test_student_t_copula_fit_mle_optimization_failure(random_data, monkeypatch):
+    from skfolio.distribution.copula import _student_t
+
+    def failing_minimize(*args, **kwargs):
+        return _student_t.so.OptimizeResult(
+            success=False, message="boom", x=np.array([3.0, 0.0])
+        )
+
+    monkeypatch.setattr(_student_t.so, "minimize", failing_minimize)
+    with pytest.raises(RuntimeError, match="Optimization failed: boom"):
+        StudentTCopula(itau=False).fit(random_data)

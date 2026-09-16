@@ -2,6 +2,43 @@
 
 <!-- version list -->
 
+## v1.2.7 (2026-09-16)
+
+### Bug Fixes
+
+- **portfolio**: Validate portfolio constructor sample weights
+  ([#315](https://github.com/skfolio/skfolio/pull/315),
+  [`eaaace8`](https://github.com/skfolio/skfolio/commit/eaaace8976173d85fd8399a9eb4827feb5852fa1))
+
+### Documentation
+
+- Add missing doctest examples ([#314](https://github.com/skfolio/skfolio/pull/314),
+  [`fa5b935`](https://github.com/skfolio/skfolio/commit/fa5b93556f51f6893371807bfe63704b375821f1))
+
+
+## v1.2.6 (2026-09-15)
+
+### Bug Fixes
+
+- **optimization**: Normalize target weights in maximum-ratio optimization
+  ([#318](https://github.com/skfolio/skfolio/pull/318),
+  [`fecc0b7`](https://github.com/skfolio/skfolio/commit/fecc0b780f5db4b801030bace8265cb94ba40b52))
+
+
+## v1.2.5 (2026-09-15)
+
+### Bug Fixes
+
+- **pre-selection**: Apply absolute correlations
+  ([#311](https://github.com/skfolio/skfolio/pull/311),
+  [`74ad22d`](https://github.com/skfolio/skfolio/commit/74ad22d85a0e6c7bb6fd79562b062fff906702a7))
+
+### Testing
+
+- Expand coverage and fix edge-case failures ([#313](https://github.com/skfolio/skfolio/pull/313),
+  [`4aceaf5`](https://github.com/skfolio/skfolio/commit/4aceaf510581b6102924b7cb2c42ba81b0d7fe77))
+
+
 ## v1.2.4 (2026-09-14)
 
 ### Bug Fixes
