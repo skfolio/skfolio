@@ -468,7 +468,6 @@ class MultiPeriodPortfolio(BasePortfolio):
         )
 
     def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
-        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p * other for p in self]
         else:
@@ -478,7 +477,6 @@ class MultiPeriodPortfolio(BasePortfolio):
     __rmul__ = __mul__
 
     def __floordiv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
-        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p // other for p in self]
         else:
@@ -486,7 +484,6 @@ class MultiPeriodPortfolio(BasePortfolio):
         return self._create_from_child_portfolios(portfolios)
 
     def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
-        portfolios: list[Portfolio]
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
