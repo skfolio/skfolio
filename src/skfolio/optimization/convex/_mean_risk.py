@@ -1243,6 +1243,7 @@ class MeanRisk(ConvexOptimization):
 
         # risk and risk constraints
         risk = None
+        gmd = None
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
             risk_limit = getattr(self, f"max_{r_m.value}")
 
@@ -1292,7 +1293,11 @@ class MeanRisk(ConvexOptimization):
                     else:
                         args[arg_name] = getattr(self, arg_name)
 
-                risk_i, constraints_i = risk_func(**args)
+                if r_m == RiskMeasure.GINI_MEAN_DIFFERENCE:
+                    gmd = risk_func(**args)
+                    risk_i, constraints_i = gmd.expression, [gmd.initial_constraint]
+                else:
+                    risk_i, constraints_i = risk_func(**args)
                 constraints += constraints_i
                 if risk_limit is not None:
                     parameter = cp.Parameter(nonneg=True)
@@ -1406,6 +1411,7 @@ class MeanRisk(ConvexOptimization):
                 factor=factor,
                 parameters_values=parameters_values,
                 expressions=expressions,
+                gmd=gmd,
             )
         except cp.SolverError as solver_error:
             if method != "partial_fit":

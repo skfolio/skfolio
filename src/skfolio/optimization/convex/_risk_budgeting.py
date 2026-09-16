@@ -677,6 +677,7 @@ class RiskBudgeting(ConvexOptimization):
             parameters_values.append((parameter, self.min_return))
 
         # risk and risk constraints
+        gmd = None
         risk_func = getattr(self, f"_{self.risk_measure.value}_risk")
         args = {}
         for arg_name in args_names(risk_func):
@@ -691,7 +692,11 @@ class RiskBudgeting(ConvexOptimization):
                     args[arg_name] = cp.Constant(1)
             else:
                 args[arg_name] = getattr(self, arg_name)
-        risk, constraints_i = risk_func(**args)
+        if self.risk_measure == RiskMeasure.GINI_MEAN_DIFFERENCE:
+            gmd = risk_func(**args)
+            risk, constraints_i = gmd.expression, [gmd.initial_constraint]
+        else:
+            risk, constraints_i = risk_func(**args)
         constraints += constraints_i
 
         # custom objectives and constraints
@@ -717,6 +722,7 @@ class RiskBudgeting(ConvexOptimization):
                 "risk": risk,
                 "factor": factor,
             },
+            gmd=gmd,
         )
 
         return self
