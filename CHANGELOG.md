@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v1.2.7 (2026-09-16)
+
+### Bug Fixes
+
+- **portfolio**: Validate portfolio constructor sample weights
+  ([#315](https://github.com/skfolio/skfolio/pull/315),
+  [`eaaace8`](https://github.com/skfolio/skfolio/commit/eaaace8976173d85fd8399a9eb4827feb5852fa1))
+
+### Documentation
+
+- Add missing doctest examples ([#314](https://github.com/skfolio/skfolio/pull/314),
+  [`fa5b935`](https://github.com/skfolio/skfolio/commit/fa5b93556f51f6893371807bfe63704b375821f1))
+
+
 ## v1.2.6 (2026-09-15)
 
 ### Bug Fixes

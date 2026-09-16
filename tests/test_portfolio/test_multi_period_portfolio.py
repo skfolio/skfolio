@@ -38,6 +38,18 @@ def _dominate(fitness_1: FloatArray, fitness_2: FloatArray) -> bool:
     return np.all(fitness_1 >= fitness_2) and np.any(fitness_1 > fitness_2)
 
 
+def _sample_weight_portfolios() -> list[Portfolio]:
+    """Create portfolios spanning three observations for sample-weight tests."""
+    weights = np.array([0.6, 0.4])
+    return [
+        Portfolio(
+            X=np.array([[0.01, 0.03], [0.02, -0.01]]),
+            weights=weights,
+        ),
+        Portfolio(X=np.array([[0.04, 0.02]]), weights=weights),
+    ]
+
+
 @pytest.fixture(scope="module")
 def prices():
     prices = load_sp500_dataset()
@@ -421,6 +433,57 @@ def test_portfolio_clear_cache(portfolio, periods, measure):
             assert m != new_m
         if isinstance(measure, RatioMeasure):
             assert getattr(portfolio, measure.value) == portfolio.mean / new_m
+
+
+def test_constructor_sample_weight():
+    """Validate sample weights after multi-period observations are installed."""
+    portfolios = _sample_weight_portfolios()
+    sample_weight = np.array([0.2, 0.3, 0.5])
+    expected_returns = np.concatenate([portfolio.returns for portfolio in portfolios])
+    expected_mean = sample_weight @ expected_returns
+
+    portfolio = MultiPeriodPortfolio(
+        portfolios=portfolios,
+        sample_weight=sample_weight,
+    )
+
+    np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
+    assert portfolio.mean == pytest.approx(expected_mean)
+
+
+@pytest.mark.parametrize(
+    ("sample_weight", "match"),
+    [
+        pytest.param(
+            np.array([0.5, 0.5]),
+            "sample_weight must have the same length as",
+            id="wrong-length",
+        ),
+        pytest.param(
+            np.array([[0.2, 0.3, 0.5]]),
+            "sample_weight must be a 1D array",
+            id="wrong-dimension",
+        ),
+        pytest.param(
+            np.ones(3),
+            "sample_weight must sum to one",
+            id="wrong-sum",
+        ),
+    ],
+)
+def test_constructor_sample_weight_error(sample_weight: np.ndarray, match: str):
+    """Reject invalid weights after deriving multi-period observations."""
+    with pytest.raises(ValueError, match=match):
+        MultiPeriodPortfolio(
+            portfolios=_sample_weight_portfolios(),
+            sample_weight=sample_weight,
+        )
+
+
+def test_empty_constructor_sample_weight_error():
+    """Reject nonempty sample weights for an empty multi-period portfolio."""
+    with pytest.raises(ValueError, match="sample_weight must have the same length as"):
+        MultiPeriodPortfolio(sample_weight=np.array([1.0]))
 
 
 def test_portfolio_read_only(portfolio, periods):
