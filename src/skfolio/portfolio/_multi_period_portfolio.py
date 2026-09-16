@@ -27,7 +27,7 @@ from skfolio.portfolio._portfolio import (
     _select_realized_observation_window,
 )
 from skfolio.typing import FloatArray
-from skfolio.utils.tools import deduplicate_names
+from skfolio.utils.tools import args_names, deduplicate_names
 
 if TYPE_CHECKING:
     from skfolio.prior import FactorModel
@@ -419,39 +419,19 @@ class MultiPeriodPortfolio(BasePortfolio):
         return value in self._portfolios
 
     def __neg__(self):
-        return self.__class__(
-            portfolios=[-p for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([-p for p in self])
 
     def __abs__(self):
-        return self.__class__(
-            portfolios=[abs(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([abs(p) for p in self])
 
     def __round__(self, n: int):
-        return self.__class__(
-            portfolios=[p.__round__(n) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([round(p, n) for p in self])
 
     def __floor__(self):
-        return self.__class__(
-            portfolios=[p.__floor__() for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__floor__() for p in self])
 
     def __trunc__(self):
-        return self.__class__(
-            portfolios=[p.__trunc__() for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__trunc__() for p in self])
 
     def __add__(self, other):
         if not isinstance(other, self.__class__):
@@ -461,10 +441,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             )
         if len(self) != len(other):
             raise TypeError("Cannot add two MultiPeriodPortfolio of different sizes")
-        return self.__class__(
-            portfolios=[p1 + p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._create_from_child_portfolios(
+            [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __sub__(self, other):
@@ -477,10 +456,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             raise TypeError(
                 "Cannot subtract two MultiPeriodPortfolio of different sizes"
             )
-        return self.__class__(
-            portfolios=[p1 - p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._create_from_child_portfolios(
+            [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
@@ -488,9 +466,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p * other for p in self]
         else:
             portfolios = [p * a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
     __rmul__ = __mul__
 
@@ -499,20 +475,36 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p // other for p in self]
         else:
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
     def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
             portfolios = [p / a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
-    # Private method
+    # Private methods
+    def _check_compatible_parameters(self, other: MultiPeriodPortfolio) -> None:
+        """Require the same evaluation settings when combining portfolios."""
+        for name in args_names(self.__init__):
+            if name in ("portfolios", "name", "tag", "check_observations_order"):
+                continue
+            if not np.array_equal(getattr(self, name), getattr(other, name)):
+                raise ValueError(
+                    f"Cannot combine two MultiPeriodPortfolios with different `{name}`"
+                )
+
+    def _create_from_child_portfolios(
+        self, portfolios: list[Portfolio]
+    ) -> MultiPeriodPortfolio:
+        """Create a new instance from child portfolios, preserving this instance's
+        settings.
+        """
+        params = self._get_init_params()
+        params["portfolios"] = portfolios
+        return self.__class__(**params)
+
     def _set_portfolios(self, portfolios: list[Portfolio] | None = None) -> None:
         """Set the returns, observations and portfolios list.
 
