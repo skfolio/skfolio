@@ -87,6 +87,16 @@ jobs:
               assert not missing, f"Missing source test configuration: {sorted(missing)}"
           PY
 
+      # deptry resolves top-level modules to their distributions (`cvxpy` comes from
+      # `cvxpy-base`) through installed metadata, so it needs the project environment
+      # rather than a standalone `uvx` run, which would report false positives.
+      - name: Dependency check
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: |
+          uv venv
+          uv pip install --python .venv --editable . --group dev
+          uv run --no-sync deptry src
+
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux
 # -----------------------------------------------------------------------------
