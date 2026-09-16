@@ -1072,121 +1072,29 @@ class Population(list):
         else:
             color = tag
 
-        if z is not None:
-            if to_surface:
-                # estimate the surface
-                x_arr = np.array(df[str(x)])
-                y_arr = np.array(df[str(y)])
-                z_arr = np.array(df[str(z)])
-
-                xi = np.linspace(start=min(x_arr), stop=max(x_arr), num=100)
-                yi = np.linspace(start=min(y_arr), stop=max(y_arr), num=100)
-
-                X, Y = np.meshgrid(xi, yi)
-                Z = sci.griddata(
-                    points=(x_arr, y_arr), values=z_arr, xi=(X, Y), method="cubic"
-                )
-                fig = go.Figure(
-                    go.Surface(
-                        x=xi,
-                        y=yi,
-                        z=Z,
-                        hovertemplate="<br>".join(
-                            [
-                                str(e)
-                                + ": %{"
-                                + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
-                                + "}"
-                                for e, v in [(x, "x"), (y, "y"), (z, "z")]
-                            ]
-                        )
-                        + "<extra></extra>",
-                        colorbar=dict(
-                            title=dict(text=str(z), side="top"),
-                            tickformat=",.2%" if not z.is_ratio else None,
-                        ),
-                    )
-                )
-
-                fig.update_layout(
-                    title=title,
-                    scene=dict(
-                        xaxis={
-                            "title": str(x),
-                            "tickformat": ",.1%" if not x.is_ratio else None,
-                        },
-                        yaxis={
-                            "title": str(y),
-                            "tickformat": ",.1%" if not y.is_ratio else None,
-                        },
-                        zaxis={
-                            "title": str(z),
-                            "tickformat": ",.1%" if not z.is_ratio else None,
-                        },
-                    ),
-                )
-            else:
-                # plot the points
-                fig = px.scatter_3d(
-                    df,
-                    x=str(x),
-                    y=str(y),
-                    z=str(z),
-                    hover_name="name",
-                    hover_data=hover_data,
-                    color=color,
-                    symbol=tag,
-                )
-                fig.update_traces(marker_size=8)
-                fig.update_layout(
-                    title=title,
-                    scene=dict(
-                        xaxis={
-                            "title": str(x),
-                            "tickformat": ",.1%" if not x.is_ratio else None,
-                        },
-                        yaxis={
-                            "title": str(y),
-                            "tickformat": ",.1%" if not y.is_ratio else None,
-                        },
-                        zaxis={
-                            "title": str(z),
-                            "tickformat": ",.1%" if not z.is_ratio else None,
-                        },
-                    ),
-                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=1.15),
-                )
-
-        else:
-            fig = px.scatter(
-                df,
-                x=str(x),
-                y=str(y),
-                hover_name="name",
+        if z is None:
+            fig = _measure_scatter_figure(
+                df=df,
+                x=x,
+                y=y,
+                title=title,
                 hover_data=hover_data,
                 color=color,
-                symbol=tag,
+                tag=tag,
+                color_scale=color_scale,
             )
-            fig.update_traces(marker_size=10)
-
-            if color_scale is None:
-                legend = dict(title=None, yanchor="top", y=0.98, xanchor="left", x=1.02)
-            else:
-                legend = dict(title=None, yanchor="top", y=0.98, xanchor="left", x=0.02)
-
-            fig.update_layout(
+        elif to_surface:
+            fig = _measure_surface_figure(df=df, x=x, y=y, z=z, title=title)
+        else:
+            fig = _measure_scatter_3d_figure(
+                df=df,
+                x=x,
+                y=y,
+                z=z,
                 title=title,
-                xaxis={
-                    "title": str(x),
-                    "tickformat": ",.1%" if not x.is_ratio else None,
-                },
-                yaxis={
-                    "title": str(y),
-                    "tickformat": ",.1%" if not y.is_ratio else None,
-                },
-                legend=legend,
+                hover_data=hover_data,
+                color=color,
+                tag=tag,
             )
         return fig
 
@@ -1293,3 +1201,242 @@ def _ptf_name_with_tag(portfolio: BasePortfolio) -> str:
     if portfolio.tag is None:
         return portfolio.name
     return f"{portfolio.name}_{portfolio.tag}"
+
+
+def _measure_axis(measure: skt.Measure, tickformat: str = ",.1%") -> dict:
+    """Axis definition of a measure.
+
+    A ratio is dimensionless, so it is the only kind shown unformatted.
+
+    Parameters
+    ----------
+    measure : Measure
+        The measure plotted on the axis.
+
+    tickformat : str, default=",.1%"
+        The tick format used when the measure is not a ratio.
+
+    Returns
+    -------
+    axis : dict
+        The plotly axis definition.
+    """
+    return {
+        "title": str(measure),
+        "tickformat": tickformat if not measure.is_ratio else None,
+    }
+
+
+def _measure_scene(x: skt.Measure, y: skt.Measure, z: skt.Measure) -> dict:
+    """Scene definition of the three measures of a 3D plot.
+
+    Parameters
+    ----------
+    x : Measure
+        The x-axis measure.
+
+    y : Measure
+        The y-axis measure.
+
+    z : Measure
+        The z-axis measure.
+
+    Returns
+    -------
+    scene : dict
+        The plotly scene definition.
+    """
+    return dict(
+        xaxis=_measure_axis(x),
+        yaxis=_measure_axis(y),
+        zaxis=_measure_axis(z),
+    )
+
+
+def _measure_surface_figure(
+    df: pd.DataFrame, x: skt.Measure, y: skt.Measure, z: skt.Measure, title: str
+) -> go.Figure:
+    """Interpolate the population onto a surface of `z` over `x` and `y`.
+
+    Parameters
+    ----------
+    df : DataFrame
+        The measures of each portfolio.
+
+    x : Measure
+        The x-axis measure.
+
+    y : Measure
+        The y-axis measure.
+
+    z : Measure
+        The surface measure.
+
+    title : str
+        The plot title.
+
+    Returns
+    -------
+    fig : Figure
+        The plotly figure.
+    """
+    x_arr = np.array(df[str(x)])
+    y_arr = np.array(df[str(y)])
+    z_arr = np.array(df[str(z)])
+
+    xi = np.linspace(start=min(x_arr), stop=max(x_arr), num=100)
+    yi = np.linspace(start=min(y_arr), stop=max(y_arr), num=100)
+
+    X, Y = np.meshgrid(xi, yi)
+    Z = sci.griddata(points=(x_arr, y_arr), values=z_arr, xi=(X, Y), method="cubic")
+    fig = go.Figure(
+        go.Surface(
+            x=xi,
+            y=yi,
+            z=Z,
+            hovertemplate="<br>".join(
+                [
+                    str(e)
+                    + ": %{"
+                    + v
+                    + ":"
+                    + (",.3%" if not e.is_ratio else None)
+                    + "}"
+                    for e, v in [(x, "x"), (y, "y"), (z, "z")]
+                ]
+            )
+            + "<extra></extra>",
+            colorbar=dict(
+                title=dict(text=str(z), side="top"),
+                tickformat=",.2%" if not z.is_ratio else None,
+            ),
+        )
+    )
+    fig.update_layout(title=title, scene=_measure_scene(x, y, z))
+    return fig
+
+
+def _measure_scatter_3d_figure(
+    df: pd.DataFrame,
+    x: skt.Measure,
+    y: skt.Measure,
+    z: skt.Measure,
+    title: str,
+    hover_data: dict,
+    color: str | None,
+    tag: str | None,
+) -> go.Figure:
+    """Scatter the population in the three measures.
+
+    Parameters
+    ----------
+    df : DataFrame
+        The measures of each portfolio.
+
+    x : Measure
+        The x-axis measure.
+
+    y : Measure
+        The y-axis measure.
+
+    z : Measure
+        The z-axis measure.
+
+    title : str
+        The plot title.
+
+    hover_data : dict
+        The hover definition.
+
+    color : str | None
+        The column coloring the points.
+
+    tag : str | None
+        The column giving the point symbols.
+
+    Returns
+    -------
+    fig : Figure
+        The plotly figure.
+    """
+    fig = px.scatter_3d(
+        df,
+        x=str(x),
+        y=str(y),
+        z=str(z),
+        hover_name="name",
+        hover_data=hover_data,
+        color=color,
+        symbol=tag,
+    )
+    fig.update_traces(marker_size=8)
+    fig.update_layout(
+        title=title,
+        scene=_measure_scene(x, y, z),
+        legend=dict(yanchor="top", y=0.99, xanchor="left", x=1.15),
+    )
+    return fig
+
+
+def _measure_scatter_figure(
+    df: pd.DataFrame,
+    x: skt.Measure,
+    y: skt.Measure,
+    title: str,
+    hover_data: dict,
+    color: str | None,
+    tag: str | None,
+    color_scale: skt.Measure | str | None,
+) -> go.Figure:
+    """Scatter the population in the two measures.
+
+    Parameters
+    ----------
+    df : DataFrame
+        The measures of each portfolio.
+
+    x : Measure
+        The x-axis measure.
+
+    y : Measure
+        The y-axis measure.
+
+    title : str
+        The plot title.
+
+    hover_data : dict
+        The hover definition.
+
+    color : str | None
+        The column coloring the points.
+
+    tag : str | None
+        The column giving the point symbols.
+
+    color_scale : Measure | str | None
+        The color scale, which moves the legend inside the plot when set.
+
+    Returns
+    -------
+    fig : Figure
+        The plotly figure.
+    """
+    fig = px.scatter(
+        df,
+        x=str(x),
+        y=str(y),
+        hover_name="name",
+        hover_data=hover_data,
+        color=color,
+        symbol=tag,
+    )
+    fig.update_traces(marker_size=10)
+    # A color scale takes the right-hand margin, so the legend moves inside the plot.
+    legend_x = 1.02 if color_scale is None else 0.02
+    fig.update_layout(
+        title=title,
+        xaxis=_measure_axis(x),
+        yaxis=_measure_axis(y),
+        legend=dict(title=None, yanchor="top", y=0.98, xanchor="left", x=legend_x),
+    )
+    return fig
