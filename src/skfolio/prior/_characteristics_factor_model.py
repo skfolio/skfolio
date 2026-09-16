@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from graphlib import TopologicalSorter
 from typing import ClassVar
 
@@ -69,6 +70,69 @@ from skfolio.utils.tools import (
 from skfolio.utils.validation import validate_asset_panel
 
 _FITTED_ATTR = "factor_model_"
+
+
+@dataclass
+class _FitState:
+    """Arrays threaded through the stages of `CharacteristicsFactorModel._fit`.
+
+    The fit is a pipeline. Each stage reads what the previous ones produced, and
+    several of them trim every array at once to keep the observation axis aligned,
+    first for the descriptor warmup and then for the exposure lag. Carrying that in one
+    object keeps each stage's signature to `(self, state)` and makes explicit which
+    arrays survive into the next stage; passing them positionally would mean helpers
+    taking six to eight arrays each.
+
+    Every field starts as `None` and is filled by the stage named against it. Fields
+    are listed in pipeline order.
+    """
+
+    # `_load_panel`, then trimmed by `_trim_warmup` and `_lag_exposures`.
+    currency_excess_returns: pd.DataFrame | None = None
+    observations: AnyArray | None = None
+    asset_returns: FloatArray | None = None
+    estimation_mask: BoolArray | None = None
+    active_mask: BoolArray | None = None
+    benchmark_weights: FloatArray | None = None
+    market_cap: FloatArray | None = None
+    exposures: FloatArray | None = None
+    factor_names: StrArray | None = None
+    factor_families: StrArray | None = None
+    ccy_exposures: FloatArray | None = None
+    ccy_factor_names: StrArray | None = None
+    ccy_factor_families: StrArray | None = None
+
+    # `_reduce_exposures`: the family-constraint basis and the exposures in it.
+    basis: FamilyConstraintBasis | None = None
+    factor_names_reduced: StrArray | None = None
+    factor_families_reduced: StrArray | None = None
+    exposures_reduced: FloatArray | None = None
+
+    # `_lag_exposures`: the lagged inputs of the cross-sectional regression.
+    lagged_exposures_reduced: FloatArray | None = None
+    lagged_basis: FamilyConstraintBasis | None = None
+    lagged_market_cap: FloatArray | None = None
+    lag_trim: int = 0
+
+    # `_regress`: the cross-sectional regression output.
+    idio_returns: FloatArray | None = None
+    factor_returns_reduced: FloatArray | None = None
+    regression_weights: FloatArray | None = None
+
+    # `_add_currency_factors`: the same quantities with the currency factors appended.
+    n_reduced_factors: int | None = None
+    factor_returns_reduced_with_ccy: FloatArray | None = None
+    factor_names_reduced_with_ccy: StrArray | None = None
+    loading_matrix_reduced_with_ccy: FloatArray | None = None
+    basis_with_ccy: FamilyConstraintBasis | None = None
+    lagged_basis_with_ccy: FamilyConstraintBasis | None = None
+
+    # `_estimate_moments`: factor and idiosyncratic moments, and the alpha split.
+    factor_dist_reduced_with_ccy: ReturnDistribution | None = None
+    idio_variances: FloatArray | None = None
+    idio_cov: FloatArray | None = None
+    factor_mu_reduced: FloatArray | None = None
+    orthogonal_alpha: FloatArray | None = None
 
 
 class CharacteristicsFactorModel(BasePrior, BaseComposition):
@@ -1014,465 +1078,26 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             self._validate_params()
             self._initialize()
 
-        self._attach_benchmark_weights(characteristics=characteristics)
-
-        asset_returns = characteristics[_RETURNS]
-        estimation_mask = characteristics.estimation_mask
-        active_mask = characteristics.active_mask
-        observations = characteristics.observations
-        benchmark_weights = characteristics[_BENCHMARK_WEIGHTS]
-        market_cap = characteristics[_MARKET_CAP] if self._need_market_cap else None
-
-        if self.currency_factor is not None:
-            ccy_exposures, ccy_factor_names, ccy_factor_families = (
-                self._compute_currency_exposure(
-                    characteristics=characteristics,
-                    routed_params=routed_params,
-                    method=method,
-                )
-            )
-            currency_excess_returns = _validate_currency_excess_returns(
-                currency_excess_returns=currency_excess_returns,
-                observations=observations,
-                currency_factor_names=ccy_factor_names,
-            )
-        else:
-            ccy_exposures = None
-            ccy_factor_names = None
-            ccy_factor_families = None
-
-        exposures, factor_names, factor_families = self._compute_factor_exposures(
-            characteristics=characteristics, routed_params=routed_params, method=method
-        )
-        inactive_mask = ~active_mask
-        if inactive_mask.any():
-            exposures[inactive_mask] = np.nan
-            if ccy_exposures is not None:
-                ccy_exposures[inactive_mask] = np.nan
-
-        if first_call:
-            _validate_factor_names_and_families(
-                factor_names=factor_names,
-                factor_families=factor_families,
-                name="factor model",
-            )
-
-        warmup_end = self._validate_exposure_warmup(
-            asset_returns=asset_returns,
-            exposures=exposures,
-            estimation_mask=estimation_mask,
-        )
-
-        if warmup_end > 0:
-            observations = observations[warmup_end:]
-            exposures = exposures[warmup_end:]
-            asset_returns = asset_returns[warmup_end:]
-            estimation_mask = estimation_mask[warmup_end:]
-            active_mask = active_mask[warmup_end:]
-            benchmark_weights = benchmark_weights[warmup_end:]
-            market_cap = market_cap[warmup_end:] if market_cap is not None else None
-            ccy_exposures = (
-                ccy_exposures[warmup_end:] if ccy_exposures is not None else None
-            )
-            currency_excess_returns = (
-                currency_excess_returns.iloc[warmup_end:]
-                if currency_excess_returns is not None
-                else None
-            )
-
-        # Neutralize style exposures in-place against other factors/families. Runs
-        # before the family-constraint basis change so that one-hot families are
-        # neutralized against the full exposure set.
-        if self.neutralize_against:
-            _neutralize_exposures(
-                cs_regressor=sk.clone(self.cs_regressor_),
-                neutralize_against=self.neutralize_against,
-                exposures=exposures,
-                benchmark_weights=benchmark_weights,
-                factor_names=factor_names,
-                factor_families=factor_families,
-            )
-
-        # Apply zero-sum constraints within factor families, dropping one factor per
-        # family so that the benchmark-weighted average factor return is zero
-        if self.constrained_families is not None:
-            # Unless provided by the user, the factor to drop inside a family constraint
-            # is determined by compute_family_constraint_basis based on a methodology
-            # that improves numerical conditioning. When calling partial_fit, the chosen
-            # factor needs to remain the same between all incremental calls so we cache
-            # it.
-            basis, self._constrained_families = compute_family_constraint_basis(
-                constrained_families=(
-                    self._constrained_families
-                    if self._constrained_families is not None
-                    else self.constrained_families
-                ),
-                factor_exposures=exposures,
-                benchmark_weights=benchmark_weights,
-                factor_names=factor_names,
-                factor_families=factor_families,
-            )
-            self._family_constraint_basis = basis
-            factor_names_reduced = basis.reduced_factor_names(factor_names)
-            factor_families_reduced = basis.reduced_factor_names(factor_families)
-            exposures_reduced = basis.reduce_exposures(exposures)
-        else:
-            basis = None
-            factor_names_reduced = factor_names
-            factor_families_reduced = factor_families
-            exposures_reduced = exposures
-
-        # Apply the exposure lag used in cross-sectional regression. Buffers carry
-        # the last `exposure_lag` rows across `partial_fit` calls so no return
-        # observations are lost at batch boundaries.
-        lagged_exposures_reduced, lag_trim, self._buffer_exposures_reduced = (
-            _lag_with_buffer(
-                exposures_reduced, self._buffer_exposures_reduced, self.exposure_lag
-            )
-        )
-
-        # The regression coefficients at observation t are coordinates in the reduced
-        # basis built from the lagged exposures, so reconstructing full-basis factor
-        # returns must use the ratios c(t - lag).
-        if basis is not None:
-            lagged_constraint_ratios, _, self._buffer_constraint_ratios = (
-                _lag_with_buffer(
-                    basis.constraint_ratios,
-                    self._buffer_constraint_ratios,
-                    self.exposure_lag,
-                )
-            )
-            lagged_basis = basis.with_constraint_ratios(lagged_constraint_ratios)
-        else:
-            lagged_basis = None
-
-        # The market cap used for regression weighting is lagged like the exposures.
-        # The current observation cap is endogenous to the regressand so weighting
-        # observation t by mcap(t) embeds the return being regressed, correlating
-        # weights with residuals (same-observation winners get up-weighted, losers
-        # down-weighted, inflating R2).
-        if self.regression_mcap_power != 0:
-            lagged_market_cap, _, self._buffer_market_cap = _lag_with_buffer(
-                market_cap, self._buffer_market_cap, self.exposure_lag
-            )
-        else:
-            lagged_market_cap = None
-
-        if lagged_exposures_reduced.shape[0] == 0:
-            prefix = (
-                "The first `partial_fit` call must contain enough data to estimate "
-                "at least one regression observation. "
-                if first_call and method == "partial_fit"
-                else ""
-            )
-            raise ValueError(
-                f"{prefix}Not enough observations to estimate the factor model after "
-                f"exposure lag. `exposure_lag={self.exposure_lag}` requires at least "
-                f"{self.exposure_lag + 1} post-warmup observations. Provide more "
-                "observations in the first batch, reduce descriptor warmup parameters, "
-                "or reduce `exposure_lag`."
-            )
-
-        # On the first call the lag consumes `exposure_lag` leading rows.
-        # Trim all parallel arrays so everything stays aligned.
-        if lag_trim > 0:
-            observations = observations[lag_trim:]
-            asset_returns = asset_returns[lag_trim:]
-            estimation_mask = estimation_mask[lag_trim:]
-            active_mask = active_mask[lag_trim:]
-            exposures = exposures[lag_trim:]
-            exposures_reduced = exposures_reduced[lag_trim:]
-            benchmark_weights = benchmark_weights[lag_trim:]
-            ccy_exposures = (
-                ccy_exposures[lag_trim:] if ccy_exposures is not None else None
-            )
-            currency_excess_returns = (
-                currency_excess_returns.iloc[lag_trim:]
-                if currency_excess_returns is not None
-                else None
-            )
-            basis = basis[lag_trim:] if basis is not None else None
-
-        regression_eligible_mask = (
-            np.isfinite(asset_returns)
-            & estimation_mask
-            & np.all(np.isfinite(lagged_exposures_reduced), axis=2)
-        )
-        self._validate_regression_coverage(
-            regression_eligible_mask=regression_eligible_mask,
-            asset_returns=asset_returns,
-            lagged_exposures=lagged_exposures_reduced,
-            estimation_mask=estimation_mask,
-            observations=observations,
-            factor_names=factor_names_reduced,
-        )
-
-        # Cross-sectional regression
-        idio_returns, factor_returns_reduced, regression_weights = (
-            self._cross_sectional_regression(
-                lagged_exposures=lagged_exposures_reduced,
-                asset_returns=asset_returns,
-                lagged_market_cap=lagged_market_cap,
-                regression_eligible_mask=regression_eligible_mask,
-                estimation_mask=estimation_mask,
-                active_mask=active_mask,
-                routed_params=routed_params.cs_regressor.fit,
-            )
-        )
-
-        # Combine regression-estimated local factors with directly observed currency
-        # factors. The result stays in the reduced basis when constraints are active.
-        _, n_reduced_factors = factor_returns_reduced.shape
-
-        if ccy_exposures is not None:
-            ccy_factor_returns = currency_excess_returns.loc[
-                observations, ccy_factor_names
-            ].to_numpy(dtype=float, copy=False)
-            if not np.all(np.isfinite(ccy_factor_returns)):
-                raise ValueError(
-                    "`currency_excess_returns` must contain only finite values "
-                    "for the fitted observations and currency factors."
-                )
-            factor_returns_reduced_with_ccy = np.concatenate(
-                [factor_returns_reduced, ccy_factor_returns], axis=1
-            )
-            factor_names_reduced_with_ccy = np.concatenate(
-                [factor_names_reduced, ccy_factor_names]
-            )
-            loading_matrix_reduced_with_ccy = np.concatenate(
-                [exposures_reduced[-1], ccy_exposures[-1]], axis=1
-            )
-            basis_with_ccy = (
-                basis.append_passthrough_factors(len(ccy_factor_names))
-                if basis is not None
-                else None
-            )
-            lagged_basis_with_ccy = (
-                lagged_basis.append_passthrough_factors(len(ccy_factor_names))
-                if lagged_basis is not None
-                else None
-            )
-        else:
-            loading_matrix_reduced_with_ccy = exposures_reduced[-1]
-            factor_returns_reduced_with_ccy = factor_returns_reduced
-            factor_names_reduced_with_ccy = factor_names_reduced
-            basis_with_ccy = basis
-            lagged_basis_with_ccy = lagged_basis
-
-        # Estimate factor return distribution: mu, cov and return scenarios
-        factor_dist_reduced_with_ccy = self._compute_factor_returns_dist(
-            factor_returns=factor_returns_reduced_with_ccy,
-            factor_names=factor_names_reduced_with_ccy,
-            observations=observations,
-            routed_params=routed_params,
-            first_call=first_call,
-        )
-
-        # Per-observation idiosyncratic variance estimates (n_observations, n_assets)
-        idio_variances = self._compute_idio_variances(
-            idio_returns=idio_returns,
-            estimation_mask=estimation_mask,
-            active_mask=active_mask,
-            routed_params=routed_params,
-        )
-
-        # Latest idiosyncratic covariance estimate. If `idio_corr_threshold == 0`, uses
-        # the latest per-asset variances and returns the diagonal of shape (n_assets,).
-        # Otherwise, estimates a sparse idio covariance via correlation thresholding and
-        # returns the full matrix of shape (n_assets, n_assets).
-        idio_cov = self._compute_idio_covariance(
-            idio_returns=idio_returns,
-            idio_variances=idio_variances,
-            estimation_mask=estimation_mask,
-            active_mask=active_mask,
-            routed_params=routed_params,
-            first_call=first_call,
-        )
-
-        # Alpha forecast from user provided `alpha_estimator`. Default is zeros.
-        alpha = self._compute_alpha(
+        state = self._load_panel(
             characteristics=characteristics,
-            idio_returns=idio_returns,
-            idio_variances=idio_variances,
-            regression_weights=regression_weights,
-            exposures=exposures_reduced,
-            factor_names=factor_names_reduced,
-            factor_families=factor_families_reduced,
+            currency_excess_returns=currency_excess_returns,
+            routed_params=routed_params,
+            method=method,
+            first_call=first_call,
+        )
+        self._trim_warmup(state)
+        self._reduce_exposures(state)
+        self._lag_exposures(state, first_call=first_call, method=method)
+        self._regress(state, routed_params=routed_params)
+        self._add_currency_factors(state)
+        self._estimate_moments(
+            state,
+            characteristics=characteristics,
             routed_params=routed_params,
             first_call=first_call,
         )
-
-        # Decompose the forecast into spanned alpha and orthogonal alpha.
-        # The projection coefficients are blended with expected factor returns below.
-        factor_mu_reduced, orthogonal_alpha = self._decompose_alpha(
-            alpha=alpha,
-            exposure=exposures_reduced[[-1]],
-            regression_weights=regression_weights[[-1]],
-            routed_params=routed_params.cs_regressor.fit,
-        )
-
-        # Reduce to the investment universe
-        idx = self._investment_idx_in_coverage
-        if idx is not None:
-            orthogonal_alpha = orthogonal_alpha[idx]
-            exposures_reduced = exposures_reduced[:, idx]
-            exposures = exposures[:, idx]
-            loading_matrix_reduced_with_ccy = loading_matrix_reduced_with_ccy[idx]
-            idio_returns = idio_returns[:, idx]
-            idio_variances = idio_variances[:, idx]
-            regression_weights = regression_weights[:, idx]
-            benchmark_weights = benchmark_weights[:, idx]
-            active_mask = active_mask[:, idx]
-            idio_cov = (
-                idio_cov[idx] if idio_cov.ndim == 1 else idio_cov[np.ix_(idx, idx)]
-            )
-            ccy_exposures = ccy_exposures[:, idx] if ccy_exposures is not None else None
-
-        _validate_covariance_readiness(
-            factor_covariance=factor_dist_reduced_with_ccy.covariance,
-            latest_idio_variances=idio_variances[-1],
-        )
-
-        # Blend the projection coefficients with expected factor returns.
-        factor_mu_prior_reduced = factor_dist_reduced_with_ccy.mu[:n_reduced_factors]
-        factor_mu_reduced = (
-            factor_mu_prior_reduced * self.spanned_alpha_shrinkage
-            + factor_mu_reduced * (1 - self.spanned_alpha_shrinkage)
-        )
-        factor_mu_reduced_with_ccy = factor_dist_reduced_with_ccy.mu.copy()
-        factor_mu_reduced_with_ccy[:n_reduced_factors] = factor_mu_reduced
-
-        spanned_mu = exposures_reduced[-1] @ factor_mu_reduced
-
-        # Shrink orthogonal alpha toward zero according to user confidence
-        orthogonal_alpha *= self.orthogonal_alpha_confidence
-
-        # Assemble factor-spanned expected returns and orthogonal alpha
-        mu = spanned_mu + orthogonal_alpha
-        if ccy_exposures is not None:
-            mu += ccy_exposures[-1] @ factor_mu_reduced_with_ccy[n_reduced_factors:]
-
-        # Asset covariance (n_assets, n_assets)
-        factor_cov_reduced_with_ccy = factor_dist_reduced_with_ccy.covariance
-        asset_cov = loading_matrix_reduced_with_ccy @ (
-            factor_cov_reduced_with_ccy @ loading_matrix_reduced_with_ccy.T
-        )
-        if idio_cov.ndim == 1:
-            asset_cov[np.diag_indices_from(asset_cov)] += idio_cov
-        else:
-            asset_cov += idio_cov
-
-        if ccy_exposures is not None:
-            exposures = np.concatenate([exposures, ccy_exposures], axis=2)
-            factor_names = np.concatenate([factor_names, ccy_factor_names])
-            factor_families = np.concatenate([factor_families, ccy_factor_families])
-            if first_call:
-                _validate_factor_names_and_families(
-                    factor_names=factor_names,
-                    factor_families=factor_families,
-                    name="factor model",
-                )
-
-        if basis_with_ccy is not None:
-            # The regression at observation t uses exposures from t - lag, so the
-            # dropped factor's return must be recovered with the constraint ratios from
-            # t - lag as well (lagged basis). This guarantees that exposures(t - lag)
-            # @ factor_returns(t) + idio_returns(t) reproduces asset returns exactly.
-            # Factor mu and covariance describe the next period (forcast) and use the
-            # current loading matrix with the current (unlagged) ratios.
-            factor_returns = lagged_basis_with_ccy.expand_factor_returns(
-                factor_returns_reduced_with_ccy
-            )
-            factor_mu = basis_with_ccy.expand_factor_mu(factor_mu_reduced_with_ccy)
-            factor_cov = basis_with_ccy.expand_factor_covariance(
-                factor_cov_reduced_with_ccy
-            )
-        else:
-            factor_returns = factor_returns_reduced_with_ccy
-            factor_mu = factor_mu_reduced_with_ccy
-            factor_cov = factor_cov_reduced_with_ccy
-
-        standardized_idio_returns = _compute_standardized_idio_returns(
-            idio_returns=idio_returns,
-            idio_variances=idio_variances,
-            active_mask=active_mask,
-        )
-
-        history_arrays = dict(
-            observations=observations,
-            factor_returns=factor_returns,
-            idio_returns=idio_returns,
-            idio_variances=idio_variances,
-            standardized_idio_returns=standardized_idio_returns,
-            exposures=exposures,
-            regression_weights=regression_weights,
-            benchmark_weights=benchmark_weights,
-            active_mask=active_mask,
-        )
-        if basis is not None:
-            history_arrays["family_constraint_ratios"] = basis.constraint_ratios
-
-        self._accumulate_history(**history_arrays)
-        history = self._get_history()
-
-        if self.constrained_families is not None:
-            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(
-                history["family_constraint_ratios"]
-            )
-            if ccy_exposures is not None:
-                accumulated_basis = accumulated_basis.append_passthrough_factors(
-                    len(ccy_factor_names)
-                )
-        else:
-            accumulated_basis = None
-
-        # `factor_dist_reduced_with_ccy.returns` contains the factor-return scenarios
-        # produced by the factor prior estimator. These scenarios are mapped through the
-        # latest loading matrix, then combined with calibrated idiosyncratic scenarios
-        # to build `ReturnDistribution.returns` for downstream optimizers that use
-        # scenario-based risk measures such as CVaR. By contrast,
-        # `FactorModel.factor_returns` stores the realized historical factor returns
-        # estimated by the cross-sectional regressions. They match
-        # `factor_dist_reduced_with_ccy.returns` only when the factor prior estimator
-        # preserves historical scenarios (e.g., `EmpiricalPrior`) and there is no family
-        # constraint.
-        asset_return_scenarios, sample_weight = _assemble_asset_return_scenarios(
-            factor_return_scenarios=factor_dist_reduced_with_ccy.returns,
-            loading_matrix=loading_matrix_reduced_with_ccy,
-            standardized_idio_returns=history["standardized_idio_returns"],
-            latest_active_mask=active_mask[-1],
-            latest_idio_variances=idio_variances[-1],
-            sample_weight=factor_dist_reduced_with_ccy.sample_weight,
-        )
-
-        self.factor_model_ = FactorModel(
-            observations=history["observations"],
-            asset_names=self.feature_names_in_,
-            factor_names=factor_names,
-            factor_families=factor_families,
-            loading_matrix=exposures[-1],
-            exposures=history["exposures"],
-            factor_returns=history["factor_returns"],
-            factor_mu=factor_mu,
-            factor_covariance=factor_cov,
-            idio_returns=history["idio_returns"],
-            idio_variances=history["idio_variances"],
-            idio_mu=orthogonal_alpha,
-            idio_covariance=idio_cov,
-            exposure_lag=self.exposure_lag,
-            regression_weights=history["regression_weights"],
-            benchmark_weights=history["benchmark_weights"],
-            family_constraint_basis=accumulated_basis,
-        )
-
-        # Assets
-        self.return_distribution_ = ReturnDistribution(
-            mu=mu,
-            covariance=asset_cov,
-            returns=asset_return_scenarios,
-            sample_weight=sample_weight,
-            factor_model=self.factor_model_,
-        )
+        self._reduce_to_investment_universe(state)
+        self._assemble_return_distribution(state, first_call=first_call)
 
         return self
 
@@ -1590,6 +1215,639 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             )
 
         return router
+
+    def _load_panel(
+        self,
+        *,
+        characteristics: AssetPanel,
+        currency_excess_returns: pd.DataFrame | None,
+        routed_params: sku.Bunch,
+        method: str,
+        first_call: bool,
+    ) -> _FitState:
+        """Read the panel and compute the factor exposures.
+
+        Parameters
+        ----------
+        characteristics : AssetPanel
+            The asset panel.
+
+        currency_excess_returns : DataFrame | None
+            Currency excess returns, required when `currency_factor` is set.
+
+        routed_params : Bunch
+            The routed metadata.
+
+        method : str
+            Either `"fit"` or `"partial_fit"`.
+
+        first_call : bool
+            Whether this is the first call, which validates names once.
+
+        Returns
+        -------
+        state : _FitState
+            The pipeline state, with the panel arrays and exposures populated.
+        """
+        state = _FitState(currency_excess_returns=currency_excess_returns)
+
+        self._attach_benchmark_weights(characteristics=characteristics)
+
+        state.asset_returns = characteristics[_RETURNS]
+        state.estimation_mask = characteristics.estimation_mask
+        state.active_mask = characteristics.active_mask
+        state.observations = characteristics.observations
+        state.benchmark_weights = characteristics[_BENCHMARK_WEIGHTS]
+        state.market_cap = (
+            characteristics[_MARKET_CAP] if self._need_market_cap else None
+        )
+
+        if self.currency_factor is not None:
+            state.ccy_exposures, state.ccy_factor_names, state.ccy_factor_families = (
+                self._compute_currency_exposure(
+                    characteristics=characteristics,
+                    routed_params=routed_params,
+                    method=method,
+                )
+            )
+            state.currency_excess_returns = _validate_currency_excess_returns(
+                currency_excess_returns=state.currency_excess_returns,
+                observations=state.observations,
+                currency_factor_names=state.ccy_factor_names,
+            )
+        else:
+            state.ccy_exposures = None
+            state.ccy_factor_names = None
+            state.ccy_factor_families = None
+
+        state.exposures, state.factor_names, state.factor_families = (
+            self._compute_factor_exposures(
+                characteristics=characteristics,
+                routed_params=routed_params,
+                method=method,
+            )
+        )
+        inactive_mask = ~state.active_mask
+        if inactive_mask.any():
+            state.exposures[inactive_mask] = np.nan
+            if state.ccy_exposures is not None:
+                state.ccy_exposures[inactive_mask] = np.nan
+
+        if first_call:
+            _validate_factor_names_and_families(
+                factor_names=state.factor_names,
+                factor_families=state.factor_families,
+                name="factor model",
+            )
+
+        return state
+
+    def _trim_warmup(self, state: _FitState) -> None:
+        """Drop the leading observations the descriptors need to warm up.
+
+        Exposures are undefined until each descriptor has enough history, so every
+        array is trimmed together to keep the observation axis aligned.
+        """
+        warmup_end = self._validate_exposure_warmup(
+            asset_returns=state.asset_returns,
+            exposures=state.exposures,
+            estimation_mask=state.estimation_mask,
+        )
+
+        if warmup_end > 0:
+            state.observations = state.observations[warmup_end:]
+            state.exposures = state.exposures[warmup_end:]
+            state.asset_returns = state.asset_returns[warmup_end:]
+            state.estimation_mask = state.estimation_mask[warmup_end:]
+            state.active_mask = state.active_mask[warmup_end:]
+            state.benchmark_weights = state.benchmark_weights[warmup_end:]
+            state.market_cap = (
+                state.market_cap[warmup_end:] if state.market_cap is not None else None
+            )
+            state.ccy_exposures = (
+                state.ccy_exposures[warmup_end:]
+                if state.ccy_exposures is not None
+                else None
+            )
+            state.currency_excess_returns = (
+                state.currency_excess_returns.iloc[warmup_end:]
+                if state.currency_excess_returns is not None
+                else None
+            )
+
+    def _reduce_exposures(self, state: _FitState) -> None:
+        """Neutralize exposures and apply the family zero-sum constraints.
+
+        Neutralization runs first so that one-hot families are neutralized against the
+        full exposure set, before the basis change drops one factor per constrained
+        family.
+        """
+        # Neutralize style exposures in-place against other factors/families. Runs
+        # before the family-constraint basis change so that one-hot families are
+        # neutralized against the full exposure set.
+        if self.neutralize_against:
+            _neutralize_exposures(
+                cs_regressor=sk.clone(self.cs_regressor_),
+                neutralize_against=self.neutralize_against,
+                exposures=state.exposures,
+                benchmark_weights=state.benchmark_weights,
+                factor_names=state.factor_names,
+                factor_families=state.factor_families,
+            )
+
+        # Apply zero-sum constraints within factor families, dropping one factor per
+        # family so that the benchmark-weighted average factor return is zero
+        if self.constrained_families is not None:
+            # Unless provided by the user, the factor to drop inside a family constraint
+            # is determined by compute_family_constraint_basis based on a methodology
+            # that improves numerical conditioning. When calling partial_fit, the chosen
+            # factor needs to remain the same between all incremental calls so we cache
+            # it.
+            state.basis, self._constrained_families = compute_family_constraint_basis(
+                constrained_families=(
+                    self._constrained_families
+                    if self._constrained_families is not None
+                    else self.constrained_families
+                ),
+                factor_exposures=state.exposures,
+                benchmark_weights=state.benchmark_weights,
+                factor_names=state.factor_names,
+                factor_families=state.factor_families,
+            )
+            self._family_constraint_basis = state.basis
+            state.factor_names_reduced = state.basis.reduced_factor_names(
+                state.factor_names
+            )
+            state.factor_families_reduced = state.basis.reduced_factor_names(
+                state.factor_families
+            )
+            state.exposures_reduced = state.basis.reduce_exposures(state.exposures)
+        else:
+            state.basis = None
+            state.factor_names_reduced = state.factor_names
+            state.factor_families_reduced = state.factor_families
+            state.exposures_reduced = state.exposures
+
+    def _lag_exposures(self, state: _FitState, first_call: bool, method: str) -> None:
+        """Lag the exposures and everything regressed alongside them.
+
+        Buffers carry the last `exposure_lag` rows across `partial_fit` calls so no
+        return observation is lost at a batch boundary, and the first call trims the
+        rows the lag consumes.
+
+        Parameters
+        ----------
+        first_call : bool
+            Whether this is the first call, which sharpens the error message.
+
+        method : str
+            Either `"fit"` or `"partial_fit"`, likewise.
+
+        Raises
+        ------
+        ValueError
+            If no regression observation survives the lag.
+        """
+        # Apply the exposure lag used in cross-sectional regression. Buffers carry
+        # the last `exposure_lag` rows across `partial_fit` calls so no return
+        # observations are lost at batch boundaries.
+        (
+            state.lagged_exposures_reduced,
+            state.lag_trim,
+            self._buffer_exposures_reduced,
+        ) = _lag_with_buffer(
+            state.exposures_reduced, self._buffer_exposures_reduced, self.exposure_lag
+        )
+
+        # The regression coefficients at observation t are coordinates in the reduced
+        # basis built from the lagged exposures, so reconstructing full-basis factor
+        # returns must use the ratios c(t - lag).
+        if state.basis is not None:
+            lagged_constraint_ratios, _, self._buffer_constraint_ratios = (
+                _lag_with_buffer(
+                    state.basis.constraint_ratios,
+                    self._buffer_constraint_ratios,
+                    self.exposure_lag,
+                )
+            )
+            state.lagged_basis = state.basis.with_constraint_ratios(
+                lagged_constraint_ratios
+            )
+        else:
+            state.lagged_basis = None
+
+        # The market cap used for regression weighting is lagged like the exposures.
+        # The current observation cap is endogenous to the regressand so weighting
+        # observation t by mcap(t) embeds the return being regressed, correlating
+        # weights with residuals (same-observation winners get up-weighted, losers
+        # down-weighted, inflating R2).
+        if self.regression_mcap_power != 0:
+            state.lagged_market_cap, _, self._buffer_market_cap = _lag_with_buffer(
+                state.market_cap, self._buffer_market_cap, self.exposure_lag
+            )
+        else:
+            state.lagged_market_cap = None
+
+        if state.lagged_exposures_reduced.shape[0] == 0:
+            prefix = (
+                "The first `partial_fit` call must contain enough data to estimate "
+                "at least one regression observation. "
+                if first_call and method == "partial_fit"
+                else ""
+            )
+            raise ValueError(
+                f"{prefix}Not enough observations to estimate the factor model after "
+                f"exposure lag. `exposure_lag={self.exposure_lag}` requires at least "
+                f"{self.exposure_lag + 1} post-warmup observations. Provide more "
+                "observations in the first batch, reduce descriptor warmup parameters, "
+                "or reduce `exposure_lag`."
+            )
+
+        # On the first call the lag consumes `exposure_lag` leading rows.
+        # Trim all parallel arrays so everything stays aligned.
+        if state.lag_trim > 0:
+            state.observations = state.observations[state.lag_trim :]
+            state.asset_returns = state.asset_returns[state.lag_trim :]
+            state.estimation_mask = state.estimation_mask[state.lag_trim :]
+            state.active_mask = state.active_mask[state.lag_trim :]
+            state.exposures = state.exposures[state.lag_trim :]
+            state.exposures_reduced = state.exposures_reduced[state.lag_trim :]
+            state.benchmark_weights = state.benchmark_weights[state.lag_trim :]
+            state.ccy_exposures = (
+                state.ccy_exposures[state.lag_trim :]
+                if state.ccy_exposures is not None
+                else None
+            )
+            state.currency_excess_returns = (
+                state.currency_excess_returns.iloc[state.lag_trim :]
+                if state.currency_excess_returns is not None
+                else None
+            )
+            state.basis = (
+                state.basis[state.lag_trim :] if state.basis is not None else None
+            )
+
+    def _regress(self, state: _FitState, routed_params: sku.Bunch) -> None:
+        """Run the cross-sectional regression of returns on lagged exposures.
+
+        Parameters
+        ----------
+        routed_params : Bunch
+            The routed metadata.
+        """
+        regression_eligible_mask = (
+            np.isfinite(state.asset_returns)
+            & state.estimation_mask
+            & np.all(np.isfinite(state.lagged_exposures_reduced), axis=2)
+        )
+        self._validate_regression_coverage(
+            regression_eligible_mask=regression_eligible_mask,
+            asset_returns=state.asset_returns,
+            lagged_exposures=state.lagged_exposures_reduced,
+            estimation_mask=state.estimation_mask,
+            observations=state.observations,
+            factor_names=state.factor_names_reduced,
+        )
+
+        # Cross-sectional regression
+        state.idio_returns, state.factor_returns_reduced, state.regression_weights = (
+            self._cross_sectional_regression(
+                lagged_exposures=state.lagged_exposures_reduced,
+                asset_returns=state.asset_returns,
+                lagged_market_cap=state.lagged_market_cap,
+                regression_eligible_mask=regression_eligible_mask,
+                estimation_mask=state.estimation_mask,
+                active_mask=state.active_mask,
+                routed_params=routed_params.cs_regressor.fit,
+            )
+        )
+
+    def _add_currency_factors(self, state: _FitState) -> None:
+        """Append the directly observed currency factors to the estimated ones.
+
+        Currency returns are observed rather than regressed, so they join the factor
+        block afterwards. The result stays in the reduced basis when family
+        constraints are active.
+
+        Raises
+        ------
+        ValueError
+            If the currency excess returns are not finite over the fitted
+            observations.
+        """
+        # Combine regression-estimated local factors with directly observed currency
+        # factors. The result stays in the reduced basis when constraints are active.
+        _, state.n_reduced_factors = state.factor_returns_reduced.shape
+
+        if state.ccy_exposures is not None:
+            ccy_factor_returns = state.currency_excess_returns.loc[
+                state.observations, state.ccy_factor_names
+            ].to_numpy(dtype=float, copy=False)
+            if not np.all(np.isfinite(ccy_factor_returns)):
+                raise ValueError(
+                    "`currency_excess_returns` must contain only finite values "
+                    "for the fitted observations and currency factors."
+                )
+            state.factor_returns_reduced_with_ccy = np.concatenate(
+                [state.factor_returns_reduced, ccy_factor_returns], axis=1
+            )
+            state.factor_names_reduced_with_ccy = np.concatenate(
+                [state.factor_names_reduced, state.ccy_factor_names]
+            )
+            state.loading_matrix_reduced_with_ccy = np.concatenate(
+                [state.exposures_reduced[-1], state.ccy_exposures[-1]], axis=1
+            )
+            state.basis_with_ccy = (
+                state.basis.append_passthrough_factors(len(state.ccy_factor_names))
+                if state.basis is not None
+                else None
+            )
+            state.lagged_basis_with_ccy = (
+                state.lagged_basis.append_passthrough_factors(
+                    len(state.ccy_factor_names)
+                )
+                if state.lagged_basis is not None
+                else None
+            )
+        else:
+            state.loading_matrix_reduced_with_ccy = state.exposures_reduced[-1]
+            state.factor_returns_reduced_with_ccy = state.factor_returns_reduced
+            state.factor_names_reduced_with_ccy = state.factor_names_reduced
+            state.basis_with_ccy = state.basis
+            state.lagged_basis_with_ccy = state.lagged_basis
+
+    def _estimate_moments(
+        self,
+        state: _FitState,
+        characteristics: AssetPanel,
+        routed_params: sku.Bunch,
+        first_call: bool,
+    ) -> None:
+        """Estimate the factor distribution, the idiosyncratic moments and alpha.
+
+        Parameters
+        ----------
+        characteristics : AssetPanel
+            The asset panel, passed to the alpha estimator.
+
+        routed_params : Bunch
+            The routed metadata.
+
+        first_call : bool
+            Whether this is the first call.
+        """
+        # Estimate factor return distribution: mu, cov and return scenarios
+        state.factor_dist_reduced_with_ccy = self._compute_factor_returns_dist(
+            factor_returns=state.factor_returns_reduced_with_ccy,
+            factor_names=state.factor_names_reduced_with_ccy,
+            observations=state.observations,
+            routed_params=routed_params,
+            first_call=first_call,
+        )
+
+        # Per-observation idiosyncratic variance estimates (n_observations, n_assets)
+        state.idio_variances = self._compute_idio_variances(
+            idio_returns=state.idio_returns,
+            estimation_mask=state.estimation_mask,
+            active_mask=state.active_mask,
+            routed_params=routed_params,
+        )
+
+        # Latest idiosyncratic covariance estimate. If `idio_corr_threshold == 0`, uses
+        # the latest per-asset variances and returns the diagonal of shape (n_assets,).
+        # Otherwise, estimates a sparse idio covariance via correlation thresholding and
+        # returns the full matrix of shape (n_assets, n_assets).
+        state.idio_cov = self._compute_idio_covariance(
+            idio_returns=state.idio_returns,
+            idio_variances=state.idio_variances,
+            estimation_mask=state.estimation_mask,
+            active_mask=state.active_mask,
+            routed_params=routed_params,
+            first_call=first_call,
+        )
+
+        # Alpha forecast from user provided `alpha_estimator`. Default is zeros.
+        alpha = self._compute_alpha(
+            characteristics=characteristics,
+            idio_returns=state.idio_returns,
+            idio_variances=state.idio_variances,
+            regression_weights=state.regression_weights,
+            exposures=state.exposures_reduced,
+            factor_names=state.factor_names_reduced,
+            factor_families=state.factor_families_reduced,
+            routed_params=routed_params,
+            first_call=first_call,
+        )
+
+        # Decompose the forecast into spanned alpha and orthogonal alpha.
+        # The projection coefficients are blended with expected factor returns below.
+        state.factor_mu_reduced, state.orthogonal_alpha = self._decompose_alpha(
+            alpha=alpha,
+            exposure=state.exposures_reduced[[-1]],
+            regression_weights=state.regression_weights[[-1]],
+            routed_params=routed_params.cs_regressor.fit,
+        )
+
+    def _reduce_to_investment_universe(self, state: _FitState) -> None:
+        """Restrict the estimates to the investment universe.
+
+        The regression runs on the wider estimation universe, so everything indexed by
+        asset is cut down to the investable assets once the estimates exist.
+        """
+        # Reduce to the investment universe
+        idx = self._investment_idx_in_coverage
+        if idx is not None:
+            state.orthogonal_alpha = state.orthogonal_alpha[idx]
+            state.exposures_reduced = state.exposures_reduced[:, idx]
+            state.exposures = state.exposures[:, idx]
+            state.loading_matrix_reduced_with_ccy = (
+                state.loading_matrix_reduced_with_ccy[idx]
+            )
+            state.idio_returns = state.idio_returns[:, idx]
+            state.idio_variances = state.idio_variances[:, idx]
+            state.regression_weights = state.regression_weights[:, idx]
+            state.benchmark_weights = state.benchmark_weights[:, idx]
+            state.active_mask = state.active_mask[:, idx]
+            state.idio_cov = (
+                state.idio_cov[idx]
+                if state.idio_cov.ndim == 1
+                else state.idio_cov[np.ix_(idx, idx)]
+            )
+            state.ccy_exposures = (
+                state.ccy_exposures[:, idx] if state.ccy_exposures is not None else None
+            )
+
+        _validate_covariance_readiness(
+            factor_covariance=state.factor_dist_reduced_with_ccy.covariance,
+            latest_idio_variances=state.idio_variances[-1],
+        )
+
+    def _assemble_return_distribution(self, state: _FitState, first_call: bool) -> None:
+        """Build `factor_model_` and `return_distribution_` from the estimates.
+
+        Expected returns combine the factor-spanned part with orthogonal alpha, the
+        asset covariance comes from the factor covariance plus the idiosyncratic one,
+        and both are expanded back to the full basis when family constraints dropped a
+        factor.
+
+        Parameters
+        ----------
+        first_call : bool
+            Whether this is the first call, which validates the factor names once.
+        """
+        # Blend the projection coefficients with expected factor returns.
+        factor_mu_prior_reduced = state.factor_dist_reduced_with_ccy.mu[
+            : state.n_reduced_factors
+        ]
+        state.factor_mu_reduced = (
+            factor_mu_prior_reduced * self.spanned_alpha_shrinkage
+            + state.factor_mu_reduced * (1 - self.spanned_alpha_shrinkage)
+        )
+        factor_mu_reduced_with_ccy = state.factor_dist_reduced_with_ccy.mu.copy()
+        factor_mu_reduced_with_ccy[: state.n_reduced_factors] = state.factor_mu_reduced
+
+        spanned_mu = state.exposures_reduced[-1] @ state.factor_mu_reduced
+
+        # Shrink orthogonal alpha toward zero according to user confidence
+        state.orthogonal_alpha *= self.orthogonal_alpha_confidence
+
+        # Assemble factor-spanned expected returns and orthogonal alpha
+        mu = spanned_mu + state.orthogonal_alpha
+        if state.ccy_exposures is not None:
+            mu += (
+                state.ccy_exposures[-1]
+                @ factor_mu_reduced_with_ccy[state.n_reduced_factors :]
+            )
+
+        # Asset covariance (n_assets, n_assets)
+        factor_cov_reduced_with_ccy = state.factor_dist_reduced_with_ccy.covariance
+        asset_cov = state.loading_matrix_reduced_with_ccy @ (
+            factor_cov_reduced_with_ccy @ state.loading_matrix_reduced_with_ccy.T
+        )
+        if state.idio_cov.ndim == 1:
+            asset_cov[np.diag_indices_from(asset_cov)] += state.idio_cov
+        else:
+            asset_cov += state.idio_cov
+
+        if state.ccy_exposures is not None:
+            state.exposures = np.concatenate(
+                [state.exposures, state.ccy_exposures], axis=2
+            )
+            state.factor_names = np.concatenate(
+                [state.factor_names, state.ccy_factor_names]
+            )
+            state.factor_families = np.concatenate(
+                [state.factor_families, state.ccy_factor_families]
+            )
+            if first_call:
+                _validate_factor_names_and_families(
+                    factor_names=state.factor_names,
+                    factor_families=state.factor_families,
+                    name="factor model",
+                )
+
+        if state.basis_with_ccy is not None:
+            # The regression at observation t uses exposures from t - lag, so the
+            # dropped factor's return must be recovered with the constraint ratios from
+            # t - lag as well (lagged basis). This guarantees that exposures(t - lag)
+            # @ factor_returns(t) + idio_returns(t) reproduces asset returns exactly.
+            # Factor mu and covariance describe the next period (forcast) and use the
+            # current loading matrix with the current (unlagged) ratios.
+            factor_returns = state.lagged_basis_with_ccy.expand_factor_returns(
+                state.factor_returns_reduced_with_ccy
+            )
+            factor_mu = state.basis_with_ccy.expand_factor_mu(
+                factor_mu_reduced_with_ccy
+            )
+            factor_cov = state.basis_with_ccy.expand_factor_covariance(
+                factor_cov_reduced_with_ccy
+            )
+        else:
+            factor_returns = state.factor_returns_reduced_with_ccy
+            factor_mu = factor_mu_reduced_with_ccy
+            factor_cov = factor_cov_reduced_with_ccy
+
+        standardized_idio_returns = _compute_standardized_idio_returns(
+            idio_returns=state.idio_returns,
+            idio_variances=state.idio_variances,
+            active_mask=state.active_mask,
+        )
+
+        history_arrays = dict(
+            observations=state.observations,
+            factor_returns=factor_returns,
+            idio_returns=state.idio_returns,
+            idio_variances=state.idio_variances,
+            standardized_idio_returns=standardized_idio_returns,
+            exposures=state.exposures,
+            regression_weights=state.regression_weights,
+            benchmark_weights=state.benchmark_weights,
+            active_mask=state.active_mask,
+        )
+        if state.basis is not None:
+            history_arrays["family_constraint_ratios"] = state.basis.constraint_ratios
+
+        self._accumulate_history(**history_arrays)
+        history = self._get_history()
+
+        if self.constrained_families is not None:
+            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(
+                history["family_constraint_ratios"]
+            )
+            if state.ccy_exposures is not None:
+                accumulated_basis = accumulated_basis.append_passthrough_factors(
+                    len(state.ccy_factor_names)
+                )
+        else:
+            accumulated_basis = None
+
+        # `factor_dist_reduced_with_ccy.returns` contains the factor-return scenarios
+        # produced by the factor prior estimator. These scenarios are mapped through the
+        # latest loading matrix, then combined with calibrated idiosyncratic scenarios
+        # to build `ReturnDistribution.returns` for downstream optimizers that use
+        # scenario-based risk measures such as CVaR. By contrast,
+        # `FactorModel.factor_returns` stores the realized historical factor returns
+        # estimated by the cross-sectional regressions. They match
+        # `factor_dist_reduced_with_ccy.returns` only when the factor prior estimator
+        # preserves historical scenarios (e.g., `EmpiricalPrior`) and there is no family
+        # constraint.
+        asset_return_scenarios, sample_weight = _assemble_asset_return_scenarios(
+            factor_return_scenarios=state.factor_dist_reduced_with_ccy.returns,
+            loading_matrix=state.loading_matrix_reduced_with_ccy,
+            standardized_idio_returns=history["standardized_idio_returns"],
+            latest_active_mask=state.active_mask[-1],
+            latest_idio_variances=state.idio_variances[-1],
+            sample_weight=state.factor_dist_reduced_with_ccy.sample_weight,
+        )
+
+        self.factor_model_ = FactorModel(
+            observations=history["observations"],
+            asset_names=self.feature_names_in_,
+            factor_names=state.factor_names,
+            factor_families=state.factor_families,
+            loading_matrix=state.exposures[-1],
+            exposures=history["exposures"],
+            factor_returns=history["factor_returns"],
+            factor_mu=factor_mu,
+            factor_covariance=factor_cov,
+            idio_returns=history["idio_returns"],
+            idio_variances=history["idio_variances"],
+            idio_mu=state.orthogonal_alpha,
+            idio_covariance=state.idio_cov,
+            exposure_lag=self.exposure_lag,
+            regression_weights=history["regression_weights"],
+            benchmark_weights=history["benchmark_weights"],
+            family_constraint_basis=accumulated_basis,
+        )
+
+        # Assets
+        self.return_distribution_ = ReturnDistribution(
+            mu=mu,
+            covariance=asset_cov,
+            returns=asset_return_scenarios,
+            sample_weight=sample_weight,
+            factor_model=self.factor_model_,
+        )
 
     @property
     def _need_market_cap(self) -> bool:
