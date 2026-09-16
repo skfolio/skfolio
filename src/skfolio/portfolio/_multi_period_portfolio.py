@@ -373,7 +373,8 @@ class MultiPeriodPortfolio(BasePortfolio):
             annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
-            sample_weight=sample_weight,
+            # Defer validation until the combined observations are available.
+            sample_weight=None,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
             cvar_beta=cvar_beta,
@@ -387,6 +388,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         )
         self.check_observations_order = check_observations_order
         self._set_portfolios(portfolios=portfolios)
+        self.sample_weight = sample_weight
 
     def __len__(self) -> int:
         return len(self.portfolios)

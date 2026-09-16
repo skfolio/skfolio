@@ -3127,7 +3127,13 @@ def _assemble_asset_return_scenarios(
     asset_return_scenarios[:, ~latest_active_mask] = np.nan
 
     if sample_weight is not None:
-        sample_weight = sample_weight[-n_scenarios:].copy()
+        sample_weight = sample_weight[-n_scenarios:]
+        total_weight = sample_weight.sum()
+        if total_weight <= 0:
+            raise ValueError(
+                "Retained scenarios must have positive total sample weight."
+            )
+        sample_weight = sample_weight / total_weight
 
     return asset_return_scenarios, sample_weight
 
