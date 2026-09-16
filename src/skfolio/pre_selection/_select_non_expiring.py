@@ -135,9 +135,11 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         # Calculate the cutoff date
         end_date = X.index[-1]
         cutoff_date = end_date + self.expiration_lookahead
+        # Missing dates represent non-expiring assets and need no timezone comparison.
         self.to_keep_ = np.array(
             [
-                self.expiration_dates.get(asset, pd.Timestamp.max) > cutoff_date
+                asset not in self.expiration_dates
+                or self.expiration_dates[asset] > cutoff_date
                 for asset in X.columns
             ]
         )
