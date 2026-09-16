@@ -373,7 +373,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
-            # Final observations are installed below before validating sample weights.
+            # Defer validation until the combined observations are available.
             sample_weight=None,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,

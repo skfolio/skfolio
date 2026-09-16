@@ -701,7 +701,7 @@ class BasePortfolio:
         self.annualization_factor = value
 
     @property
-    def sample_weight(self) -> float:
+    def sample_weight(self) -> FloatArray | None:
         """Observations sample weights."""
         return self._sample_weight
 

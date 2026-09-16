@@ -37,6 +37,7 @@ class WeightedEmpiricalPrior(EmpiricalPrior):
         super().fit(X, y, **fit_params)
         dist = self.return_distribution_
         sample_weight = np.arange(1, dist.returns.shape[0] + 1, dtype=float)
+        sample_weight /= sample_weight.sum()
         self.return_distribution_ = ReturnDistribution(
             mu=dist.mu,
             covariance=dist.covariance,
@@ -308,7 +309,7 @@ class TestMaskValidation:
         with pytest.raises(ValueError, match=rf"Reserved fields.*{reserved_field}"):
             model.fit(X, characteristics=panel)
 
-    def test_max_history_truncates_sample_weight(self):
+    def test_max_history_truncates_and_normalizes_sample_weight(self):
         rng = np.random.default_rng(42)
         n_obs, n_assets = 12, 5
         returns = rng.normal(0, 0.01, size=(n_obs, n_assets))
@@ -329,9 +330,11 @@ class TestMaskValidation:
         model.fit(X, characteristics=panel)
 
         assert model.return_distribution_.returns.shape[0] == 5
-        np.testing.assert_array_equal(
+        expected_weight = np.arange(n_obs - 5, n_obs, dtype=float)
+        expected_weight /= expected_weight.sum()
+        np.testing.assert_allclose(
             model.return_distribution_.sample_weight,
-            np.arange(n_obs - 5, n_obs, dtype=float),
+            expected_weight,
         )
 
 

@@ -559,11 +559,18 @@ def test_sample_weight_error(portfolio, sample_weight):
         portfolio.sample_weight = [[1]]
 
 
-def test_constructor_sample_weight():
+@pytest.mark.parametrize(
+    "sample_weight",
+    [
+        pytest.param(np.array([0.2, 0.3, 0.5]), id="array"),
+        pytest.param([0.2, 0.3, 0.5], id="list"),
+    ],
+)
+def test_constructor_sample_weight(sample_weight):
     """Apply valid sample weights during portfolio construction."""
     returns = np.array([0.018, 0.008, 0.032])
-    sample_weight = np.array([0.2, 0.3, 0.5])
-    expected_mean = sample_weight @ returns
+    expected_mean = np.average(returns, weights=sample_weight)
+    expected_variance = np.cov(returns, aweights=sample_weight).item()
 
     base_portfolio = BasePortfolio(
         returns=returns,
@@ -580,6 +587,8 @@ def test_constructor_sample_weight():
     np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
     assert base_portfolio.mean == pytest.approx(expected_mean)
     assert portfolio.mean == pytest.approx(expected_mean)
+    assert base_portfolio.variance == pytest.approx(expected_variance)
+    assert portfolio.variance == pytest.approx(expected_variance)
 
 
 @pytest.mark.parametrize(
