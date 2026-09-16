@@ -6,7 +6,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 import sklearn.utils.validation as skv
@@ -275,24 +276,16 @@ def validate_asset_panel(
         field validation rule is violated or (when reset=False) panel doesn't match
         stored metadata.
     """
-    # Normalize empty lists to None.
-    if required_fields is not None and len(required_fields) == 0:
-        required_fields = None
-    if reserved_fields is not None and len(reserved_fields) == 0:
-        reserved_fields = None
-    if finite_or_nan is not None and len(finite_or_nan) == 0:
-        finite_or_nan = None
-    if finite_when_active is not None and len(finite_when_active) == 0:
-        finite_when_active = None
-    if strictly_positive_or_nan is not None and len(strictly_positive_or_nan) == 0:
-        strictly_positive_or_nan = None
-    if (
-        strictly_positive_when_active is not None
-        and len(strictly_positive_when_active) == 0
-    ):
-        strictly_positive_when_active = None
-    if non_negative_or_nan is not None and len(non_negative_or_nan) == 0:
-        non_negative_or_nan = None
+    # Normalize empty lists to None: an empty rule constrains nothing.
+    required_fields = required_fields or None
+    reserved_fields = reserved_fields or None
+    rule_fields = {
+        "finite_or_nan": finite_or_nan or None,
+        "finite_when_active": finite_when_active or None,
+        "strictly_positive_or_nan": strictly_positive_or_nan or None,
+        "strictly_positive_when_active": strictly_positive_when_active or None,
+        "non_negative_or_nan": non_negative_or_nan or None,
+    }
 
     # Imported here rather than at module scope: `skfolio.containers` imports
     # `skfolio.utils.tools`, so a module-level import would close a package-level
@@ -333,107 +326,14 @@ def validate_asset_panel(
                 f"Available: {sorted(field_names)}."
             )
 
-    # Check finite-or-NaN constraints.
-    if finite_or_nan is not None:
-        _check_fields_exist(finite_or_nan, field_names, "finite_or_nan")
-        for field in finite_or_nan:
-            values = asset_panel[field]
-            if values.ndim == 2:
-                bad = np.isinf(values)
-            else:
-                bad = np.isinf(values).any(axis=2)
-            if bad.any():
-                bad_obs = _bad_observation(bad)
-                raise ValueError(
-                    f'Field "{field}" contains infinite values '
-                    f"(first at observation index {bad_obs}). "
-                    f'"{field}" must contain finite values or NaN.'
-                )
-
-    # Check finite-when-active constraints.
-    if finite_when_active is not None:
-        _check_fields_exist(finite_when_active, field_names, "finite_when_active")
-        for field in finite_when_active:
-            values = asset_panel[field]
-            if values.ndim == 2:
-                bad = ~np.isfinite(values) & asset_panel.active_mask
-            else:
-                # 3-D field: check all components
-                bad = (~np.isfinite(values)).any(axis=2) & asset_panel.active_mask
-            if bad.any():
-                bad_obs = _bad_observation(bad)
-                raise ValueError(
-                    f'Field "{field}" contains NaN/inf for active assets '
-                    f"(first at observation index {bad_obs}). "
-                    f'"{field}" must be finite wherever `active_mask` is '
-                    f'True. Forward-fill "{field}" for holidays '
-                    f'or set `active_mask` to False until the first finite "{field}".'
-                )
-
-    # Check strictly-positive-or-NaN constraints.
-    if strictly_positive_or_nan is not None:
-        _check_fields_exist(
-            strictly_positive_or_nan, field_names, "strictly_positive_or_nan"
-        )
-        for field in strictly_positive_or_nan:
-            values = asset_panel[field]
-            if values.ndim == 2:
-                bad = ~np.isnan(values) & (~np.isfinite(values) | (values <= 0))
-            else:
-                bad = (~np.isnan(values) & (~np.isfinite(values) | (values <= 0))).any(
-                    axis=2
-                )
-            if bad.any():
-                bad_obs = _bad_observation(bad)
-                raise ValueError(
-                    f'Field "{field}" contains non-positive or infinite values '
-                    f"(first at observation index {bad_obs}). "
-                    f'"{field}" must contain strictly positive finite values or NaN.'
-                )
-
-    # Check strictly-positive-when-active constraints.
-    if strictly_positive_when_active is not None:
-        _check_fields_exist(
-            strictly_positive_when_active,
-            field_names,
-            "strictly_positive_when_active",
-        )
-        for field in strictly_positive_when_active:
-            values = asset_panel[field]
-            if values.ndim == 2:
-                bad = (~np.isfinite(values) | (values <= 0)) & asset_panel.active_mask
-            else:
-                bad = (~np.isfinite(values) | (values <= 0)).any(
-                    axis=2
-                ) & asset_panel.active_mask
-            if bad.any():
-                bad_obs = _bad_observation(bad)
-                raise ValueError(
-                    f'Field "{field}" contains non-finite or non-positive values for active '
-                    f"assets "
-                    f"(first at observation index {bad_obs}). "
-                    f'"{field}" must be strictly positive and finite wherever '
-                    f"`active_mask` is True."
-                )
-
-    # Check non-negative-or-NaN constraints.
-    if non_negative_or_nan is not None:
-        _check_fields_exist(non_negative_or_nan, field_names, "non_negative_or_nan")
-        for field in non_negative_or_nan:
-            values = asset_panel[field]
-            if values.ndim == 2:
-                bad = ~np.isnan(values) & (~np.isfinite(values) | (values < 0))
-            else:
-                bad = (~np.isnan(values) & (~np.isfinite(values) | (values < 0))).any(
-                    axis=2
-                )
-            if bad.any():
-                bad_obs = _bad_observation(bad)
-                raise ValueError(
-                    f'Field "{field}" contains negative values or infinite values '
-                    f"(first at observation index {bad_obs}). "
-                    f'"{field}" must contain non-negative finite values or NaN.'
-                )
+    # Check the per-field value constraints.
+    for rule in _VALUE_RULES:
+        fields = rule_fields[rule.arg_name]
+        if fields is None:
+            continue
+        _check_fields_exist(fields, field_names, rule.arg_name)
+        for field in fields:
+            _check_value_rule(asset_panel, field, rule)
 
     # Set estimator metadata attributes.
     if reset:
@@ -441,6 +341,118 @@ def validate_asset_panel(
         _estimator.n_assets_ = len(asset_names)
 
     return asset_panel.copy() if copy else asset_panel
+
+
+class _ValueRule(NamedTuple):
+    """One per-field value constraint of `validate_asset_panel`.
+
+    Attributes
+    ----------
+    arg_name : str
+        The `validate_asset_panel` argument that lists the fields to check.
+
+    is_bad : Callable[[AnyArray], AnyArray]
+        Returns, elementwise, whether a value violates the rule.
+
+    when_active : bool
+        Whether the rule applies only where `active_mask` is True. An inactive asset
+        has no value to constrain, so those entries are exempt.
+
+    problem : str
+        What the offending values are, as it reads in the error.
+
+    requirement : str
+        What the field must contain instead, as it reads in the error. May reference
+        `{field}`.
+    """
+
+    arg_name: str
+    is_bad: Callable[[AnyArray], AnyArray]
+    when_active: bool
+    problem: str
+    requirement: str
+
+
+# The five value constraints, which differ only in their predicate, whether they are
+# restricted to active assets, and their wording.
+_VALUE_RULES = (
+    _ValueRule(
+        "finite_or_nan",
+        np.isinf,
+        False,
+        "infinite values",
+        "contain finite values or NaN.",
+    ),
+    _ValueRule(
+        "finite_when_active",
+        lambda values: ~np.isfinite(values),
+        True,
+        "NaN/inf for active assets",
+        'be finite wherever `active_mask` is True. Forward-fill "{field}" for '
+        'holidays or set `active_mask` to False until the first finite "{field}".',
+    ),
+    _ValueRule(
+        "strictly_positive_or_nan",
+        lambda values: ~np.isnan(values) & (~np.isfinite(values) | (values <= 0)),
+        False,
+        "non-positive or infinite values",
+        "contain strictly positive finite values or NaN.",
+    ),
+    _ValueRule(
+        "strictly_positive_when_active",
+        lambda values: ~np.isfinite(values) | (values <= 0),
+        True,
+        "non-finite or non-positive values for active assets",
+        "be strictly positive and finite wherever `active_mask` is True.",
+    ),
+    _ValueRule(
+        "non_negative_or_nan",
+        lambda values: ~np.isnan(values) & (~np.isfinite(values) | (values < 0)),
+        False,
+        "negative values or infinite values",
+        "contain non-negative finite values or NaN.",
+    ),
+)
+
+
+def _check_value_rule(
+    asset_panel: AssetPanel | AssetPanelView, field: str, rule: _ValueRule
+) -> None:
+    """Check one field of `asset_panel` against one value rule.
+
+    Parameters
+    ----------
+    asset_panel : AssetPanel | AssetPanelView
+        The panel holding the field.
+
+    field : str
+        The field to check.
+
+    rule : _ValueRule
+        The rule to apply.
+
+    Raises
+    ------
+    ValueError
+        If any value of `field` violates `rule`, naming the first observation index
+        where it does.
+    """
+    values = asset_panel[field]
+    bad = rule.is_bad(values)
+    if values.ndim != 2:
+        # A 3-D field violates the rule as soon as one of its components does.
+        bad = bad.any(axis=2)
+    if rule.when_active:
+        bad = bad & asset_panel.active_mask
+    if not bad.any():
+        return
+
+    requirement = rule.requirement.format(field=field)
+    raise ValueError(
+        f'Field "{field}" contains {rule.problem} '
+        f"(first at observation index {_bad_observation(bad)}). "
+        f'"{field}" must {requirement}'
+    )
 
 
 def _check_fields_exist(
