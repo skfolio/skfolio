@@ -240,6 +240,12 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
 
+    solver_path : list[str | tuple[str, dict]], optional
+        An ordered list of solvers to try, used in place of `solver`. The first one
+        that succeeds produces the solution and `solver_` reports it.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+        The default (`None`) is to use `solver` alone.
+
     scale_objective : float, optional
         Scale each objective element by this value.
         It can be used to increase the optimization accuracies in specific cases.
@@ -289,6 +295,10 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
+
+    solver_ : str | list[str] of size n_optimizations
+        The solver that produced the solution. Without `solver_path` it is always
+        `solver`; with one, it is the first entry that succeeded.
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
@@ -383,6 +393,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         risk_free_rate: float = 0.0,
         solver: str = "CLARABEL",
         solver_params: dict | None = None,
+        solver_path: skt.SolverPath | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
         save_problem: bool = False,
@@ -412,6 +423,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
             cvar_beta=cvar_beta,
             solver=solver,
             solver_params=solver_params,
+            solver_path=solver_path,
             scale_objective=scale_objective,
             scale_constraints=scale_constraints,
             save_problem=save_problem,
@@ -473,10 +485,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         n_observations, n_assets = return_distribution.returns.shape
 
         # set solvers params
-        if self.solver == "CLARABEL":
-            self._set_solver_params(default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9})
-        else:
-            self._set_solver_params(default=None)
+        self._set_solver_path()
 
         # set scale
         self._set_scale_objective(default=1)

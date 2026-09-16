@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import ClassVar
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -490,6 +491,33 @@ class ConvexOptimization(BaseOptimization, ABC):
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/solvers
 
+    solver_path : list[str | tuple[str, dict]], optional
+        An ordered list of solvers to try, used in place of `solver`. Each element is
+        either a solver name, which takes the same default parameters as `solver`
+        would, or a `(solver, solver_params)` tuple carrying its own parameters.
+        The first solver that succeeds produces the solution and `solver_` reports it.
+        It is useful when a problem is ill-conditioned for one algorithm but not for
+        another: an interior point method such as "CLARABEL" can stall on an instance
+        that the first-order method "SCS" solves, and the reverse also happens.
+
+        >>> from skfolio.optimization import MeanRisk
+        >>> model = MeanRisk(
+        ...     solver_path=[
+        ...         "CLARABEL",
+        ...         ("SCS", {"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000}),
+        ...     ]
+        ... )
+
+        Cannot be combined with a non-default `solver` or with `solver_params`, which
+        would make the primary attempt ambiguous. The remaining solvers are tried only
+        when a solve **fails**: a solution that CVXPY returns as inaccurate is accepted
+        exactly as it is without `solver_path`, and an infeasible or unbounded
+        certificate stops the sequence, since that is a property of the problem rather
+        than of the solver. For a mixed-integer problem, solvers that cannot express
+        integer variables are skipped with a warning. To retry with different data,
+        a different prior or another estimator entirely, use `fallback` instead.
+        The default (`None`) is to use `solver` alone.
+
     scale_objective : float, optional
         Scale each objective element by this value.
         It can be used to increase the optimization accuracies in specific cases.
@@ -536,6 +564,12 @@ class ConvexOptimization(BaseOptimization, ABC):
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
 
+    solver_ : str | list[str] of size n_optimizations
+        The solver that produced the solution. Without `solver_path` it is always
+        `solver`; with one, it is the first entry that succeeded. For multiple
+        optimizations, it is the list of solvers aligned with the optimizations, with
+        `None` for the ones that failed.
+
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
 
@@ -572,12 +606,20 @@ class ConvexOptimization(BaseOptimization, ABC):
     """
 
     _solver_params: dict
+    _solver_path: list[tuple[str, dict]]
     _scale_objective: cp.Constant
     _scale_constraints: cp.Constant
     _cvx_cache: dict
 
+    # Solver parameters used when the user provides none, per solver. Subclasses
+    # override it to tune additional solvers.
+    _default_solver_params: ClassVar[dict[str, dict]] = {
+        "CLARABEL": {"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
+    }
+
     problem_: cp.Problem
     problem_values_: dict[str, float] | list[dict[str, float]]
+    solver_: str | list[str | None]
     prior_estimator_: BasePrior
     mu_uncertainty_set_estimator_: BaseMuUncertaintySet
     covariance_uncertainty_set_estimator_: BaseCovarianceUncertaintySet
@@ -620,6 +662,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         edar_beta: float = 0.95,
         solver: str = "CLARABEL",
         solver_params: dict | None = None,
+        solver_path: skt.SolverPath | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
         save_problem: bool = False,
@@ -674,6 +717,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self.overwrite_expected_return = overwrite_expected_return
         self.solver = solver
         self.solver_params = solver_params
+        self.solver_path = solver_path
         self.save_problem = save_problem
         self.scale_objective = scale_objective
         self.scale_constraints = scale_constraints
@@ -830,14 +874,33 @@ class ConvexOptimization(BaseOptimization, ABC):
             or self.threshold_short is not None
         )
 
-        if is_mip and self.solver not in MI_SOLVERS:
-            raise ValueError(
-                "You are using constraints that require a mixed-integer solver and "
-                f"{self.solver} doesn't support MIP problems. For an open-source "
-                "option, we recommend using SCIP by setting `solver='SCIP'`. "
-                "To install it, use: `pip install cvxpy[SCIP]`. For commercial "
-                "solvers, supported options include MOSEK, GUROBI, or CPLEX."
-            )
+        if is_mip:
+            mi_path = [
+                (solver, params)
+                for solver, params in self._solver_path
+                if solver in MI_SOLVERS
+            ]
+            if not mi_path:
+                solvers = ", ".join(solver for solver, _ in self._solver_path)
+                raise ValueError(
+                    "You are using constraints that require a mixed-integer solver and "
+                    f"{solvers} doesn't support MIP problems. For an open-source "
+                    "option, we recommend using SCIP by setting `solver='SCIP'`. "
+                    "To install it, use: `pip install cvxpy[SCIP]`. For commercial "
+                    "solvers, supported options include MOSEK, GUROBI, or CPLEX."
+                )
+            if len(mi_path) != len(self._solver_path):
+                skipped = ", ".join(
+                    f"'{solver}'"
+                    for solver, _ in self._solver_path
+                    if solver not in MI_SOLVERS
+                )
+                warnings.warn(
+                    f"The problem is mixed-integer and {skipped} cannot express integer"
+                    " variables, so it is skipped in `solver_path`.",
+                    stacklevel=2,
+                )
+                self._solver_path = mi_path
 
         # Constraints
         if min_weights is not None:
@@ -1056,19 +1119,80 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         return constraints
 
-    def _set_solver_params(self, default: dict | None) -> None:
-        """Set the solver params by saving its value in `_solver_params`.
-        It uses `solver` if provided otherwise it uses the `default` solver.
+    def _solver_params_for(self, solver: str) -> dict:
+        """Return the parameters to solve with `solver`.
 
         Parameters
         ----------
-        default : str
-            The default solver params to use when `solver_params` is `None`.
+        solver : str
+            The solver name.
+
+        Returns
+        -------
+        solver_params : dict
+            `solver_params` when the user provided one, otherwise the tuned default
+            of `solver` from `_default_solver_params`, otherwise the CVXPY default.
         """
-        if self.solver_params is None:
-            self._solver_params = default if default is not None else {}
-        else:
-            self._solver_params = self.solver_params
+        if self.solver_params is not None:
+            return self.solver_params
+        return self._default_solver_params.get(solver, {})
+
+    def _set_solver_path(self) -> None:
+        """Resolve `solver`, `solver_params` and `solver_path` into `_solver_path`.
+
+        `_solver_path` is the ordered list of `(solver, solver_params)` attempts. It
+        holds a single element unless `solver_path` is used, so the default behavior is
+        unchanged. `_solver_params` keeps the parameters of the first attempt.
+
+        Raises
+        ------
+        ValueError
+            If `solver_path` is combined with a non-default `solver` or with
+            `solver_params`, if it is empty, or if one of its elements is malformed.
+        """
+        if self.solver_path is None:
+            self._solver_path = [(self.solver, self._solver_params_for(self.solver))]
+            self._solver_params = self._solver_path[0][1]
+            return
+
+        # `solver` has a default, so "not provided" cannot be distinguished from
+        # "provided as the default". Only a deviation from the default is a conflict.
+        conflicting = [
+            name
+            for name, value, default in [
+                ("solver", self.solver, "CLARABEL"),
+                ("solver_params", self.solver_params, None),
+            ]
+            if value != default
+        ]
+        if conflicting:
+            raise ValueError(
+                f"`solver_path` cannot be used together with {' and '.join(conflicting)}"
+                ", which would make the first attempt ambiguous. Move them into"
+                " `solver_path`, for example"
+                ' `solver_path=[("CLARABEL", {"tol_gap_abs": 1e-9}), "SCS"]`.'
+            )
+
+        if not isinstance(self.solver_path, list) or len(self.solver_path) == 0:
+            raise ValueError(
+                "`solver_path` must be a non-empty list of solver names or"
+                " (solver, solver_params) tuples."
+            )
+
+        solver_path = []
+        for element in self.solver_path:
+            match element:
+                case str():
+                    solver_path.append((element, self._solver_params_for(element)))
+                case (str(), dict()):
+                    solver_path.append(tuple(element))
+                case _:
+                    raise ValueError(
+                        "Each `solver_path` element must be a solver name or a"
+                        f" (solver, solver_params) tuple, got {element!r}."
+                    )
+        self._solver_path = solver_path
+        self._solver_params = self._solver_path[0][1]
 
     def _set_scale_objective(self, default: float) -> None:
         """Set the objective scale by saving its value in `_scale_objective`.
@@ -1191,8 +1315,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         factor: cvxpy Variable | cvxpy Constant
            CVXPY Variable or Constant used for RatioMeasure optimization problems.
         """
-        if self.solver not in INSTALLED_SOLVERS:
-            raise ValueError(f"The solver {self.solver} is not installed.")
+        for solver, _ in self._solver_path:
+            if solver not in INSTALLED_SOLVERS:
+                raise ValueError(f"The solver {solver} is not installed.")
 
         if parameters_values is None:
             parameters_values = []
@@ -1222,13 +1347,12 @@ class ConvexOptimization(BaseOptimization, ABC):
             for parameter, values in parameters_values:
                 parameter.value = values[0]
 
-            weights, self.problem_values_ = _solve(
+            weights, self.problem_values_, self.solver_ = _solve(
                 w=w,
                 factor=factor,
                 expressions=expressions,
                 problem=problem,
-                solver=self.solver,
-                solver_params=self._solver_params,
+                solver_path=self._solver_path,
                 risk_measure=self.risk_measure,
                 scale_objective=self._scale_objective,
             )
@@ -1237,6 +1361,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             all_weights = []
             all_problem_values = []
             all_errors = []
+            all_solvers = []
             with warnings.catch_warnings():
                 warnings.simplefilter("once", UserWarning)
                 for i in range(n_optimizations):
@@ -1244,13 +1369,14 @@ class ConvexOptimization(BaseOptimization, ABC):
                         parameter.value = values[i]
 
                     try:
-                        weights, problem_values = _solve(
+                        # The solver path applies per optimization, so a single hard
+                        # point does not decide the outcome of the whole sweep.
+                        weights, problem_values, solver = _solve(
                             w=w,
                             factor=factor,
                             expressions=expressions,
                             problem=problem,
-                            solver=self.solver,
-                            solver_params=self._solver_params,
+                            solver_path=self._solver_path,
                             risk_measure=self.risk_measure,
                             scale_objective=self._scale_objective,
                         )
@@ -1261,11 +1387,13 @@ class ConvexOptimization(BaseOptimization, ABC):
                         error = str(solver_error)
                         warnings.warn(error, stacklevel=2)
                         problem_values = None
+                        solver = None
                         weights = np.full(w.shape, np.nan, dtype=float)
 
                     all_problem_values.append(problem_values)
                     all_weights.append(weights)
                     all_errors.append(error)
+                    all_solvers.append(solver)
 
             all_weights = np.array(all_weights, dtype=float)
             if np.isnan(all_weights).all():
@@ -1275,6 +1403,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             self.weights_ = self._expand_weights_to_full_universe(weights=all_weights)
             self.problem_values_ = all_problem_values
             self.error_ = all_errors
+            self.solver_ = all_solvers
 
         if self.save_problem:
             self.problem_ = problem
@@ -2507,7 +2636,84 @@ def _mip_weight_constraints_threshold_short(
     return constraints
 
 
+# A certificate is a property of the problem, not of the solver, so another solver
+# would only spend time reaching the same verdict.
+_CERTIFICATE_STATUSES = (
+    cp.INFEASIBLE,
+    cp.INFEASIBLE_INACCURATE,
+    cp.UNBOUNDED,
+    cp.UNBOUNDED_INACCURATE,
+)
+
+
 def _solve(
+    w,
+    factor,
+    expressions,
+    problem,
+    solver_path,
+    risk_measure,
+    scale_objective,
+):
+    """Solve `problem` with each solver of `solver_path` until one succeeds.
+
+    Parameters
+    ----------
+    solver_path : list[tuple[str, dict]]
+        The ordered `(solver, solver_params)` attempts. A single element reproduces a
+        plain solve: the error is raised unchanged and no warning is emitted.
+
+    Returns
+    -------
+    weights : ndarray
+        The optimal weights.
+
+    problem_values : dict[str, float]
+        The expression values of the solved problem.
+
+    solver : str
+        The solver that produced the solution.
+
+    Raises
+    ------
+    cvxpy SolverError
+        If every solver of `solver_path` fails, or if the problem is proven infeasible
+        or unbounded, which stops the sequence.
+    """
+    for i, (solver, solver_params) in enumerate(solver_path):
+        try:
+            weights, problem_values = _solve_once(
+                w=w,
+                factor=factor,
+                expressions=expressions,
+                problem=problem,
+                solver=solver,
+                solver_params=solver_params,
+                risk_measure=risk_measure,
+                scale_objective=scale_objective,
+            )
+        except cp.SolverError as error:
+            # A single-solver path must behave exactly like a plain solve: same error,
+            # no warning.
+            if len(solver_path) == 1 or problem.status in _CERTIFICATE_STATUSES:
+                raise
+            if i == len(solver_path) - 1:
+                attempted = ", ".join(f"'{name}'" for name, _ in solver_path)
+                raise cp.SolverError(
+                    f"All solvers of `solver_path` failed ({attempted}). Last error:"
+                    f" {error}"
+                ) from None
+            next_solver = solver_path[i + 1][0]
+            warnings.warn(
+                f"Solver '{solver}' failed. Trying the next solver of `solver_path`:"
+                f" '{next_solver}'.",
+                stacklevel=2,
+            )
+            continue
+        return weights, problem_values, solver
+
+
+def _solve_once(
     w,
     factor,
     expressions,
