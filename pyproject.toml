@@ -74,6 +74,7 @@ Tutorials = "https://skfolio.org/auto_examples/"
 dev = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
+    "deptry",
     "pytest",
     "pytest-xdist",
     "pytest-cov",
@@ -104,6 +105,20 @@ notebooks = [
     "jupyterlab",
     "ipywidgets",
 ]
+
+[tool.deptry]
+# `src/conftest.py` configures the doctests and is deliberately kept out of the wheel
+# (the "Check distribution contents" CI step asserts it), so it is development
+# tooling that happens to live under `src` and must not be scanned as package code.
+extend_exclude = ["src/conftest\\.py"]
+
+[tool.deptry.per_rule_ignores]
+# Genuine runtime requirements that are never imported, so deptry cannot see them:
+# - `clarabel` is reached through cvxpy's solver-name dispatch. It is named only as a
+#   string, in `solver: str = "CLARABEL"` and in the per-solver parameter defaults.
+# - `joblib` is reached through `sklearn.utils.parallel`, which skfolio calls for
+#   `n_jobs`. Every `joblib` occurrence in `src` is a docstring or a comment.
+DEP002 = ["clarabel", "joblib"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

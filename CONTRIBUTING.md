@@ -100,6 +100,16 @@ uv run ruff format
 
 CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
 
+If you add, remove, or stop using a dependency, check the dependency surface with:
+
+```shell
+uv run deptry src
+```
+
+CI runs the same check. A runtime dependency that is reached indirectly rather than
+imported (as `clarabel` and `joblib` are) belongs in `[tool.deptry.per_rule_ignores]`
+in `pyproject.toml`, with a comment naming the indirect path.
+
 ### Refreshing your environment
 
 To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
