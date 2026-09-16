@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import ClassVar
 
 import cvxpy as cp
 import numpy as np
@@ -624,6 +625,20 @@ class MeanRisk(ConvexOptimization):
         For more details about solver arguments, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/solvers
 
+    solver_path : list[str | tuple[str, dict]], optional
+        An ordered list of solvers to try, used in place of `solver`. Each element is
+        either a solver name, which takes the same default parameters as `solver`
+        would, or a `(solver, solver_params)` tuple carrying its own parameters.
+        The first solver that succeeds produces the solution and `solver_` reports it.
+        It is useful when a problem is ill-conditioned for one algorithm but not for
+        another: an interior point method such as "CLARABEL" can stall on an instance
+        that the first-order method "SCS" solves, and the reverse also happens.
+        Cannot be combined with a non-default `solver` or with `solver_params`. The
+        remaining solvers are tried only when a solve **fails**; an infeasible or
+        unbounded certificate stops the sequence. To retry with different data or
+        another estimator entirely, use `fallback` instead.
+        The default (`None`) is to use `solver` alone.
+
     scale_objective : float, optional
         Scale each objective element by this value.
         It can be used to increase the optimization accuracies in specific cases.
@@ -673,6 +688,10 @@ class MeanRisk(ConvexOptimization):
 
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
+
+    solver_ : str | list[str] of size n_optimizations
+        The solver that produced the solution. Without `solver_path` it is always
+        `solver`; with one, it is the first entry that succeeded.
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
@@ -775,6 +794,14 @@ class MeanRisk(ConvexOptimization):
         Daniel P. Palomar (2025)
     """
 
+    # SCIP is tuned in addition to the base defaults: it is the recommended
+    # open-source solver for the mixed-integer problems that cardinality and threshold
+    # constraints produce.
+    _default_solver_params: ClassVar[dict[str, dict]] = {
+        "CLARABEL": {"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9},
+        "SCIP": {"numerics/feastol": 1e-8, "limits/gap": 1e-8},
+    }
+
     def __init__(
         self,
         objective_function: ObjectiveFunction = ObjectiveFunction.MINIMIZE_RISK,
@@ -833,6 +860,7 @@ class MeanRisk(ConvexOptimization):
         edar_beta: float = 0.95,
         solver: str = "CLARABEL",
         solver_params: dict | None = None,
+        solver_path: skt.SolverPath | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
         save_problem: bool = False,
@@ -877,6 +905,7 @@ class MeanRisk(ConvexOptimization):
             edar_beta=edar_beta,
             solver=solver,
             solver_params=solver_params,
+            solver_path=solver_path,
             scale_objective=scale_objective,
             scale_constraints=scale_constraints,
             save_problem=save_problem,
@@ -1055,17 +1084,7 @@ class MeanRisk(ConvexOptimization):
         _, n_assets = return_distribution.returns.shape
 
         # set solvers params
-        match self.solver:
-            case "CLARABEL":
-                self._set_solver_params(
-                    default={"tol_gap_abs": 1e-9, "tol_gap_rel": 1e-9}
-                )
-            case "SCIP":
-                self._set_solver_params(
-                    default={"numerics/feastol": 1e-8, "limits/gap": 1e-8}
-                )
-            case _:
-                self._set_solver_params(default=None)
+        self._set_solver_path()
 
         # set scales and check measure
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
