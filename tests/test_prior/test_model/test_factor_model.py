@@ -14,7 +14,7 @@ from skfolio.prior import (
     FactorModel,
     ReturnDistribution,
 )
-from skfolio.prior._model._factor_model import (
+from skfolio.prior._model._factor_model_utils import (
     _exceedance_agg,
     _selector_to_positions,
 )
