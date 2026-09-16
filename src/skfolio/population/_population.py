@@ -744,10 +744,31 @@ class Population(list):
 
         Examples
         --------
+        >>> import numpy as np
+        >>> from skfolio import Population, Portfolio, RatioMeasure, RiskMeasure
+        >>> rng = np.random.default_rng(0)
+        >>> # Daily returns for two assets.
+        >>> X = rng.normal(0.0005, [0.02, 0.01], size=(252, 2))
+        >>> population = Population(
+        ...     [
+        ...         Portfolio(X, weights=[0.6, 0.4], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.7, 0.3], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.8, 0.2], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.4, 0.6], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.3, 0.7], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.2, 0.8], tag="Asset 2 tilt"),
+        ...     ]
+        ... )
+
+        Plot all portfolios in one box:
+
         >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
-        >>> fig = population.plot_measure_box(
+
+        Plot one box per tag:
+
+        >>> fig = population.boxplot_measure(
         ...     measure=RatioMeasure.SHARPE_RATIO,
-        ...     tag_list=["Benchmark", "Risk Parity Model"]
+        ...     tag_list=["Asset 1 tilt", "Asset 2 tilt"],
         ... )
         """
         if tag_list is None:
