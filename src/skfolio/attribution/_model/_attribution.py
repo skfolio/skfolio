@@ -113,36 +113,11 @@ class Attribution:
 
     def __post_init__(self):
         """Validate Attribution consistency after initialization."""
-        # Component fields that must be float (single) or 1D array (rolling)
-        component_fields = (
-            "vol",
-            "vol_contrib",
-            "pct_total_variance",
-            "mu_contrib",
-            "corr_with_ptf",
-        )
+        # A rolling attribution is a stack of single-point ones: every field carries
+        # one extra leading window axis and is otherwise checked identically, so the
+        # expected shape prefix is what drives the whole validation.
+        leading = (len(self.observations),) if self.is_rolling else ()
 
-        # Common breakdown fields that must be 1D (single) or 2D (rolling)
-        breakdown_fields = (
-            "exposure",
-            "vol",
-            "vol_contrib",
-            "pct_total_variance",
-            "mu",
-            "mu_contrib",
-            "corr_with_ptf",
-        )
-
-        # Additional fields for AssetBreakdown
-        asset_breakdown_fields = (
-            "weight",
-            "systematic_vol_contrib",
-            "systematic_mu_contrib",
-            "idio_vol_contrib",
-            "idio_mu_contrib",
-        )
-
-        # Collect all components to validate (including optional unattributed)
         components = [
             ("systematic", self.systematic),
             ("idio", self.idio),
@@ -150,247 +125,62 @@ class Attribution:
         ]
         if self.unattributed is not None:
             components.append(("unattributed", self.unattributed))
+        for name, component in components:
+            _validate_component(name, component, leading)
 
-        # Collect all breakdowns to validate
-        breakdowns = []
-        if self.factors is not None:
-            breakdowns.append(("factors", self.factors))
-        if self.families is not None:
-            breakdowns.append(("families", self.families))
-        if self.assets is not None:
-            breakdowns.append(("assets", self.assets))
+        for name, breakdown in [
+            ("factors", self.factors),
+            ("families", self.families),
+            ("assets", self.assets),
+        ]:
+            if breakdown is not None:
+                _validate_breakdown(name, breakdown, leading)
 
-        if self.is_rolling:
-            n_windows = len(self.observations)
+        self._validate_asset_by_factor_contrib(leading)
 
-            # Validate Component fields: must be 1D arrays of shape (n_windows,)
-            for comp_name, component in components:
-                for field in component_fields:
-                    val = getattr(component, field)
-                    if not isinstance(val, np.ndarray) or val.ndim != 1:
-                        raise ValueError(
-                            f"Rolling attribution requires `{comp_name}.{field}` to be "
-                            f"a 1D array, got {type(val).__name__}"
-                            f"{f' with ndim={val.ndim}' if isinstance(val, np.ndarray) else ''}."
-                        )
-                    if val.shape[0] != n_windows:
-                        raise ValueError(
-                            f"`{comp_name}.{field}` has shape {val.shape}, expected "
-                            f"({n_windows},) to match `observations`."
-                        )
+    def _validate_asset_by_factor_contrib(self, leading: tuple[int, ...]) -> None:
+        """Validate `asset_by_factor_contrib` shapes and names.
 
-                # Validate mu_uncertainty if present
-                if component.mu_uncertainty is not None:
-                    val = component.mu_uncertainty
-                    if not isinstance(val, np.ndarray) or val.ndim != 1:
-                        raise ValueError(
-                            f"Rolling attribution requires `{comp_name}.mu_uncertainty` "
-                            f"to be a 1D array, got {type(val).__name__}"
-                            f"{f' with ndim={val.ndim}' if isinstance(val, np.ndarray) else ''}."
-                        )
-                    if val.shape[0] != n_windows:
-                        raise ValueError(
-                            f"`{comp_name}.mu_uncertainty` has shape {val.shape}, "
-                            f"expected ({n_windows},) to match `observations`."
-                        )
+        The names are checked against the `assets` and `factors` breakdowns.
 
-            # Validate Breakdown fields: must be 2D arrays of shape (n_windows, n_items)
-            for bd_name, breakdown in breakdowns:
-                n_items = len(breakdown.names)
+        Parameters
+        ----------
+        leading : tuple[int, ...]
+            The leading axes every field must carry: `(n_windows,)` for a rolling
+            attribution, empty for a single-point one.
 
-                # Determine which fields to validate based on breakdown type
-                fields_to_check = list(breakdown_fields)
-                if bd_name == "assets":
-                    fields_to_check.extend(asset_breakdown_fields)
+        Raises
+        ------
+        ValueError
+            If a field does not have the expected number of axes or shape, or if the
+            asset or factor names disagree with the corresponding breakdown.
+        """
+        if self.asset_by_factor_contrib is None:
+            return
 
-                for field in fields_to_check:
-                    if not hasattr(breakdown, field):
-                        continue
-                    val = getattr(breakdown, field)
-                    if val.ndim != 2:
-                        raise ValueError(
-                            f"Rolling attribution requires `{bd_name}.{field}` to be "
-                            f"2D (n_windows, n_items), got {val.ndim}D."
-                        )
-                    if val.shape != (n_windows, n_items):
-                        raise ValueError(
-                            f"`{bd_name}.{field}` has shape {val.shape}, expected "
-                            f"({n_windows}, {n_items})."
-                        )
+        afc = self.asset_by_factor_contrib
+        expected = (*leading, len(afc.asset_names), len(afc.factor_names))
+        hint = (
+            "(n_windows, n_assets, n_factors)" if leading else "(n_assets, n_factors)"
+        )
+        for field in ("vol_contrib", "mu_contrib"):
+            value = getattr(afc, field)
+            label = f"asset_factor_contribs.{field}"
+            _check_ndim(label, value, expected, hint)
+            _check_shape(label, value, expected)
 
-                # Validate exposure_std if present (factors/families)
-                if (
-                    hasattr(breakdown, "exposure_std")
-                    and breakdown.exposure_std is not None
-                ):
-                    if breakdown.exposure_std.shape != (n_windows, n_items):
-                        raise ValueError(
-                            f"`{bd_name}.exposure_std` has shape {breakdown.exposure_std.shape}, "
-                            f"expected ({n_windows}, {n_items})."
-                        )
-
-                # Validate weight_std if present (assets)
-                if (
-                    hasattr(breakdown, "weight_std")
-                    and breakdown.weight_std is not None
-                ):
-                    val = breakdown.weight_std
-                    if isinstance(val, np.ndarray) and val.shape != (
-                        n_windows,
-                        n_items,
-                    ):
-                        raise ValueError(
-                            f"`{bd_name}.weight_std` has shape {val.shape}, "
-                            f"expected ({n_windows}, {n_items})."
-                        )
-
-                # Validate mu_contrib_uncertainty if present (factors/families)
-                if (
-                    hasattr(breakdown, "mu_contrib_uncertainty")
-                    and breakdown.mu_contrib_uncertainty is not None
-                ):
-                    if breakdown.mu_contrib_uncertainty.shape != (
-                        n_windows,
-                        n_items,
-                    ):
-                        raise ValueError(
-                            f"`{bd_name}.mu_contrib_uncertainty` has shape "
-                            f"{breakdown.mu_contrib_uncertainty.shape}, "
-                            f"expected ({n_windows}, {n_items})."
-                        )
-
-            # Validate asset_factor_contribs: must be 3D (n_windows, n_assets, n_factors)
-            if self.asset_by_factor_contrib is not None:
-                afc = self.asset_by_factor_contrib
-                n_assets = len(afc.asset_names)
-                n_factors = len(afc.factor_names)
-                expected_shape = (n_windows, n_assets, n_factors)
-
-                for field in ("vol_contrib", "mu_contrib"):
-                    val = getattr(afc, field)
-                    if val.ndim != 3:
-                        raise ValueError(
-                            f"Rolling attribution requires `asset_factor_contribs.{field}` "
-                            f"to be 3D (n_windows, n_assets, n_factors), got {val.ndim}D."
-                        )
-                    if val.shape != expected_shape:
-                        raise ValueError(
-                            f"`asset_factor_contribs.{field}` has shape {val.shape}, "
-                            f"expected {expected_shape}."
-                        )
-
-                # Validate name consistency
-                if self.assets is not None:
-                    if not np.array_equal(afc.asset_names, self.assets.names):
-                        raise ValueError(
-                            "`asset_factor_contribs.asset_names` does not match `assets.names`."
-                        )
-                if self.factors is not None:
-                    if not np.array_equal(afc.factor_names, self.factors.names):
-                        raise ValueError(
-                            "`asset_factor_contribs.factor_names` does not match `factors.names`."
-                        )
-        else:
-            # Single-point: Component fields must be scalars (float)
-            for comp_name, component in components:
-                for field in component_fields:
-                    val = getattr(component, field)
-                    if isinstance(val, np.ndarray):
-                        raise ValueError(
-                            f"Single-point attribution requires `{comp_name}.{field}` "
-                            f"to be a scalar, got array with shape {val.shape}."
-                        )
-
-            # Single-point: Breakdown fields must be 1D arrays of shape (n_items,)
-            for bd_name, breakdown in breakdowns:
-                n_items = len(breakdown.names)
-
-                # Determine which fields to validate based on breakdown type
-                fields_to_check = list(breakdown_fields)
-                if bd_name == "assets":
-                    fields_to_check.extend(asset_breakdown_fields)
-
-                for field in fields_to_check:
-                    if not hasattr(breakdown, field):
-                        continue
-                    val = getattr(breakdown, field)
-                    if val.ndim != 1:
-                        raise ValueError(
-                            f"Single-point attribution requires `{bd_name}.{field}` "
-                            f"to be 1D (n_items,), got {val.ndim}D."
-                        )
-                    if val.shape[0] != n_items:
-                        raise ValueError(
-                            f"`{bd_name}.{field}` has shape {val.shape}, expected "
-                            f"({n_items},) to match `{bd_name}.names`."
-                        )
-
-                # Validate exposure_std if present (factors/families)
-                if (
-                    hasattr(breakdown, "exposure_std")
-                    and breakdown.exposure_std is not None
-                ):
-                    if breakdown.exposure_std.shape != (n_items,):
-                        raise ValueError(
-                            f"`{bd_name}.exposure_std` has shape {breakdown.exposure_std.shape}, "
-                            f"expected ({n_items},)."
-                        )
-
-                # Validate weight_std if present (assets) - can be scalar 0.0 for static
-                if (
-                    hasattr(breakdown, "weight_std")
-                    and breakdown.weight_std is not None
-                ):
-                    val = breakdown.weight_std
-                    if isinstance(val, np.ndarray) and val.shape != (n_items,):
-                        raise ValueError(
-                            f"`{bd_name}.weight_std` has shape {val.shape}, "
-                            f"expected ({n_items},)."
-                        )
-
-                # Validate mu_contrib_uncertainty if present (factors/families)
-                if (
-                    hasattr(breakdown, "mu_contrib_uncertainty")
-                    and breakdown.mu_contrib_uncertainty is not None
-                ):
-                    if breakdown.mu_contrib_uncertainty.shape != (n_items,):
-                        raise ValueError(
-                            f"`{bd_name}.mu_contrib_uncertainty` has shape "
-                            f"{breakdown.mu_contrib_uncertainty.shape}, "
-                            f"expected ({n_items},)."
-                        )
-
-            # Validate asset_factor_contribs: must be 2D (n_assets, n_factors)
-            if self.asset_by_factor_contrib is not None:
-                afc = self.asset_by_factor_contrib
-                n_assets = len(afc.asset_names)
-                n_factors = len(afc.factor_names)
-                expected_shape = (n_assets, n_factors)
-
-                for field in ("vol_contrib", "mu_contrib"):
-                    val = getattr(afc, field)
-                    if val.ndim != 2:
-                        raise ValueError(
-                            f"Single-point attribution requires `asset_factor_contribs.{field}` "
-                            f"to be 2D (n_assets, n_factors), got {val.ndim}D."
-                        )
-                    if val.shape != expected_shape:
-                        raise ValueError(
-                            f"`asset_factor_contribs.{field}` has shape {val.shape}, "
-                            f"expected {expected_shape}."
-                        )
-
-                # Validate name consistency
-                if self.assets is not None:
-                    if not np.array_equal(afc.asset_names, self.assets.names):
-                        raise ValueError(
-                            "`asset_factor_contribs.asset_names` does not match `assets.names`."
-                        )
-                if self.factors is not None:
-                    if not np.array_equal(afc.factor_names, self.factors.names):
-                        raise ValueError(
-                            "`asset_factor_contribs.factor_names` does not match `factors.names`."
-                        )
+        if self.assets is not None and not np.array_equal(
+            afc.asset_names, self.assets.names
+        ):
+            raise ValueError(
+                "`asset_factor_contribs.asset_names` does not match `assets.names`."
+            )
+        if self.factors is not None and not np.array_equal(
+            afc.factor_names, self.factors.names
+        ):
+            raise ValueError(
+                "`asset_factor_contribs.factor_names` does not match `factors.names`."
+            )
 
     @property
     def is_rolling(self) -> bool:
@@ -1047,6 +837,206 @@ class Attribution:
                 )
             return self.families
         return self.factors
+
+
+# Component fields holding a float for a single-point attribution and a 1D array of
+# size n_windows for a rolling one.
+_COMPONENT_FIELDS = (
+    "vol",
+    "vol_contrib",
+    "pct_total_variance",
+    "mu_contrib",
+    "corr_with_ptf",
+)
+
+# Breakdown fields common to factors, families and assets, holding one value per item.
+_BREAKDOWN_FIELDS = (
+    "exposure",
+    "vol",
+    "vol_contrib",
+    "pct_total_variance",
+    "mu",
+    "mu_contrib",
+    "corr_with_ptf",
+)
+
+# Breakdown fields carried by AssetBreakdown only.
+_ASSET_BREAKDOWN_FIELDS = (
+    "weight",
+    "systematic_vol_contrib",
+    "systematic_mu_contrib",
+    "idio_vol_contrib",
+    "idio_mu_contrib",
+)
+
+# Optional breakdown fields, with whether a scalar is an accepted value: `weight_std`
+# is 0.0 for a static allocation, the others are arrays whenever they are set.
+_OPTIONAL_BREAKDOWN_FIELDS = (
+    ("exposure_std", False),
+    ("weight_std", True),
+    ("mu_contrib_uncertainty", False),
+)
+
+
+def _check_ndim(
+    label: str, value: AnyArray, expected: tuple[int, ...], hint: str
+) -> None:
+    """Raise if `value` does not have as many axes as `expected`.
+
+    Parameters
+    ----------
+    label : str
+        The field path reported in the error, e.g. `"factors.exposure"`.
+
+    value : ndarray
+        The value to check.
+
+    expected : tuple[int, ...]
+        The expected shape, whose length is the expected number of axes.
+
+    hint : str
+        The names of the expected axes, e.g. `"(n_windows, n_items)"`.
+
+    Raises
+    ------
+    ValueError
+        If `value.ndim` differs from `len(expected)`.
+    """
+    if value.ndim != len(expected):
+        mode = "Rolling" if len(expected) > 1 else "Single-point"
+        raise ValueError(
+            f"{mode} attribution requires `{label}` to be {len(expected)}D {hint}, "
+            f"got {value.ndim}D."
+        )
+
+
+def _check_shape(
+    label: str, value: AnyArray, expected: tuple[int, ...], suffix: str = ""
+) -> None:
+    """Raise if `value` does not have the expected shape.
+
+    Parameters
+    ----------
+    label : str
+        The field path reported in the error, e.g. `"factors.exposure"`.
+
+    value : ndarray
+        The value to check.
+
+    expected : tuple[int, ...]
+        The expected shape.
+
+    suffix : str, default=""
+        Appended to the error, naming what the shape should have matched.
+
+    Raises
+    ------
+    ValueError
+        If `value.shape` differs from `expected`.
+    """
+    if value.shape != expected:
+        raise ValueError(
+            f"`{label}` has shape {value.shape}, expected {expected}{suffix}."
+        )
+
+
+def _validate_component(
+    name: str, component: Component, leading: tuple[int, ...]
+) -> None:
+    """Validate a `Component`'s fields.
+
+    Parameters
+    ----------
+    name : str
+        The component name reported in the error, e.g. `"systematic"`.
+
+    component : Component
+        The component to validate.
+
+    leading : tuple[int, ...]
+        `(n_windows,)` for a rolling attribution, empty for a single-point one, where
+        the fields are scalars.
+
+    Raises
+    ------
+    ValueError
+        If a field is not a scalar (single-point) or a 1D array of `n_windows`
+        elements (rolling).
+    """
+    if not leading:
+        for field in _COMPONENT_FIELDS:
+            value = getattr(component, field)
+            if isinstance(value, np.ndarray):
+                raise ValueError(
+                    f"Single-point attribution requires `{name}.{field}` "
+                    f"to be a scalar, got array with shape {value.shape}."
+                )
+        return
+
+    fields_to_check = list(_COMPONENT_FIELDS)
+    if component.mu_uncertainty is not None:
+        fields_to_check.append("mu_uncertainty")
+
+    for field in fields_to_check:
+        value = getattr(component, field)
+        if not isinstance(value, np.ndarray) or value.ndim != 1:
+            ndim = f" with ndim={value.ndim}" if isinstance(value, np.ndarray) else ""
+            raise ValueError(
+                f"Rolling attribution requires `{name}.{field}` to be "
+                f"a 1D array, got {type(value).__name__}{ndim}."
+            )
+        _check_shape(
+            f"{name}.{field}", value, leading, suffix=" to match `observations`"
+        )
+
+
+def _validate_breakdown(
+    name: str,
+    breakdown: FactorBreakdown | FamilyBreakdown | AssetBreakdown,
+    leading: tuple[int, ...],
+) -> None:
+    """Validate a breakdown's fields against its number of items.
+
+    Parameters
+    ----------
+    name : str
+        The breakdown name reported in the error, one of `"factors"`, `"families"` or
+        `"assets"`.
+
+    breakdown : FactorBreakdown | FamilyBreakdown | AssetBreakdown
+        The breakdown to validate.
+
+    leading : tuple[int, ...]
+        `(n_windows,)` for a rolling attribution, empty for a single-point one.
+
+    Raises
+    ------
+    ValueError
+        If a field does not have the expected number of axes or shape.
+    """
+    n_items = len(breakdown.names)
+    expected = (*leading, n_items)
+    hint = "(n_windows, n_items)" if leading else "(n_items,)"
+    # Only the single-point message points back at `names`.
+    suffix = "" if leading else f" to match `{name}.names`"
+
+    fields_to_check = list(_BREAKDOWN_FIELDS)
+    if name == "assets":
+        fields_to_check.extend(_ASSET_BREAKDOWN_FIELDS)
+
+    for field in fields_to_check:
+        if not hasattr(breakdown, field):
+            continue
+        value = getattr(breakdown, field)
+        label = f"{name}.{field}"
+        _check_ndim(label, value, expected, hint)
+        _check_shape(label, value, expected, suffix=suffix)
+
+    for field, scalar_allowed in _OPTIONAL_BREAKDOWN_FIELDS:
+        value = getattr(breakdown, field, None)
+        if value is None or (scalar_allowed and not isinstance(value, np.ndarray)):
+            continue
+        _check_shape(f"{name}.{field}", value, expected)
 
 
 def _concat_qualitative_palettes(*palettes: Sequence[str]) -> tuple[str, ...]:
