@@ -4,13 +4,16 @@ import cvxpy as cp
 import numpy as np
 import pytest
 from sklearn import config_context
+from sklearn.base import clone
 
 from skfolio import RiskMeasure
+from skfolio.datasets import load_sp500_dataset
 from skfolio.moments import ImpliedCovariance
 from skfolio.optimization.convex import (
     RiskBudgeting,
 )
-from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
+from skfolio.preprocessing import prices_to_returns
+from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 
 
 @pytest.fixture(scope="module")
@@ -292,6 +295,62 @@ def test_risk_budgeting_negative_weight_constraints(X_small):
         ),
     ):
         model.fit(X_small)
+
+
+@pytest.fixture(scope="module")
+def X_full():
+    """The full price history, unsliced.
+
+    The ill-conditioning covered below needs the whole sample: the shorter windows the
+    other fixtures use are not concentrated enough to reproduce it.
+    """
+    return prices_to_returns(load_sp500_dataset())
+
+
+@pytest.fixture(scope="module")
+def concentrated_prior():
+    """A prior whose views concentrate `sample_weight` onto few scenarios.
+
+    CVaR risk budgeting on this distribution is bounded and feasible, but so
+    ill-conditioned that CLARABEL 0.11 freezes with a non-zero dual residual and
+    terminates in `InsufficientProgress`. CLARABEL 0.10 solves it, so which solver
+    gets there is a property of the installed version, not of skfolio. See issue #292.
+    """
+    return EntropyPooling(
+        mean_views=["AMD >= BAC", "JPM <= prior(JPM) * 0.8"],
+        cvar_views=["GE == 0.12"],
+    )
+
+
+@pytest.mark.skipif("SCS" not in cp.installed_solvers(), reason="SCS is not installed")
+def test_cvar_on_concentrated_sample_weight_is_recovered_by_the_scs_fallback(
+    X_full, concentrated_prior
+):
+    """The SCS fallback documented in `OpinionPooling` recovers the failed solve.
+
+    Without it, this raises `SolverError` on CLARABEL 0.11. The assertion is on the
+    outcome and not on the fallback firing: on CLARABEL 0.10 the primary estimator
+    succeeds on its own and no fallback is used.
+    """
+    model = RiskBudgeting(
+        risk_measure=RiskMeasure.CVAR, prior_estimator=concentrated_prior
+    )
+    model = model.set_params(
+        fallback=clone(model).set_params(
+            solver="SCS",
+            solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
+        )
+    )
+    model.fit(X_full)
+
+    np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
+    assert np.all(model.weights_ > 0)
+
+    if model.fallback_ is not None:
+        # The primary solver failed: the same estimator finished the problem on SCS.
+        assert model.fallback_.solver == "SCS"
+        assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+        assert model.fallback_chain_[-1][1] == "success"
 
 
 def test_risk_budgeting_invalid_risk_measure_type(X):

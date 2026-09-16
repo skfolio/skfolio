@@ -168,6 +168,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     --------
     For a full tutorial on entropy pooling, see :ref:`sphx_glr_auto_examples_entropy_pooling_plot_2_opinion_pooling.py`.
 
+    >>> from sklearn.base import clone
     >>> from skfolio import RiskMeasure
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
@@ -199,13 +200,37 @@ class OpinionPooling(BasePrior, BaseComposition):
     [0.000117... 0.000117... 0.000117... ... 0.000117... 0.000117...
      0.000117...]
     >>>
-    >>> # CVaR Risk Parity optimization on opinion Pooling
+    >>> # CVaR Risk Parity optimization on opinion Pooling.
+    >>> # Views that concentrate `sample_weight` on few scenarios make the CVaR problem
+    >>> # ill-conditioned: the interior point solver CLARABEL stalls on it and raises
+    >>> # `SolverError`. We therefore declare a fallback that retries the very same
+    >>> # estimator with the first-order solver SCS (`pip install scs`), given its own
+    >>> # tolerances and iteration limit:
     >>> model = RiskBudgeting(
     ...     risk_measure=RiskMeasure.CVAR,
     ...     prior_estimator=opinion_pooling
     ... )
+    >>> model = model.set_params(
+    ...     fallback=clone(model).set_params(
+    ...         solver="SCS",
+    ...         solver_params={
+    ...             "eps_abs": 1e-6,
+    ...             "eps_rel": 1e-6,
+    ...             "max_iters": 100_000,
+    ...         },
+    ...     )
+    ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.041... 0.031... 0.029... 0.044... 0.038... 0.033...
+     0.034... 0.077... 0.032... 0.067... 0.059... 0.057...
+     0.040... 0.056... 0.059... 0.077... 0.053... 0.038...
+     0.075... 0.050...]
+    >>>
+    >>> # `fallback_` names the estimator that produced the weights, and
+    >>> # `fallback_chain_` records each attempt with its outcome. Both are `None` when
+    >>> # the primary estimator succeeds on its own.
     >>>
     >>> # Stress Test the Portfolio
     >>> opinion_1 = EntropyPooling(cvar_views=["AMD == 0.05"])

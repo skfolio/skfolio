@@ -1,8 +1,9 @@
 """Doctest configuration for the source-tree examples.
 
 `pyproject.toml` runs `--doctest-modules` over `src`, so every example in every
-docstring is executed and its documented output verified. The few that cannot be are
-listed in `SKIPPED` below, each with the reason it is there.
+docstring is executed and its documented output verified. Any that cannot be belong in
+`SKIPPED` below, each with the reason it is there. It is currently empty: every
+documented example runs.
 """
 
 from __future__ import annotations
@@ -22,12 +23,7 @@ NETWORK_DOCTESTS = {
     "skfolio.datasets._base.load_sp500_implied_vol_dataset",
 }
 
-SKIPPED = {
-    "skfolio.prior._opinion_pooling.OpinionPooling": (
-        "example raises: the pooling itself fits, but `RiskBudgeting(CVaR)` on the "
-        "pooled distribution hits `SolverError: Solver 'CLARABEL' failed`"
-    ),
-}
+SKIPPED: dict[str, str] = {}
 
 
 def pytest_collection_modifyitems(items) -> None:
