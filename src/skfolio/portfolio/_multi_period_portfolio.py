@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,7 @@ from skfolio.portfolio._portfolio import (
     _select_realized_observation_window,
 )
 from skfolio.typing import FloatArray
-from skfolio.utils.tools import deduplicate_names
+from skfolio.utils.tools import args_names, deduplicate_names
 
 if TYPE_CHECKING:
     from skfolio.prior import FactorModel
@@ -417,13 +417,13 @@ class MultiPeriodPortfolio(BasePortfolio):
         return value in self._portfolios
 
     def __neg__(self):
-        return self._copy_with_portfolios([-p for p in self])
+        return self._create_from_child_portfolios([-p for p in self])
 
     def __abs__(self):
-        return self._copy_with_portfolios([abs(p) for p in self])
+        return self._create_from_child_portfolios([abs(p) for p in self])
 
     def __round__(self, n: int):
-        return self._copy_with_portfolios([p.__round__(n) for p in self])
+        return self._create_from_child_portfolios([round(p, n) for p in self])
 
     def __floor__(self):
         return self.__class__(
@@ -448,7 +448,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         if len(self) != len(other):
             raise TypeError("Cannot add two MultiPeriodPortfolio of different sizes")
         self._check_compatible_parameters(other=other)
-        return self._copy_with_portfolios(
+        return self._create_from_child_portfolios(
             [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
@@ -463,7 +463,7 @@ class MultiPeriodPortfolio(BasePortfolio):
                 "Cannot subtract two MultiPeriodPortfolio of different sizes"
             )
         self._check_compatible_parameters(other=other)
-        return self._copy_with_portfolios(
+        return self._create_from_child_portfolios(
             [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
@@ -473,7 +473,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p * other for p in self]
         else:
             portfolios = [p * a for p, a in zip(self, other, strict=True)]
-        return self._copy_with_portfolios(portfolios)
+        return self._create_from_child_portfolios(portfolios)
 
     __rmul__ = __mul__
 
@@ -483,7 +483,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p // other for p in self]
         else:
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
-        return self._copy_with_portfolios(portfolios)
+        return self._create_from_child_portfolios(portfolios)
 
     def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         portfolios: list[Portfolio]
@@ -491,26 +491,26 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p / other for p in self]
         else:
             portfolios = [p / a for p, a in zip(self, other, strict=True)]
-        return self._copy_with_portfolios(portfolios)
+        return self._create_from_child_portfolios(portfolios)
 
     # Private methods
     def _check_compatible_parameters(self, other: MultiPeriodPortfolio) -> None:
-        """Check that portfolios differ only in children, name or tag."""
-        params: dict[str, Any] = self._get_init_params()
-        other_params: dict[str, Any] = other._get_init_params()
-        for name, value in params.items():
-            if name in ("portfolios", "name", "tag"):
+        """Require the same evaluation settings when combining portfolios."""
+        for name in args_names(self.__init__):
+            if name in ("portfolios", "name", "tag", "check_observations_order"):
                 continue
-            if not np.array_equal(value, other_params[name]):
+            if not np.array_equal(getattr(self, name), getattr(other, name)):
                 raise ValueError(
                     f"Cannot combine two MultiPeriodPortfolios with different `{name}`"
                 )
 
-    def _copy_with_portfolios(
+    def _create_from_child_portfolios(
         self, portfolios: list[Portfolio]
     ) -> MultiPeriodPortfolio:
-        """Reconstruct with transformed children and unchanged public state."""
-        params: dict[str, Any] = self._get_init_params()
+        """Create a new instance from child portfolios, preserving this instance's
+        settings.
+        """
+        params = self._get_init_params()
         params["portfolios"] = portfolios
         return self.__class__(**params)
 
