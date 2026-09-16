@@ -21,8 +21,10 @@ Install Additional Solvers
 **************************
 
 The solver `Clarabel` is installed by default. Cardinality and threshold constraints
-require a mixed-integer solver. To install additional solvers (e.g. `SCIP`, `GUROBI`,
-`MOSEK`), please refer to
+require a mixed-integer solver. A few ill-conditioned problems also stall `Clarabel`
+and are solved by the first-order solver `SCS` (see the `fallback` example in
+:class:`~skfolio.prior.OpinionPooling`), installed with `pip install scs`.
+To install additional solvers (e.g. `SCIP`, `GUROBI`, `MOSEK`), please refer to
 `the cvxpy documentation <https://www.cvxpy.org/install/index.html>`_
 
 
@@ -37,7 +39,6 @@ Dependencies
 - pandas (>= 2.1.0)
 - cvxpy-base (>= 1.5.0)
 - clarabel (>= 0.10.0)
-- scs (>= 3.2.0)
 - scikit-learn (>= 1.6.0)
 - joblib (>= 1.3.2)
 - plotly (>= 6.0.0)

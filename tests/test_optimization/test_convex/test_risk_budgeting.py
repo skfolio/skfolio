@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import warnings
-
 import cvxpy as cp
 import numpy as np
 import pytest
 from sklearn import config_context
+from sklearn.base import clone
 
 from skfolio import RiskMeasure
 from skfolio.datasets import load_sp500_dataset
@@ -13,7 +12,6 @@ from skfolio.moments import ImpliedCovariance
 from skfolio.optimization.convex import (
     RiskBudgeting,
 )
-from skfolio.optimization.convex import _base as convex_base
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 
@@ -324,119 +322,35 @@ def concentrated_prior():
     )
 
 
-def test_cvar_solves_on_concentrated_sample_weight(X_full, concentrated_prior):
-    """The problem must be solved, whichever solver manages it.
+@pytest.mark.skipif("SCS" not in cp.installed_solvers(), reason="SCS is not installed")
+def test_cvar_on_concentrated_sample_weight_is_recovered_by_the_scs_fallback(
+    X_full, concentrated_prior
+):
+    """The SCS fallback documented in `OpinionPooling` recovers the failed solve.
 
-    This used to raise `SolverError` on CLARABEL 0.11 with no way through. The
-    assertion is deliberately on the outcome and not on the retry: on CLARABEL 0.10
-    the primary solver succeeds and no fallback is needed.
+    Without it, this raises `SolverError` on CLARABEL 0.11. The assertion is on the
+    outcome and not on the fallback firing: on CLARABEL 0.10 the primary estimator
+    succeeds on its own and no fallback is used.
     """
     model = RiskBudgeting(
         risk_measure=RiskMeasure.CVAR, prior_estimator=concentrated_prior
     )
+    model = model.set_params(
+        fallback=clone(model).set_params(
+            solver="SCS",
+            solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
+        )
+    )
     model.fit(X_full)
 
-    assert model.solver_ in ("CLARABEL", "SCS")
-    assert model.fallback_ is None
     np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
     assert np.all(model.weights_ > 0)
 
-
-def test_failed_solve_is_retried_with_the_fallback_solver(X_small, monkeypatch):
-    """A failing primary solver is retried once, and `solver_` names the winner.
-
-    The primary failure is injected rather than provoked with an ill-conditioned
-    problem, so the test pins the retry itself and not a solver version's behaviour.
-    """
-    real_solve_once = convex_base._solve_once
-    calls = []
-
-    def failing_first_call(*args, **kwargs):
-        calls.append(kwargs["solver"])
-        if len(calls) == 1:
-            raise cp.SolverError(f"Solver '{kwargs['solver']}' failed")
-        return real_solve_once(*args, **kwargs)
-
-    monkeypatch.setattr(convex_base, "_solve_once", failing_first_call)
-
-    model = RiskBudgeting(risk_measure=RiskMeasure.CVAR)
-    with pytest.warns(
-        UserWarning,
-        match=r"Solver 'CLARABEL' failed\. Retrying with the fallback solver 'SCS'\.",
-    ):
-        model.fit(X_small)
-
-    assert calls == ["CLARABEL", "SCS"]
-    assert model.solver_ == "SCS"
-    np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
-
-
-def test_fallback_solver_does_not_inherit_the_primary_solver_params(
-    X_small, monkeypatch
-):
-    """`solver_params` are tuned per solver, so the retry must not reuse them.
-
-    `tol_gap_abs` is a CLARABEL key that SCS would reject.
-    """
-    real_solve_once = convex_base._solve_once
-    seen = {}
-
-    def failing_first_call(*args, **kwargs):
-        seen[kwargs["solver"]] = kwargs["solver_params"]
-        if len(seen) == 1:
-            raise cp.SolverError(f"Solver '{kwargs['solver']}' failed")
-        return real_solve_once(*args, **kwargs)
-
-    monkeypatch.setattr(convex_base, "_solve_once", failing_first_call)
-
-    model = RiskBudgeting(
-        risk_measure=RiskMeasure.CVAR, solver_params={"tol_gap_abs": 1e-9}
-    )
-    with pytest.warns(UserWarning):
-        model.fit(X_small)
-
-    assert seen["CLARABEL"] == {"tol_gap_abs": 1e-9}
-    assert seen["SCS"] == {}
-
-
-def test_solver_reports_the_primary_solver_when_it_succeeds(X_small):
-    """A problem CLARABEL solves is not retried and keeps its own solution."""
-    model = RiskBudgeting(risk_measure=RiskMeasure.CVAR)
-    model.fit(X_small)
-
-    assert model.solver_ == "CLARABEL"
-
-
-def test_no_fallback_when_the_solver_is_already_the_fallback(X_small, monkeypatch):
-    """Choosing the fallback solver explicitly must not retry it a second time."""
-    real_solve_once = convex_base._solve_once
-    calls = []
-
-    def counting(*args, **kwargs):
-        calls.append(kwargs["solver"])
-        return real_solve_once(*args, **kwargs)
-
-    monkeypatch.setattr(convex_base, "_solve_once", counting)
-
-    model = RiskBudgeting(risk_measure=RiskMeasure.CVAR, solver="SCS")
-    model.fit(X_small)
-
-    assert calls == ["SCS"]
-    assert model.solver_ == "SCS"
-
-
-def test_infeasible_problem_is_not_retried(X_small):
-    """An infeasible problem carries a certificate, so the retry is skipped.
-
-    `min_weights=1.0` on 20 assets cannot meet the unit budget. The error must name
-    the primary solver, not the fallback, and no retry warning may be emitted.
-    """
-    model = RiskBudgeting(min_weights=1.0)
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", UserWarning)
-        with pytest.raises(cp.SolverError, match=r"Solver 'CLARABEL' failed"):
-            model.fit(X_small)
+    if model.fallback_ is not None:
+        # The primary solver failed: the same estimator finished the problem on SCS.
+        assert model.fallback_.solver == "SCS"
+        assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+        assert model.fallback_chain_[-1][1] == "success"
 
 
 def test_risk_budgeting_invalid_risk_measure_type(X):
@@ -448,16 +362,12 @@ def test_risk_budgeting_invalid_risk_measure_type(X):
 
 def test_risk_budgeting_non_default_solver():
     # Any solver other than CLARABEL falls through to empty params. Risk budgeting
-    # needs an exponential cone, which SCIPY does not support, so the primary solve
-    # fails and the fallback solver finishes the problem. The params are set before
-    # the solve either way, so the branch is exercised.
+    # needs an exponential cone, which none of the always-available solvers
+    # support, but the params are set before the solve, so the branch is still
+    # exercised by the failing solve.
     rng = np.random.default_rng(0)
     X = rng.normal(0.0005, 0.01, (60, 6))
     model = RiskBudgeting(solver="SCIPY")
-    with pytest.warns(
-        UserWarning,
-        match=r"Solver 'SCIPY' failed\. Retrying with the fallback solver 'SCS'\.",
-    ):
+    with pytest.raises(cp.SolverError):
         model.fit(X)
     assert model._solver_params == {}
-    assert model.solver_ == "SCS"

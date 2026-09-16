@@ -44,16 +44,6 @@ from skfolio.utils.tools import (
 
 INSTALLED_SOLVERS = cp.installed_solvers()
 
-# Solver used to retry a solve that failed. "CLARABEL", the default, is an interior
-# point method: on some ill-conditioned but perfectly well-posed instances it freezes
-# with a non-zero dual residual and terminates in `InsufficientProgress`. CVaR risk
-# budgeting on a concentrated `sample_weight`, such as the one an `EntropyPooling`
-# opinion produces, is one of them. "SCS" is a first-order method with entirely
-# different failure modes and solves those instances, so the retry is a genuine second
-# chance rather than a better default. Relaxing the tolerances does not help: the
-# iterations stall rather than stop short of an accuracy target.
-FALLBACK_SOLVER = "SCS"
-
 
 class ObjectiveFunction(AutoEnum):
     r"""Enumeration of objective functions.
@@ -490,10 +480,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         The solver to use. The default is "CLARABEL" which is written in Rust and has
         better numerical stability and performance than ECOS and SCS. Cvxpy will replace
         its default solver "ECOS" by "CLARABEL" in future releases.
-        When the chosen solver fails on a problem that is neither infeasible nor
-        unbounded, the solve is retried once with the fallback solver "SCS", whose
-        first-order iterations succeed on some ill-conditioned instances that stall an
-        interior point method. `solver_` reports which one produced the solution.
         For more details about available solvers, check the CVXPY documentation:
         https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
 
@@ -550,10 +536,6 @@ class ConvexOptimization(BaseOptimization, ABC):
     problem_values_ :  dict[str, float] | list[dict[str, float]] of size n_optimizations
         Expression values retrieved from the CVXPY problem.
 
-    solver_ : str
-        The solver that produced the solution. It differs from `solver` when that one
-        failed and the fallback solver succeeded on the retry.
-
     prior_estimator_ : BasePrior
         Fitted `prior_estimator`.
 
@@ -596,7 +578,6 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     problem_: cp.Problem
     problem_values_: dict[str, float] | list[dict[str, float]]
-    solver_: str
     prior_estimator_: BasePrior
     mu_uncertainty_set_estimator_: BaseMuUncertaintySet
     covariance_uncertainty_set_estimator_: BaseCovarianceUncertaintySet
@@ -1177,29 +1158,6 @@ class ConvexOptimization(BaseOptimization, ABC):
             )
         return expected_return
 
-    def _get_fallback_solver(self, problem: cp.Problem) -> str | None:
-        """Return the solver to retry `problem` with when `solver` fails.
-
-        Parameters
-        ----------
-        problem : cvxpy Problem
-            The CVXPY Problem about to be solved.
-
-        Returns
-        -------
-        solver : str | None
-            `FALLBACK_SOLVER`, or `None` when there is no usable retry: it is already
-            the primary solver, it is not installed, or the problem is mixed-integer,
-            which `FALLBACK_SOLVER` cannot handle.
-        """
-        if (
-            self.solver == FALLBACK_SOLVER
-            or FALLBACK_SOLVER not in INSTALLED_SOLVERS
-            or problem.is_mixed_integer()
-        ):
-            return None
-        return FALLBACK_SOLVER
-
     # Model reused among multiple risk measure
     def _solve_problem(
         self,
@@ -1236,8 +1194,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
 
-        fallback_solver = self._get_fallback_solver(problem)
-
         if parameters_values is None:
             parameters_values = []
 
@@ -1266,7 +1222,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             for parameter, values in parameters_values:
                 parameter.value = values[0]
 
-            weights, self.problem_values_, self.solver_ = _solve(
+            weights, self.problem_values_ = _solve(
                 w=w,
                 factor=factor,
                 expressions=expressions,
@@ -1275,7 +1231,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                 solver_params=self._solver_params,
                 risk_measure=self.risk_measure,
                 scale_objective=self._scale_objective,
-                fallback_solver=fallback_solver,
             )
             self.weights_ = self._expand_weights_to_full_universe(weights=weights)
         else:
@@ -1289,7 +1244,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                         parameter.value = values[i]
 
                     try:
-                        weights, problem_values, self.solver_ = _solve(
+                        weights, problem_values = _solve(
                             w=w,
                             factor=factor,
                             expressions=expressions,
@@ -1298,7 +1253,6 @@ class ConvexOptimization(BaseOptimization, ABC):
                             solver_params=self._solver_params,
                             risk_measure=self.risk_measure,
                             scale_objective=self._scale_objective,
-                            fallback_solver=fallback_solver,
                         )
                         error = None
                     except cp.SolverError as solver_error:
@@ -2554,80 +2508,6 @@ def _mip_weight_constraints_threshold_short(
 
 
 def _solve(
-    w,
-    factor,
-    expressions,
-    problem,
-    solver,
-    solver_params,
-    risk_measure,
-    scale_objective,
-    fallback_solver=None,
-):
-    """Solve `problem`, retrying with `fallback_solver` when `solver` fails.
-
-    The two solvers stall on different instances, so the retry recovers well-posed
-    problems that the primary solver merely could not follow to the optimum. The retry
-    runs with the CVXPY default parameters: `solver_params` are tuned for the primary
-    solver and its keys are not portable to another one.
-
-    Returns
-    -------
-    weights : ndarray
-        The optimal weights.
-
-    problem_values : dict[str, float]
-        The expression values of the solved problem.
-
-    solver : str
-        The solver that produced the solution.
-    """
-    attempts = [(solver, solver_params)]
-    if fallback_solver is not None:
-        attempts.append((fallback_solver, {}))
-
-    primary_error = None
-    for i, (attempt_solver, attempt_params) in enumerate(attempts):
-        try:
-            weights, problem_values = _solve_once(
-                w=w,
-                factor=factor,
-                expressions=expressions,
-                problem=problem,
-                solver=attempt_solver,
-                solver_params=attempt_params,
-                risk_measure=risk_measure,
-                scale_objective=scale_objective,
-            )
-        except cp.SolverError as error:
-            if primary_error is None:
-                primary_error = error
-            # An infeasible or unbounded problem is not worth retrying: the certificate
-            # is a property of the problem, not of the solver, so the retry would only
-            # burn time and report the same outcome under a different solver name.
-            is_proven = problem.status in (
-                cp.INFEASIBLE,
-                cp.INFEASIBLE_INACCURATE,
-                cp.UNBOUNDED,
-                cp.UNBOUNDED_INACCURATE,
-            )
-            if is_proven or i == len(attempts) - 1:
-                if i == 0:
-                    raise
-                raise cp.SolverError(
-                    f"{primary_error}. The fallback solver '{attempt_solver}' failed"
-                    " as well"
-                ) from None
-            warnings.warn(
-                f"Solver '{attempt_solver}' failed. Retrying with the fallback solver"
-                f" '{attempts[i + 1][0]}'.",
-                stacklevel=2,
-            )
-            continue
-        return weights, problem_values, attempt_solver
-
-
-def _solve_once(
     w,
     factor,
     expressions,
