@@ -1096,8 +1096,11 @@ class Population(list):
                                 str(e)
                                 + ": %{"
                                 + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
+                                # A ratio is dimensionless, so it carries no format
+                                # specifier and plotly falls back to its default. That
+                                # is the same convention the axes and the colorbar
+                                # follow, where the format is left unset.
+                                + ("" if e.is_ratio else ":,.3%")
                                 + "}"
                                 for e, v in [(x, "x"), (y, "y"), (z, "z")]
                             ]
