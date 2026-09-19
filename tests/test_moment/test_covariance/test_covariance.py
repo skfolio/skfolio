@@ -2663,6 +2663,32 @@ class TestGeodesicShrinkageCovariance:
         with pytest.raises(ValueError, match="target"):
             GeodesicShrinkageCovariance(target=np.identity(2)).fit(X)
 
+    def test_metadata_routing(self, X, implied_vol):
+        with config_context(enable_metadata_routing=True):
+            model = GeodesicShrinkageCovariance(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+            with pytest.raises(ValueError):
+                model.fit(X)
+            model.fit(X, implied_vol=implied_vol)
+        assert model.covariance_estimator_.r2_scores_.shape == (20,)
+        assert model.covariance_.shape == (20, 20)
+
+    def test_location_and_inference_match_wrapped_estimator(self):
+        rng = np.random.default_rng(17)
+        X = rng.normal(loc=[2.0, -1.0, 4.0], size=(150, 3))
+        X_test = rng.normal(loc=[2.0, -1.0, 4.0], size=(25, 3))
+        model = GeodesicShrinkageCovariance(shrinkage=0).fit(X)
+        base = model.covariance_estimator_
+        np.testing.assert_allclose(model.location_, base.location_)
+        assert model.score(X_test) == pytest.approx(base.score(X_test))
+        np.testing.assert_allclose(model.mahalanobis(X_test), base.mahalanobis(X_test))
+        # Refitting with an estimator without a mean must not retain a stale mean.
+        model.set_params(covariance_estimator=GerberCovariance()).fit(X)
+        assert not hasattr(model, "location_")
+
     @pytest.mark.parametrize("shrinkage", [0.0, 0.5, 1.0])
     @pytest.mark.parametrize("nearest", [False, True])
     @pytest.mark.parametrize(

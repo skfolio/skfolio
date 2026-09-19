@@ -126,6 +126,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
     covariance_estimator_ : BaseCovariance
         Fitted `covariance_estimator`.
 
+    location_ : ndarray of shape (n_assets,)
+        Estimated mean, available when the fitted covariance estimator exposes it.
+
     n_features_in_ : int
         Number of assets seen during `fit`.
 
@@ -204,6 +207,11 @@ class GeodesicShrinkageCovariance(BaseCovariance):
             check_type=BaseCovariance,
         )
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
+
+        if hasattr(self.covariance_estimator_, "location_"):
+            self.location_ = self.covariance_estimator_.location_
+        elif hasattr(self, "location_"):
+            del self.location_
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
