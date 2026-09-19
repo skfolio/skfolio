@@ -652,6 +652,22 @@ class TestEmpiricalCovariance:
         assert model.covariance_.shape == (20, 20)
         np.testing.assert_almost_equal(model.covariance_, np.cov(X.T))
 
+    @pytest.mark.parametrize("higham", [False, True])
+    def test_nearest_repairs_rank_deficient_returns(self, higham):
+        X = np.random.default_rng(10).standard_normal((4, 6)) * 0.01
+        unmodified = X.copy()
+        raw_covariance = EmpiricalCovariance(nearest=False).fit(X).covariance_
+
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = EmpiricalCovariance(higham=higham).fit(X)
+
+        np.linalg.cholesky(model.covariance_)
+        assert np.linalg.eigh(model.covariance_)[0][0] > 0
+        np.testing.assert_array_equal(
+            np.diag(model.covariance_), np.diag(raw_covariance)
+        )
+        np.testing.assert_array_equal(X, unmodified)
+
     def test_invalid_ddof(self):
         """Invalid ddof values raise ValueError."""
         X = np.random.randn(5, 3)
