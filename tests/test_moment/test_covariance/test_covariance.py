@@ -2571,6 +2571,17 @@ class TestShrunkCovariance:
 
 
 class TestGeodesicShrinkageCovariance:
+    @pytest.fixture
+    def ill_conditioned_returns(self):
+        rng = np.random.default_rng(42)
+        basis, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+        return (
+            rng.standard_normal((100, 6))
+            @ np.diag(np.geomspace(1e-6, 1.0, 6))
+            @ basis.T
+            * 0.01
+        )
+
     def test_fit(self, X):
         model = GeodesicShrinkageCovariance()
         model.fit(X)
@@ -2640,6 +2651,77 @@ class TestGeodesicShrinkageCovariance:
         start = EmpiricalCovariance(nearest=False).fit(X).covariance_
         expected = _geodesic_interpolation(start=start, end=target, alpha=0.4)
         np.testing.assert_allclose(model.covariance_, expected)
+
+    def test_ill_conditioned_scaled_identity_matches_explicit_target(
+        self, ill_conditioned_returns
+    ):
+        X = ill_conditioned_returns
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(X)
+        start = model.covariance_estimator_.covariance_
+        target = np.identity(start.shape[0]) * np.trace(start) / start.shape[0]
+        explicit = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            target=target,
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(X)
+
+        # Whole-matrix error avoids relative comparisons of near-zero entries.
+        assert (
+            np.linalg.norm(explicit.covariance_ - model.covariance_)
+            / np.linalg.norm(model.covariance_)
+            < 1e-8
+        )
+
+    def test_ill_conditioned_diagonal_matches_correlation_reference(
+        self, ill_conditioned_returns
+    ):
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            target=GeodesicShrinkageTarget.DIAGONAL,
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(ill_conditioned_returns)
+        start = model.covariance_estimator_.covariance_
+        std = np.sqrt(np.diag(start))
+        scale = np.outer(std, std)
+        eigenvalues, eigenvectors = np.linalg.eigh(start / scale)
+        # Independent identity: the geodesic to diag(start) is D R**(1-alpha) D.
+        expected = ((eigenvectors * np.sqrt(eigenvalues)) @ eigenvectors.T) * scale
+
+        assert (
+            np.linalg.norm(model.covariance_ - expected) / np.linalg.norm(expected)
+            < 1e-8
+        )
+
+    @pytest.mark.parametrize("scale", [0.01, 100.0])
+    @pytest.mark.parametrize(
+        "target",
+        [
+            *GeodesicShrinkageTarget,
+            pytest.param(
+                np.array([[2.0, 0.3, 0.0], [0.3, 1.0, 0.2], [0.0, 0.2, 3.0]]) * 1e-4,
+                id="custom",
+            ),
+        ],
+    )
+    def test_scaling_returns_and_target(self, target, scale):
+        X = np.random.default_rng(17).standard_normal((100, 3)) * [0.01, 0.02, 0.03]
+        model = GeodesicShrinkageCovariance(
+            target=target, shrinkage=0.4, nearest=False
+        ).fit(X)
+        scaled_target = target * scale**2 if isinstance(target, np.ndarray) else target
+        scaled = GeodesicShrinkageCovariance(
+            target=scaled_target, shrinkage=0.4, nearest=False
+        ).fit(X * scale)
+
+        np.testing.assert_allclose(
+            scaled.covariance_ / scale**2, model.covariance_, rtol=1e-10, atol=1e-15
+        )
 
     def test_wraps_other_covariance_estimator(self, X):
         model = GeodesicShrinkageCovariance(covariance_estimator=LedoitWolf())
@@ -2725,7 +2807,8 @@ class TestGeodesicShrinkageCovariance:
 
     @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
     def test_singular_start_raises_without_repair(self, target):
-        X = np.random.default_rng(0).standard_normal((4, 6))
+        # Exact singularity avoids platform-dependent signs of rounded eigenvalues.
+        X = np.array([[-1.0, -1.0], [0.0, 0.0], [1.0, 1.0]])
         with pytest.raises(ValueError, match=r"start.*positive definite"):
             GeodesicShrinkageCovariance(
                 covariance_estimator=EmpiricalCovariance(nearest=False),
@@ -2847,18 +2930,23 @@ class TestGeodesicInterpolation:
         start, end = spd_pair
         result = _geodesic_interpolation(start, end, alpha=0.0)
         np.testing.assert_allclose(result, start)
+        assert not np.shares_memory(result, start)
 
     def test_alpha_one_returns_end(self, spd_pair):
         start, end = spd_pair
         result = _geodesic_interpolation(start, end, alpha=1.0)
         np.testing.assert_allclose(result, end)
+        assert not np.shares_memory(result, end)
 
     @pytest.mark.parametrize("alpha", [0.1, 0.3, 0.5, 0.7, 0.9])
     def test_matches_independent_reference(self, spd_pair, alpha):
         import scipy.linalg as scl
 
         start, end = spd_pair
+        original_start, original_end = start.copy(), end.copy()
         result = _geodesic_interpolation(start, end, alpha=alpha)
+        np.testing.assert_array_equal(start, original_start)
+        np.testing.assert_array_equal(end, original_end)
 
         # Independent reference computed with a different set of scipy primitives
         # (sqrtm / inv / fractional_matrix_power) than the implementation
@@ -2905,8 +2993,9 @@ class TestGeodesicInterpolation:
         with pytest.raises(ValueError, match="positive definite"):
             _geodesic_interpolation(not_pd, end_2, alpha=0.5)
 
-    def test_non_positive_definite_end_raises(self):
+    @pytest.mark.parametrize(
+        "end", [[[1.0, 2.0], [2.0, 1.0]], [[1.0, 1.0], [1.0, 1.0]]]
+    )
+    def test_non_positive_definite_end_raises(self, end):
         with pytest.raises(ValueError, match=r"end.*positive definite"):
-            _geodesic_interpolation(
-                np.identity(2), np.array([[1.0, 2.0], [2.0, 1.0]]), alpha=0.5
-            )
+            _geodesic_interpolation(np.identity(2), np.array(end), alpha=0.5)

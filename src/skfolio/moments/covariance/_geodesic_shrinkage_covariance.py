@@ -12,6 +12,7 @@ from __future__ import annotations
 from enum import auto
 
 import numpy as np
+import scipy.linalg as scl
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
@@ -68,6 +69,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
     geodesic estimate is exactly :math:`\kappa(S)^{1-\alpha}`. Unlike linear
     shrinkage, the trace is generally not preserved at intermediate values.
 
+    The general interpolation is computed with a generalized eigendecomposition
+    relative to the target, avoiding an explicit inverse square root of `S`.
+
     Parameters
     ----------
     covariance_estimator : BaseCovariance, optional
@@ -93,7 +97,8 @@ class GeodesicShrinkageCovariance(BaseCovariance):
               variances equal those of `S` and all correlations are zero. At
               intermediate values the geodesic also changes the variances.
             - array-like: a user-provided SPD target matrix of shape
-              `(n_assets, n_assets)`.
+              `(n_assets, n_assets)`. A well-conditioned target is recommended
+              for numerical accuracy.
 
     nearest : bool, default=True
         If this is set to True, the starting covariance is repaired before
@@ -224,29 +229,49 @@ class GeodesicShrinkageCovariance(BaseCovariance):
                 higham_max_iteration=self.higham_max_iteration,
                 warn=True,
             )
-        target = self._build_target_covariance(start)
+        target, scaled_identity = self._build_target_covariance(start)
         covariance = _geodesic_interpolation(
             start=start,
             end=target,
             alpha=self.shrinkage,
-            scaled_identity=(
-                isinstance(self.target, str)
-                and self.target == GeodesicShrinkageTarget.SCALED_IDENTITY
-            ),
+            scaled_identity=scaled_identity,
         )
 
         self._set_covariance(covariance)
         return self
 
-    def _build_target_covariance(self, start: FloatArray) -> FloatArray:
-        """Build the SPD shrinkage target matrix `T` with the same shape as `start`."""
+    def _build_target_covariance(self, start: FloatArray) -> tuple[FloatArray, bool]:
+        """Build the SPD shrinkage target matrix `T` with the same shape as `start`.
+
+        Parameters
+        ----------
+        start : ndarray of shape (n_assets, n_assets)
+            Starting covariance matrix, used to determine the target shape and
+            the variances of the built-in targets.
+
+        Returns
+        -------
+        target : ndarray of shape (n_assets, n_assets)
+            SPD shrinkage target matrix.
+
+        scaled_identity : bool
+            Whether the target was constructed using the scaled-identity option,
+            enabling direct eigenvalue interpolation.
+
+        Raises
+        ------
+        ValueError
+            If the target option is unknown or a custom target has an invalid
+            shape, is not symmetric, contains non-finite values, or is not
+            positive definite.
+        """
         n_assets = start.shape[0]
         if isinstance(self.target, str):
             if self.target == GeodesicShrinkageTarget.SCALED_IDENTITY:
                 mu = float(np.trace(start)) / n_assets
-                return mu * np.identity(n_assets)
+                return mu * np.identity(n_assets), True
             if self.target == GeodesicShrinkageTarget.DIAGONAL:
-                return np.diag(np.diag(start))
+                return np.diag(np.diag(start)), False
             raise ValueError(
                 "target must be 'scaled_identity', 'diagonal', or an array-like SPD "
                 f"matrix, got string {self.target!r}"
@@ -263,7 +288,7 @@ class GeodesicShrinkageCovariance(BaseCovariance):
             raise ValueError("target must contain only finite values")
         if np.any(np.linalg.eigvalsh(target) <= 0):
             raise ValueError("target must be positive definite")
-        return target
+        return target, False
 
 
 def _geodesic_interpolation(
@@ -286,20 +311,25 @@ def _geodesic_interpolation(
     remain SPD for every :math:`\alpha \in [0, 1]` whenever `start` and `end` are
     SPD.
 
+    The general calculation solves :math:`S V = T V \Lambda` with
+    :math:`V^T T V = I`. Setting :math:`B = T V` gives the equivalent expression
+    :math:`\Sigma(\alpha) = B \Lambda^{1-\alpha} B^T`, avoiding an explicit
+    inverse square root of `start`.
+
     Parameters
     ----------
     start : ndarray of shape (n, n)
-        Starting SPD matrix, returned unchanged when `alpha` is 0.
+        Starting SPD matrix, returned as a copy when `alpha` is 0.
 
     end : ndarray of shape (n, n)
-        Target SPD matrix, returned unchanged when `alpha` is 1.
+        Target SPD matrix, returned as a copy when `alpha` is 1.
 
     alpha : float
         Interpolation intensity between 0 and 1 inclusive.
 
     scaled_identity : bool, default=False
-        Whether `end` is a scalar multiple of the identity. Enables a single
-        eigendecomposition for this commuting target.
+        Whether `end` is a scalar multiple of the identity. Uses the shared
+        eigenvectors to interpolate the eigenvalues directly.
 
     Returns
     -------
@@ -332,23 +362,23 @@ def _geodesic_interpolation(
     if alpha == 1.0:
         return end.copy()
 
-    eigvals_s, eigvecs_s = np.linalg.eigh(start)
-    if np.any(eigvals_s <= 0):
-        raise ValueError("`start` must be positive definite")
     if scaled_identity:
+        eigvals_s, eigvecs_s = np.linalg.eigh(start)
+        if np.any(eigvals_s <= 0):
+            raise ValueError("`start` must be positive definite")
         eigenvalues = eigvals_s ** (1.0 - alpha) * end[0, 0] ** alpha
         interpolated = (eigvecs_s * eigenvalues) @ eigvecs_s.T
         return (interpolated + interpolated.T) / 2.0
 
-    sqrt_s = eigvecs_s @ (np.sqrt(eigvals_s)[:, None] * eigvecs_s.T)
-    inv_sqrt_s = eigvecs_s @ ((1.0 / np.sqrt(eigvals_s))[:, None] * eigvecs_s.T)
+    try:
+        eigenvalues, eigenvectors = scl.eigh(start, end)
+    except np.linalg.LinAlgError as error:
+        raise ValueError(
+            "Geodesic eigendecomposition failed; `end` must be positive definite"
+        ) from error
+    if np.any(eigenvalues <= 0):
+        raise ValueError("`start` must be positive definite")
 
-    middle = inv_sqrt_s @ end @ inv_sqrt_s
-    middle = (middle + middle.T) / 2.0
-    eigvals_m, eigvecs_m = np.linalg.eigh(middle)
-    if np.any(eigvals_m <= 0):
-        raise ValueError("`end` must be positive definite")
-    middle_pow = eigvecs_m @ ((eigvals_m**alpha)[:, None] * eigvecs_m.T)
-
-    interpolated = sqrt_s @ middle_pow @ sqrt_s
+    basis = end @ eigenvectors
+    interpolated = (basis * eigenvalues ** (1.0 - alpha)) @ basis.T
     return (interpolated + interpolated.T) / 2.0
