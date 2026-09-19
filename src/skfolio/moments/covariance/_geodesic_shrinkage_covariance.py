@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import numbers
 from enum import auto
 
 import numpy as np
@@ -19,8 +18,8 @@ import sklearn.utils.validation as skv
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.typing import ArrayLike, FloatArray
-from skfolio.utils.stats import assert_is_symmetric
-from skfolio.utils.tools import AutoEnum, check_estimator
+from skfolio.utils.stats import assert_is_symmetric, cov_nearest
+from skfolio.utils.tools import AutoEnum, _validate_unit_interval, check_estimator
 
 
 class GeodesicShrinkageTarget(AutoEnum):
@@ -53,8 +52,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
 
     .. math:: \Sigma(\alpha) = S^{1/2} \left(S^{-1/2} \, T \, S^{-1/2}\right)^{\alpha} S^{1/2}
 
-    At `shrinkage` :math:`\alpha = 0`, the estimate is the unmodified covariance from
-    `covariance_estimator`. At :math:`\alpha = 1`, it is exactly `target`.
+    At `shrinkage` :math:`\alpha = 0`, the estimate is the starting covariance
+    from `covariance_estimator`, after any repair requested by `nearest`. At
+    :math:`\alpha = 1`, it is `target`, subject to the final `nearest` repair.
 
     The estimate remains SPD for every `shrinkage` in [0, 1] whenever `S` and
     `target` are themselves positive definite.
@@ -96,7 +96,10 @@ class GeodesicShrinkageCovariance(BaseCovariance):
               `(n_assets, n_assets)`.
 
     nearest : bool, default=True
-        If this is set to True, the covariance is replaced by the nearest covariance
+        If this is set to True, the starting covariance is repaired before
+        interpolation and the resulting covariance is repaired afterwards. Custom
+        targets must be positive definite and are never repaired.
+        The covariance is replaced by the nearest covariance
         matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
@@ -191,12 +194,7 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         self : GeodesicShrinkageCovariance
             Fitted estimator.
         """
-        if not isinstance(self.shrinkage, numbers.Real) or not (
-            0.0 <= self.shrinkage <= 1.0
-        ):
-            raise ValueError(
-                f"shrinkage must be a float between 0 and 1, got {self.shrinkage}"
-            )
+        _validate_unit_interval(self.shrinkage, "shrinkage")
 
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
@@ -211,6 +209,13 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         # features names information.
         X = skv.validate_data(self, X)
         start = np.asarray(self.covariance_estimator_.covariance_)
+        if self.nearest:
+            start = cov_nearest(
+                start,
+                higham=self.higham,
+                higham_max_iteration=self.higham_max_iteration,
+                warn=True,
+            )
         target = self._build_target_covariance(start)
         covariance = _geodesic_interpolation(
             start=start,
@@ -242,6 +247,10 @@ class GeodesicShrinkageCovariance(BaseCovariance):
                 f"({n_assets}, {n_assets}), got shape {target.shape}"
             )
         assert_is_symmetric(target)
+        if not np.all(np.isfinite(target)):
+            raise ValueError("target must contain only finite values")
+        if np.any(np.linalg.eigvalsh(target) <= 0):
+            raise ValueError("target must be positive definite")
         return target
 
 
@@ -300,8 +309,7 @@ def _geodesic_interpolation(
             "`start` and `end` must have the same shape, got "
             f"{start.shape} and {end.shape}"
         )
-    if not 0.0 <= alpha <= 1.0:
-        raise ValueError(f"`alpha` must be between 0 and 1, got {alpha}")
+    _validate_unit_interval(alpha, "alpha")
 
     if alpha == 0.0:
         return start.copy()
