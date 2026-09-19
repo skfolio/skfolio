@@ -229,6 +229,10 @@ class GeodesicShrinkageCovariance(BaseCovariance):
             start=start,
             end=target,
             alpha=self.shrinkage,
+            scaled_identity=(
+                isinstance(self.target, str)
+                and self.target == GeodesicShrinkageTarget.SCALED_IDENTITY
+            ),
         )
 
         self._set_covariance(covariance)
@@ -263,7 +267,7 @@ class GeodesicShrinkageCovariance(BaseCovariance):
 
 
 def _geodesic_interpolation(
-    start: FloatArray, end: FloatArray, alpha: float
+    start: FloatArray, end: FloatArray, alpha: float, *, scaled_identity: bool = False
 ) -> FloatArray:
     r"""Interpolate between two SPD matrices along the affine-invariant geodesic.
 
@@ -292,6 +296,10 @@ def _geodesic_interpolation(
 
     alpha : float
         Interpolation intensity between 0 and 1 inclusive.
+
+    scaled_identity : bool, default=False
+        Whether `end` is a scalar multiple of the identity. Enables a single
+        eigendecomposition for this commuting target.
 
     Returns
     -------
@@ -327,6 +335,11 @@ def _geodesic_interpolation(
     eigvals_s, eigvecs_s = np.linalg.eigh(start)
     if np.any(eigvals_s <= 0):
         raise ValueError("`start` must be positive definite")
+    if scaled_identity:
+        eigenvalues = eigvals_s ** (1.0 - alpha) * end[0, 0] ** alpha
+        interpolated = (eigvecs_s * eigenvalues) @ eigvecs_s.T
+        return (interpolated + interpolated.T) / 2.0
+
     sqrt_s = eigvecs_s @ (np.sqrt(eigvals_s)[:, None] * eigvecs_s.T)
     inv_sqrt_s = eigvecs_s @ ((1.0 / np.sqrt(eigvals_s))[:, None] * eigvecs_s.T)
 

@@ -2733,6 +2733,15 @@ class TestGeodesicShrinkageCovariance:
                 nearest=False,
             ).fit(X)
 
+    @pytest.mark.parametrize("shrinkage", [0.0, 0.1, 0.5, 1.0])
+    def test_scaled_identity_condition_number(self, shrinkage):
+        X = np.random.default_rng(21).standard_normal((100, 4)) * [1, 2, 4, 8]
+        model = GeodesicShrinkageCovariance(shrinkage=shrinkage, nearest=False).fit(X)
+        start = model.covariance_estimator_.covariance_
+        assert np.linalg.cond(model.covariance_) == pytest.approx(
+            np.linalg.cond(start) ** (1 - shrinkage)
+        )
+
     @pytest.mark.parametrize("shrinkage", [0.0, 0.5, 1.0])
     def test_diagonal_target_variances(self, shrinkage):
         rng = np.random.default_rng(7)
