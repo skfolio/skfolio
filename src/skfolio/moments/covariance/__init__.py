@@ -9,6 +9,7 @@ from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
 from skfolio.moments.covariance._ew_covariance import EWCovariance
 from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     GeodesicShrinkageCovariance,
+    GeodesicShrinkageTarget,
 )
 from skfolio.moments.covariance._gerber_covariance import GerberCovariance
 from skfolio.moments.covariance._graphical_lasso_cv import GraphicalLassoCV
@@ -30,6 +31,7 @@ __all__ = [
     "EWCovariance",
     "EmpiricalCovariance",
     "GeodesicShrinkageCovariance",
+    "GeodesicShrinkageTarget",
     "GerberCovariance",
     "GraphicalLassoCV",
     "ImpliedCovariance",

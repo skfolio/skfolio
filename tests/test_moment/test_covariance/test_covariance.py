@@ -19,6 +19,7 @@ from skfolio.moments import (
     EWCovariance,
     EmpiricalCovariance,
     GeodesicShrinkageCovariance,
+    GeodesicShrinkageTarget,
     GerberCovariance,
     GraphicalLassoCV,
     ImpliedCovariance,
@@ -26,10 +27,12 @@ from skfolio.moments import (
     ShrunkCovariance,
 )
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
+from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
+    _geodesic_interpolation,
+)
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
-    cov_geodesic_interpolation,
     safe_cholesky,
 )
 
@@ -2587,7 +2590,9 @@ class TestGeodesicShrinkageCovariance:
         rng = np.random.default_rng(7)
         X = rng.standard_normal((100, 4)) * 0.01
 
-        model = GeodesicShrinkageCovariance(shrinkage=1.0, target="identity")
+        model = GeodesicShrinkageCovariance(
+            shrinkage=1.0, target=GeodesicShrinkageTarget.SCALED_IDENTITY
+        )
         model.fit(X)
 
         base = EmpiricalCovariance(nearest=False).fit(X)
@@ -2595,7 +2600,9 @@ class TestGeodesicShrinkageCovariance:
         expected_target = mu * np.identity(base.covariance_.shape[0])
         np.testing.assert_allclose(model.covariance_, expected_target, atol=1e-10)
 
-    @pytest.mark.parametrize("target", ["identity", "diagonal"])
+    @pytest.mark.parametrize(
+        "target", [*GeodesicShrinkageTarget, "scaled_identity", "diagonal"]
+    )
     @pytest.mark.parametrize("shrinkage", [0.1, 0.5, 0.9])
     def test_matches_manual_geodesic_interpolation(self, target, shrinkage):
         rng = np.random.default_rng(11)
@@ -2609,12 +2616,12 @@ class TestGeodesicShrinkageCovariance:
         model.fit(X)
 
         start = EmpiricalCovariance(nearest=False).fit(X).covariance_
-        if target == "identity":
+        if target == GeodesicShrinkageTarget.SCALED_IDENTITY:
             mu = np.trace(start) / start.shape[0]
             end = mu * np.identity(start.shape[0])
         else:
             end = np.diag(np.diag(start))
-        expected = cov_geodesic_interpolation(start=start, end=end, alpha=shrinkage)
+        expected = _geodesic_interpolation(start=start, end=end, alpha=shrinkage)
 
         np.testing.assert_allclose(model.covariance_, expected)
 
@@ -2631,7 +2638,7 @@ class TestGeodesicShrinkageCovariance:
         model.fit(X)
 
         start = EmpiricalCovariance(nearest=False).fit(X).covariance_
-        expected = cov_geodesic_interpolation(start=start, end=target, alpha=0.4)
+        expected = _geodesic_interpolation(start=start, end=target, alpha=0.4)
         np.testing.assert_allclose(model.covariance_, expected)
 
     def test_wraps_other_covariance_estimator(self, X):
@@ -2655,6 +2662,23 @@ class TestGeodesicShrinkageCovariance:
         X = np.random.default_rng(0).standard_normal((50, 3))
         with pytest.raises(ValueError, match="target"):
             GeodesicShrinkageCovariance(target=np.identity(2)).fit(X)
+
+    @pytest.mark.parametrize("shrinkage", [0.0, 0.5, 1.0])
+    def test_diagonal_target_variances(self, shrinkage):
+        rng = np.random.default_rng(7)
+        X = rng.standard_normal((200, 2)) @ np.array([[1.0, 0.8], [0.0, 0.6]])
+        model = GeodesicShrinkageCovariance(
+            target=GeodesicShrinkageTarget.DIAGONAL,
+            shrinkage=shrinkage,
+            nearest=False,
+        ).fit(X)
+        start = model.covariance_estimator_.covariance_
+        if shrinkage in (0.0, 1.0):
+            np.testing.assert_allclose(np.diag(model.covariance_), np.diag(start))
+        else:
+            assert not np.allclose(np.diag(model.covariance_), np.diag(start))
+        if shrinkage == 1.0:
+            np.testing.assert_array_equal(model.covariance_, np.diag(np.diag(start)))
 
 
 class TestBaseCovarianceEdgeCases:
@@ -2727,3 +2751,77 @@ def test_gerber_covariance_invalid_threshold(X):
     model = GerberCovariance(threshold=1.5)
     with pytest.raises(ValueError, match="The threshold must be between 0 and 1"):
         model.fit(X)
+
+
+class TestGeodesicInterpolation:
+    @pytest.fixture
+    def spd_pair(self):
+        rng = np.random.default_rng(42)
+        n = 6
+        a = rng.normal(size=(n, n))
+        start = a @ a.T + n * np.identity(n)
+        b = rng.normal(size=(n, n))
+        end = b @ b.T + n * np.identity(n)
+        return start, end
+
+    def test_alpha_zero_returns_start(self, spd_pair):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=0.0)
+        np.testing.assert_allclose(result, start)
+
+    def test_alpha_one_returns_end(self, spd_pair):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=1.0)
+        np.testing.assert_allclose(result, end)
+
+    @pytest.mark.parametrize("alpha", [0.1, 0.3, 0.5, 0.7, 0.9])
+    def test_matches_independent_reference(self, spd_pair, alpha):
+        import scipy.linalg as scl
+
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=alpha)
+
+        # Independent reference computed with a different set of scipy primitives
+        # (sqrtm / inv / fractional_matrix_power) than the implementation
+        # (eigh-based), mirroring the affine-invariant geodesic formula.
+        start_sqrt = scl.sqrtm(start).real
+        start_inv_sqrt = scl.inv(start_sqrt)
+        middle = start_inv_sqrt @ end @ start_inv_sqrt
+        middle_pow = scl.fractional_matrix_power(middle, alpha).real
+        expected = start_sqrt @ middle_pow @ start_sqrt
+
+        np.testing.assert_allclose(result, expected, atol=1e-8)
+
+    @pytest.mark.parametrize("alpha", [0.0, 0.25, 0.5, 0.75, 1.0])
+    def test_result_is_symmetric_positive_definite(self, spd_pair, alpha):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=alpha)
+        np.testing.assert_allclose(result, result.T)
+        assert np.all(np.linalg.eigvalsh(result) > 0)
+
+    def test_invalid_alpha_raises(self, spd_pair):
+        start, end = spd_pair
+        with pytest.raises(ValueError, match="alpha"):
+            _geodesic_interpolation(start, end, alpha=1.5)
+        with pytest.raises(ValueError, match="alpha"):
+            _geodesic_interpolation(start, end, alpha=-0.1)
+
+    def test_shape_mismatch_raises(self, spd_pair):
+        start, _ = spd_pair
+        end = np.identity(start.shape[0] + 1)
+        with pytest.raises(ValueError, match="same shape"):
+            _geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_symmetric_raises(self, spd_pair):
+        start, end = spd_pair
+        start = start.copy()
+        start[0, 1] += 1.0
+        with pytest.raises(ValueError, match="symmetric"):
+            _geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_positive_definite_raises(self, spd_pair):
+        _, end = spd_pair
+        not_pd = np.array([[1.0, 2.0], [2.0, 1.0]])
+        end_2 = end[:2, :2]
+        with pytest.raises(ValueError, match="positive definite"):
+            _geodesic_interpolation(not_pd, end_2, alpha=0.5)

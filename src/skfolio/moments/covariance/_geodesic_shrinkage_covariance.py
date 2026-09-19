@@ -10,17 +10,32 @@
 from __future__ import annotations
 
 import numbers
+from enum import auto
 
 import numpy as np
-import numpy.typing as npt
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
-from skfolio.typing import ArrayLike
-from skfolio.utils.stats import assert_is_symmetric, cov_geodesic_interpolation
-from skfolio.utils.tools import check_estimator
+from skfolio.typing import ArrayLike, FloatArray
+from skfolio.utils.stats import assert_is_symmetric
+from skfolio.utils.tools import AutoEnum, check_estimator
+
+
+class GeodesicShrinkageTarget(AutoEnum):
+    """Target for geodesic covariance shrinkage.
+
+    Attributes
+    ----------
+    SCALED_IDENTITY : str
+        Identity matrix scaled by the average asset variance.
+    DIAGONAL : str
+        Diagonal matrix containing the asset variances.
+    """
+
+    SCALED_IDENTITY = auto()
+    DIAGONAL = auto()
 
 
 class GeodesicShrinkageCovariance(BaseCovariance):
@@ -33,35 +48,25 @@ class GeodesicShrinkageCovariance(BaseCovariance):
     .. math:: (1 - \alpha) \cdot S + \alpha \cdot T
 
     `GeodesicShrinkageCovariance` instead moves `S` towards `T` along the
-    affine-invariant geodesic of the manifold of Symmetric Positive Definite (SPD)
-    matrices [1]_ (see :func:`~skfolio.utils.stats.cov_geodesic_interpolation`):
+    geodesic of the manifold of Symmetric Positive Definite (SPD) matrices under
+    the affine-invariant Riemannian metric (AIRM) [1]_ [2]_:
 
     .. math:: \Sigma(\alpha) = S^{1/2} \left(S^{-1/2} \, T \, S^{-1/2}\right)^{\alpha} S^{1/2}
 
     At `shrinkage` :math:`\alpha = 0`, the estimate is the unmodified covariance from
     `covariance_estimator`. At :math:`\alpha = 1`, it is exactly `target`.
 
-    This estimator was proposed as an alternative to linear shrinkage while
-    investigating a numerical-conditioning issue in the Schur complement
-    interpolation between :class:`~skfolio.optimization.HierarchicalRiskParity` and
-    Minimum-Variance used by :class:`~skfolio.optimization.SchurComplementary` [2]_.
-    Both interpolation schemes remain Symmetric Positive Definite for every
-    `shrinkage` in [0, 1] whenever `covariance_estimator` and `target` are
-    themselves positive definite, and both recover the sample covariance and
-    `target` exactly at the two endpoints. They differ in how they treat the
-    eigenvalues in between: when `target` commutes with the sample covariance
-    (e.g. the default `"identity"` target, a scalar multiple of the identity
-    matrix), the geodesic interpolation is a *geometric* interpolation of the
-    eigenvalues, :math:`\lambda_i^{1-\alpha} \cdot \mu^{\alpha}`, whereas linear
-    shrinkage is an *arithmetic* interpolation,
-    :math:`(1 - \alpha) \cdot \lambda_i + \alpha \cdot \mu`. In particular, for the
-    identity target the arithmetic interpolation lowers the condition number faster
-    than the geometric one as `shrinkage` increases from 0, since a small `shrinkage`
-    already lifts the smallest eigenvalues by an additive :math:`\alpha \mu` term.
-    Which interpolation is preferable is an empirical question left to the user;
-    both are made available so they can be compared, in keeping with skfolio's
-    approach of not imposing a default regularization on optimizers such as
-    :class:`~skfolio.optimization.SchurComplementary`.
+    The estimate remains SPD for every `shrinkage` in [0, 1] whenever `S` and
+    `target` are themselves positive definite.
+
+    When `target` commutes with `S`, their shared eigenvectors are preserved and
+    their eigenvalues are interpolated geometrically rather than arithmetically.
+    For the default `SCALED_IDENTITY` target :math:`\mu I`, with
+    :math:`\mu = \mathrm{trace}(S) / n`, the interpolated eigenvalues are
+    :math:`\lambda_i^{1-\alpha} \mu^{\alpha}`, whereas linear shrinkage gives
+    :math:`(1 - \alpha) \lambda_i + \alpha \mu`. The condition number of the
+    geodesic estimate is exactly :math:`\kappa(S)^{1-\alpha}`. Unlike linear
+    shrinkage, the trace is generally not preserved at intermediate values.
 
     Parameters
     ----------
@@ -75,16 +80,18 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         (no shrinkage) and 1 (fully shrunk to `target`) inclusive. The default value
         is `0.1`.
 
-    target : str or array-like of shape (n_assets, n_assets), default="identity"
-        The shrinkage target `T`:
+    target : GeodesicShrinkageTarget or array-like of shape (n_assets, n_assets), default=GeodesicShrinkageTarget.SCALED_IDENTITY
+        The shrinkage target `T`. The string values `"scaled_identity"` and
+        `"diagonal"` are also accepted:
 
-            - "identity": :math:`\mu \cdot I`, with :math:`\mu = \mathrm{trace}(S) / n`.
+            - `SCALED_IDENTITY`: :math:`\mu \cdot I`, with :math:`\mu = \mathrm{trace}(S) / n`.
               This is the same default target used by scikit-learn's
               `ShrunkCovariance`. Its condition number is exactly 1, so `shrinkage`
               controls how far the estimate moves from `S` towards a perfectly
               well-conditioned matrix.
-            - "diagonal": :math:`\mathrm{diag}(S)`, i.e. the correlations are shrunk
-              towards zero while each asset's variance is left unchanged.
+            - `DIAGONAL`: :math:`\mathrm{diag}(S)`. At `shrinkage=1` the
+              variances equal those of `S` and all correlations are zero. At
+              intermediate values the geodesic also changes the variances.
             - array-like: a user-provided SPD target matrix of shape
               `(n_assets, n_assets)`.
 
@@ -128,9 +135,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
     .. [1]  "Positive Definite Matrices".
         Bhatia, R. (2007). Princeton University Press.
 
-    .. [2]  "Gracefully link HRP and min var", GitHub Discussion.
-        Cotton, P. & Delatte, H. (2024-2025).
-        https://github.com/skfolio/skfolio/discussions/3
+    .. [2]  "Geodesically parameterized covariance estimation".
+        Musolas, A., Smith, S.T. & Marzouk, Y. (2021).
+        SIAM Journal on Matrix Analysis and Applications.
     """
 
     covariance_estimator_: BaseCovariance
@@ -139,7 +146,8 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         self,
         covariance_estimator: BaseCovariance | None = None,
         shrinkage: float = 0.1,
-        target: str | ArrayLike = "identity",
+        target: GeodesicShrinkageTarget
+        | ArrayLike = GeodesicShrinkageTarget.SCALED_IDENTITY,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -154,7 +162,6 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         self.target = target
 
     def get_metadata_routing(self):
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
@@ -198,37 +205,33 @@ class GeodesicShrinkageCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
         X = skv.validate_data(self, X)
-        n_assets = X.shape[1]
         start = np.asarray(self.covariance_estimator_.covariance_)
-
-        target = self._target_matrix(start=start, n_assets=n_assets)
-
-        if self.shrinkage == 0.0:
-            covariance = start
-        else:
-            covariance = cov_geodesic_interpolation(
-                start=start, end=target, alpha=self.shrinkage
-            )
+        target = self._build_target_covariance(start)
+        covariance = _geodesic_interpolation(
+            start=start,
+            end=target,
+            alpha=self.shrinkage,
+        )
 
         self._set_covariance(covariance)
         return self
 
-    def _target_matrix(self, start: npt.NDArray, n_assets: int) -> npt.NDArray:
+    def _build_target_covariance(self, start: FloatArray) -> FloatArray:
         """Build the SPD shrinkage target matrix `T` with the same shape as `start`."""
+        n_assets = start.shape[0]
         if isinstance(self.target, str):
-            if self.target == "identity":
+            if self.target == GeodesicShrinkageTarget.SCALED_IDENTITY:
                 mu = float(np.trace(start)) / n_assets
                 return mu * np.identity(n_assets)
-            if self.target == "diagonal":
+            if self.target == GeodesicShrinkageTarget.DIAGONAL:
                 return np.diag(np.diag(start))
             raise ValueError(
-                "target must be 'identity', 'diagonal', or an array-like SPD "
+                "target must be 'scaled_identity', 'diagonal', or an array-like SPD "
                 f"matrix, got string {self.target!r}"
             )
 
@@ -240,3 +243,83 @@ class GeodesicShrinkageCovariance(BaseCovariance):
             )
         assert_is_symmetric(target)
         return target
+
+
+def _geodesic_interpolation(
+    start: FloatArray, end: FloatArray, alpha: float
+) -> FloatArray:
+    r"""Interpolate between two SPD matrices along the affine-invariant geodesic.
+
+    Unlike the linear (Euclidean) interpolation used by classical shrinkage
+    estimators, :math:`(1 - \alpha) \cdot S + \alpha \cdot T`, the geodesic
+    interpolation moves `start` (:math:`S`) towards `end` (:math:`T`) along the
+    shortest path on the Riemannian manifold of Symmetric Positive Definite (SPD)
+    matrices equipped with the affine-invariant metric [1]_:
+
+    .. math::
+        \Sigma(\alpha) = S^{1/2} \left(S^{-1/2} \, T \, S^{-1/2}\right)^{\alpha} S^{1/2}
+
+    At :math:`\alpha = 0`, :math:`\Sigma = S`, and at :math:`\alpha = 1`,
+    :math:`\Sigma = T`. Because it follows the natural geometry of the SPD manifold
+    rather than a straight Euclidean line, the interpolated matrix is guaranteed to
+    remain SPD for every :math:`\alpha \in [0, 1]` whenever `start` and `end` are
+    SPD.
+
+    Parameters
+    ----------
+    start : ndarray of shape (n, n)
+        Starting SPD matrix, returned unchanged when `alpha` is 0.
+
+    end : ndarray of shape (n, n)
+        Target SPD matrix, returned unchanged when `alpha` is 1.
+
+    alpha : float
+        Interpolation intensity between 0 and 1 inclusive.
+
+    Returns
+    -------
+    interpolated : ndarray of shape (n, n)
+        The interpolated SPD matrix.
+
+    Raises
+    ------
+    ValueError
+        If `start` and `end` are not square, symmetric, or of the same shape,
+        or if `alpha` is outside [0, 1]. Positive definiteness is checked only
+        for interior values of `alpha`; endpoints are returned as copies.
+
+    References
+    ----------
+    .. [1]  "Positive Definite Matrices".
+        Bhatia, R. (2007). Princeton University Press.
+    """
+    assert_is_symmetric(start)
+    assert_is_symmetric(end)
+    if start.shape != end.shape:
+        raise ValueError(
+            "`start` and `end` must have the same shape, got "
+            f"{start.shape} and {end.shape}"
+        )
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError(f"`alpha` must be between 0 and 1, got {alpha}")
+
+    if alpha == 0.0:
+        return start.copy()
+    if alpha == 1.0:
+        return end.copy()
+
+    eigvals_s, eigvecs_s = np.linalg.eigh(start)
+    if np.any(eigvals_s <= 0):
+        raise ValueError("`start` must be positive definite")
+    sqrt_s = eigvecs_s @ (np.sqrt(eigvals_s)[:, None] * eigvecs_s.T)
+    inv_sqrt_s = eigvecs_s @ ((1.0 / np.sqrt(eigvals_s))[:, None] * eigvecs_s.T)
+
+    middle = inv_sqrt_s @ end @ inv_sqrt_s
+    middle = (middle + middle.T) / 2.0
+    eigvals_m, eigvecs_m = np.linalg.eigh(middle)
+    if np.any(eigvals_m <= 0):
+        raise ValueError("`end` must be positive definite")
+    middle_pow = eigvecs_m @ ((eigvals_m**alpha)[:, None] * eigvecs_m.T)
+
+    interpolated = sqrt_s @ middle_pow @ sqrt_s
+    return (interpolated + interpolated.T) / 2.0

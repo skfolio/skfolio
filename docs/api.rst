@@ -686,6 +686,7 @@ Enum
     :toctree: generated/
     :template: class.rst
 
+    moments.GeodesicShrinkageTarget
     moments.RegimeAdjustmentMethod
     moments.RegimeAdjustmentTarget
 
