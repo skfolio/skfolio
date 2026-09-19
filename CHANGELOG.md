@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.2.9 (2026-09-19)
+
+### Bug Fixes
+
+- **stats**: Stabilize cov_nearest for nearly singular covariance matrices
+  ([#332](https://github.com/skfolio/skfolio/pull/332),
+  [`83f91f4`](https://github.com/skfolio/skfolio/commit/83f91f4c8ac9eb458539f64963a89a9f0d263d69))
+
+
 ## v1.2.8 (2026-09-16)
 
 ### Bug Fixes
