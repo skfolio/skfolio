@@ -315,8 +315,7 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params): ...
 
 
 class LoadingMatrixRegression(BaseLoadingMatrix):

@@ -193,8 +193,11 @@ class OpinionPooling(BasePrior, BaseComposition):
     ... )
     >>>
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> print(opinion_pooling.return_distribution_.sample_weight)
+    [0.000117... 0.000117... 0.000117... ... 0.000117... 0.000117...
+     0.000117...]
     >>>
     >>> # CVaR Risk Parity optimization on opinion Pooling
     >>> model = RiskBudgeting(
@@ -212,6 +215,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     ...     opinion_probabilities=[0.6, 0.4],
     ... )
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> stressed_dist = opinion_pooling.return_distribution_
     >>>

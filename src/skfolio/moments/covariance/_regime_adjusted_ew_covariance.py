@@ -463,7 +463,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     >>> # Portfolio target with inverse-vol weights and FIRST_MOMENT method (default)
     >>> model = RegimeAdjustedEWCovariance(half_life=23)
     >>> model.fit(X)
+    RegimeAdjustedEWCovariance(half_life=23)
     >>> print(model.regime_multiplier_)
+    0.869...
     >>>
     >>> # DIAGONAL target (individual asset volatilities)
     >>> model2 = RegimeAdjustedEWCovariance(
@@ -471,6 +473,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     ...     regime_method=RegimeAdjustmentMethod.RMS,
     ... )
     >>> model2.fit(X)
+    RegimeAdjustedEWCovariance(regime_method=RMS, regime_target=DIAGONAL)
     >>>
     >>> # Mahalanobis target (full covariance structure)
     >>> model_maha = RegimeAdjustedEWCovariance(
@@ -478,6 +481,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     ...     regime_method=RegimeAdjustmentMethod.FIRST_MOMENT,
     ... )
     >>> model_maha.fit(X)
+    RegimeAdjustedEWCovariance(regime_target=MAHALANOBIS)
     >>>
     >>> # Portfolio target with equal weights
     >>> n_assets = X.shape[1]
@@ -486,6 +490,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     ...     regime_portfolio_weights=np.ones(n_assets) / n_assets,
     ... )
     >>> model_equal.fit(X)
+    RegimeAdjustedEWCovariance(...)
     >>>
     >>> # With Newey-West HAC correction
     >>> model_hac = RegimeAdjustedEWCovariance(
@@ -493,6 +498,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     ...     hac_lags=5
     ... )
     >>> model_hac.fit(X)
+    RegimeAdjustedEWCovariance(hac_lags=5, half_life=23)
     """
 
     regime_multiplier_: float

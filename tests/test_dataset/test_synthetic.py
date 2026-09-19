@@ -135,3 +135,13 @@ def test_n_industries_controls_levels():
 def test_invalid_arguments(kwargs):
     with pytest.raises(ValueError):
         make_synthetic_characteristics(n_assets=10, n_observations=30, **kwargs)
+
+
+def test_single_asset_has_degenerate_cross_section():
+    """A single asset has zero cross-sectional dispersion, so the standardized
+    loadings must fall back to centering only instead of dividing by zero."""
+    panel = make_synthetic_characteristics(
+        n_assets=1, n_observations=20, n_industries=1, random_state=0
+    )
+    assert panel.n_assets == 1
+    assert np.isfinite(panel["returns"]).all()

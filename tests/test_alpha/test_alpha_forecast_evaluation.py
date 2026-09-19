@@ -1,14 +1,28 @@
 """Unit tests for alpha forecast evaluation."""
 
+from dataclasses import replace
+
 import numpy as np
 import pandas as pd
 import pytest
+import sklearn.base as skb
 
-from skfolio._constants import _BENCHMARK_WEIGHTS, _EXPOSURES, _IDIO_RETURNS
+from skfolio._constants import (
+    _BENCHMARK_WEIGHTS,
+    _EXPOSURES,
+    _IDIO_RETURNS,
+    _IDIO_VARIANCES,
+    _REGRESSION_WEIGHTS,
+)
 from skfolio.alpha import (
     AlphaForecastComparison,
     FixedWeightedAlpha,
     alpha_forecast_evaluation,
+)
+from skfolio.alpha._evaluation import (
+    _calibration_curve,
+    _compute_factor_correlation_diagnostics,
+    _coverage_stats,
 )
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
@@ -117,6 +131,30 @@ def _factor_correlation_panel() -> AssetPanel:
     return panel
 
 
+class _NoFitTransform(skb.BaseEstimator):
+    """Minimal estimator that intentionally lacks fit_transform."""
+
+
+class _WrongShapeAlpha(skb.BaseEstimator):
+    """Minimal estimator returning a malformed alpha forecast."""
+
+    def fit_transform(self, X, y=None):
+        return np.zeros((X.n_observations, X.n_assets + 1))
+
+
+@pytest.fixture
+def evaluation_with_diagnostics():
+    """Create a small evaluation with holding-period and decay diagnostics."""
+    return alpha_forecast_evaluation(
+        _fixed_signal_alpha(),
+        _perfect_forecast_panel(),
+        holding_period=1,
+        signal_lag=1,
+        n_forward_periods=3,
+        quantiles=(0.25,),
+    )
+
+
 class TestAlphaForecastEvaluation:
     """Test alpha forecast evaluation diagnostics."""
 
@@ -207,6 +245,18 @@ class TestAlphaForecastEvaluation:
             "hit_rate",
         ]
         assert evaluation.factor_correlation_summary().empty
+
+        calibration = evaluation.calibration_summary()
+        assert calibration.name == "Calibration"
+        assert calibration["calibration_slope"] == evaluation.calibration_slope
+        assert calibration["n_bins"] == len(evaluation.calibration_curve)
+
+        coverage = evaluation.coverage_summary()
+        assert coverage.name == "Coverage"
+        assert coverage["mean_coverage"] == pytest.approx(
+            np.nanmean(evaluation.coverage)
+        )
+        assert coverage["min_n_valid_assets"] == np.nanmin(evaluation.n_valid_assets)
 
     def test_ic_summary_t_stat(self, alpha_deterministic_panel):
         """IC t-stat is computed from finite evaluation dates."""
@@ -341,6 +391,123 @@ class TestAlphaForecastEvaluation:
         fig = evaluation.plot_cumulative_ic()
 
         assert [trace.name for trace in fig.data] == ["Spearman IC", "Pearson IC"]
+
+    def test_rolling_ic_plot(self, evaluation_with_diagnostics):
+        """Rolling IC plot exposes both correlation series."""
+        fig = evaluation_with_diagnostics.plot_rolling_ic(window=2, title="Rolling IC")
+
+        assert fig.layout.title.text == "Rolling IC"
+        expected = (
+            pd.DataFrame(
+                {
+                    "spearman": evaluation_with_diagnostics.spearman_ic,
+                    "pearson": evaluation_with_diagnostics.pearson_ic,
+                },
+                index=evaluation_with_diagnostics.observations,
+            )
+            .rolling(2)
+            .mean()
+            .iloc[1:]
+        )
+        np.testing.assert_allclose(fig.data[0].y, expected["spearman"], equal_nan=True)
+        np.testing.assert_allclose(fig.data[1].y, expected["pearson"], equal_nan=True)
+        np.testing.assert_array_equal(fig.data[0].x, expected.index)
+        np.testing.assert_array_equal(fig.data[1].x, expected.index)
+
+    def test_calibration_plot(self, evaluation_with_diagnostics):
+        """Calibration plot compares observed buckets with the pooled slope."""
+        fig = evaluation_with_diagnostics.plot_calibration()
+
+        assert [trace.name for trace in fig.data] == ["Observed", "Pooled Slope"]
+        np.testing.assert_allclose(
+            fig.data[0].x,
+            evaluation_with_diagnostics.calibration_curve["mean_forecast"],
+        )
+        np.testing.assert_allclose(
+            fig.data[0].y,
+            evaluation_with_diagnostics.calibration_curve["mean_target"],
+        )
+        pooled_x = np.asarray(fig.data[1].x)
+        np.testing.assert_allclose(
+            fig.data[1].y,
+            evaluation_with_diagnostics.calibration_slope * pooled_x,
+        )
+
+    def test_ic_by_holding_period_plot(self, evaluation_with_diagnostics):
+        """Holding-period IC plot uses all requested forward periods."""
+        fig = evaluation_with_diagnostics.plot_ic_by_holding_period()
+        diagnostics = evaluation_with_diagnostics.holding_period_diagnostics
+
+        assert [trace.name for trace in fig.data] == ["Spearman IC", "Pearson IC"]
+        np.testing.assert_array_equal(fig.data[0].x, diagnostics.index)
+        np.testing.assert_array_equal(fig.data[1].x, diagnostics.index)
+        np.testing.assert_allclose(fig.data[0].y, diagnostics["spearman_mean_ic"])
+        np.testing.assert_allclose(fig.data[1].y, diagnostics["pearson_mean_ic"])
+
+    def test_portfolio_by_holding_period_plot(self, evaluation_with_diagnostics):
+        """Holding-period portfolio plot exposes both weighting schemes."""
+        fig = evaluation_with_diagnostics.plot_portfolio_by_holding_period()
+        diagnostics = evaluation_with_diagnostics.holding_period_diagnostics
+
+        assert [trace.name for trace in fig.data] == [
+            "Rank-Weighted Portfolio",
+            "Z-Score-Weighted Portfolio",
+        ]
+        np.testing.assert_array_equal(fig.data[0].x, diagnostics.index)
+        np.testing.assert_array_equal(fig.data[1].x, diagnostics.index)
+        np.testing.assert_allclose(
+            fig.data[0].y, diagnostics["rank_weighted_portfolio_ir"]
+        )
+        np.testing.assert_allclose(
+            fig.data[1].y, diagnostics["zscore_weighted_portfolio_ir"]
+        )
+
+    def test_ic_decay_plot(self, evaluation_with_diagnostics):
+        """IC decay plot uses all requested forward periods."""
+        fig = evaluation_with_diagnostics.plot_ic_decay()
+        decay = evaluation_with_diagnostics.decay
+
+        assert [trace.name for trace in fig.data] == ["Spearman IC", "Pearson IC"]
+        np.testing.assert_array_equal(fig.data[0].x, decay.index)
+        np.testing.assert_array_equal(fig.data[1].x, decay.index)
+        np.testing.assert_allclose(fig.data[0].y, decay["spearman_mean_ic"])
+        np.testing.assert_allclose(fig.data[1].y, decay["pearson_mean_ic"])
+
+    def test_portfolio_decay_plot(self, evaluation_with_diagnostics):
+        """Portfolio decay plot exposes both weighting schemes."""
+        fig = evaluation_with_diagnostics.plot_portfolio_decay()
+        decay = evaluation_with_diagnostics.decay
+
+        assert [trace.name for trace in fig.data] == [
+            "Rank-Weighted Portfolio",
+            "Z-Score-Weighted Portfolio",
+        ]
+        np.testing.assert_array_equal(fig.data[0].x, decay.index)
+        np.testing.assert_array_equal(fig.data[1].x, decay.index)
+        np.testing.assert_allclose(fig.data[0].y, decay["rank_weighted_portfolio_ir"])
+        np.testing.assert_allclose(fig.data[1].y, decay["zscore_weighted_portfolio_ir"])
+
+    @pytest.mark.parametrize(
+        "method",
+        [
+            "plot_ic_by_holding_period",
+            "plot_portfolio_by_holding_period",
+            "plot_ic_decay",
+            "plot_portfolio_decay",
+            "plot_factor_correlation",
+        ],
+    )
+    def test_unavailable_diagnostic_plot_raises(
+        self, method, evaluation_with_diagnostics
+    ):
+        evaluation = replace(
+            evaluation_with_diagnostics,
+            holding_period_diagnostics=pd.DataFrame(),
+            decay=pd.DataFrame(),
+        )
+
+        with pytest.raises(ValueError, match=r"No .* available"):
+            getattr(evaluation, method)()
 
     def test_evaluation_step_subsamples_evaluation_dates(
         self, alpha_deterministic_panel
@@ -562,6 +729,109 @@ class TestAlphaForecastEvaluation:
                 factor_exposures="missing_exposures",
             )
 
+    @pytest.mark.parametrize("quantiles", [(), (0.0,), (0.6,), (np.nan,)])
+    def test_invalid_quantiles_raise(self, quantiles):
+        """Quantiles must contain finite tail probabilities in (0, 0.5]."""
+        with pytest.raises(ValueError, match="quantiles"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                _perfect_forecast_panel(),
+                quantiles=quantiles,
+            )
+
+    def test_invalid_cs_weighting_type_raises(self):
+        """Cross-sectional weighting must be an enum value or field name."""
+        with pytest.raises(TypeError, match="cs_weighting"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                _perfect_forecast_panel(),
+                cs_weighting=1,
+            )
+
+    def test_negative_custom_cs_weights_raise(self):
+        """Finite custom cross-sectional weights must be non-negative."""
+        panel = _perfect_forecast_panel()
+        panel["custom_weights"] = -np.ones((panel.n_observations, panel.n_assets))
+
+        with pytest.raises(ValueError, match="weights must be non-negative"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                panel,
+                cs_weighting="custom_weights",
+            )
+
+    def test_invalid_factor_exposures_type_raises(self):
+        """Factor exposure selection must be a field name or None."""
+        with pytest.raises(TypeError, match="factor_exposures"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                _perfect_forecast_panel(),
+                factor_exposures=1,
+            )
+
+    def test_factor_exposures_field_must_be_3d(self):
+        """A selected factor exposure field must retain its factor axis."""
+        with pytest.raises(TypeError, match="not a Field3D"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                _perfect_forecast_panel(),
+                factor_exposures="signal",
+            )
+
+    def test_estimator_must_expose_fit_transform(self):
+        """Evaluation requires the estimator's historical forecast path."""
+        with pytest.raises(TypeError, match="fit_transform"):
+            alpha_forecast_evaluation(
+                _NoFitTransform(),
+                _perfect_forecast_panel(),
+            )
+
+    def test_estimator_forecast_shape_is_validated(self):
+        """Forecasts must align with both panel axes."""
+        with pytest.raises(ValueError, match="must return an array with shape"):
+            alpha_forecast_evaluation(
+                _WrongShapeAlpha(),
+                _perfect_forecast_panel(),
+            )
+
+    def test_evaluation_requires_a_valid_date(self):
+        """An entirely missing forecast path cannot produce diagnostics."""
+        panel = _perfect_forecast_panel()
+        panel["signal"] = np.full((panel.n_observations, panel.n_assets), np.nan)
+
+        with pytest.raises(ValueError, match="No valid evaluation date"):
+            alpha_forecast_evaluation(_fixed_signal_alpha(), panel)
+
+    @pytest.mark.parametrize(
+        ("weighting", "field"),
+        [
+            (CSWeighting.REGRESSION, _REGRESSION_WEIGHTS),
+            (CSWeighting.INVERSE_IDIO_VARIANCE, _IDIO_VARIANCES),
+        ],
+    )
+    def test_enum_weighting_fields_are_resolved(self, weighting, field):
+        """Built-in weighting rules resolve their conventional panel fields."""
+        panel = _perfect_forecast_panel()
+        panel[field] = np.ones((panel.n_observations, panel.n_assets))
+
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            cs_weighting=weighting,
+        )
+
+        assert evaluation.cs_weighting is weighting
+
+    def test_constant_forecast_has_one_calibration_bucket(self):
+        """A constant forecast produces a single meaningful calibration bucket."""
+        panel = _perfect_forecast_panel()
+        panel["signal"] = np.ones((panel.n_observations, panel.n_assets))
+
+        evaluation = alpha_forecast_evaluation(_fixed_signal_alpha(), panel)
+
+        assert len(evaluation.calibration_curve) == 1
+        assert evaluation.calibration_curve.iloc[0]["mean_forecast"] == 1.0
+
     def test_zero_annualization_factor_raises(self, alpha_deterministic_panel):
         """Zero annualization_factor should raise ValueError."""
         with pytest.raises(
@@ -602,4 +872,138 @@ class TestAlphaForecastEvaluation:
             "alpha_1",
             "alpha_2",
         ]
+        fig = comparison.plot_cumulative_ic()
+        assert [trace.name for trace in fig.data] == [
+            "Alpha 1",
+            "Alpha 2",
+        ]
+        np.testing.assert_allclose(
+            fig.data[0].y, np.nancumsum(evaluation_1.spearman_ic)
+        )
+        np.testing.assert_allclose(
+            fig.data[1].y, np.nancumsum(evaluation_2.spearman_ic)
+        )
         assert comparison.plot_cumulative_returns().layout.yaxis.tickformat == ".2%"
+
+    def test_comparison_requires_at_least_one_evaluation(self):
+        """A comparison without evaluations has no meaningful output."""
+        with pytest.raises(ValueError, match="at least one"):
+            AlphaForecastComparison([])
+
+    def test_comparison_requires_one_name_per_evaluation(
+        self, evaluation_with_diagnostics
+    ):
+        """Explicit comparison names must align one-to-one with evaluations."""
+        with pytest.raises(ValueError, match="names has length"):
+            AlphaForecastComparison([evaluation_with_diagnostics], names=[])
+
+    def test_comparison_supplies_a_name_for_unnamed_evaluation(
+        self, evaluation_with_diagnostics
+    ):
+        """Unnamed evaluations receive deterministic display names."""
+        evaluation = replace(evaluation_with_diagnostics, name=None)
+
+        comparison = AlphaForecastComparison([evaluation])
+
+        assert comparison.plot_cumulative_ic().data[0].name == "Estimator 0"
+
+    def test_comparison_uses_explicit_names(self, evaluation_with_diagnostics):
+        """Explicit names override the evaluation names in every summary."""
+        comparison = AlphaForecastComparison(
+            [evaluation_with_diagnostics, evaluation_with_diagnostics],
+            names=["first", "second"],
+        )
+
+        assert list(comparison.ic_summary().columns.levels[0]) == [
+            "first",
+            "second",
+        ]
+        assert [trace.name for trace in comparison.plot_cumulative_ic().data] == [
+            "First",
+            "Second",
+        ]
+
+    def test_three_dimensional_cs_weighting_field_raises(self):
+        """Cross-sectional weights must be a 2D field."""
+        panel = _factor_correlation_panel()
+
+        with pytest.raises(ValueError, match="must have shape"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                panel,
+                cs_weighting=_EXPOSURES,
+            )
+
+    def test_factor_exposures_none_disables_factor_diagnostics(self):
+        """`factor_exposures=None` skips factor correlations even with exposures."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _factor_correlation_panel(),
+            factor_exposures=None,
+        )
+
+        assert evaluation.factor_correlation is None
+        assert evaluation.factor_correlation_method is None
+        assert evaluation.factor_names.size == 0
+
+    def test_factor_exposures_without_factors_gives_empty_correlations(self):
+        """A 3D exposure field with no factors yields zero-width correlations."""
+        panel = _factor_correlation_panel()
+        panel.add_3d_field(
+            "empty",
+            np.zeros((panel.n_observations, panel.n_assets, 0)),
+            third_axis_name="factors",
+            third_axis_labels=[],
+            third_axis_groups=[],
+        )
+
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            factor_exposures="empty",
+        )
+
+        assert evaluation.factor_correlation.shape == (panel.n_observations, 0)
+        assert evaluation.factor_correlation_method is CorrelationMethod.PEARSON
+        assert evaluation.factor_names.size == 0
+        assert evaluation.factor_families.size == 0
+        assert evaluation.factor_correlation_summary().empty
+
+    def test_factor_correlation_diagnostics_validate_exposure_shape(self):
+        """Exposures must be aligned with the alpha array on the first two axes."""
+        panel = _factor_correlation_panel()
+        alpha = panel["signal"][:-1]
+
+        with pytest.raises(ValueError, match="first two axes matching alpha"):
+            _compute_factor_correlation_diagnostics(
+                alpha=alpha,
+                exposures_field=panel.get_field(_EXPOSURES),
+                estimation_mask=np.ones(alpha.shape, dtype=bool),
+                cs_weights=None,
+                method=CorrelationMethod.PEARSON,
+                min_count=3,
+            )
+
+    def test_calibration_curve_without_valid_pairs_is_empty(self):
+        """All-NaN forecasts produce an empty calibration curve with fixed columns."""
+        curve = _calibration_curve(np.full((3, 4), np.nan), np.ones((3, 4)))
+
+        assert curve.empty
+        assert list(curve.columns) == [
+            "bucket",
+            "mean_forecast",
+            "mean_target",
+            "n_observations",
+        ]
+
+    def test_coverage_stats(self):
+        """Coverage statistics summarize the coverage path and valid asset count."""
+        stats = _coverage_stats(
+            np.array([0.5, np.nan, 1.0]), np.array([2, 4, 6], dtype=int)
+        )
+
+        assert stats["mean"] == pytest.approx(0.75)
+        assert stats["std"] == pytest.approx(np.std([0.5, 1.0], ddof=1))
+        assert np.isnan(stats["ir"])
+        assert np.isnan(stats["hit_rate"])
+        assert stats["n_valid_assets"] == pytest.approx(4.0)

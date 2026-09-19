@@ -61,9 +61,9 @@ model.weights_
 #
 # Examples:
 #
-#   * budget = 1    –> fully invested portfolio
-#   * budget = 0    –> market neutral portfolio
-#   * budget = None –> no constraints on the sum of weights
+#   * budget = 1    -> fully invested portfolio
+#   * budget = 0    -> market neutral portfolio
+#   * budget = None -> no constraints on the sum of weights
 
 model = MeanRisk(budget=0.5)
 model.fit(X)
@@ -105,14 +105,14 @@ model.weights_
 #   useful.
 #
 # Example:
-#   * min_weights = 0                     –> long only portfolio (no short selling).
-#   * min_weights = None                  –> no lower bound (same as -np.Inf).
-#   * min_weights = -2                    –> each weight must be above -200%.
-#   * min_weights = [0, -2, 0.5]          –> "AAPL", "GE" and "JPM" must be above 0%, -200% and 50% respectively.
+#   * min_weights = 0                     -> long only portfolio (no short selling).
+#   * min_weights = None                  -> no lower bound (same as -np.Inf).
+#   * min_weights = -2                    -> each weight must be above -200%.
+#   * min_weights = [0, -2, 0.5]          -> "AAPL", "GE" and "JPM" must be above 0%, -200% and 50% respectively.
 #   * min_weights = {"AAPL": 0, "GE": -2} -> "AAPL", "GE" and "JPM"  must be above 0%, -200% and 0% (default) respectively.
-#   * max_weights = 0                     –> no long position (short only portfolio).
-#   * max_weights = None                  –> no upper bound (same as +np.Inf).
-#   * max_weights = 2                     –> each weight must be below 200%.
+#   * max_weights = 0                     -> no long position (short only portfolio).
+#   * max_weights = None                  -> no upper bound (same as +np.Inf).
+#   * max_weights = 2                     -> each weight must be below 200%.
 #   * max_weights = [1, 2, -0.5]          -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and -50% respectively.
 #   * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default).
 

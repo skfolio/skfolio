@@ -476,5 +476,4 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: None = None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y: None = None, **fit_params): ...

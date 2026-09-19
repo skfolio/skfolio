@@ -9,10 +9,12 @@ from skfolio.exceptions import (
 )
 from skfolio.utils.equations import (
     _COMPARISON_OPERATORS,
+    _build_name_trie,
     _matching_array,
     _matching_array_with_factors,
     _split_equation_string,
     _string_to_equation,
+    _validate_factor_names_and_families,
     equations_to_matrix,
     group_cardinalities_to_matrix,
 )
@@ -135,6 +137,16 @@ def test_string_to_equation_hyphenated_names():
     assert right == pytest.approx(0.0)
 
 
+@pytest.mark.parametrize("equation", ["* a <= 1", "2 * <= 1"])
+def test_string_to_equation_rejects_misplaced_multiplication(equation):
+    with pytest.raises(EquationToMatrixError, match="wrongly positioned"):
+        _string_to_equation(
+            groups=np.array([["a"]]),
+            string=equation,
+            sum_to_one=False,
+        )
+
+
 def test_matching_array(groups):
     arr = _matching_array(values=groups, key="a", sum_to_one=False)
 
@@ -146,6 +158,15 @@ def test_matching_array(groups):
     arr = _matching_array(values=groups, key="a", sum_to_one=True)
 
     assert np.array_equal(arr, np.array([0.5, 0.5, 0.0, 0.0]))
+
+
+def test_matching_array_requires_two_dimensional_values():
+    with pytest.raises(ValueError, match="must be a 2D array"):
+        _matching_array(values=np.array(["a", "b"]), key="a", sum_to_one=False)
+
+
+def test_name_trie_ignores_empty_names():
+    assert _build_name_trie({""}) == {}
 
 
 def test_equations_to_matrix_inequality(groups):
@@ -227,6 +248,18 @@ def test_equations_to_matrix_error(groups):
 
     with pytest.raises(EquationToMatrixError, match="only one comparison"):
         equations_to_matrix(groups=groups, equations=["a <= b <= c"])
+
+
+@pytest.mark.parametrize(
+    "groups,equations,error",
+    [
+        (np.array(["a", "b"]), ["a <= 1"], "must be a 2D array"),
+        (np.array([["a", "b"]]), np.array([["a <= 1"]]), "must be a 1D array"),
+    ],
+)
+def test_equations_to_matrix_validates_input_dimensions(groups, equations, error):
+    with pytest.raises(ValueError, match=error):
+        equations_to_matrix(groups=groups, equations=equations)
 
 
 def test_equations_to_matrix_duplicate_groups_error():
@@ -674,6 +707,59 @@ class TestEquationsToMatrixFactorValidation:
                 equations=["a <= 0.5"],
                 loading_matrix=None,
                 factor_groups=factor_groups,
+            )
+
+    def test_factor_groups_must_be_two_dimensional(self, groups, loading_matrix):
+        with pytest.raises(ValueError, match="must be a 2D array"):
+            equations_to_matrix(
+                groups=groups,
+                equations=["Momentum <= 0.3"],
+                loading_matrix=loading_matrix,
+                factor_groups=np.array(["Momentum", "Value", "Size"]),
+            )
+
+    def test_factor_groups_support_more_than_two_levels(self):
+        groups = np.array([["A", "B"]])
+        factor_groups = np.array(
+            [
+                ["F1", "F2"],
+                ["style", "value"],
+                ["primary", "secondary"],
+            ]
+        )
+
+        a_eq, b_eq, a_ineq, b_ineq = equations_to_matrix(
+            groups=groups,
+            equations=["F1 == 0"],
+            loading_matrix=np.eye(2),
+            factor_groups=factor_groups,
+        )
+
+        np.testing.assert_array_equal(a_eq, [[1.0, 0.0]])
+        np.testing.assert_array_equal(b_eq, [0.0])
+        assert a_ineq.shape == (0, 2)
+        assert b_ineq.shape == (0,)
+
+    def test_factor_names_and_families_validation(self):
+        with pytest.raises(ValueError, match=r"factor_names.*1D array"):
+            _validate_factor_names_and_families(
+                factor_names=np.array([["F1", "F2"]]),
+                factor_families=None,
+            )
+        with pytest.raises(DuplicateGroupsError, match="must be unique"):
+            _validate_factor_names_and_families(
+                factor_names=np.array(["F1", "F1"]),
+                factor_families=None,
+            )
+        with pytest.raises(ValueError, match=r"factor_families.*1D array"):
+            _validate_factor_names_and_families(
+                factor_names=np.array(["F1", "F2"]),
+                factor_families=np.array([["style", "style"]]),
+            )
+        with pytest.raises(ValueError, match=r"shape.*must match"):
+            _validate_factor_names_and_families(
+                factor_names=np.array(["F1", "F2"]),
+                factor_families=np.array(["style"]),
             )
 
     def test_factor_groups_loading_matrix_column_mismatch(self, groups):

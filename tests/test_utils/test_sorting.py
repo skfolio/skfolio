@@ -123,6 +123,28 @@ def test_dominate():
     assert not dominate(np.array([2, 3, 4]), np.array([1, 2, 5]))
 
 
+@pytest.mark.parametrize(
+    ("shape_1", "shape_2"),
+    [
+        ((), (1,)),
+        ((1,), ()),
+        ((), ()),
+        ((1, 1), (1,)),
+        ((1,), (1, 1)),
+        ((1, 1), (1, 1)),
+        ((1, 1, 1), (1,)),
+        ((1,), (1, 1, 1)),
+        ((1, 1, 1), (1, 1, 1)),
+    ],
+)
+def test_dominate_rejects_non_1d_fitnesses(shape_1, shape_2):
+    fitness_1 = np.ones(shape_1)
+    fitness_2 = np.ones(shape_2)
+
+    with pytest.raises(ValueError, match="must be 1D array"):
+        dominate(fitness_1, fitness_2)
+
+
 def test_non_dominated_sort(fitnesses):
     res = non_dominated_sort(fitnesses=fitnesses, first_front_only=False)
 

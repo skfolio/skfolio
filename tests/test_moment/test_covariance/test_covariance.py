@@ -10,6 +10,7 @@ from sklearn.covariance import LedoitWolf as SklearnLedoitWolf
 from sklearn.covariance import ShrunkCovariance as SklearnShrunkCovariance
 from sklearn.model_selection import cross_val_score
 
+from skfolio.exceptions import NonPositiveVarianceError
 from skfolio.moments import (
     OAS,
     BaseCovariance,
@@ -2654,3 +2655,75 @@ class TestGeodesicShrinkageCovariance:
         X = np.random.default_rng(0).standard_normal((50, 3))
         with pytest.raises(ValueError, match="target"):
             GeodesicShrinkageCovariance(target=np.identity(2)).fit(X)
+
+
+class TestBaseCovarianceEdgeCases:
+    """Edge cases of the `BaseCovariance` inference and sanity-check helpers."""
+
+    def test_score_without_finite_fitted_assets_raises(self, X_small):
+        model = EmpiricalCovariance().fit(np.asarray(X_small))
+        model.covariance_ = np.full_like(model.covariance_, np.nan)
+        with pytest.raises(
+            ValueError, match="No finite fitted assets available for inference"
+        ):
+            model.score(np.asarray(X_small))
+
+    def test_mahalanobis_without_finite_fitted_assets_raises(self, X_small):
+        model = EmpiricalCovariance().fit(np.asarray(X_small))
+        model.covariance_ = np.full_like(model.covariance_, np.nan)
+        with pytest.raises(
+            ValueError, match="No finite fitted assets available for inference"
+        ):
+            model.mahalanobis(np.asarray(X_small))
+
+    def test_mahalanobis_all_nan_rows_raises(self, X_small):
+        model = EmpiricalCovariance().fit(np.asarray(X_small))
+        X_test = np.full((2, X_small.shape[1]), np.nan)
+        with pytest.raises(
+            ValueError,
+            match="X_test has no row with any finite retained observation",
+        ):
+            model.mahalanobis(X_test)
+
+    def test_mahalanobis_single_observation_with_nan(self, X_small):
+        X_arr = np.asarray(X_small)
+        model = EmpiricalCovariance().fit(X_arr)
+        row = X_arr[0].copy()
+        row[0] = np.nan
+        distance = model.mahalanobis(row)
+        assert isinstance(distance, float)
+        assert np.isfinite(distance)
+        # Matches the observed-subspace distance of the same row given as a batch
+        np.testing.assert_allclose(distance, model.mahalanobis(row[np.newaxis, :])[0])
+
+    def test_sanity_check_non_positive_variance_by_index(self):
+        model = _MinimalCovariance(nearest=False)
+        with pytest.raises(
+            NonPositiveVarianceError,
+            match="The following assets indices have a non positive variance",
+        ):
+            model._set_covariance(np.zeros((2, 2)))
+
+    def test_sanity_check_non_positive_variance_by_name(self):
+        rng = np.random.default_rng(0)
+        X = pd.DataFrame(
+            {"CONST": np.ones(50), "RAND": rng.standard_normal(50)},
+        )
+        with pytest.raises(
+            NonPositiveVarianceError,
+            match="The following assets have a non positive variance",
+        ) as exc_info:
+            EmpiricalCovariance().fit(X)
+        assert "CONST" in str(exc_info.value)
+        assert "RAND" not in str(exc_info.value)
+
+    def test_reduce_to_finite_active_block_without_finite_diagonal(self):
+        cov = np.full((2, 2), np.nan)
+        _reduce_to_finite_active_block(cov)
+        assert np.all(np.isnan(cov))
+
+
+def test_gerber_covariance_invalid_threshold(X):
+    model = GerberCovariance(threshold=1.5)
+    with pytest.raises(ValueError, match="The threshold must be between 0 and 1"):
+        model.fit(X)

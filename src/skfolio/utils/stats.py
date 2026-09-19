@@ -701,7 +701,7 @@ def minimize_relative_weight_deviation(
     Parameters
     ----------
     weights : ndarray of shape (n_assets,)
-        Initial weights.
+        Strictly positive initial weights summing to one.
 
     min_weights : ndarray of shape (n_assets,)
         Minimum assets weights (weights lower bounds).
@@ -724,7 +724,7 @@ def minimize_relative_weight_deviation(
     if not (weights.shape == min_weights.shape == max_weights.shape):
         raise ValueError("`min_weights` and `max_weights` must have same size")
 
-    if np.any(weights < 0):
+    if np.any(weights <= 0):
         raise ValueError("Initial weights must be strictly positive")
 
     if not np.isclose(np.sum(weights), 1.0):
@@ -1274,19 +1274,11 @@ def _cs_pearson_correlation_2d_3d(
 
 
 def _use_cs_pearson_correlation_2d_3d(
-    a: FloatArray, b: FloatArray, weights: FloatArray | None, axis: int
+    a: FloatArray, b: FloatArray, axis: int
 ) -> tuple[FloatArray, FloatArray] | None:
     """Return ordered 2D/3D inputs for the optimized cross-sectional path."""
     if axis not in (1, -2):
         return None
-    if weights is not None:
-        w = np.asarray(weights)
-        if not (
-            w.ndim == 1
-            or (w.ndim == 2 and w.shape == a.shape[:2])
-            or (w.ndim == 2 and w.shape == b.shape[:2])
-        ):
-            return None
     if a.ndim == 2 and b.ndim == 3 and a.shape == b.shape[:2]:
         return a, b
     if a.ndim == 3 and b.ndim == 2 and b.shape == a.shape[:2]:
@@ -1355,7 +1347,7 @@ def cs_pearson_correlation(
     """
     a = np.asarray(a, dtype=float)
     b = np.asarray(b, dtype=float)
-    fast_path = _use_cs_pearson_correlation_2d_3d(a, b, weights, axis)
+    fast_path = _use_cs_pearson_correlation_2d_3d(a, b, axis)
     if fast_path is not None:
         return _cs_pearson_correlation_2d_3d(
             fast_path[0], fast_path[1], weights=weights, min_count=min_count, eps=eps
@@ -1371,7 +1363,8 @@ def cs_pearson_correlation(
     a = np.broadcast_to(a, shape)
     b = np.broadcast_to(b, shape)
     if axis < -a.ndim or axis >= a.ndim:
-        raise np.AxisError(axis, a.ndim)
+        # AxisError moved under np.exceptions in NumPy 2.
+        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)

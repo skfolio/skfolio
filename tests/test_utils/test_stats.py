@@ -15,6 +15,8 @@ from skfolio.datasets import load_nasdaq_dataset, load_sp500_dataset
 from skfolio.distance import PearsonDistance
 from skfolio.preprocessing import prices_to_returns
 from skfolio.utils.stats import (
+    _forward_mean_return,
+    _market_returns,
     assert_is_distance,
     assert_is_square,
     assert_is_symmetric,
@@ -66,8 +68,8 @@ def returns():
 
 
 @pytest.fixture(scope="module")
-def nasdaq_X():
-    prices = load_nasdaq_dataset()
+def nasdaq_X(remote_dataset):
+    prices = remote_dataset(load_nasdaq_dataset)
     nasdaq_X = prices_to_returns(prices)
     return nasdaq_X
 
@@ -109,6 +111,15 @@ def weights():
 def test_n_bins_freedman(returns):
     n_bins = n_bins_freedman(returns)
     assert n_bins == 329
+
+
+def test_n_bins_freedman_rejects_non_vector_input():
+    with pytest.raises(ValueError, match="1d-array"):
+        n_bins_freedman(np.ones((2, 2)))
+
+
+def test_n_bins_freedman_returns_default_for_constant_input():
+    assert n_bins_freedman(np.ones(10)) == 5
 
 
 def test_n_bins_knuth(returns):
@@ -298,6 +309,11 @@ def test_inverse_multiply(X):
     r1 = inverse_multiply(a, b)
     r2 = np.linalg.inv(a) @ b
     np.testing.assert_array_almost_equal(r1, r2)
+
+
+def test_inverse_multiply_requires_compatible_dimensions():
+    with pytest.raises(ValueError, match="Wrong dimension"):
+        inverse_multiply(np.eye(2), np.ones(3))
 
 
 def test_multiply_by_inverse(X):
@@ -511,6 +527,10 @@ class TestAssertIsDistance:
         # Act and Assert
         with pytest.raises(ValueError):
             assert_is_distance(x)
+
+    def test_nonzero_diagonal(self):
+        with pytest.raises(ValueError, match="diagonal elements"):
+            assert_is_distance(np.eye(2))
 
     def test_near_symmetric_distance_matrix(self):
         x = np.array([[0.0, 0.3, 0.2], [0.3 + 5e-6, 0.0, 0.1], [0.2, 0.1, 0.0]])
@@ -752,6 +772,35 @@ class TestMinimizeRelativeWeightDeviation:
             _ = minimize_relative_weight_deviation(
                 weights=weights, min_weights=np.zeros(6), max_weights=np.ones(6) * 0.1
             )
+
+    @pytest.mark.parametrize(
+        "weights,min_weights,max_weights,error",
+        [
+            (np.array([0.5, 0.5]), np.zeros(1), np.ones(2), "same size"),
+            (
+                np.array([-0.1, 1.1]),
+                np.zeros(2),
+                np.ones(2),
+                "strictly positive",
+            ),
+            (
+                np.array([0.0, 1.0]),
+                np.zeros(2),
+                np.ones(2),
+                "strictly positive",
+            ),
+            (np.array([0.2, 0.2]), np.zeros(2), np.ones(2), "sum to one"),
+            (
+                np.array([0.5, 0.5]),
+                np.array([0.6, 0.0]),
+                np.array([0.5, 1.0]),
+                "lower or equal",
+            ),
+        ],
+    )
+    def test_invalid_inputs(self, weights, min_weights, max_weights, error):
+        with pytest.raises(ValueError, match=error):
+            minimize_relative_weight_deviation(weights, min_weights, max_weights)
 
 
 # Helper to generate all combinations for small N, k
@@ -1274,6 +1323,34 @@ class TestCsPearsonCorrelation:
         with pytest.raises(ValueError, match="non-negative"):
             cs_pearson_correlation(a, b, weights=weights)
 
+    @pytest.mark.parametrize(
+        "weights,error",
+        [
+            (np.array([1.0, -1.0, 1.0]), "non-negative"),
+            (np.ones(2), "length must match"),
+            (np.ones((2, 2)), "must have shape"),
+        ],
+    )
+    def test_optimized_path_validates_weights(self, weights, error):
+        a = np.ones((2, 3))
+        b = np.ones((2, 3, 1))
+
+        with pytest.raises(ValueError, match=error):
+            cs_pearson_correlation(a, b, weights=weights, axis=1)
+
+    def test_generic_path_validates_weight_length(self):
+        with pytest.raises(ValueError, match="length must match"):
+            cs_pearson_correlation(
+                np.ones((2, 3)),
+                np.ones((2, 3)),
+                weights=np.ones(2),
+                axis=1,
+            )
+
+    def test_invalid_axis_raises_index_error(self):
+        with pytest.raises(IndexError, match="out of bounds"):
+            cs_pearson_correlation(np.ones(3), np.ones(3), axis=1)
+
 
 class TestCsRank:
     """Tests for cs_rank."""
@@ -1376,6 +1453,10 @@ class TestCsSpearmanCorrelation:
         result = cs_spearman_correlation(a, b)
         assert isinstance(result, float)
 
+    def test_shape_mismatch_raises(self):
+        with pytest.raises(ValueError, match="broadcastable"):
+            cs_spearman_correlation(np.ones(3), np.ones(4))
+
     def test_pairwise_nan_matches_spearmanr(self):
         from scipy.stats import spearmanr
 
@@ -1386,3 +1467,31 @@ class TestCsSpearmanCorrelation:
         expected = spearmanr(a[valid], b[valid]).statistic
 
         assert_allclose(cs_spearman_correlation(a, b), expected)
+
+
+class TestForwardMeanReturn:
+    def test_rejects_non_matrix_input(self):
+        with pytest.raises(ValueError, match="must be 2D"):
+            _forward_mean_return(np.ones(3))
+
+    def test_empty_input_preserves_number_of_assets(self):
+        result = _forward_mean_return(np.empty((0, 2)))
+
+        assert result.shape == (0, 2)
+        assert result.dtype == np.float64
+
+
+class TestMarketReturns:
+    def test_rejects_non_matrix_returns(self):
+        with pytest.raises(ValueError, match="asset_returns must be a 2D"):
+            _market_returns(np.ones(2), np.ones(2))
+
+    def test_rejects_mismatched_estimation_mask(self):
+        with pytest.raises(
+            ValueError, match="estimation_mask must have the same shape"
+        ):
+            _market_returns(
+                np.ones((2, 2)),
+                np.ones((2, 2)),
+                estimation_mask=np.ones((2, 1), dtype=bool),
+            )

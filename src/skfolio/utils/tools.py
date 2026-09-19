@@ -25,7 +25,14 @@ import sklearn.base as skb
 from sklearn.utils import Bunch
 
 from skfolio._constants import _PASSTHROUGH
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
+from skfolio.typing import (
+    ArrayLike,
+    BoolArray,
+    FloatArray,
+    IntArray,
+    MultiInput,
+    StrArray,
+)
 
 __all__ = [
     "AutoEnum",
@@ -424,31 +431,33 @@ def _validate_bool(value: object, name: str) -> None:
 def _validate_positive_real(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite positive real number."""
     if not _is_real_number(value) or not np.isfinite(value) or value <= 0:
-        raise ValueError(f"{name} must be a positive number, got {value}")
+        raise ValueError(f"{name} must be a positive number, got {value!r}")
 
 
 def _validate_non_negative_real(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite non-negative real number."""
     if not _is_real_number(value) or not np.isfinite(value) or value < 0:
-        raise ValueError(f"{name} must be a non-negative number, got {value}")
+        raise ValueError(f"{name} must be a non-negative number, got {value!r}")
 
 
 def _validate_positive_integer(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a positive integer (>= 1)."""
     if not _is_integer_number(value) or value < 1:
-        raise ValueError(f"{name} must be a positive integer (>= 1), got {value}")
+        raise ValueError(f"{name} must be a positive integer (>= 1), got {value!r}")
 
 
 def _validate_non_negative_integer(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a non-negative integer (>= 0)."""
     if not _is_integer_number(value) or value < 0:
-        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value}")
+        raise ValueError(f"{name} must be a non-negative integer (>= 0), got {value!r}")
 
 
 def _validate_unit_interval(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite real number in [0, 1]."""
     if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
-        raise ValueError(f"{name} must be a finite number between 0 and 1, got {value}")
+        raise ValueError(
+            f"{name} must be a finite number between 0 and 1, got {value!r}"
+        )
 
 
 def check_estimator(
@@ -618,6 +627,100 @@ def input_to_array(
             f"got {arr.shape[0]}"
         )
     return arr
+
+
+def _get_liquidation_turnover_and_cost(
+    previous_weights: MultiInput | None,
+    transaction_costs: MultiInput | None,
+    assets_names: StrArray | None,
+    investable_mask: BoolArray | None = None,
+) -> tuple[float, float]:
+    """Return turnover and cost assuming full liquidation of excluded positions.
+
+    Positions outside the current asset set or investable subset have a target
+    weight of zero.
+
+    Parameters
+    ----------
+    previous_weights : float | dict[str, float] | array-like | None
+        Previous portfolio weights. A dictionary can include assets absent from
+        `assets_names`. Scalar and array inputs require `investable_mask` to
+        identify excluded positions. Arrays must cover the full universe to
+        contribute liquidation turnover. `None` means no previous holdings.
+
+    transaction_costs : float | dict[str, float] | array-like | None
+        Transaction cost rates. A scalar applies to all assets. Missing dictionary
+        entries default to zero. An array must align with `assets_names` and cover
+        all liquidated assets. `None` means no transaction costs.
+
+    assets_names : ndarray of shape (n_assets,), optional
+        Asset names before applying `investable_mask`. If `None`, column positions
+        are used when a mask is provided. Without names or a mask, the function
+        returns zero turnover and cost.
+
+    investable_mask : ndarray of shape (n_assets,), optional
+        Boolean mask selecting investable assets. Positions with a `False` entry
+        have a target weight of zero. If `None`, all assets in `assets_names` are
+        treated as investable.
+
+    Returns
+    -------
+    turnover : float
+        Sum of the absolute previous weights of excluded positions.
+
+    cost : float
+        Sum of those absolute weights multiplied by their transaction cost rates.
+
+    Raises
+    ------
+    ValueError
+        If an excluded position's weight is NaN or a transaction cost array cannot
+        provide rates for all liquidated assets.
+    """
+    if assets_names is None:
+        if investable_mask is None:
+            return 0.0, 0.0
+        # Use column positions as identifiers when asset names are unavailable.
+        assets_names = np.arange(len(investable_mask))
+
+    if not isinstance(previous_weights, dict):
+        if investable_mask is None or previous_weights is None:
+            return 0.0, 0.0
+        if np.isscalar(previous_weights):
+            previous_weights = np.full(len(assets_names), previous_weights)
+        if np.shape(previous_weights) != (len(assets_names),):
+            # Weights supplied only for the investable subset contain no exits.
+            return 0.0, 0.0
+        previous_weights = dict(zip(assets_names, previous_weights, strict=True))
+
+    active_assets = set(
+        assets_names if investable_mask is None else assets_names[investable_mask]
+    )
+    liquidated = {
+        asset: abs(weight)
+        for asset, weight in previous_weights.items()
+        if asset not in active_assets and weight != 0
+    }
+    turnover = float(sum(liquidated.values()))
+    if not liquidated:
+        return turnover, 0.0
+    if np.isnan(turnover):
+        raise ValueError("`previous_weights` contains NaN")
+    if transaction_costs is None:
+        return turnover, 0.0
+    if np.isscalar(transaction_costs):
+        return turnover, float(transaction_costs * turnover)
+    if not isinstance(transaction_costs, dict):
+        if np.shape(transaction_costs) != (len(assets_names),) or not set(
+            liquidated
+        ).issubset(assets_names):
+            raise ValueError(
+                "Transaction costs for liquidated assets are unavailable. "
+                "Use a scalar or an asset-name dictionary covering those assets."
+            )
+        transaction_costs = dict(zip(assets_names, transaction_costs, strict=True))
+    cost = sum(transaction_costs.get(asset, 0.0) * w for asset, w in liquidated.items())
+    return turnover, float(cost)
 
 
 def validate_input_list(

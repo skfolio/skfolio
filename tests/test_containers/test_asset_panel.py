@@ -19,6 +19,13 @@ from skfolio.containers import (
     InactivePolicy,
     concat,
 )
+from skfolio.containers._asset_panel._utils import (
+    _compose_observation_selectors,
+    _fill_2d,
+    _format_observation_range,
+    _normalize_positional_selector,
+    _try_as_contiguous_slice,
+)
 
 N_OBS = 20
 N_ASSETS = 4
@@ -171,6 +178,22 @@ class TestFields:
         with pytest.raises(ValueError, match="2D"):
             Field2D(np.ones((2, 3, 4)))
 
+    def test_fields_require_at_least_two_dimensions(self):
+        with pytest.raises(ValueError, match="at least two dimensions"):
+            Field2D(np.ones(2))
+
+    def test_field_properties_for_integer_values(self):
+        field = Field2D(np.ones((2, 3), dtype=np.int64))
+
+        assert field.shape == (2, 3)
+        assert field.dtype == np.dtype(np.int64)
+        assert field.ndim == 2
+        assert field.n_observations == 2
+        assert field.n_assets == 3
+        assert not field.is_categorical
+        assert not field.is_3d
+        np.testing.assert_array_equal(field.missing_mask, np.zeros((2, 3), dtype=bool))
+
     def test_field_2d_rejects_object_dtype(self):
         with pytest.raises(ValueError, match="dtype=object"):
             Field2D(np.array([["a", "b"]], dtype=object))
@@ -193,6 +216,16 @@ class TestFields:
 
         with pytest.raises(ValueError, match="integer dtype"):
             FieldCategorical(np.array([[0.0]]), levels=["A"])
+
+        with pytest.raises(ValueError, match=">= -1"):
+            FieldCategorical(np.array([[-2]], dtype=np.int32), levels=["A"])
+
+    def test_categorical_levels_must_be_one_dimensional(self):
+        with pytest.raises(ValueError, match="levels must be a 1D"):
+            FieldCategorical(
+                np.array([[0]], dtype=np.int32),
+                levels=np.array([["A"]]),
+            )
 
     def test_categorical_requires_unique_levels(self):
         with pytest.raises(ValueError, match="unique"):
@@ -288,8 +321,48 @@ class TestFields:
                 third_axis_labels=["mkt", "mkt"],
             )
 
+    @pytest.mark.parametrize(
+        "overrides,error",
+        [
+            ({"values": np.ones((1, 1))}, "must be 3D"),
+            ({"values": np.full((1, 1, 1), "value", dtype=object)}, "dtype=object"),
+            ({"third_axis_labels": [["value"]]}, "labels must be a 1D"),
+            ({"third_axis_groups": [["group"]]}, "groups must be a 1D"),
+        ],
+    )
+    def test_field_3d_rejects_invalid_values_and_metadata(self, overrides, error):
+        parameters = {
+            "values": np.ones((1, 1, 1)),
+            "third_axis_name": "factor",
+            "third_axis_labels": ["value"],
+        }
+        parameters.update(overrides)
+
+        with pytest.raises(ValueError, match=error):
+            Field3D(**parameters)
+
 
 class TestPanelConstruction:
+    def test_integer_object_observations_are_converted(self):
+        observations = np.array([1, np.int64(2)], dtype=object)
+
+        panel = AssetPanel(
+            fields={"x": np.ones((2, 1))},
+            observations=observations,
+            asset_names=["A"],
+        )
+
+        assert panel.observations.dtype != object
+        np.testing.assert_array_equal(panel.observations, [1, 2])
+
+    def test_custom_object_observations_are_rejected(self):
+        with pytest.raises(ValueError, match="object dtype must contain"):
+            AssetPanel(
+                fields={"x": np.ones((2, 1))},
+                observations=np.array([object(), object()], dtype=object),
+                asset_names=["A"],
+            )
+
     def test_basic_construction_coerces_raw_arrays_to_field_2d(self):
         panel = _make_panel()
 
@@ -505,6 +578,7 @@ class TestPanelConstruction:
             "back\\slash",
             "1starts_with_num",
             "CON",
+            "x" * 201,
         ],
     )
     def test_invalid_field_names_raise_at_construction(self, name):
@@ -638,6 +712,28 @@ class TestPanelConstruction:
                         levels=["A", "B"],
                     ),
                 },
+                observations=np.arange(2),
+                asset_names=np.array(["A", "B"]),
+                active_mask=active_mask,
+            )
+
+    @pytest.mark.parametrize(
+        "field",
+        [
+            Field2D(np.ones((2, 2), dtype=int)),
+            Field3D(
+                np.ones((2, 2, 1), dtype=int),
+                third_axis_name="factor",
+                third_axis_labels=["value"],
+            ),
+        ],
+    )
+    def test_missing_policy_requires_floating_values(self, field):
+        active_mask = np.array([[False, True], [True, True]])
+
+        with pytest.raises(ValueError, match="floating dtype"):
+            AssetPanel(
+                fields={"field": field},
                 observations=np.arange(2),
                 asset_names=np.array(["A", "B"]),
                 active_mask=active_mask,
@@ -901,6 +997,12 @@ class TestSelectionAndDrop:
         with pytest.raises(ValueError, match="Boolean selector"):
             panel.isel(observations=np.array([True, False]))
 
+        with pytest.raises(ValueError, match="Selector must be 1D"):
+            panel.isel(observations=[[0, 1]])
+
+        with pytest.raises(TypeError, match="integers or booleans"):
+            panel.isel(observations=[0.5, 1.5])
+
     def test_isel_rejects_out_of_bounds_positions(self):
         panel = _make_panel()
 
@@ -965,6 +1067,12 @@ class TestSelectionAndDrop:
         with pytest.raises(KeyError, match="Fields not found"):
             panel.sel(fields=["missing"])
 
+        with pytest.raises(ValueError, match="zero fields"):
+            panel.sel(fields=[])
+
+        with pytest.raises(ValueError, match="Duplicate field names"):
+            panel.sel(fields=["x", "x"])
+
     def test_sel_3d_scalar_label_returns_2d_values(self):
         panel = _make_full_panel()
 
@@ -989,6 +1097,27 @@ class TestSelectionAndDrop:
         assert values.shape == (N_OBS, N_ASSETS, 2)
         np.testing.assert_array_equal(values, panel["exposures"][:, :, [1, 2]])
 
+    def test_sel_3d_repeated_groups_preserve_requested_order(self):
+        panel = _make_panel()
+        values = np.arange(N_OBS * N_ASSETS * 3, dtype=float).reshape(
+            N_OBS, N_ASSETS, 3
+        )
+        panel.add_3d_field(
+            "exposures",
+            values,
+            third_axis_name="factor",
+            third_axis_labels=["value", "market", "quality"],
+            third_axis_groups=["style", "risk", "style"],
+        )
+
+        np.testing.assert_array_equal(
+            panel.sel_3d("exposures", groups="style"), values[:, :, [0, 2]]
+        )
+        np.testing.assert_array_equal(
+            panel.sel_3d("exposures", groups=["risk", "style"]),
+            values[:, :, [1, 0, 2]],
+        )
+
     def test_sel_3d_validates_arguments_and_field_type(self):
         panel = _make_full_panel()
 
@@ -1006,6 +1135,9 @@ class TestSelectionAndDrop:
 
         with pytest.raises(KeyError):
             panel.sel_3d("exposures", groups="missing")
+
+        with pytest.raises(KeyError):
+            panel.sel_3d("exposures", groups=["style", "missing"])
 
     def test_sel_3d_groups_require_group_metadata(self):
         panel = _make_panel()
@@ -1663,6 +1795,22 @@ class TestView:
         np.testing.assert_array_equal(view["x"], panel["x"][5:10])
         assert np.shares_memory(view["x"], panel["x"])
 
+    def test_nested_array_view_composes_selectors(self):
+        panel = _make_panel()
+        view = panel[[1, 3, 5]]
+
+        np.testing.assert_array_equal(view[[0, 2]]["x"], panel["x"][[1, 5]])
+        np.testing.assert_array_equal(view[1]["x"], panel["x"][3:4])
+        assert view[np.array([], dtype=int)].n_observations == 0
+
+    def test_contiguous_position_array_preserves_view_semantics(self):
+        panel = _make_panel()
+
+        view = panel[[1, 2, 3]]
+
+        np.testing.assert_array_equal(view["x"], panel["x"][1:4])
+        assert np.shares_memory(view["x"], panel["x"])
+
     def test_direct_view_construction_normalizes_selector(self):
         panel = _make_panel()
         selector = np.zeros(N_OBS, dtype=np.bool_)
@@ -2251,3 +2399,259 @@ class TestPersistence:
         assert metadata["fields"]["exposures"]["type"] == "Field3D"
         assert metadata["fields"]["exposures"]["inactive_policy"] == "missing"
         assert metadata["fields"]["exposures"]["third_axis_name"] == "factor"
+
+
+class TestEdgeCases:
+    def test_decode_categorical_field_rejects_non_categorical(self):
+        panel = _make_full_panel()
+
+        with pytest.raises(TypeError, match="Field 'momentum' is not categorical"):
+            panel.decode_categorical_field("momentum")
+
+    def test_view_requires_owner(self):
+        with pytest.raises(ValueError, match="AssetPanelView requires an owner"):
+            AssetPanelView(owner=None)
+
+    def test_view_default_selector_selects_all_observations(self):
+        panel = _make_panel()
+
+        view = AssetPanelView(owner=panel)
+
+        assert view.observation_selector == slice(None)
+        assert view.n_observations == N_OBS
+        np.testing.assert_array_equal(view["x"], panel["x"])
+
+    def test_isel_negative_integer_selector_counts_from_end(self):
+        panel = _make_panel()
+
+        view = panel.isel(observations=-1)
+
+        assert view.n_observations == 1
+        np.testing.assert_array_equal(view["x"], panel["x"][[-1]])
+        np.testing.assert_array_equal(view.observations, [N_OBS - 1])
+
+    def test_sel_3d_group_scalar_and_slice_selectors(self):
+        panel = _make_full_panel()
+
+        by_scalar = panel.sel_3d("exposures", groups="market")
+        np.testing.assert_array_equal(by_scalar, panel["exposures"][:, :, [0]])
+
+        by_slice = panel.sel_3d("exposures", groups=slice("style", "style"))
+        np.testing.assert_array_equal(by_slice, panel["exposures"][:, :, 1:])
+
+    def test_observations_must_be_1d(self):
+        with pytest.raises(ValueError, match="observations must be a 1D array"):
+            _make_panel(observations=np.arange(N_OBS).reshape(N_OBS, 1))
+
+    def test_assets_must_be_1d(self):
+        with pytest.raises(ValueError, match="assets must be a 1D array"):
+            _make_panel(assets=ASSETS.reshape(2, 2))
+
+    def test_delitem_unknown_field_raises_key_error(self):
+        panel = _make_panel()
+
+        with pytest.raises(KeyError, match="missing"):
+            del panel["missing"]
+
+    def test_sel_observations_only_returns_view(self):
+        panel = _make_panel()
+
+        view = panel.sel(observations=[1, 3])
+
+        assert isinstance(view, AssetPanelView)
+        assert view.n_observations == 2
+        np.testing.assert_array_equal(view["x"], panel["x"][[1, 3]])
+
+    def test_rename_without_mapping_is_a_noop(self):
+        panel = _make_panel()
+
+        assert panel.rename() is panel
+        assert list(panel.fields) == ["x"]
+
+    def test_info_without_active_mask_falls_back_to_total_statistics(self):
+        panel = _make_full_panel()
+        panel["momentum"][~panel.active_mask] = np.nan
+        # Exercise the defensive path used when no active mask is available.
+        panel.active_mask = None
+
+        report = panel.info()
+
+        assert "Active Mask" in report
+        assert "Not set." in report
+        assert "Field Coverage" in report
+        assert "Categorical Fields" in report
+        momentum_line = next(
+            line for line in report.splitlines() if line.strip().startswith("momentum")
+        )
+        # Without an active mask the "in Active Mask" column equals the total
+        # column and no asset can be flagged as fully missing.
+        columns = momentum_line.split()
+        assert columns[2] == columns[3]
+        assert columns[-1] == "0"
+
+    def test_info_truncates_long_categorical_level_lists(self):
+        panel = _make_panel()
+        levels = [f"L{i}" for i in range(8)]
+        panel["sector"] = FieldCategorical(
+            np.zeros((N_OBS, N_ASSETS), dtype=np.int64), levels=levels
+        )
+
+        report = panel.info()
+
+        assert "< 10 :  8 levels  (L0, L1, L2, L3, ... +4 more)" in report
+
+    def test_info_formats_datetime_observation_range(self):
+        observations = np.datetime64("2024-01-01") + np.arange(N_OBS)
+        panel = _make_full_panel(observations=observations)
+
+        report = panel.info()
+
+        assert "(2024-01-01 -> 2024-01-20)" in report
+
+    def test_info_formats_single_observation(self):
+        panel = AssetPanel(
+            fields={"x": np.ones((1, 2))},
+            observations=[7],
+            asset_names=["A", "B"],
+        )
+
+        assert "Observations  : 1  (7)" in panel.info()
+
+    def test_format_observation_range_empty_returns_empty_string(self):
+        assert _format_observation_range(np.array([])) == ""
+
+    def test_load_rejects_newer_format_version(self, tmp_path):
+        _make_panel().save(tmp_path / "panel")
+        metadata_path = tmp_path / "panel" / "_metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["version"] += 1
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        with pytest.raises(
+            ValueError,
+            match=f"Unsupported AssetPanel format version {metadata['version']}",
+        ):
+            AssetPanel.load(tmp_path / "panel")
+
+    def test_load_rejects_unknown_field_type(self, tmp_path):
+        _make_panel().save(tmp_path / "panel")
+        metadata_path = tmp_path / "panel" / "_metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["fields"]["x"]["type"] = "Field4D"
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="Unsupported field type 'Field4D'"):
+            AssetPanel.load(tmp_path / "panel")
+
+    def test_estimation_mask_shape_mismatch_raises(self):
+        with pytest.raises(ValueError, match="estimation_mask must have shape"):
+            AssetPanel(
+                fields={"x": np.ones((N_OBS, N_ASSETS))},
+                observations=OBSERVATIONS.copy(),
+                asset_names=ASSETS.copy(),
+                estimation_mask=np.ones((N_OBS, N_ASSETS + 1), dtype=np.bool_),
+            )
+
+    def test_active_mask_dtype_mismatch_raises(self):
+        with pytest.raises(ValueError, match="active_mask must have dtype bool"):
+            AssetPanel(
+                fields={"x": np.ones((N_OBS, N_ASSETS))},
+                observations=OBSERVATIONS.copy(),
+                asset_names=ASSETS.copy(),
+                active_mask=np.ones((N_OBS, N_ASSETS), dtype=np.int64),
+            )
+
+    def test_mask_invariants_reject_estimation_outside_active(self):
+        panel = _make_full_panel()
+        # Bypass the subset enforcement to check the invariant guard itself.
+        panel.estimation_mask = np.ones((N_OBS, N_ASSETS), dtype=np.bool_)
+
+        with pytest.raises(
+            ValueError, match="estimation_mask must be a subset of active_mask"
+        ):
+            panel._validate_masks_invariants()
+
+    def test_edit_masks_applies_zero_and_missing_policies_to_3d_fields(self):
+        panel = _make_panel()
+        panel["zero_3d"] = Field3D(
+            np.ones((N_OBS, N_ASSETS, 2)),
+            third_axis_name="k",
+            third_axis_labels=["a", "b"],
+            inactive_policy=InactivePolicy.ZERO,
+        )
+        panel["missing_3d"] = Field3D(
+            np.ones((N_OBS, N_ASSETS, 2)),
+            third_axis_name="k",
+            third_axis_labels=["a", "b"],
+        )
+
+        with panel.edit_masks():
+            panel.active_mask[0, 0] = False
+
+        assert (panel["zero_3d"][0, 0] == 0).all()
+        assert (panel["zero_3d"][1:] == 1).all()
+        assert np.isnan(panel["missing_3d"][0, 0]).all()
+        assert (panel["missing_3d"][1:] == 1).all()
+
+    def test_fill_rejects_non_floating_field2d(self):
+        panel = _make_panel()
+        panel["count"] = Field2D(
+            np.ones((N_OBS, N_ASSETS), dtype=np.int64),
+            inactive_policy=InactivePolicy.IGNORE,
+        )
+
+        with pytest.raises(TypeError, match="ffill only supports floating Field2D"):
+            panel.ffill("count")
+        with pytest.raises(TypeError, match="bfill only supports floating Field2D"):
+            panel.bfill("count")
+
+    def test_concat_requires_consistent_3d_groups_presence(self):
+        left = _make_full_panel()
+        right = _make_full_panel()
+        right.fields["exposures"] = Field3D(
+            right["exposures"],
+            third_axis_name="factor",
+            third_axis_labels=["mkt", "size", "value"],
+        )
+
+        with pytest.raises(ValueError, match="inconsistent third_axis_groups"):
+            concat([left, right])
+        with pytest.raises(ValueError, match="inconsistent third_axis_groups"):
+            concat([right, left])
+
+    def test_concat_requires_matching_3d_groups(self):
+        left = _make_full_panel()
+        right = _make_full_panel()
+        right.fields["exposures"] = Field3D(
+            right["exposures"],
+            third_axis_name="factor",
+            third_axis_labels=["mkt", "size", "value"],
+            third_axis_groups=["market", "style", "quality"],
+        )
+
+        with pytest.raises(ValueError, match="different third_axis_groups"):
+            concat([left, right])
+
+    def test_try_as_contiguous_slice_rejects_non_1d(self):
+        assert _try_as_contiguous_slice(np.zeros((2, 2), dtype=np.intp)) is None
+
+    def test_compose_observation_selectors_with_integer_inner_selector(self):
+        composed = _compose_observation_selectors(
+            np.array([4, 6, 8]), 1, total_length=10
+        )
+
+        assert composed == slice(6, 7)
+
+    def test_normalize_positional_selector_none_selects_all(self):
+        assert _normalize_positional_selector(5, None) == slice(None)
+
+    def test_fill_2d_without_mask_matches_pandas(self):
+        values = np.array([[np.nan, 1.0], [2.0, np.nan], [np.nan, np.nan]])
+
+        ffilled = _fill_2d(values, method="ffill", limit=None, mask=None)
+        bfilled = _fill_2d(values, method="bfill", limit=1, mask=None)
+
+        np.testing.assert_array_equal(ffilled, pd.DataFrame(values).ffill().to_numpy())
+        np.testing.assert_array_equal(
+            bfilled, pd.DataFrame(values).bfill(limit=1).to_numpy()
+        )

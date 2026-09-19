@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn.model_selection as sks
 from sklearn import config_context
+from sklearn.exceptions import NotFittedError
 
 from skfolio import RiskMeasure
 from skfolio.model_selection import CombinatorialPurgedCV
 from skfolio.moments import ImpliedCovariance
-from skfolio.optimization import MeanRisk, StackingOptimization
+from skfolio.optimization import EqualWeighted, MeanRisk, StackingOptimization
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
@@ -195,3 +197,58 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
     assert not hasattr(
         model.estimators_[2].prior_estimator_.covariance_estimator_, "r2_scores_"
     )
+
+
+@pytest.fixture(scope="module")
+def X_tiny():
+    rng = np.random.default_rng(0)
+    return pd.DataFrame(rng.normal(0.0005, 0.01, (60, 6)), columns=list("ABCDEF"))
+
+
+def test_stacking_named_estimators():
+    estimators = [("model1", MeanRisk()), ("model2", EqualWeighted())]
+    model = StackingOptimization(estimators=estimators)
+    named = model.named_estimators
+    assert list(named) == ["model1", "model2"]
+    assert named.model2 is estimators[1][1]
+
+
+@pytest.mark.parametrize("estimators", [None, []])
+def test_stacking_invalid_estimators(X_tiny, estimators):
+    model = StackingOptimization(estimators=estimators)
+    with pytest.raises(ValueError, match="Invalid 'estimators' attribute"):
+        model.fit(X_tiny)
+
+
+def test_stacking_prefit(X_tiny):
+    est1 = EqualWeighted().fit(X_tiny)
+    est2 = MeanRisk().fit(X_tiny)
+    model = StackingOptimization(
+        estimators=[("ew", est1), ("mr", est2)],
+        final_estimator=EqualWeighted(),
+        cv="prefit",
+    )
+    model.fit(X_tiny)
+    assert model.estimators_[0] is est1
+    assert model.estimators_[1] is est2
+    np.testing.assert_almost_equal(
+        model.weights_, 0.5 * est1.weights_ + 0.5 * est2.weights_
+    )
+
+
+def test_stacking_prefit_requires_fitted_estimators(X_tiny):
+    model = StackingOptimization(estimators=[("ew", EqualWeighted())], cv="prefit")
+    with pytest.raises(NotFittedError):
+        model.fit(X_tiny)
+
+
+def test_stacking_cv_with_y(X_tiny):
+    rng = np.random.default_rng(1)
+    y = pd.Series(rng.normal(0.0, 0.01, len(X_tiny)), name="benchmark")
+    model = StackingOptimization(
+        estimators=[("ew", EqualWeighted()), ("mr", MeanRisk())],
+        final_estimator=EqualWeighted(),
+        cv=sks.KFold(n_splits=3),
+    )
+    model.fit(X_tiny, y)
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)

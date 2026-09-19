@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import tracemalloc
 
 import numpy as np
@@ -753,25 +754,39 @@ def test_clear_cache(X, max_depth):
 
 
 def test_memory_fit(X):
-    model = VineCopula(
-        max_depth=100,
-        marginal_candidates=[Gaussian()],
-        copula_candidates=[GaussianCopula()],
-    )
+    n_observations, n_assets = X.shape
+    col = n_observations * 8
 
-    tracemalloc.start()
+    def _model():
+        return VineCopula(
+            max_depth=100,
+            marginal_candidates=[Gaussian()],
+            copula_candidates=[GaussianCopula()],
+        )
+
+    _model().fit(X)
+    gc.collect()
+
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    model.fit(X)
+    _model().fit(X)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
-    assert current < 500_000
-    expected_peak = 18_000 * 2 * (20 + 19)  # 18_000 is the memory of a numpy of len(X)
+
+    assert current < col * n_assets * 1.5
+    expected_peak = col * 2 * (2 * n_assets - 1)
     assert peak < expected_peak * 1.5
+    tracemalloc.stop()
 
 
 def test_memory_sample(X):
+    n_samples = 100_000
+    n_assets = X.shape[1]
+    col = n_samples * 8
     model = VineCopula(
         max_depth=None,
         marginal_candidates=[Gaussian()],
@@ -779,20 +794,22 @@ def test_memory_sample(X):
     )
     model.fit(X)
 
-    tracemalloc.start()
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
     tracemalloc.clear_traces()
+    tracemalloc.reset_peak()
     start = tracemalloc.get_traced_memory()
-    _ = model.sample(100_000)
+    _ = model.sample(n_samples)
     end = tracemalloc.get_traced_memory()
     current = end[0] - start[0]
     peak = end[1] - start[1]
 
-    # 800_000 is the memory of a numpy of len 100_000
-    expected_current = 800_000 * 20
-    expected_peak_without_optim = 800_000 * 2 * (20 * 21) / 2
+    expected_current = col * n_assets
+    expected_peak_without_optim = col * 2 * (n_assets * (n_assets + 1) / 2)
 
     assert current < expected_current * 1.5
     assert peak < expected_peak_without_optim * 0.5
+    tracemalloc.stop()
 
 
 @pytest.mark.parametrize(
@@ -1573,3 +1590,90 @@ def test_vine_plot_raise(X):
 #             )
 #         trees.append(edges)
 #     return trees
+
+
+@pytest.fixture
+def small_returns():
+    rng = np.random.default_rng(0)
+    return rng.standard_normal((100, 3)) * 0.01
+
+
+@pytest.fixture
+def small_uniforms():
+    rng = np.random.default_rng(0)
+    return rng.random((100, 3))
+
+
+@pytest.fixture
+def small_model(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    return model.fit(small_returns)
+
+
+def test_vine_score_samples_log_transform(small_returns):
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        log_transform=True,
+        random_state=0,
+    )
+    model.fit(small_returns)
+    scores = model.score_samples(small_returns)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_score_samples_without_marginals(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False, copula_candidates=[GaussianCopula()], random_state=0
+    )
+    model.fit(small_uniforms)
+    scores = model.score_samples(small_uniforms)
+    assert scores.shape == (100,)
+    assert np.all(np.isfinite(scores))
+
+
+def test_vine_sample_without_marginals_bounds_conditioning(small_uniforms):
+    model = VineCopula(
+        fit_marginals=False,
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    )
+    model.fit(small_uniforms)
+    sample = model.sample(n_samples=20, conditioning={0: (0.2, 0.8)})
+    assert sample.shape == (20, 3)
+    assert np.all((sample[:, 0] >= 0.2) & (sample[:, 0] <= 0.8))
+
+
+def test_vine_conditioning_raise(small_model):
+    with pytest.raises(ValueError, match="`conditioning` must be a dictionary"):
+        small_model.sample(n_samples=5, conditioning=[0.5])
+    with pytest.raises(ValueError, match="it must beof length 2"):
+        small_model.sample(n_samples=5, conditioning={0: (0.1, 0.2, 0.3)})
+    with pytest.raises(ValueError, match="lower bound must be lower than"):
+        small_model.sample(n_samples=5, conditioning={0: (0.5, -0.5)})
+    with pytest.raises(ValueError, match="Conditioning values should be numbers"):
+        small_model.sample(n_samples=5, conditioning={0: "abc"})
+
+
+def test_vine_conditioning_keys_not_in_X(small_model):
+    with pytest.raises(ValueError, match="99 is not in"):
+        small_model.sample(n_samples=5, conditioning={99: 0.5})
+
+
+def test_vine_sampling_order_incomplete(small_model):
+    # A fitted state inconsistent with the trees is detected by the sanity check.
+    small_model.n_features_in_ = 4
+    with pytest.raises(ValueError, match="Sampling order computation failed"):
+        small_model._sampling_order()
+
+
+def test_vine_plot_marginal_distributions_raise_ndim(small_model):
+    with pytest.raises(ValueError, match="X should be an 2D array"):
+        small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))

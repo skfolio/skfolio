@@ -27,7 +27,7 @@ from skfolio.portfolio._portfolio import (
     _select_realized_observation_window,
 )
 from skfolio.typing import FloatArray
-from skfolio.utils.tools import deduplicate_names
+from skfolio.utils.tools import args_names, deduplicate_names
 
 if TYPE_CHECKING:
     from skfolio.prior import FactorModel
@@ -373,7 +373,8 @@ class MultiPeriodPortfolio(BasePortfolio):
             annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
-            sample_weight=sample_weight,
+            # Defer validation until the combined observations are available.
+            sample_weight=None,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
             cvar_beta=cvar_beta,
@@ -387,6 +388,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         )
         self.check_observations_order = check_observations_order
         self._set_portfolios(portfolios=portfolios)
+        self.sample_weight = sample_weight
 
     def __len__(self) -> int:
         return len(self.portfolios)
@@ -417,39 +419,19 @@ class MultiPeriodPortfolio(BasePortfolio):
         return value in self._portfolios
 
     def __neg__(self):
-        return self.__class__(
-            portfolios=[-p for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([-p for p in self])
 
     def __abs__(self):
-        return self.__class__(
-            portfolios=[abs(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([abs(p) for p in self])
 
     def __round__(self, n: int):
-        return self.__class__(
-            portfolios=[p.__round__(n) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([round(p, n) for p in self])
 
     def __floor__(self):
-        return self.__class__(
-            portfolios=[np.floor(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__floor__() for p in self])
 
     def __trunc__(self):
-        return self.__class__(
-            portfolios=[np.trunc(p) for p in self],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
-        )
+        return self._create_from_child_portfolios([p.__trunc__() for p in self])
 
     def __add__(self, other):
         if not isinstance(other, self.__class__):
@@ -459,10 +441,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             )
         if len(self) != len(other):
             raise TypeError("Cannot add two MultiPeriodPortfolio of different sizes")
-        return self.__class__(
-            portfolios=[p1 + p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._create_from_child_portfolios(
+            [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __sub__(self, other):
@@ -475,10 +456,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             raise TypeError(
                 "Cannot subtract two MultiPeriodPortfolio of different sizes"
             )
-        return self.__class__(
-            portfolios=[p1 - p2 for p1, p2 in zip(self, other, strict=True)],
-            tag=self.tag,
-            fitness_measures=self.fitness_measures,
+        self._check_compatible_parameters(other=other)
+        return self._create_from_child_portfolios(
+            [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
     def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
@@ -486,9 +466,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p * other for p in self]
         else:
             portfolios = [p * a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
     __rmul__ = __mul__
 
@@ -497,20 +475,36 @@ class MultiPeriodPortfolio(BasePortfolio):
             portfolios = [p // other for p in self]
         else:
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
     def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
             portfolios = [p / a for p, a in zip(self, other, strict=True)]
-        return self.__class__(
-            portfolios=portfolios, tag=self.tag, fitness_measures=self.fitness_measures
-        )
+        return self._create_from_child_portfolios(portfolios)
 
-    # Private method
+    # Private methods
+    def _check_compatible_parameters(self, other: MultiPeriodPortfolio) -> None:
+        """Require the same evaluation settings when combining portfolios."""
+        for name in args_names(self.__init__):
+            if name in ("portfolios", "name", "tag", "check_observations_order"):
+                continue
+            if not np.array_equal(getattr(self, name), getattr(other, name)):
+                raise ValueError(
+                    f"Cannot combine two MultiPeriodPortfolios with different `{name}`"
+                )
+
+    def _create_from_child_portfolios(
+        self, portfolios: list[Portfolio]
+    ) -> MultiPeriodPortfolio:
+        """Create a new instance from child portfolios, preserving this instance's
+        settings.
+        """
+        params = self._get_init_params()
+        params["portfolios"] = portfolios
+        return self.__class__(**params)
+
     def _set_portfolios(self, portfolios: list[Portfolio] | None = None) -> None:
         """Set the returns, observations and portfolios list.
 
@@ -621,6 +615,40 @@ class MultiPeriodPortfolio(BasePortfolio):
             name: ptf.previous_weights_dict
             for name, ptf in zip(names, self.portfolios, strict=True)
         }
+
+    @property
+    def ending_weights_dict(self) -> dict[str, dict[str, float]]:
+        """Map each Portfolio name to its weights at the end of its observation window.
+
+        For each Portfolio, the nested dictionary contains its `ending_weights_dict`,
+        as determined by that Portfolio's `weight_drift` setting. Failed portfolios map
+        every asset to NaN. In a sequential evaluation, the next optimization uses the
+        last successful ending weights as `previous_weights`.
+        """
+        names = deduplicate_names([ptf.name for ptf in self.portfolios])
+        return {
+            name: ptf.ending_weights_dict
+            for name, ptf in zip(names, self.portfolios, strict=True)
+        }
+
+    @property
+    def turnover(self) -> pd.Series:
+        """Turnover of each Portfolio, indexed by its first observation.
+
+        In a sequentially evaluated path, `previous_weights` come from the last
+        successful Portfolio. With `weight_drift=False`, they are its target weights,
+        so each value measures target turnover. With `weight_drift=True`, they include
+        the intervening drift, so each value measures executed turnover. Failed
+        portfolios have a NaN value. Empty portfolios are omitted because they have
+        no observation to use as a rebalancing date.
+        """
+        portfolios = [p for p in self.portfolios if p.n_observations]
+        return pd.Series(
+            data=[portfolio.turnover for portfolio in portfolios],
+            index=[portfolio.observations[0] for portfolio in portfolios],
+            name="turnover",
+            dtype=float,
+        )
 
     @property
     def weights_per_observation(self) -> pd.DataFrame:
@@ -1101,7 +1129,6 @@ def _prepare_multi_period_realized_attribution_inputs(
     if len(multi_period_portfolio) == 0:
         raise ValueError("Cannot compute attribution on an empty MultiPeriodPortfolio.")
 
-    n_factor_model_assets = len(factor_model.asset_names)
     observation_parts: list[np.ndarray] = []
     return_parts: list[np.ndarray] = []
     weight_parts: list[np.ndarray] = []
@@ -1109,13 +1136,17 @@ def _prepare_multi_period_realized_attribution_inputs(
     for portfolio in multi_period_portfolio:
         if isinstance(portfolio, FailedPortfolio):
             continue
+        if portfolio.weight_drift:
+            # Weights held during each observation, shape (n_observations, n_assets).
+            weights = portfolio._get_weights_path()
+        else:
+            weights = np.broadcast_to(
+                portfolio.weights, (portfolio.n_observations, portfolio.n_assets)
+            )
         aligned_weights = _align_weights(
-            portfolio.weights, portfolio.assets, factor_model.asset_names
+            weights, portfolio.assets, factor_model.asset_names
         )
-        n_observations = len(portfolio.observations)
-        weight_parts.append(
-            np.broadcast_to(aligned_weights, (n_observations, n_factor_model_assets))
-        )
+        weight_parts.append(aligned_weights)
         observation_parts.append(portfolio.observations)
         return_parts.append(portfolio.returns)
 

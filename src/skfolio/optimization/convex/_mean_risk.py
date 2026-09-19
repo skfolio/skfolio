@@ -274,6 +274,12 @@ class MeanRisk(ConvexOptimization):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -333,6 +339,8 @@ class MeanRisk(ConvexOptimization):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -470,10 +478,11 @@ class MeanRisk(ConvexOptimization):
             :ref:`Tracking Error Optimization <tracking_error_optimization>`
 
     max_turnover : float, optional
-        Upper bound constraint of the turnover.
-        The turnover is defined as the absolute difference between the portfolio weights
-        and the `previous_weights`. Note that another way to control for turnover is by
-        using the `transaction_costs` parameter.
+        Upper bound on each investable asset's absolute weight change from
+        `previous_weights`. For positions outside the investment universe,
+        transaction costs and the predicted portfolio's `turnover` are calculated
+        assuming full liquidation, without applying this limit. Transaction costs
+        can also be used to control turnover.
 
     max_mean_absolute_deviation : float | array-like of shape (n_optimization), optional
         Upper bound constraint on the Mean Absolute Deviation.
@@ -723,7 +732,9 @@ class MeanRisk(ConvexOptimization):
     >>> # Minimum variance optimization
     >>> model = MeanRisk(risk_measure=RiskMeasure.VARIANCE)
     >>> model.fit(X)
+    MeanRisk()
     >>> print(model.weights_)
+    [0.026  0.     0.     ... 0.0097 0.1157 0.0892]
     >>>
     >>> # Maximum Sharpe Ratio optimization
     >>> model = MeanRisk(
@@ -731,7 +742,9 @@ class MeanRisk(ConvexOptimization):
     ...     risk_measure=RiskMeasure.STANDARD_DEVIATION,
     ... )
     >>> model.fit(X)
+    MeanRisk(objective_function=MAXIMIZE_RATIO, risk_measure=Standard Deviation)
     >>> print(model.weights_)
+    [0.1014 0.0009 0.     ... 0.2149 0.0006 0.    ]
     >>>
     >>> # Minimum CVaR optimization with weight and linear constraints
     >>> model = MeanRisk(
@@ -740,7 +753,10 @@ class MeanRisk(ConvexOptimization):
     ...     linear_constraints=["AMD <= 0.10", "BAC + JPM >= 0.15"],
     ... )
     >>> model.fit(X)
+    MeanRisk(linear_constraints=['AMD <= 0.10', 'BAC + JPM >= 0.15'],
+             max_weights=0.2, risk_measure=CVaR)
     >>> print(model.weights_)
+    [0.0112 0.     0.0147 ... 0.     0.1103 0.0834]
     >>>
     >>> # Compute portfolios along the mean-variance efficient frontier
     >>> model = MeanRisk(
@@ -748,7 +764,9 @@ class MeanRisk(ConvexOptimization):
     ...     efficient_frontier_size=10,
     ... )
     >>> model.fit(X)
+    MeanRisk(efficient_frontier_size=10)
     >>> print(model.weights_.shape)
+    (10, 20)
     >>> population = model.predict(X)
 
     References
@@ -1251,7 +1269,8 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            args[arg_name] = w - target_weights
+                            # Scale the target too; final weights are w / factor.
+                            args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
                     elif arg_name == "covariance_uncertainty_set":

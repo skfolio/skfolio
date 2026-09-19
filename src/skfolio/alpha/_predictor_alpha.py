@@ -240,7 +240,9 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     >>> from skfolio.alpha import ForecastUnit, PredictorAlpha
     >>> from skfolio.descriptor import EWMomentum, BookToPrice, Reversal, Passthrough
     >>>
-    >>> X = make_synthetic_characteristics()
+    >>> X = make_synthetic_characteristics(
+    ...     n_assets=100, n_observations=504, n_industries=5, random_state=0
+    ... )
     >>> rng = np.random.default_rng(0)
     >>>
     >>> # Alpha models regress forward idiosyncratic returns. In production these
@@ -264,9 +266,10 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ...     third_axis_name="factors",
     ...     third_axis_labels=["market", "beta", "size"],
     ... )
+    AssetPanel(n_observations=504, n_assets=100, n_fields=25)
     >>>
     >>> alpha_model = PredictorAlpha(
-    ...     predictor=SGDRegressor(),
+    ...     predictor=SGDRegressor(random_state=0),
     ...     descriptors=[
     ...         ("momentum", EWMomentum()),
     ...         ("book_to_price", BookToPrice()),
@@ -279,12 +282,17 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ...     forecast_unit=ForecastUnit.IDIO_SHARPE,
     ... )
     >>>
-    >>> alpha_model.fit(X)
-    >>> print(alpha_model.alpha_)
+    >>> alpha_model.fit(X[:-5])
+    PredictorAlpha(...)
+    >>> # Preview five forecasts; NaN means no forecast is available.
+    >>> print(alpha_model.alpha_[:5])
+    [-0.000494... nan          0.000636...  -0.000259... nan]
     >>>
-    >>> # Online learning (requires predictor with partial_fit)
+    >>> # Update with the next five observations (requires partial_fit support)
     >>> alpha_model.partial_fit(X[-5:])
-    >>> print(alpha_model.alpha_)
+    PredictorAlpha(...)
+    >>> print(alpha_model.alpha_[:5])
+    [-0.00538... nan         0.0129...   0.00477...  nan]
 
     See Also
     --------

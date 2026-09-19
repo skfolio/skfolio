@@ -245,7 +245,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
     >>> # Standard EWMA with STVU
     >>> model = RegimeAdjustedEWVariance(half_life=23)
     >>> model.fit(X)
+    RegimeAdjustedEWVariance(half_life=23)
     >>> print(model.regime_multiplier_)
+    0.810...
     >>>
     >>> # With LOG method for robustness to outliers
     >>> model2 = RegimeAdjustedEWVariance(
@@ -253,6 +255,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     ...     regime_method=RegimeAdjustmentMethod.LOG
     ... )
     >>> model2.fit(X)
+    RegimeAdjustedEWVariance(half_life=11, regime_method=LOG)
     >>>
     >>> # With Newey-West HAC correction for autocorrelation
     >>> model3 = RegimeAdjustedEWVariance(
@@ -260,12 +263,14 @@ class RegimeAdjustedEWVariance(BaseVariance):
     ...     hac_lags=5    # 5-lag Newey-West correction
     ... )
     >>> model3.fit(X)
+    RegimeAdjustedEWVariance(hac_lags=5, half_life=23)
     >>>
     >>> # With an estimation universe focused on specific assets
     >>> estimation_mask = np.ones((len(X), X.shape[1]), dtype=bool)
     >>> estimation_mask[:, :5] = False  # Exclude first 5 assets from STVU
     >>> model4 = RegimeAdjustedEWVariance(half_life=23)
     >>> model4.fit(X, estimation_mask=estimation_mask)
+    RegimeAdjustedEWVariance(half_life=23)
     """
 
     regime_multiplier_: float

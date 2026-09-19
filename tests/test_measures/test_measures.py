@@ -252,7 +252,11 @@ def test_variance_sample_weight(returns, biased):
         ("2d", 0.0, False, False, [0.0003480616, 0.000686374]),
         ("2d", 0.0, False, True, [0.0003480198, 0.0006862914]),
         ("1d_nan", None, False, True, 0.0953125),
+        ("1d_nan", None, False, False, 0.1270833333),
+        ("2d_nan", None, False, True, [0.085, 0.0763483965]),
+        ("2d_nan", None, False, False, [0.10625, 0.0890731293]),
         ("all_nan", None, False, True, np.nan),
+        ("all_nan", None, False, False, np.nan),
         ("all_nan", None, True, True, np.nan),
     ],
     indirect=["returns", "sample_weight"],
@@ -340,7 +344,11 @@ def test_standard_deviation_sample_weight(returns, biased):
         ("2d", 0.0, False, False, [0.0186564, 0.02619866]),
         ("2d", 0.0, False, True, [0.0186553, 0.0261972]),
         ("1d_nan", None, False, True, 0.308727225),
+        ("1d_nan", None, False, False, 0.3564874939),
+        ("2d_nan", None, False, True, [0.2915475947, 0.276312136]),
+        ("2d_nan", None, False, False, [0.3259601203, 0.2984512175]),
         ("all_nan", None, False, True, np.nan),
+        ("all_nan", None, False, False, np.nan),
         ("all_nan", None, True, True, np.nan),
     ],
     indirect=["returns", "sample_weight"],
@@ -376,6 +384,35 @@ def test_semi_deviation_sample_weight(returns, biased, min_acceptable_return):
         ),
         10,
     )
+
+
+@pytest.mark.parametrize("measure", [skm.semi_variance, skm.semi_deviation])
+def test_semi_measures_nan_correction_matches_dropping_nans(measure):
+    # Padding a series with NaNs must not change the result.
+    returns = np.array([np.nan, 0.1, -0.5, np.nan, np.nan, -0.3, 0.8])
+    np.testing.assert_almost_equal(
+        measure(returns), measure(returns[~np.isnan(returns)]), 10
+    )
+
+    returns_2d = np.array(
+        [
+            [0.15, 0.1, -0.5, np.nan, np.nan, -0.3, 0.8],
+            [0.15, 0.1, -0.5, 0.3, 0.2, -0.3, 0.8],
+        ]
+    ).T
+    for i in range(returns_2d.shape[1]):
+        column = returns_2d[:, i]
+        np.testing.assert_almost_equal(
+            measure(returns_2d)[i], measure(column[~np.isnan(column)]), 10
+        )
+
+
+@pytest.mark.parametrize("measure", [skm.semi_variance, skm.semi_deviation])
+def test_semi_measures_insufficient_observations(measure):
+    # Match variance's behavior for fewer than two valid observations.
+    assert np.isnan(skm.variance(np.array([0.1])))
+    assert np.isnan(measure(np.array([0.1])))
+    assert np.isnan(measure(np.array([np.nan, 0.1, np.nan])))
 
 
 @pytest.mark.parametrize(
@@ -588,6 +625,25 @@ def test_cvar_sample_weight(returns):
         skm.cvar(returns),
         10,
     )
+
+
+@pytest.mark.parametrize("measure", [skm.value_at_risk, skm.cvar])
+def test_tail_risk_2d_preserves_all_nan_columns(measure):
+    returns = np.array([[np.nan, -0.2], [np.nan, 0.1]])
+
+    result = measure(returns)
+
+    assert np.isnan(result[0])
+    np.testing.assert_allclose(result[1], 0.2)
+
+
+def test_weighted_cvar_when_first_observation_exceeds_tail_probability():
+    returns = np.array([-0.1, 0.2])
+    sample_weight = np.array([0.9, 0.1])
+
+    result = skm.cvar(returns, beta=0.95, sample_weight=sample_weight)
+
+    np.testing.assert_allclose(result, 0.1)
 
 
 @pytest.mark.parametrize(
@@ -804,6 +860,27 @@ def test_owa_gmd_weights(n_observations):
 )
 def test_gini_mean_difference(returns, expected):
     np.testing.assert_almost_equal(skm.gini_mean_difference(returns), expected)
+
+
+def test_gini_mean_difference_2d_handles_nan_columns_independently():
+    returns = np.array(
+        [
+            [1.0, np.nan, 2.0],
+            [3.0, np.nan, 4.0],
+            [np.nan, np.nan, 6.0],
+        ]
+    )
+
+    result = skm.gini_mean_difference(returns)
+
+    np.testing.assert_allclose(
+        result[[0, 2]],
+        [
+            skm.gini_mean_difference(returns[:, 0]),
+            skm.gini_mean_difference(returns[:, 2]),
+        ],
+    )
+    assert np.isnan(result[1])
 
 
 @pytest.mark.parametrize(

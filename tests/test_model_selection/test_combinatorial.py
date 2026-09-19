@@ -415,3 +415,32 @@ def test_combinatorial_purged_cv_regression():
         # Should contain valid indices
         for test_array in test:
             assert np.all((test_array >= 0) & (test_array < len(X)))
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        ({"n_folds": 3.5}, "The number of folds must be of Integral type"),
+        ({"n_folds": 2, "n_test_folds": 2}, "`n_folds` must be at least 3"),
+        ({"n_folds": 3, "n_test_folds": 1}, "`n_test_folds` must at least 2"),
+        (
+            {"n_folds": 3, "n_test_folds": 3},
+            "requires `n_folds` to be greater than `n_test_folds`",
+        ),
+        ({"n_folds": 3, "n_test_folds": 2, "purged_size": -1}, "`purged_size`"),
+        ({"n_folds": 3, "n_test_folds": 2, "embargo_size": -1}, "`embargo_size`"),
+    ],
+)
+def test_combinatorial_purged_cv_invalid_init(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        CombinatorialPurgedCV(**kwargs)
+
+
+def test_combinatorial_purged_cv_split_rejects_too_large_purge_and_embargo():
+    X = np.zeros((12, 2))
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=2, embargo_size=1)
+    with pytest.raises(
+        ValueError,
+        match="sum of `purged_size` and `embargo_size` must be smaller than the size",
+    ):
+        list(cv.split(X))

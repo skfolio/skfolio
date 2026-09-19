@@ -52,12 +52,17 @@ Local development requires Python 3.10 or later and
    cd skfolio
    ```
 
-2. Create a virtual environment and install the development dependencies:
+2. Install the development environment and Git commit hook:
 
    ```shell
-   uv venv
-   uv pip install --editable ".[dev]"
+   uv sync
+   uv run pre-commit install
    ```
+
+   If a hook modifies files, stage them and commit again.
+
+   `uv sync` creates `.venv` and installs skfolio in editable mode, including the
+   default `dev` dependency group.
 
 3. Create a branch for your changes:
 
@@ -93,12 +98,24 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
+CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
+
+### Refreshing your environment
+
+To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
+
+```shell
+uv sync --upgrade
+```
+
+Add `--group docs` or `--group notebooks` if you use those tools.
+
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
-uv pip install --editable ".[dev,docs]"
+uv sync --group docs
 cd docs
 ```
 
@@ -125,6 +142,14 @@ documentation deployment workflow.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
+
+### Docstring examples
+
+Examples in public docstrings are run as doctests. They provide a basic check
+that the documented workflow works, but do not replace tests in `tests/`.
+
+Keep examples simple and readable. Avoid code written only to satisfy doctest.
+Put exact numerical checks, edge cases, and regression tests in `tests/`.
 
 ## Submit your changes
 

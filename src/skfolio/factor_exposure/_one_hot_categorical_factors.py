@@ -92,12 +92,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
         """
         validate_asset_panel(self, X, required_fields=[self.category])
 
-        try:
-            field = X.fields[self.category]
-        except KeyError as err:
-            raise ValueError(
-                f"Field '{self.category}' is not in the AssetPanel."
-            ) from err
+        field = X.fields[self.category]
 
         if not field.is_categorical:
             raise ValueError(f"Field '{self.category}' must be a CategoricalField.")

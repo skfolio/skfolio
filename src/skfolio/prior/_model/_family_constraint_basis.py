@@ -959,12 +959,6 @@ def compute_family_constraint_basis(
     if not parsed_constraints:
         raise ValueError("constrained_families must contain at least one family.")
 
-    if n_factors <= len(parsed_constraints):
-        raise ValueError(
-            f"n_factors={n_factors} must exceed number of "
-            f"constraints={len(parsed_constraints)}."
-        )
-
     benchmark_weight_sums = benchmark_weights.sum(axis=1, keepdims=True)
     if np.any(benchmark_weight_sums <= 0):
         raise ValueError(

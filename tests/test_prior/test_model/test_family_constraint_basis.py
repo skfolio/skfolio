@@ -8,6 +8,7 @@ import pytest
 from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraint,
     FamilyConstraintBasis,
+    _stack_family_full_indices,
     compute_family_constraint_basis,
 )
 
@@ -152,6 +153,27 @@ class TestFamilyConstraintBasisProperties:
         with pytest.raises(ValueError, match="non-negative"):
             basis.append_passthrough_factors(-1)
 
+    def test_direct_construction_validation(self):
+        family = FamilyConstraint("industry", np.array([0, 1]), 0)
+
+        with pytest.raises(ValueError, match="at least one family"):
+            FamilyConstraintBasis(2, (), np.empty((1, 0)))
+        with pytest.raises(ValueError, match="only FamilyConstraint"):
+            FamilyConstraintBasis(2, (object(),), np.ones((1, 1)))
+
+        out_of_range = FamilyConstraint("industry", np.array([0, 2]), 0)
+        with pytest.raises(ValueError, match=r"lie in \[0, n_full_factors\)"):
+            FamilyConstraintBasis(2, (out_of_range,), np.ones((1, 1)))
+
+        overlapping = FamilyConstraint("style", np.array([1, 2]), 0)
+        with pytest.raises(ValueError, match="must be disjoint"):
+            FamilyConstraintBasis(3, (family, overlapping), np.ones((1, 2)))
+
+        with pytest.raises(ValueError, match="must be a 2D array"):
+            FamilyConstraintBasis(2, (family,), np.ones(1))
+        with pytest.raises(ValueError, match="must have shape"):
+            FamilyConstraintBasis(2, (family,), np.ones((1, 2)))
+
 
 class TestBasisTransforms:
     @pytest.fixture()
@@ -258,6 +280,34 @@ class TestBasisTransforms:
             np.testing.assert_allclose(
                 projected[observation_index], expected, atol=1e-12
             )
+
+    def test_project_single_factor_coordinate_vector(self, setup, rng):
+        _, _, basis = setup
+        coordinates = rng.standard_normal(basis.n_full_factors)
+
+        projected = basis.project_factor_coordinates(coordinates)
+
+        contract_matrix = _contract_matrix_from_public_state(basis, -1)
+        np.testing.assert_allclose(projected, coordinates @ contract_matrix)
+
+    @pytest.mark.parametrize(
+        "method,value,error",
+        [
+            ("reduced_factor_names", np.ones((1, 5)), "1D array"),
+            ("reduce_exposures", np.ones((2, 3)), "3D array"),
+            ("reduce_loading_matrix", np.ones(5), "2D array"),
+            ("reduce_factor_returns", np.ones((1, 1, 1)), "1D or 2D array"),
+            ("expand_factor_returns", np.ones((1, 1, 1)), "1D or 2D array"),
+            ("expand_factor_mu", np.ones((1, 1)), "1D array"),
+            ("expand_factor_covariance", np.ones(2), "2D or 3D array"),
+            ("project_factor_coordinates", np.ones((1, 1, 1)), "1D or 2D array"),
+        ],
+    )
+    def test_transforms_reject_invalid_dimensions(self, setup, method, value, error):
+        _, _, basis = setup
+
+        with pytest.raises(ValueError, match=error):
+            getattr(basis, method)(value)
 
     def test_covariance_expansion_2d_matches_contract(self, setup, rng):
         _, _, basis = setup
@@ -423,6 +473,8 @@ class TestComputeFamilyConstraintBasis:
         [
             ({"factor_exposures": np.zeros((50, 30))}, "3D array"),
             ({"benchmark_weights": np.ones((10, 30))}, "benchmark_weights shape"),
+            ({"factor_names": np.ones((1, 5))}, "factor_names shape"),
+            ({"factor_families": np.ones((1, 5))}, "factor_families shape"),
         ],
     )
     def test_shape_validation(self, data, kwargs, match):
@@ -443,6 +495,54 @@ class TestComputeFamilyConstraintBasis:
         with pytest.raises(ValueError, match="not found"):
             compute_family_constraint_basis(
                 constrained_families=[("missing", None)],
+                factor_exposures=exposures,
+                benchmark_weights=benchmark_weights,
+                factor_names=factor_names,
+                factor_families=factor_families,
+            )
+
+    def test_factor_names_must_be_unique(self, data):
+        exposures, benchmark_weights, factor_names, factor_families = data
+        factor_names = factor_names.copy()
+        factor_names[1] = factor_names[2]
+
+        with pytest.raises(ValueError, match="factor_names must be unique"):
+            compute_family_constraint_basis(
+                constrained_families=[("industry", None)],
+                factor_exposures=exposures,
+                benchmark_weights=benchmark_weights,
+                factor_names=factor_names,
+                factor_families=factor_families,
+            )
+
+    def test_constrained_families_must_be_unique_and_non_singleton(self, data):
+        exposures, benchmark_weights, factor_names, factor_families = data
+
+        with pytest.raises(ValueError, match="appears more than once"):
+            compute_family_constraint_basis(
+                constrained_families=[("industry", None), ("industry", None)],
+                factor_exposures=exposures,
+                benchmark_weights=benchmark_weights,
+                factor_names=factor_names,
+                factor_families=factor_families,
+            )
+
+        with pytest.raises(ValueError, match="at least two factors"):
+            compute_family_constraint_basis(
+                constrained_families=[("style", None)],
+                factor_exposures=exposures,
+                benchmark_weights=benchmark_weights,
+                factor_names=factor_names,
+                factor_families=factor_families,
+            )
+
+    def test_benchmark_weights_need_positive_sum(self, data):
+        exposures, benchmark_weights, factor_names, factor_families = data
+        benchmark_weights[0] = 0.0
+
+        with pytest.raises(ValueError, match="strictly positive sum"):
+            compute_family_constraint_basis(
+                constrained_families=[("industry", None)],
                 factor_exposures=exposures,
                 benchmark_weights=benchmark_weights,
                 factor_names=factor_names,
@@ -658,3 +758,9 @@ class TestEdgeCases:
                 ),
                 constraint_ratios=np.array([[np.nan]]),
             )
+
+
+def test_stack_family_full_indices_returns_empty_array_without_families():
+    stacked = _stack_family_full_indices(())
+    assert stacked.dtype == int
+    assert stacked.shape == (0,)

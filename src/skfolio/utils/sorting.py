@@ -35,7 +35,7 @@ def dominate(fitness_1: FloatArray, fitness_2: FloatArray) -> bool:
     is_dominated : bool
         True if `fitness_1` dominates `fitness_2`, False otherwise.
     """
-    if fitness_1.ndim != fitness_2.ndim != 1:
+    if fitness_1.ndim != 1 or fitness_2.ndim != 1:
         raise ValueError("fitness_1 and fitness_2 must be 1D array")
     not_equal = False
     for self_value, other_value in zip(fitness_1, fitness_2, strict=True):

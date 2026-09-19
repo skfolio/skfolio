@@ -133,17 +133,41 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         If set to `"raise"`, the error is raised.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio of
-        each candidate's online path. This is useful when the strategy starts with no
-        existing position, while later portfolios represent regular rebalancing from
-        the previously predicted weights. For example, the entry rebalancing can use
-        lower `transaction_costs` or require a valid initial solution with
-        `fallback=None`. Only supported for portfolio optimization estimators.
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
 
     return_predictions : bool, default=False
         If `True`, store
@@ -524,17 +548,41 @@ class OnlineGridSearch(BaseOnlineSearch):
         portfolio optimization estimators.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio of
-        each candidate's online path. This is useful when the strategy starts with no
-        existing position, while later portfolios represent regular rebalancing from
-        the previously predicted weights. For example, the entry rebalancing can use
-        lower `transaction_costs` or require a valid initial solution with
-        `fallback=None`. Only supported for portfolio optimization estimators.
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
 
     n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
@@ -597,7 +645,7 @@ class OnlineGridSearch(BaseOnlineSearch):
     >>> from skfolio.prior import EmpiricalPrior
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>>
     >>> model = MeanRisk(
     ...     prior_estimator=EmpiricalPrior(
@@ -605,7 +653,7 @@ class OnlineGridSearch(BaseOnlineSearch):
     ...         covariance_estimator=EWCovariance(),
     ...     ),
     ... )
-    >>> search = OnlineGridSearch(  # doctest: +SKIP
+    >>> search = OnlineGridSearch(
     ...     model,
     ...     param_grid={
     ...         "prior_estimator__mu_estimator__half_life": [20, 40, 60],
@@ -615,9 +663,13 @@ class OnlineGridSearch(BaseOnlineSearch):
     ...     test_size=5,
     ...     n_jobs=-1,
     ... )
-    >>> search.fit(X)  # doctest: +SKIP
-    >>> search.best_params_  # doctest: +SKIP
-    >>> search.best_estimator_  # doctest: +SKIP
+    >>> search.fit(X)
+    OnlineGridSearch(...)
+    >>> search.best_params_
+    {'prior_estimator__covariance_estimator__half_life': 60,
+     'prior_estimator__mu_estimator__half_life': 20}
+    >>> search.best_estimator_
+    MeanRisk(...)
     """
 
     def __init__(
@@ -781,17 +833,41 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         portfolio optimization estimators.
 
     portfolio_params : dict, optional
-        Parameters forwarded to
-        :class:`~skfolio.portfolio.MultiPeriodPortfolio` when scoring
-        portfolio estimators.
+        Portfolio parameters for the evaluation of each candidate parameter set.
+
+        Parameters shared by :class:`~skfolio.portfolio.Portfolio` and
+        :class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the `MultiPeriodPortfolio` scored for each
+        parameter set and to each `Portfolio` it contains. A value passed here takes
+        precedence over the optimizer's `portfolio_params`. When omitted here, it is
+        inherited from the optimizer's `portfolio_params`. When omitted from both,
+        `risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when
+        it has one. These parameters only affect how the portfolios are measured, not
+        the optimization, so they can change the scores and the ranking of the
+        parameter sets.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next update. A value passed
+        here overrides the optimizer's `portfolio_params`. When refitting is enabled,
+        `weight_drift` is retained in `best_estimator_`. The other parameters are not.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        scored `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio of
-        each candidate's online path. This is useful when the strategy starts with no
-        existing position, while later portfolios represent regular rebalancing from
-        the previously predicted weights. For example, the entry rebalancing can use
-        lower `transaction_costs` or require a valid initial solution with
-        `fallback=None`. Only supported for portfolio optimization estimators.
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio in the online path for each candidate parameter set. This is useful
+        when the strategy starts with no existing position, while later portfolios
+        represent regular rebalancing from the previously predicted weights. For
+        example, the entry rebalancing can use lower `transaction_costs` or require a
+        valid initial solution with `fallback=None`. Only supported for portfolio
+        optimization estimators.
 
     n_jobs : int, optional
         Number of parallel jobs. `None` means 1.
@@ -853,7 +929,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     >>> from skfolio.prior import EmpiricalPrior
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
+    >>> X = prices_to_returns(prices).tail(504)
     >>>
     >>> model = MeanRisk(
     ...     prior_estimator=EmpiricalPrior(
@@ -861,7 +937,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ...         covariance_estimator=EWCovariance(),
     ...     ),
     ... )
-    >>> search = OnlineRandomizedSearch(  # doctest: +SKIP
+    >>> search = OnlineRandomizedSearch(
     ...     model,
     ...     param_distributions={
     ...         "prior_estimator__mu_estimator__half_life": uniform(10, 90),
@@ -873,9 +949,13 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ...     n_jobs=-1,
     ...     random_state=42,
     ... )
-    >>> search.fit(X)  # doctest: +SKIP
-    >>> search.best_params_  # doctest: +SKIP
-    >>> search.best_estimator_  # doctest: +SKIP
+    >>> search.fit(X)
+    OnlineRandomizedSearch(...)
+    >>> search.best_params_
+    {'prior_estimator__covariance_estimator__half_life': 63.31...,
+     'prior_estimator__mu_estimator__half_life': 14.18...}
+    >>> search.best_estimator_
+    MeanRisk(...)
     """
 
     def __init__(
