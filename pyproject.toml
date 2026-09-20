@@ -60,7 +60,6 @@ dependencies = [
     "cvxpy-base>=1.5.0",
     "clarabel>=0.10.0",
     "scikit-learn>=1.6.0",
-    "joblib>=1.3.2",
     "plotly>=6.0.0"
 ]
 
@@ -113,12 +112,8 @@ notebooks = [
 extend_exclude = ["src/conftest\\.py"]
 
 [tool.deptry.per_rule_ignores]
-# Genuine runtime requirements that are never imported, so deptry cannot see them:
-# - `clarabel` is reached through cvxpy's solver-name dispatch. It is named only as a
-#   string, in `solver: str = "CLARABEL"` and in the per-solver parameter defaults.
-# - `joblib` is reached through `sklearn.utils.parallel`, which skfolio calls for
-#   `n_jobs`. Every `joblib` occurrence in `src` is a docstring or a comment.
-DEP002 = ["clarabel", "joblib"]
+# clarabel is the default solver, loaded by CVXPY.
+DEP002 = ["clarabel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
