@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-09-20)
+
+### Features
+
+- **moments**: Add GeodesicShrinkageCovariance estimator
+  ([#259](https://github.com/skfolio/skfolio/pull/259),
+  [`89a8edd`](https://github.com/skfolio/skfolio/commit/89a8eddd34a0192b9c7d9d960cd640002768787b))
+
+
 ## v1.2.9 (2026-09-19)
 
 ### Bug Fixes
