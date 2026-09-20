@@ -60,7 +60,6 @@ dependencies = [
     "cvxpy-base>=1.5.0",
     "clarabel>=0.10.0",
     "scikit-learn>=1.6.0",
-    "joblib>=1.3.2",
     "plotly>=6.0.0"
 ]
 
@@ -74,6 +73,7 @@ Tutorials = "https://skfolio.org/auto_examples/"
 dev = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
+    "deptry",
     # Optional solver used by the opinion pooling and fallback examples.
     "scs>=3.2.0",
     "pytest",
@@ -108,6 +108,16 @@ notebooks = [
     "jupyterlab",
     "ipywidgets",
 ]
+
+[tool.deptry]
+# `src/conftest.py` configures the doctests and is deliberately kept out of the wheel
+# (the "Check distribution contents" CI step asserts it), so it is development
+# tooling that happens to live under `src` and must not be scanned as package code.
+extend_exclude = ["src/conftest\\.py"]
+
+[tool.deptry.per_rule_ignores]
+# clarabel is the default solver, loaded by CVXPY.
+DEP002 = ["clarabel"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
