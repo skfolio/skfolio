@@ -326,7 +326,7 @@ def concentrated_prior():
 def test_cvar_on_concentrated_sample_weight_is_recovered_by_the_scs_fallback(
     X_full, concentrated_prior
 ):
-    """The SCS fallback documented in `OpinionPooling` recovers the failed solve.
+    """An explicit SCS fallback recovers CVaR risk budgeting on concentrated scenarios.
 
     Without it, this raises `SolverError` on CLARABEL 0.11. The assertion is on the
     outcome and not on the fallback firing: on CLARABEL 0.10 the primary estimator
@@ -335,7 +335,7 @@ def test_cvar_on_concentrated_sample_weight_is_recovered_by_the_scs_fallback(
     model = RiskBudgeting(
         risk_measure=RiskMeasure.CVAR, prior_estimator=concentrated_prior
     )
-    model = model.set_params(
+    model.set_params(
         fallback=clone(model).set_params(
             solver="SCS",
             solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
