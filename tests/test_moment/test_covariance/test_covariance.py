@@ -18,6 +18,8 @@ from skfolio.moments import (
     DetoneCovariance,
     EWCovariance,
     EmpiricalCovariance,
+    GeodesicShrinkageCovariance,
+    GeodesicShrinkageTarget,
     GerberCovariance,
     GraphicalLassoCV,
     ImpliedCovariance,
@@ -25,6 +27,9 @@ from skfolio.moments import (
     ShrunkCovariance,
 )
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
+from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
+    _geodesic_interpolation,
+)
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
@@ -204,7 +209,14 @@ class TestBaseCovarianceMethods:
 
     @pytest.mark.parametrize(
         "estimator_class",
-        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+        [
+            EmpiricalCovariance,
+            EWCovariance,
+            LedoitWolf,
+            OAS,
+            ShrunkCovariance,
+            GeodesicShrinkageCovariance,
+        ],
     )
     def test_mahalanobis_across_estimators(self, X, estimator_class):
         """Test mahalanobis works across all estimator types."""
@@ -291,7 +303,14 @@ class TestBaseCovarianceMethods:
 
     @pytest.mark.parametrize(
         "estimator_class",
-        [EmpiricalCovariance, EWCovariance, LedoitWolf, OAS, ShrunkCovariance],
+        [
+            EmpiricalCovariance,
+            EWCovariance,
+            LedoitWolf,
+            OAS,
+            ShrunkCovariance,
+            GeodesicShrinkageCovariance,
+        ],
     )
     def test_score_across_estimators(self, X, estimator_class):
         """Test score works across all estimator types."""
@@ -651,6 +670,22 @@ class TestEmpiricalCovariance:
         model.fit(X)
         assert model.covariance_.shape == (20, 20)
         np.testing.assert_almost_equal(model.covariance_, np.cov(X.T))
+
+    @pytest.mark.parametrize("higham", [False, True])
+    def test_nearest_repairs_rank_deficient_returns(self, higham):
+        X = np.random.default_rng(10).standard_normal((4, 6)) * 0.01
+        unmodified = X.copy()
+        raw_covariance = EmpiricalCovariance(nearest=False).fit(X).covariance_
+
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = EmpiricalCovariance(higham=higham).fit(X)
+
+        np.linalg.cholesky(model.covariance_)
+        assert np.linalg.eigh(model.covariance_)[0][0] > 0
+        np.testing.assert_array_equal(
+            np.diag(model.covariance_), np.diag(raw_covariance)
+        )
+        np.testing.assert_array_equal(X, unmodified)
 
     def test_invalid_ddof(self):
         """Invalid ddof values raise ValueError."""
@@ -2551,6 +2586,322 @@ class TestShrunkCovariance:
         assert model.covariance_.shape == (20, 20)
 
 
+class TestGeodesicShrinkageCovariance:
+    @pytest.fixture
+    def ill_conditioned_returns(self):
+        rng = np.random.default_rng(42)
+        basis, _ = np.linalg.qr(rng.standard_normal((6, 6)))
+        return (
+            rng.standard_normal((100, 6))
+            @ np.diag(np.geomspace(1e-6, 1.0, 6))
+            @ basis.T
+            * 0.01
+        )
+
+    def test_fit(self, X):
+        model = GeodesicShrinkageCovariance()
+        model.fit(X)
+        assert model.covariance_.shape == (20, 20)
+        assert np.all(np.linalg.eigvalsh(model.covariance_) > 0)
+
+    def test_default_fit_repairs_rank_deficient_returns(self):
+        X = np.random.default_rng(10).standard_normal((4, 6)) * 0.01
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = GeodesicShrinkageCovariance().fit(X)
+
+        np.linalg.cholesky(model.covariance_)
+        assert np.linalg.eigh(model.covariance_)[0][0] > 0
+
+    def test_shrinkage_zero_matches_covariance_estimator(self, X):
+        base = EmpiricalCovariance()
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(), shrinkage=0.0
+        )
+        model.fit(X)
+        base.fit(X)
+        np.testing.assert_allclose(model.covariance_, base.covariance_)
+
+    def test_shrinkage_one_matches_target(self):
+        rng = np.random.default_rng(7)
+        X = rng.standard_normal((100, 4)) * 0.01
+
+        model = GeodesicShrinkageCovariance(
+            shrinkage=1.0, target=GeodesicShrinkageTarget.SCALED_IDENTITY
+        )
+        model.fit(X)
+
+        base = EmpiricalCovariance(nearest=False).fit(X)
+        mu = np.trace(base.covariance_) / base.covariance_.shape[0]
+        expected_target = mu * np.identity(base.covariance_.shape[0])
+        np.testing.assert_allclose(model.covariance_, expected_target, atol=1e-10)
+
+    @pytest.mark.parametrize(
+        "target", [*GeodesicShrinkageTarget, "scaled_identity", "diagonal"]
+    )
+    @pytest.mark.parametrize("shrinkage", [0.1, 0.5, 0.9])
+    def test_matches_manual_geodesic_interpolation(self, target, shrinkage):
+        rng = np.random.default_rng(11)
+        X = rng.standard_normal((150, 5)) * 0.01
+
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=shrinkage,
+            target=target,
+        )
+        model.fit(X)
+
+        start = EmpiricalCovariance(nearest=False).fit(X).covariance_
+        if target == GeodesicShrinkageTarget.SCALED_IDENTITY:
+            mu = np.trace(start) / start.shape[0]
+            end = mu * np.identity(start.shape[0])
+        else:
+            end = np.diag(np.diag(start))
+        expected = _geodesic_interpolation(start=start, end=end, alpha=shrinkage)
+
+        np.testing.assert_allclose(model.covariance_, expected)
+
+    def test_custom_array_target(self):
+        rng = np.random.default_rng(3)
+        X = rng.standard_normal((100, 3)) * 0.01
+        target = np.identity(3) * 2.0
+
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=0.4,
+            target=target,
+        )
+        model.fit(X)
+
+        start = EmpiricalCovariance(nearest=False).fit(X).covariance_
+        expected = _geodesic_interpolation(start=start, end=target, alpha=0.4)
+        np.testing.assert_allclose(model.covariance_, expected)
+
+    def test_ill_conditioned_scaled_identity_matches_explicit_target(
+        self, ill_conditioned_returns
+    ):
+        X = ill_conditioned_returns
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(X)
+        start = model.covariance_estimator_.covariance_
+        target = np.identity(start.shape[0]) * np.trace(start) / start.shape[0]
+        explicit = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            target=target,
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(X)
+
+        # Whole-matrix error avoids relative comparisons of near-zero entries.
+        assert (
+            np.linalg.norm(explicit.covariance_ - model.covariance_)
+            / np.linalg.norm(model.covariance_)
+            < 1e-8
+        )
+
+    def test_ill_conditioned_diagonal_matches_correlation_reference(
+        self, ill_conditioned_returns
+    ):
+        model = GeodesicShrinkageCovariance(
+            covariance_estimator=EmpiricalCovariance(nearest=False),
+            target=GeodesicShrinkageTarget.DIAGONAL,
+            shrinkage=0.5,
+            nearest=False,
+        ).fit(ill_conditioned_returns)
+        start = model.covariance_estimator_.covariance_
+        std = np.sqrt(np.diag(start))
+        scale = np.outer(std, std)
+        eigenvalues, eigenvectors = np.linalg.eigh(start / scale)
+        # Independent identity: the geodesic to diag(start) is D R**(1-alpha) D.
+        expected = ((eigenvectors * np.sqrt(eigenvalues)) @ eigenvectors.T) * scale
+
+        assert (
+            np.linalg.norm(model.covariance_ - expected) / np.linalg.norm(expected)
+            < 1e-8
+        )
+
+    @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
+    @pytest.mark.parametrize("higham", [False, True])
+    def test_repaired_start_matches_independent_reference(self, target, higham):
+        X = np.random.default_rng(0).standard_normal((20, 50)) * 0.01
+        with pytest.warns(UserWarning, match="not positive definite"):
+            start = EmpiricalCovariance(higham=higham).fit(X).covariance_
+
+        if target == GeodesicShrinkageTarget.SCALED_IDENTITY:
+            mu = np.trace(start) / start.shape[0]
+            eigenvalues, eigenvectors = np.linalg.eigh(start)
+            expected = (eigenvectors * np.sqrt(eigenvalues * mu)) @ eigenvectors.T
+            # An explicit array exercises the general interpolation path.
+            target = np.identity(start.shape[0]) * mu
+        else:
+            std = np.sqrt(np.diag(start))
+            scale = np.outer(std, std)
+            eigenvalues, eigenvectors = np.linalg.eigh(start / scale)
+            expected = ((eigenvectors * np.sqrt(eigenvalues)) @ eigenvectors.T) * scale
+
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = GeodesicShrinkageCovariance(
+                covariance_estimator=EmpiricalCovariance(higham=higham),
+                target=target,
+                shrinkage=0.5,
+                higham=higham,
+            ).fit(X)
+
+        # Allow solver differences at the repair floor, while detecting the former
+        # inverse-square-root instability (about 9% relative error on this fixture).
+        assert (
+            np.linalg.norm(model.covariance_ - expected) / np.linalg.norm(expected)
+            < 1e-6
+        )
+
+    @pytest.mark.parametrize("scale", [0.01, 100.0])
+    @pytest.mark.parametrize(
+        "target",
+        [
+            *GeodesicShrinkageTarget,
+            pytest.param(
+                np.array([[2.0, 0.3, 0.0], [0.3, 1.0, 0.2], [0.0, 0.2, 3.0]]) * 1e-4,
+                id="custom",
+            ),
+        ],
+    )
+    def test_scaling_returns_and_target(self, target, scale):
+        X = np.random.default_rng(17).standard_normal((100, 3)) * [0.01, 0.02, 0.03]
+        model = GeodesicShrinkageCovariance(
+            target=target, shrinkage=0.4, nearest=False
+        ).fit(X)
+        scaled_target = target * scale**2 if isinstance(target, np.ndarray) else target
+        scaled = GeodesicShrinkageCovariance(
+            target=scaled_target, shrinkage=0.4, nearest=False
+        ).fit(X * scale)
+
+        np.testing.assert_allclose(
+            scaled.covariance_ / scale**2, model.covariance_, rtol=1e-10, atol=1e-15
+        )
+
+    def test_wraps_other_covariance_estimator(self, X):
+        model = GeodesicShrinkageCovariance(covariance_estimator=LedoitWolf())
+        model.fit(X)
+        assert isinstance(model.covariance_estimator_, LedoitWolf)
+        assert model.covariance_.shape == (20, 20)
+
+    @pytest.mark.parametrize("shrinkage", [-0.1, 1.1, "a", True, float("nan")])
+    def test_invalid_shrinkage_raises(self, shrinkage):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="shrinkage"):
+            GeodesicShrinkageCovariance(shrinkage=shrinkage).fit(X)
+
+    def test_invalid_target_string_raises(self):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="target"):
+            GeodesicShrinkageCovariance(target="not-a-target").fit(X)
+
+    def test_invalid_target_shape_raises(self):
+        X = np.random.default_rng(0).standard_normal((50, 3))
+        with pytest.raises(ValueError, match="target"):
+            GeodesicShrinkageCovariance(target=np.identity(2)).fit(X)
+
+    def test_metadata_routing(self, X, implied_vol):
+        with config_context(enable_metadata_routing=True):
+            model = GeodesicShrinkageCovariance(
+                covariance_estimator=ImpliedCovariance().set_fit_request(
+                    implied_vol=True
+                )
+            )
+            with pytest.raises(ValueError):
+                model.fit(X)
+            model.fit(X, implied_vol=implied_vol)
+        assert model.covariance_estimator_.r2_scores_.shape == (20,)
+        assert model.covariance_.shape == (20, 20)
+
+    def test_location_and_inference_match_wrapped_estimator(self):
+        rng = np.random.default_rng(17)
+        X = rng.normal(loc=[2.0, -1.0, 4.0], size=(150, 3))
+        X_test = rng.normal(loc=[2.0, -1.0, 4.0], size=(25, 3))
+        model = GeodesicShrinkageCovariance(shrinkage=0).fit(X)
+        base = model.covariance_estimator_
+        np.testing.assert_allclose(model.location_, base.location_)
+        assert model.score(X_test) == pytest.approx(base.score(X_test))
+        np.testing.assert_allclose(model.mahalanobis(X_test), base.mahalanobis(X_test))
+        # Refitting with an estimator without a mean must not retain a stale mean.
+        model.set_params(covariance_estimator=GerberCovariance()).fit(X)
+        assert not hasattr(model, "location_")
+
+    @pytest.mark.parametrize("shrinkage", [0.0, 0.5, 1.0])
+    @pytest.mark.parametrize("nearest", [False, True])
+    @pytest.mark.parametrize(
+        "target",
+        [
+            [[1.0, 2.0], [2.0, 1.0]],  # indefinite
+            [[1.0, 1.0], [1.0, 1.0]],  # singular
+        ],
+    )
+    def test_non_pd_target_raises(self, shrinkage, nearest, target):
+        X = np.random.default_rng(0).standard_normal((50, 2))
+        with pytest.raises(ValueError, match="target must be positive definite"):
+            GeodesicShrinkageCovariance(
+                shrinkage=shrinkage, target=target, nearest=nearest
+            ).fit(X)
+
+    def test_non_finite_target_raises(self):
+        X = np.random.default_rng(0).standard_normal((50, 2))
+        with pytest.raises(ValueError, match="finite"):
+            GeodesicShrinkageCovariance(target=np.diag([np.inf, 1.0])).fit(X)
+
+    @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("seed, scale", [(0, 1.0), (10, 0.01)])
+    def test_nearest_repairs_singular_start(self, target, higham, seed, scale):
+        X = np.random.default_rng(seed).standard_normal((4, 6)) * scale
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = GeodesicShrinkageCovariance(
+                covariance_estimator=EmpiricalCovariance(nearest=False),
+                target=target,
+                higham=higham,
+            ).fit(X)
+        np.linalg.cholesky(model.covariance_)
+        assert np.all(np.linalg.eigvalsh(model.covariance_) > 0)
+
+    @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
+    def test_singular_start_raises_without_repair(self, target):
+        # Exact singularity avoids platform-dependent signs of rounded eigenvalues.
+        X = np.array([[-1.0, -1.0], [0.0, 0.0], [1.0, 1.0]])
+        with pytest.raises(ValueError, match=r"start.*positive definite"):
+            GeodesicShrinkageCovariance(
+                covariance_estimator=EmpiricalCovariance(nearest=False),
+                target=target,
+                nearest=False,
+            ).fit(X)
+
+    @pytest.mark.parametrize("shrinkage", [0.0, 0.1, 0.5, 1.0])
+    def test_scaled_identity_condition_number(self, shrinkage):
+        X = np.random.default_rng(21).standard_normal((100, 4)) * [1, 2, 4, 8]
+        model = GeodesicShrinkageCovariance(shrinkage=shrinkage, nearest=False).fit(X)
+        start = model.covariance_estimator_.covariance_
+        assert np.linalg.cond(model.covariance_) == pytest.approx(
+            np.linalg.cond(start) ** (1 - shrinkage)
+        )
+
+    @pytest.mark.parametrize("shrinkage", [0.0, 0.5, 1.0])
+    def test_diagonal_target_variances(self, shrinkage):
+        rng = np.random.default_rng(7)
+        X = rng.standard_normal((200, 2)) @ np.array([[1.0, 0.8], [0.0, 0.6]])
+        model = GeodesicShrinkageCovariance(
+            target=GeodesicShrinkageTarget.DIAGONAL,
+            shrinkage=shrinkage,
+            nearest=False,
+        ).fit(X)
+        start = model.covariance_estimator_.covariance_
+        if shrinkage in (0.0, 1.0):
+            np.testing.assert_allclose(np.diag(model.covariance_), np.diag(start))
+        else:
+            assert not np.allclose(np.diag(model.covariance_), np.diag(start))
+        if shrinkage == 1.0:
+            np.testing.assert_array_equal(model.covariance_, np.diag(np.diag(start)))
+
+
 class TestBaseCovarianceEdgeCases:
     """Edge cases of the `BaseCovariance` inference and sanity-check helpers."""
 
@@ -2621,3 +2972,89 @@ def test_gerber_covariance_invalid_threshold(X):
     model = GerberCovariance(threshold=1.5)
     with pytest.raises(ValueError, match="The threshold must be between 0 and 1"):
         model.fit(X)
+
+
+class TestGeodesicInterpolation:
+    @pytest.fixture
+    def spd_pair(self):
+        rng = np.random.default_rng(42)
+        n = 6
+        a = rng.normal(size=(n, n))
+        start = a @ a.T + n * np.identity(n)
+        b = rng.normal(size=(n, n))
+        end = b @ b.T + n * np.identity(n)
+        return start, end
+
+    def test_alpha_zero_returns_start(self, spd_pair):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=0.0)
+        np.testing.assert_allclose(result, start)
+        assert not np.shares_memory(result, start)
+
+    def test_alpha_one_returns_end(self, spd_pair):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=1.0)
+        np.testing.assert_allclose(result, end)
+        assert not np.shares_memory(result, end)
+
+    @pytest.mark.parametrize("alpha", [0.1, 0.3, 0.5, 0.7, 0.9])
+    def test_matches_independent_reference(self, spd_pair, alpha):
+        import scipy.linalg as scl
+
+        start, end = spd_pair
+        original_start, original_end = start.copy(), end.copy()
+        result = _geodesic_interpolation(start, end, alpha=alpha)
+        np.testing.assert_array_equal(start, original_start)
+        np.testing.assert_array_equal(end, original_end)
+
+        # Independent reference computed with a different set of scipy primitives
+        # (sqrtm / inv / fractional_matrix_power) than the implementation
+        # (eigh-based), mirroring the affine-invariant geodesic formula.
+        start_sqrt = scl.sqrtm(start).real
+        start_inv_sqrt = scl.inv(start_sqrt)
+        middle = start_inv_sqrt @ end @ start_inv_sqrt
+        middle_pow = scl.fractional_matrix_power(middle, alpha).real
+        expected = start_sqrt @ middle_pow @ start_sqrt
+
+        np.testing.assert_allclose(result, expected, atol=1e-8)
+
+    @pytest.mark.parametrize("alpha", [0.0, 0.25, 0.5, 0.75, 1.0])
+    def test_result_is_symmetric_positive_definite(self, spd_pair, alpha):
+        start, end = spd_pair
+        result = _geodesic_interpolation(start, end, alpha=alpha)
+        np.testing.assert_allclose(result, result.T)
+        assert np.all(np.linalg.eigvalsh(result) > 0)
+
+    def test_invalid_alpha_raises(self, spd_pair):
+        start, end = spd_pair
+        with pytest.raises(ValueError, match="alpha"):
+            _geodesic_interpolation(start, end, alpha=1.5)
+        with pytest.raises(ValueError, match="alpha"):
+            _geodesic_interpolation(start, end, alpha=-0.1)
+
+    def test_shape_mismatch_raises(self, spd_pair):
+        start, _ = spd_pair
+        end = np.identity(start.shape[0] + 1)
+        with pytest.raises(ValueError, match="same shape"):
+            _geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_symmetric_raises(self, spd_pair):
+        start, end = spd_pair
+        start = start.copy()
+        start[0, 1] += 1.0
+        with pytest.raises(ValueError, match="symmetric"):
+            _geodesic_interpolation(start, end, alpha=0.5)
+
+    def test_non_positive_definite_raises(self, spd_pair):
+        _, end = spd_pair
+        not_pd = np.array([[1.0, 2.0], [2.0, 1.0]])
+        end_2 = end[:2, :2]
+        with pytest.raises(ValueError, match="positive definite"):
+            _geodesic_interpolation(not_pd, end_2, alpha=0.5)
+
+    @pytest.mark.parametrize(
+        "end", [[[1.0, 2.0], [2.0, 1.0]], [[1.0, 1.0], [1.0, 1.0]]]
+    )
+    def test_non_positive_definite_end_raises(self, end):
+        with pytest.raises(ValueError, match=r"end.*positive definite"):
+            _geodesic_interpolation(np.identity(2), np.array(end), alpha=0.5)

@@ -686,6 +686,7 @@ Enum
     :toctree: generated/
     :template: class.rst
 
+    moments.GeodesicShrinkageTarget
     moments.RegimeAdjustmentMethod
     moments.RegimeAdjustmentTarget
 
@@ -706,6 +707,7 @@ Classes
     moments.LedoitWolf
     moments.OAS
     moments.ShrunkCovariance
+    moments.GeodesicShrinkageCovariance
     moments.GraphicalLassoCV
     moments.ImpliedCovariance
     moments.RegimeAdjustedEWCovariance
