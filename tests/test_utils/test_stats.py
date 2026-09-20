@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import warnings
 
 import cvxpy as cp
 import numpy as np
@@ -672,6 +673,150 @@ class TestCovNearest:
         cov = np.array([[1, 2], [3, 4]])
         with pytest.raises(ValueError):
             cov_nearest(cov)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov",
+        [
+            pytest.param(np.ones((2, 2)) * 1e-4, id="singular"),
+            pytest.param(
+                np.array([[1.0, 4.0], [4.0, 1.0]]) * 1e-4,
+                id="materially-indefinite",
+            ),
+            pytest.param(
+                np.array([[1, 1 - 1e-14], [1 - 1e-14, 1]]) * 1e-4,
+                id="near-singular",
+            ),
+            pytest.param(
+                np.cov(
+                    np.random.default_rng(10).standard_normal((4, 6)) * 0.01,
+                    rowvar=False,
+                ),
+                id="seed-10",
+            ),
+            pytest.param(
+                np.cov(
+                    np.random.default_rng(0).standard_normal((20, 50)) * 0.01,
+                    rowvar=False,
+                ),
+                id="many-assets",
+            ),
+        ],
+    )
+    def test_repair_preserves_variances_and_is_idempotent(self, cov, higham):
+        original = cov.copy()
+        repaired = cov_nearest(cov, higham=higham)
+
+        assert np.isfinite(repaired).all()
+        np.testing.assert_array_equal(repaired, repaired.T)
+        np.testing.assert_array_equal(np.diag(repaired), np.diag(original))
+        np.testing.assert_array_equal(cov, original)
+        assert is_cholesky_dec(repaired)
+        assert np.linalg.eigh(repaired)[0][0] > 0
+        assert np.linalg.eigvalsh(repaired)[0] > 0
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            assert cov_nearest(repaired, higham=higham, warn=True) is repaired
+        assert not recorded
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov",
+        [np.array([[2.0, 0.3], [0.3, 0.5]]), np.diag([1e-20, 1.0, 1e20])],
+    )
+    def test_healthy_covariance_is_returned_unchanged(self, cov, higham):
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            assert cov_nearest(cov, higham=higham, warn=True) is cov
+        assert not recorded
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("scale", [1e-8, 1e8])
+    def test_repair_is_scale_invariant(self, higham, scale):
+        cov = np.outer([0.01, 0.02, 0.03], [0.01, 0.02, 0.03])
+        repaired = cov_nearest(cov, higham=higham)
+        scaled = cov_nearest(cov * scale, higham=higham)
+        assert_allclose(scaled / scale, repaired, rtol=1e-12, atol=0)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("matrix", [[[1, 2], [2, 4]], [[0.2, 0.6], [0.6, 1.8]]])
+    def test_float32_repair(self, higham, matrix):
+        cov = np.array(matrix, dtype=np.float32) * 1e-4
+        original = cov.copy()
+        repaired = cov_nearest(cov, higham=higham)
+        assert is_cholesky_dec(repaired)
+        assert np.linalg.eigh(repaired)[0][0] > 0
+        np.testing.assert_array_equal(np.diag(repaired), np.diag(cov))
+        np.testing.assert_array_equal(cov, original)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("warn", [False, True])
+    def test_repair_warning_is_opt_in(self, higham, warn):
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            cov_nearest(np.ones((2, 2)), higham=higham, warn=warn)
+        assert len(recorded) == int(warn)
+        if warn:
+            assert recorded[0].category is UserWarning
+            assert "nearest positive definite covariance" in str(recorded[0].message)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov",
+        [
+            np.diag([0.0, 1.0]),
+            np.diag([-1.0, 1.0]),
+            np.array([[1.0, np.inf], [np.inf, 1.0]]),
+            np.array([[1.0, np.nan], [np.nan, 1.0]]),
+        ],
+    )
+    def test_invalid_variances_or_nonfinite_values_raise(self, cov, higham):
+        with pytest.raises(ValueError):
+            cov_nearest(cov, higham=higham)
+
+    def test_higham_iteration_limit(self):
+        with pytest.raises(ValueError, match="Unable to find"):
+            cov_nearest(
+                np.array([[1.0, 2.0], [2.0, 1.0]]), higham=True, higham_max_iteration=1
+            )
+
+    @pytest.mark.parametrize(
+        "failures, negative_eigenvalue, raises",
+        [(1, -1e-20, False), (2, -1e-20, False), (2, -1e-8, True)],
+        ids=["retry", "roundoff-after-retry", "material-failure"],
+    )
+    def test_final_eigenvalue_check(
+        self, monkeypatch, failures, negative_eigenvalue, raises
+    ):
+        # Inject solver disagreement deterministically instead of relying on
+        # platform-dependent rounding near a zero eigenvalue.
+        eigvalsh = np.linalg.eigvalsh
+        checks = 0
+
+        def eigenvalues(matrix):
+            nonlocal checks
+            values = eigvalsh(matrix)
+            if np.all(np.diag(matrix) == 1e-4):
+                checks += 1
+                if checks <= failures:
+                    values[0] = negative_eigenvalue
+            return values
+
+        monkeypatch.setattr(np.linalg, "eigvalsh", eigenvalues)
+        cov = np.array([[1.0, 2.0], [2.0, 1.0]]) * 1e-4
+        if raises:
+            with pytest.raises(ValueError, match="Unable to find"):
+                cov_nearest(cov)
+        else:
+            repaired = cov_nearest(cov)
+            assert is_cholesky_dec(repaired)
+            np.testing.assert_array_equal(np.diag(repaired), np.diag(cov))
+        assert checks == 2
+
+    def test_failed_cholesky_after_retry_raises(self, monkeypatch):
+        monkeypatch.setattr("skfolio.utils.stats.is_cholesky_dec", lambda _: False)
+        with pytest.raises(ValueError, match="Unable to find"):
+            cov_nearest(np.ones((2, 2)))
 
 
 class TestMinimizeRelativeWeightDeviation:
