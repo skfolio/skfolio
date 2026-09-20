@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.2.8"
+version = "1.3.0"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -74,6 +74,8 @@ Tutorials = "https://skfolio.org/auto_examples/"
 dev = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
+    # Optional solver used by the opinion pooling and fallback examples.
+    "scs>=3.2.0",
     "pytest",
     "pytest-xdist",
     "pytest-cov",
@@ -83,6 +85,8 @@ dev = [
 docs = [
     # TODO: drop the upper bound once https://github.com/cvxpy/cvxpy/pull/3467 is released
     "PySCIPOpt<6.0.0",
+    # Optional solver used by the opinion pooling and fallback examples.
+    "scs>=3.2.0",
     "Sphinx>=7.2",
     "sphinx-gallery",
     "pydata-sphinx-theme~=0.16",
@@ -190,8 +194,7 @@ markers = [
     "network: needs a dataset downloaded from the remote GitHub dataset folder (deselect with `-m \"not network\"`)",
 ]
 # `--doctest-modules` applies to the whole source root, so every docstring example
-# is executed and its documented output verified. The few that cannot be are listed,
-# with a reason each, in `SKIPPED` in `src/conftest.py`.
+# is executed and its documented output verified.
 testpaths = [
     "tests",
     "src",
