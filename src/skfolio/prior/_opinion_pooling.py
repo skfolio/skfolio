@@ -198,14 +198,25 @@ class OpinionPooling(BasePrior, BaseComposition):
     >>> print(opinion_pooling.return_distribution_.sample_weight)
     [0.000117... 0.000117... 0.000117... ... 0.000117... 0.000117...
      0.000117...]
-    >>>
-    >>> # CVaR Risk Parity optimization on opinion Pooling
+
+    We use SCS (`pip install scs`) for CVaR risk parity because concentrated scenario
+    probabilities can cause numerical difficulties for CLARABEL. To keep CLARABEL as
+    the primary solver and fall back to SCS on failure, see
+    :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
     >>> model = RiskBudgeting(
     ...     risk_measure=RiskMeasure.CVAR,
-    ...     prior_estimator=opinion_pooling
+    ...     prior_estimator=opinion_pooling,
+    ...     solver="SCS",
+    ...     solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
     ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.041... 0.031... 0.029... 0.044... 0.038... 0.033...
+     0.034... 0.077... 0.032... 0.067... 0.059... 0.057...
+     0.040... 0.056... 0.059... 0.077... 0.053... 0.038...
+     0.075... 0.050...]
     >>>
     >>> # Stress Test the Portfolio
     >>> opinion_1 = EntropyPooling(cvar_views=["AMD == 0.05"])
