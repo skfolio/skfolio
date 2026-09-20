@@ -2604,6 +2604,14 @@ class TestGeodesicShrinkageCovariance:
         assert model.covariance_.shape == (20, 20)
         assert np.all(np.linalg.eigvalsh(model.covariance_) > 0)
 
+    def test_default_fit_repairs_rank_deficient_returns(self):
+        X = np.random.default_rng(10).standard_normal((4, 6)) * 0.01
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = GeodesicShrinkageCovariance().fit(X)
+
+        np.linalg.cholesky(model.covariance_)
+        assert np.linalg.eigh(model.covariance_)[0][0] > 0
+
     def test_shrinkage_zero_matches_covariance_estimator(self, X):
         base = EmpiricalCovariance()
         model = GeodesicShrinkageCovariance(
@@ -2714,6 +2722,40 @@ class TestGeodesicShrinkageCovariance:
             < 1e-8
         )
 
+    @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
+    @pytest.mark.parametrize("higham", [False, True])
+    def test_repaired_start_matches_independent_reference(self, target, higham):
+        X = np.random.default_rng(0).standard_normal((20, 50)) * 0.01
+        with pytest.warns(UserWarning, match="not positive definite"):
+            start = EmpiricalCovariance(higham=higham).fit(X).covariance_
+
+        if target == GeodesicShrinkageTarget.SCALED_IDENTITY:
+            mu = np.trace(start) / start.shape[0]
+            eigenvalues, eigenvectors = np.linalg.eigh(start)
+            expected = (eigenvectors * np.sqrt(eigenvalues * mu)) @ eigenvectors.T
+            # An explicit array exercises the general interpolation path.
+            target = np.identity(start.shape[0]) * mu
+        else:
+            std = np.sqrt(np.diag(start))
+            scale = np.outer(std, std)
+            eigenvalues, eigenvectors = np.linalg.eigh(start / scale)
+            expected = ((eigenvectors * np.sqrt(eigenvalues)) @ eigenvectors.T) * scale
+
+        with pytest.warns(UserWarning, match="not positive definite"):
+            model = GeodesicShrinkageCovariance(
+                covariance_estimator=EmpiricalCovariance(higham=higham),
+                target=target,
+                shrinkage=0.5,
+                higham=higham,
+            ).fit(X)
+
+        # Allow solver differences at the repair floor, while detecting the former
+        # inverse-square-root instability (about 9% relative error on this fixture).
+        assert (
+            np.linalg.norm(model.covariance_ - expected) / np.linalg.norm(expected)
+            < 1e-6
+        )
+
     @pytest.mark.parametrize("scale", [0.01, 100.0])
     @pytest.mark.parametrize(
         "target",
@@ -2810,8 +2852,9 @@ class TestGeodesicShrinkageCovariance:
 
     @pytest.mark.parametrize("target", list(GeodesicShrinkageTarget))
     @pytest.mark.parametrize("higham", [False, True])
-    def test_nearest_repairs_singular_start(self, target, higham):
-        X = np.random.default_rng(0).standard_normal((4, 6))
+    @pytest.mark.parametrize("seed, scale", [(0, 1.0), (10, 0.01)])
+    def test_nearest_repairs_singular_start(self, target, higham, seed, scale):
+        X = np.random.default_rng(seed).standard_normal((4, 6)) * scale
         with pytest.warns(UserWarning, match="not positive definite"):
             model = GeodesicShrinkageCovariance(
                 covariance_estimator=EmpiricalCovariance(nearest=False),
