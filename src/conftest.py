@@ -1,9 +1,4 @@
-"""Doctest configuration for the source-tree examples.
-
-`pyproject.toml` runs `--doctest-modules` over `src`, so every example in every
-docstring is executed and its documented output verified. The few that cannot be are
-listed in `SKIPPED` below, each with the reason it is there.
-"""
+"""Doctest configuration for the source-tree examples."""
 
 from __future__ import annotations
 
@@ -22,23 +17,12 @@ NETWORK_DOCTESTS = {
     "skfolio.datasets._base.load_sp500_implied_vol_dataset",
 }
 
-SKIPPED = {
-    "skfolio.prior._opinion_pooling.OpinionPooling": (
-        "example raises: the pooling itself fits, but `RiskBudgeting(CVaR)` on the "
-        "pooled distribution hits `SolverError: Solver 'CLARABEL' failed`"
-    ),
-}
-
 
 def pytest_collection_modifyitems(items) -> None:
-    """Mark remote dataset examples and skip unsupported doctests."""
+    """Mark doctests that require remote datasets."""
     for item in items:
-        if not isinstance(item, DoctestItem):
-            continue
-        if item.name in NETWORK_DOCTESTS:
+        if isinstance(item, DoctestItem) and item.name in NETWORK_DOCTESTS:
             item.add_marker(pytest.mark.network)
-        if item.name in SKIPPED:
-            item.add_marker(pytest.mark.skip(reason=SKIPPED[item.name]))
 
 
 @pytest.fixture(autouse=True)
@@ -52,23 +36,24 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
     other arrays keep eight to preserve small values. NumPy scalars
     display as plain numbers, including inside dictionaries.
     """
-    if request.node.name in NETWORK_DOCTESTS:
+    name = request.node.name
+    if name in NETWORK_DOCTESTS:
         monkeypatch.setattr(
             _base,
             "download_dataset",
             partial(remote_dataset, _base.download_dataset),
         )
     monkeypatch.chdir(tmp_path)
-    compact_arrays = request.node.name.startswith(
+    compact_arrays = name.startswith(
         ("skfolio.optimization.", "skfolio.prior._synthetic_data.")
+    )
+    suppress_scientific = compact_arrays or name.startswith(
+        ("skfolio.alpha.", "skfolio.prior._entropy_pooling.")
     )
     with (
         np.printoptions(
             precision=4 if compact_arrays else 8,
-            suppress=compact_arrays
-            or request.node.name.startswith(
-                ("skfolio.alpha.", "skfolio.prior._entropy_pooling.")
-            ),
+            suppress=suppress_scientific,
             legacy="1.25",
         ),
         sklearn.config_context(transform_output="default"),
