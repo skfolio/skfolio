@@ -418,46 +418,57 @@ def cov_nearest(
     higham_max_iteration: int = 100,
     warn: bool = False,
 ):
-    """Compute the nearest covariance matrix that is positive definite and with a
-    cholesky decomposition that can be computed. The variance is left unchanged.
-    A covariance matrix that is not positive definite often occurs in high
-    dimensional problems. It can be due to multicollinearity, floating-point
-    inaccuracies, or when the number of observations is smaller than the number of
+    """Compute the nearest covariance matrix that is positive definite and admits a
+    Cholesky decomposition. The variances are unchanged.
+
+    Non-positive-definite covariance matrices can occur in high-dimensional problems
+    due to multicollinearity, floating-point inaccuracies, or fewer observations than
     assets.
 
-    First, it converts the covariance matrix to a correlation matrix.
-    Then, it finds the nearest correlation matrix and converts it back to a covariance
-    matrix using the initial standard deviation.
+    The covariance matrix is converted to a correlation matrix, repaired using
+    eigenvalue clipping or Higham's nearest-correlation algorithm, and converted back
+    using the original standard deviations.
 
-    Cholesky decomposition can fail for symmetric positive definite (SPD) matrix due
-    to floating point error and inversely, Cholesky decomposition can succeed for
-    non-SPD matrix. Therefore, we need to test for both. We always start by testing
-    for Cholesky decomposition which is significantly faster than checking for positive
-    eigenvalues.
+    Cholesky decomposition can fail for a symmetric positive-definite matrix or
+    succeed for a non-positive-definite matrix due to floating-point error. Both
+    Cholesky decomposition and symmetric eigenvalue checks are therefore used, with
+    Cholesky checked first because it is faster. The input is returned unchanged if
+    Cholesky succeeds, covariance eigenvalues are positive, and the minimum
+    correlation eigenvalue is at least `5e-14`.
+
+    Both methods clip correlation eigenvalues at `1e-13` and normalize the diagonal
+    to one. Failed validation triggers one retry at `1e-12`. After the retry,
+    nonpositive covariance eigenvalues within `n * eps * max(abs(eigenvalues))`
+    of zero are accepted only if Cholesky decomposition succeeds, where `eps` is
+    double-precision machine epsilon.
 
     Parameters
     ----------
     cov : ndarray of shape (n, n)
-        Covariance matrix.
+        Finite, symmetric covariance matrix with strictly positive variances.
 
     higham : bool, default=False
-        If this is set to True, the Higham (2002) algorithm [1]_ is used,
-        otherwise the eigenvalues are clipped to threshold above zeros (1e-13).
-        The default (`False`) is to use the clipping method as the Higham
-        algorithm can be slow for large datasets.
+        If True, apply Higham's algorithm [1]_ before eigenvalue clipping.
+        Otherwise, use eigenvalue clipping only. Clipping is the default because
+        Higham's algorithm can be slow for large datasets.
 
     higham_max_iteration : int, default=100
-        Maximum number of iterations of the Higham (2002) algorithm.
-        The default value is `100`.
+        Maximum number of iterations when `higham=True`.
 
     warn : bool, default=False
-        If this is set to True, a user warning is emitted when the covariance matrix
-        is not positive definite and replaced by the nearest. The default is False.
+        If True, emit a UserWarning when the input requires repair.
 
     Returns
     -------
-    cov : ndarray
-        The nearest covariance matrix.
+    cov : ndarray of shape (n, n)
+        Repaired covariance matrix. The input is returned unchanged if it satisfies
+        the numerical acceptance criteria.
+
+    Raises
+    ------
+    ValueError
+        If `cov` is not square, symmetric, or finite, has nonpositive variances,
+        or cannot be repaired within the iteration and retry limits.
 
     References
     ----------
@@ -465,11 +476,24 @@ def cov_nearest(
         IMA Journal of Numerical Analysis
         Higham (2002)
     """
-    assert_is_square(cov)
     assert_is_symmetric(cov)
+    variances = np.diag(cov)
+    if not np.isfinite(cov).all() or np.any(variances <= 0):
+        raise ValueError(
+            "The covariance matrix must contain only finite values and strictly "
+            "positive variances"
+        )
+    # Normalize in float64: float32 rounding exceeds the eigenvalue clipping floor.
+    corr, std = cov_to_corr(np.asarray(cov, dtype=float))
 
-    # Around 100 times faster than checking eigenvalues with np.linalg.eigh
-    if is_cholesky_dec(cov) and is_positive_definite(cov):
+    # Cholesky is cheaper than an eigenvalue decomposition, so check it first.
+    # Normalization can move a clipped eigenvalue just below the threshold. The
+    # half-threshold buffer avoids repeatedly repairing an already repaired matrix.
+    if (
+        is_cholesky_dec(cov)
+        and np.linalg.eigvalsh(corr)[0] >= _CLIPPING_VALUE / 2
+        and np.linalg.eigvalsh(cov)[0] > 0
+    ):
         return cov
 
     if warn:
@@ -479,32 +503,47 @@ def cov_nearest(
             "the nearest positive definite covariance.",
             stacklevel=2,
         )
-    corr, std = cov_to_corr(cov)
-
+    eps = np.finfo(float).eps
     if higham:
-        eps = np.finfo(np.float64).eps * 5
         diff = np.zeros(corr.shape)
-        x = corr.copy()
+        x = corr
         for _ in range(higham_max_iteration):
             x_adj = x - diff
             eig_vals, eig_vecs = np.linalg.eigh(x_adj)
-            x = eig_vecs * np.maximum(eig_vals, eps) @ eig_vecs.T
+            x = eig_vecs * np.maximum(eig_vals, 5 * eps) @ eig_vecs.T
             diff = x - x_adj
             np.fill_diagonal(x, 1)
-            cov = corr_to_cov(x, std)
-            if is_cholesky_dec(cov) and is_positive_definite(cov):
+            eigenvalues = np.linalg.eigvalsh(x)
+            # Stop at numerical PSD. Final clipping enforces the eigenvalue floor.
+            tolerance = len(x) * eps * np.max(np.abs(eigenvalues))
+            if eigenvalues[0] >= -tolerance:
                 break
         else:
             raise ValueError("Unable to find the nearest positive definite matrix")
-    else:
-        eig_vals, eig_vecs = np.linalg.eigh(corr)
+        corr = x
+
+    eig_vals, eig_vecs = np.linalg.eigh(corr)
+    for clipping_value in (_CLIPPING_VALUE, 10 * _CLIPPING_VALUE):
         # Clipping the eigenvalues with a value smaller than 1e-13 can cause scipy to
-        # consider the matrix non-psd is some corner cases (see test/test_stats.py)
-        x = eig_vecs * np.maximum(eig_vals, _CLIPPING_VALUE) @ eig_vecs.T
+        # consider the matrix non-psd in some corner cases (see test_stats.py).
+        x = eig_vecs * np.maximum(eig_vals, clipping_value) @ eig_vecs.T
         x, _ = cov_to_corr(x)
         cov = corr_to_cov(x, std)
+        symmetrize(cov)
+        np.fill_diagonal(cov, variances)
+        cholesky_ok = is_cholesky_dec(cov)
+        eigenvalues = np.linalg.eigvalsh(cov)
+        if (
+            cholesky_ok
+            and eigenvalues[0] > 0
+            and np.linalg.eigvalsh(x)[0] >= _CLIPPING_VALUE / 2
+        ):
+            return cov
 
-    return cov
+    tolerance = len(cov) * eps * np.max(np.abs(eigenvalues))
+    if cholesky_ok and eigenvalues[0] >= -tolerance:
+        return cov
+    raise ValueError("Unable to find the nearest positive definite matrix")
 
 
 def commutation_matrix(x):
