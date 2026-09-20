@@ -7,6 +7,7 @@ import pytest
 import sklearn.model_selection as sks
 from sklearn import clone, config_context
 
+import skfolio.optimization.convex._base as sco
 from skfolio import (
     FailedPortfolio,
     MultiPeriodPortfolio,
@@ -265,11 +266,7 @@ def test_mean_risk_minimize_risk_2(
     risk_measure2,
 ):
     precision = precisions[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     model = MeanRisk(
@@ -366,11 +363,7 @@ def test_mean_risk_under_risk_and_return_constraint_2(
 ):
     precision = precisions2[risk_measure2]
     max_risk_arg = f"max_{risk_measure2.value}"
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Minimize risk
     min_risk_model = MeanRisk(
@@ -472,11 +465,7 @@ def test_mean_risk_utility2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize utility
     risk_aversion = 3
@@ -536,11 +525,7 @@ def test_mean_risk_ratio2(
     risk_measure2,
 ):
     precision = precisions2[risk_measure2]
-    X_test = (
-        X_small.iloc[-100:]
-        if risk_measure2 == RiskMeasure.GINI_MEAN_DIFFERENCE
-        else X_small
-    )
+    X_test = X_small
 
     # Maximize ratio
     model = MeanRisk(
@@ -1943,6 +1928,25 @@ def test_raise_on_failure_multi(X):
         x=RiskMeasure.ANNUALIZED_VARIANCE,
         y=RiskMeasure.ANNUALIZED_STANDARD_DEVIATION,
     )
+
+
+def test_non_gmd_parameter_sweep_reuses_problem(X, monkeypatch):
+    problem_ids = []
+    original_solve = sco._solve
+
+    def record_problem(**kwargs):
+        assert kwargs["gmd"] is None
+        problem_ids.append(id(kwargs["problem"]))
+        return original_solve(**kwargs)
+
+    monkeypatch.setattr(sco, "_solve", record_problem)
+    MeanRisk(
+        risk_measure=RiskMeasure.VARIANCE,
+        min_return=[0.0005, 0.0001],
+    ).fit(X)
+
+    assert len(problem_ids) == 2
+    assert len(set(problem_ids)) == 1
 
 
 def test_raise_on_failure_off_multi_all_fail(X):

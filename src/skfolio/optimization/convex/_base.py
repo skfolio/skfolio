@@ -24,8 +24,9 @@ from skfolio._constants import (
     _MANAGEMENT_FEES,
     _TRANSACTION_COSTS,
 )
-from skfolio.measures import RiskMeasure, owa_gmd_weights
+from skfolio.measures import RiskMeasure
 from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization.convex._gini_mean_difference import _GiniMeanDifference
 from skfolio.prior import BasePrior, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import (
@@ -43,6 +44,9 @@ from skfolio.utils.tools import (
 )
 
 INSTALLED_SOLVERS = cp.installed_solvers()
+# Conic feasibility residuals can represent an equality-constrained zero as a tiny
+# positive value. Dividing weights or separation residuals by such a value is unsafe.
+_MIN_HOMOGENIZATION_FACTOR = 1e-12
 
 
 class ObjectiveFunction(AutoEnum):
@@ -1166,6 +1170,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         factor: skt.Factor,
         parameters_values: skt.ParametersValues = None,
         expressions: dict[str, cp.Expression] | None = None,
+        gmd: _GiniMeanDifference | None = None,
     ) -> None:
         """Solve the CVXPY Problem and save the results in `weights_`, `problem_values_`
         and `problem_`.
@@ -1190,9 +1195,15 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         factor: cvxpy Variable | cvxpy Constant
            CVXPY Variable or Constant used for RatioMeasure optimization problems.
+
+        gmd : _GiniMeanDifference | None, optional
+            Concrete GMD helper for the current optimization.
         """
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
+
+        if self.save_problem and hasattr(self, "problem_"):
+            del self.problem_
 
         if parameters_values is None:
             parameters_values = []
@@ -1218,68 +1229,125 @@ class ConvexOptimization(BaseOptimization, ABC):
                 for p, v in parameters_values
             ]
 
-        if n_optimizations == 1:
-            for parameter, values in parameters_values:
-                parameter.value = values[0]
+        last_successful_parameters = []
+        last_successful_variable_values = []
+        last_successful_dual_values = []
+        try:
+            if n_optimizations == 1:
+                for parameter, values in parameters_values:
+                    parameter.value = values[0]
 
-            weights, self.problem_values_ = _solve(
-                w=w,
-                factor=factor,
-                expressions=expressions,
-                problem=problem,
-                solver=self.solver,
-                solver_params=self._solver_params,
-                risk_measure=self.risk_measure,
-                scale_objective=self._scale_objective,
-            )
-            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
-        else:
-            all_weights = []
-            all_problem_values = []
-            all_errors = []
-            with warnings.catch_warnings():
-                warnings.simplefilter("once", UserWarning)
-                for i in range(n_optimizations):
-                    for parameter, values in parameters_values:
-                        parameter.value = values[i]
-
-                    try:
-                        weights, problem_values = _solve(
-                            w=w,
-                            factor=factor,
-                            expressions=expressions,
-                            problem=problem,
-                            solver=self.solver,
-                            solver_params=self._solver_params,
-                            risk_measure=self.risk_measure,
-                            scale_objective=self._scale_objective,
-                        )
-                        error = None
-                    except cp.SolverError as solver_error:
-                        if self.raise_on_failure:
-                            raise
-                        error = str(solver_error)
-                        warnings.warn(error, stacklevel=2)
-                        problem_values = None
-                        weights = np.full(w.shape, np.nan, dtype=float)
-
-                    all_problem_values.append(problem_values)
-                    all_weights.append(weights)
-                    all_errors.append(error)
-
-            all_weights = np.array(all_weights, dtype=float)
-            if np.isnan(all_weights).all():
-                raise cp.SolverError(
-                    f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                problem, weights, self.problem_values_ = _solve(
+                    w=w,
+                    factor=factor,
+                    expressions=expressions,
+                    problem=problem,
+                    solver=self.solver,
+                    solver_params=self._solver_params,
+                    risk_measure=self.risk_measure,
+                    scale_objective=self._scale_objective,
+                    gmd=gmd,
                 )
-            self.weights_ = self._expand_weights_to_full_universe(weights=all_weights)
-            self.problem_values_ = all_problem_values
-            self.error_ = all_errors
+                self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+            else:
+                all_weights = []
+                all_problem_values = []
+                all_errors = []
+                base_problem = problem
+                with warnings.catch_warnings():
+                    warnings.simplefilter("once", UserWarning)
+                    for i in range(n_optimizations):
+                        for parameter, values in parameters_values:
+                            parameter.value = values[i]
 
-        if self.save_problem:
-            self.problem_ = problem
+                        try:
+                            # Generated cuts are target-local. Without GMD,
+                            # preserve the reusable parameterized problem path.
+                            target_problem = (
+                                cp.Problem(
+                                    base_problem.objective,
+                                    list(base_problem.constraints),
+                                )
+                                if gmd is not None
+                                else base_problem
+                            )
+                            solved_problem, weights, problem_values = _solve(
+                                w=w,
+                                factor=factor,
+                                expressions=expressions,
+                                problem=target_problem,
+                                solver=self.solver,
+                                solver_params=self._solver_params,
+                                risk_measure=self.risk_measure,
+                                scale_objective=self._scale_objective,
+                                gmd=gmd,
+                            )
+                            problem = solved_problem
+                            if self.save_problem and gmd is not None:
+                                last_successful_parameters = [
+                                    (parameter, np.array(parameter.value, copy=True))
+                                    for parameter, _ in parameters_values
+                                ]
+                                last_successful_variable_values = [
+                                    (
+                                        variable,
+                                        None
+                                        if variable.value is None
+                                        else np.array(variable.value, copy=True),
+                                    )
+                                    for variable in solved_problem.variables()
+                                ]
+                                last_successful_dual_values = [
+                                    (
+                                        dual_variable,
+                                        None
+                                        if dual_variable.value is None
+                                        else np.array(dual_variable.value, copy=True),
+                                    )
+                                    for constraint in solved_problem.constraints
+                                    for dual_variable in constraint.dual_variables
+                                ]
+                            error = None
+                        except cp.SolverError as solver_error:
+                            if self.raise_on_failure:
+                                raise
+                            error = str(solver_error)
+                            warnings.warn(error, stacklevel=2)
+                            problem_values = None
+                            weights = np.full(w.shape, np.nan, dtype=float)
 
-        self._clear_models_cache()
+                        all_problem_values.append(problem_values)
+                        all_weights.append(weights)
+                        all_errors.append(error)
+
+                all_weights = np.array(all_weights, dtype=float)
+                if np.isnan(all_weights).all():
+                    raise cp.SolverError(
+                        f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                    )
+                self.weights_ = self._expand_weights_to_full_universe(
+                    weights=all_weights
+                )
+                self.problem_values_ = all_problem_values
+                self.error_ = all_errors
+
+            if self.save_problem:
+                # A generated master may contain only the cuts needed for its solved
+                # target, rather than the complete permutation epigraph. Restore the
+                # parameter values belonging to the final successful target when a
+                # later target failed.
+                for parameter, value in last_successful_parameters:
+                    parameter.value = value
+                for variable, value in last_successful_variable_values:
+                    variable.save_value(value)
+                for dual_variable, value in last_successful_dual_values:
+                    # Restore solver values verbatim. CVXPY stores some cone
+                    # duals as column arrays even when their variable is 1D.
+                    dual_variable.save_value(value)
+                self.problem_ = problem
+        finally:
+            # Generated cuts are local to this problem and must never survive a fit.
+            self._clear_models_cache()
 
     @cache_method("_cvx_cache")
     def _cvx_mu_uncertainty_set(
@@ -2280,61 +2348,19 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _gini_mean_difference_risk(
         self,
         return_distribution: ReturnDistribution,
-        w: cp.Variable,
-        factor: skt.Factor,
-    ) -> skt.RiskResult:
-        """Expression and Constraints of the Gini Mean Difference risk measure.
+        w: cp.Expression,
+    ) -> _GiniMeanDifference:
+        """Create the concrete empirical GMD helper for this optimization.
 
-        The Gini mean difference (GMD) is a measure of dispersion introduced in the
-        context of portfolio optimization by Yitzhaki (1982).
-        The initial formulation was not used by practitioners because the number of
-        variables increases proportionally to T(T-1)/2.
-
-        Cajas (2021) proposed an alternative reformulation based on the ordered weighted
-        averaging (OWA) operator for monotonic weights proposed by Chassein and
-        Goerigk (2015). We implement this formulation which is more efficient for large
-        scale problems.
-
-        Parameters
-        ----------
-        return_distribution : ReturnDistribution
-           asset returns distribution DataModel.
-
-        w : cvxpy Variable
-           The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-           Additional variable used for the optimization of some objective function
-           like the ratio maximization.
-
-        Returns
-        -------
-        expression : tuple[cvxpy Expression , list[cvxpy Expression]]
-            CVXPY expression and constraints of the Gini mean difference risk measure.
+        Transaction costs and management fees shift every observation equally.
+        GMD is translation invariant, so these shifts need not enter the helper.
+        The weight expression includes the homogeneous target when applicable.
         """
-        ptf_returns = self._cvx_returns(return_distribution=return_distribution, w=w)
-        ptf_transaction_cost = self._cvx_transaction_cost(
-            return_distribution=return_distribution, w=w, factor=factor
+        return _GiniMeanDifference(
+            returns=return_distribution.returns,
+            weights=w,
+            scale_constraints=self._scale_constraints,
         )
-        ptf_management_fee = self._cvx_management_fee(
-            return_distribution=return_distribution, w=w
-        )
-        observation_nb = return_distribution.returns.shape[0]
-        x = cp.Variable((observation_nb, 1))
-        y = cp.Variable((observation_nb, 1))
-        z = cp.Variable((observation_nb, 1))
-        ones = np.ones((observation_nb, 1))
-        risk = 2 * cp.sum(x + y)
-        gmd_w = np.array(owa_gmd_weights(observation_nb) / 2).reshape(-1, 1)
-        # noinspection PyTypeChecker
-        constraints = [
-            ptf_returns * self._scale_constraints
-            - ptf_transaction_cost * self._scale_constraints
-            - ptf_management_fee * self._scale_constraints
-            == cp.reshape(z, (observation_nb,), order="F") * self._scale_constraints,
-            z @ gmd_w.T <= ones @ x.T + y @ ones.T,
-        ]
-        return risk, constraints
 
     def get_metadata_routing(self):
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
@@ -2516,40 +2542,51 @@ def _solve(
     solver_params,
     risk_measure,
     scale_objective,
+    gmd: _GiniMeanDifference | None = None,
 ):
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            problem.solve(solver=solver, **solver_params)
+            if gmd is None:
+                problem.solve(solver=solver, **solver_params)
+            else:
+                problem = gmd.solve(problem, solver, solver_params, factor)
 
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-        weights = w.value / factor.value
+        factor_value = _validated_factor_value(factor.value)
+        weights = np.asarray(w.value, dtype=float)
+        if not np.isfinite(weights).all():
+            raise cp.SolverError("The solver returned non-finite weights")
+        weights = weights / factor_value
         problem_values = {
-            name: expression.value / factor.value
+            name: expression.value / factor_value
             if name != "factor"
             else expression.value
             for name, expression in expressions.items()
         }
+        if gmd is not None:
+            for name, expression in expressions.items():
+                if expression is gmd.expression:
+                    problem_values[name] = gmd.evaluate(factor_value)
         problem_values["objective"] = problem.value / scale_objective.value
 
         if (
             risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
             and "risk" in problem_values
         ):
-            problem_values["risk"] /= factor.value
+            problem_values["risk"] /= factor_value
 
-        weights = np.array(weights, dtype=float)
         if not problem.status == cp.OPTIMAL:
             warnings.warn(
                 "Solution may be inaccurate. Try changing the solver params or the"
                 " scale. For more details, set `solver_params=dict(verbose=True)`",
                 stacklevel=2,
             )
-        return weights, problem_values
-    except (cp.SolverError, sla.ArpackNoConvergence):
+        return problem, weights, problem_values
+    except (cp.SolverError, sla.ArpackNoConvergence) as solver_error:
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:
             params_string = f" with parameters {params_string}"
@@ -2558,4 +2595,20 @@ def _solve(
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
         )
+        if gmd is not None:
+            error += f". {solver_error}"
         raise cp.SolverError(error) from None
+
+
+def _validated_factor_value(value: object) -> float:
+    """Return a finite, numerically positive normalization factor."""
+    factor = np.asarray(value, dtype=float)
+    if (
+        factor.size != 1
+        or not np.isfinite(factor).all()
+        or factor.item() <= _MIN_HOMOGENIZATION_FACTOR
+    ):
+        raise cp.SolverError(
+            "The optimization returned an invalid homogeneous normalization factor"
+        )
+    return float(factor.item())

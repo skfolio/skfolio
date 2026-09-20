@@ -35,15 +35,7 @@ def X(X):
 
 @pytest.fixture(
     scope="module",
-    params=[
-        rm
-        for rm in RiskMeasure
-        if not rm.is_annualized
-        and rm
-        not in [
-            RiskMeasure.GINI_MEAN_DIFFERENCE,  # Too slow without MOSEK
-        ]
-    ],
+    params=[rm for rm in RiskMeasure if not rm.is_annualized],
 )
 def risk_measure(request):
     return request.param

@@ -123,7 +123,16 @@ With :math:`risk_{i}` a risk measure among:
     * Ulcer Index
     * Gini Mean Difference
 
-It supports the following parameters:
+Gini Mean Difference uses constraint generation: it adds exact risk constraints
+until the portfolio satisfies the solver and separation tolerances. The number of
+iterations depends on the data and is not capped at a fixed cut count. If an
+intermediate relaxation is unbounded or has an invalid ratio normalization factor,
+optimization switches to an exact pairwise formulation, which requires quadratic
+memory in the number of observations.
+Reported GMD is evaluated directly from the final portfolio returns, relative to
+target weights when specified.
+
+Mean-Risk optimization supports the following parameters:
 
     * Weight Constraints
     * Budget Constraints
