@@ -151,6 +151,12 @@ jobs:
       - name: Check dependencies
         run: uv pip check --python .venv
 
+      # Reuse this environment so deptry can map imports to installed distributions
+      # (e.g. `cvxpy` to `cvxpy-base`). One run covers the shared package source.
+      - name: Dependency check
+        if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
+        run: uv run --no-sync deptry src
+
       # Use the environment installed above; syncing could change the
       # dependencies selected for the minimum/latest compatibility checks.
       - name: Run tests
