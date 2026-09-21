@@ -27,7 +27,7 @@ from skfolio._constants import (
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import AnyArray, ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -878,8 +878,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         w: cp.Variable,
         factor: skt.Factor,
-        min_weights: np.ndarray | None,
-        max_weights: np.ndarray | None,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
         allow_negative_weights: bool,
     ) -> list[cpc.Constraint]:
         """Constrain individual asset weights and total long and short exposure.
@@ -962,11 +962,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-        min_weights: np.ndarray | None,
-        max_weights: np.ndarray | None,
-        threshold_long: np.ndarray | None,
-        threshold_short: np.ndarray | None,
-        groups: np.ndarray | None,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
+        threshold_long: FloatArray | None,
+        threshold_short: FloatArray | None,
+        groups: AnyArray | None,
     ) -> list[cpc.Constraint]:
         """Build cardinality and position-threshold constraints.
 
@@ -1043,9 +1043,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         w: cp.Variable,
         factor: skt.Factor,
-        groups: np.ndarray | None,
-        assets_names: np.ndarray | None,
-        investable_mask: np.ndarray | None,
+        groups: AnyArray | None,
+        assets_names: StrArray | None,
+        investable_mask: BoolArray | None,
         return_distribution: ReturnDistribution | None,
     ) -> list[cpc.Constraint]:
         """Build equalities and inequalities from `linear_constraints`.
@@ -1110,7 +1110,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-        investable_mask: np.ndarray | None,
+        investable_mask: BoolArray | None,
     ) -> list[cpc.Constraint]:
         """Build `left_inequality @ w <= right_inequality * factor` constraints.
 

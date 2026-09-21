@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 
 import cvxpy as cp
+import cvxpy.constraints.constraint as cpc
 import numpy as np
 import pandas as pd
 import sklearn as sk
@@ -1299,7 +1300,7 @@ class MeanRisk(ConvexOptimization):
         expected_return: cp.Expression,
         factor: skt.Factor,
         fit_params: dict,
-    ) -> tuple[list, tuple[cp.Parameter, np.ndarray]]:
+    ) -> tuple[list[cpc.Constraint], tuple[cp.Parameter, FloatArray]]:
         """Build the minimum-return constraint used to trace the efficient frontier.
 
         Fit a cloned model for minimum risk and maximum return to determine the
@@ -1339,7 +1340,7 @@ class MeanRisk(ConvexOptimization):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Expression | None, list, list]:
+    ) -> tuple[cp.Expression | None, list[cpc.Constraint], skt.ParametersValues]:
         """Build the selected risk expression and configured risk limits.
 
         Return the selected expression, supporting constraints, and
@@ -1422,7 +1423,7 @@ class MeanRisk(ConvexOptimization):
         regularization: cp.Expression,
         custom_objective: cp.Expression,
         factor: skt.Factor,
-    ) -> tuple[cp.Objective, list]:
+    ) -> tuple[cp.Objective, list[cpc.Constraint]]:
         """Return the configured CVXPY objective and its supporting constraints.
 
         The constraint list is empty unless maximizing a ratio.
