@@ -27,7 +27,7 @@ from skfolio._constants import (
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import AnyArray, ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -839,7 +839,54 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
-        # Constraints
+        constraints += self._weight_and_exposure_constraints(
+            w=w,
+            factor=factor,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            allow_negative_weights=allow_negative_weights,
+        )
+        constraints += self._budget_constraints(w=w, factor=factor)
+
+        if is_mip:
+            constraints += self._mixed_integer_constraints(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+                groups=groups,
+            )
+
+        constraints += self._linear_constraints(
+            w=w,
+            factor=factor,
+            groups=groups,
+            assets_names=assets_names,
+            investable_mask=investable_mask,
+            return_distribution=return_distribution,
+        )
+        constraints += self._matrix_inequality_constraints(
+            n_assets=n_assets, w=w, factor=factor, investable_mask=investable_mask
+        )
+
+        return constraints
+
+    def _weight_and_exposure_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
+        allow_negative_weights: bool,
+    ) -> list[cpc.Constraint]:
+        """Constrain individual asset weights and total long and short exposure.
+
+        Weight bounds must already be aligned with the investable assets.
+        """
+        constraints = []
         if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
@@ -875,6 +922,13 @@ class ConvexOptimization(BaseOptimization, ABC):
                 <= max_short * factor * self._scale_constraints
             )
 
+        return constraints
+
+    def _budget_constraints(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> list[cpc.Constraint]:
+        """Constrain the sum of weights using the configured budget or limits."""
+        constraints = []
         if self.min_budget is not None:
             constraints.append(
                 cp.sum(w) * self._scale_constraints
@@ -901,72 +955,105 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
-        if is_mip:
-            is_short = np.any(min_weights < 0)
+        return constraints
 
-            if max_weights is None or min_weights is None:
-                raise ValueError(
-                    "'max_weights' and 'min_weights' must be provided with cardinality "
-                    "constraint"
-                )
-            if np.all(min_weights > 0):
-                raise ValueError(
-                    "Cardinality and Threshold constraint can only be applied "
-                    "if 'min_weights' are not all strictly positive (you allow some "
-                    "weights to be 0)"
-                )
+    def _mixed_integer_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
+        threshold_long: FloatArray | None,
+        threshold_short: FloatArray | None,
+        groups: AnyArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build cardinality and position-threshold constraints.
 
-            if self.group_cardinalities is not None and groups is None:
-                raise ValueError(
-                    "When 'group_cardinalities' is provided, you must also "
-                    "also provide 'groups'"
-                )
+        Bounds, thresholds, and groups must already be aligned with the investable
+        assets. All-zero thresholds must be converted to `None`. The caller checks
+        that the solver supports mixed-integer problems.
+        """
+        is_short = np.any(min_weights < 0)
 
-            if (
-                self.threshold_long is not None
-                and self.threshold_short is None
-                and is_short
-            ):
-                raise ValueError(
-                    "When 'threshold_long' is provided and 'min_weights' can be negative "
-                    "(short positions are allowed), then 'threshold_short' must also be "
-                    "provided"
-                )
+        if max_weights is None or min_weights is None:
+            raise ValueError(
+                "'max_weights' and 'min_weights' must be provided with cardinality "
+                "constraint"
+            )
+        if np.all(min_weights > 0):
+            raise ValueError(
+                "Cardinality and Threshold constraint can only be applied "
+                "if 'min_weights' are not all strictly positive (you allow some "
+                "weights to be 0)"
+            )
 
-            if threshold_short is not None and threshold_long is None:
-                raise ValueError(
-                    "When 'threshold_short' is provided, 'threshold_long' must also be "
-                    "provided"
-                )
+        if self.group_cardinalities is not None and groups is None:
+            raise ValueError(
+                "When 'group_cardinalities' is provided, you must also "
+                "also provide 'groups'"
+            )
 
-            if self.threshold_short is not None and is_short:
-                constraints += _mip_weight_constraints_threshold_short(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                    threshold_short=threshold_short,
-                )
-            else:
-                constraints += _mip_weight_constraints_no_short_threshold(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                )
+        if (
+            self.threshold_long is not None
+            and self.threshold_short is None
+            and is_short
+        ):
+            raise ValueError(
+                "When 'threshold_long' is provided and 'min_weights' can be negative "
+                "(short positions are allowed), then 'threshold_short' must also be "
+                "provided"
+            )
 
+        if threshold_short is not None and threshold_long is None:
+            raise ValueError(
+                "When 'threshold_short' is provided, 'threshold_long' must also be "
+                "provided"
+            )
+
+        if self.threshold_short is not None and is_short:
+            return _mip_weight_constraints_threshold_short(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                scale_constraints=self._scale_constraints,
+                cardinality=self.cardinality,
+                group_cardinalities=self.group_cardinalities,
+                max_weights=max_weights,
+                groups=groups,
+                min_weights=min_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+            )
+
+        return _mip_weight_constraints_no_short_threshold(
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            scale_constraints=self._scale_constraints,
+            cardinality=self.cardinality,
+            group_cardinalities=self.group_cardinalities,
+            max_weights=max_weights,
+            groups=groups,
+            min_weights=min_weights,
+            threshold_long=threshold_long,
+        )
+
+    def _linear_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        groups: AnyArray | None,
+        assets_names: StrArray | None,
+        investable_mask: BoolArray | None,
+        return_distribution: ReturnDistribution | None,
+    ) -> list[cpc.Constraint]:
+        """Build equalities and inequalities from `linear_constraints`.
+
+        Supplied groups must already be aligned with the investable assets.
+        Factor constraints use the factor model from `return_distribution`.
+        """
+        constraints = []
         if self.linear_constraints is not None:
             if groups is None:
                 if assets_names is None:
@@ -1016,6 +1103,21 @@ class ConvexOptimization(BaseOptimization, ABC):
                     <= 0
                 )
 
+        return constraints
+
+    def _matrix_inequality_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        investable_mask: BoolArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build `left_inequality @ w <= right_inequality * factor` constraints.
+
+        When `investable_mask` is provided, the matrix must include all original
+        assets, including non-investable ones.
+        """
+        constraints = []
         if self.left_inequality is not None and self.right_inequality is not None:
             left_inequality = np.asarray(self.left_inequality)
             right_inequality = np.asarray(self.right_inequality)
