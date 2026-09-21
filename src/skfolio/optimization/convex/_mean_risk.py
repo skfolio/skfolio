@@ -1178,7 +1178,7 @@ class MeanRisk(ConvexOptimization):
             parameters_values.append((parameter, self.min_return))
 
         # risk and risk constraints
-        risk, risk_constraints, risk_parameters_values = self._risk_constraints(
+        risk, risk_constraints, risk_parameters_values = self._build_risk(
             X=X,
             y=y,
             method=method,
@@ -1239,12 +1239,7 @@ class MeanRisk(ConvexOptimization):
         return self
 
     def _set_scales(self) -> None:
-        """Set the objective and constraint scales for the configured risk measure.
-
-        The scales keep the conic reformulations numerically comparable across
-        measures of very different magnitudes. Maximizing a ratio of a measure that is
-        not 1-homogeneous also warns here.
-        """
+        """Set numerical scales for the objective and constraints."""
         if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
             if self.overwrite_expected_return is not None:
                 if self.risk_measure == RiskMeasure.VARIANCE:
@@ -1254,7 +1249,7 @@ class MeanRisk(ConvexOptimization):
                         "This is because the mean/variance ratio is not a "
                         "1-homogeneous function, unlike the mean/std. To suppress this"
                         "warning, replace 'VARIANCE' by 'STANDARD_DEVIATION'",
-                        stacklevel=2,
+                        stacklevel=3,
                     )
 
                 elif self.risk_measure == RiskMeasure.SEMI_VARIANCE:
@@ -1265,7 +1260,7 @@ class MeanRisk(ConvexOptimization):
                         "1-homogeneous function, unlike the mean/semi-std ratio. To "
                         "suppress this warning, replace 'SEMI_VARIANCE' by "
                         "'SEMI_DEVIATION'",
-                        stacklevel=2,
+                        stacklevel=3,
                     )
 
             self._set_scale_objective(default=1)
@@ -1305,37 +1300,11 @@ class MeanRisk(ConvexOptimization):
         factor: skt.Factor,
         fit_params: dict,
     ) -> tuple[list, tuple[cp.Parameter, np.ndarray]]:
-        """Build the parametrized minimum-return constraint of the efficient frontier.
+        """Build the minimum-return constraint used to trace the efficient frontier.
 
-        The frontier is spanned by solving the same problem once per target return, so
-        the bounds are found by minimizing risk and maximizing return first.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
-
-        y : array-like of shape (n_observations, n_targets), optional
-            Price returns of factors or a target benchmark.
-
-        expected_return : cvxpy Expression
-            The expected return expression.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        fit_params : dict
-            Parameters forwarded to the bound-finding fits.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The parametrized return constraint.
-
-        parameter_values : tuple[cvxpy Parameter, ndarray]
-            The parameter and the target returns it takes, one per optimization.
+        Fit a cloned model for minimum risk and maximum return to determine the
+        target returns. Return the constraint list and a `(parameter, targets)` pair.
         """
-        # We find the lower and upper bounds of the expected returns.
         model: MeanRisk = sk.clone(self)
         model.set_params(
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
@@ -1360,7 +1329,7 @@ class MeanRisk(ConvexOptimization):
         parameter = cp.Parameter(nonneg=False)
         return [expected_return >= parameter * factor], (parameter, targets)
 
-    def _risk_constraints(
+    def _build_risk(
         self,
         X: ArrayLike,
         y: ArrayLike | None,
@@ -1371,50 +1340,13 @@ class MeanRisk(ConvexOptimization):
         w: cp.Variable,
         factor: skt.Factor,
     ) -> tuple[cp.Expression | None, list, list]:
-        """Build the risk expression of `risk_measure` and every `max_<measure>` limit.
+        """Build the selected risk expression and configured risk limits.
 
-        A single pass covers both: the optimized measure and the constrained ones are
-        built by the same `_<measure>_risk` methods, so a measure that is both is built
-        only once.
+        Return the selected expression, supporting constraints, and
+        `(parameter, values)` pairs for the risk limits.
 
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
-
-        y : array-like of shape (n_observations, n_targets), optional
-            Price returns of factors or a target benchmark.
-
-        method : str
-            Either `"fit"` or `"partial_fit"`, forwarded to the covariance uncertainty
-            set estimator.
-
-        routed_params : Bunch
-            The routed metadata.
-
-        return_distribution : ReturnDistribution
-            The fitted return distribution.
-
-        n_assets : int
-            Number of investable assets.
-
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        Returns
-        -------
-        risk : cvxpy Expression | None
-            The expression of `risk_measure`.
-
-        constraints : list[cvxpy Constraint]
-            The constraints of every built risk measure, plus the `max_<measure>`
-            limits.
-
-        parameters_values : list[tuple[cvxpy Parameter, float | ndarray]]
-            The parameters of the `max_<measure>` limits and their values.
+        When needed, fit or update the covariance uncertainty estimator using
+        `method` (`fit` or `partial_fit`).
         """
         risk = None
         constraints = []
@@ -1445,7 +1377,7 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            # Scale the target too; final weights are w / factor.
+                            # Scale the target too. Final weights are w / factor.
                             args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
@@ -1491,38 +1423,9 @@ class MeanRisk(ConvexOptimization):
         custom_objective: cp.Expression,
         factor: skt.Factor,
     ) -> tuple[cp.Objective, list]:
-        """Build the CVXPY objective of `objective_function`.
+        """Return the configured CVXPY objective and its supporting constraints.
 
-        Maximizing a ratio needs the Charnes-Cooper transformation, which is what the
-        extra constraints returned here encode.
-
-        Parameters
-        ----------
-        return_distribution : ReturnDistribution
-            The fitted return distribution.
-
-        expected_return : cvxpy Expression
-            The expected return expression.
-
-        risk : cvxpy Expression | None
-            The expression of `risk_measure`.
-
-        regularization : cvxpy Expression
-            The regularization expression.
-
-        custom_objective : cvxpy Expression
-            The custom objective expression.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        Returns
-        -------
-        objective : cvxpy Objective
-            The objective to optimize.
-
-        constraints : list[cvxpy Constraint]
-            The constraints the objective needs, empty unless maximizing a ratio.
+        The constraint list is empty unless maximizing a ratio.
         """
         constraints = []
         match self.objective_function:

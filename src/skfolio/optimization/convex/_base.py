@@ -839,7 +839,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
-        constraints += self._bound_constraints(
+        constraints += self._weight_and_exposure_constraints(
             w=w,
             factor=factor,
             min_weights=min_weights,
@@ -849,7 +849,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         constraints += self._budget_constraints(w=w, factor=factor)
 
         if is_mip:
-            constraints += self._mip_constraints(
+            constraints += self._mixed_integer_constraints(
                 n_assets=n_assets,
                 w=w,
                 factor=factor,
@@ -868,13 +868,13 @@ class ConvexOptimization(BaseOptimization, ABC):
             investable_mask=investable_mask,
             return_distribution=return_distribution,
         )
-        constraints += self._inequality_constraints(
+        constraints += self._matrix_inequality_constraints(
             n_assets=n_assets, w=w, factor=factor, investable_mask=investable_mask
         )
 
         return constraints
 
-    def _bound_constraints(
+    def _weight_and_exposure_constraints(
         self,
         w: cp.Variable,
         factor: skt.Factor,
@@ -882,29 +882,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         max_weights: np.ndarray | None,
         allow_negative_weights: bool,
     ) -> list[cpc.Constraint]:
-        """Per-asset weight bounds and the long and short exposure caps.
+        """Constrain individual asset weights and total long and short exposure.
 
-        Parameters
-        ----------
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        min_weights : ndarray | None
-            The cleaned `min_weights`.
-
-        max_weights : ndarray | None
-            The cleaned `max_weights`.
-
-        allow_negative_weights : bool
-            Whether to allow negative weights.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The bound constraints.
+        Weight bounds must already be aligned with the investable assets.
         """
         constraints = []
         if min_weights is not None:
@@ -947,21 +927,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _budget_constraints(
         self, w: cp.Variable, factor: skt.Factor
     ) -> list[cpc.Constraint]:
-        """Constraints on the sum of the weights.
-
-        Parameters
-        ----------
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The budget constraints.
-        """
+        """Constrain the sum of weights using the configured budget or limits."""
         constraints = []
         if self.min_budget is not None:
             constraints.append(
@@ -991,7 +957,7 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         return constraints
 
-    def _mip_constraints(
+    def _mixed_integer_constraints(
         self,
         n_assets: int,
         w: cp.Variable,
@@ -1002,40 +968,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         threshold_short: np.ndarray | None,
         groups: np.ndarray | None,
     ) -> list[cpc.Constraint]:
-        """Cardinality and threshold constraints, which need integer variables.
+        """Build cardinality and position-threshold constraints.
 
-        Parameters
-        ----------
-        n_assets : int
-            Number of investable assets.
-
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        min_weights : ndarray | None
-            The cleaned `min_weights`.
-
-        max_weights : ndarray | None
-            The cleaned `max_weights`.
-
-        threshold_long : ndarray | None
-            The cleaned `threshold_long`.
-
-        threshold_short : ndarray | None
-            The cleaned `threshold_short`.
-
-        groups : ndarray | None
-            The cleaned `groups`.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The mixed-integer constraints.
+        Bounds, thresholds, and groups must already be aligned with the investable
+        assets. All-zero thresholds must be converted to `None`. The caller checks
+        that the solver supports mixed-integer problems.
         """
-        constraints = []
         is_short = np.any(min_weights < 0)
 
         if max_weights is None or min_weights is None:
@@ -1074,7 +1012,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             )
 
         if self.threshold_short is not None and is_short:
-            constraints += _mip_weight_constraints_threshold_short(
+            return _mip_weight_constraints_threshold_short(
                 n_assets=n_assets,
                 w=w,
                 factor=factor,
@@ -1087,21 +1025,19 @@ class ConvexOptimization(BaseOptimization, ABC):
                 threshold_long=threshold_long,
                 threshold_short=threshold_short,
             )
-        else:
-            constraints += _mip_weight_constraints_no_short_threshold(
-                n_assets=n_assets,
-                w=w,
-                factor=factor,
-                scale_constraints=self._scale_constraints,
-                cardinality=self.cardinality,
-                group_cardinalities=self.group_cardinalities,
-                max_weights=max_weights,
-                groups=groups,
-                min_weights=min_weights,
-                threshold_long=threshold_long,
-            )
 
-        return constraints
+        return _mip_weight_constraints_no_short_threshold(
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            scale_constraints=self._scale_constraints,
+            cardinality=self.cardinality,
+            group_cardinalities=self.group_cardinalities,
+            max_weights=max_weights,
+            groups=groups,
+            min_weights=min_weights,
+            threshold_long=threshold_long,
+        )
 
     def _linear_constraints(
         self,
@@ -1112,32 +1048,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         investable_mask: np.ndarray | None,
         return_distribution: ReturnDistribution | None,
     ) -> list[cpc.Constraint]:
-        """Constraints expressed as equations over asset groups or factors.
+        """Build equalities and inequalities from `linear_constraints`.
 
-        Parameters
-        ----------
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        groups : ndarray | None
-            The cleaned `groups`.
-
-        assets_names : ndarray | None
-            The asset names seen during `fit`, when available.
-
-        investable_mask : ndarray | None
-            The investable asset mask, when available.
-
-        return_distribution : ReturnDistribution | None
-            The return distribution, used for factor constraints.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The linear constraints.
+        Supplied groups must already be aligned with the investable assets.
+        Factor constraints use the factor model from `return_distribution`.
         """
         constraints = []
         if self.linear_constraints is not None:
@@ -1191,33 +1105,17 @@ class ConvexOptimization(BaseOptimization, ABC):
 
         return constraints
 
-    def _inequality_constraints(
+    def _matrix_inequality_constraints(
         self,
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
         investable_mask: np.ndarray | None,
     ) -> list[cpc.Constraint]:
-        """Constraints given directly as the matrix inequality `A @ w <= b`.
+        """Build `left_inequality @ w <= right_inequality * factor` constraints.
 
-        Parameters
-        ----------
-        n_assets : int
-            Number of investable assets.
-
-        w : cvxpy Variable
-            The CVXPY Variable representing assets weights.
-
-        factor : cvxpy Variable | cvxpy Constant
-            Cvxpy variable or constant.
-
-        investable_mask : ndarray | None
-            The investable asset mask, when available.
-
-        Returns
-        -------
-        constraints : list[cvxpy Constraint]
-            The inequality constraints.
+        When `investable_mask` is provided, the matrix must include all original
+        assets, including non-investable ones.
         """
         constraints = []
         if self.left_inequality is not None and self.right_inequality is not None:
