@@ -667,6 +667,48 @@ def test_walk_forward_accepts_numpy_integer_window_sizes(freq):
     assert all(train.size > 0 and test.size > 0 for train, test in splits)
 
 
+@pytest.mark.parametrize("n_samples", [2, 4, 5])
+@pytest.mark.parametrize("reduce_test", [False, True])
+def test_walk_forward_rejects_insufficient_observations(n_samples, reduce_test):
+    """Reject observation schedules with no possible test observation."""
+    # Cover a short input, the full training window, and the exact
+    # train-plus-purge boundary.
+    X = np.zeros((n_samples, 2))
+    cv = WalkForward(
+        test_size=2,
+        train_size=4,
+        purged_size=1,
+        reduce_test=reduce_test,
+    )
+    match = r"must be less than the number of observations"
+
+    with pytest.raises(ValueError, match=match) as count_error:
+        cv.get_n_splits(X)
+    with pytest.raises(ValueError, match=match) as split_error:
+        list(cv.split(X))
+    assert str(count_error.value) == str(split_error.value)
+
+
+@pytest.mark.parametrize(("reduce_test", "expected_n_splits"), [(False, 0), (True, 1)])
+def test_walk_forward_accepts_single_test_observation(reduce_test, expected_n_splits):
+    """Accept the smallest schedule that leaves a test observation."""
+    X = np.zeros((6, 2))
+    cv = WalkForward(
+        test_size=2,
+        train_size=4,
+        purged_size=1,
+        reduce_test=reduce_test,
+    )
+
+    # The lone test observation forms a fold only when partial tests are retained.
+    splits = list(cv.split(X))
+    assert cv.get_n_splits(X) == len(splits) == expected_n_splits
+    if reduce_test:
+        train, test = splits[0]
+        np.testing.assert_array_equal(train, np.arange(4))
+        np.testing.assert_array_equal(test, np.array([5]))
+
+
 def test_walk_forward_without_period():
     X = np.random.randn(12, 2)
 
