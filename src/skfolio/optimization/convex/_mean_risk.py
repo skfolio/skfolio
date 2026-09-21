@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 
 import cvxpy as cp
+import cvxpy.constraints.constraint as cpc
 import numpy as np
 import pandas as pd
 import sklearn as sk
@@ -21,7 +22,7 @@ import skfolio.typing as skt
 from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
-from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.prior import BasePrior, EmpiricalPrior, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set import BaseCovarianceUncertaintySet, BaseMuUncertaintySet
 from skfolio.utils.tools import (
@@ -1068,57 +1069,7 @@ class MeanRisk(ConvexOptimization):
                 self._set_solver_params(default=None)
 
         # set scales and check measure
-        if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
-            if self.overwrite_expected_return is not None:
-                if self.risk_measure == RiskMeasure.VARIANCE:
-                    warnings.warn(
-                        "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the "
-                        "optimization will return the maximum Sharpe Ratio portfolio. "
-                        "This is because the mean/variance ratio is not a "
-                        "1-homogeneous function, unlike the mean/std. To suppress this"
-                        "warning, replace 'VARIANCE' by 'STANDARD_DEVIATION'",
-                        stacklevel=2,
-                    )
-
-                elif self.risk_measure == RiskMeasure.SEMI_VARIANCE:
-                    warnings.warn(
-                        "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
-                        "optimization will return the maximum Sortino Ratio portfolio. "
-                        "This is because the mean/semi-variance ratio is not a "
-                        "1-homogeneous function, unlike the mean/semi-std ratio. To "
-                        "suppress this warning, replace 'SEMI_VARIANCE' by "
-                        "'SEMI_DEVIATION'",
-                        stacklevel=2,
-                    )
-
-            self._set_scale_objective(default=1)
-            self._set_scale_constraints(default=1)
-        else:
-            match self.risk_measure:
-                case (
-                    RiskMeasure.MEAN_ABSOLUTE_DEVIATION
-                    | RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT
-                    | RiskMeasure.CVAR
-                    | RiskMeasure.WORST_REALIZATION
-                    | RiskMeasure.AVERAGE_DRAWDOWN
-                    | RiskMeasure.MAX_DRAWDOWN
-                    | RiskMeasure.CDAR
-                    | RiskMeasure.ULCER_INDEX
-                ):
-                    self._set_scale_objective(default=1e-1)
-                    self._set_scale_constraints(default=1e2)
-
-                case RiskMeasure.EVAR:
-                    self._set_scale_objective(default=1)
-                    self._set_scale_constraints(default=1e-2)
-
-                case RiskMeasure.EDAR:
-                    self._set_scale_objective(default=1)
-                    self._set_scale_constraints(default=1e2)
-
-                case _:
-                    self._set_scale_objective(default=1)
-                    self._set_scale_constraints(default=1)
+        self._set_scales()
 
         # Init weight variable and constraints
         w = cp.Variable(n_assets)
@@ -1206,31 +1157,17 @@ class MeanRisk(ConvexOptimization):
         # Efficient frontier (only for fit, not partial_fit, already validated
         # in _validate_params)
         if self.efficient_frontier_size is not None:
-            # We find the lower and upper bounds of the expected returns.
-            model: MeanRisk = sk.clone(self)
-            model.set_params(
-                objective_function=ObjectiveFunction.MINIMIZE_RISK,
-                efficient_frontier_size=None,
-                portfolio_params=dict(annualization_factor=1),
-            )
-            model.fit(X, y, **fit_params)
-            min_return = model.problem_values_["expected_return"]
-            model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
-            model.fit(X, y, **fit_params)
-            max_return = model.problem_values_["expected_return"]
-            if max_return <= 0:
-                raise ValueError(
-                    "Unable to compute the Efficient Frontier with only negative"
-                    " expected returns"
+            frontier_constraints, frontier_parameter = (
+                self._efficient_frontier_constraint(
+                    X=X,
+                    y=y,
+                    expected_return=expected_return,
+                    factor=factor,
+                    fit_params=fit_params,
                 )
-            targets = np.linspace(
-                max(min_return, 1e-10) * 1.01,
-                max_return,
-                num=self.efficient_frontier_size,
             )
-            parameter = cp.Parameter(nonneg=False)
-            constraints += [expected_return >= parameter * factor]
-            parameters_values.append((parameter, targets))
+            constraints += frontier_constraints
+            parameters_values.append(frontier_parameter)
 
         # min_return constraint
         if self.min_return is not None:
@@ -1242,7 +1179,179 @@ class MeanRisk(ConvexOptimization):
             parameters_values.append((parameter, self.min_return))
 
         # risk and risk constraints
+        risk, risk_constraints, risk_parameters_values = self._build_risk(
+            X=X,
+            y=y,
+            method=method,
+            routed_params=routed_params,
+            return_distribution=return_distribution,
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+        )
+        constraints += risk_constraints
+        parameters_values += risk_parameters_values
+
+        # custom objectives and constraints
+        custom_objective = self._get_custom_objective(w=w)
+        constraints += self._get_custom_constraints(w=w)
+
+        objective, objective_constraints = self._build_objective(
+            return_distribution=return_distribution,
+            expected_return=expected_return,
+            risk=risk,
+            regularization=regularization,
+            custom_objective=custom_objective,
+            factor=factor,
+        )
+        constraints += objective_constraints
+
+        # problem
+        problem = cp.Problem(objective, constraints)
+
+        # results
+        expressions = {
+            "expected_return": expected_return,
+            "risk": risk,
+            "mu_uncertainty_set": mu_uncertainty_set,
+            "regularization": regularization,
+            "factor": factor,
+        }
+        self.error_ = None
+        self.fallback_ = None
+        self.fallback_chain_ = None
+        try:
+            self._solve_problem(
+                problem=problem,
+                w=w,
+                factor=factor,
+                parameters_values=parameters_values,
+                expressions=expressions,
+            )
+        except cp.SolverError as solver_error:
+            if method != "partial_fit":
+                raise
+            self._handle_partial_fit_solver_failure(
+                solver_error=solver_error,
+                n_assets=n_assets,
+                problem=problem,
+            )
+
+        return self
+
+    def _set_scales(self) -> None:
+        """Set numerical scales for the objective and constraints."""
+        if self.objective_function == ObjectiveFunction.MAXIMIZE_RATIO:
+            if self.overwrite_expected_return is not None:
+                if self.risk_measure == RiskMeasure.VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'VARIANCE', the "
+                        "optimization will return the maximum Sharpe Ratio portfolio. "
+                        "This is because the mean/variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/std. To suppress this"
+                        "warning, replace 'VARIANCE' by 'STANDARD_DEVIATION'",
+                        stacklevel=3,
+                    )
+
+                elif self.risk_measure == RiskMeasure.SEMI_VARIANCE:
+                    warnings.warn(
+                        "When selecting 'MAXIMIZE_RATIO' with 'SEMI_VARIANCE', the "
+                        "optimization will return the maximum Sortino Ratio portfolio. "
+                        "This is because the mean/semi-variance ratio is not a "
+                        "1-homogeneous function, unlike the mean/semi-std ratio. To "
+                        "suppress this warning, replace 'SEMI_VARIANCE' by "
+                        "'SEMI_DEVIATION'",
+                        stacklevel=3,
+                    )
+
+            self._set_scale_objective(default=1)
+            self._set_scale_constraints(default=1)
+        else:
+            match self.risk_measure:
+                case (
+                    RiskMeasure.MEAN_ABSOLUTE_DEVIATION
+                    | RiskMeasure.FIRST_LOWER_PARTIAL_MOMENT
+                    | RiskMeasure.CVAR
+                    | RiskMeasure.WORST_REALIZATION
+                    | RiskMeasure.AVERAGE_DRAWDOWN
+                    | RiskMeasure.MAX_DRAWDOWN
+                    | RiskMeasure.CDAR
+                    | RiskMeasure.ULCER_INDEX
+                ):
+                    self._set_scale_objective(default=1e-1)
+                    self._set_scale_constraints(default=1e2)
+
+                case RiskMeasure.EVAR:
+                    self._set_scale_objective(default=1)
+                    self._set_scale_constraints(default=1e-2)
+
+                case RiskMeasure.EDAR:
+                    self._set_scale_objective(default=1)
+                    self._set_scale_constraints(default=1e2)
+
+                case _:
+                    self._set_scale_objective(default=1)
+                    self._set_scale_constraints(default=1)
+
+    def _efficient_frontier_constraint(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None,
+        expected_return: cp.Expression,
+        factor: skt.Factor,
+        fit_params: dict,
+    ) -> tuple[list[cpc.Constraint], tuple[cp.Parameter, FloatArray]]:
+        """Build the minimum-return constraint used to trace the efficient frontier.
+
+        Fit a cloned model for minimum risk and maximum return to determine the
+        target returns. Return the constraint list and a `(parameter, targets)` pair.
+        """
+        model: MeanRisk = sk.clone(self)
+        model.set_params(
+            objective_function=ObjectiveFunction.MINIMIZE_RISK,
+            efficient_frontier_size=None,
+            portfolio_params=dict(annualization_factor=1),
+        )
+        model.fit(X, y, **fit_params)
+        min_return = model.problem_values_["expected_return"]
+        model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
+        model.fit(X, y, **fit_params)
+        max_return = model.problem_values_["expected_return"]
+        if max_return <= 0:
+            raise ValueError(
+                "Unable to compute the Efficient Frontier with only negative"
+                " expected returns"
+            )
+        targets = np.linspace(
+            max(min_return, 1e-10) * 1.01,
+            max_return,
+            num=self.efficient_frontier_size,
+        )
+        parameter = cp.Parameter(nonneg=False)
+        return [expected_return >= parameter * factor], (parameter, targets)
+
+    def _build_risk(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None,
+        method: str,
+        routed_params,
+        return_distribution: ReturnDistribution,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+    ) -> tuple[cp.Expression | None, list[cpc.Constraint], skt.ParametersValues]:
+        """Build the selected risk expression and configured risk limits.
+
+        Return the selected expression, supporting constraints, and
+        `(parameter, values)` pairs for the risk limits.
+
+        When needed, fit or update the covariance uncertainty estimator using
+        `method` (`fit` or `partial_fit`).
+        """
         risk = None
+        constraints = []
+        parameters_values = []
         for r_m in _NON_ANNUALIZED_RISK_MEASURES:
             risk_limit = getattr(self, f"max_{r_m.value}")
 
@@ -1269,7 +1378,7 @@ class MeanRisk(ConvexOptimization):
                                 fill_value=0,
                                 name="target_weights",
                             )
-                            # Scale the target too; final weights are w / factor.
+                            # Scale the target too. Final weights are w / factor.
                             args[arg_name] = w - target_weights * factor
                     elif arg_name == "factor":
                         args[arg_name] = factor
@@ -1304,10 +1413,22 @@ class MeanRisk(ConvexOptimization):
                 if self.risk_measure == r_m:
                     risk = risk_i
 
-        # custom objectives and constraints
-        custom_objective = self._get_custom_objective(w=w)
-        constraints += self._get_custom_constraints(w=w)
+        return risk, constraints, parameters_values
 
+    def _build_objective(
+        self,
+        return_distribution: ReturnDistribution,
+        expected_return: cp.Expression,
+        risk: cp.Expression | None,
+        regularization: cp.Expression,
+        custom_objective: cp.Expression,
+        factor: skt.Factor,
+    ) -> tuple[cp.Objective, list[cpc.Constraint]]:
+        """Return the configured CVXPY objective and its supporting constraints.
+
+        The constraint list is empty unless maximizing a ratio.
+        """
+        constraints = []
         match self.objective_function:
             case ObjectiveFunction.MAXIMIZE_RETURN:
                 objective = cp.Maximize(
@@ -1385,38 +1506,7 @@ class MeanRisk(ConvexOptimization):
                     f"objective_function {self.objective_function} is not valid"
                 )
 
-        # problem
-        problem = cp.Problem(objective, constraints)
-
-        # results
-        expressions = {
-            "expected_return": expected_return,
-            "risk": risk,
-            "mu_uncertainty_set": mu_uncertainty_set,
-            "regularization": regularization,
-            "factor": factor,
-        }
-        self.error_ = None
-        self.fallback_ = None
-        self.fallback_chain_ = None
-        try:
-            self._solve_problem(
-                problem=problem,
-                w=w,
-                factor=factor,
-                parameters_values=parameters_values,
-                expressions=expressions,
-            )
-        except cp.SolverError as solver_error:
-            if method != "partial_fit":
-                raise
-            self._handle_partial_fit_solver_failure(
-                solver_error=solver_error,
-                n_assets=n_assets,
-                problem=problem,
-            )
-
-        return self
+        return objective, constraints
 
     def _validate_params(self, method: str) -> None:
         """Validate the input parameters."""
