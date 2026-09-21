@@ -75,6 +75,22 @@ def test_select_non_expiring(X_df, expiration_dates, expected):
         pd.testing.assert_frame_equal(res, expected)
 
 
+def test_select_non_expiring_retains_unlisted_timezone_aware_asset():
+    """Retain an unlisted asset with timezone-aware observations."""
+    X = pd.DataFrame(
+        {"expired": [1.0, 2.0], "unlisted": [3.0, 4.0]},
+        index=pd.date_range("2023-01-01", periods=2, freq="D", tz="UTC"),
+    )
+    selector = SelectNonExpiring(
+        expiration_dates={"expired": dt.datetime(2023, 1, 6, tzinfo=dt.timezone.utc)},
+        expiration_lookahead=pd.DateOffset(days=5),
+    )
+
+    # The unlisted asset has no expiration to compare with the aware cutoff.
+    selector.fit(X)
+    assert selector.to_keep_.tolist() == [False, True]
+
+
 def test_pipeline(prices):
     X = prices_to_returns(prices, drop_inceptions_nan=False, fill_nan=False)
 
