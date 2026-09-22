@@ -1364,6 +1364,87 @@ class TestMultiPeriodPortfolioContainer:
         assert len(mpp) == 2
 
 
+def _one_asset_period(start: str, returns: list[float]) -> Portfolio:
+    """Single-asset period with daily observations starting at `start`."""
+    return Portfolio(
+        pd.DataFrame(
+            {"asset": returns},
+            index=pd.date_range(start, periods=len(returns)),
+        ),
+        weights=[1.0],
+    )
+
+
+class TestMultiPeriodPortfolioSampleWeightAlignment:
+    """Mutations must not leave `sample_weight` misaligned (issue #334)."""
+
+    @pytest.fixture
+    def weighted_mpp(self) -> MultiPeriodPortfolio:
+        return MultiPeriodPortfolio(
+            portfolios=[_one_asset_period("2026-01-01", [0.01, 0.02])],
+            sample_weight=[0.25, 0.75],
+        )
+
+    def test_append_misaligned_sample_weight_raises_before_mutation(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        with pytest.raises(ValueError, match="does not match the length of"):
+            weighted_mpp.append(_one_asset_period("2026-01-03", [0.03, 0.04]))
+        # The object is left untouched.
+        assert len(weighted_mpp) == 1
+        assert len(weighted_mpp.returns) == 2
+        np.testing.assert_array_equal(weighted_mpp.sample_weight, [0.25, 0.75])
+        assert float(weighted_mpp.mean) == pytest.approx(0.0175)
+
+    def test_append_without_sample_weight_still_works(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        weighted_mpp.sample_weight = None
+        weighted_mpp.append(_one_asset_period("2026-01-03", [0.03, 0.04]))
+        assert len(weighted_mpp) == 2
+        assert len(weighted_mpp.returns) == 4
+
+    def test_append_with_matching_sample_weight_assignment_works(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        weighted_mpp.sample_weight = None
+        weighted_mpp.append(_one_asset_period("2026-01-03", [0.03, 0.04]))
+        weighted_mpp.sample_weight = [0.1, 0.2, 0.3, 0.4]
+        np.testing.assert_array_equal(weighted_mpp.sample_weight, [0.1, 0.2, 0.3, 0.4])
+
+    def test_delitem_misaligned_sample_weight_raises_before_mutation(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        with pytest.raises(ValueError, match="does not match the length of"):
+            del weighted_mpp[0]
+        assert len(weighted_mpp) == 1
+        assert len(weighted_mpp.returns) == 2
+
+    def test_setitem_different_length_raises_before_mutation(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        with pytest.raises(ValueError, match="does not match the length of"):
+            weighted_mpp[0] = _one_asset_period("2026-01-01", [0.01])
+        assert len(weighted_mpp.returns) == 2
+        np.testing.assert_array_equal(weighted_mpp.sample_weight, [0.25, 0.75])
+
+    def test_setitem_same_length_keeps_sample_weight(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        weighted_mpp[0] = _one_asset_period("2026-01-01", [0.05, 0.06])
+        np.testing.assert_array_equal(weighted_mpp.sample_weight, [0.25, 0.75])
+        assert float(weighted_mpp.mean) == pytest.approx(0.25 * 0.05 + 0.75 * 0.06)
+
+    def test_portfolios_setter_misaligned_sample_weight_raises_before_mutation(
+        self, weighted_mpp: MultiPeriodPortfolio
+    ):
+        with pytest.raises(ValueError, match="does not match the length of"):
+            weighted_mpp.portfolios = [_one_asset_period("2026-01-01", [0.01])]
+        assert len(weighted_mpp) == 1
+        assert len(weighted_mpp.returns) == 2
+        np.testing.assert_array_equal(weighted_mpp.sample_weight, [0.25, 0.75])
+
+
 class TestMultiPeriodPortfolioArithmetic:
     @pytest.fixture
     def mpp(self, X):

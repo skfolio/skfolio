@@ -538,6 +538,14 @@ class MultiPeriodPortfolio(BasePortfolio):
                             f" {p} overlapping {prev_p}"
                         )
                     prev_p = p
+        if self._sample_weight is not None and len(self._sample_weight) != len(returns):
+            raise ValueError(
+                "Cannot update the portfolios: the new number of observations"
+                f" ({len(returns)}) does not match the length of the current"
+                f" `sample_weight` ({len(self._sample_weight)}). Update"
+                " `sample_weight` (e.g. set it to None) before mutating, or"
+                " assign new weights matching the new observations afterwards."
+            )
         self._loaded = False
         self._portfolios = portfolios
         self.returns = np.asarray(returns)
@@ -762,6 +770,13 @@ class MultiPeriodPortfolio(BasePortfolio):
         ----------
         portfolio : Portfolio
             The Portfolio to append.
+
+        Raises
+        ------
+        ValueError
+            If `check_observations_order` is True and the appended portfolio
+            overlaps the last portfolio, or if the new number of observations
+            does not match the length of the current `sample_weight`.
         """
         if self.check_observations_order and len(self) != 0:
             start_date = portfolio.observations[0]
@@ -770,6 +785,16 @@ class MultiPeriodPortfolio(BasePortfolio):
                 raise ValueError(
                     f"Portfolios observations should not overlap: {prev_last_date} ->"
                     f" {start_date} "
+                )
+        if self._sample_weight is not None:
+            n_observations = len(self.observations) + len(portfolio.observations)
+            if len(self._sample_weight) != n_observations:
+                raise ValueError(
+                    "Cannot append the portfolio: the new number of observations"
+                    f" ({n_observations}) does not match the length of the current"
+                    f" `sample_weight` ({len(self._sample_weight)}). Update"
+                    " `sample_weight` (e.g. set it to None) before appending, or"
+                    " assign new weights matching the new observations afterwards."
                 )
         self._loaded = False
         self._portfolios.append(portfolio)
