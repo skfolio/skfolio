@@ -766,7 +766,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         if self.check_observations_order and len(self) != 0:
             start_date = portfolio.observations[0]
             prev_last_date = self[-1].observations[-1]
-            if start_date < prev_last_date:
+            if start_date <= prev_last_date:
                 raise ValueError(
                     f"Portfolios observations should not overlap: {prev_last_date} ->"
                     f" {start_date} "

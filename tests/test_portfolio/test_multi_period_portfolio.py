@@ -1363,6 +1363,48 @@ class TestMultiPeriodPortfolioContainer:
         mpp.append(p_2)
         assert len(mpp) == 2
 
+    def test_append_rejects_shared_boundary_observation(self):
+        # A period starting exactly on the previous period's last observation
+        # shares that observation: the constructor rejects it, so must append.
+        first = Portfolio(
+            pd.DataFrame(
+                {"asset": [0.01, 0.02]},
+                index=pd.date_range("2026-01-01", periods=2),
+            ),
+            weights=[1.0],
+        )
+        boundary = Portfolio(
+            pd.DataFrame(
+                {"asset": [0.02, 0.03]},
+                index=pd.date_range("2026-01-02", periods=2),
+            ),
+            weights=[1.0],
+        )
+        with pytest.raises(
+            ValueError, match="Portfolios observations should not overlap"
+        ):
+            MultiPeriodPortfolio(
+                portfolios=[first, boundary], check_observations_order=True
+            )
+        mpp = MultiPeriodPortfolio(portfolios=[first], check_observations_order=True)
+        with pytest.raises(
+            ValueError, match="Portfolios observations should not overlap"
+        ):
+            mpp.append(boundary)
+        # The failed append leaves the object untouched.
+        assert len(mpp) == 1
+        assert len(mpp.returns) == 2
+        # A period starting strictly after the last observation is still accepted.
+        after = Portfolio(
+            pd.DataFrame(
+                {"asset": [0.03, 0.04]},
+                index=pd.date_range("2026-01-03", periods=2),
+            ),
+            weights=[1.0],
+        )
+        mpp.append(after)
+        assert len(mpp) == 2
+
 
 class TestMultiPeriodPortfolioArithmetic:
     @pytest.fixture
