@@ -798,7 +798,6 @@ class AssetPanel(_BaseAssetPanel):
         """
         n_assets = self.n_assets
         n_entries = self.n_observations * self.n_assets
-
         lines = [
             "AssetPanel Info",
             "=" * 60,
@@ -807,192 +806,27 @@ class AssetPanel(_BaseAssetPanel):
             f"Fields        : {self.n_fields}",
             f"Panel entries : {n_entries:,}  (observations x assets)",
         ]
+        lines += _info_missing_summary_lines(self)
 
-        active = self.active_mask
-        active_entries = int(active.sum()) if active is not None else n_entries
-        total_entries = 0
-        headline_missing = 0
-        total_active_entries = 0
-        headline_missing_active = 0
-        for field in self.fields.values():
-            if field.ndim != 2:
-                continue
-            total_entries += n_entries
-            total_active_entries += active_entries
-            missing = field.missing_mask
-            missing_count = int(missing.sum())
-            missing_active = (
-                int((missing & active).sum()) if active is not None else missing_count
-            )
-            headline_missing += missing_count
-            headline_missing_active += missing_active
-        if total_entries > 0:
-            pct_miss = headline_missing / total_entries * 100
-            pct_miss_u = (
-                headline_missing_active / total_active_entries * 100
-                if total_active_entries > 0
-                else 0.0
-            )
-            lines.append(
-                f"Missing       : {pct_miss:.1f}% total, {pct_miss_u:.1f}% in Active Mask"
-            )
-
-        def add_mask_block(
-            title: str, mask: BoolArray | None, *, user_set: bool
-        ) -> None:
-            lines.append("")
-            lines.append(title)
-            lines.append("-" * len(title))
-            if mask is None or not user_set:
-                lines.append("Not set.")
-                return
-            in_mask = int(mask.sum())
-            pct = in_mask / n_entries * 100 if n_entries > 0 else 0.0
-            lines.append(
-                f"In mask              : {in_mask:,} / {n_entries:,} entries"
-                f"  ({pct:.1f}%)"
-            )
-            per_obs = mask.sum(axis=1)
-            obs_min = int(per_obs.min())
-            obs_med = int(np.median(per_obs))
-            obs_max = int(per_obs.max())
-            lines.append(
-                f"Assets per obs       : min={obs_min:,}, "
-                f"median={obs_med:,}, max={obs_max:,}"
-            )
-            per_asset = mask.sum(axis=0)
-            n_in = int((per_asset > 0).sum())
-            lines.append(f"Assets in mask       : {n_in:,} / {n_assets:,}")
-            if n_in > 0:
-                live_duration = per_asset[per_asset > 0]
-                med = int(np.median(live_duration))
-                lo = int(live_duration.min())
-                hi = int(live_duration.max())
-                lines.append(f"  median duration    : {med:,} observations")
-                lines.append(f"  shortest / longest : {lo:,} / {hi:,} observations")
-
-        active_set = active is not None and not np.all(active)
-        add_mask_block("Active Mask", active, user_set=active_set)
-
-        est = self.estimation_mask
-        if est is not None and active is not None and np.array_equal(est, active):
-            lines.append("")
-            lines.append("Estimation Mask")
-            lines.append("-" * len("Estimation Mask"))
-            lines.append("Same as Active Mask.")
+        active_mask = self.active_mask
+        estimation_mask = self.estimation_mask
+        lines += _info_mask_lines("Active Mask", active_mask)
+        if (
+            estimation_mask is not None
+            and active_mask is not None
+            and np.array_equal(estimation_mask, active_mask)
+        ):
+            lines += [
+                "",
+                "Estimation Mask",
+                "-" * len("Estimation Mask"),
+                "Same as Active Mask.",
+            ]
         else:
-            est_set = est is not None and not np.all(est)
-            add_mask_block("Estimation Mask", est, user_set=est_set)
+            lines += _info_mask_lines("Estimation Mask", estimation_mask)
 
-        lines.append("")
-        lines.append("Field Coverage")
-        lines.append("-" * 60)
-
-        name_w = max((min(len(n), 28) for n in self.fields), default=20)
-        name_w = max(name_w, 8)
-
-        hdr = (
-            f"{'':>{name_w}s} {'dtype':>8s}   {'% missing':>9s}   {'% missing':>9s}"
-            f"   {'fully missing':>14s}"
-        )
-        sub = (
-            f"{'':>{name_w}s} {'':>8s}   {'total':>9s}   {'in Active Mask':>11s}"
-            f"   {'assets (active)':>14s}"
-        )
-        lines.append(hdr)
-        lines.append(sub)
-
-        for name, field in self.fields.items():
-            display_name = name if len(name) <= 28 else name[:25] + "..."
-            arr = field.values
-
-            if arr.ndim == 3:
-                lines.append(
-                    f"{display_name:>{name_w}s} {'3D':>8s}"
-                    f"   {'--':>9s}   {'--':>11s}   {'--':>14s}"
-                )
-                continue
-
-            dtype_s = str(arr.dtype)
-            missing = field.missing_mask
-            field_missing = int(missing.sum())
-            pct_total = field_missing / n_entries * 100 if n_entries > 0 else 0.0
-
-            if active is not None:
-                active_entries = int(active.sum())
-                miss_in_active = int((missing & active).sum())
-                pct_active = (
-                    miss_in_active / active_entries * 100 if active_entries > 0 else 0.0
-                )
-
-                per_asset_active = active.sum(axis=0).astype(float)
-                per_asset_miss = (missing & active).sum(axis=0).astype(float)
-                live = per_asset_active > 0
-                fully_miss = int(((per_asset_miss == per_asset_active) & live).sum())
-            else:
-                pct_active = pct_total
-                fully_miss = 0
-
-            lines.append(
-                f"{display_name:>{name_w}s} {dtype_s:>8s}   {pct_total:>8.1f}%"
-                f"   {pct_active:>10.1f}%   {fully_miss:>14d}"
-            )
-
-        categorical_fields = {
-            name: field
-            for name, field in self.fields.items()
-            if isinstance(field, FieldCategorical)
-        }
-        if categorical_fields:
-            lines.append("")
-            lines.append("Categorical Fields")
-            lines.append("-" * 60)
-
-            buckets = [(0, 10), (10, 20), (20, 50), (50, None)]
-
-            for name, field in categorical_fields.items():
-                arr = field.values
-                levels = field.levels
-                n_levels = len(levels)
-                lines.append(f"{name} : {n_levels} levels")
-
-                valid_mask = arr != MISSING_CATEGORY_CODE
-                if active is not None:
-                    valid_mask = valid_mask & active
-
-                counts = np.zeros((arr.shape[0], n_levels), dtype=np.int64)
-                for level_idx in range(n_levels):
-                    counts[:, level_idx] = ((arr == level_idx) & valid_mask).sum(axis=1)
-
-                min_counts = counts.min(axis=0)
-
-                lines.append("  Min number of assets per level (over time):")
-                for lo, hi in buckets:
-                    if lo == 0:
-                        in_bucket = min_counts < hi
-                        label = f"< {hi}"
-                    elif hi is not None:
-                        in_bucket = (min_counts >= lo) & (min_counts < hi)
-                        label = f"{lo} - {hi}"
-                    else:
-                        in_bucket = min_counts >= lo
-                        label = f"> {lo}"
-
-                    n_in = int(in_bucket.sum())
-                    bucket_names = levels[in_bucket]
-
-                    if n_in == 0:
-                        lines.append(f"    {label:>7s} :  {n_in} levels")
-                    elif n_in <= 6:
-                        names_str = ", ".join(str(s) for s in bucket_names)
-                        lines.append(f"    {label:>7s} :  {n_in} levels  ({names_str})")
-                    else:
-                        shown = ", ".join(str(s) for s in bucket_names[:4])
-                        lines.append(
-                            f"    {label:>7s} :  {n_in} levels"
-                            f"  ({shown}, ... +{n_in - 4} more)"
-                        )
-
+        lines += _info_field_coverage_lines(self)
+        lines += _info_categorical_lines(self)
         lines.append("")
         return "\n".join(lines)
 
@@ -1509,3 +1343,275 @@ class AssetPanel(_BaseAssetPanel):
             values[~panel.active_mask] = np.nan
             panel.fields[name] = field.with_values(values)
         return panel
+
+
+def _info_missing_summary_lines(panel: AssetPanel) -> list[str]:
+    """Report missingness across all 2D fields.
+
+    Parameters
+    ----------
+    panel : AssetPanel
+        Panel whose 2D fields contribute to the summary. Missing entries are
+        identified by each field's `missing_mask`. If `active_mask` is None,
+        all entries are treated as active.
+
+    Returns
+    -------
+    lines : list of str
+        One line with the total and active missing percentages, or an empty list
+        if there are no 2D entries. The active percentage is zero when the active
+        mask contains no True entries.
+    """
+    n_entries = panel.n_observations * panel.n_assets
+    active_mask = panel.active_mask
+    active_entries = int(active_mask.sum()) if active_mask is not None else n_entries
+    total_entries = 0
+    total_active_entries = 0
+    missing_entries = 0
+    missing_active_entries = 0
+    for field in panel.fields.values():
+        if field.ndim != 2:
+            continue
+        total_entries += n_entries
+        total_active_entries += active_entries
+        missing = field.missing_mask
+        missing_count = int(missing.sum())
+        missing_active_count = (
+            int((missing & active_mask).sum())
+            if active_mask is not None
+            else missing_count
+        )
+        missing_entries += missing_count
+        missing_active_entries += missing_active_count
+
+    if total_entries == 0:
+        return []
+
+    missing_percent = missing_entries / total_entries * 100
+    active_missing_percent = (
+        missing_active_entries / total_active_entries * 100
+        if total_active_entries > 0
+        else 0.0
+    )
+    return [
+        (
+            f"Missing       : {missing_percent:.1f}% total, "
+            f"{active_missing_percent:.1f}% in Active Mask"
+        )
+    ]
+
+
+def _info_mask_lines(title: str, mask: BoolArray | None) -> list[str]:
+    """Report coverage statistics for a boolean mask.
+
+    Parameters
+    ----------
+    title : str
+        Heading for the report section.
+
+    mask : BoolArray of shape (n_observations, n_assets) or None
+        Mask whose True entries are included in the coverage statistics.
+        The report displays "Not set." for None and all-True masks.
+
+    Returns
+    -------
+    lines : list of str
+        Section lines, beginning with a blank line and the heading. Statistics
+        include entry coverage, assets per observation and durations for assets
+        present in the mask. Each duration counts all included observations for
+        an asset, including nonconsecutive ones.
+    """
+    lines = ["", title, "-" * len(title)]
+    if mask is None or np.all(mask):
+        lines.append("Not set.")
+        return lines
+
+    n_assets = mask.shape[1]
+    n_entries = mask.size
+    entries_in_mask = int(mask.sum())
+    coverage_percent = entries_in_mask / n_entries * 100 if n_entries > 0 else 0.0
+    lines.append(
+        f"In mask              : {entries_in_mask:,} / {n_entries:,} entries"
+        f"  ({coverage_percent:.1f}%)"
+    )
+    assets_per_observation = mask.sum(axis=1)
+    min_assets = int(assets_per_observation.min())
+    median_assets = int(np.median(assets_per_observation))
+    max_assets = int(assets_per_observation.max())
+    lines.append(
+        f"Assets per obs       : min={min_assets:,}, "
+        f"median={median_assets:,}, max={max_assets:,}"
+    )
+    observations_per_asset = mask.sum(axis=0)
+    durations = observations_per_asset[observations_per_asset > 0]
+    assets_in_mask = durations.size
+    lines.append(f"Assets in mask       : {assets_in_mask:,} / {n_assets:,}")
+    if assets_in_mask > 0:
+        median_duration = int(np.median(durations))
+        min_duration = int(durations.min())
+        max_duration = int(durations.max())
+        lines.append(f"  median duration    : {median_duration:,} observations")
+        lines.append(
+            f"  shortest / longest : {min_duration:,} / {max_duration:,} observations"
+        )
+    return lines
+
+
+def _info_field_coverage_lines(panel: AssetPanel) -> list[str]:
+    """Report each field's dtype and missingness.
+
+    Parameters
+    ----------
+    panel : AssetPanel
+        Panel whose fields and active mask define the coverage statistics.
+        Missing entries are identified by each 2D field's `missing_mask`.
+        If `active_mask` is None, active missing percentages equal total missing
+        percentages and fully missing asset counts are zero.
+
+    Returns
+    -------
+    lines : list of str
+        Section lines with total and active missing percentages and fully missing
+        asset counts for each 2D field. An asset is fully missing when it is active
+        at least once and every active observation is missing. 3D fields are
+        listed with placeholders instead of coverage statistics.
+    """
+    n_entries = panel.n_observations * panel.n_assets
+    active_mask = panel.active_mask
+    if active_mask is not None:
+        active_entries = int(active_mask.sum())
+        active_observations_per_asset = active_mask.sum(axis=0)
+        active_assets = active_observations_per_asset > 0
+
+    name_width = max((min(len(name), 28) for name in panel.fields), default=20)
+    name_width = max(name_width, 8)
+
+    header = (
+        f"{'':>{name_width}s} {'dtype':>8s}   {'% missing':>9s}   {'% missing':>9s}"
+        f"   {'fully missing':>14s}"
+    )
+    subheader = (
+        f"{'':>{name_width}s} {'':>8s}   {'total':>9s}   {'in Active Mask':>11s}"
+        f"   {'assets (active)':>14s}"
+    )
+    lines = ["", "Field Coverage", "-" * 60, header, subheader]
+
+    for name, field in panel.fields.items():
+        display_name = name if len(name) <= 28 else name[:25] + "..."
+        values = field.values
+
+        if values.ndim == 3:
+            lines.append(
+                f"{display_name:>{name_width}s} {'3D':>8s}"
+                f"   {'--':>9s}   {'--':>11s}   {'--':>14s}"
+            )
+            continue
+
+        dtype_name = str(values.dtype)
+        missing = field.missing_mask
+        missing_count = int(missing.sum())
+        missing_percent = missing_count / n_entries * 100 if n_entries > 0 else 0.0
+
+        if active_mask is not None:
+            missing_in_active = missing & active_mask
+            missing_active_count = int(missing_in_active.sum())
+            active_missing_percent = (
+                missing_active_count / active_entries * 100
+                if active_entries > 0
+                else 0.0
+            )
+            # Count an asset only if it is active at least once and every active
+            # observation is missing.
+            missing_observations_per_asset = missing_in_active.sum(axis=0)
+            fully_missing_assets = int(
+                (
+                    (missing_observations_per_asset == active_observations_per_asset)
+                    & active_assets
+                ).sum()
+            )
+        else:
+            active_missing_percent = missing_percent
+            fully_missing_assets = 0
+
+        lines.append(
+            f"{display_name:>{name_width}s} {dtype_name:>8s}   {missing_percent:>8.1f}%"
+            f"   {active_missing_percent:>10.1f}%   {fully_missing_assets:>14d}"
+        )
+    return lines
+
+
+def _info_categorical_lines(panel: AssetPanel) -> list[str]:
+    """Report categorical levels grouped by their minimum asset count over time.
+
+    Parameters
+    ----------
+    panel : AssetPanel
+        Panel containing the categorical fields to summarize. Missing category
+        codes and inactive entries are excluded from the counts. If `active_mask`
+        is None, all assets are treated as active.
+
+    Returns
+    -------
+    lines : list of str
+        Section lines grouping each field's levels by their minimum number of
+        active assets across observations. Each group lists its level count and
+        names, abbreviating long name lists. Returns an empty list if the panel
+        has no categorical fields.
+    """
+    categorical_fields = {
+        name: field
+        for name, field in panel.fields.items()
+        if isinstance(field, FieldCategorical)
+    }
+    if not categorical_fields:
+        return []
+
+    active_mask = panel.active_mask
+    buckets = ((0, 10), (10, 20), (20, 50), (50, None))
+    lines = ["", "Categorical Fields", "-" * 60]
+    for name, field in categorical_fields.items():
+        values = field.values
+        levels = field.levels
+        n_levels = len(levels)
+        lines.append(f"{name} : {n_levels} levels")
+
+        valid_mask = values != MISSING_CATEGORY_CODE
+        if active_mask is not None:
+            valid_mask = valid_mask & active_mask
+
+        counts = np.zeros((values.shape[0], n_levels), dtype=np.int64)
+        for level_index in range(n_levels):
+            counts[:, level_index] = ((values == level_index) & valid_mask).sum(axis=1)
+        min_assets_per_level = counts.min(axis=0)
+
+        lines.append("  Min number of assets per level (over time):")
+        for lower, upper in buckets:
+            if lower == 0:
+                in_bucket = min_assets_per_level < upper
+                label = f"< {upper}"
+            elif upper is not None:
+                in_bucket = (min_assets_per_level >= lower) & (
+                    min_assets_per_level < upper
+                )
+                label = f"{lower} - {upper}"
+            else:
+                in_bucket = min_assets_per_level >= lower
+                label = f">= {lower}"
+
+            levels_in_bucket = levels[in_bucket]
+            n_levels_in_bucket = len(levels_in_bucket)
+
+            if n_levels_in_bucket == 0:
+                lines.append(f"    {label:>7s} :  {n_levels_in_bucket} levels")
+            elif n_levels_in_bucket <= 6:
+                level_names = ", ".join(str(level) for level in levels_in_bucket)
+                lines.append(
+                    f"    {label:>7s} :  {n_levels_in_bucket} levels  ({level_names})"
+                )
+            else:
+                shown_names = ", ".join(str(level) for level in levels_in_bucket[:4])
+                lines.append(
+                    f"    {label:>7s} :  {n_levels_in_bucket} levels"
+                    f"  ({shown_names}, ... +{n_levels_in_bucket - 4} more)"
+                )
+    return lines
