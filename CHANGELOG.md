@@ -2,6 +2,41 @@
 
 <!-- version list -->
 
+## v1.3.1 (2026-09-23)
+
+### Bug Fixes
+
+- **population**: Prevent crash when plotting ratio measures on surfaces
+  ([#330](https://github.com/skfolio/skfolio/pull/330),
+  [`5b8a89f`](https://github.com/skfolio/skfolio/commit/5b8a89f34853bdd83866635a776a3c80a357ad9b))
+
+### Build System
+
+- Add deptry checks and remove direct joblib dependency
+  ([#320](https://github.com/skfolio/skfolio/pull/320),
+  [`505eb8b`](https://github.com/skfolio/skfolio/commit/505eb8b7a41687596e358e98bfdf6b31be20e1ab))
+
+### Documentation
+
+- Fix opinion pooling example and document solver fallback
+  ([#293](https://github.com/skfolio/skfolio/pull/293),
+  [`cb0147a`](https://github.com/skfolio/skfolio/commit/cb0147aa22fc828401e0b8a34d8e9085ae58ff6b))
+
+### Refactoring
+
+- **attribution**: Decompose Attribution.__post_init__
+  ([#322](https://github.com/skfolio/skfolio/pull/322),
+  [`eb73a4c`](https://github.com/skfolio/skfolio/commit/eb73a4cfe3136d5615a6047060705695d4462588))
+
+- **containers**: Decompose validate_asset_panel and AssetPanel.info
+  ([#324](https://github.com/skfolio/skfolio/pull/324),
+  [`9032831`](https://github.com/skfolio/skfolio/commit/9032831cb7a38998c175cd3ab842767c5aa23dc3))
+
+- **optimization**: Extract convex constraint and objective builders
+  ([#323](https://github.com/skfolio/skfolio/pull/323),
+  [`5e7191c`](https://github.com/skfolio/skfolio/commit/5e7191c4795880de9d2d28c3db7c92f5dd711f91))
+
+
 ## v1.3.0 (2026-09-20)
 
 ### Features
