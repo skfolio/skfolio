@@ -326,6 +326,26 @@ Classes
     optimization.SchurComplementary
     optimization.NestedClustersOptimization
 
+.. _optimization_parametric_ref:
+
+:mod:`skfolio.optimization.parametric`: Parametric Portfolio Policy Estimators
+==============================================================================
+
+.. automodule:: skfolio.optimization.parametric
+   :no-members:
+   :no-inherited-members:
+
+Classes
+-------
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    optimization.ParametricPortfolioPolicy
+
 .. _optimization_ensemble_ref:
 
 :mod:`skfolio.optimization.ensemble`: Ensemble Optimization Estimators

@@ -169,6 +169,59 @@ Maximum Sharpe Ratio portfolio:
     portfolio = model.predict(X_test)
     print(portfolio.sharpe_ratio)
 
+Parametric Portfolio Policy
+***************************
+
+The :class:`ParametricPortfolioPolicy` estimator maps asset characteristics directly
+to portfolio weights in one step, following Brandt, Santa-Clara and Valkanov (2009).
+Instead of estimating expected returns and a covariance matrix and then optimizing,
+the weight of each asset is its benchmark weight plus a linear tilt in its
+(cross-sectionally demeaned) characteristics:
+
+.. math::
+
+    w_{t,i} = b_{t,i} + \frac{1}{N_t} \theta^\top \tilde{z}_{t,i}
+
+The coefficients :math:`\theta` are chosen to maximize the average CRRA utility of
+the realized portfolio return path, using the characteristics known at :math:`t` and
+the returns of :math:`t + 1`. The characteristics are built with the same factor
+exposure estimators as the :class:`~skfolio.prior.CharacteristicsFactorModel` (see
+:ref:`Factor Exposures <factor_model_factor_exposures>`) from an
+:class:`~skfolio.containers.AssetPanel` passed to `fit` as `characteristics`.
+
+**Example:**
+
+.. code-block:: python
+
+    from skfolio.datasets import make_synthetic_characteristics
+    from skfolio.descriptor import BookToPrice, EWMomentum, LogMarketCap
+    from skfolio.factor_exposure import FixedWeightedFactor
+    from skfolio.model_selection import WalkForward, cross_val_predict
+    from skfolio.optimization import ParametricPortfolioPolicy
+
+    panel = make_synthetic_characteristics(n_assets=100, n_observations=1000)
+    X = panel.to_dataframe(fields="returns")
+
+    model = ParametricPortfolioPolicy(
+        characteristics_exposures=[
+            ("size", FixedWeightedFactor(descriptors=[("mcap", LogMarketCap())])),
+            ("value", FixedWeightedFactor(descriptors=[("btp", BookToPrice())])),
+            ("momentum", FixedWeightedFactor(descriptors=[("mom", EWMomentum())])),
+        ],
+        risk_aversion=5.0,
+    )
+    model.fit(X, characteristics=panel)
+    print(model.coef_)
+
+    # Walk-forward out-of-sample evaluation
+    pred = cross_val_predict(
+        model,
+        X,
+        cv=WalkForward(train_size=252, test_size=21),
+        params={"characteristics": panel},
+    )
+    print(pred.annualized_sharpe_ratio)
+
 Prior Estimator
 ===============
 
