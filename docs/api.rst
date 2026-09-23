@@ -87,6 +87,9 @@ Functions
     measures.owa_gmd_weights
     measures.effective_number_assets
     measures.correlation
+    measures.expected_max_sharpe_ratio
+    measures.probabilistic_sharpe_ratio
+    measures.deflated_sharpe_ratio
 
 .. _portfolio_ref:
 
