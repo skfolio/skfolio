@@ -1096,8 +1096,8 @@ class Population(list):
                                 str(e)
                                 + ": %{"
                                 + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
+                                # Use Plotly's default format for dimensionless ratios.
+                                + ("" if e.is_ratio else ":,.3%")
                                 + "}"
                                 for e, v in [(x, "x"), (y, "y"), (z, "z")]
                             ]
