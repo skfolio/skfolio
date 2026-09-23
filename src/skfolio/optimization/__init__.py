@@ -19,6 +19,7 @@ from skfolio.optimization.convex import (
 )
 from skfolio.optimization.ensemble import StackingOptimization
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
+from skfolio.optimization.parametric import ParametricPortfolioPolicy
 
 __all__ = [
     "BaseHierarchicalOptimization",
@@ -34,6 +35,7 @@ __all__ = [
     "MeanRisk",
     "NestedClustersOptimization",
     "ObjectiveFunction",
+    "ParametricPortfolioPolicy",
     "Random",
     "RiskBudgeting",
     "SchurComplementary",
