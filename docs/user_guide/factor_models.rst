@@ -812,6 +812,12 @@ skfolio provides four factor exposure estimators:
   the :ref:`example <factor_model_code_example>`, it builds the non-linear size
   factor from the size exposure (`func=lambda x: x**3`). Dependencies between
   factors are resolved automatically through topological sorting.
+* :class:`~skfolio.factor_exposure.RollingFactor` computes a library of
+  trailing-window statistics (`mean`, `std`, `min`, `max`, `median`, `sum`) and lags
+  of a single panel field and returns them as one multi-factor exposure, for example
+  `RollingFactor(source="returns", windows={"mean": [21, 63], "std": [21], "lag": [1]})`.
+  Each output column is scored cross-sectionally like any other style factor, and
+  the estimator carries the trailing rows it needs across `partial_fit` calls.
 
 Custom exposure estimators are created by subclassing
 :class:`~skfolio.factor_exposure.BaseFactorExposure`.

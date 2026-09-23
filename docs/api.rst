@@ -502,6 +502,7 @@ Factor Exposure Estimators
     factor_exposure.FixedWeightedFactor
     factor_exposure.GlobalFactor
     factor_exposure.OneHotCategoricalFactors
+    factor_exposure.RollingFactor
 
 .. automodule:: skfolio.alpha
    :no-members:
