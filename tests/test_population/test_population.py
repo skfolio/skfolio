@@ -235,6 +235,29 @@ def test_population_plot_measures(population, to_surface):
     )
 
 
+@pytest.mark.parametrize("to_surface", [False, True])
+def test_population_plot_measures_with_a_ratio_measure(population, to_surface):
+    """A ratio is dimensionless, so it carries no percentage format anywhere.
+
+    Regression test for the surface hovertemplate, which concatenated the `None` that
+    means "unset" for a plotly format key and raised `TypeError`. The surface was the
+    only place the format reached a string rather than a dict.
+    """
+    fig = population.plot_measures(
+        x=RiskMeasure.SEMI_DEVIATION,
+        y=PerfMeasure.MEAN,
+        z=RatioMeasure.SHARPE_RATIO,
+        to_surface=to_surface,
+    )
+    assert fig
+
+    if to_surface:
+        hovertemplate = fig.data[0].hovertemplate
+        assert "Sharpe Ratio: %{z}" in hovertemplate
+        assert "Semi-Deviation: %{x:,.3%}" in hovertemplate
+        assert fig.data[0].colorbar.tickformat is None
+
+
 def test_population_multi_period_portfolio(population, multi_period_portfolio):
     population.append(multi_period_portfolio)
     assert len(population) == 101
