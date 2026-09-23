@@ -9,7 +9,9 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.datasets import (
     load_sp500_dataset,
 )
-from skfolio.moments import EWCovariance
+from skfolio.distance import CovarianceDistance
+from skfolio.model_selection import online_predict
+from skfolio.moments import EWCovariance, EWMu
 from skfolio.optimization import (
     HierarchicalRiskParity,
     MeanRisk,
@@ -368,3 +370,138 @@ def test_compute_weights_uses_repaired_blocks_in_later_splits(monkeypatch):
     assert np.all(np.isfinite(weights))
     np.testing.assert_allclose(weights.sum(), 1.0)
     assert np.all((weights >= 0) & (weights <= 1))
+
+
+def _make_online_schur(**kwargs):
+    return SchurComplementary(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(half_life=40),
+            covariance_estimator=EWCovariance(half_life=40),
+        ),
+        distance_estimator=CovarianceDistance(
+            covariance_estimator=EWCovariance(half_life=40)
+        ),
+        **kwargs,
+    )
+
+
+class TestPartialFit:
+    def test_produces_valid_weights(self, X):
+        """partial_fit produces weights that sum to one within the bounds."""
+        model = _make_online_schur()
+        model.partial_fit(X)
+
+        assert model.weights_.shape == (X.shape[1],)
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+        assert np.all(model.weights_ >= 0)
+        assert 0.0 <= model.effective_gamma_ <= 0.5
+
+    def test_fit_then_partial_fit(self, X):
+        """fit followed by partial_fit updates the model."""
+        X_arr = np.asarray(X)
+        split = len(X_arr) // 2
+
+        model = _make_online_schur()
+        model.fit(X_arr[:split])
+        weights_after_fit = model.weights_.copy()
+
+        model.partial_fit(X_arr[split:])
+        assert not np.array_equal(model.weights_, weights_after_fit)
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+    def test_chunked_partial_fit_matches_fit(self, X):
+        """Streaming the data in chunks gives the same allocation as a single fit."""
+        model_fit = _make_online_schur().fit(X)
+
+        model_online = _make_online_schur()
+        n = len(X)
+        for start, stop in [(0, n // 3), (n // 3, 2 * n // 3), (2 * n // 3, n)]:
+            model_online.partial_fit(X.iloc[start:stop])
+
+        np.testing.assert_allclose(
+            model_online.weights_, model_fit.weights_, atol=1e-10
+        )
+        assert model_online.effective_gamma_ == pytest.approx(
+            model_fit.effective_gamma_
+        )
+        np.testing.assert_array_equal(model_online.feature_names_in_, X.columns)
+
+    def test_fit_resets_state(self, X):
+        """fit after partial_fit starts from a clean state."""
+        model = _make_online_schur()
+        model.partial_fit(X.iloc[:300])
+        model.fit(X.iloc[300:])
+        expected = _make_online_schur().fit(X.iloc[300:])
+        np.testing.assert_allclose(model.weights_, expected.weights_)
+
+    def test_default_prior_raises(self, X):
+        """partial_fit raises when the prior lacks partial_fit support."""
+        model = SchurComplementary(
+            prior_estimator=TimeSeriesFactorModel(),
+            distance_estimator=CovarianceDistance(
+                covariance_estimator=EWCovariance(half_life=40)
+            ),
+        )
+        with pytest.raises(TypeError, match="prior_estimator=TimeSeriesFactorModel"):
+            model.partial_fit(np.asarray(X))
+
+    def test_default_distance_raises(self, X):
+        """partial_fit raises when the distance estimator lacks partial_fit support."""
+        model = SchurComplementary(
+            prior_estimator=EmpiricalPrior(
+                mu_estimator=EWMu(half_life=40),
+                covariance_estimator=EWCovariance(half_life=40),
+            )
+        )
+        with pytest.raises(TypeError, match="distance_estimator=PearsonDistance"):
+            model.partial_fit(np.asarray(X))
+
+    def test_fallback_estimator_raises(self, X):
+        """partial_fit only supports the previous_weights fallback."""
+        model = _make_online_schur(fallback=HierarchicalRiskParity())
+        with pytest.raises(ValueError, match="previous_weights"):
+            model.partial_fit(np.asarray(X))
+
+    def test_previous_weights_fallback_on_failure(self, X, monkeypatch):
+        """An allocation failure after the state update falls back to previous weights."""
+        n_assets = X.shape[1]
+        previous_weights = np.ones(n_assets) / n_assets
+        model = _make_online_schur(
+            fallback="previous_weights", previous_weights=previous_weights
+        )
+        model.partial_fit(X.iloc[:200])
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(_schur, "_compute_monotonic_weights", _raise)
+        model.partial_fit(X.iloc[200:260])
+        np.testing.assert_array_equal(model.weights_, previous_weights)
+        assert model.fallback_chain_ is not None
+        assert model.error_ is None
+
+    def test_failure_raises_or_warns(self, X, monkeypatch):
+        """Without a fallback, a failure raises or, with raise_on_failure=False, warns."""
+        model = _make_online_schur()
+        model.partial_fit(X.iloc[:200])
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(_schur, "_compute_monotonic_weights", _raise)
+        with pytest.raises(RuntimeError, match="boom"):
+            model.partial_fit(X.iloc[200:260])
+
+        model = _make_online_schur(raise_on_failure=False)
+        model.partial_fit(X.iloc[:200])
+        with pytest.warns(UserWarning, match="boom"):
+            model.partial_fit(X.iloc[200:260])
+        assert model.weights_ is None
+        assert model.error_ == "boom"
+
+    def test_online_predict(self, X):
+        """The estimator works with the online evaluation tools."""
+        model = _make_online_schur()
+        pred = online_predict(model, X, warmup_size=252, test_size=21)
+        assert 0 < len(pred.returns) <= len(X) - 252
+        assert np.isfinite(pred.returns).all()

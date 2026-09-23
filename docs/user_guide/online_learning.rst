@@ -14,8 +14,10 @@ Examples of supported estimators include
 :class:`~skfolio.moments.EWMu`, :class:`~skfolio.moments.EWCovariance`,
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`,
 :class:`~skfolio.prior.EmpiricalPrior` and portfolio
-optimizers such as :class:`~skfolio.optimization.MeanRisk` when they embed
-incremental moment estimators through a prior estimator.
+optimizers such as :class:`~skfolio.optimization.MeanRisk` and
+:class:`~skfolio.optimization.SchurComplementary` when they embed incremental moment
+estimators through a prior estimator (and, for the hierarchical allocation, an
+incremental :class:`~skfolio.distance.CovarianceDistance`).
 
 Online learning is also where native NaN-aware estimators are especially useful:
 they can update from available observations while preserving estimator state. Pipeline

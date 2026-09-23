@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Callable
 
 import numpy as np
@@ -25,6 +26,7 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
+from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
 from skfolio.optimization.cluster.hierarchical._base import (
@@ -43,7 +45,9 @@ from skfolio.utils.stats import (
     symmetric_step_up_matrix,
     symmetrize,
 )
-from skfolio.utils.tools import bisection, check_estimator
+from skfolio.utils.tools import _call_estimator, bisection, check_estimator
+
+_FITTED_ATTR = "weights_"
 
 
 class SchurComplementary(BaseHierarchicalOptimization):
@@ -242,6 +246,14 @@ class SchurComplementary(BaseHierarchicalOptimization):
         Captured error message(s) when `fit` fails. For multi-portfolio outputs
         (`weights_` is 2D), this is a list aligned with portfolios.
 
+    Notes
+    -----
+    The estimator supports online learning through `partial_fit` when
+    `prior_estimator` and `distance_estimator` implement `partial_fit`, for example
+    :class:`~skfolio.prior.EmpiricalPrior` with exponentially weighted moments and
+    :class:`~skfolio.distance.CovarianceDistance` with
+    :class:`~skfolio.moments.EWCovariance`. See :ref:`online_learning`.
+
     References
     ----------
     .. [1] "Schur Complementary Allocation: A Unification of Hierarchical Risk Parity
@@ -343,8 +355,33 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
+    def get_metadata_routing(self):
+        # noinspection PyTypeChecker
+        router = (
+            skm.MetadataRouter(owner=self.__class__.__name__)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping()
+                .add(caller="fit", callee="fit")
+                .add(caller="partial_fit", callee="partial_fit"),
+            )
+            .add(
+                distance_estimator=self.distance_estimator,
+                method_mapping=skm.MethodMapping()
+                .add(caller="fit", callee="fit")
+                .add(caller="partial_fit", callee="partial_fit"),
+            )
+            .add(
+                hierarchical_clustering_estimator=self.hierarchical_clustering_estimator,
+                method_mapping=skm.MethodMapping()
+                .add(caller="fit", callee="fit")
+                .add(caller="partial_fit", callee="fit"),
+            )
+        )
+        return router
+
     def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
-        """Fit the Schur Complementary estimator.
+        """Fit the Schur Complementary Allocation estimator.
 
         Parameters
         ----------
@@ -354,17 +391,184 @@ class SchurComplementary(BaseHierarchicalOptimization):
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
         self : SchurComplementary
             Fitted estimator.
         """
-        routed_params = skm.process_routing(self, "fit", **fit_params)
+        self._reset()
+        return self._fit(X, y, method="fit", **fit_params)
 
-        if not 0.0 <= self.gamma <= 1.0:
-            raise ValueError(f"gamma must be between 0 and 1. Got {self.gamma}")
+    def partial_fit(
+        self, X: ArrayLike, y: None = None, **fit_params
+    ) -> SchurComplementary:
+        """Incrementally fit the Schur Complementary Allocation estimator.
 
-        # Validate
+        This method allows for streaming/online updates. The prior estimator and the
+        distance estimator must implement `partial_fit`, for example
+        :class:`~skfolio.prior.EmpiricalPrior` with exponentially weighted moments and
+        :class:`~skfolio.distance.CovarianceDistance` with an exponentially weighted
+        covariance. The hierarchical clustering and the allocation are recomputed on
+        each call from the updated covariance and distance matrices.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : SchurComplementary
+            Fitted estimator.
+        """
+        return self._fit(X, y, method="partial_fit", **fit_params)
+
+    def _fit(
+        self, X: ArrayLike, y: None = None, method: str = "fit", **fit_params
+    ) -> SchurComplementary:
+        """Core fitting logic shared by `fit` and `partial_fit`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        method : str, default="fit"
+            Either "fit" or "partial_fit".
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+
+        Returns
+        -------
+        self : SchurComplementary
+            Fitted estimator.
+        """
+        routed_params = skm.process_routing(self, method, **fit_params)
+        first_call = not hasattr(self, _FITTED_ATTR)
+
+        if first_call:
+            if not 0.0 <= self.gamma <= 1.0:
+                raise ValueError(f"gamma must be between 0 and 1. Got {self.gamma}")
+            self._initialize()
+
+        if method == "partial_fit":
+            self._validate_partial_fit_fallback()
+            self._validate_partial_fit_estimators()
+
+        # Fit or partial_fit the prior estimator
+        _call_estimator(
+            self.prior_estimator_,
+            method,
+            X,
+            y,
+            routed_params=routed_params.prior_estimator,
+        )
+        return_distribution = self.prior_estimator_.return_distribution_
+        returns = return_distribution.returns
+        covariance = cov_nearest(return_distribution.covariance)
+
+        # To keep the asset_names
+        if isinstance(X, pd.DataFrame):
+            returns = pd.DataFrame(returns, columns=X.columns)
+
+        # Fit or partial_fit the distance estimator
+        _call_estimator(
+            self.distance_estimator_,
+            method,
+            returns,
+            y,
+            routed_params=routed_params.distance_estimator,
+        )
+        distance = self.distance_estimator_.distance_
+
+        # To keep the asset_names
+        if isinstance(X, pd.DataFrame):
+            distance = pd.DataFrame(distance, columns=X.columns)
+
+        # The clustering is stateless and is recomputed on every call
+        self.hierarchical_clustering_estimator_.fit(
+            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
+        )
+
+        X = skv.validate_data(self, X, reset=first_call)
+
+        ordered_linkage_matrix = sch.optimal_leaf_ordering(
+            self.hierarchical_clustering_estimator_.linkage_matrix_,
+            self.hierarchical_clustering_estimator_.condensed_distance_,
+        )
+        sorted_assets = sch.leaves_list(ordered_linkage_matrix)
+
+        # Prepare weight bounds
+        n_assets = X.shape[1]
+        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
+
+        # Compute allocations
+        try:
+            weights, effective_gamma = self._compute_allocation(
+                sorted_assets=sorted_assets,
+                covariance=covariance,
+                min_weights=min_weights,
+                max_weights=max_weights,
+            )
+        except Exception as error:
+            if method != "partial_fit":
+                raise
+            self._handle_partial_fit_failure(error=error, n_assets=n_assets)
+            return self
+
+        self.weights_ = weights
+        self.effective_gamma_ = effective_gamma
+        return self
+
+    def _compute_allocation(
+        self,
+        sorted_assets: np.ndarray,
+        covariance: FloatArray,
+        min_weights: FloatArray,
+        max_weights: FloatArray,
+    ) -> tuple[FloatArray, float]:
+        """Compute the Schur complementary weights and the effective gamma."""
+        if self.keep_monotonic:
+            return _compute_monotonic_weights(
+                max_gamma=self.gamma,
+                sorted_assets=sorted_assets,
+                covariance=covariance,
+                min_weights=min_weights,
+                max_weights=max_weights,
+            )
+        weights = _compute_weights(
+            gamma=self.gamma,
+            sorted_assets=sorted_assets,
+            covariance=covariance,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            force_spd=True,
+        )
+        return weights, self.gamma
+
+    def _initialize(self) -> None:
+        """Initialize the sub-estimators."""
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),
@@ -381,60 +585,53 @@ class SchurComplementary(BaseHierarchicalOptimization):
             check_type=HierarchicalClustering,
         )
 
-        # Fit the estimators
-        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
-        returns = return_distribution.returns
-        covariance = cov_nearest(return_distribution.covariance)
+    def _validate_partial_fit_fallback(self) -> None:
+        """Validate fallback support for `partial_fit`."""
+        if self.fallback is None or self.fallback == _PREVIOUS_WEIGHTS:
+            return
+        raise ValueError("`partial_fit` only supports fallback='previous_weights'.")
 
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            returns = pd.DataFrame(returns, columns=X.columns)
+    def _validate_partial_fit_estimators(self) -> None:
+        """Validate incremental support for stateful sub-estimators."""
+        estimators = [
+            ("prior_estimator", self.prior_estimator_),
+            ("distance_estimator", self.distance_estimator_),
+        ]
+        for name, estimator in estimators:
+            if not callable(getattr(estimator, "partial_fit", None)):
+                raise TypeError(
+                    "`SchurComplementary.partial_fit` requires "
+                    f"`{name}={type(estimator).__name__}()` to implement "
+                    "`partial_fit`."
+                )
 
-        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
-        distance = self.distance_estimator_.distance_
+    def _handle_partial_fit_failure(self, error: Exception, n_assets: int) -> None:
+        """Handle an allocation failure after the online state has been updated."""
+        self.fallback_ = None
+        self.fallback_chain_ = None
+        if self.fallback == _PREVIOUS_WEIGHTS:
+            self.fallback_chain_ = [(str(self), str(error))]
+            try:
+                self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+            except Exception as fallback_error:
+                self.error_ = str(fallback_error)
+                if self.raise_on_failure:
+                    raise
+                warnings.warn(str(fallback_error), stacklevel=2)
+                self.weights_ = None
+            else:
+                self.error_ = None
+            return
+        self.error_ = str(error)
+        if self.raise_on_failure:
+            raise error
+        warnings.warn(str(error), stacklevel=2)
+        self.weights_ = None
 
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            distance = pd.DataFrame(distance, columns=X.columns)
-
-        self.hierarchical_clustering_estimator_.fit(
-            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
-        )
-
-        X = skv.validate_data(self, X)
-
-        ordered_linkage_matrix = sch.optimal_leaf_ordering(
-            self.hierarchical_clustering_estimator_.linkage_matrix_,
-            self.hierarchical_clustering_estimator_.condensed_distance_,
-        )
-        sorted_assets = sch.leaves_list(ordered_linkage_matrix)
-
-        # Prepare weight bounds
-        n_assets = X.shape[1]
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
-
-        # Compute allocations
-        if self.keep_monotonic:
-            self.weights_, self.effective_gamma_ = _compute_monotonic_weights(
-                max_gamma=self.gamma,
-                sorted_assets=sorted_assets,
-                covariance=covariance,
-                min_weights=min_weights,
-                max_weights=max_weights,
-            )
-        else:
-            self.weights_ = _compute_weights(
-                gamma=self.gamma,
-                sorted_assets=sorted_assets,
-                covariance=covariance,
-                min_weights=min_weights,
-                max_weights=max_weights,
-                force_spd=True,
-            )
-            self.effective_gamma_ = self.gamma
-
-        return self
+    def _reset(self) -> None:
+        """Reset fitted state."""
+        if hasattr(self, _FITTED_ATTR):
+            delattr(self, _FITTED_ATTR)
 
 
 def _compute_monotonic_weights(
