@@ -692,6 +692,19 @@ def test_evar(returns, expected):
     np.testing.assert_almost_equal(skm.evar(returns), expected)
 
 
+def test_evar_without_losses():
+    # With no losses the lower bound on theta used to be negative (every return
+    # positive, giving -inf) or zero (every return zero, giving nan).
+    returns = np.random.default_rng(0).uniform(0.001, 0.02, 500)
+    evar = skm.evar(returns)
+    assert np.isfinite(evar)
+    assert skm.cvar(returns) <= evar <= -returns.min()
+
+    assert skm.evar(np.zeros(50)) == 0.0
+    # A series that only goes up has no drawdown, so its EDaR is zero like its CDaR.
+    assert skm.edar(skm.get_drawdowns(np.full(60, 0.001))) == 0.0
+
+
 @pytest.mark.parametrize(
     "returns,expected_ndim", [("1d", 1), ("2d", 2)], indirect=["returns"]
 )

@@ -767,8 +767,18 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
     def func(x: float) -> float:
         return entropic_risk_measure(returns=returns, theta=x, beta=beta)
 
-    # The lower bound is chosen to avoid exp overflow
-    lower_bound = np.nanmax(-returns) / 100
+    # The lower bound on theta keeps `exp(-returns / theta)` below exp(100) to avoid
+    # overflow. It must stay positive: without any loss the largest loss is negative
+    # or zero, so bound theta by the largest gain instead, which keeps the terms
+    # above exp(-100).
+    largest_loss = np.nanmax(-returns)
+    if largest_loss > 0:
+        lower_bound = largest_loss / 100
+    else:
+        largest_gain = np.nanmax(returns)
+        if largest_gain == 0:  # every return is zero
+            return 0.0
+        lower_bound = largest_gain / 100
     result = sco.minimize(
         func,
         x0=np.array([lower_bound * 2]),
