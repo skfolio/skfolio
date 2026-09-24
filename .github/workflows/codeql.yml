@@ -1,0 +1,61 @@
+# -----------------------------------------------------------------------------
+# CodeQL
+#
+# Static analysis with GitHub's CodeQL engine, reported to code scanning
+# (the repository's Security tab). Two languages are analysed:
+#   • python  — the package, tests and examples
+#   • actions — the workflows in .github/workflows
+# Neither needs a build (`build-mode: none`).
+#
+# Adapted from jebel-quant/rhiza's `rhiza_codeql.yml`. Actions use version
+# tags rather than commit SHAs, in line with the policy in #299 for
+# unprivileged workflows.
+# -----------------------------------------------------------------------------
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekly, so new CodeQL queries are applied even when the code does not change
+  schedule:
+    - cron: "27 1 * * 1"
+  workflow_dispatch:
+
+# Cancel outdated runs for the same branch/PR
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write  # upload results to code scanning
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, python]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
