@@ -94,7 +94,7 @@ class TestInputToArray:
         assets_names = None
         name = "items"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="If `items` is provided as a dictionary"):
             input_to_array(items, n_assets, fill_value, dim, assets_names, name)
 
     @pytest.mark.parametrize(
@@ -221,7 +221,7 @@ class TestDefaultAssetNames:
     #  Raises TypeError when n_assets is not an integer.
     def test_raises_type_error_when_n_assets_is_not_an_integer(self):
         n_assets = "5"
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="cannot be interpreted as an integer"):
             default_asset_names(n_assets)
 
 
@@ -382,7 +382,7 @@ def test_validate_input_list_raise():
     # "Asset3" corresponds to index 2 and integer 0 is valid.
     items = ["Asset3", "wrong name"]
     n_assets = len(assets_names)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="wrong name not found in"):
         _ = validate_input_list(
             items, n_assets, assets_names=assets_names, name="test_assets"
         )

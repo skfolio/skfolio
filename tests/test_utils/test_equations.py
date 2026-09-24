@@ -67,13 +67,19 @@ def test_split_equation_string():
 
 
 def test_split_equation_string_error():
-    with pytest.raises(EquationToMatrixError):
+    with pytest.raises(
+        EquationToMatrixError, match="must contain a comparison operator"
+    ):
         _split_equation_string("a*b")
 
-    with pytest.raises(EquationToMatrixError):
+    with pytest.raises(
+        EquationToMatrixError, match="> is an invalid comparison operator"
+    ):
         _split_equation_string("a>3")
 
-    with pytest.raises(EquationToMatrixError):
+    with pytest.raises(
+        EquationToMatrixError, match="< is an invalid comparison operator"
+    ):
         _split_equation_string("a<3")
 
 
@@ -243,7 +249,7 @@ def test_equations_to_matrix_mix(groups):
 
 def test_equations_to_matrix_error(groups):
     for c in [["a == "], ["a <= 2*bb"], ["a <= 2*b*c"]]:
-        with pytest.raises(EquationToMatrixError):
+        with pytest.raises(EquationToMatrixError, match="Wrong pattern encountered"):
             equations_to_matrix(groups=groups, equations=c)
 
     with pytest.raises(EquationToMatrixError, match="only one comparison"):
@@ -269,7 +275,7 @@ def test_equations_to_matrix_duplicate_groups_error():
 
     equations = ["a <= 2 * b ", "a <= 1.2", "d >= 3 ", " e >=  .5*d"]
 
-    with pytest.raises(DuplicateGroupsError):
+    with pytest.raises(DuplicateGroupsError, match="'a' appear in two levels"):
         _ = equations_to_matrix(groups=groups, equations=equations)
 
 
@@ -354,7 +360,7 @@ def test_group_cardinalities_to_matrix(groups, group_cardinalities):
 
 
 def test_group_cardinalities_to_matrix_error(groups, group_cardinalities):
-    with pytest.raises(GroupNotFoundError):
+    with pytest.raises(GroupNotFoundError, match="Unable to find 'x' in groups"):
         _ = group_cardinalities_to_matrix(
             groups=groups, group_cardinalities={"x": 5}, raise_if_group_missing=True
         )
@@ -429,7 +435,10 @@ class TestMatchingArrayWithFactors:
         groups = np.array([["Momentum", "Value", "Size", "Other"]])  # Collision!
         factor_groups = np.array([["Momentum", "Value", "Size"]])
 
-        with pytest.raises(DuplicateGroupsError):
+        with pytest.raises(
+            DuplicateGroupsError,
+            match="'Momentum' exists in both groups and factor_groups",
+        ):
             _matching_array_with_factors(
                 groups=groups,
                 key="Momentum",
@@ -440,7 +449,10 @@ class TestMatchingArrayWithFactors:
 
     def test_factor_without_loading_matrix_raises_error(self, groups, factor_groups):
         """Test that factor constraint without loading_matrix raises error."""
-        with pytest.raises(FactorNotFoundError):
+        with pytest.raises(
+            FactorNotFoundError,
+            match="Factor 'Momentum' found in factor_groups but loading_matrix is None",
+        ):
             _matching_array_with_factors(
                 groups=groups,
                 key="Momentum",
@@ -451,7 +463,10 @@ class TestMatchingArrayWithFactors:
 
     def test_not_found_raises_error(self, groups, loading_matrix, factor_groups):
         """Test that unknown key raises GroupNotFoundError."""
-        with pytest.raises(GroupNotFoundError):
+        with pytest.raises(
+            GroupNotFoundError,
+            match="Unable to find 'Unknown' in groups or factor_groups",
+        ):
             _matching_array_with_factors(
                 groups=groups,
                 key="Unknown",
@@ -780,7 +795,10 @@ class TestEquationsToMatrixFactorValidation:
         groups = np.array([["Momentum", "Other1", "Other2", "Other3"]])
         factor_groups = np.array([["Momentum", "Value", "Size"]])
 
-        with pytest.raises(DuplicateGroupsError):
+        with pytest.raises(
+            DuplicateGroupsError,
+            match="'Momentum' exists in both groups and factor_groups",
+        ):
             equations_to_matrix(
                 groups=groups,
                 equations=["Momentum <= 0.3"],
@@ -811,7 +829,9 @@ class TestEquationsToMatrixFactorValidation:
         self, groups, loading_matrix, factor_groups
     ):
         """Test that unknown factor in equation raises FactorNotFoundError."""
-        with pytest.raises(GroupNotFoundError):
+        with pytest.raises(
+            GroupNotFoundError, match="the group or factor 'UnknownFactor' is missing"
+        ):
             equations_to_matrix(
                 groups=groups,
                 equations=["UnknownFactor <= 0.3"],
