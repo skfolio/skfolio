@@ -1,0 +1,93 @@
+# -----------------------------------------------------------------------------
+# Docker
+#
+# Validates the JupyterLab image defined by the root `Dockerfile`:
+#   1. Lint the Dockerfile with hadolint
+#   2. Build the image with Docker Buildx (loaded locally, never pushed)
+#   3. Scan the image with Trivy and report CRITICAL/HIGH findings
+#
+# Adapted from jebel-quant/rhiza's `rhiza_docker.yml`. Actions use version
+# tags rather than commit SHAs, in line with the policy in #299 for
+# unprivileged workflows.
+# -----------------------------------------------------------------------------
+
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - .github/workflows/docker.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - pyproject.toml
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+# Cancel outdated runs for the same branch/PR
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-build:
+    name: Lint, build & scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write  # upload the Trivy SARIF report to code scanning
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Findings below `error` are still printed and annotate the diff; commit a
+      # `.hadolint.yaml` to make them fatal or to ignore a rule.
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image (validation only)
+        run: docker buildx build --file Dockerfile --tag skfolio:ci --load .
+
+      # Vulnerabilities are reported, not fatal: most come from the base image
+      # and upstream packages, which this repository does not control.
+      - name: Scan image with Trivy
+        id: trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: skfolio:ci
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "0"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      # Pull requests from forks get a read-only token and cannot upload SARIF;
+      # the report is still available as an artifact below.
+      - name: Upload Trivy results to code scanning
+        if: ${{ !cancelled() && steps.trivy.outcome == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Upload Trivy results as artifact
+        if: ${{ !cancelled() && steps.trivy.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-docker-report
+          path: trivy-results.sarif
