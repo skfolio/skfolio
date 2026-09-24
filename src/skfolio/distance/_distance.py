@@ -23,7 +23,9 @@ from skfolio.utils.stats import (
     n_bins_freedman,
     n_bins_knuth,
 )
-from skfolio.utils.tools import check_estimator
+from skfolio.utils.tools import _call_estimator, check_estimator
+
+_FITTED_ATTR = "covariance_estimator_"
 
 
 class PearsonDistance(BaseDistance):
@@ -308,7 +310,9 @@ class CovarianceDistance(BaseDistance):
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
-            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            method_mapping=skm.MethodMapping()
+            .add(caller="fit", callee="fit")
+            .add(caller="partial_fit", callee="partial_fit"),
         )
         return router
 
@@ -328,25 +332,76 @@ class CovarianceDistance(BaseDistance):
         self : CovarianceDistance
             Fitted estimator.
         """
-        routed_params = skm.process_routing(self, "fit", **fit_params)
+        self._reset()
+        return self._fit(X, y, method="fit", **fit_params)
 
-        # fitting estimators
-        self.covariance_estimator_ = check_estimator(
-            self.covariance_estimator,
-            default=GerberCovariance(),
-            check_type=BaseCovariance,
+    def partial_fit(self, X: ArrayLike, y=None, **fit_params) -> CovarianceDistance:
+        """Incrementally fit the Covariance Distance estimator.
+
+        The distance is recomputed from the covariance of the incrementally updated
+        `covariance_estimator`, which must implement `partial_fit` (e.g.
+        :class:`~skfolio.moments.EWCovariance`).
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        self : CovarianceDistance
+            Fitted estimator.
+        """
+        return self._fit(X, y, method="partial_fit", **fit_params)
+
+    def _fit(
+        self, X: ArrayLike, y=None, method: str = "fit", **fit_params
+    ) -> CovarianceDistance:
+        """Core fitting logic shared by `fit` and `partial_fit`."""
+        routed_params = skm.process_routing(self, method, **fit_params)
+        first_call = not hasattr(self, _FITTED_ATTR)
+
+        if first_call:
+            self.covariance_estimator_ = check_estimator(
+                self.covariance_estimator,
+                default=GerberCovariance(),
+                check_type=BaseCovariance,
+            )
+
+        if method == "partial_fit" and not callable(
+            getattr(self.covariance_estimator_, "partial_fit", None)
+        ):
+            raise TypeError(
+                "`CovarianceDistance.partial_fit` requires "
+                f"`covariance_estimator={type(self.covariance_estimator_).__name__}()`"
+                " to implement `partial_fit`."
+            )
+
+        _call_estimator(
+            self.covariance_estimator_,
+            method,
+            X,
+            y,
+            routed_params=routed_params.covariance_estimator,
         )
-        self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep the
         # features names information.
-        _ = skv.validate_data(self, X)
+        _ = skv.validate_data(self, X, reset=first_call)
 
         corr, _ = cov_to_corr(self.covariance_estimator_.covariance_)
         self.codependence_, self.distance_ = _corr_to_distance(
             corr, absolute=self.absolute, power=self.power
         )
         return self
+
+    def _reset(self) -> None:
+        """Reset fitted state."""
+        if hasattr(self, _FITTED_ATTR):
+            delattr(self, _FITTED_ATTR)
 
 
 class DistanceCorrelation(BaseDistance):
