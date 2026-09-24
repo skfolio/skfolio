@@ -78,7 +78,12 @@ class MultiPeriodPortfolio(BasePortfolio):
         The default is `False`.
 
     sample_weight : ndarray of shape (n_observations,), optional
-        Sample weights for each observation. If None, equal weights are assumed.
+        Global sample weights, overriding the child portfolios' sample weights.
+        If None, inherit each child's weights, giving each period total weight
+        proportional to its number of observations. Unweighted children contribute
+        equal weights per observation. Missing returns are ignored by measures,
+        which renormalize the remaining weights without removing observations.
+        To use equal weights regardless of the children, provide a uniform array.
 
     min_acceptable_return : float, optional
         The minimum acceptable return used to distinguish "downside" and "upside"
@@ -391,7 +396,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         self.sample_weight = sample_weight
 
     def __len__(self) -> int:
-        return len(self.portfolios)
+        return len(self._portfolios)
 
     def __getitem__(self, key: int | slice) -> Portfolio | list[Portfolio]:
         return self._portfolios[key]
@@ -401,14 +406,12 @@ class MultiPeriodPortfolio(BasePortfolio):
             raise TypeError(f"Cannot set a value with type {type(value)}")
         new_portfolios = self._portfolios.copy()
         new_portfolios[key] = value
-        self._set_portfolios(portfolios=new_portfolios)
-        self.clear()
+        self.portfolios = new_portfolios
 
     def __delitem__(self, key: int) -> None:
         new_portfolios = self._portfolios.copy()
         del new_portfolios[key]
-        self._set_portfolios(portfolios=new_portfolios)
-        self.clear()
+        self.portfolios = new_portfolios
 
     def __iter__(self) -> Iterator[Portfolio]:
         return iter(self._portfolios)
@@ -490,7 +493,8 @@ class MultiPeriodPortfolio(BasePortfolio):
         for name in args_names(self.__init__):
             if name in ("portfolios", "name", "tag", "check_observations_order"):
                 continue
-            if not np.array_equal(getattr(self, name), getattr(other, name)):
+            attribute = "_sample_weight" if name == "sample_weight" else name
+            if not np.array_equal(getattr(self, attribute), getattr(other, attribute)):
                 raise ValueError(
                     f"Cannot combine two MultiPeriodPortfolios with different `{name}`"
                 )
@@ -505,49 +509,102 @@ class MultiPeriodPortfolio(BasePortfolio):
         params["portfolios"] = portfolios
         return self.__class__(**params)
 
-    def _set_portfolios(self, portfolios: list[Portfolio] | None = None) -> None:
+    def _set_portfolios(
+        self, portfolios: list[Portfolio] | None = None, *, append: bool = False
+    ) -> None:
         """Set the returns, observations and portfolios list.
 
         Parameters
         ----------
         portfolios : list[Portfolio], optional
             The list of Portfolios. The default (`None`) is to use an empty list.
+
+        append : bool, default=False
+            If True, add the new portfolios to the existing timeline without
+            rebuilding or revalidating earlier periods.
         """
-        returns = []
-        observations = []
-        if portfolios is None:
-            portfolios = []
-        if len(portfolios) != 0:
-            for item in portfolios:
-                if not isinstance(item, BasePortfolio | Portfolio):
-                    raise TypeError(
-                        "`portfolios` items must be of type `Portfolio`, got"
-                        f" {type(item).__name__}"
-                    )
-                returns.append(item.returns)
-                observations.append(item.observations)
-            returns = np.concatenate(returns)
-            observations = np.concatenate(observations)
-            if self.check_observations_order:
-                iteration = iter(portfolios)
-                prev_p = next(iteration)
-                while (p := next(iteration, None)) is not None:
-                    if p.observations[0] <= prev_p.observations[-1]:
-                        raise ValueError(
-                            "Portfolios observations should not overlap:"
-                            f" {p} overlapping {prev_p}"
-                        )
-                    prev_p = p
+        returns = [self.returns] if append and self.n_observations else []
+        observations = [self.observations] if append and self.n_observations else []
+        portfolios = [] if portfolios is None else list(portfolios)
+        for portfolio in portfolios:
+            if not isinstance(portfolio, BasePortfolio):
+                raise TypeError(
+                    "`portfolios` items must be of type `Portfolio`, got"
+                    f" {type(portfolio).__name__}"
+                )
+            if not portfolio.n_observations:
+                continue
+            if (
+                self.check_observations_order
+                and observations
+                and portfolio.observations[0] <= observations[-1][-1]
+            ):
+                raise ValueError(
+                    "Portfolios observations should not overlap:"
+                    f" {portfolio.observations[0]} <= {observations[-1][-1]}"
+                )
+            returns.append(portfolio.returns)
+            observations.append(portfolio.observations)
+        if self._sample_weight is not None:
+            n_observations = sum(len(part) for part in returns)
+            if len(self._sample_weight) != n_observations:
+                raise ValueError(
+                    "Cannot update the portfolios: the new number of observations"
+                    f" ({n_observations}) does not match the length of the current"
+                    f" `sample_weight` ({len(self._sample_weight)}). Set"
+                    " `sample_weight=None` before updating the portfolios, then"
+                    " assign new global weights if needed."
+                )
+        returns = np.concatenate(returns) if returns else np.array([])
+        observations = np.concatenate(observations) if observations else np.array([])
+        if append:
+            portfolios = self._portfolios + portfolios
         self._loaded = False
         self._portfolios = portfolios
-        self.returns = np.asarray(returns)
-        self.observations = np.asarray(observations)
+        self.returns = returns
+        self.observations = observations
         self._loaded = True
 
     # Custom attribute setter and getter
+    @BasePortfolio.sample_weight.getter
+    def sample_weight(self) -> FloatArray | None:
+        """Global weights, or weights inherited from the current children.
+
+        Inherited arrays are recomputed on access and read-only. Assign an array
+        to override inheritance, or None to restore it. After directly changing
+        a child's sample weights, call `clear()` to refresh cached measures.
+        """
+        if self._sample_weight is not None:
+            return self._sample_weight
+        parts = []
+        for portfolio in self:
+            size = portfolio.n_observations
+            if size:
+                parts.append((size, portfolio.sample_weight))
+        if not any(weights is not None for _, weights in parts):
+            return None
+        n_observations = self.n_observations
+        weights = np.full(n_observations, 1.0 / n_observations)
+        start = 0
+        for size, child_weights in parts:
+            if child_weights is not None:
+                np.multiply(
+                    child_weights,
+                    size / n_observations,
+                    out=weights[start : start + size],
+                )
+            start += size
+        weights.setflags(write=False)
+        return weights
+
     @property
     def portfolios(self) -> list[Portfolio]:
-        """List of portfolios composing the mutli-period portfolio."""
+        """List of portfolios composing the multi-period portfolio.
+
+        Use `append`, item assignment/deletion on this object, or assign a new
+        list to `portfolios` to update the parent. Direct list mutations bypass
+        validation and leave the parent's returns and cached measures unchanged.
+        """
         return self._portfolios
 
     @portfolios.setter
@@ -601,19 +658,16 @@ class MultiPeriodPortfolio(BasePortfolio):
     @property
     def weights_dict(self) -> dict[str, dict[str, float]]:
         """Dictionary mapping each Portfolio name to its asset weight allocation."""
-        names = deduplicate_names([ptf.name for ptf in self.portfolios])
-        return {
-            name: ptf.weights_dict
-            for name, ptf in zip(names, self.portfolios, strict=True)
-        }
+        names = deduplicate_names([ptf.name for ptf in self])
+        return {name: ptf.weights_dict for name, ptf in zip(names, self, strict=True)}
 
     @property
     def previous_weights_dict(self) -> dict[str, dict[str, float]]:
         """Dictionary mapping Portfolio name to its previous asset weight allocation."""
-        names = deduplicate_names([ptf.name for ptf in self.portfolios])
+        names = deduplicate_names([ptf.name for ptf in self])
         return {
             name: ptf.previous_weights_dict
-            for name, ptf in zip(names, self.portfolios, strict=True)
+            for name, ptf in zip(names, self, strict=True)
         }
 
     @property
@@ -625,10 +679,9 @@ class MultiPeriodPortfolio(BasePortfolio):
         every asset to NaN. In a sequential evaluation, the next optimization uses the
         last successful ending weights as `previous_weights`.
         """
-        names = deduplicate_names([ptf.name for ptf in self.portfolios])
+        names = deduplicate_names([ptf.name for ptf in self])
         return {
-            name: ptf.ending_weights_dict
-            for name, ptf in zip(names, self.portfolios, strict=True)
+            name: ptf.ending_weights_dict for name, ptf in zip(names, self, strict=True)
         }
 
     @property
@@ -642,7 +695,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         portfolios have a NaN value. Empty portfolios are omitted because they have
         no observation to use as a rebalancing date.
         """
-        portfolios = [p for p in self.portfolios if p.n_observations]
+        portfolios = [p for p in self if p.n_observations]
         return pd.Series(
             data=[portfolio.turnover for portfolio in portfolios],
             index=[portfolio.observations[0] for portfolio in portfolios],
@@ -762,27 +815,16 @@ class MultiPeriodPortfolio(BasePortfolio):
         ----------
         portfolio : Portfolio
             The Portfolio to append.
+
+        Raises
+        ------
+        ValueError
+            If `check_observations_order` is True and the appended portfolio
+            overlaps the last portfolio, or if the new number of observations
+            does not match the length of explicitly assigned `sample_weight`.
+            Inherited weights follow the updated children automatically.
         """
-        if self.check_observations_order and len(self) != 0:
-            start_date = portfolio.observations[0]
-            prev_last_date = self[-1].observations[-1]
-            if start_date < prev_last_date:
-                raise ValueError(
-                    f"Portfolios observations should not overlap: {prev_last_date} ->"
-                    f" {start_date} "
-                )
-        self._loaded = False
-        self._portfolios.append(portfolio)
-        if len(self.observations) == 0:
-            # We don't concatenate an empty array as we cannot know the dtype before.
-            self.observations = portfolio.observations
-            self.returns = portfolio.returns
-        else:
-            self.observations = np.concatenate(
-                [self.observations, portfolio.observations], axis=0
-            )
-            self.returns = np.concatenate([self.returns, portfolio.returns], axis=0)
-        self._loaded = True
+        self._set_portfolios([portfolio], append=True)
         self.clear()
 
     def plot_weights_per_observation(self):

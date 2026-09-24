@@ -40,15 +40,25 @@ def mean(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     if sample_weight is None:
         # Ignore NaNs and suppress warnings for all-NaN slices
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             return np.nanmean(returns, axis=0)
-    return sample_weight @ returns
+    returns = np.asarray(returns, dtype=float)
+    sample_weight = np.asarray(sample_weight, dtype=float)
+    if returns.shape[0] == 0:
+        return np.full(returns.shape[1:], np.nan)[()]
+    result = sample_weight @ returns
+    # Scan returns for NaNs only if the weighted mean contains NaN.
+    if not np.isnan(result).any():
+        return result
+    returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
+    return _weighted_sum(returns, weights=weights)
 
 
 def mean_absolute_deviation(
@@ -80,8 +90,9 @@ def mean_absolute_deviation(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -123,8 +134,9 @@ def first_lower_partial_moment(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -163,8 +175,9 @@ def variance(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     if sample_weight is None:
         # Ignore NaNs and suppress warnings for all-NaN slices
@@ -172,13 +185,7 @@ def variance(
             warnings.simplefilter("ignore", category=RuntimeWarning)
             return np.nanvar(returns, ddof=0 if biased else 1, axis=0)
 
-    biased_var = (
-        sample_weight @ (returns - mean(returns, sample_weight=sample_weight)) ** 2
-    )
-    if biased:
-        return biased_var
-    n_eff = 1 / np.sum(sample_weight**2)
-    return biased_var * n_eff / (n_eff - 1)
+    return _weighted_variance(returns, sample_weight=sample_weight, biased=biased)
 
 
 def semi_variance(
@@ -217,9 +224,18 @@ def semi_variance(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
+    if sample_weight is not None:
+        return _weighted_variance(
+            returns,
+            sample_weight=sample_weight,
+            biased=biased,
+            min_acceptable_return=min_acceptable_return,
+            downside=True,
+        )
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
 
@@ -229,13 +245,10 @@ def semi_variance(
     if biased:
         return biased_semi_var
 
-    if sample_weight is None:
-        # Apply the Bessel correction using each column's non-NaN count.
-        returns = np.asarray(returns, dtype=float)
-        n_observations = np.count_nonzero(~np.isnan(returns), axis=0)
-        correction = safe_divide(n_observations, n_observations - 1, fill_value=np.nan)
-    else:
-        correction = 1.0 / (1.0 - np.sum(sample_weight**2))
+    # Apply the Bessel correction using each column's non-NaN count.
+    returns = np.asarray(returns, dtype=float)
+    n_observations = np.count_nonzero(~np.isnan(returns), axis=0)
+    correction = safe_divide(n_observations, n_observations - 1, fill_value=np.nan)
     return biased_semi_var * correction
 
 
@@ -268,8 +281,9 @@ def standard_deviation(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return np.sqrt(variance(returns, sample_weight=sample_weight, biased=biased))
 
@@ -308,8 +322,9 @@ def semi_deviation(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return np.sqrt(
         semi_variance(
@@ -344,8 +359,9 @@ def third_central_moment(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 3,
@@ -380,8 +396,9 @@ def skew(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return (
         third_central_moment(returns, sample_weight)
@@ -412,8 +429,9 @@ def fourth_central_moment(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 4,
@@ -447,8 +465,9 @@ def kurtosis(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return (
         fourth_central_moment(returns, sample_weight=sample_weight)
@@ -486,8 +505,8 @@ def fourth_lower_partial_moment(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. The result is
+    NaN if no observations remain.
     """
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns)
@@ -512,8 +531,8 @@ def worst_realization(returns: ArrayLike) -> float | FloatArray:
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. The result is
+    NaN if no observations remain.
     """
     with warnings.catch_warnings():
         # all-NaN slice warning
@@ -534,6 +553,8 @@ def value_at_risk(
 
     beta : float, default=0.95
         The VaR confidence level (return on the worst (1-beta)% observation).
+        Must be between 0 and 1. The endpoints select the best and worst
+        usable returns, respectively; zero-weight observations are excluded.
 
     sample_weight : ndarray of shape (n_observations,), optional
         Sample weights for each observation. If None, equal weights are assumed.
@@ -548,55 +569,13 @@ def value_at_risk(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
-    returns = np.asarray(returns, dtype=float)
-
-    if np.isnan(returns).all():
-        return (
-            np.nan
-            if returns.ndim == 1
-            else np.full(returns.shape[1], np.nan, dtype=float)
-        )
-
-    def _func(arr: FloatArray) -> float:
-        size = arr.shape[0]
-        if size == 0:
-            return np.nan
-        k = (1.0 - beta) * size
-        ik = max(0, int(np.ceil(k) - 1))
-        # We only need the first k elements, `partition` (~O(n) avg) beats
-        # `sort` (O(n log n))
-        part = np.partition(arr, ik, axis=0)
-        return -part[ik]
-
-    if sample_weight is None:
-        if not np.isnan(returns).any():
-            return _func(returns)
-
-        # Contains NaNs and returns is 1D
-        if returns.ndim == 1:
-            return _func(returns[~np.isnan(returns)])
-
-        # Contains NaNs and returns is 2D
-        n_assets = returns.shape[1]
-        return np.array(
-            [_func(returns[~np.isnan(returns[:, j]), j]) for j in range(n_assets)],
-            dtype=float,
-        )
-
-    # With sample weights
-    sorted_idx = np.argsort(returns, axis=0)
-    cum_weights = np.cumsum(sample_weight[sorted_idx], axis=0)
-    i = np.apply_along_axis(
-        np.searchsorted, axis=0, arr=cum_weights, v=1 - beta, side="left"
+    return _tail_risk(
+        returns, beta=beta, sample_weight=sample_weight, conditional=False
     )
-    # Returns is 1D
-    if returns.ndim == 1:
-        return -returns[sorted_idx][i]
-    # Returns is 2D
-    return -np.diag(np.take_along_axis(returns, sorted_idx, axis=0)[i])
 
 
 def cvar(
@@ -614,6 +593,8 @@ def cvar(
 
     beta : float, default=0.95
         The CVaR confidence level (expected VaR on the worst (1-beta)% observations).
+        Must be greater than or equal to 0 and less than 1. At 0, CVaR is
+        the negative mean of the usable returns.
 
     sample_weight : ndarray of shape (n_observations,), optional
         Sample weights for each observation. If None, equal weights are assumed.
@@ -628,73 +609,11 @@ def cvar(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
-    returns = np.asarray(returns, dtype=float)
-
-    if np.isnan(returns).all():
-        return (
-            np.nan
-            if returns.ndim == 1
-            else np.full(returns.shape[1], np.nan, dtype=float)
-        )
-
-    def _func(arr: FloatArray) -> float:
-        size = arr.shape[0]
-        if size == 0:
-            return np.nan
-        k = (1.0 - beta) * size
-        ik = max(0, int(np.ceil(k) - 1))
-        # We only need the first k elements, `partition` (~O(n) avg) beats
-        # `sort` (O(n log n))
-        part = np.partition(arr, ik, axis=0)
-        return -np.sum(part[:ik], axis=0) / k + part[ik] * (ik / k - 1.0)
-
-    if sample_weight is None:
-        if not np.isnan(returns).any():
-            return _func(returns)
-
-        # Contains NaNs and returns is 1D
-        if returns.ndim == 1:
-            return _func(returns[~np.isnan(returns)])
-
-        # Contains NaNs and returns is 2D
-        n_assets = returns.shape[1]
-        return np.array(
-            [_func(returns[~np.isnan(returns[:, j]), j]) for j in range(n_assets)],
-            dtype=float,
-        )
-
-    # With sample weight
-    order = np.argsort(returns, axis=0)
-    sorted_returns = np.take_along_axis(returns, order, axis=0)
-    sorted_w = sample_weight[order]
-    cum_w = np.cumsum(sorted_w, axis=0)
-    idx = np.apply_along_axis(
-        np.searchsorted, axis=0, arr=cum_w, v=1 - beta, side="left"
-    )
-
-    def _func(_idx, _sorted_returns, _sorted_w, _cum_w) -> float:
-        if _idx == 0:
-            return _sorted_returns[0]
-        return (
-            _sorted_returns[:_idx] @ _sorted_w[:_idx]
-            + _sorted_returns[_idx] * (1 - beta - _cum_w[_idx - 1])
-        ) / (1 - beta)
-
-    # Returns is 1D
-    if returns.ndim == 1:
-        return -_func(idx, sorted_returns, sorted_w, cum_w)
-
-    # Returns is 2D
-    n_assets = returns.shape[1]
-    return -np.array(
-        [
-            _func(idx[i], sorted_returns[:, i], sorted_w[:, i], cum_w[:, i])
-            for i in range(n_assets)
-        ]
-    )
+    return _tail_risk(returns, beta=beta, sample_weight=sample_weight, conditional=True)
 
 
 def entropic_risk_measure(
@@ -733,8 +652,9 @@ def entropic_risk_measure(
     Notes
     -----
     NaN handling:
-    - Unweighted: NaNs are ignored; all-NaN inputs yield NaN.
-    - Weighted: NaNs propagate.
+    NaN returns are excluded from each column's calculation. Remaining sample
+    weights are rescaled to sum to one. The result is NaN if no observations
+    or no positive weight remain.
     """
     return theta * np.log(
         mean(np.exp(-returns / theta), sample_weight=sample_weight) / (1 - beta)
@@ -1121,3 +1041,222 @@ def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatA
     cov = np.cov(X, rowvar=False, aweights=sample_weight)
     std = np.sqrt(np.diag(cov))
     return cov / np.outer(std, std)
+
+
+def _weighted_sum(values: FloatArray, weights: FloatArray) -> float | FloatArray:
+    """Sum over observations, using column-specific weights when needed.
+
+    Parameters
+    ----------
+    values : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Values to sum along the observation axis.
+
+    weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        A 1D weight vector shared by all columns, or a 2D array matching
+        `values` that assigns weights separately for each column.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Weighted sum. A scalar for 1D values, or one result per column for
+        2D values.
+    """
+    if weights.ndim == 1:
+        return weights @ values
+    # Avoid allocating a full product array for column-specific weights.
+    return np.einsum("ij,ij->j", weights, values)
+
+
+def _prepare_weighted_returns(
+    returns: FloatArray, weights: FloatArray
+) -> tuple[FloatArray, FloatArray]:
+    """Prepare returns and weights for calculations that exclude NaNs.
+
+    Inputs must be floating-point arrays and are not modified.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    weights : ndarray of shape (n_observations,)
+        Normalized, non-negative observation weights.
+
+    Returns
+    -------
+    returns : ndarray with the same shape as the input
+        Returns with NaN entries replaced by zero as an arithmetic placeholder.
+        These zeros do not represent observed returns.
+
+    weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Missing returns receive zero weight, and the remaining weights are
+        rescaled to sum to one. If no positive weight remains, the normalized
+        weights are NaN.
+        Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
+        containing NaNs, each column gets its own normalized weight vector.
+    """
+    missing = np.isnan(returns)
+    if missing.any():
+        weights = np.where(
+            missing, 0.0, weights[:, None] if returns.ndim == 2 else weights
+        )
+        # This is a new array: normalize in place, with 0/0 marking empty columns.
+        with np.errstate(invalid="ignore"):
+            weights /= weights.sum(axis=0)
+        returns = np.where(missing, 0.0, returns)
+    return returns, weights
+
+
+def _weighted_variance(
+    returns: FloatArray,
+    sample_weight: FloatArray,
+    biased: bool,
+    min_acceptable_return: float | FloatArray | None = None,
+    downside: bool = False,
+) -> float | FloatArray:
+    """Compute weighted variance or semi-variance, excluding NaN returns.
+
+    The remaining weights are rescaled to sum to one separately for each column.
+
+    Parameters
+    ----------
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    sample_weight : ndarray of shape (n_observations,)
+        Normalized, non-negative observation weights.
+
+    biased : bool
+        If True, return the population second moment. If False, divide it by
+        ``1 - sum(weights**2)`` using the weights after excluding NaN returns.
+
+    min_acceptable_return : float or ndarray of shape (n_assets,), optional
+        Reference return for computing deviations. If None, use each column's
+        weighted mean. When `downside` is True, this is the minimum acceptable
+        return.
+
+    downside : bool, default=False
+        If True, use only deviations below the reference return to compute
+        semi-variance. All remaining observations contribute to the weight
+        normalization and unbiased correction.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        Weighted variance or semi-variance. A scalar for 1D returns, or one
+        result per column for 2D returns. Empty inputs and columns with no
+        remaining positive weight produce NaN. The unbiased result is also
+        NaN when its correction is zero.
+    """
+    returns, weights = _prepare_weighted_returns(
+        np.asarray(returns, dtype=float), weights=np.asarray(sample_weight, dtype=float)
+    )
+    if returns.shape[0] == 0:
+        return np.full(returns.shape[1:], np.nan)[()]
+    if min_acceptable_return is None:
+        min_acceptable_return = _weighted_sum(returns, weights=weights)
+    deviations = returns - min_acceptable_return
+    if downside:
+        np.minimum(deviations, 0.0, out=deviations)
+    np.square(deviations, out=deviations)
+    result = _weighted_sum(deviations, weights=weights)
+    if biased:
+        return result
+    correction = 1.0 - _weighted_sum(weights, weights=weights)
+    return result / np.where(correction == 0, np.nan, correction)
+
+
+def _tail_risk(
+    returns: ArrayLike,
+    beta: float,
+    sample_weight: FloatArray | None,
+    conditional: bool,
+) -> float | FloatArray:
+    """Compute VaR or CVaR over usable observations, optionally weighted.
+
+    NaN returns are excluded separately for each column. When weights are
+    supplied, zero-weight observations are also excluded and the remaining
+    weights are rescaled to sum to one.
+
+    Parameters
+    ----------
+    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
+        Return values, possibly containing NaNs.
+
+    beta : float
+        Confidence level in [0, 1] for VaR and [0, 1) for CVaR.
+
+    sample_weight : ndarray of shape (n_observations,) or None
+        Normalized, non-negative observation weights. If None, the remaining
+        observations have equal weight.
+
+    conditional : bool
+        If True, return CVaR, the average loss in the lower return tail.
+        If False, return VaR, the loss at the tail boundary.
+
+    Returns
+    -------
+    value : float or ndarray of shape (n_assets,)
+        VaR or CVaR. A scalar for 1D returns, or one result per column for
+        2D returns. The result is NaN if no observations or no positive
+        weight remain.
+    """
+    returns = np.asarray(returns, dtype=float)
+
+    def _unweighted(values):
+        """Compute the unweighted tail measure using the enclosing settings."""
+        size = values.shape[0]
+        if size == 0:
+            return np.nan
+        k = (1.0 - beta) * size
+        i = max(0, int(np.ceil(k) - 1))
+        # Partition keeps the unweighted calculation linear in the sample size.
+        part = np.partition(values, i, axis=0)
+        if conditional:
+            return -np.sum(part[:i], axis=0) / k + part[i] * (i / k - 1.0)
+        return -part[i]
+
+    if sample_weight is None:
+        missing = np.isnan(returns)
+        if missing.all():
+            return np.full(returns.shape[1:], np.nan)[()]
+        if not missing.any():
+            return _unweighted(returns)
+        if returns.ndim == 1:
+            return _unweighted(returns[~missing])
+        return np.array(
+            [_unweighted(returns[~missing[:, j], j]) for j in range(returns.shape[1])]
+        )
+
+    weights = np.asarray(sample_weight, dtype=float)
+    positive = weights > 0
+
+    def _weighted(column):
+        """Compute the weighted tail measure for one return column."""
+        valid = ~np.isnan(column) & positive
+        values, probs = column[valid], weights[valid]
+        if len(probs) == 0:
+            return np.nan
+        probs /= probs.sum()
+        if beta == 0:
+            return -probs @ values if conditional else -values.max()
+        if beta == 1:
+            return -values.min()
+        if np.all(probs == probs[0]):
+            # Preserve the unweighted empirical rank convention exactly.
+            return _unweighted(values)
+        order = np.argsort(values)
+        values, probs = values[order], probs[order]
+        cumulative = np.cumsum(probs)
+        tail_mass = (1.0 - beta) * cumulative[-1]
+        i = np.searchsorted(cumulative, tail_mass)
+        if not conditional or i == 0:
+            return -values[i]
+        return (
+            -(probs[:i] @ values[:i] + values[i] * (tail_mass - cumulative[i - 1]))
+            / tail_mass
+        )
+
+    if returns.ndim == 1:
+        return _weighted(returns)
+    return np.array([_weighted(column) for column in returns.T])
