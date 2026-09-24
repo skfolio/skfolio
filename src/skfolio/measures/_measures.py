@@ -561,6 +561,7 @@ def value_at_risk(
         )
 
     def _func(arr: FloatArray) -> float:
+        """Compute the unweighted VaR of `arr`, or NaN if it is empty."""
         size = arr.shape[0]
         if size == 0:
             return np.nan
@@ -641,6 +642,7 @@ def cvar(
         )
 
     def _func(arr: FloatArray) -> float:
+        """Compute the unweighted CVaR of `arr`, or NaN if it is empty."""
         size = arr.shape[0]
         if size == 0:
             return np.nan
@@ -676,6 +678,7 @@ def cvar(
     )
 
     def _func(_idx, _sorted_returns, _sorted_w, _cum_w) -> float:
+        """Compute the weighted mean of the worst (1-beta) tail of sorted returns."""
         if _idx == 0:
             return _sorted_returns[0]
         return (
@@ -765,6 +768,7 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
         return np.nan
 
     def func(x: float) -> float:
+        """Compute the entropic risk measure for the risk aversion `x`."""
         return entropic_risk_measure(returns=returns, theta=x, beta=beta)
 
     # The lower bound is chosen to avoid exp overflow

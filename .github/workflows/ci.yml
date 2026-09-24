@@ -59,6 +59,10 @@ jobs:
       - name: Select Python for uv
         run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
+      # Scope and threshold live in `[tool.interrogate]` in `pyproject.toml`.
+      - name: Docstring coverage
+        run: uvx interrogate@1.7.0 src
+
       # CI intentionally checks against the latest Ruff release.
       - name: Ruff version
         run: uvx ruff@latest --version

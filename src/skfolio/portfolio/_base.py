@@ -641,6 +641,7 @@ class BasePortfolio:
 
     # Private methods
     def _slots(self) -> set[str]:
+        """Return the union of `__slots__` across the class MRO."""
         slots = set()
         for s in self.__class__.__mro__:
             slots.update(getattr(s, "__slots__", set()))
@@ -667,6 +668,7 @@ class BasePortfolio:
 
     @fitness_measures.setter
     def fitness_measures(self, value: list[skt.Measure]) -> None:
+        """Validate and set the fitness measures and clear the cached fitness."""
         if not isinstance(value, list) or len(value) == 0:
             raise TypeError("`fitness_measures` must be a non-empty list of Measure")
         for val in value:
@@ -684,6 +686,7 @@ class BasePortfolio:
 
     @annualization_factor.setter
     def annualization_factor(self, value: float) -> None:
+        """Set the annualization factor and clear the measures cache."""
         self._annualization_factor = value
         self.clear()
 
@@ -697,6 +700,7 @@ class BasePortfolio:
     # TODO remove deprecated annualized_factor in v2.0
     @annualized_factor.setter
     def annualized_factor(self, value: float) -> None:
+        """Set the deprecated alias of `annualization_factor` with a warning."""
         _warn_deprecated_annualized_factor(stacklevel=3)
         self.annualization_factor = value
 
@@ -707,6 +711,7 @@ class BasePortfolio:
 
     @sample_weight.setter
     def sample_weight(self, value: FloatArray | None) -> None:
+        """Validate and set the observations sample weights."""
         if value is not None:
             value = np.asarray(value)
             if value.ndim != 1:
@@ -924,6 +929,7 @@ class BasePortfolio:
                 del risk_func_args["drawdowns"]
 
                 def meta_risk_func(returns):
+                    """Compute the drawdown-based risk measure on `returns`."""
                     drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
                     return risk_func(drawdowns=drawdowns, **risk_func_args)
 
@@ -931,12 +937,14 @@ class BasePortfolio:
                 del risk_func_args["returns"]
 
                 def meta_risk_func(returns):
+                    """Compute the returns-based risk measure on `returns`."""
                     return risk_func(returns=returns, **risk_func_args)
 
             if perf_measure is not None:
                 perf_func = getattr(mt, str(perf_measure.value))
 
                 def func(returns):
+                    """Compute the ratio measure (excess perf over risk)."""
                     return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
                         returns
                     )
@@ -947,6 +955,7 @@ class BasePortfolio:
             perf_func = getattr(mt, str(perf_measure.value))
 
             def func(returns):
+                """Compute the performance measure on `returns`."""
                 return perf_func(returns)
 
         rolling = (
@@ -1299,6 +1308,7 @@ class BasePortfolio:
 
 # TODO remove deprecated annualized_factor in v2.0
 def _warn_deprecated_annualized_factor(stacklevel: int = 2) -> None:
+    """Emit a FutureWarning that `annualized_factor` is deprecated."""
     warnings.warn(
         "`annualized_factor` is deprecated and will be removed in version 2.0. "
         "Use `annualization_factor` instead.",
@@ -1336,6 +1346,12 @@ def _resolve_annualization_factor(
     *,
     owner_name: str,
 ) -> float:
+    """Resolve the annualization factor from the new and deprecated arguments.
+
+    Pops the deprecated `annualized_factor` from `kwargs` (warning if used), raises
+    a `TypeError` for any other remaining keyword argument and returns the default
+    annualization factor when the resolved value is None.
+    """
     params = {"annualization_factor": annualization_factor}
     if "annualized_factor" in kwargs:
         params["annualized_factor"] = kwargs.pop("annualized_factor")

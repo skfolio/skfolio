@@ -36,7 +36,27 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]: ...
+    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]:
+        """Generate indices to split data into training and test set.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data, where `n_samples` is the number of samples and `n_features`
+            is the number of features.
+
+        y : array-like of shape (n_samples,), optional
+            The (multi-)target variable.
+
+        Returns
+        -------
+        train : ndarray
+            The training set indices for that split.
+
+        test : list[ndarray]
+            The list of testing set indices for that split.
+        """
+        ...
 
     @abstractmethod
     def get_path_ids(self) -> IntArray:
@@ -361,6 +381,20 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             yield train_index, test_index_list
 
     def summary(self, X) -> pd.Series:
+        """Return a summary of the cross-validation configuration for `X`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Data to split. Only its number of observations (rows) is used.
+
+        Returns
+        -------
+        summary : pandas.Series
+            Number of observations, total number of folds, number of test folds,
+            purge size, embargo size, average training size, number of test paths
+            and number of training combinations.
+        """
         n_observations = X.shape[0]
         avg_train_size = _avg_train_size(
             n_observations=n_observations,
@@ -580,6 +614,7 @@ def optimal_folds_number(
         x: int,
         y: int,
     ) -> float:
+        """Return the weighted relative distance to the target train size and paths."""
         n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
         avg_train_size = _avg_train_size(
             n_observations=n_observations, n_folds=x, n_test_folds=y

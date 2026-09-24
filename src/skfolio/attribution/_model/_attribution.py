@@ -1485,6 +1485,48 @@ def _plot_contribution_chart(
     observations: AnyArray | None = None,
     confidence_level: float | None = None,
 ):
+    """Build the volatility or return contribution chart for an attribution.
+
+    Shared implementation of `plot_vol_contrib` and `plot_return_contrib`. Single-point
+    attribution produces a bar chart and rolling attribution produces one line per
+    component. For realized return contributions with available standard errors,
+    hover text includes the SE and, if `confidence_level` is provided, error bars
+    (single-point) or confidence bands (rolling) are drawn.
+
+    Parameters
+    ----------
+    data : FactorBreakdown or FamilyBreakdown
+        Breakdown data to plot.
+
+    idio : Component
+        Idiosyncratic component.
+
+    top_n : int
+        Maximum number of components to show; the rest are aggregated into `Other`.
+
+    include_idio : bool
+        Whether to include the idiosyncratic component.
+
+    is_rolling : bool
+        Whether the attribution is rolling.
+
+    is_realized : bool
+        Whether the attribution is realized (ex-post) rather than predicted.
+
+    is_risk : bool
+        If True, plot volatility contributions; otherwise, return contributions.
+
+    observations : array-like, optional
+        Observation labels used as x-axis. Required when `is_rolling` is True.
+
+    confidence_level : float, optional
+        Confidence level of the intervals displayed for return contributions.
+
+    Returns
+    -------
+    go.Figure
+        Plotly contribution chart.
+    """
     if is_risk:
         title = "Vol Contribution"
         title_rolling = f"{title} Over Time"

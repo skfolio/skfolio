@@ -58,7 +58,27 @@ class BaseAlpha(skb.BaseEstimator, ABC):
     asset_names_: ObjArray
 
     @abstractmethod
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha: ...
+    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha:
+        """Fit the alpha estimator and store the latest alpha forecast in `alpha_`.
+
+        Parameters
+        ----------
+        X : AssetPanel
+            Input panel data.
+
+        y : None
+            Ignored. Present for compatibility with scikit-learn's API.
+
+        **fit_params : dict
+            Additional fit parameters. Metadata routing may pass these parameters to
+            sub-estimators when applicable.
+
+        Returns
+        -------
+        self : BaseAlpha
+            Fitted estimator.
+        """
+        ...
 
 
 class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):

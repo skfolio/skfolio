@@ -180,6 +180,15 @@ max-line-length = 320
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.interrogate]
+# Docstring coverage over `src`. Ruff's `D` rules cover public docstrings; this
+# gate also counts private helpers and nested functions.
+# `__init__` methods are documented in the class docstring (numpydoc), and dunder
+# methods follow the data model, so neither needs its own docstring.
+ignore-init-method = true
+ignore-magic = true
+fail-under = 100
+
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations
 # (including constructors) in coverage, and preserve the default exclusions.

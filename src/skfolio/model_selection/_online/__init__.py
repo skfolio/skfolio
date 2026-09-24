@@ -1,3 +1,5 @@
+"""Online model selection module."""
+
 from skfolio.model_selection._online._covariance_forecast_evaluation import (
     online_covariance_forecast_evaluation,
 )

@@ -220,6 +220,7 @@ class GrowthRate(BaseDescriptor):
         return result
 
     def _reset(self):
+        """Reset fitted state and delete the internal observation buffer."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
         if hasattr(self, "_buffer"):

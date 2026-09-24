@@ -144,6 +144,13 @@ class BlackLitterman(BasePrior):
         self.risk_free_rate = risk_free_rate
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,

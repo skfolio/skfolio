@@ -39,22 +39,34 @@ class BaseMeasure(AutoEnum):
 
     @property
     @abstractmethod
-    def is_perf(self): ...
+    def is_perf(self):
+        """Return True if the measure is a performance measure."""
+        ...
 
     @property
     @abstractmethod
-    def is_risk(self): ...
+    def is_risk(self):
+        """Return True if the measure is a risk measure."""
+        ...
 
     @property
     @abstractmethod
-    def is_ratio(self): ...
+    def is_ratio(self):
+        """Return True if the measure is a ratio measure."""
+        ...
 
     @property
     def is_annualized(self) -> bool:
+        """Return True if the measure is an annualized measure."""
         return self.name[:10] == "ANNUALIZED"
 
     @property
     def annualized_measure(self):
+        """Return the annualized version of the measure.
+
+        Raises a ValueError if the measure is already annualized and an
+        AttributeError if it has no annualized version.
+        """
         if self.is_annualized:
             raise ValueError(f"{self.name} is already an annualized measure")
         try:
@@ -66,6 +78,10 @@ class BaseMeasure(AutoEnum):
 
     @property
     def non_annualized_measure(self):
+        """Return the non-annualized version of the measure.
+
+        Raises a ValueError if the measure is already non-annualized.
+        """
         if not self.is_annualized:
             raise ValueError(f"{self.name} is already a non-annualized measure")
         return getattr(self.__class__, self.name[11:])
@@ -90,14 +106,17 @@ class PerfMeasure(BaseMeasure):
 
     @property
     def is_perf(self) -> bool:
+        """Return True if the measure is a performance measure."""
         return True
 
     @property
     def is_risk(self) -> bool:
+        """Return True if the measure is a risk measure."""
         return False
 
     @property
     def is_ratio(self) -> bool:
+        """Return True if the measure is a ratio measure."""
         return False
 
 
@@ -186,14 +205,17 @@ class RiskMeasure(BaseMeasure):
 
     @property
     def is_perf(self) -> bool:
+        """Return True if the measure is a performance measure."""
         return False
 
     @property
     def is_risk(self) -> bool:
+        """Return True if the measure is a risk measure."""
         return True
 
     @property
     def is_ratio(self) -> bool:
+        """Return True if the measure is a ratio measure."""
         return False
 
 
@@ -234,14 +256,17 @@ class ExtraRiskMeasure(BaseMeasure):
 
     @property
     def is_perf(self) -> bool:
+        """Return True if the measure is a performance measure."""
         return False
 
     @property
     def is_risk(self) -> bool:
+        """Return True if the measure is a risk measure."""
         return True
 
     @property
     def is_ratio(self) -> bool:
+        """Return True if the measure is a ratio measure."""
         return False
 
 
@@ -326,18 +351,22 @@ class RatioMeasure(BaseMeasure):
 
     @property
     def is_perf(self) -> bool:
+        """Return True if the measure is a performance measure."""
         return False
 
     @property
     def is_risk(self) -> bool:
+        """Return True if the measure is a risk measure."""
         return False
 
     @property
     def is_ratio(self) -> bool:
+        """Return True if the measure is a ratio measure."""
         return True
 
     @property
     def linked_risk_measure(self) -> RiskMeasure | ExtraRiskMeasure:
+        """Return the risk measure used in the denominator of the ratio."""
         match self:
             case RatioMeasure.SHARPE_RATIO:
                 return RiskMeasure.STANDARD_DEVIATION

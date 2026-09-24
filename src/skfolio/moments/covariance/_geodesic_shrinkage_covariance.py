@@ -173,6 +173,15 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         self.target = target
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes the `fit` metadata to the `fit` method of `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),

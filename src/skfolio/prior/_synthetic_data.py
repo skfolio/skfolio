@@ -149,6 +149,13 @@ class SyntheticData(BasePrior):
         self.sample_args = sample_args
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             distance_estimator=self.distribution_estimator,

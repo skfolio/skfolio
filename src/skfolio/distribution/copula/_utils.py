@@ -131,6 +131,7 @@ def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArr
         raise ValueError("quantiles must be between 0.0 and 1.0.")
 
     def func(q: FloatArray, is_lower: bool) -> FloatArray:
+        """Compute the empirical lower or upper tail concentration at quantiles `q`."""
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
         count = np.count_nonzero(cond, axis=0).astype(float)

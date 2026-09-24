@@ -286,7 +286,24 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             raise
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
+        """Fit the optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        Returns
+        -------
+        self : BaseOptimization
+            Fitted estimator.
+        """
+        ...
 
     def predict(self, X: ArrayLike | ReturnDistribution) -> Portfolio | Population:
         """Predict the `Portfolio` or a `Population` of portfolios on `X`.

@@ -822,6 +822,11 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     @property
     def _needs_idio_variances(self) -> bool:
+        """Whether `idio_variances` are required.
+
+        They are needed when calibrating to return units or when the forecast unit is
+        `ForecastUnit.IDIO_SHARPE`.
+        """
         return (
             self.calibrate_to_return_units
             or self.forecast_unit is ForecastUnit.IDIO_SHARPE

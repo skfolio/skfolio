@@ -341,6 +341,13 @@ class OpinionPooling(BasePrior, BaseComposition):
         return super()._get_params("estimators", deep=deep)
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:
             router.add(

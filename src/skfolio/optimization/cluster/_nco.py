@@ -286,6 +286,18 @@ class NestedClustersOptimization(BaseOptimization):
         self.verbose = verbose
 
     def get_metadata_routing(self):
+        """Get metadata routing of this object.
+
+        Metadata passed to `fit` is routed to the `fit` method of
+        `distance_estimator`, `clustering_estimator` and `inner_estimator`.
+        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
+            routing information.
+        """
         # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)

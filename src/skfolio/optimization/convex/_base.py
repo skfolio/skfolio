@@ -2043,9 +2043,23 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+        """Fourth Central Moment risk measure (not implemented).
+
+        Raises
+        ------
+        NotImplementedError
+            Always, as this risk measure is not supported.
+        """
         raise NotImplementedError
 
     def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+        """Fourth Lower Partial Moment risk measure (not implemented).
+
+        Raises
+        ------
+        NotImplementedError
+            Always, as this risk measure is not supported.
+        """
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -2439,6 +2453,18 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def get_metadata_routing(self):
+        """Get metadata routing of this object.
+
+        Metadata passed to `fit` and `partial_fit` is routed to the corresponding
+        method of `prior_estimator`.
+        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
+            routing information.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping()
@@ -2448,7 +2474,31 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
+        """Fit the Convex Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : ConvexOptimization
+            Fitted estimator.
+        """
+        ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2619,6 +2669,52 @@ def _solve(
     risk_measure,
     scale_objective,
 ):
+    """Solve the CVXPY problem and return the rescaled weights and problem values.
+
+    Weights and expression values (except `"factor"` itself) are divided by the
+    homogenization `factor`, the objective by `scale_objective`, and the variance
+    and semi-variance risks once more by `factor`.
+    A warning is emitted if the solution status is not optimal.
+
+    Parameters
+    ----------
+    w : cvxpy Variable
+        The CVXPY Variable representing assets weights.
+
+    factor : cvxpy Variable or Constant
+        Homogenization factor used to rescale the solution.
+
+    expressions : dict[str, cvxpy Expression]
+        Named CVXPY expressions whose values are returned in `problem_values`.
+
+    problem : cvxpy Problem
+        The CVXPY problem to solve.
+
+    solver : str
+        The solver to use.
+
+    solver_params : dict
+        Parameters passed to `problem.solve`.
+
+    risk_measure : RiskMeasure | ExtraRiskMeasure
+        Risk measure of the problem.
+
+    scale_objective : cvxpy Constant
+        Scale applied to the objective function.
+
+    Returns
+    -------
+    weights : ndarray
+        Optimal asset weights.
+
+    problem_values : dict[str, float | ndarray]
+        Values of `expressions` and of the objective at the solution.
+
+    Raises
+    ------
+    cvxpy.SolverError
+        If the solver fails or finds no solution.
+    """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():

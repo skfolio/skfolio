@@ -153,6 +153,13 @@ class TimeSeriesFactorModel(BasePrior):
         self.max_iteration = max_iteration
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # route to factor_prior_estimator.fit
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -315,7 +322,32 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+        """Fit the Loading Matrix estimator.
+
+        Sets `loading_matrix_` and `intercepts_`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_factors)
+            Price returns of the factors.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BaseLoadingMatrix
+            Fitted estimator.
+        """
+        ...
 
 
 class LoadingMatrixRegression(BaseLoadingMatrix):
@@ -362,6 +394,13 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.n_jobs = n_jobs
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             linear_regressor=self.linear_regressor,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),

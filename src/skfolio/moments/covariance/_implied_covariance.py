@@ -220,6 +220,17 @@ class ImpliedCovariance(BaseCovariance):
         self.annualized_factor = None
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Includes the metadata requested by this estimator itself (e.g. `implied_vol`)
+        and routes the `fit` metadata to the `fit` method of
+        `prior_covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -378,6 +389,27 @@ class ImpliedCovariance(BaseCovariance):
         implied_vol: FloatArray,
         window_size: int,
     ) -> None:
+        """Predict next-period realised volatilities by per-asset log-log regression.
+
+        For each asset, regress `ln(RV(t))` on `ln(IV(t-1))` and `ln(RV(t-1))` computed
+        over non-overlapping windows of `window_size` observations, then store the
+        predicted realised volatilities, coefficients, intercepts, R2 scores and fitted
+        regressors in the corresponding fitted attributes.
+
+        Parameters
+        ----------
+        linear_regressor : BaseEstimator
+            Linear regressor cloned and fitted for each asset.
+
+        returns : ndarray of shape (n_observations, n_assets)
+            Asset returns.
+
+        implied_vol : ndarray of shape (n_observations, n_assets)
+            Implied volatilities of the assets.
+
+        window_size : int
+            Size of the non-overlapping windows. At least 3 windows are required.
+        """
         n_observations, n_assets = returns.shape
 
         n_folds = n_observations // window_size

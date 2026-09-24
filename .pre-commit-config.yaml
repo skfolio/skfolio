@@ -8,6 +8,14 @@ repos:
       - id: end-of-file-fixer
         exclude: LICENSE
 
+  # Docstring coverage; thresholds and scope live in `[tool.interrogate]`.
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.7.0
+    hooks:
+      - id: interrogate
+        args: [src]
+        pass_filenames: false
+
   # Use Ruff from the local development environment. CI checks the latest release.
   - repo: local
     hooks:

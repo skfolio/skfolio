@@ -699,9 +699,15 @@ class Portfolio(BasePortfolio):
 
     @property
     def _is_failed_portfolio(self) -> bool:
+        """Whether this portfolio is a `FailedPortfolio`."""
         return self.__class__.__name__ == "FailedPortfolio"
 
     def _get_init_params(self) -> dict:
+        """Return the parameters needed to reconstruct this portfolio.
+
+        Dict inputs of `previous_weights` and `transaction_costs` are restored so that
+        excluded assets and their cost rates are preserved.
+        """
         params = super()._get_init_params()
         params.update(self._original_named_inputs)
         return params

@@ -249,6 +249,7 @@ class EWDownsideBeta(BaseDescriptor):
         return down_beta
 
     def _reset(self):
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 

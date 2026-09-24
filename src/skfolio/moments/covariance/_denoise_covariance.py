@@ -99,6 +99,15 @@ class DenoiseCovariance(BaseCovariance):
         self.covariance_estimator = covariance_estimator
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes the `fit` metadata to the `fit` method of `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
@@ -151,6 +160,12 @@ class DenoiseCovariance(BaseCovariance):
         e_val, e_vec = e_val[indices], e_vec[:, indices]
 
         def _marchenko(x_var):
+            """Sum of squared errors between the Marchenko-Pastur and empirical pdfs.
+
+            The Marchenko-Pastur pdf for the variance `x_var` is compared to a
+            Gaussian KDE of the correlation eigenvalues. It is minimized over `x_var`
+            to fit the noise variance.
+            """
             e_min, e_max = (
                 x_var * (1 - (1.0 / q) ** 0.5) ** 2,
                 x_var * (1 + (1.0 / q) ** 0.5) ** 2,

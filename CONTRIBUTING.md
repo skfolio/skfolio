@@ -100,6 +100,15 @@ uv run ruff format
 
 CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
 
+Every function, method and class in `src` needs a docstring, private helpers
+included (`__init__` and dunder methods excepted). CI enforces this at 100% with
+[interrogate](https://interrogate.readthedocs.io/); the pre-commit hook runs the
+same check. To list what is missing:
+
+```shell
+uvx interrogate@1.7.0 -vv src
+```
+
 ### Refreshing your environment
 
 To refresh all dependencies to the latest versions allowed by `pyproject.toml`:

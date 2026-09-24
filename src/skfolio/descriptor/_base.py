@@ -350,6 +350,7 @@ class _BaseRollingLogReturn(BaseDescriptor):
         self._rolling_n_seen = n_observations
 
     def _reset(self):
+        """Reset fitted state and delete the rolling-window buffers and accumulators."""
         if hasattr(self, self._FITTED_ATTR):
             delattr(self, self._FITTED_ATTR)
         for attr in (
@@ -364,10 +365,16 @@ class _BaseRollingLogReturn(BaseDescriptor):
                 delattr(self, attr)
 
     def _validate_params(self) -> None:
+        """Validate the `window` and `skip` parameters."""
         _validate_positive_integer(self.window, "window")
         _validate_non_negative_integer(self.skip, "skip")
 
     def _initialize(self) -> None:
+        """Initialize the rolling-window buffers and accumulators.
+
+        The circular buffers hold the last `skip + window` contributions and active
+        masks for each asset.
+        """
         n_assets = self.n_assets_
         buffer_length = self.skip + self.window
         self._rolling_buffer_length = buffer_length

@@ -457,6 +457,19 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return min_weights, max_weights
 
     def get_metadata_routing(self):
+        """Get metadata routing of this object.
+
+        Metadata passed to `fit` is routed to the `fit` method of
+        `prior_estimator`, `distance_estimator` and
+        `hierarchical_clustering_estimator`.
+        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
+            routing information.
+        """
         # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -476,4 +489,27 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: None = None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: None = None, **fit_params):
+        """Fit the Hierarchical Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BaseHierarchicalOptimization
+            Fitted estimator.
+        """
+        ...

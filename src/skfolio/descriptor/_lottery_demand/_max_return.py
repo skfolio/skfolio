@@ -175,6 +175,7 @@ class MaxReturn(BaseDescriptor):
         return result
 
     def _reset(self):
+        """Reset fitted state and delete the returns and active-mask buffers."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
         if hasattr(self, "_returns_buffer"):
