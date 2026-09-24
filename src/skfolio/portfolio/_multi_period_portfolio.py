@@ -526,25 +526,25 @@ class MultiPeriodPortfolio(BasePortfolio):
         returns = [self.returns] if append and self.n_observations else []
         observations = [self.observations] if append and self.n_observations else []
         portfolios = [] if portfolios is None else list(portfolios)
-        for p in portfolios:
-            if not isinstance(p, BasePortfolio):
+        for portfolio in portfolios:
+            if not isinstance(portfolio, BasePortfolio):
                 raise TypeError(
                     "`portfolios` items must be of type `Portfolio`, got"
-                    f" {type(p).__name__}"
+                    f" {type(portfolio).__name__}"
                 )
-            if not p.n_observations:
+            if not portfolio.n_observations:
                 continue
             if (
                 self.check_observations_order
                 and observations
-                and p.observations[0] <= observations[-1][-1]
+                and portfolio.observations[0] <= observations[-1][-1]
             ):
                 raise ValueError(
                     "Portfolios observations should not overlap:"
-                    f" {p.observations[0]} <= {observations[-1][-1]}"
+                    f" {portfolio.observations[0]} <= {observations[-1][-1]}"
                 )
-            returns.append(p.returns)
-            observations.append(p.observations)
+            returns.append(portfolio.returns)
+            observations.append(portfolio.observations)
         if self._sample_weight is not None:
             n_observations = sum(len(part) for part in returns)
             if len(self._sample_weight) != n_observations:
@@ -577,10 +577,10 @@ class MultiPeriodPortfolio(BasePortfolio):
         if self._sample_weight is not None:
             return self._sample_weight
         parts = []
-        for p in self:
-            size = p.n_observations
+        for portfolio in self:
+            size = portfolio.n_observations
             if size:
-                parts.append((size, p.sample_weight))
+                parts.append((size, portfolio.sample_weight))
         if not any(weights is not None for _, weights in parts):
             return None
         n_observations = self.n_observations

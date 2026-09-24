@@ -57,8 +57,8 @@ def mean(
     # Scan returns for NaNs only if the weighted mean contains NaN.
     if not np.isnan(result).any():
         return result
-    returns, weights = _prepare_weighted_returns(returns, sample_weight)
-    return _weighted_sum(returns, weights)
+    returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
+    return _weighted_sum(returns, weights=weights)
 
 
 def mean_absolute_deviation(
@@ -185,7 +185,7 @@ def variance(
             warnings.simplefilter("ignore", category=RuntimeWarning)
             return np.nanvar(returns, ddof=0 if biased else 1, axis=0)
 
-    return _weighted_variance(returns, sample_weight, biased)
+    return _weighted_variance(returns, sample_weight=sample_weight, biased=biased)
 
 
 def semi_variance(
@@ -230,7 +230,11 @@ def semi_variance(
     """
     if sample_weight is not None:
         return _weighted_variance(
-            returns, sample_weight, biased, min_acceptable_return, downside=True
+            returns,
+            sample_weight=sample_weight,
+            biased=biased,
+            min_acceptable_return=min_acceptable_return,
+            downside=True,
         )
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
@@ -569,7 +573,9 @@ def value_at_risk(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    return _tail_risk(returns, beta, sample_weight, conditional=False)
+    return _tail_risk(
+        returns, beta=beta, sample_weight=sample_weight, conditional=False
+    )
 
 
 def cvar(
@@ -607,7 +613,7 @@ def cvar(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
-    return _tail_risk(returns, beta, sample_weight, conditional=True)
+    return _tail_risk(returns, beta=beta, sample_weight=sample_weight, conditional=True)
 
 
 def entropic_risk_measure(
@@ -1143,20 +1149,20 @@ def _weighted_variance(
         NaN when its correction is zero.
     """
     returns, weights = _prepare_weighted_returns(
-        np.asarray(returns, dtype=float), np.asarray(sample_weight, dtype=float)
+        np.asarray(returns, dtype=float), weights=np.asarray(sample_weight, dtype=float)
     )
     if returns.shape[0] == 0:
         return np.full(returns.shape[1:], np.nan)[()]
     if min_acceptable_return is None:
-        min_acceptable_return = _weighted_sum(returns, weights)
+        min_acceptable_return = _weighted_sum(returns, weights=weights)
     deviations = returns - min_acceptable_return
     if downside:
         np.minimum(deviations, 0.0, out=deviations)
     np.square(deviations, out=deviations)
-    result = _weighted_sum(deviations, weights)
+    result = _weighted_sum(deviations, weights=weights)
     if biased:
         return result
-    correction = 1.0 - _weighted_sum(weights, weights)
+    correction = 1.0 - _weighted_sum(weights, weights=weights)
     return result / np.where(correction == 0, np.nan, correction)
 
 
