@@ -70,6 +70,11 @@ jobs:
         if: ${{ !cancelled() && steps.python.outcome == 'success' }}
         run: uvx ruff@latest format --check
 
+      # The remaining pre-commit hooks. Ruff is covered by the steps above.
+      - name: Pre-commit hooks
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: uvx prek@0.5.3 run check-yaml end-of-file-fixer --all-files --show-diff-on-failure
+
       - name: Check distribution contents
         run: |
           uv build
