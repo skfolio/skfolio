@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import copy
 import math
 import operator
+import pickle
 from collections.abc import Callable
 from typing import Any
 
@@ -1373,6 +1375,214 @@ def _one_asset_period(start: str, returns: list[float]) -> Portfolio:
         ),
         weights=[1.0],
     )
+
+
+@pytest.fixture
+def inherited_mpp():
+    first = _one_asset_period("2026-01-01", [0.01, 0.03])
+    first.sample_weight = [0.75, 0.25]
+    second = _one_asset_period("2026-01-03", [-0.02, 0.04, 0.05])
+    return MultiPeriodPortfolio([first, second], check_observations_order=True)
+
+
+def test_sample_weight_inheritance_and_override(inherited_mpp):
+    parent = inherited_mpp
+    np.testing.assert_allclose(parent.sample_weight, [0.3, 0.1, 0.2, 0.2, 0.2])
+    assert not parent.sample_weight.flags.writeable
+    np.testing.assert_allclose(parent.mean, parent.sample_weight @ parent.returns)
+    parent.sample_weight = np.full(5, 0.2)
+    assert parent.sample_weight.flags.writeable
+    np.testing.assert_allclose(parent.mean, np.mean(parent.returns))
+    parent.sample_weight = None
+    np.testing.assert_allclose(parent.sample_weight, [0.3, 0.1, 0.2, 0.2, 0.2])
+    parent[1].sample_weight = [0.1, 0.2, 0.7]
+    parent.clear()
+    np.testing.assert_allclose(parent.sample_weight, [0.3, 0.1, 0.06, 0.12, 0.42])
+    np.testing.assert_allclose(parent.mean, parent.sample_weight @ parent.returns)
+
+
+def test_inherited_weights_follow_mutations(inherited_mpp):
+    parent = inherited_mpp
+    _ = parent.mean
+    parent.append(_one_asset_period("2026-01-06", [0.06]))
+    np.testing.assert_allclose(
+        parent.sample_weight, np.array([1.5, 0.5, 1, 1, 1, 1]) / 6
+    )
+    parent[1] = _one_asset_period("2026-01-03", [-0.03])
+    np.testing.assert_allclose(parent.sample_weight, [0.375, 0.125, 0.25, 0.25])
+    del parent[2]
+    np.testing.assert_allclose(parent.sample_weight, [0.5, 1 / 6, 1 / 3])
+    np.testing.assert_allclose(parent.mean, parent.sample_weight @ parent.returns)
+    parent.portfolios = [parent[1]]
+    assert parent.sample_weight is None
+    parent.portfolios = []
+    assert parent.sample_weight is None
+    assert np.isnan(parent.mean)
+
+
+def test_portfolio_list_ownership_and_atomic_assignment(inherited_mpp):
+    children = list(inherited_mpp)
+    parent = MultiPeriodPortfolio(children, sample_weight=np.full(5, 0.2))
+    children.clear()
+    assert parent.portfolios is parent.portfolios
+    assert len(parent) == 2
+    before = parent.returns.copy()
+    before_mean = parent.mean
+    with pytest.raises(ValueError, match="sample_weight"):
+        parent.portfolios = [
+            *parent.portfolios,
+            _one_asset_period("2026-01-06", [0.06]),
+        ]
+    assert len(parent) == 2
+    np.testing.assert_array_equal(parent.returns, before)
+    assert parent.mean == before_mean
+    parent.sample_weight = None
+    parent.portfolios = [*parent.portfolios, _one_asset_period("2026-01-06", [0.06])]
+    assert len(parent) == 3
+    assert parent.n_observations == 6
+
+
+def test_copy_mutation_leaves_original_unchanged(inherited_mpp):
+    parent = inherited_mpp
+    cached = {
+        name: getattr(parent, name).copy()
+        for name in ["fitness", "cumulative_returns", "drawdowns"]
+    }
+    duplicate = parent.copy()
+    duplicate.append(_one_asset_period("2026-01-06", [0.06]))
+    assert len(parent) == 2
+    assert len(duplicate) == 3
+    assert duplicate[0] is parent[0]
+    expected = MultiPeriodPortfolio(duplicate.portfolios)
+    for name, original in cached.items():
+        np.testing.assert_array_equal(getattr(parent, name), original)
+        np.testing.assert_array_equal(getattr(duplicate, name), getattr(expected, name))
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+@pytest.mark.parametrize(
+    "operation",
+    [
+        copy.copy,
+        copy.deepcopy,
+        lambda p: pickle.loads(pickle.dumps(p)),
+        operator.neg,
+        lambda p: p * 2,
+        lambda p: p + p,
+        lambda p: p - p,
+    ],
+)
+def test_reconstruction_preserves_weight_configuration(
+    inherited_mpp, explicit, operation
+):
+    if explicit:
+        inherited_mpp.sample_weight = np.full(5, 0.2)
+    result = operation(inherited_mpp)
+    assert (result._sample_weight is not None) == explicit
+    np.testing.assert_array_equal(result.sample_weight, inherited_mpp.sample_weight)
+
+
+@pytest.mark.parametrize("operation", [operator.add, operator.sub])
+def test_arithmetic_rejects_mixed_inheritance_modes(inherited_mpp, operation):
+    explicit = MultiPeriodPortfolio(
+        inherited_mpp.portfolios,
+        sample_weight=inherited_mpp.sample_weight,
+        check_observations_order=True,
+    )
+    for left, right in [(explicit, inherited_mpp), (inherited_mpp, explicit)]:
+        with pytest.raises(ValueError, match="sample_weight"):
+            operation(left, right)
+
+
+def test_freezing_inherited_weights_rejects_length_changes(inherited_mpp):
+    inherited_mpp.sample_weight = inherited_mpp.sample_weight
+    assert inherited_mpp._sample_weight is not None
+    assert not inherited_mpp.sample_weight.flags.writeable
+    with pytest.raises(ValueError, match="sample_weight"):
+        inherited_mpp.append(_one_asset_period("2026-01-06", [0.06]))
+
+
+def test_inheritance_with_empty_periods(inherited_mpp):
+    empty = _one_asset_period("2026-01-01", [])
+    parent = MultiPeriodPortfolio(
+        [empty, inherited_mpp[0], empty], check_observations_order=True
+    )
+    np.testing.assert_allclose(parent.sample_weight, [0.75, 0.25])
+    parent.append(empty)
+    assert parent.n_observations == 2
+    # Empty nested parents have a different default observation dtype.
+    parent.portfolios = [MultiPeriodPortfolio(), inherited_mpp[0]]
+    np.testing.assert_allclose(parent.sample_weight, [0.75, 0.25])
+    assert (
+        MultiPeriodPortfolio(
+            [empty, empty], check_observations_order=True
+        ).sample_weight
+        is None
+    )
+
+
+def test_append_checks_overlap_after_empty_period(inherited_mpp):
+    parent = inherited_mpp
+    parent.append(_one_asset_period("2026-01-06", []))
+    original_returns = parent.returns.copy()
+    with pytest.raises(ValueError, match="should not overlap"):
+        parent.append(_one_asset_period("2026-01-05", [0.06]))
+    assert len(parent) == 3
+    np.testing.assert_array_equal(parent.returns, original_returns)
+    parent.append(_one_asset_period("2026-01-06", [0.06]))
+    assert len(parent) == 4
+    assert parent.n_observations == 6
+
+
+def test_append_to_empty_timeline_preserves_observation_dtype():
+    parent = MultiPeriodPortfolio(
+        [MultiPeriodPortfolio()], check_observations_order=True
+    )
+    child = _one_asset_period("2026-01-01", [0.01, 0.02])
+    parent.append(child)
+    assert len(parent) == 2
+    np.testing.assert_array_equal(parent.observations, child.observations)
+    np.testing.assert_array_equal(parent.returns, child.returns)
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_weighted_measures_preserve_failed_periods(
+    portfolio_and_returns_with_failed_ptf, measure, explicit
+):
+    parent, _ = portfolio_and_returns_with_failed_ptf
+    if explicit:
+        parent.sample_weight = np.full(parent.n_observations, 1 / parent.n_observations)
+    else:
+        for child in parent:
+            child.sample_weight = np.full(
+                child.n_observations, 1 / child.n_observations
+            )
+        parent.clear()
+    assert parent.n_failed_portfolios == 1
+    assert np.isnan(parent.returns).any()
+    result = getattr(parent, measure.value)
+    assert not np.isnan(result)
+
+
+def test_failed_child_does_not_change_inherited_measures(inherited_mpp):
+    parent = inherited_mpp
+    before = [parent.mean, parent.variance, parent.cvar, parent.sharpe_ratio]
+    failed = FailedPortfolio(
+        pd.DataFrame(
+            {"asset": [0.01, 0.02]}, index=pd.date_range("2026-01-06", periods=2)
+        )
+    )
+    parent.append(failed)
+    np.testing.assert_allclose(
+        [parent.mean, parent.variance, parent.cvar, parent.sharpe_ratio], before
+    )
+    assert parent.n_observations == 7
+    assert parent.n_failed_portfolios == 1
+    assert np.isnan(parent.returns[-2:]).all()
+    parent.portfolios = [failed]
+    parent.sample_weight = [0.25, 0.75]
+    assert np.isnan(parent.mean)
+    assert np.isnan(parent.cvar)
 
 
 class TestMultiPeriodPortfolioSampleWeightAlignment:
