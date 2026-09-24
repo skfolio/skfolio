@@ -54,8 +54,7 @@ def mean(
     if returns.shape[0] == 0:
         return np.full(returns.shape[1:], np.nan)[()]
     result = sample_weight @ returns
-    # Most inputs are complete. Check the small result before allocating a mask
-    # over the entire return array.
+    # Scan returns for NaNs only if the weighted mean contains NaN.
     if not np.isnan(result).any():
         return result
     returns, weights = _prepare_weighted_returns(returns, sample_weight)
@@ -1063,18 +1062,18 @@ def _weighted_sum(values: FloatArray, weights: FloatArray) -> float | FloatArray
 
 
 def _prepare_weighted_returns(
-    returns: ArrayLike, sample_weight: FloatArray
+    returns: FloatArray, weights: FloatArray
 ) -> tuple[FloatArray, FloatArray]:
     """Prepare returns and weights for calculations that exclude NaNs.
 
-    Inputs are not modified.
+    Inputs must be floating-point arrays and are not modified.
 
     Parameters
     ----------
-    returns : array-like of shape (n_observations,) or (n_observations, n_assets)
+    returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Return values, possibly containing NaNs.
 
-    sample_weight : ndarray of shape (n_observations,)
+    weights : ndarray of shape (n_observations,)
         Normalized, non-negative observation weights.
 
     Returns
@@ -1090,8 +1089,6 @@ def _prepare_weighted_returns(
         Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
         containing NaNs, each column gets its own normalized weight vector.
     """
-    returns = np.asarray(returns, dtype=float)
-    weights = np.asarray(sample_weight, dtype=float)
     missing = np.isnan(returns)
     if missing.any():
         weights = np.where(
@@ -1145,7 +1142,9 @@ def _weighted_variance(
         remaining positive weight produce NaN. The unbiased result is also
         NaN when its correction is zero.
     """
-    returns, weights = _prepare_weighted_returns(returns, sample_weight)
+    returns, weights = _prepare_weighted_returns(
+        np.asarray(returns, dtype=float), np.asarray(sample_weight, dtype=float)
+    )
     if returns.shape[0] == 0:
         return np.full(returns.shape[1:], np.nan)[()]
     if min_acceptable_return is None:
