@@ -598,6 +598,33 @@ def test_value_at_risk_sample_weight(returns):
 
 
 @pytest.mark.parametrize(
+    "n_observations,beta,rank",
+    [
+        (20, 0.95, 1),
+        (100, 0.99, 1),
+        (100, 0.95, 5),
+        (200, 0.95, 10),
+        (1000, 0.99, 10),
+        (10, 0.9, 1),
+        (252, 0.95, 13),
+    ],
+)
+def test_value_at_risk_integer_tail_size(n_observations, beta, rank):
+    # When (1 - beta) * n_observations is an integer k, the VaR is the k-th worst
+    # loss even though that product is inexact in floating point, e.g.
+    # (1 - 0.95) * 100 == 5.000000000000004.
+    losses = np.random.default_rng(42).permutation(
+        np.arange(1, n_observations + 1, dtype=float)
+    )
+    expected = n_observations - rank + 1
+    np.testing.assert_almost_equal(skm.value_at_risk(-losses, beta=beta), expected)
+    q = np.ones(n_observations) / n_observations
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=q), expected
+    )
+
+
+@pytest.mark.parametrize(
     "returns,sample_weight,expected",
     [
         ("1d", False, 0.059240073),

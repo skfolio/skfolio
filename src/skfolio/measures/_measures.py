@@ -560,11 +560,16 @@ def value_at_risk(
             else np.full(returns.shape[1], np.nan, dtype=float)
         )
 
+    # `1 - beta` is inexact in floating point: `(1 - 0.95) * 100` evaluates to
+    # 5.000000000000004, which would select the observation after the worst
+    # (1 - beta) fraction. Shrinking it by a relative 1e-9 absorbs that error.
+    tail = (1.0 - beta) * (1.0 - 1e-9)
+
     def _func(arr: FloatArray) -> float:
         size = arr.shape[0]
         if size == 0:
             return np.nan
-        k = (1.0 - beta) * size
+        k = tail * size
         ik = max(0, int(np.ceil(k) - 1))
         # We only need the first k elements, `partition` (~O(n) avg) beats
         # `sort` (O(n log n))
@@ -590,7 +595,7 @@ def value_at_risk(
     sorted_idx = np.argsort(returns, axis=0)
     cum_weights = np.cumsum(sample_weight[sorted_idx], axis=0)
     i = np.apply_along_axis(
-        np.searchsorted, axis=0, arr=cum_weights, v=1 - beta, side="left"
+        np.searchsorted, axis=0, arr=cum_weights, v=tail, side="left"
     )
     # Returns is 1D
     if returns.ndim == 1:
