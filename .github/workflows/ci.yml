@@ -54,7 +54,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v7
         with:
-          version: latest
+          version: "0.12.18"
 
       - name: Select Python for uv
         run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
@@ -129,7 +129,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v7
         with:
-          version: latest
+          version: "0.12.18"
 
       - name: Create venv
         run: uv venv
@@ -214,7 +214,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v7
         with:
-          version: latest
+          version: "0.12.18"
 
       - name: Create venv
         run: |
@@ -254,7 +254,7 @@ jobs:
 
       - uses: astral-sh/setup-uv@v7
         with:
-          version: latest
+          version: "0.12.18"
 
       - name: Select Python for uv
         run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
