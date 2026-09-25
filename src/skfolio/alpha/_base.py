@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import numpy as np
 import sklearn as sk
 import sklearn.base as skb
+from sklearn.utils import Bunch
 from sklearn.utils import parallel as skp
 
 from skfolio import typing as skt
@@ -58,7 +60,7 @@ class BaseAlpha(skb.BaseEstimator, ABC):
     asset_names_: ObjArray
 
     @abstractmethod
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha: ...
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> BaseAlpha: ...
 
 
 class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
@@ -114,7 +116,9 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
             check_type=BaseCSTransformer,
         )
 
-    def _compute_scores(self, X: AssetPanel, method: str, routed_params) -> FloatArray:
+    def _compute_scores(
+        self, X: AssetPanel, method: str, routed_params: Bunch
+    ) -> FloatArray:
         """Compute transformed descriptor scores from the input panel."""
         cs_weights = X.estimation_mask.astype(float)
         cs_groups = (

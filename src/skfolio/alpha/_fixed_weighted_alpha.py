@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
@@ -141,34 +143,42 @@ class FixedWeightedAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.transform_by_group = transform_by_group
         self.n_jobs = n_jobs
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> FixedWeightedAlpha:
+    def fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FixedWeightedAlpha:
         """Fit descriptors and store the latest alpha forecast in `alpha_`."""
         self._reset()
         self._fit(X, y, method="fit", **fit_params)
         return self
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Fit descriptors and return historical alpha forecasts."""
         self._reset()
         return self._fit(X, y, method="fit", transform=True, **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> FixedWeightedAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FixedWeightedAlpha:
         """Incrementally update descriptors and store the latest alpha forecast."""
         self._fit(X, y, method="partial_fit", **fit_params)
         return self
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Incrementally update descriptors and return new alpha forecasts."""
         return self._fit(X, y, method="partial_fit", transform=True, **fit_params)
 
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
         transform: bool = False,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray | None:
         """Fit descriptor state and optionally return alpha history."""
         routed_params = skm.process_routing(self, method, **fit_params)
