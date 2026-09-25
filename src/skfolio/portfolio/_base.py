@@ -559,7 +559,12 @@ class BasePortfolio:
 
     def _get_init_params(self) -> dict:
         """Return the parameters needed to reconstruct this portfolio."""
-        return {arg: getattr(self, arg) for arg in args_names(self.__init__)}
+        return {
+            name: self._sample_weight  # Preserve None for inheritance
+            if name == "sample_weight"
+            else getattr(self, name)
+            for name in args_names(self.__init__)
+        }
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
