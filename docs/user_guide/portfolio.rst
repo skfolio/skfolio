@@ -262,3 +262,8 @@ composed of multiple test `Portfolio`, each corresponding to a train/test fold.
     from skfolio import MultiPeriodPortfolio
 
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
+
+Sample weights control each observation's contribution to measures such as mean
+and variance. By default, they are inherited from the children, with periods
+weighted by their observation counts. Set ``sample_weight`` on the parent to
+override them.
