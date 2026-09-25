@@ -1165,7 +1165,7 @@ class TestDenoiseCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
@@ -1638,7 +1638,7 @@ class TestDetoneCovariance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
@@ -2810,7 +2810,7 @@ class TestGeodesicShrinkageCovariance:
                     implied_vol=True
                 )
             )
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
             model.fit(X, implied_vol=implied_vol)
         assert model.covariance_estimator_.r2_scores_.shape == (20,)

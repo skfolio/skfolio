@@ -29,7 +29,7 @@ def test_maximum_diversification_factor(X, factors):
         model.problem_values_["expected_return"] / model.problem_values_["risk"]
     )
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="Arrays are not almost equal"):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
@@ -75,7 +75,7 @@ def test_metadata_routing(X, implied_vol):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X)
 
         model.fit(X, implied_vol=implied_vol)
