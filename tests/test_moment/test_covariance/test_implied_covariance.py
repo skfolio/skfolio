@@ -56,7 +56,7 @@ def test_compute_implied_vol(implied_vol):
 
 def test_implied_covariance_without_vol(X):
     model = ImpliedCovariance()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
         model.fit(X)
 
 
@@ -240,21 +240,26 @@ def test_implied_covariance_volatility_risk_premium_adj_non_pos(
     X, implied_vol, volatility_risk_premium_adj
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match="volatility_risk_premium_adj must be strictly positive"
+    ):
         model.fit(X, implied_vol=implied_vol)
 
 
 @pytest.mark.parametrize("n_folds", [0.1, 1, 2])
 def test_implied_covariance_window_too_big(X, implied_vol, n_folds):
     model = ImpliedCovariance(window_size=len(X) // n_folds)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Not enough observations to compute the volatility regression coefficients",
+    ):
         model.fit(X, implied_vol=implied_vol)
 
 
 @pytest.mark.parametrize("window_size", [-1, 0, 1, 2])
 def test_implied_covariance_small_error(X, implied_vol, window_size):
     model = ImpliedCovariance(window_size=window_size)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="window must be strictly greater than 2"):
         model.fit(X, implied_vol=implied_vol)
 
 
@@ -268,7 +273,10 @@ def test_implied_covariance_small(X, implied_vol, window_size):
 def test_implied_covariance_meta_data_routing_error(X, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = ImpliedCovariance(prior_covariance_estimator=ImpliedCovariance())
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             model.fit(X, implied_vol=implied_vol)
 
 

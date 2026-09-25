@@ -230,7 +230,7 @@ class TestDependencyLayers:
         model._validate_factors()
         model.named_factor_estimators_ = {name: est for name, est in factors}
 
-        with pytest.raises(CycleError):
+        with pytest.raises(CycleError, match="nodes are in a cycle"):
             model._get_dependency_layers()
 
 
