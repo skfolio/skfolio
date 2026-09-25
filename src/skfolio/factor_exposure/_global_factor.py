@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -62,7 +64,9 @@ class GlobalFactor(BaseFactorExposure, stateless=True):
     def __init__(self, *, family: str = "market") -> None:
         super().__init__(family=family)
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Return a constant exposure matrix.
 
         Parameters
