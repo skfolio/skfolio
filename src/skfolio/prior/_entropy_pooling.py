@@ -11,7 +11,7 @@ import operator
 import re
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
 import numpy as np
@@ -470,7 +470,9 @@ class EntropyPooling(BasePrior):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EntropyPooling:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EntropyPooling:
         """Fit the Entropy Pooling estimator.
 
         Parameters
@@ -1367,7 +1369,7 @@ def _replace_prior_views(
         r"(?:\s*\*\s*([0-9\.]+))?"  # Optional post-multiplier
     )
 
-    def repl(match) -> str:
+    def repl(match: re.Match[str]) -> str:
         pre_multiplier = float(match.group(1)) if match.group(1) else 1.0
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import sklearn.base as skb
 
@@ -32,4 +33,4 @@ class BasePrior(skb.BaseEstimator, ABC):
     def __init__(self): ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any): ...

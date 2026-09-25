@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.special as scs
@@ -296,7 +298,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any):
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -320,7 +322,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True):
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -349,7 +351,9 @@ class OpinionPooling(BasePrior, BaseComposition):
             )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> OpinionPooling:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> OpinionPooling:
         """Fit the Opinion Pooling estimator.
 
         Parameters
