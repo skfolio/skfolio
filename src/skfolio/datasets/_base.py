@@ -73,7 +73,7 @@ def clear_data_home(data_home: str | Path | None = None) -> None:
 def load_gzip_compressed_csv_data(
     data_filename: str,
     data_module: str = DATA_MODULE,
-    encoding="utf-8",
+    encoding: str = "utf-8",
     datetime_index: bool = True,
 ) -> pd.DataFrame:
     """Load gzip-compressed csv files with `importlib.resources`.
@@ -303,7 +303,9 @@ def load_factors_dataset() -> pd.DataFrame:
     return df
 
 
-def load_ftse100_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+def load_ftse100_dataset(
+    data_home: str | Path | None = None, download_if_missing: bool = True
+) -> pd.DataFrame:
     """Load the prices of 64 assets from the FTSE 100 Index composition.
 
     This dataset contains daily adjusted closing prices of 64 assets from the FTSE 100
@@ -358,7 +360,9 @@ def load_ftse100_dataset(data_home=None, download_if_missing=True) -> pd.DataFra
     return df
 
 
-def load_nasdaq_dataset(data_home=None, download_if_missing=True) -> pd.DataFrame:
+def load_nasdaq_dataset(
+    data_home: str | Path | None = None, download_if_missing: bool = True
+) -> pd.DataFrame:
     """Load the prices of 1455 assets from the NASDAQ Composite Index.
 
     This dataset contains daily adjusted closing prices of 1455 assets from the NASDAQ
@@ -413,7 +417,7 @@ def load_nasdaq_dataset(data_home=None, download_if_missing=True) -> pd.DataFram
 
 
 def load_sp500_implied_vol_dataset(
-    data_home=None, download_if_missing=True
+    data_home: str | Path | None = None, download_if_missing: bool = True
 ) -> pd.DataFrame:
     """Load the 3 months ATM implied volatility of the 20 assets from the
     SP500 dataset.
