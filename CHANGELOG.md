@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v1.3.4 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Compute evar in stable log-sum-exp form
+  ([#359](https://github.com/skfolio/skfolio/pull/359),
+  [`b5a0daa`](https://github.com/skfolio/skfolio/commit/b5a0daa4a77fdf22a4dc6ef447e22353969424e3))
+
+
+## v1.3.3 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Make value_at_risk consistent at integer tail sizes
+  ([#343](https://github.com/skfolio/skfolio/pull/343),
+  [`0217735`](https://github.com/skfolio/skfolio/commit/021773536d6f263d3c5eea64e507552c7f1b9396))
+
+
+## v1.3.2 (2026-09-24)
+
+### Bug Fixes
+
+- **portfolio**: Preserve sample weights across multi-period updates
+  ([#338](https://github.com/skfolio/skfolio/pull/338),
+  [`657bcb7`](https://github.com/skfolio/skfolio/commit/657bcb755621d4bb0530e59d96323d5a8d32230a))
+
+
 ## v1.3.1 (2026-09-23)
 
 ### Bug Fixes

@@ -123,9 +123,16 @@ def test_empty_returns(shape, dataframe):
     assert portfolio._get_weights_path().shape == shape
 
 
-@pytest.mark.parametrize("X", [np.zeros(2), np.zeros((2, 2, 2)), 0.0])
-def test_returns_require_two_dimensions(X):
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    "X,match",
+    [
+        (np.zeros(2), "Expected 2D array, got 1D array"),
+        (np.zeros((2, 2, 2)), "Found array with dim 3"),
+        (0.0, "Expected 2D array, got scalar array"),
+    ],
+)
+def test_returns_require_two_dimensions(X, match):
+    with pytest.raises(ValueError, match=match):
         Portfolio(X, [0.5, 0.5])
 
 

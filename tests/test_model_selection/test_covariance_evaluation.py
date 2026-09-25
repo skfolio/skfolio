@@ -109,7 +109,7 @@ def comparison_multi_portfolio():
 
 class TestCovarianceForecastEvaluation:
     def test_frozen(self, evaluation_integer_index):
-        with pytest.raises(AttributeError):
+        with pytest.raises(AttributeError, match="cannot assign to field 'horizon'"):
             evaluation_integer_index.horizon = 10
 
     def test_fields(self, evaluation_full):
@@ -345,7 +345,9 @@ class TestCovarianceForecastComparison:
             CovarianceForecastComparison([])
 
     def test_frozen(self, comparison):
-        with pytest.raises(AttributeError):
+        with pytest.raises(
+            AttributeError, match="cannot assign to field 'evaluations'"
+        ):
             comparison.evaluations = []
 
     def test_summary(self, comparison):

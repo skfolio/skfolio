@@ -36,7 +36,7 @@ def test_select_bivariate_copula_invalid_X():
     # Test that an error is raised if X does not have exactly 2 columns.
     X = np.random.rand(100, 3)
     copula_candidates = [GaussianCopula()]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="X must contain two columns"):
         _ = select_bivariate_copula(X, copula_candidates)
 
 
@@ -46,7 +46,7 @@ def test_select_bivariate_copula_invalid_candidate():
     # Disturb X slightly to ensure dependence.
     X[:, 1] = 0.5 * X[:, 0] + 0.5 * np.random.rand(100)
     copula_candidates = [GaussianCopula(), "not a copula"]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must inherit from `BaseBivariateCopula`"):
         _ = select_bivariate_copula(X, copula_candidates)
 
 
