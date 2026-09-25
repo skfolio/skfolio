@@ -183,7 +183,6 @@ ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D
 "src/skfolio/alpha/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 "src/skfolio/descriptor/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 "src/skfolio/distribution/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
-"src/skfolio/metrics/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 "src/skfolio/model_selection/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 "src/skfolio/moments/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 "src/skfolio/optimization/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
