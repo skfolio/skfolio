@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.linalg as sla
 import scipy.stats as st
@@ -119,7 +121,7 @@ class BootstrapMuUncertaintySet(BaseMuUncertaintySet):
         self.seed = seed
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> BootstrapMuUncertaintySet:
         """Fit the Bootstrap Mu Uncertainty set estimator.
 
@@ -272,7 +274,7 @@ class BootstrapCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self.seed = seed
 
     def fit(
-        self, X: ArrayLike, y=None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> BootstrapCovarianceUncertaintySet:
         """Fit the Bootstrap Covariance Uncertainty set estimator.
 
