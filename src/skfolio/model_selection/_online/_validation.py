@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime as dt
 import numbers
 from collections.abc import Generator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -643,8 +643,8 @@ def _online_predict(
     *,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,
@@ -733,13 +733,13 @@ def _online_score(
     estimator: skb.BaseEstimator,
     X: ArrayLike,
     y: ArrayLike | None,
-    scoring,
+    scoring: Any,
     routed_params: sku.Bunch,
     *,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,
@@ -796,12 +796,12 @@ def _evaluate_online(
     X: ArrayLike,
     y: ArrayLike | None,
     *,
-    scoring,
+    scoring: Any,
     routed_params: sku.Bunch,
     warmup_size: int,
     test_size: int,
-    freq=None,
-    freq_offset=None,
+    freq: str | pd.offsets.BaseOffset | None = None,
+    freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
     previous: bool = False,
     purged_size: int = 0,
     reduce_test: bool = False,

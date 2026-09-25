@@ -212,7 +212,7 @@ class MultipleRandomizedCV:
         self.random_state = random_state
 
     def split(
-        self, X: ArrayLike, y=None
+        self, X: ArrayLike, y: ArrayLike | None = None
     ) -> Iterator[tuple[IntArray, IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
@@ -305,7 +305,12 @@ class MultipleRandomizedCV:
                     asset_indices[i, :],
                 )
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: ArrayLike | None = None,
+        y: ArrayLike | None = None,
+        groups: ArrayLike | None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         When combining a frequency-based walk-forward with `window_size`, the exact
