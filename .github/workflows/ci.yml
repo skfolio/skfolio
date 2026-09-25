@@ -2,7 +2,7 @@
 # Continuous Integration
 #
 # Stages:
-#   1. Lint & format
+#   1. Lint & format, type check (ty)
 #   2. Full test matrix on Linux
 #        • Latest deps on all supported Pythons
 #        • Min deps only on oldest Python
@@ -86,6 +86,37 @@ jobs:
               missing = {"conftest.py", "src/conftest.py"} - names
               assert not missing, f"Missing source test configuration: {sorted(missing)}"
           PY
+
+# -----------------------------------------------------------------------------
+# 1b) Type check
+# -----------------------------------------------------------------------------
+  typecheck:
+    name: Type check (ty)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.MAIN_PYTHON }}
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+
+      # ty resolves third-party imports from this environment; pytest is needed
+      # for src/conftest.py.
+      - name: Install package
+        run: |
+          uv venv --python "${{ steps.python.outputs.python-path }}"
+          uv pip install --python .venv --editable . pytest
+
+      # ty is pre-1.0 and its diagnostics change between releases, so the
+      # version is pinned to keep the rule baseline in pyproject.toml stable.
+      - name: ty check
+        run: uvx ty@0.0.84 check --python .venv --output-format github --exit-zero-on-warning
 
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux

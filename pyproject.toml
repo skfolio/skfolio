@@ -180,6 +180,28 @@ max-line-length = 320
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.ty.src]
+include = ["src"]
+
+# Rules with existing diagnostics are downgraded to warnings so the gate starts
+# green; every other rule stays an error. Move a rule back to "error" once its
+# diagnostics are fixed (counts as of ty 0.0.84).
+[tool.ty.rules]
+invalid-argument-type = "warn"      # 421
+unresolved-attribute = "warn"       # 173
+not-subscriptable = "warn"          # 144
+unsupported-operator = "warn"       # 86
+invalid-return-type = "warn"        # 84
+invalid-assignment = "warn"         # 57
+invalid-method-override = "warn"    # 25
+no-matching-overload = "warn"       # 22
+not-iterable = "warn"               # 21
+invalid-type-form = "warn"          # 6
+invalid-type-arguments = "warn"     # 5
+invalid-parameter-default = "warn"  # 5
+missing-argument = "warn"           # 1
+invalid-yield = "warn"              # 1
+
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations
 # (including constructors) in coverage, and preserve the default exclusions.
