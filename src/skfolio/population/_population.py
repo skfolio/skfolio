@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from typing import Any
+from typing import Any, SupportsIndex
 
 import numpy as np
 import pandas as pd
@@ -66,7 +66,7 @@ class Population(list):
             )
         return self.__class__(super().__add__(other))
 
-    def insert(self, index, item: BasePortfolio) -> None:
+    def insert(self, index: SupportsIndex, item: BasePortfolio) -> None:
         """Insert portfolio before index."""
         super().insert(index, self._validate_item(item))
 
@@ -645,7 +645,7 @@ class Population(list):
         measure_list: list[skt.Measure],
         tag_list: list[str] | None = None,
         n_bins: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> go.Figure:
         """Plot the population's distribution for each measure provided in the
         measure list.
@@ -988,7 +988,7 @@ class Population(list):
         hover_measures: list[skt.Measure] | None = None,
         show_fronts: bool = False,
         color_scale: skt.Measure | str | None = None,
-        title="Portfolios",
+        title: str = "Portfolios",
     ) -> go.Figure:
         """Plot the 2D (or 3D) scatter points (or surface) of a given set of
         measures for each portfolio in the population.
