@@ -1252,7 +1252,7 @@ def _mean_return_ci_error_bars(
     return array, arrayminus
 
 
-def _to_column(v, n_rows: int) -> FloatArray:
+def _to_column(v: float | FloatArray | None, n_rows: int) -> FloatArray:
     """Convert scalar, 1D array, or None to a 2D column of shape (n_rows, 1)."""
     if v is None:
         return np.full((n_rows, 1), np.nan)
@@ -1475,8 +1475,8 @@ def _plot_rolling_lines(
 
 
 def _plot_contribution_chart(
-    data,
-    idio,
+    data: FactorBreakdown | FamilyBreakdown,
+    idio: Component,
     top_n: int,
     include_idio: bool,
     is_rolling: bool,
