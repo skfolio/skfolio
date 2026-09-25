@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -367,7 +367,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         check_observations_order: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__(
             returns=np.array([]),
@@ -436,7 +436,7 @@ class MultiPeriodPortfolio(BasePortfolio):
     def __trunc__(self):
         return self._create_from_child_portfolios([p.__trunc__() for p in self])
 
-    def __add__(self, other):
+    def __add__(self, other: MultiPeriodPortfolio):
         if not isinstance(other, self.__class__):
             raise TypeError(
                 "Cannot add a MultiPeriodPortfolio with an object of type"
@@ -449,7 +449,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
-    def __sub__(self, other):
+    def __sub__(self, other: MultiPeriodPortfolio):
         if not isinstance(other, self.__class__):
             raise TypeError(
                 "Cannot subtract a MultiPeriodPortfolio with an object of type"
