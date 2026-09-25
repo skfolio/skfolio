@@ -683,7 +683,7 @@ def entropic_risk_measure(
 
 
 def evar(returns: ArrayLike, beta: float = 0.95) -> float:
-    """Compute the EVaR (entropic value at risk) and its associated risk aversion.
+    r"""Compute the EVaR (entropic value at risk).
 
     The EVaR is a coherent risk measure which is an upper bound for the VaR and the
     CVaR, obtained from the Chernoff inequality. The EVaR can be represented by using
@@ -695,39 +695,50 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
         Vector of returns.
 
     beta : float, default=0.95
-        The EVaR confidence level.
+        The EVaR confidence level. Must be between 0 and 1.
 
     Returns
     -------
     value : float
         EVaR.
+
+    Notes
+    -----
+    The EVaR of the returns :math:`X` at confidence level :math:`\beta` is
+
+    .. math::
+        \text{EVaR}_{\beta}(X) = \inf_{\theta > 0} \theta \log \left(
+        \frac{\mathbb{E}\left[e^{-X / \theta}\right]}{1 - \beta} \right)
+
+    It lies between the CVaR and the largest loss. It equals the largest loss when
+    :math:`n (1 - \beta) \le k`, where :math:`n` is the number of observations and
+    :math:`k` the number tied at the largest loss, and the mean loss when `beta=0`.
+
+    NaN handling:
+    NaN returns are excluded. The result is NaN if no observations remain.
+
+    References
+    ----------
+    .. [1] "Entropic Value-at-Risk: A New Coherent Risk Measure",
+        Journal of Optimization Theory and Applications, Ahmadi-Javid (2012)
     """
-    if np.isnan(returns).all():
+    returns = np.asarray(returns, dtype=float)
+    losses = -returns[~np.isnan(returns)]
+    if losses.size == 0:
         return np.nan
 
-    def func(x: float) -> float:
-        return entropic_risk_measure(returns=returns, theta=x, beta=beta)
-
-    # The lower bound on theta keeps `exp(-returns / theta)` below exp(100) to avoid
-    # overflow. It must stay positive: without any loss the largest loss is negative
-    # or zero, so bound theta by the largest gain instead, which keeps the terms
-    # above exp(-100).
-    largest_loss = np.nanmax(-returns)
-    if largest_loss > 0:
-        lower_bound = largest_loss / 100
+    max_loss = losses.max()
+    spread = max_loss - losses.min()
+    if beta == 0:
+        value = losses.mean()
+    elif beta == 1 or spread == 0:
+        value = max_loss
     else:
-        largest_gain = np.nanmax(returns)
-        if largest_gain == 0:  # every return is zero
-            return 0.0
-        lower_bound = largest_gain / 100
-    result = sco.minimize(
-        func,
-        x0=np.array([lower_bound * 2]),
-        method="SLSQP",
-        bounds=[(lower_bound, np.inf)],
-        tol=1e-10,
-    )
-    return result.fun
+        # The EVaR is translation equivariant and positively homogeneous.
+        standardized_losses = (losses - max_loss) / spread
+        value = max_loss + spread * _standardized_evar(standardized_losses, beta)
+    # Adding 0.0 maps a negative zero to 0.0.
+    return value + 0.0
 
 
 def get_cumulative_returns(
@@ -1197,6 +1208,53 @@ def _weighted_variance(
         return result
     correction = 1.0 - _weighted_sum(weights, weights=weights)
     return result / np.where(correction == 0, np.nan, correction)
+
+
+def _standardized_evar(losses: FloatArray, beta: float) -> float:
+    r"""Compute the EVaR of losses standardized to [-1, 0] with a maximum of 0.
+
+    With :math:`t = 1 / \theta` and :math:`c = \log(n (1 - \beta))`, the EVaR is the
+    infimum over :math:`t > 0` of :math:`f(t) = (\log \sum_i e^{t x_i} - c) / t`. The
+    exponents are non-positive and the largest is 0, so the sum cannot overflow or
+    underflow. The derivative of :math:`f` has the sign of
+    :math:`g(t) = t \, \mathbb{E}_w[x] - \log \sum_i e^{t x_i} + c`, with
+    :math:`w_i \propto e^{t x_i}`, which increases from :math:`\log(1 - \beta)` at
+    :math:`t = 0`. The minimizer is the root of :math:`g`.
+
+    Parameters
+    ----------
+    losses : ndarray of shape (n_observations,)
+        Standardized losses.
+
+    beta : float
+        Confidence level in (0, 1).
+
+    Returns
+    -------
+    value : float
+        EVaR of the standardized losses, between -1 and 0.
+    """
+    c = np.log(losses.size) + np.log1p(-beta)
+
+    def objective(log_t: float) -> float:
+        t = np.exp(log_t)
+        return (np.log(np.exp(t * losses).sum()) - c) / t
+
+    def gradient_sign(log_t: float) -> float:
+        t = np.exp(log_t)
+        exp_losses = np.exp(t * losses)
+        total = exp_losses.sum()
+        return t * (exp_losses @ losses) / total - np.log(total) + c
+
+    # The variance of the losses under w is at most 1/4, so
+    # g(t) <= log(1 - beta) + t**2 / 8, which is negative at `lower`.
+    lower = 0.5 * np.log(-2.0 * np.log1p(-beta))
+    upper = 20.0
+    if gradient_sign(upper) <= 0:
+        # The infimum is reached as theta tends to 0, and f is within 1e-7 of its
+        # limit 0 past `upper`.
+        return 0.0
+    return objective(sco.brentq(gradient_sign, lower, upper))
 
 
 def _tail_risk(

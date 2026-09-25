@@ -981,7 +981,7 @@ def test_entropic_risk_measure_sample_weight(returns):
     "returns,expected",
     [
         ("1d", 0.213993692),
-        ("1d_nan", 0.50804718956),
+        ("1d_nan", 0.5),
         ("all_nan", np.nan),
     ],
     indirect=["returns"],
@@ -990,17 +990,58 @@ def test_evar(returns, expected):
     np.testing.assert_almost_equal(skm.evar(returns), expected)
 
 
-def test_evar_without_losses():
-    # With no losses the lower bound on theta used to be negative (every return
-    # positive, giving -inf) or zero (every return zero, giving nan).
-    returns = np.random.default_rng(0).uniform(0.001, 0.02, 500)
-    evar = skm.evar(returns)
-    assert np.isfinite(evar)
-    assert skm.cvar(returns) <= evar <= -returns.min()
+@pytest.mark.parametrize(
+    "returns,beta,expected",
+    [
+        (np.full(50, 0.01), 0.95, -0.01),
+        (np.full(50, -0.01), 0.95, 0.01),
+        (np.linspace(0.01, 0.1, 10), 0.95, -0.01),
+        (np.linspace(1e-5, 0.1, 10), 0.95, -1e-5),
+        (np.array([-0.1, -0.1, 0.0, 0.2]), 0.5, 0.1),
+        (np.array([0.02, -0.01, np.nan, 0.03]), 0.0, -0.04 / 3),
+        (np.array([0.02, -0.01, np.nan, 0.03]), 1.0, 0.01),
+        (np.array([]), 0.95, np.nan),
+    ],
+)
+def test_evar_closed_form(returns, beta, expected):
+    np.testing.assert_almost_equal(skm.evar(returns, beta=beta), expected, 12)
 
-    assert skm.evar(np.zeros(50)) == 0.0
-    # A series that only goes up has no drawdown, so its EDaR is zero like its CDaR.
-    assert skm.edar(skm.get_drawdowns(np.full(60, 0.001))) == 0.0
+
+@pytest.mark.parametrize("beta", [0.5, 0.9, 0.95, 0.99])
+@pytest.mark.parametrize(
+    "returns",
+    [
+        np.random.default_rng(0).uniform(0.001, 0.02, 500),
+        np.random.default_rng(1).standard_t(3, 300) * 0.01,
+        -np.random.default_rng(2).exponential(0.01, 200),
+    ],
+)
+def test_evar_properties(returns, beta):
+    evar = skm.evar(returns, beta=beta)
+    assert skm.cvar(returns, beta=beta) <= evar <= -returns.min()
+
+    spread = np.ptp(returns)
+    thetas = np.geomspace(spread / 500, spread * 100, 2000)
+    erm = min(skm.entropic_risk_measure(returns, theta=t, beta=beta) for t in thetas)
+    assert evar <= erm + 1e-12
+    np.testing.assert_almost_equal(evar, erm, 6)
+
+    np.testing.assert_almost_equal(skm.evar(returns + 0.01, beta=beta), evar - 0.01, 12)
+    np.testing.assert_almost_equal(skm.evar(3 * returns, beta=beta), 3 * evar, 12)
+
+
+@pytest.mark.parametrize(
+    "func,values",
+    [
+        (skm.evar, np.zeros(50)),
+        (skm.edar, skm.get_drawdowns(np.full(60, 0.001))),
+    ],
+)
+def test_evar_zero_is_positive(func, values):
+    value = func(values)
+    assert value == 0.0
+    # A negative zero would turn the associated ratio into -inf.
+    assert not np.signbit(value)
 
 
 @pytest.mark.parametrize(
@@ -1122,7 +1163,7 @@ def test_cdar(returns, compounded, expected):
     [
         ("1d", False, 0.996230976),
         ("1d", True, 0.791260923),
-        ("1d_nan", False, 0.812875503),
+        ("1d_nan", False, 0.8),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
