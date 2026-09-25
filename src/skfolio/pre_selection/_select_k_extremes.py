@@ -62,7 +62,7 @@ class SelectKExtremes(skf.SelectorMixin, skb.BaseEstimator):
         self.measure = measure
         self.highest = highest
 
-    def fit(self, X: ArrayLike, y=None) -> SelectKExtremes:
+    def fit(self, X: ArrayLike, y: None = None) -> SelectKExtremes:
         """Run the SelectKExtremes transformer and get the appropriate assets.
 
         Parameters

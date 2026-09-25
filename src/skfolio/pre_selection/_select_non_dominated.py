@@ -81,7 +81,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self.threshold = threshold
         self.fitness_measures = fitness_measures
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None):
         """Run the Non Dominated transformer and get the appropriate assets.
 
         Parameters
