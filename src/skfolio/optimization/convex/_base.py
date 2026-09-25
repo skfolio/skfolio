@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -2448,7 +2449,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any): ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2610,14 +2611,14 @@ def _mip_weight_constraints_threshold_short(
 
 
 def _solve(
-    w,
-    factor,
-    expressions,
-    problem,
-    solver,
-    solver_params,
-    risk_measure,
-    scale_objective,
+    w: cp.Variable,
+    factor: skt.Factor,
+    expressions: dict[str, cp.Expression],
+    problem: cp.Problem,
+    solver: str,
+    solver_params: dict[str, Any],
+    risk_measure: RiskMeasure,
+    scale_objective: cp.Constant,
 ):
     try:
         # We suppress cvxpy warning as it is redundant with our warning

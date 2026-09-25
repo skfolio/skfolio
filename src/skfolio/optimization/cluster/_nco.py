@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -305,7 +306,7 @@ class NestedClustersOptimization(BaseOptimization):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> NestedClustersOptimization:
         """Fit the Nested Clusters Optimization estimator.
 

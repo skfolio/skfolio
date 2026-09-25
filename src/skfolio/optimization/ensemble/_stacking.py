@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import sklearn as sk
@@ -239,7 +240,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any):
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -263,7 +264,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True):
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -294,7 +295,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> StackingOptimization:
         """Fit the Stacking Optimization estimator.
 

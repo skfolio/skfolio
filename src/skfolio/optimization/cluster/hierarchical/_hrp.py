@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -326,7 +328,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> HierarchicalRiskParity:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> HierarchicalRiskParity:
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters

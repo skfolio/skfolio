@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -365,7 +367,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         self.solver_params = solver_params
 
     def fit(
-        self, X: ArrayLike, y: None = None, **fit_params
+        self, X: ArrayLike, y: None = None, **fit_params: Any
     ) -> HierarchicalEqualRiskContribution:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 
@@ -472,7 +474,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         # Compute the cluster weights using the dendrogram structure.
         # Recurse from the root until each of the defined cluster is reached and
         # update the weights using the naive risk parity.
-        def _recurse(node):
+        def _recurse(node: sch.ClusterNode):
             # Stop when the cluster is reached
             if set(node.pre_order()) in clusters_sets:
                 return

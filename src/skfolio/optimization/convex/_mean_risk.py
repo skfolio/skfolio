@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -17,6 +18,7 @@ import pandas as pd
 import sklearn as sk
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
+from sklearn.utils import Bunch
 
 import skfolio.typing as skt
 from skfolio._constants import _PREVIOUS_WEIGHTS
@@ -910,7 +912,9 @@ class MeanRisk(ConvexOptimization):
         self.max_ulcer_index = max_ulcer_index
         self.max_gini_mean_difference = max_gini_mean_difference
 
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params) -> MeanRisk:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> MeanRisk:
         """Fit the Mean-Risk Optimization estimator.
 
         Parameters
@@ -938,7 +942,7 @@ class MeanRisk(ConvexOptimization):
         return self._fit(X, y, method="fit", **fit_params)
 
     def partial_fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> MeanRisk:
         """Incrementally fit the Mean-Risk Optimization estimator.
 
@@ -996,7 +1000,7 @@ class MeanRisk(ConvexOptimization):
         X: ArrayLike,
         y: ArrayLike | None = None,
         method: str = "fit",
-        **fit_params,
+        **fit_params: Any,
     ) -> MeanRisk:
         """Core fitting logic shared by fit and partial_fit.
 
@@ -1335,7 +1339,7 @@ class MeanRisk(ConvexOptimization):
         X: ArrayLike,
         y: ArrayLike | None,
         method: str,
-        routed_params,
+        routed_params: Bunch,
         return_distribution: ReturnDistribution,
         n_assets: int,
         w: cp.Variable,
