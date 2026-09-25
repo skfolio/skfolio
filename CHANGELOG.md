@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.3.3 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Make value_at_risk consistent at integer tail sizes
+  ([#343](https://github.com/skfolio/skfolio/pull/343),
+  [`0217735`](https://github.com/skfolio/skfolio/commit/021773536d6f263d3c5eea64e507552c7f1b9396))
+
+
 ## v1.3.2 (2026-09-24)
 
 ### Bug Fixes
