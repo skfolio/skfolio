@@ -6,13 +6,17 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.sparse as sp
+from sklearn.linear_model import LinearRegression
 
 from skfolio.utils.tools import (
     _call_estimator,
     _filter_supported_params,
+    _get_liquidation_turnover_and_cost,
     _is_bool,
     _is_integer_number,
     _is_real_number,
+    _make_indexable,
     _validate_bool,
     _validate_non_negative_integer,
     _validate_non_negative_real,
@@ -22,9 +26,13 @@ from skfolio.utils.tools import (
     apply_window_size,
     args_names,
     bisection,
+    cache_method,
+    cached_property_slots,
+    check_estimator,
     deduplicate_names,
     default_asset_names,
     format_measure,
+    get_feature_names,
     half_life_to_decay_factor,
     input_to_array,
     safe_indexing,
@@ -611,3 +619,173 @@ def test_filter_supported_params():
     )
 
     assert filtered == {"return_distribution": return_distribution}
+
+
+class _SlotsWithCachedProperty:
+    __slots__ = ("_value", "calls")
+
+    def __init__(self):
+        self.calls = 0
+
+    @cached_property_slots
+    def value(self):
+        self.calls += 1
+        return 42
+
+
+class TestCachedPropertySlots:
+    def test_computes_once_and_caches(self):
+        obj = _SlotsWithCachedProperty()
+        assert obj.value == 42
+        assert obj.value == 42
+        assert obj.calls == 1
+
+    def test_class_access_returns_descriptor(self):
+        assert isinstance(_SlotsWithCachedProperty.value, cached_property_slots)
+
+    def test_is_read_only(self):
+        obj = _SlotsWithCachedProperty()
+        with pytest.raises(AttributeError, match="attribute 'value' is read-only"):
+            obj.value = 1
+
+    def test_requires_set_name(self):
+        prop = cached_property_slots(lambda self: 1)
+        with pytest.raises(TypeError, match="without calling __set_name__"):
+            prop.__get__(object())
+
+
+class TestMakeIndexable:
+    def test_sparse_is_converted_to_csr(self):
+        result = _make_indexable(sp.coo_matrix(np.eye(2)))
+        assert sp.issparse(result)
+        assert result.format == "csr"
+
+    def test_none_passes_through(self):
+        assert _make_indexable(None) is None
+
+    def test_indexable_passes_through(self):
+        values = [1, 2]
+        assert _make_indexable(values) is values
+
+    def test_non_indexable_is_converted_to_array(self):
+        result = _make_indexable(x for x in range(3))
+        assert isinstance(result, np.ndarray)
+
+
+def test_safe_indexing_slice_on_columns():
+    X = np.arange(6).reshape(2, 3)
+    np.testing.assert_array_equal(
+        safe_indexing(X, slice(1, 3), axis=1), np.array([[1, 2], [4, 5]])
+    )
+
+
+class TestCacheMethod:
+    class _Cached:
+        def __init__(self, cache):
+            if cache is not None:
+                self._cache = cache
+            self.calls = 0
+
+        @cache_method("_cache")
+        def compute(self, x):
+            self.calls += 1
+            return x * 2
+
+    def test_caches_by_arguments(self):
+        obj = self._Cached({})
+        assert obj.compute(2) == 4
+        assert obj.compute(2) == 4
+        assert obj.compute(3) == 6
+        assert obj.calls == 2
+
+    def test_missing_cache_attribute_raises(self):
+        obj = self._Cached(None)
+        with pytest.raises(AttributeError, match="create a dictionary class attribute"):
+            obj.compute(1)
+
+    def test_non_dict_cache_raises(self):
+        obj = self._Cached([])
+        with pytest.raises(AttributeError, match="must be a dictionary"):
+            obj.compute(1)
+
+
+class TestCheckEstimator:
+    def test_none_returns_default(self):
+        default = LinearRegression()
+        assert check_estimator(None, default, LinearRegression) is default
+
+    def test_returns_clone(self):
+        est = LinearRegression(fit_intercept=False)
+        result = check_estimator(est, None, LinearRegression)
+        assert result is not est
+        assert result.fit_intercept is False
+
+    def test_wrong_type_raises(self):
+        with pytest.raises(TypeError, match="Expected type"):
+            check_estimator(object(), None, LinearRegression)
+
+
+class TestLiquidationTurnoverAndCost:
+    def test_mask_without_names_uses_positions(self):
+        turnover, cost = _get_liquidation_turnover_and_cost(
+            previous_weights=np.array([0.5, 0.3, 0.2]),
+            transaction_costs=0.01,
+            assets_names=None,
+            investable_mask=np.array([True, False, True]),
+        )
+        assert turnover == pytest.approx(0.3)
+        assert cost == pytest.approx(0.003)
+
+    def test_scalar_previous_weights_broadcast(self):
+        turnover, cost = _get_liquidation_turnover_and_cost(
+            previous_weights=0.25,
+            transaction_costs=0.1,
+            assets_names=np.array(["a", "b", "c", "d"]),
+            investable_mask=np.array([True, True, False, False]),
+        )
+        assert turnover == pytest.approx(0.5)
+        assert cost == pytest.approx(0.05)
+
+    def test_investable_subset_weights_have_no_exits(self):
+        turnover, cost = _get_liquidation_turnover_and_cost(
+            previous_weights=np.array([0.6, 0.4]),
+            transaction_costs=0.01,
+            assets_names=np.array(["a", "b", "c"]),
+            investable_mask=np.array([True, True, False]),
+        )
+        assert (turnover, cost) == (0.0, 0.0)
+
+    def test_nan_weight_raises(self):
+        with pytest.raises(ValueError, match="contains NaN"):
+            _get_liquidation_turnover_and_cost(
+                previous_weights={"a": 0.5, "z": np.nan},
+                transaction_costs=0.01,
+                assets_names=np.array(["a", "b"]),
+            )
+
+    def test_no_transaction_costs(self):
+        turnover, cost = _get_liquidation_turnover_and_cost(
+            previous_weights={"a": 0.5, "z": 0.5},
+            transaction_costs=None,
+            assets_names=np.array(["a", "b"]),
+        )
+        assert turnover == pytest.approx(0.5)
+        assert cost == 0.0
+
+
+class TestGetFeatureNames:
+    def test_dataframe_protocol(self):
+        class _Protocol:
+            def column_names(self):
+                return ["x", "y"]
+
+        class _Frame:
+            def __dataframe__(self):
+                return _Protocol()
+
+        np.testing.assert_array_equal(get_feature_names(_Frame()), ["x", "y"])
+
+    def test_mixed_string_and_non_string_names_raise(self):
+        X = pd.DataFrame([[1, 2]], columns=["a", 1])
+        with pytest.raises(TypeError, match="only supported if all input features"):
+            get_feature_names(X)
