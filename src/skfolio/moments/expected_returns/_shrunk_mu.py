@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from enum import auto
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -151,7 +152,9 @@ class ShrunkMu(BaseMu):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> ShrunkMu:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> ShrunkMu:
         """Fit the ShrunkMu estimator model.
 
         Parameters

@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -108,7 +110,9 @@ class DetoneCovariance(BaseCovariance):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> DetoneCovariance:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> DetoneCovariance:
         """Fit the Covariance Detoning estimator.
 
         Parameters

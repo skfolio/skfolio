@@ -247,7 +247,7 @@ class EWCovariance(BaseCovariance):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWCovariance:
@@ -280,7 +280,7 @@ class EWCovariance(BaseCovariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWCovariance:

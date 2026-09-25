@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.optimize as sco
 import sklearn.neighbors as skn
@@ -106,7 +108,9 @@ class DenoiseCovariance(BaseCovariance):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> DenoiseCovariance:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> DenoiseCovariance:
         """Fit the Covariance Denoising estimator.
 
         Parameters
@@ -150,7 +154,7 @@ class DenoiseCovariance(BaseCovariance):
         indices = e_val.argsort()[::-1]
         e_val, e_vec = e_val[indices], e_vec[:, indices]
 
-        def _marchenko(x_var):
+        def _marchenko(x_var: np.ndarray):
             e_min, e_max = (
                 x_var * (1 - (1.0 / q) ** 0.5) ** 2,
                 x_var * (1 + (1.0 / q) ** 0.5) ** 2,

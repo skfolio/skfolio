@@ -198,7 +198,7 @@ class EWMu(BaseMu):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWMu:
@@ -232,7 +232,7 @@ class EWMu(BaseMu):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWMu:

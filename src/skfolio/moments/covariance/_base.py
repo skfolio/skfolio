@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -100,9 +101,9 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any): ...
 
-    def score(self, X_test: ArrayLike, y=None) -> float:
+    def score(self, X_test: ArrayLike, y: ArrayLike | None = None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
 
         Evaluates how well the fitted covariance matrix explains new observations,

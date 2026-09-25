@@ -79,8 +79,8 @@ class OAS(BaseCovariance, skc.OAS):
 
     def __init__(
         self,
-        store_precision=True,
-        assume_centered=False,
+        store_precision: bool = True,
+        assume_centered: bool = False,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -96,7 +96,7 @@ class OAS(BaseCovariance, skc.OAS):
             assume_centered=assume_centered,
         )
 
-    def fit(self, X: ArrayLike, y=None) -> OAS:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> OAS:
         """Fit the Oracle Approximating Shrinkage covariance model to X.
 
         Parameters

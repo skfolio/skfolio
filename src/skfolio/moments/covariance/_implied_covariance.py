@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn as sk
@@ -231,7 +232,7 @@ class ImpliedCovariance(BaseCovariance):
         )
         return router
 
-    def set_params(self, **params) -> ImpliedCovariance:
+    def set_params(self, **params: Any) -> ImpliedCovariance:
         """Set estimator parameters."""
         # TODO remove deprecated annualized_factor in v2.0
         if "annualized_factor" in params:
@@ -253,7 +254,11 @@ class ImpliedCovariance(BaseCovariance):
         return super().set_params(**params)
 
     def fit(
-        self, X: ArrayLike, y=None, implied_vol: ArrayLike = None, **fit_params
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None = None,
+        implied_vol: ArrayLike = None,
+        **fit_params: Any,
     ) -> ImpliedCovariance:
         """Fit the implied covariance estimator.
 

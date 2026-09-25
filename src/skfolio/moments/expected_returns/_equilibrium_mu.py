@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -81,7 +83,9 @@ class EquilibriumMu(BaseMu):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EquilibriumMu:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EquilibriumMu:
         """Fit the EquilibriumMu estimator model.
 
         Parameters
