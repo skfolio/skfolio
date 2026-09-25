@@ -173,13 +173,16 @@ def test_weighted_measures_empty_matrix(measure):
 
 @pytest.mark.parametrize("measure", [skm.value_at_risk, skm.cvar])
 def test_weighted_tail_missing_mass_and_fractional_boundary(measure):
+    # The worst return carries exactly the tail mass 1 - beta, so the VaR is the
+    # next loss and the CVaR is the worst loss.
+    expected = -0.1 if measure is skm.value_at_risk else 0.1
     np.testing.assert_allclose(
         measure(
             np.array([-0.1, 0.1, np.nan]),
             beta=0.5,
             sample_weight=np.array([0.25, 0.25, 0.5]),
         ),
-        0.1,
+        expected,
     )
     # Only half of the second observation belongs to the lower 50% tail.
     expected = 0.1 if measure is skm.value_at_risk else 0.22
@@ -796,6 +799,99 @@ def test_value_at_risk_sample_weight(returns):
         skm.value_at_risk(returns, sample_weight=q),
         skm.value_at_risk(returns),
         10,
+    )
+
+
+@pytest.mark.parametrize(
+    "n_observations,beta,rank",
+    [
+        (20, 0.95, 2),
+        (100, 0.99, 2),
+        (100, 0.95, 6),
+        (200, 0.95, 11),
+        (1000, 0.99, 11),
+        (1000, 0.975, 26),
+        (10, 0.9, 2),
+        (100, 0.8, 21),
+        (252, 0.95, 13),
+        (100, 0.995, 1),
+        (100, 0.95 + 1e-12, 5),
+        (100, 0.95 - 1e-12, 6),
+    ],
+)
+def test_value_at_risk_integer_tail_size(n_observations, beta, rank):
+    # When (1 - beta) * n_observations is an integer k, the VaR is the (k + 1)-th
+    # largest loss even though that product is inexact in floating point, e.g.
+    # (1 - 0.95) * 100 == 5.000000000000004 and (1 - 0.9) * 10 == 0.9999999999999998.
+    # Offsetting beta by 1e-12 moves the tail size across the boundary.
+    losses = np.random.default_rng(42).permutation(
+        np.arange(1, n_observations + 1, dtype=float)
+    )
+    expected = n_observations - rank + 1
+    np.testing.assert_almost_equal(skm.value_at_risk(-losses, beta=beta), expected)
+    q = np.ones(n_observations) / n_observations
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=q), expected
+    )
+    np.testing.assert_almost_equal(skm.drawdown_at_risk(-losses, beta=beta), expected)
+
+
+def test_value_at_risk_integer_tail_size_2d():
+    rng = np.random.default_rng(42)
+    losses = np.arange(1, 101, dtype=float)
+    returns = np.column_stack([-rng.permutation(losses), -rng.permutation(losses)])
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 95])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 95]
+    )
+
+
+def test_value_at_risk_integer_tail_size_nan():
+    # NaN returns are excluded: the second column has 20 valid returns, so k = 1.
+    rng = np.random.default_rng(42)
+    col = np.full(100, np.nan)
+    col[:20] = -rng.permutation(np.arange(1, 21, dtype=float))
+    returns = np.column_stack([-rng.permutation(np.arange(1, 101, dtype=float)), col])
+    np.testing.assert_almost_equal(skm.value_at_risk(col, beta=0.95), 19)
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 19])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 19]
+    )
+
+
+@pytest.mark.parametrize(
+    "beta,small_weight,large_weight",
+    [(0.9, 0.02, 0.08), (0.95, 0.01, 0.09)],
+)
+def test_value_at_risk_sample_weight_integer_tail_mass(
+    beta, small_weight, large_weight
+):
+    # The five largest losses carry a total weight of 1 - beta, so the VaR is the
+    # sixth largest loss even though the cumulative weights are inexact.
+    losses = np.arange(1, 21, dtype=float)
+    sample_weight = np.where(losses > 10, small_weight, large_weight)
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=sample_weight), 15
+    )
+
+
+@pytest.mark.parametrize(
+    "first_weight,expected",
+    [
+        (1 / 16 - 2**-35, 0.01),
+        (1 / 16, 0.01),
+        (1 / 16 + 2**-35, 0.20),
+    ],
+)
+def test_value_at_risk_sample_weight_tail_boundary(first_weight, expected):
+    # The worst observation has a weight just below, equal to, or just above the
+    # tail probability 1 - beta = 1/16. All values are exactly representable.
+    returns = np.array([-0.20, -0.01])
+    sample_weight = np.array([first_weight, 1 - first_weight])
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.9375, sample_weight=sample_weight), expected
     )
 
 

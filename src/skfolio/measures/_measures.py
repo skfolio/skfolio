@@ -543,8 +543,16 @@ def worst_realization(returns: ArrayLike) -> float | FloatArray:
 def value_at_risk(
     returns: ArrayLike, beta: float = 0.95, sample_weight: FloatArray | None = None
 ) -> float | FloatArray:
-    """Compute the historical value at risk (VaR).
-    The VaR is the maximum loss at a given confidence level (beta).
+    r"""Compute the historical value at risk (VaR).
+
+    The VaR is the smallest loss exceeded with probability at most
+    :math:`1 - \beta`. It is the lower :math:`\beta`-quantile of the empirical loss
+    distribution :math:`F_L`:
+
+    .. math:: \mathrm{VaR}_{\beta} = \inf\{\ell \in \mathbb{R} : F_L(\ell) \geq \beta\}
+
+    With `sample_weight`, :math:`F_L` is the weighted empirical distribution
+    function.
 
     Parameters
     ----------
@@ -552,9 +560,9 @@ def value_at_risk(
         Array of return values.
 
     beta : float, default=0.95
-        The VaR confidence level (return on the worst (1-beta)% observation).
-        Must be between 0 and 1. The endpoints select the best and worst
-        usable returns, respectively; zero-weight observations are excluded.
+        The VaR confidence level. Must be between 0 and 1. The endpoints select the
+        best and worst usable returns, respectively; zero-weight observations are
+        excluded.
 
     sample_weight : ndarray of shape (n_observations,), optional
         Sample weights for each observation. If None, equal weights are assumed.
@@ -568,10 +576,23 @@ def value_at_risk(
 
     Notes
     -----
+    With :math:`n` equally weighted observations and an integer
+    :math:`k = (1 - \beta) n`, the VaR is the :math:`(k+1)`-th largest loss and the
+    CVaR is the mean of the :math:`k` largest losses. For example, with 100
+    observations and `beta=0.95`, the VaR is the sixth largest loss.
+
     NaN handling:
     NaN returns are excluded from each column's calculation. Remaining sample
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
+
+    References
+    ----------
+    .. [1] "Conditional value-at-risk for general loss distributions",
+        Journal of Banking & Finance, Rockafellar & Uryasev (2002)
+
+    .. [2] "Quantitative Risk Management: Concepts, Techniques and Tools",
+        Princeton University Press, McNeil, Frey & Embrechts (2015)
     """
     return _tail_risk(
         returns, beta=beta, sample_weight=sample_weight, conditional=False
@@ -806,9 +827,11 @@ def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
 
 
 def drawdown_at_risk(drawdowns: FloatArray, beta: float = 0.95) -> float | FloatArray:
-    """Compute the Drawdown at risk.
+    r"""Compute the Drawdown at risk.
 
-    The Drawdown at risk is the maximum drawdown at a given confidence level (beta).
+    The Drawdown at risk (DaR) is the smallest drawdown exceeded with probability at
+    most :math:`1 - \beta`. It is the value at risk of the drawdowns, see
+    :func:`value_at_risk`.
 
     Parameters
     ----------
@@ -816,7 +839,7 @@ def drawdown_at_risk(drawdowns: FloatArray, beta: float = 0.95) -> float | Float
         Vector of drawdowns.
 
     beta : float, default = 0.95
-        The DaR confidence level (drawdown on the worst (1-beta)% observations).
+        The DaR confidence level.
 
     Returns
     -------
@@ -1192,7 +1215,7 @@ def _tail_risk(
 
     conditional : bool
         If True, return CVaR, the average loss in the lower return tail.
-        If False, return VaR, the loss at the tail boundary.
+        If False, return VaR, the lower `beta`-quantile of the loss.
 
     Returns
     -------
@@ -1202,6 +1225,7 @@ def _tail_risk(
         weight remain.
     """
     returns = np.asarray(returns, dtype=float)
+    eps = np.finfo(float).eps
 
     def _unweighted(values):
         """Compute the unweighted tail measure using the enclosing settings."""
@@ -1209,7 +1233,12 @@ def _tail_risk(
         if size == 0:
             return np.nan
         k = (1.0 - beta) * size
-        i = max(0, int(np.ceil(k) - 1))
+        if conditional:
+            i = max(0, int(np.ceil(k) - 1))
+        else:
+            # The tolerance absorbs the floating-point error of `k`, so that an
+            # integer tail size such as `(1 - 0.9) * 10` is not rounded down.
+            i = min(size - 1, int(np.floor(k + 4 * eps * size)))
         # Partition keeps the unweighted calculation linear in the sample size.
         part = np.partition(values, i, axis=0)
         if conditional:
@@ -1249,8 +1278,15 @@ def _tail_risk(
         values, probs = values[order], probs[order]
         cumulative = np.cumsum(probs)
         tail_mass = (1.0 - beta) * cumulative[-1]
+        if not conditional:
+            # The tolerance absorbs the floating-point error of `tail_mass` and of
+            # the cumulative sum, which grows with the number of observations.
+            i = np.searchsorted(
+                cumulative, tail_mass + 4 * eps * len(values), side="right"
+            )
+            return -values[min(i, len(values) - 1)]
         i = np.searchsorted(cumulative, tail_mass)
-        if not conditional or i == 0:
+        if i == 0:
             return -values[i]
         return (
             -(probs[:i] @ values[:i] + values[i] * (tail_mass - cumulative[i - 1]))
