@@ -518,7 +518,7 @@ class VineCopula(BaseMultivariateDist):
     def sample(
         self,
         n_samples: int = 1,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
     ) -> FloatArray:
         """Generate random samples from the vine copula.
@@ -680,7 +680,7 @@ class VineCopula(BaseMultivariateDist):
     def _init_conditioning(
         self,
         n_samples: int,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike],
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike],
     ) -> tuple[
         np.random.RandomState, set[int], dict[int, float], dict[int, FloatArray]
     ]:
@@ -991,7 +991,7 @@ class VineCopula(BaseMultivariateDist):
     def plot_marginal_distributions(
         self,
         X: ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
         subset: list[int | str] | None = None,
         n_samples: int = 500,

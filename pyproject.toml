@@ -196,11 +196,6 @@ invalid-assignment = "warn"         # 57
 invalid-method-override = "warn"    # 25
 no-matching-overload = "warn"       # 22
 not-iterable = "warn"               # 21
-invalid-type-form = "warn"          # 6
-invalid-type-arguments = "warn"     # 5
-invalid-parameter-default = "warn"  # 5
-missing-argument = "warn"           # 1
-invalid-yield = "warn"              # 1
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations

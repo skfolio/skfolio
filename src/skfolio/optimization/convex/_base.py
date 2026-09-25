@@ -720,7 +720,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 f" {func_code.co_argcount}"
             )
         try:
-            return func(*args)
+            return func(*args)  # ty: ignore[missing-argument]  # arity checked above
         except Exception as err:
             raise TypeError(
                 f"Error while calling {name}. "
@@ -1266,7 +1266,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         problem: cp.Problem,
         w: cp.Variable,
         factor: skt.Factor,
-        parameters_values: skt.ParametersValues = None,
+        parameters_values: skt.ParametersValues | None = None,
         expressions: dict[str, cp.Expression] | None = None,
     ) -> None:
         """Solve the CVXPY Problem and save the results in `weights_`, `problem_values_`
@@ -1577,7 +1577,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> cp.Expression:
         """Expression of the portfolio Minimum Acceptable Returns.
 
@@ -1954,7 +1954,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Variance risk measure.
 
@@ -2000,7 +2000,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Standard Deviation risk measure.
 

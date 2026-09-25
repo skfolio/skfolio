@@ -983,7 +983,7 @@ class Population(list):
         self,
         x: skt.Measure,
         y: skt.Measure,
-        z: skt.Measure = None,
+        z: skt.Measure | None = None,
         to_surface: bool = False,
         hover_measures: list[skt.Measure] | None = None,
         show_fronts: bool = False,

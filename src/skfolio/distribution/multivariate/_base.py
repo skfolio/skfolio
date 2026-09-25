@@ -86,7 +86,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     def sample(
         self,
         n_samples: int = 1,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
     ) -> FloatArray:
         """Generate random samples from the distribution model.
@@ -126,7 +126,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     def plot_scatter_matrix(
         self,
         X: ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
         n_samples: int = 1000,
         title: str = "Scatter Matrix",

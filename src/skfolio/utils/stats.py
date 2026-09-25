@@ -218,7 +218,7 @@ def n_bins_knuth(x: FloatArray) -> int:
     return round(n_bins)
 
 
-def rand_weights_dirichlet(n: int) -> np.array:
+def rand_weights_dirichlet(n: int) -> np.ndarray:
     """Produces n random weights that sum to one from a Dirichlet distribution
     (uniform distribution over a simplex).
 

@@ -355,7 +355,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         }
         for i in range(self.n_splits):
             train_index = np.argwhere(index_train_test[:, i] == 0).reshape(-1)
-            test_index_list = [
+            test_index_list: list[IntArray] = [
                 fold_index[fold_id] for fold_id, _ in np.argwhere(recombine_paths == i)
             ]
             yield train_index, test_index_list
