@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -82,7 +84,9 @@ class SalesToEnterpriseValue(BaseDescriptor, stateless=True):
     >>> sales_to_enterprise_value = descriptor.fit_transform(X)
     """
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute sales to enterprise value.
 
         Parameters

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
@@ -84,7 +86,9 @@ class MaxReturn(BaseDescriptor):
     def __init__(self, window: int = 21):
         self.window = window
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute rolling maximum returns over the configured window.
 
         Parameters
@@ -106,7 +110,9 @@ class MaxReturn(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update state and return rolling max return for this batch.
 
         This method supports online updates by continuing from the current fitted state.

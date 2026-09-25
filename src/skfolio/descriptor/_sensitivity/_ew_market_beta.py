@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 
@@ -145,7 +146,9 @@ class EWMarketBeta(BaseDescriptor):
         self.shrinkage_bounds = shrinkage_bounds
         self.eps = eps
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute exponentially weighted market betas.
 
         Parameters
@@ -168,7 +171,9 @@ class EWMarketBeta(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update EWMA state on X and return betas for this batch.
 
         This method supports online updates by continuing from the current fitted state.

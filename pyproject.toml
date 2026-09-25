@@ -173,14 +173,11 @@ ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "ANN201", "ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
 "**/conftest.py" = ["ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
-# Annotation rules are enforced on public modules first. Private modules and
-# packages (`_name.py`, `_name/`) are exempt until annotated; the `[!_]` keeps
-# `__init__.py` in scope.
+# ANN001/ANN003 apply everywhere in `src`. ANN202/ANN204/ANN401 are enforced on
+# public modules only; private modules and packages (`_name.py`, `_name/`) are
+# exempt until annotated. The `[!_]` keeps `__init__.py` in scope.
 "src/**/_[!_]*.py" = ["ANN202", "ANN204", "ANN401"]
 "src/**/_[!_]*/**" = ["ANN202", "ANN204", "ANN401"]
-# ANN001/ANN003 are enforced in private modules one package at a time; remove a
-# package's line once its argument annotations are complete.
-"src/skfolio/descriptor/**/_[!_]*{.py,/**}" = ["ANN001", "ANN003"]
 # Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
 # interleaved with the `# %%` narrative cells, and a bare expression at the end of a
 # cell is how a value gets rendered in the gallery output.

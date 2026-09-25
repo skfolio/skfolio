@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from typing import Any
 
 import numpy as np
 
@@ -78,7 +79,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         """
         return sku.Bunch(**dict(self.descriptors))
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any):
         """Set the parameters of a factor from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -102,7 +103,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         super()._set_params("descriptors", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True):
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -176,7 +177,9 @@ class _BaseRollingLogReturn(BaseDescriptor):
         self.skip = skip
         self.exponentiate = exponentiate
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute the rolling log-return descriptor from a clean state.
 
         Parameters
@@ -198,7 +201,9 @@ class _BaseRollingLogReturn(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update state and compute the rolling log-return descriptor.
 
         This method supports online updates by continuing from the current fitted state.
