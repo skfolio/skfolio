@@ -766,7 +766,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             for ptf in self
         ]
         if not to_df:
-            return contributions
+            return contributions  # ty: ignore[invalid-return-type]  # returns one array per portfolio when not to_df
         df = pd.concat(contributions, axis=1)  # ty: ignore[no-matching-overload]  # all DataFrames when to_df
         df.columns = deduplicate_names(df.columns)
         # Leave columns of only NaNs untouched

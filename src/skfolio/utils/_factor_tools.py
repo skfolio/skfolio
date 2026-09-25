@@ -39,7 +39,7 @@ def _factor_name_maps(
     if factor_families is not None:
         for i, v in enumerate(factor_families):
             family_to_idx[v].append(i)
-    return factor_to_idx, dict(family_to_idx)
+    return factor_to_idx, dict(family_to_idx)  # ty: ignore[invalid-return-type]  # factor names are str
 
 
 def _resolve_factor_name(

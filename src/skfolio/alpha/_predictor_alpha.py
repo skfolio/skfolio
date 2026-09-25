@@ -504,7 +504,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 )
                 self._set_alpha(uncalibrated_alpha)
             else:
-                self.alpha_ = None
+                self.alpha_ = None  # ty: ignore[invalid-assignment]  # reset until the next forecast
             self._update_buffers(X)
             return self
 
@@ -775,7 +775,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 self.forecast_scale * self.calibration_coef_ * uncalibrated_alpha
             )
         else:
-            self.alpha_ = None
+            self.alpha_ = None  # ty: ignore[invalid-assignment]  # reset until the next forecast
 
     def _reset(self) -> None:
         """Reset fitted state."""

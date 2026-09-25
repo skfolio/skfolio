@@ -26,6 +26,7 @@ from sklearn.utils import Bunch
 
 from skfolio._constants import _PASSTHROUGH
 from skfolio.typing import (
+    AnyArray,
     ArrayLike,
     BoolArray,
     FloatArray,
@@ -533,7 +534,7 @@ def input_to_array(
     assets_names: StrArray | None,
     name: str,
     investable_mask: BoolArray | None = None,
-) -> FloatArray:
+) -> AnyArray:
     """Convert a collection of items (array-like or dictionary) into
     a numpy array and verify its shape.
 
@@ -681,7 +682,7 @@ def _get_liquidation_turnover_and_cost(
         if investable_mask is None:
             return 0.0, 0.0
         # Use column positions as identifiers when asset names are unavailable.
-        assets_names = np.arange(len(investable_mask))
+        assets_names = np.arange(len(investable_mask))  # ty: ignore[invalid-assignment]  # integer positions stand in for missing names
 
     if not isinstance(previous_weights, dict):
         if investable_mask is None or previous_weights is None:

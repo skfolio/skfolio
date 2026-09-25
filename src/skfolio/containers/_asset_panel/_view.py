@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -96,6 +96,12 @@ class AssetPanelView(_BaseAssetPanel):
         """Check whether a local or owner field exists."""
         return name in self._local_fields or name in self.owner.fields
 
+    @overload
+    def __getitem__(self, key: str) -> AnyArray: ...
+
+    @overload
+    def __getitem__(self, key: Any) -> AssetPanelView: ...
+
     def __getitem__(self, key: Any) -> AnyArray | AssetPanelView:
         """Return field values or a nested observation view.
 
@@ -170,7 +176,7 @@ class AssetPanelView(_BaseAssetPanel):
             )
         field = _as_field(value)
         self._validate_field(name, field)
-        self._local_fields[name] = field
+        self._local_fields[name] = field  # ty: ignore[invalid-assignment]  # set to {} in __post_init__
 
     def __delitem__(self, name: str) -> None:
         """Delete a view-local field.
@@ -213,7 +219,7 @@ class AssetPanelView(_BaseAssetPanel):
     @property
     def asset_names(self) -> StrArray:
         """Asset labels."""
-        return self.owner.asset_names
+        return self.owner.asset_names  # ty: ignore[invalid-return-type]  # owner normalizes asset_names to an array
 
     @property
     def active_mask(self) -> BoolArray:
@@ -250,7 +256,7 @@ class AssetPanelView(_BaseAssetPanel):
             for name in self._local_fields  # ty: ignore[not-iterable]  # set to {} in __post_init__
             if name not in self.owner.fields
         ]
-        return [*self.owner.fields.keys(), *local_only]
+        return [*self.owner.fields.keys(), *local_only]  # ty: ignore[invalid-return-type]  # field names are str
 
     def get_field(self, name: str) -> BaseField:
         """Return a local field or an owner field sliced to the view.

@@ -1667,7 +1667,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             finite_fields = [_MARKET_CAP]
             strictly_positive_fields = [_MARKET_CAP]
 
-        characteristics = validate_asset_panel(
+        characteristics = validate_asset_panel(  # ty: ignore[invalid-assignment]  # validated characteristics are an AssetPanel
             self,
             asset_panel=characteristics,
             required_fields=required_fields,
@@ -1748,7 +1748,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         return characteristics, currency_excess_returns
 
-    def _validate_factors(self) -> tuple[list[str], list[BaseFactorExposure]]:
+    def _validate_factors(
+        self,
+    ) -> tuple[tuple[str, ...], tuple[BaseFactorExposure, ...]]:
         """Validate the `factors` parameter.
 
         Returns
@@ -2063,12 +2065,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             if max_history is not None:
                 self._history = {k: v[-max_history:].copy() for k, v in arrays.items()}
             else:
-                self._history = arrays
+                self._history = arrays  # ty: ignore[invalid-assignment]  # dict invariance on history values
         else:
             history = self._history
             if not isinstance(next(iter(history.values())), _ArrayBuffer):
                 history = {k: _ArrayBuffer(v) for k, v in history.items()}
-                self._history = history
+                self._history = history  # ty: ignore[invalid-assignment]  # dict invariance on history values
 
             if max_history is not None:
                 arrays = {
@@ -2088,8 +2090,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         if self._history is None:
             raise AttributeError("History has not been initialized.")
         if isinstance(next(iter(self._history.values())), _ArrayBuffer):
-            return {k: v.array for k, v in self._history.items()}
-        return self._history
+            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-return-type]  # history buffers are materialized arrays
+        return self._history  # ty: ignore[invalid-return-type]  # history buffers are materialized arrays
 
     def _get_dependency_layers(self) -> list[list[str]]:
         """Return factors grouped by dependency layer for ordered fitting when the
@@ -2467,7 +2469,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """
         # Convert to Dataframe so that the factor prior estimator have access to factor
         # names if needed
-        factor_returns = pd.DataFrame(
+        factor_returns = pd.DataFrame(  # ty: ignore[invalid-assignment]  # rebinds array factor returns to a DataFrame
             factor_returns, index=observations, columns=factor_names, copy=False
         )
 

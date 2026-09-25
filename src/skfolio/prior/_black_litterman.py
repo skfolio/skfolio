@@ -216,7 +216,7 @@ class BlackLitterman(BasePrior):
                 ),
                 name="groups",
             )
-        self.picking_matrix_, self.views_, a_ineq, _ = equations_to_matrix(
+        self.picking_matrix_, self.views_, a_ineq, _ = equations_to_matrix(  # ty: ignore[invalid-assignment]  # views are returned as a str array
             groups=self.groups_,
             equations=views,
             sum_to_one=True,

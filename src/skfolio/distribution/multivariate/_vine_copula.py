@@ -506,7 +506,7 @@ class VineCopula(BaseMultivariateDist):
         X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
 
         for i, node in enumerate(self.trees_[0].nodes):
-            node.pseudo_values = X[:, i]
+            node.pseudo_values = X[:, i]  # ty: ignore[invalid-assignment]  # first-level nodes are RootNodes
 
         for tree in self.trees_:
             for edge in tree.edges:
@@ -835,7 +835,7 @@ class VineCopula(BaseMultivariateDist):
             uniform_cond_samples[var] = samples
             conditioning_vars = set(conditioning_vars)
 
-        return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
+        return rng, conditioning_vars, conditioning_clean, uniform_cond_samples  # ty: ignore[invalid-return-type]  # inferred from untyped rng/dict values
 
     def _sampling_order(
         self, conditioning_vars: set[int] | None = None
@@ -956,7 +956,7 @@ class VineCopula(BaseMultivariateDist):
             raise ValueError(
                 "Sampling order computation failed: ordering is not unique or complete."
             )
-        return sampling_order
+        return sampling_order  # ty: ignore[invalid-return-type]  # None entries are filled before return
 
     @property
     def fitted_repr(self) -> str:
@@ -1222,7 +1222,7 @@ def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_s
                 )
             else:
                 x = np.stack([node.v, edge.node1.pseudo_values]).T
-                edge.node2.pseudo_values = _inverse_partial_derivative(
+                edge.node2.pseudo_values = _inverse_partial_derivative(  # ty: ignore[invalid-assignment]  # RootNode and ChildNode both accept arrays
                     edge, x, is_count
                 )
         else:
@@ -1239,9 +1239,9 @@ def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_s
                 x = np.stack([node.v, edge.node1.v if is_left1 else edge.node1.u]).T
                 u = _inverse_partial_derivative(edge, x, is_count)
                 if is_left2:
-                    edge.node2.v = u
+                    edge.node2.v = u  # ty: ignore[invalid-assignment]  # RootNode and ChildNode both accept arrays
                 else:
-                    edge.node2.u = u
+                    edge.node2.u = u  # ty: ignore[invalid-assignment]  # RootNode and ChildNode both accept arrays
                 queue.appendleft((edge.node2, not is_left2))
 
 

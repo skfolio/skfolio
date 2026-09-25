@@ -668,7 +668,7 @@ class BasePortfolio:
     @property
     def fitness_measures(self) -> list[skt.Measure]:
         """Portfolio fitness measures."""
-        return self._fitness_measures
+        return self._fitness_measures  # ty: ignore[invalid-return-type]  # list invariance on measure enums
 
     @fitness_measures.setter
     def fitness_measures(self, value: list[skt.Measure]) -> None:

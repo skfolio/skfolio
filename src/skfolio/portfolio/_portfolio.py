@@ -858,7 +858,7 @@ class Portfolio(BasePortfolio):
     @property
     def weights_dict(self) -> dict[str, float]:
         """Dict mapping asset name to weight; includes zeros."""
-        return {
+        return {  # ty: ignore[invalid-return-type]  # asset names are str
             asset: float(weight)
             for asset, weight in zip(self.assets, self.weights, strict=True)
         }
@@ -866,7 +866,7 @@ class Portfolio(BasePortfolio):
     @property
     def previous_weights_dict(self) -> dict[str, float]:
         """Dict mapping asset name to previous weight; includes zeros."""
-        return {
+        return {  # ty: ignore[invalid-return-type]  # asset names are str
             asset: float(weight)
             for asset, weight in zip(self.assets, self.previous_weights, strict=True)
         }
@@ -874,7 +874,7 @@ class Portfolio(BasePortfolio):
     @property
     def ending_weights_dict(self) -> dict[str, float]:
         """Dict mapping asset name to ending weight; includes zeros."""
-        return {
+        return {  # ty: ignore[invalid-return-type]  # asset names are str
             asset: float(weight)
             for asset, weight in zip(self.assets, self.ending_weights, strict=True)
         }
@@ -1600,4 +1600,4 @@ def _compute_contribution(
                 / (2 * h)
                 * weight
             )
-    return contributions, _assets
+    return contributions, _assets  # ty: ignore[invalid-return-type]  # asset names are str

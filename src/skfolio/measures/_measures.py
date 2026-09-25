@@ -509,7 +509,7 @@ def fourth_lower_partial_moment(
     NaN if no observations remain.
     """
     if min_acceptable_return is None:
-        min_acceptable_return = mean(returns)
+        min_acceptable_return = mean(returns)  # ty: ignore[invalid-assignment]  # mean of 1-D returns is a float
     return mean(np.maximum(0, min_acceptable_return - returns) ** 4)
 
 
@@ -685,7 +685,7 @@ def evar(returns: ArrayLike, beta: float = 0.95) -> float:
         return np.nan
 
     def func(x: float) -> float:
-        return entropic_risk_measure(returns=returns, theta=x, beta=beta)
+        return entropic_risk_measure(returns=returns, theta=x, beta=beta)  # ty: ignore[invalid-return-type]  # 1-D returns give a float
 
     # The lower bound is chosen to avoid exp overflow
     lower_bound = np.nanmax(-returns) / 100

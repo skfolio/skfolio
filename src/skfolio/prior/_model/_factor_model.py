@@ -467,7 +467,7 @@ class FactorModel:
         """
         self._require("exposures", "effective_exposures")
         if self.family_constraint_basis is None:
-            return self.exposures
+            return self.exposures  # ty: ignore[invalid-return-type]  # _require checks exposures is set
         return self.family_constraint_basis.reduce_exposures(self.exposures)
 
     @property
@@ -724,7 +724,7 @@ class FactorModel:
                 return None
             if asset_indexer is None:
                 return arr
-            indexer = [slice(None)] * arr.ndim
+            indexer: list[slice | AnyArray] = [slice(None)] * arr.ndim
             indexer[axis] = asset_indexer
             return arr[tuple(indexer)]
 
@@ -2947,7 +2947,7 @@ class FactorModel:
                 weights=regression_weights,
                 axis=1,
             )
-        return ic, start_t
+        return ic, start_t  # ty: ignore[invalid-return-type]  # 2-D inputs give an array
 
     def _exposure_stability(
         self,
@@ -2979,7 +2979,7 @@ class FactorModel:
         )
         if weights is not None:
             weights = weights[:-step]
-        return cs_pearson_correlation(
+        return cs_pearson_correlation(  # ty: ignore[invalid-return-type]  # 2-D inputs give an array
             exposures[:-step], exposures[step:], weights=weights, axis=1
         )
 
@@ -3123,7 +3123,7 @@ class FactorModel:
         r"""Compute :math:`z_{it} = \epsilon_{it} / \hat\sigma_{i,t}`."""
         self._require(("idio_returns", "idio_variances"), "standardized_idio_returns")
         idio_vol = np.sqrt(np.maximum(self.idio_variances, 0.0))
-        return safe_divide(self.idio_returns, idio_vol, fill_value=np.nan)
+        return safe_divide(self.idio_returns, idio_vol, fill_value=np.nan)  # ty: ignore[invalid-return-type]  # 2-D inputs give an array
 
     def _validate_weights(self, weights: FloatArray | None, name: str) -> None:
         """Return validated optional weights."""

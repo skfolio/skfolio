@@ -12,7 +12,7 @@ from collections.abc import Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -275,8 +275,8 @@ class AssetPanel(_BaseAssetPanel):
     fields: dict[str, BaseField]
     observations: AnyArray
     asset_names: StrArray | list[str]
-    active_mask: BoolArray = None
-    estimation_mask: BoolArray = None
+    active_mask: BoolArray = None  # ty: ignore[invalid-assignment]  # filled in __post_init__
+    estimation_mask: BoolArray = None  # ty: ignore[invalid-assignment]  # filled in __post_init__
 
     _validate_on_init: bool = True
 
@@ -327,6 +327,12 @@ class AssetPanel(_BaseAssetPanel):
     def __len__(self) -> int:
         """Return the number of observations."""
         return self.n_observations
+
+    @overload
+    def __getitem__(self, key: str) -> AnyArray: ...
+
+    @overload
+    def __getitem__(self, key: Any) -> AssetPanelView: ...
 
     def __getitem__(self, key: Any) -> AnyArray | AssetPanelView:
         """Return field values or an observation view. Slice selectors are zero-copy.

@@ -1565,11 +1565,11 @@ class MeanRisk(ConvexOptimization):
                 if self.raise_on_failure:
                     raise
                 warnings.warn(str(fallback_error), stacklevel=2)
-                self.weights_ = None
+                self.weights_ = None  # ty: ignore[invalid-assignment]  # reset after a failed fit
             else:
                 self.error_ = None
             finally:
-                self.problem_values_ = None
+                self.problem_values_ = None  # ty: ignore[invalid-assignment]  # reset after a failed fit
                 if self.save_problem:
                     self.problem_ = problem
                 self._clear_models_cache()
@@ -1579,8 +1579,8 @@ class MeanRisk(ConvexOptimization):
         if self.raise_on_failure:
             raise solver_error
         warnings.warn(error, stacklevel=2)
-        self.weights_ = None
-        self.problem_values_ = None
+        self.weights_ = None  # ty: ignore[invalid-assignment]  # reset after a failed fit
+        self.problem_values_ = None  # ty: ignore[invalid-assignment]  # reset after a failed fit
         if self.save_problem:
             self.problem_ = problem
         self._clear_models_cache()

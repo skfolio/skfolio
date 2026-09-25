@@ -29,7 +29,7 @@ from skfolio.attribution._utils import (
     _format_decimal,
     _format_percent,
 )
-from skfolio.typing import AnyArray, FloatArray
+from skfolio.typing import AnyArray, FloatArray, IntArray
 from skfolio.utils.figure import format_plot_label
 
 __all__ = ["Attribution"]
@@ -1008,7 +1008,7 @@ def _slice_window(
 
 def _compute_top_indices(
     sort_values: FloatArray, top_n: int | None
-) -> tuple[FloatArray, FloatArray | None]:
+) -> tuple[IntArray, IntArray | None]:
     """Compute indices for top_n selection and "Other" aggregation.
 
     Parameters

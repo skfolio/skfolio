@@ -384,7 +384,7 @@ class Population(list):
         value : float
             The mean of portfolios measures.
         """
-        return np.nanmean(self.measures(measure=measure), axis=0)
+        return np.nanmean(self.measures(measure=measure), axis=0)  # ty: ignore[invalid-return-type]  # 1-D input, axis=0 gives a scalar
 
     def measures_std(
         self,
@@ -403,7 +403,7 @@ class Population(list):
         value : float
             The standard-deviation of portfolios measures.
         """
-        return np.nanstd(self.measures(measure=measure), axis=0)
+        return np.nanstd(self.measures(measure=measure), axis=0)  # ty: ignore[invalid-return-type]  # 1-D input, axis=0 gives a scalar
 
     def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> Population:
         """Sort the population by a given portfolio measure.

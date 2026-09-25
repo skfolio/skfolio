@@ -168,7 +168,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return self
 
         _wrapped_fit._fallback_wrapped = True
-        cls.fit = _wrapped_fit
+        cls.fit = _wrapped_fit  # ty: ignore[invalid-assignment]  # functools.wraps preserves the fit signature
 
     def _run_fallback_chain(
         self,
@@ -594,7 +594,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         )
         if np.isscalar(previous_weights):
             previous_weights = np.full(n_assets, float(previous_weights))
-        return previous_weights
+        return previous_weights  # ty: ignore[invalid-return-type]  # scalars are broadcast to an array above
 
 
 def _validate_fallback(

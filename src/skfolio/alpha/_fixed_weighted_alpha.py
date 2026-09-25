@@ -150,7 +150,7 @@ class FixedWeightedAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
         """Fit descriptors and return historical alpha forecasts."""
         self._reset()
-        return self._fit(X, y, method="fit", transform=True, **fit_params)
+        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]  # transform=True returns an array
 
     def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> FixedWeightedAlpha:
         """Incrementally update descriptors and store the latest alpha forecast."""
@@ -159,7 +159,7 @@ class FixedWeightedAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
         """Incrementally update descriptors and return new alpha forecasts."""
-        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)
+        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]  # transform=True returns an array
 
     def _fit(
         self,

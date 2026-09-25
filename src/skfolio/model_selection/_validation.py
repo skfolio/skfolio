@@ -201,7 +201,7 @@ def cross_val_predict(
             "`sklearn.model_selection.cross_val_predict`."
         )
 
-    estimator, portfolio_params, explicit_measure_param_names = (
+    estimator, portfolio_params, explicit_measure_param_names = (  # ty: ignore[invalid-assignment]  # returns the same estimator type
         _resolve_evaluation_portfolio_params(estimator, portfolio_params)
     )
 
@@ -351,7 +351,7 @@ def cross_val_predict(
         # CV generator.
         # Because the tests folds are not shuffled, we use the first index of each
         # fold to order them.
-        test_indices = [test for _, test in splits]
+        test_indices = [test for _, test in splits]  # ty: ignore[invalid-assignment]  # splits yield (train, test) pairs
         concat = np.concatenate(test_indices)
         if np.unique(concat, axis=0).shape[0] != concat.shape[0]:
             raise ValueError(
@@ -813,4 +813,4 @@ def _run_path(
                 if _has_asset_names(X=ptf.X)
                 else ptf.ending_weights
             )
-    return predictions
+    return predictions  # ty: ignore[invalid-return-type]  # predict returns Portfolios here

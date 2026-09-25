@@ -638,7 +638,7 @@ class RiskBudgeting(ConvexOptimization):
                 fill_value=1e-10,
                 name="risk_budget",
             )
-            risk_budget[risk_budget == 0] = 1e-10
+            risk_budget[risk_budget == 0] = 1e-10  # ty: ignore[invalid-assignment]  # input_to_array returns an array
 
         # Variables
         w = cp.Variable(n_assets)

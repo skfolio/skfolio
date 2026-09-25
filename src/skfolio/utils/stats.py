@@ -14,6 +14,7 @@ import math
 import random
 import warnings
 from enum import auto
+from typing import overload
 
 import cvxpy as cp
 import numpy as np
@@ -105,9 +106,45 @@ class NBinsMethod(AutoEnum):
     KNUTH = auto()
 
 
+@overload
 def safe_divide(
-    numerator: float | FloatArray,
-    denominator: float | FloatArray,
+    numerator: float, denominator: float, fill_value: float = 0.0, *, atol: float = 0.0
+) -> float: ...
+
+
+@overload
+def safe_divide(
+    numerator: np.ndarray,
+    denominator: float | np.ndarray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> FloatArray: ...
+
+
+@overload
+def safe_divide(
+    numerator: float | np.ndarray,
+    denominator: np.ndarray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> FloatArray: ...
+
+
+@overload
+def safe_divide(
+    numerator: ArrayLike,
+    denominator: ArrayLike,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> float | FloatArray: ...
+
+
+def safe_divide(
+    numerator: ArrayLike,
+    denominator: ArrayLike,
     fill_value: float = 0.0,
     *,
     atol: float = 0.0,
@@ -300,7 +337,7 @@ def is_positive_definite(x: FloatArray) -> bool:
     value : bool
         True if the matrix is positive definite, False otherwise.
     """
-    return np.all(np.linalg.eigvals(x) > 0)
+    return bool(np.all(np.linalg.eigvals(x) > 0))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -635,7 +672,7 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     gaps = gaps[:-2]
     # k=0 represents one cluster
     k = np.argmax(gaps) + 2
-    return k
+    return int(k)
 
 
 def minimize_relative_weight_deviation(

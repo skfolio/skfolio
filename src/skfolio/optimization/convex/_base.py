@@ -1012,7 +1012,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             )
 
         if self.threshold_short is not None and is_short:
-            return _mip_weight_constraints_threshold_short(
+            return _mip_weight_constraints_threshold_short(  # ty: ignore[invalid-return-type]  # cvxpy comparisons are typed as Expression
                 n_assets=n_assets,
                 w=w,
                 factor=factor,
@@ -1026,7 +1026,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 threshold_short=threshold_short,
             )
 
-        return _mip_weight_constraints_no_short_threshold(
+        return _mip_weight_constraints_no_short_threshold(  # ty: ignore[invalid-return-type]  # cvxpy comparisons are typed as Expression
             n_assets=n_assets,
             w=w,
             factor=factor,
@@ -1217,7 +1217,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         """
         if self.add_objective is None:
             return cp.Constant(0)
-        return self._call_custom_func(
+        return self._call_custom_func(  # ty: ignore[invalid-return-type]  # custom func returns a single expression here
             func=self.add_objective, w=w, name="add_objective"
         )
 
@@ -1258,7 +1258,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 w=w,
                 name="overwrite_expected_return",
             )
-        return expected_return
+        return expected_return  # ty: ignore[invalid-return-type]  # custom func returns a single expression here
 
     # Model reused among multiple risk measure
     def _solve_problem(
@@ -1315,7 +1315,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 n_optimizations = sizes[0]
             # Scalar parameter values will be used in each optimization, therefore we
             # transform them to a list.
-            parameters_values = [
+            parameters_values = [  # ty: ignore[invalid-assignment]  # scalars expanded to per-optimization lists
                 (p, [v] * n_optimizations) if np.isscalar(v) else (p, v)
                 for p, v in parameters_values
             ]
@@ -1375,8 +1375,8 @@ class ConvexOptimization(BaseOptimization, ABC):
                     f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
                 )
             self.weights_ = self._expand_weights_to_full_universe(weights=all_weights)
-            self.problem_values_ = all_problem_values
-            self.error_ = all_errors
+            self.problem_values_ = all_problem_values  # ty: ignore[invalid-assignment]  # None marks a failed optimization
+            self.error_ = all_errors  # ty: ignore[invalid-assignment]  # None marks a successful optimization
 
         if self.save_problem:
             self.problem_ = problem
@@ -2199,7 +2199,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 z * self._scale_constraints,
             ),
         ]
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _max_drawdown_risk(
         self,
@@ -2232,7 +2232,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         u = cp.Variable()
         risk = u
         constraints += [u * self._scale_constraints >= v[1:] * self._scale_constraints]
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _average_drawdown_risk(
         self,
@@ -2264,7 +2264,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             return_distribution=return_distribution, w=w, factor=factor
         )
         risk = cp.sum(v[1:]) / n_observations
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _cdar_risk(
         self,
@@ -2302,7 +2302,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             z * self._scale_constraints
             >= v[1:] * self._scale_constraints - alpha * self._scale_constraints
         ]
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _edar_risk(
         self,
@@ -2345,7 +2345,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 z * self._scale_constraints,
             ),
         ]
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _ulcer_index_risk(
         self,
@@ -2377,7 +2377,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         )
         n_observations = return_distribution.returns.shape[0]
         risk = cp.norm(v[1:], 2) / (np.sqrt(n_observations))
-        return risk, constraints
+        return risk, constraints  # ty: ignore[invalid-return-type]  # cvxpy stubs: list invariance on constraints
 
     def _gini_mean_difference_risk(
         self,

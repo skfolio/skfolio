@@ -338,7 +338,7 @@ def _select_theta_and_rotation_mle(
         raise RuntimeError("Optimization failed for all rotations")
 
     best = min(results, key=lambda d: d["neg_log_likelihood"])
-    return best["theta"], best["rotation"]
+    return best["theta"], best["rotation"]  # ty: ignore[invalid-return-type]  # `best` holds a float theta and a rotation
 
 
 def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray:
@@ -380,7 +380,7 @@ def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray
             X = np.column_stack([1.0 - X[:, 1], X[:, 0]])
         case _:
             raise ValueError(f"Unsupported rotation: {rotation}")
-    return X
+    return X  # ty: ignore[invalid-return-type]  # X is an ndarray after np.asarray
 
 
 def _apply_margin_swap(X: FloatArray, first_margin: bool) -> FloatArray:

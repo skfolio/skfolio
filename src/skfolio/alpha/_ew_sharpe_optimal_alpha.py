@@ -460,7 +460,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             Historical alpha forecasts for the input panel.
         """
         self._reset()
-        return self._fit(X, y, method="fit", transform=True, **fit_params)
+        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]  # transform=True returns an array
 
     def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
         """Incrementally fit the alpha model with new observations.
@@ -510,7 +510,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         alphas : ndarray of shape (n_observations, n_assets)
             Historical alpha forecasts for the new observations.
         """
-        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)
+        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]  # transform=True returns an array
 
     def _fit(
         self,
@@ -563,7 +563,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         )
 
         if n_trainable_obs == 0:
-            self.alpha_ = None
+            self.alpha_ = None  # ty: ignore[invalid-assignment]  # reset until the next forecast
             self._update_buffers(X)
             return historical_alphas
 
@@ -582,14 +582,14 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 combined_obs_idx = n_buffered_obs + forecast_idx
                 coef_idx = combined_obs_idx - self._target_gap
                 if 0 <= coef_idx < n_trainable_obs:
-                    historical_alphas[forecast_idx] = self._compute_alpha(
+                    historical_alphas[forecast_idx] = self._compute_alpha(  # ty: ignore[invalid-assignment]  # allocated above when storing history
                         scores=X[_DESCRIPTOR_SCORES][combined_obs_idx],
                         coefficient=historical_coefficients[coef_idx],
                         idio_variances=X[_IDIO_VARIANCES][combined_obs_idx],
                     )
 
         if self._n_valid_regression_obs == 0:
-            self.alpha_ = None
+            self.alpha_ = None  # ty: ignore[invalid-assignment]  # reset until the next forecast
         else:
             self.alpha_ = self._compute_alpha(
                 scores=scores[-1],
@@ -640,7 +640,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                     weights=weights[t, valid_t],
                 )
             if return_historical and coefficient is not None:
-                historical_coefficients[t] = coefficient
+                historical_coefficients[t] = coefficient  # ty: ignore[invalid-assignment]  # allocated above when storing history
 
         return historical_coefficients
 

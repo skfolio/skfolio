@@ -684,7 +684,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 lo, hi = self.regime_multiplier_clip
                 regime_multiplier = np.clip(regime_multiplier, lo, hi)
 
-        self.regime_multiplier_ = regime_multiplier
+        self.regime_multiplier_ = regime_multiplier  # ty: ignore[invalid-assignment]  # scalar multiplier after validation
         covariance = regime_multiplier**2 * covariance
 
         self._set_covariance(covariance)

@@ -24,7 +24,7 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 import skfolio.typing as skt
-from skfolio.typing import ArrayLike, IntArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 _MAX_COMBINATIONS = 100_000
 
@@ -164,7 +164,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
     """
 
     if TYPE_CHECKING:
-        index_train_test_: IntArray
+        index_train_test_: FloatArray
 
     def __init__(
         self,
@@ -240,7 +240,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         ).reshape(-1, self.n_test_folds)
 
     @property
-    def binary_train_test_sets(self) -> IntArray:
+    def binary_train_test_sets(self) -> FloatArray:
         """Identify training and test folds for each combinations by assigning `0` to
         training folds and `1` to test folds.
         """

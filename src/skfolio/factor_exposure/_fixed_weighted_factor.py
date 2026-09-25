@@ -291,9 +291,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
             np.multiply(score, weight, out=contribution, where=valid)
             np.add(weighted_scores, contribution, out=weighted_scores, where=valid)
 
-        scores = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
-        scores[w_sum < self.min_coverage] = np.nan
-        return scores
+        composite = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
+        composite[w_sum < self.min_coverage] = np.nan
+        return composite
 
     def _reset(self):
         """Reset fitted descriptor state."""

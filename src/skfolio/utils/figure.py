@@ -71,7 +71,7 @@ def plot_kde_distributions(
         are provided.
     """
     asset_names = X.columns.tolist()
-    X = X.values
+    X = X.values  # ty: ignore[invalid-assignment]  # rebinds a DataFrame to its values
     colors = px.colors.qualitative.Plotly
 
     traces: list[go.Scatter] = []

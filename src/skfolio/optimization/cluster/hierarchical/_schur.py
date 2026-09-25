@@ -426,7 +426,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 max_weights=max_weights,
             )
         else:
-            self.weights_ = _compute_weights(
+            self.weights_ = _compute_weights(  # ty: ignore[invalid-assignment]  # force_spd=True never returns None
                 gamma=self.gamma,
                 sorted_assets=sorted_assets,
                 covariance=covariance,
@@ -499,7 +499,7 @@ def _compute_monotonic_weights(
             min_weights=min_weights,
             force_spd=True,
         )
-        return weights, 0.0
+        return weights, 0.0  # ty: ignore[invalid-return-type]  # force_spd=True never returns None
 
     def objective(x: float) -> tuple[float, FloatArray | None]:
         w = _compute_weights(
@@ -539,7 +539,7 @@ def _compute_monotonic_weights(
                         tol=tol,
                     )
                 except RuntimeError:
-                    return weights_0, 0.0
+                    return weights_0, 0.0  # ty: ignore[invalid-return-type]  # gamma=0 always succeeds
             else:
                 # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
                 # turning point by binary search.
@@ -557,7 +557,7 @@ def _compute_monotonic_weights(
     variance_h = objective(max_gamma - tol)[0]
     if variance <= variance_h:
         # monotonically decreasing up to max_gamma --> we return the terminal gamma
-        return weights, max_gamma
+        return weights, max_gamma  # ty: ignore[invalid-return-type]  # weights found by the search above
 
     # 2) Turning point lies between last two gammas, we find the exact turning point by
     # binary search

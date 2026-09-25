@@ -622,7 +622,7 @@ class EntropyPooling(BasePrior):
         b /= scales
 
         for i, x in enumerate([a, b]):
-            self._constraints[name][i] = np.hstack((self._constraints[name][i], x))
+            self._constraints[name][i] = np.hstack((self._constraints[name][i], x))  # ty: ignore[invalid-assignment]  # constraint lists are initialized before use
 
     def _add_mean_views(self) -> None:
         """Add mean view constraints to the optimization problem."""

@@ -752,7 +752,7 @@ def _get_covariance(estimator: skb.BaseEstimator) -> FloatArray:
         Covariance matrix extracted from the estimator.
     """
     if hasattr(estimator, "covariance_"):
-        return estimator.covariance_
+        return estimator.covariance_  # ty: ignore[invalid-return-type]  # fitted covariance estimators set covariance_
     if hasattr(estimator, "return_distribution_"):
         return estimator.return_distribution_.covariance
     raise AttributeError(

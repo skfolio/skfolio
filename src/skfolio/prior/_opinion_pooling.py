@@ -266,7 +266,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.estimators))
 
-    def _validate_estimators(self) -> tuple[list[str], list[BasePrior]]:
+    def _validate_estimators(self) -> tuple[tuple[str, ...], tuple[BasePrior, ...]]:
         """Validate the `estimators` parameter.
 
         Returns
