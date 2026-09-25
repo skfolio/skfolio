@@ -284,7 +284,7 @@ class BenchmarkTracker(MeanRisk):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params) -> BenchmarkTracker:
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params) -> BenchmarkTracker:  # ty: ignore[invalid-method-override]  # benchmark returns `y` are required
         """Fit the Return-Based Tracker estimator.
 
         Parameters

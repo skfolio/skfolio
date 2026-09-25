@@ -47,7 +47,7 @@ class Passthrough(BaseDescriptor, stateless=True):
     def __init__(self, field: str) -> None:
         self.field = field
 
-    def fit_transform(
+    def fit_transform(  # ty: ignore[invalid-method-override]  # returns the raw field, which may be integer
         self, X: AssetPanel, y=None, **fit_params
     ) -> FloatArray | IntArray:
         """Return the configured panel field.

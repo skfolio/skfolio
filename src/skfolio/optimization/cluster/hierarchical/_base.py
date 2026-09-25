@@ -295,7 +295,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     def _clean_input(
         self,
-        value: float | dict | FloatArray | list,
+        value: float | dict | ArrayLike | None,
         n_assets: int,
         fill_value: Any,
         name: str,
@@ -476,4 +476,4 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: None = None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...

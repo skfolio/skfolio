@@ -697,15 +697,15 @@ def _split_from_period_with_train_offset(
         if i + test_size >= n:
             if not reduce_test:
                 return
-            test_indices = np.arange(idx[i], n_samples)
+            test_indices = np.arange(idx[i], n_samples)  # ty: ignore[no-matching-overload]  # numpy stubs reject intp from get_indexer
         else:
-            test_indices = np.arange(idx[i], idx[i + test_size])
+            test_indices = np.arange(idx[i], idx[i + test_size])  # ty: ignore[no-matching-overload]  # numpy stubs reject intp from get_indexer
 
         if expand_train:
             train_start = 0
         else:
             train_start = train_idx[i]
-        train_indices = np.arange(train_start, idx[i] - purged_size)
+        train_indices = np.arange(train_start, idx[i] - purged_size)  # ty: ignore[no-matching-overload]  # numpy stubs reject intp from get_indexer
         yield train_indices, test_indices
 
         i += test_size

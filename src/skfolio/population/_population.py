@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, SupportsIndex, overload
 
 import numpy as np
 import pandas as pd
@@ -48,18 +49,22 @@ class Population(list):
     def __repr__(self) -> str:
         return "<Population(" + super().__repr__() + ")>"
 
-    def __getitem__(
-        self, indices: int | list[int] | slice
-    ) -> BasePortfolio | Population:
+    @overload
+    def __getitem__(self, indices: SupportsIndex) -> BasePortfolio: ...
+
+    @overload
+    def __getitem__(self, indices: slice) -> Population: ...
+
+    def __getitem__(self, indices: SupportsIndex | slice) -> BasePortfolio | Population:
         item = super().__getitem__(indices)
         if isinstance(item, list):
             return self.__class__(item)
         return item
 
-    def __setitem__(self, index: int, item: BasePortfolio) -> None:
+    def __setitem__(self, index: int, item: BasePortfolio) -> None:  # ty: ignore[invalid-method-override]  # only accepts a single BasePortfolio
         super().__setitem__(index, self._validate_item(item))
 
-    def __add__(self, other: BasePortfolio) -> Population:
+    def __add__(self, other: Population) -> Population:  # ty: ignore[invalid-method-override]  # only accepts a Population
         if not isinstance(other, Population):
             raise TypeError(
                 f"Cannot add a Population with an object of type {type(other)}"
@@ -74,7 +79,7 @@ class Population(list):
         """Append portfolio to the end of the population list."""
         super().append(self._validate_item(item))
 
-    def extend(self, other: BasePortfolio) -> None:
+    def extend(self, other: Iterable[BasePortfolio]) -> None:
         """Extend population list by appending elements from the iterable."""
         if isinstance(other, type(self)):
             super().extend(other)

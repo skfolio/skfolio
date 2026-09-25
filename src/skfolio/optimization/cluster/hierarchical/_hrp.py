@@ -326,7 +326,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> HierarchicalRiskParity:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+    ) -> HierarchicalRiskParity:
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters

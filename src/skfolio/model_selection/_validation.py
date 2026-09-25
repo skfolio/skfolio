@@ -486,7 +486,7 @@ def _route_params(
 
 def _has_asset_names(X: ArrayLike) -> bool:
     """Return whether the optimizer's actual input carries string asset names."""
-    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)
+    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)  # ty: ignore[not-iterable]  # guarded by hasattr(X, 'columns')
 
 
 def _propagate_previous_weights(portfolios: list[Portfolio]) -> list[Portfolio]:

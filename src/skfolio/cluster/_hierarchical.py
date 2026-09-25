@@ -304,7 +304,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         distance = scd.squareform(self.condensed_distance_, checks=False)
         heat_data = distance[ordered_asset_names_idx, :][:, ordered_asset_names_idx]
 
-        heatmap = [
+        heatmap: list[go.Heatmap] = [
             go.Heatmap(
                 x=ordered_asset_names,
                 y=ordered_asset_names,

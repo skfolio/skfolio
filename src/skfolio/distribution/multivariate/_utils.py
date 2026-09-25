@@ -115,7 +115,7 @@ class BaseNode(ABC):
         return self._ref
 
     @abstractmethod
-    def clear_cache(self, **kwargs):
+    def clear_cache(self, *, clear_count: bool):
         """Clear the cached pseudo-values and margin values (u and v)."""
         ...
 
@@ -511,7 +511,7 @@ class Tree:
         for node in nodes:
             # pointer from Node to Tree
             node.tree = self
-        self.edges = None
+        self.edges: list[Edge] = None  # ty: ignore[invalid-assignment]  # set by set_edges_from_mst
         self.is_count_visits: bool = False
 
     @property

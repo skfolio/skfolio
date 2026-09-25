@@ -767,7 +767,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         ]
         if not to_df:
             return contributions
-        df = pd.concat(contributions, axis=1)
+        df = pd.concat(contributions, axis=1)  # ty: ignore[no-matching-overload]  # all DataFrames when to_df
         df.columns = deduplicate_names(df.columns)
         # Leave columns of only NaNs untouched
         mask = ~df.isna().all(axis=0)

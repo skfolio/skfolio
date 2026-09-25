@@ -1322,7 +1322,7 @@ class MeanRisk(ConvexOptimization):
                 "Unable to compute the Efficient Frontier with only negative"
                 " expected returns"
             )
-        targets = np.linspace(
+        targets = np.linspace(  # ty: ignore[no-matching-overload]  # problem_values_ is untyped
             max(min_return, 1e-10) * 1.01,
             max_return,
             num=self.efficient_frontier_size,
@@ -1508,7 +1508,7 @@ class MeanRisk(ConvexOptimization):
 
         return objective, constraints
 
-    def _validate_params(self, method: str) -> None:
+    def _validate_params(self, method: str = "fit") -> None:
         """Validate the input parameters."""
         if not isinstance(self.risk_measure, RiskMeasure):
             raise TypeError("risk_measure must be of type `RiskMeasure`")

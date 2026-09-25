@@ -365,7 +365,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         self.solver_params = solver_params
 
     def fit(
-        self, X: ArrayLike, y: None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
     ) -> HierarchicalEqualRiskContribution:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 

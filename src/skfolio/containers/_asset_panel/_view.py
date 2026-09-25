@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -246,7 +246,9 @@ class AssetPanelView(_BaseAssetPanel):
             local-only fields are appended in insertion order.
         """
         local_only = [
-            name for name in self._local_fields if name not in self.owner.fields
+            name
+            for name in self._local_fields  # ty: ignore[not-iterable]  # set to {} in __post_init__
+            if name not in self.owner.fields
         ]
         return [*self.owner.fields.keys(), *local_only]
 
@@ -362,7 +364,7 @@ class _ViewFieldMapping(Mapping[str, BaseField]):
     def __getitem__(self, name: str) -> BaseField:
         return self._view.get_field(name)
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._view.keys())
 
     def __len__(self) -> int:

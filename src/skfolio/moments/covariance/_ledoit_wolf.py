@@ -15,7 +15,7 @@ from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.typing import ArrayLike
 
 
-class LedoitWolf(BaseCovariance, skc.LedoitWolf):
+class LedoitWolf(BaseCovariance, skc.LedoitWolf):  # ty: ignore[invalid-method-override]  # `mahalanobis(X_test)` vs sklearn's `X`
     """LedoitWolf Covariance Estimator.
 
     Ledoit-Wolf is a particular form of shrinkage, where the shrinkage

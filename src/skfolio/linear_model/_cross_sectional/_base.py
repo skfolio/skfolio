@@ -120,7 +120,7 @@ class BaseCSLinearModel(BaseEstimator, RegressorMixin, ABC):
 
         return (X @ self.coef_[..., None]).squeeze(-1) + self.intercept_[:, None]
 
-    def score(
+    def score(  # ty: ignore[invalid-method-override]  # `cs_weights` replaces sklearn's `sample_weight`
         self,
         X: ArrayLike,
         y: ArrayLike,

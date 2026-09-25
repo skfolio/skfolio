@@ -169,7 +169,7 @@ class TimeSeriesFactorModel(BasePrior):
         )
         return router
 
-    def fit(
+    def fit(  # ty: ignore[invalid-method-override]  # `factors` is required
         self,
         X: ArrayLike,
         y: Any = None,

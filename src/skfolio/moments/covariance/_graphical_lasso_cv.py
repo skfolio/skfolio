@@ -14,7 +14,7 @@ import sklearn.covariance as skc
 from skfolio.moments.covariance._base import BaseCovariance
 
 
-class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):
+class GraphicalLassoCV(BaseCovariance, skc.GraphicalLassoCV):  # ty: ignore[invalid-method-override]  # `mahalanobis(X_test)` vs sklearn's `X`
     """Sparse inverse covariance with cross-validated choice of the l1 penalty.
 
     Read more in `scikit-learn

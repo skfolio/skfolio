@@ -9,7 +9,7 @@ from __future__ import annotations
 import warnings
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, overload
 
 import numpy as np
 import pandas as pd
@@ -422,7 +422,7 @@ class FactorModel:
         if factor_indices == slice(None):
             cov = self.factor_covariance
         else:
-            cov = self.factor_covariance[np.ix_(factor_indices, factor_indices)]
+            cov = self.factor_covariance[np.ix_(factor_indices, factor_indices)]  # ty: ignore[no-matching-overload]  # slice(None) is handled above
         corr, _ = cov_to_corr(cov)
         return corr
 
@@ -733,7 +733,7 @@ class FactorModel:
             if idio_cov.ndim == 1:
                 idio_cov = idio_cov[asset_indexer]
             else:
-                idio_cov = idio_cov[np.ix_(positions, positions)]
+                idio_cov = idio_cov[np.ix_(positions, positions)]  # ty: ignore[no-matching-overload]  # positions is set whenever asset_indexer is
 
         if slim:
             exposures = None
@@ -3013,9 +3013,15 @@ class FactorModel:
             f"these attributes."
         )
 
+    @overload
+    def _aligned(self, fields: str) -> AnyArray | None: ...
+
+    @overload
+    def _aligned(self, fields: list[str]) -> tuple[AnyArray | None, ...]: ...
+
     def _aligned(
         self, fields: str | list[str]
-    ) -> AnyArray | list[AnyArray | None] | None:
+    ) -> AnyArray | tuple[AnyArray | None, ...] | None:
         r"""Apply `exposure_lag` to one or several time-indexed fields.
 
         The `exposures` field is the predictor side of the cross-sectional regression
@@ -3382,7 +3388,7 @@ def _add_family_outlines(
     if idx == slice(None):
         fam_labels = [str(family) for family in families]
     else:
-        fam_labels = [str(families[i]) for i in idx]
+        fam_labels = [str(families[i]) for i in idx]  # ty: ignore[not-iterable]  # slice(None) is handled above
     unique_families = dict.fromkeys(fam_labels)
     if len(unique_families) <= 1:
         return

@@ -15,7 +15,7 @@ from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.typing import ArrayLike
 
 
-class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
+class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):  # ty: ignore[invalid-method-override]  # `mahalanobis(X_test)` vs sklearn's `X`
     """Covariance estimator with shrinkage.
 
     Read more in `scikit-learn

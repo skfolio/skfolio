@@ -874,7 +874,7 @@ def _evaluate_online(
     if multi_scoring:
         agg = {name: float(np.mean(vals)) for name, vals in per_step.items()}
     else:
-        agg = float(np.mean(per_step))
+        agg = float(np.mean(per_step))  # ty: ignore[no-matching-overload]  # an array when not multi_scoring
     return agg, None
 
 

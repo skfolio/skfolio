@@ -15,7 +15,7 @@ from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.typing import ArrayLike
 
 
-class OAS(BaseCovariance, skc.OAS):
+class OAS(BaseCovariance, skc.OAS):  # ty: ignore[invalid-method-override]  # `mahalanobis(X_test)` vs sklearn's `X`
     """Oracle Approximating Shrinkage Estimator as proposed in [1]_.
 
     Read more in `scikit-learn

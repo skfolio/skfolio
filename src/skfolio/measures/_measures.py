@@ -48,7 +48,7 @@ def mean(
         # Ignore NaNs and suppress warnings for all-NaN slices
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            return np.nanmean(returns, axis=0)
+            return np.nanmean(returns, axis=0)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
     returns = np.asarray(returns, dtype=float)
     sample_weight = np.asarray(sample_weight, dtype=float)
     if returns.shape[0] == 0:
@@ -183,7 +183,7 @@ def variance(
         # Ignore NaNs and suppress warnings for all-NaN slices
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
-            return np.nanvar(returns, ddof=0 if biased else 1, axis=0)
+            return np.nanvar(returns, ddof=0 if biased else 1, axis=0)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
 
     return _weighted_variance(returns, sample_weight=sample_weight, biased=biased)
 
@@ -537,7 +537,7 @@ def worst_realization(returns: ArrayLike) -> float | FloatArray:
     with warnings.catch_warnings():
         # all-NaN slice warning
         warnings.simplefilter("ignore", category=RuntimeWarning)
-        return -np.nanmin(returns, axis=0)
+        return -np.nanmin(returns, axis=0)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
 
 
 def value_at_risk(
@@ -1038,7 +1038,7 @@ def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatA
     corr : ndarray of shape (n_assets,)
        The correlation matrix.
     """
-    cov = np.cov(X, rowvar=False, aweights=sample_weight)
+    cov = np.cov(X, rowvar=False, aweights=sample_weight)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
     std = np.sqrt(np.diag(cov))
     return cov / np.outer(std, std)
 

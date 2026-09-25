@@ -109,5 +109,5 @@ def select_bivariate_copula(
             case _:
                 raise ValueError(f"{selection_criterion} not implemented")
 
-    selected_copula = min(results, key=results.get)
+    selected_copula = min(results, key=results.__getitem__)
     return selected_copula

@@ -100,7 +100,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y=None): ...
 
     def score(self, X_test: ArrayLike, y=None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.

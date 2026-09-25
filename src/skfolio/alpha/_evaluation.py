@@ -1518,7 +1518,7 @@ def _forward_window_record(
     )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        mean_coverage = float(np.nanmean(diagnostics["coverage"]))
+        mean_coverage = float(np.nanmean(diagnostics["coverage"]))  # ty: ignore[no-matching-overload]  # diagnostics values are typed as object
     record.update(
         {
             "spearman_mean_ic": spearman_ic["mean"],

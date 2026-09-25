@@ -1111,7 +1111,7 @@ def half_life_to_decay_factor(half_life: float) -> float:
     return 2.0 ** (-1.0 / half_life)
 
 
-def apply_window_size(X: ArrayLike, window_size: int | None) -> ArrayLike:
+def apply_window_size(X: FloatArray, window_size: int | None) -> FloatArray:
     """Return the last `window_size` observations from the array X.
 
     Parameters

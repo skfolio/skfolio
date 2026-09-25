@@ -1321,7 +1321,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             ]
 
         if n_optimizations == 1:
-            for parameter, values in parameters_values:
+            for parameter, values in parameters_values:  # ty: ignore[not-iterable]  # None is replaced by [] above
                 parameter.value = values[0]
 
             weights, self.problem_values_ = _solve(
@@ -1342,7 +1342,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             with warnings.catch_warnings():
                 warnings.simplefilter("once", UserWarning)
                 for i in range(n_optimizations):
-                    for parameter, values in parameters_values:
+                    for parameter, values in parameters_values:  # ty: ignore[not-iterable]  # None is replaced by [] above
                         parameter.value = values[i]
 
                     try:

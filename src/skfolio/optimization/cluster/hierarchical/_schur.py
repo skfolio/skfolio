@@ -343,7 +343,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+    ) -> SchurComplementary:
         """Fit the Schur Complementary estimator.
 
         Parameters

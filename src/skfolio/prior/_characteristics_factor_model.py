@@ -851,7 +851,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         self.min_regression_assets = min_regression_assets
         self.n_jobs = n_jobs
 
-    def fit(
+    def fit(  # ty: ignore[invalid-method-override]  # inputs come from `characteristics`
         self,
         X: pd.DataFrame | None = None,
         y=None,

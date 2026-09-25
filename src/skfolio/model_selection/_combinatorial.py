@@ -36,7 +36,9 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]: ...
+    def split(
+        self, X: ArrayLike, y=None
+    ) -> Iterator[tuple[IntArray, list[IntArray]]]: ...
 
     @abstractmethod
     def get_path_ids(self) -> IntArray:

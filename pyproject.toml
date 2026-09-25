@@ -193,9 +193,6 @@ not-subscriptable = "warn"          # 144
 unsupported-operator = "warn"       # 86
 invalid-return-type = "warn"        # 84
 invalid-assignment = "warn"         # 57
-invalid-method-override = "warn"    # 25
-no-matching-overload = "warn"       # 22
-not-iterable = "warn"               # 21
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations

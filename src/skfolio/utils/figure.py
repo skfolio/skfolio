@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -20,7 +22,7 @@ def format_plot_label(name: str) -> str:
     return str(name).replace("_", " ").title()
 
 
-def format_plot_labels(names: ArrayLike) -> list[str]:
+def format_plot_labels(names: Iterable) -> list[str]:
     """Format component names for plot display."""
     return [format_plot_label(name) for name in names]
 
@@ -176,8 +178,8 @@ def kde_trace(
     if percentile_cutoff is None:
         lower, upper = x.min(), x.max()
     else:
-        lower = np.percentile(x, percentile_cutoff)
-        upper = np.percentile(x, 100.0 - percentile_cutoff)
+        lower = np.percentile(x, percentile_cutoff)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
+        upper = np.percentile(x, 100.0 - percentile_cutoff)  # ty: ignore[no-matching-overload]  # npt.ArrayLike includes str
 
     xs = np.linspace(lower, upper, 500)
     ys = st.gaussian_kde(x, weights=sample_weight)(xs)

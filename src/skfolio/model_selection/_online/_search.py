@@ -363,7 +363,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         }
 
         if self.multimetric_:
-            for name in self.scoring:
+            for name in self.scoring:  # ty: ignore[not-iterable]  # scoring is a mapping when multimetric_
                 scores = np.asarray(
                     [res["score"][name] for res in results],
                     dtype=np.float64,

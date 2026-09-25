@@ -268,7 +268,7 @@ def _select_rotation_itau(
     for rotation in CopulaRotation:
         X_rotated = _apply_copula_rotation(X, rotation=rotation)
         results[rotation] = func(X=X_rotated, theta=theta)
-    best_rotation = min(results, key=results.get)
+    best_rotation = min(results, key=results.__getitem__)
     return best_rotation
 
 
