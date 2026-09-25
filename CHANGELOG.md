@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.3.4 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Compute evar in stable log-sum-exp form
+  ([#359](https://github.com/skfolio/skfolio/pull/359),
+  [`b5a0daa`](https://github.com/skfolio/skfolio/commit/b5a0daa4a77fdf22a4dc6ef447e22353969424e3))
+
+
 ## v1.3.3 (2026-09-25)
 
 ### Bug Fixes
