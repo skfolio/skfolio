@@ -45,7 +45,7 @@ Please go through the checklist below. Please feel free to remove points if they
 -->
 
 ##### For all contributions
-- [ ] The PR title starts with either [ENH], [MNT], [DOC], or [BUG]. [BUG] - bugfix, [MNT] - CI, test framework, [ENH] - adding or improving code, [DOC] - writing or improving documentation or docstrings.
+- [ ] The PR title follows [Conventional Commits](https://www.conventionalcommits.org), e.g. `fix(portfolio): ...` or `feat(moments): ...`. It becomes the squash-merge commit that the release tooling reads; see [CONTRIBUTING.md](https://github.com/skfolio/skfolio/blob/main/CONTRIBUTING.md#submit-your-changes) for the types.
 
 ##### For new estimators
 - [ ] I've added the estimator to the API reference in `docs/api.rst`.

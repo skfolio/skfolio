@@ -110,6 +110,23 @@ uv sync --upgrade
 
 Add `--group docs` or `--group notebooks` if you use those tools.
 
+### Before you open a pull request
+
+These commands reproduce the CI checks a code change usually trips, so a pull
+request that passes them locally should also pass CI:
+
+| CI check | Local command |
+|---|---|
+| Ruff lint and format, YAML syntax, end-of-file newlines | `uv run pre-commit run --all-files` |
+| Every import in `src` is a declared dependency | `uv run deptry src` |
+| Tests and docstring examples | `uv run pytest` |
+| Documentation build | see [Documentation](#documentation) |
+
+`uv run pytest` runs `tests` and the doctests in `src`, spread over four workers
+(`-n=4` in `pyproject.toml`). CI also runs the tests on the minimum supported
+dependency versions and on macOS and Windows. You don't need to reproduce those
+locally unless one of them fails.
+
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
@@ -119,11 +136,15 @@ uv sync --group docs
 cd docs
 ```
 
-For a fast build without executing the tutorials:
+For a fast build without executing the tutorials, as run by CI:
 
 ```shell
-uv run sphinx-build -b html -D plot_gallery=0 . _build
+SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
 ```
+
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build, and
+takes about a minute. On Windows PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"`
+first and drop the prefix.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
