@@ -605,7 +605,7 @@ def test_mean_risk_get_params():
 
 def test_mean_risk_set_params():
     model = MeanRisk()
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute 'set_params'"):
         # noinspection PyTypeChecker
         model.set_params(prior_estimator__mu_estimator__window_size=30)
 
@@ -1183,7 +1183,7 @@ def test_groups(X, groups, linear_constraints):
     model.fit(X)
     w3 = model.weights_
     p3 = model.fit_predict(X)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="If `groups` is provided as a dictionary"):
         model.fit(np.array(X))
     np.testing.assert_almost_equal(w1, w3)
     np.testing.assert_almost_equal(p1.returns, p2.returns)
@@ -1321,7 +1321,7 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
@@ -1853,7 +1853,7 @@ def test_fallback(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_weights=1.0)
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(cp.error.SolverError, match="Solver 'CLARABEL' failed"):
         model.fit(X)
 
     model = MeanRisk(
@@ -1997,7 +1997,9 @@ def test_raise_on_failure_on_multi_all_fail(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_return=[0.003, 0.004])
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(
+        cp.error.SolverError, match="Solver 'CLARABEL' failed with parameters"
+    ):
         model.fit(X)
 
 
@@ -2597,6 +2599,7 @@ def test_non_default_solver(X_tiny):
 def test_unimplemented_fourth_moment_risks():
     model = MeanRisk()
     w = cp.Variable(2)
+    # Both methods raise a bare `NotImplementedError`, so there is no message to match.
     with pytest.raises(NotImplementedError):
         model._fourth_central_moment_risk(w=w, factor=cp.Constant(1))
     with pytest.raises(NotImplementedError):
@@ -2721,7 +2724,7 @@ def test_partial_fit_rejects_changed_invalid_objective(X_tiny):
 
 def test_partial_fit_solver_failure_raises(X_tiny):
     model = _make_online_mean_risk(min_weights=1.0)
-    with pytest.raises(cp.SolverError):
+    with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
         model.partial_fit(X_tiny)
     assert "Solver 'CLARABEL' failed" in model.error_
     # The failed solve never reaches the point where problem values are recorded.
