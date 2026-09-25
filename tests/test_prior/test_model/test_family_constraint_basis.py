@@ -90,7 +90,9 @@ class TestFamilyConstraint:
 
     def test_frozen(self):
         family = FamilyConstraint("x", np.array([0, 1]), 0)
-        with pytest.raises(AttributeError):
+        with pytest.raises(
+            AttributeError, match="cannot assign to field 'family_name'"
+        ):
             family.family_name = "y"
 
 

@@ -570,19 +570,19 @@ class TestPanelConstruction:
             )
 
     @pytest.mark.parametrize(
-        "name",
+        "name,match",
         [
-            "",
-            "has space",
-            "path/sep",
-            "back\\slash",
-            "1starts_with_num",
-            "CON",
-            "x" * 201,
+            ("", "must be a non-empty string"),
+            ("has space", "contains invalid characters"),
+            ("path/sep", "contains invalid characters"),
+            ("back\\slash", "contains invalid characters"),
+            ("1starts_with_num", "contains invalid characters"),
+            ("CON", "conflicts with Windows reserved name"),
+            ("x" * 201, "Field name too long"),
         ],
     )
-    def test_invalid_field_names_raise_at_construction(self, name):
-        with pytest.raises(ValueError):
+    def test_invalid_field_names_raise_at_construction(self, name, match):
+        with pytest.raises(ValueError, match=match):
             AssetPanel(
                 fields={name: np.ones((3, 2))},
                 observations=np.arange(3),
@@ -774,7 +774,7 @@ class TestPanelAccessAndMutation:
     def test_getitem_missing_field_raises(self):
         panel = _make_panel()
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel["missing"]
 
     def test_getitem_tuple_selector_raises(self):
@@ -921,7 +921,7 @@ class TestPanelAccessAndMutation:
     def test_setitem_invalid_field_name_raises(self):
         panel = _make_panel()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="contains invalid characters"):
             panel["has space"] = np.ones((N_OBS, N_ASSETS))
 
     def test_delete_field_and_last_field_guard(self):
@@ -963,7 +963,7 @@ class TestPanelAccessAndMutation:
         with pytest.raises(ValueError, match="Duplicate"):
             panel.rename({"momentum": "x", "sector": "x"})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="contains invalid characters"):
             panel.rename({"momentum": "has space"})
 
 
@@ -1130,13 +1130,13 @@ class TestSelectionAndDrop:
         with pytest.raises(TypeError, match="Field3D"):
             panel.sel_3d("momentum", labels="size")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel.sel_3d("exposures", labels="missing")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel.sel_3d("exposures", groups="missing")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="Labels not found"):
             panel.sel_3d("exposures", groups=["style", "missing"])
 
     def test_sel_3d_groups_require_group_metadata(self):
@@ -1969,7 +1969,7 @@ class TestView:
         panel = _make_panel()
         view = panel[5:10]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             view["missing"]
 
     def test_view_tuple_selector_raises(self):
@@ -2361,7 +2361,9 @@ class TestPersistence:
         loaded = AssetPanel.load(tmp_path / "panel", mmap_mode="r")
 
         np.testing.assert_array_equal(loaded["momentum"], panel["momentum"])
-        with pytest.raises((TypeError, ValueError)):
+        with pytest.raises(
+            (TypeError, ValueError), match="assignment destination is read-only"
+        ):
             loaded["momentum"][0, 0] = 999.0
 
     def test_save_load_preserves_inactive_policy(self, tmp_path):
