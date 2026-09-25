@@ -241,7 +241,7 @@ class CustomOptimization(BaseOptimization):
         )
         self.always_fail = always_fail
 
-    def fit(self, X: pd.DataFrame, y=None):
+    def fit(self, X: pd.DataFrame, y: None = None):
         validate_data(self, X)
         # Fail when first observation date has an even day-of-month, or always.
         if self.always_fail:

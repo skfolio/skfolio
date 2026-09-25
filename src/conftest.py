@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import partial
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -11,6 +12,12 @@ from _pytest.doctest import DoctestItem
 
 from skfolio.datasets import _base
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+
+    import pandas as pd
+
 NETWORK_DOCTESTS = {
     "skfolio.datasets._base.load_ftse100_dataset",
     "skfolio.datasets._base.load_nasdaq_dataset",
@@ -18,7 +25,7 @@ NETWORK_DOCTESTS = {
 }
 
 
-def pytest_collection_modifyitems(items) -> None:
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Mark doctests that require remote datasets."""
     for item in items:
         if isinstance(item, DoctestItem) and item.name in NETWORK_DOCTESTS:
@@ -26,7 +33,12 @@ def pytest_collection_modifyitems(items) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
+def _doctest_environment(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    remote_dataset: Callable[..., pd.DataFrame],
+):
     """Keep doctest settings, file writes, and remote dataset handling local.
 
     Unit tests configure NumPy output globally, so doctests use their own output

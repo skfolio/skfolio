@@ -14,6 +14,7 @@ a `Pipeline`, and run walk-forward cross-validation.
 # We will use the S&P 500 :ref:`dataset <datasets>`, which contains daily prices
 # of 20 assets from the S&P 500 Index, spanning from 1990-01-02 to 2022-12-28:
 import numpy as np
+import numpy.typing as npt
 import sklearn.base as skb
 import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
@@ -50,7 +51,9 @@ class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
     def __init__(self, pct_to_keep: float = 0.5):
         self.pct_to_keep = pct_to_keep
 
-    def fit(self, X, y=None, volumes=None):
+    def fit(
+        self, X: npt.ArrayLike, y: None = None, volumes: npt.ArrayLike | None = None
+    ):
         # Validate and convert X to a NumPy array
         X = validate_data(self, X)
 
