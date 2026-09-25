@@ -54,7 +54,7 @@ class BaseUnivariateDist(BaseDistribution, ABC):
         return f"{self.__class__.__name__}({params})"
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseUnivariateDist:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseUnivariateDist:
         """Fit the univariate distribution model.
 
         Parameters

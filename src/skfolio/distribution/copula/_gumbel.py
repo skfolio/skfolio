@@ -176,7 +176,7 @@ class GumbelCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> GumbelCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> GumbelCopula:
         r"""Fit the Bivariate Gumbel Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.

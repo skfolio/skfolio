@@ -106,7 +106,7 @@ class Gaussian(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: ArrayLike, y=None) -> Gaussian:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Gaussian:
         """Fit the univariate Gaussian distribution model.
 
         Parameters

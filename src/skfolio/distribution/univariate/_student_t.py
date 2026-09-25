@@ -118,7 +118,7 @@ class StudentT(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
-    def fit(self, X: ArrayLike, y=None) -> StudentT:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> StudentT:
         """Fit the univariate Student's t distribution model.
 
         Parameters

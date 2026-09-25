@@ -162,7 +162,7 @@ class StudentTCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> StudentTCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> StudentTCopula:
         r"""Fit the Bivariate Student's t Copula.
 
         If `itau` is True, it uses a Kendall-based two-step method:

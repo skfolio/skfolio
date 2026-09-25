@@ -143,7 +143,7 @@ class GaussianCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> GaussianCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> GaussianCopula:
         r"""Fit the Bivariate Gaussian Copula.
 
         If `itau` is True, estimates :math:`\rho` using Kendall's tau inversion.

@@ -104,7 +104,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseBivariateCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseBivariateCopula:
         """Fit the copula model.
 
         Parameters
