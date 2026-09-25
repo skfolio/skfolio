@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.linalg as sla
 import scipy.stats as st
@@ -118,7 +120,7 @@ class EmpiricalMuUncertaintySet(BaseMuUncertaintySet):
         self.n_eff = n_eff
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> EmpiricalMuUncertaintySet:
         """Fit the Empirical Mu Uncertainty set estimator.
 
@@ -273,7 +275,7 @@ class EmpiricalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         self.n_eff = n_eff
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> EmpiricalCovarianceUncertaintySet:
         """Fit the Empirical Covariance Uncertainty set estimator.
 

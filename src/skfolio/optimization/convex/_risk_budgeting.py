@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -577,7 +579,9 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> RiskBudgeting:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> RiskBudgeting:
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters

@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import cached_property
+from typing import Any
 
 import numpy as np
 
@@ -127,7 +128,7 @@ class FamilyConstraintBasis:
         if not np.all(np.isfinite(constraint_ratios)):
             raise ValueError("constraint_ratios must contain only finite values.")
 
-    def __getitem__(self, observation_key) -> FamilyConstraintBasis:
+    def __getitem__(self, observation_key: Any) -> FamilyConstraintBasis:
         """Return a basis sliced along the observation axis."""
         if isinstance(observation_key, tuple):
             raise TypeError(

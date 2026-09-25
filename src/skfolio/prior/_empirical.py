@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numbers
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -139,7 +140,9 @@ class EmpiricalPrior(BasePrior):
         self.investment_horizon = investment_horizon
         self.max_history = max_history
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Fit the Empirical Prior estimator.
 
         Parameters
@@ -167,7 +170,9 @@ class EmpiricalPrior(BasePrior):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Incrementally fit the Empirical Prior estimator.
 
         This method allows for streaming/online updates to the prior estimate.
@@ -218,7 +223,9 @@ class EmpiricalPrior(BasePrior):
         )
         return router
 
-    def _fit(self, X: ArrayLike, y, method: str, **fit_params) -> EmpiricalPrior:
+    def _fit(
+        self, X: ArrayLike, y: ArrayLike | None, method: str, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Core fitting logic shared by fit and partial_fit.
 
         Parameters

@@ -47,7 +47,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseMultivariateDist:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseMultivariateDist:
         """Fit the multivariate distribution model.
 
         Parameters

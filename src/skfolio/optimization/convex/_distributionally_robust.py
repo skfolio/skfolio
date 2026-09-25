@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -427,7 +429,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> DistributionallyRobustCVaR:
         """Fit the Distributionally Robust CVaR Optimization estimator.
 

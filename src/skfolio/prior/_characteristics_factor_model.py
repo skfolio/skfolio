@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from graphlib import TopologicalSorter
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,14 @@ from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.typing import AnyArray, BoolArray, FloatArray, ObjArray, StrArray
+from skfolio.typing import (
+    AnyArray,
+    ArrayLike,
+    BoolArray,
+    FloatArray,
+    ObjArray,
+    StrArray,
+)
 from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
 from skfolio.utils._factor_tools import (
     _expand_factor_names,
@@ -854,11 +861,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Fit the characteristics factor model.
 
@@ -925,11 +932,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def partial_fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Incrementally fit the characteristics factor model.
 
@@ -991,12 +998,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def _fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Core fitting logic shared by fit and partial_fit."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -1486,7 +1493,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.factors))
 
-    def set_params(self, **params) -> CharacteristicsFactorModel:
+    def set_params(self, **params: Any) -> CharacteristicsFactorModel:
         """Set the parameters of this estimator.
 
         Valid parameter keys can be listed with `get_params()`. Note that you

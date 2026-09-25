@@ -62,7 +62,7 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         self.threshold = threshold
         self.absolute = absolute
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None):
         """Run the correlation transformer and get the appropriate assets.
 
         Parameters

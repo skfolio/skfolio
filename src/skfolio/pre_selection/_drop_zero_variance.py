@@ -46,7 +46,7 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
     def __init__(self, threshold: float = 1e-8):
         self.threshold = threshold
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None):
         """Fit the transformer on some assets.
 
         Parameters

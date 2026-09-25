@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -115,9 +116,9 @@ class DerivedFactor(BaseFactorExposure, stateless=True):
     def fit_transform(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         source_exposure: FloatArray | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray:
         """Fit and transform the source exposure.
 

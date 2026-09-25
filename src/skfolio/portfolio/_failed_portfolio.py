@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import skfolio.typing as skt
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.typing import ArrayLike, FloatArray
@@ -183,7 +185,7 @@ class FailedPortfolio(Portfolio):
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__(
             X=X,

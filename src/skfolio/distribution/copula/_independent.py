@@ -50,7 +50,7 @@ class IndependentCopula(BaseBivariateCopula):
     def __init__(self, random_state: int | None = None):
         super().__init__(random_state=random_state)
 
-    def fit(self, X: ArrayLike, y=None) -> IndependentCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> IndependentCopula:
         """Fit the Bivariate Independent Copula.
 
         Provided for compatibility with the API.

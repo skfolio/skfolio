@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import inspect
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -156,7 +157,9 @@ class SyntheticData(BasePrior):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> SyntheticData:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> SyntheticData:
         """Fit the Synthetic Data estimator.
 
         Parameters

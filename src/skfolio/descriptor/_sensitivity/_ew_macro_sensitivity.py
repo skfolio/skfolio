@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
-from skfolio.typing import FloatArray
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import (
     _validate_positive_integer,
@@ -146,7 +147,11 @@ class EWMacroSensitivity(BaseDescriptor):
         return request
 
     def fit_transform(
-        self, X: AssetPanel, y=None, reference_returns=None, **fit_params
+        self,
+        X: AssetPanel,
+        y: None = None,
+        reference_returns: ArrayLike | None = None,
+        **fit_params: Any,
     ) -> FloatArray:
         """Compute exponentially weighted macro sensitivities.
 
@@ -175,7 +180,11 @@ class EWMacroSensitivity(BaseDescriptor):
         )
 
     def partial_fit_transform(
-        self, X: AssetPanel, y=None, reference_returns=None, **fit_params
+        self,
+        X: AssetPanel,
+        y: None = None,
+        reference_returns: ArrayLike | None = None,
+        **fit_params: Any,
     ) -> FloatArray:
         """Update EWMA state and return macro sensitivities for this batch.
 

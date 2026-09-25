@@ -540,7 +540,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,
@@ -599,7 +599,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: ArrayLike | None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import sklearn.utils.validation as skv
@@ -284,7 +286,7 @@ class BenchmarkTracker(MeanRisk):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params) -> BenchmarkTracker:
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any) -> BenchmarkTracker:
         """Fit the Return-Based Tracker estimator.
 
         Parameters

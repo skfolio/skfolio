@@ -180,7 +180,7 @@ class JoeCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> JoeCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> JoeCopula:
         r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.

@@ -102,7 +102,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         self.expiration_dates = expiration_dates
         self.expiration_lookahead = expiration_lookahead
 
-    def fit(self, X: pd.DataFrame, y=None) -> SelectNonExpiring:
+    def fit(self, X: pd.DataFrame, y: None = None) -> SelectNonExpiring:
         """Run the SelectNonExpiring transformer and get the appropriate assets.
 
         Parameters

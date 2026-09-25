@@ -175,7 +175,7 @@ class TimeSeriesFactorModel(BasePrior):
         y: Any = None,
         *,
         factors: ArrayLike,
-        **fit_params,
+        **fit_params: Any,
     ) -> TimeSeriesFactorModel:
         """Fit the Time-series factor model estimator.
 
@@ -315,7 +315,7 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any): ...
 
 
 class LoadingMatrixRegression(BaseLoadingMatrix):
@@ -368,7 +368,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         )
         return router
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any):
         """Fit the Loading Matrix Regression Estimator.
 
         Parameters

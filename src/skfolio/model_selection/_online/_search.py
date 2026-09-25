@@ -226,7 +226,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         estimator: skb.BaseEstimator,
         *,
-        scoring=None,
+        scoring: Callable | dict | skt.Measure | None = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -235,7 +235,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: Literal["raise"] | float = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,
@@ -276,7 +276,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         X: ArrayLike,
         y: ArrayLike | None = None,
-        **fit_params,
+        **fit_params: Any,
     ):
         """Run the online search over all candidate parameter combinations.
 
@@ -430,7 +430,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         skv.check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict(X)
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: ArrayLike | None = None):
         """Score using the best estimator found during search.
 
         Parameters
@@ -677,7 +677,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         estimator: skb.BaseEstimator,
         param_grid: dict | list[dict],
         *,
-        scoring=None,
+        scoring: Callable | dict | skt.Measure | None = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -686,7 +686,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: Literal["raise"] | float = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,
@@ -964,7 +964,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         param_distributions: dict,
         *,
         n_iter: int = 10,
-        scoring=None,
+        scoring: Callable | dict | skt.Measure | None = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -974,7 +974,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
         random_state: int | None = None,
-        error_score=np.nan,
+        error_score: Literal["raise"] | float = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,

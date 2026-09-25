@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.spatial.distance as scd
@@ -72,7 +74,7 @@ class PearsonDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> PearsonDistance:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> PearsonDistance:
         """Fit the Pearson Distance estimator.
 
         Parameters
@@ -144,7 +146,7 @@ class KendallDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> KendallDistance:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> KendallDistance:
         """Fit the Kendall estimator.
 
         Parameters
@@ -216,7 +218,7 @@ class SpearmanDistance(BaseDistance):
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> SpearmanDistance:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> SpearmanDistance:
         """Fit the Spearman estimator.
 
         Parameters
@@ -312,7 +314,9 @@ class CovarianceDistance(BaseDistance):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> CovarianceDistance:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> CovarianceDistance:
         """Fit the Covariance Distance estimator.
 
         Parameters
@@ -396,7 +400,7 @@ class DistanceCorrelation(BaseDistance):
         )
         return value
 
-    def fit(self, X: ArrayLike, y=None) -> DistanceCorrelation:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> DistanceCorrelation:
         """Fit the Distance Correlation estimator.
 
         Parameters
@@ -489,7 +493,7 @@ class MutualInformation(BaseDistance):
         self.n_bins = n_bins
         self.normalize = normalize
 
-    def fit(self, X: ArrayLike, y=None) -> MutualInformation:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> MutualInformation:
         """Fit the Mutual Information estimator.
 
         Parameters

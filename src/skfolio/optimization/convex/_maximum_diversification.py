@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -15,6 +17,9 @@ from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
 from skfolio.typing import ArrayLike
+
+if TYPE_CHECKING:
+    import cvxpy as cp
 
 
 class MaximumDiversification(MeanRisk):
@@ -555,7 +560,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> MaximumDiversification:
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -583,7 +588,7 @@ class MaximumDiversification(MeanRisk):
         # `X` is unchanged and only `feature_names_in_` is performed
         _ = skv.validate_data(self, X, skip_check_array=True)
 
-        def func(w, obj):
+        def func(w: cp.Variable, obj: MaximumDiversification):
             """Weighted volatilities."""
             dist = obj.prior_estimator_.return_distribution_
             if obj.investable_mask_ is not None:

@@ -132,7 +132,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         self.raise_on_failure = raise_on_failure
 
     # Automatically wrap all subclasses' fit to add fallback behavior
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any):
         super().__init_subclass__(**kwargs)
 
         original_fit = cls.__dict__.get("fit")
@@ -140,7 +140,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return
 
         @wraps(original_fit)
-        def _wrapped_fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
+        def _wrapped_fit(
+            self: Any,
+            X: ArrayLike,
+            y: ArrayLike | None = None,
+            **fit_params: Any,
+        ):
             self.fallback_ = None
             self.fallback_chain_ = None
             self.error_ = None
@@ -175,7 +180,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         X: ArrayLike,
         y: ArrayLike | None,
         primary_error: Exception,
-        **fit_params,
+        **fit_params: Any,
     ) -> None:
         """Execute the configured fallback chain after a primary `fit` failure.
 
@@ -404,7 +409,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return result.measures_mean(RatioMeasure.SHARPE_RATIO)
         return result.sharpe_ratio
 
-    def fit_predict(self, X):
+    def fit_predict(self, X: ArrayLike):
         """Perform `fit` on `X` and returns the predicted `Portfolio` or
         `Population` of `Portfolio` on `X` based on the fitted `weights`.
         For factor models, use `fit(X, factors=...)` then `predict(X)` separately.

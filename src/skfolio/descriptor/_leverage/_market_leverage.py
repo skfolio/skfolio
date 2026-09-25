@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -74,7 +76,9 @@ class MarketLeverage(BaseDescriptor, stateless=True):
     >>> market_leverage = descriptor.fit_transform(X)
     """
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute market leverage ratios.
 
         Parameters

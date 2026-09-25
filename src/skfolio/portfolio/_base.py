@@ -43,7 +43,7 @@ import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -520,7 +520,7 @@ class BasePortfolio:
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        **kwargs,
+        **kwargs: Any,
     ):
         self._loaded = False
         self._annualization_factor = _resolve_annualization_factor(
@@ -569,12 +569,12 @@ class BasePortfolio:
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, BasePortfolio) and np.array_equal(
             self.fitness, other.fitness
         )
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: BasePortfolio) -> bool:
         if not isinstance(other, BasePortfolio):
             raise TypeError(
                 "`>` not supported between instances of `Portfolio` and"
@@ -582,7 +582,7 @@ class BasePortfolio:
             )
         return self.dominates(other)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: BasePortfolio) -> bool:
         if not isinstance(other, BasePortfolio):
             raise TypeError(
                 "`>=` not supported between instances of `Portfolio` and"
@@ -603,7 +603,7 @@ class BasePortfolio:
         result._loaded = True
         return result
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str):
         try:
             return object.__getattribute__(self, name)
         except AttributeError as e:
@@ -617,7 +617,7 @@ class BasePortfolio:
             setattr(self, name, value)
             return value
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any):
         if name != "_loaded" and self._loaded:
             if name in self._read_only_attrs:
                 raise AttributeError(
@@ -629,7 +629,7 @@ class BasePortfolio:
                 self.clear()
         object.__setattr__(self, name, value)
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str):
         # We only want to raise an error when the attribute doesn't exist and we don't
         # want to raise an error when it's a valid attribute that has not been assigned
         # a value.
@@ -928,20 +928,20 @@ class BasePortfolio:
             if "drawdowns" in risk_func_args:
                 del risk_func_args["drawdowns"]
 
-                def meta_risk_func(returns):
+                def meta_risk_func(returns: pd.Series):
                     drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
                     return risk_func(drawdowns=drawdowns, **risk_func_args)
 
             else:
                 del risk_func_args["returns"]
 
-                def meta_risk_func(returns):
+                def meta_risk_func(returns: pd.Series):
                     return risk_func(returns=returns, **risk_func_args)
 
             if perf_measure is not None:
                 perf_func = getattr(mt, str(perf_measure.value))
 
-                def func(returns):
+                def func(returns: pd.Series):
                     return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
                         returns
                     )
@@ -951,7 +951,7 @@ class BasePortfolio:
         else:
             perf_func = getattr(mt, str(perf_measure.value))
 
-            def func(returns):
+            def func(returns: pd.Series):
                 return perf_func(returns)
 
         rolling = (

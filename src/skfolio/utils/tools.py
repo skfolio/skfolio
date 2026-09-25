@@ -83,7 +83,7 @@ class AutoEnum(str, Enum):
 
     @staticmethod
     def _generate_next_value_(
-        name: str, start: int, count: int, last_values: Any
+        name: str, start: int, count: int, last_values: list[Any]
     ) -> str:
         """Overriding `auto()`."""
         return name.lower()
@@ -113,18 +113,18 @@ class AutoEnum(str, Enum):
 class cached_property_slots:
     """Cached property decorator for slots."""
 
-    def __init__(self, func):
+    def __init__(self, func: Callable) -> None:
         self.func = func
         self.public_name = None
         self.private_name = None
         self.__doc__ = func.__doc__
 
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner: type, name: str) -> None:
         """Set Name."""
         self.public_name = name
         self.private_name = f"_{name}"
 
-    def __get__(self, instance, owner=None):
+    def __get__(self, instance: object, owner: type | None = None) -> Any:  # noqa: ANN401  # cached value of any type
         """Getter."""
         if instance is None:
             return self
@@ -140,7 +140,7 @@ class cached_property_slots:
             setattr(instance, self.private_name, value)
         return value
 
-    def __set__(self, instance, owner=None):
+    def __set__(self, instance: object, owner: object = None) -> None:
         """Setter."""
         raise AttributeError(
             f"'{type(instance).__name__}' object attribute '{self.public_name}' is"
@@ -150,7 +150,7 @@ class cached_property_slots:
     __class_getitem__ = classmethod(GenericAlias)
 
 
-def _make_key(args, kwds) -> int:
+def _make_key(args: tuple, kwds: dict[str, Any]) -> int:
     """Make a cache key from optionally typed positional and keyword arguments."""
     key = args
     if kwds:
@@ -159,7 +159,7 @@ def _make_key(args, kwds) -> int:
     return hash(key)
 
 
-def _make_indexable(iterable):
+def _make_indexable(iterable: Any) -> Any:  # noqa: ANN401  # sparse, pandas or array-like
     """Ensure iterable supports indexing or convert to an indexable variant.
 
     Convert sparse matrices to csr and other non-indexable iterable to arrays.
@@ -184,7 +184,7 @@ def _check_method_params(
     params: dict,
     indices: IntArray | slice | None = None,
     axis: int = 0,
-):
+) -> dict[str, Any]:
     """Check and validate the parameters passed to a specific method like `fit`.
 
     Parameters
@@ -227,7 +227,7 @@ def safe_indexing(
     X: ArrayLike | pd.DataFrame,
     indices: ArrayLike | slice | None,
     axis: int = 0,
-):
+) -> ArrayLike | pd.DataFrame:
     """Return rows, items or columns of X using indices.
 
     Parameters
@@ -267,7 +267,7 @@ def safe_split(
     y: ArrayLike | None = None,
     indices: IntArray | slice | None = None,
     axis: int = 0,
-):
+) -> tuple[ArrayLike, ArrayLike | None]:
     """Create subset of dataset.
 
     Slice X, y according to indices for cross-validation.
@@ -321,9 +321,9 @@ def cache_method(cache_name: str) -> Callable:
     # To avoid memory leakage and proper garbage collection, self should not be part of
     # the cache key.
     # This is a known issue when we use functools.lru_cache on class methods.
-    def decorating_function(method):
+    def decorating_function(method: Callable) -> Callable:
         @wraps(method)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self: object, *args, **kwargs: Any) -> object:
             func_name = method.__name__
             key = _make_key(args, kwargs)
             try:
@@ -463,8 +463,8 @@ def _validate_unit_interval(value: object, name: str) -> None:
 def check_estimator(
     estimator: skb.BaseEstimator | Literal["passthrough"] | None,
     default: skb.BaseEstimator | None,
-    check_type: Any,
-):
+    check_type: type | tuple[type, ...],
+) -> Any:  # noqa: ANN401  # a `BaseEstimator | Literal["passthrough"] | None` union breaks callers
     """Check the estimator type and return its cloned version if provided, otherwise
     return the default estimator.
 
@@ -528,7 +528,7 @@ def _validate_mask(
 def input_to_array(
     items: dict | ArrayLike,
     n_assets: int,
-    fill_value: Any,
+    fill_value: float | str,
     dim: int,
     assets_names: StrArray | None,
     name: str,
@@ -854,14 +854,14 @@ def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
 
 
 def fit_single_estimator(
-    estimator: Any,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     X: ArrayLike,
     y: ArrayLike | None,
     fit_params: dict,
     indices: IntArray | slice | None = None,
     axis: int = 0,
     method: str = "fit",
-):
+) -> Any:  # noqa: ANN401  # duck-typed estimator
     """Fit (or partial-fit) an estimator on a subset of the data.
 
     Parameters
@@ -903,7 +903,7 @@ def fit_single_estimator(
 
 
 def fit_and_predict(
-    estimator: Any,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     X: ArrayLike,
     y: ArrayLike | None,
     train: IntArray,
@@ -1017,7 +1017,7 @@ def deduplicate_names(names: ArrayLike) -> list[str]:
     return names
 
 
-def get_feature_names(X):
+def get_feature_names(X: Any) -> np.ndarray | None:  # noqa: ANN401  # any __dataframe__ container
     """Get feature names from X.
 
     Support for other array containers should place its implementation here.
@@ -1167,14 +1167,14 @@ def apply_window_size(X: ArrayLike, window_size: int | None) -> ArrayLike:
 
 
 def _call_estimator(
-    estimator: Any,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     method: str,
     X: ArrayLike,
     y: ArrayLike | None = None,
     *,
     routed_params: Bunch | None = None,
     extra_params: Mapping[str, Any] | None = None,
-) -> Any:
+) -> Any:  # noqa: ANN401  # duck-typed estimator
     """Call an estimator method with routed and extra parameters.
 
     Parameters
@@ -1250,7 +1250,9 @@ def _call_estimator(
     return method_caller(X, y, **routed, **extra_params)
 
 
-def _filter_supported_params(estimator, method: str, **kwargs):
+def _filter_supported_params(
+    estimator: object, method: str, **kwargs: Any
+) -> dict[str, Any]:
     """Return keyword arguments accepted by an estimator method.
 
     This helper is used for internally generated parameters that should be passed only

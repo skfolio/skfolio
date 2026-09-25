@@ -82,7 +82,7 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
     def __init__(self, drop_assets_with_internal_nan: bool = False):
         self.drop_assets_with_internal_nan = drop_assets_with_internal_nan
 
-    def fit(self, X: ArrayLike, y=None) -> SelectComplete:
+    def fit(self, X: ArrayLike, y: None = None) -> SelectComplete:
         """Run the SelectComplete transformer and get the appropriate assets.
 
         Parameters

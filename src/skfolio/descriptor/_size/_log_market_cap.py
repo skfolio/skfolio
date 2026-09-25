@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -62,7 +64,9 @@ class LogMarketCap(BaseDescriptor, stateless=True):
     >>> log_market_cap = descriptor.fit_transform(X)
     """
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute log market capitalization.
 
         Parameters

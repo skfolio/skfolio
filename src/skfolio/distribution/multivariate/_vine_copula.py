@@ -31,6 +31,8 @@ import contextlib
 import numbers
 import warnings
 from collections import deque
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import plotly.express as px
@@ -300,7 +302,7 @@ class VineCopula(BaseMultivariateDist):
 
         return k
 
-    def fit(self, X: ArrayLike, y=None) -> VineCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> VineCopula:
         """
         Fit the Vine Copula model to the data.
 
@@ -1170,7 +1172,12 @@ def _is_left_branch(
     return conditioning_counts[v1] <= conditioning_counts[v2]
 
 
-def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_samples):
+def _propagate_samples(
+    X_rand: Any,
+    sampling_order: Sequence[tuple[RootNode | ChildNode, bool | None]],
+    conditioning_vars: set[int],
+    uniform_cond_samples: dict[int, FloatArray],
+) -> None:
     """Propagate samples through the vine structure bottom-up following the
     elimination strategy (tree peeling) given by the Node orders and whether the next
     Node will on the right or left branch.

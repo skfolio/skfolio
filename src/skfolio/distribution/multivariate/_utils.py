@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import auto
 from functools import cached_property
 from itertools import combinations
+from typing import Any
 
 import numpy as np
 import scipy.sparse.csgraph as ssc
@@ -115,7 +116,7 @@ class BaseNode(ABC):
         return self._ref
 
     @abstractmethod
-    def clear_cache(self, **kwargs):
+    def clear_cache(self, **kwargs: Any):
         """Clear the cached pseudo-values and margin values (u and v)."""
         ...
 
@@ -154,7 +155,7 @@ class RootNode(BaseNode):
         self.central = central
         self.pseudo_values = pseudo_values
 
-    def clear_cache(self, **kwargs):
+    def clear_cache(self, **kwargs: Any):
         """Clear the cached margin values (u and v)."""
         self.pseudo_values = None
 
@@ -593,7 +594,7 @@ class Tree:
         return f"Tree(level {self.level})"
 
 
-def _dependence(X, dependence_method: DependenceMethod) -> float:
+def _dependence(X: FloatArray, dependence_method: DependenceMethod) -> float:
     """Compute the dependence between two variables in X using the specified method.
 
     Parameters

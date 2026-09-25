@@ -262,7 +262,7 @@ class WalkForward(sks.BaseCrossValidator):
         self.purged_size = purged_size
 
     def split(
-        self, X: ArrayLike, y=None, groups=None
+        self, X: ArrayLike, y: ArrayLike | None = None, groups: ArrayLike | None = None
     ) -> Iterator[tuple[IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
@@ -335,7 +335,12 @@ class WalkForward(sks.BaseCrossValidator):
             ts_index=X.index,
         )
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: ArrayLike | None = None,
+        y: ArrayLike | None = None,
+        groups: ArrayLike | None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         Parameters
@@ -534,7 +539,7 @@ def _split_from_period_without_train_offset(
     purged_size: int,
     expand_train: bool,
     reduce_test: bool,
-    ts_index,
+    ts_index: pd.Index,
 ) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with integer training periods.
 

@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -540,7 +540,7 @@ class Portfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         fallback_chain: list[tuple[str, str]] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         weights_provided = weights is not None
         rets = _to_numpy_returns(X) if weights_provided else None
@@ -764,7 +764,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = np.trunc(self.weights)
         return self.__class__(**args)
 
-    def __add__(self, other):
+    def __add__(self, other: Portfolio):
         if not isinstance(other, Portfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"
@@ -778,7 +778,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = self.weights + other.weights
         return self.__class__(**args)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Portfolio):
         if not isinstance(other, Portfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"

@@ -66,9 +66,9 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
 
     def __init__(
         self,
-        store_precision=True,
-        assume_centered=False,
-        shrinkage=0.1,
+        store_precision: bool = True,
+        assume_centered: bool = False,
+        shrinkage: float = 0.1,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -85,7 +85,7 @@ class ShrunkCovariance(BaseCovariance, skc.ShrunkCovariance):
             shrinkage=shrinkage,
         )
 
-    def fit(self, X: ArrayLike, y=None) -> ShrunkCovariance:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> ShrunkCovariance:
         """Fit the shrunk covariance model to X.
 
         Parameters

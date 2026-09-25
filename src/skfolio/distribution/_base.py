@@ -58,7 +58,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseDistribution:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseDistribution:
         """Fit the univariate distribution model.
 
         Parameters
@@ -107,7 +107,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         pass
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: ArrayLike | None = None):
         """Compute the total log-likelihood under the model.
 
         Parameters

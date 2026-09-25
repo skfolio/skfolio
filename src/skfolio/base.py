@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from contextlib import suppress
+from typing import Any
 
 import sklearn.base as skb
 
@@ -77,7 +79,7 @@ class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
 
     stateless: bool = False
 
-    def __init_subclass__(cls, *, stateless: bool | None = None, **kwargs):
+    def __init_subclass__(cls, *, stateless: bool | None = None, **kwargs: Any) -> None:
         """When `stateless=True`, the subclass declares that `fit_transform` is
         independent across observations. In this case, the base class injects
         `partial_fit_transform` as a delegation to `fit_transform`, so downstream
@@ -98,7 +100,10 @@ class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
         if stateless:
 
             def partial_fit_transform(
-                self, X: AssetPanel, y=None, **fit_params
+                self: BaseAssetPanelTransformer,
+                X: AssetPanel,
+                y: None = None,
+                **fit_params: Any,
             ) -> FloatArray:
                 """Stateless class delegation to `fit_transform`."""
                 return self.fit_transform(X, y, **fit_params)
@@ -106,7 +111,9 @@ class BaseAssetPanelTransformer(skb.BaseEstimator, ABC):
             cls.partial_fit_transform = partial_fit_transform
 
     @abstractmethod
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Fit the transformer if needed and return transformed values.
 
         Parameters
@@ -132,9 +139,9 @@ class BaseComposition(skb.BaseEstimator, ABC):
     """Handles parameter management for ensemble estimators."""
 
     @abstractmethod
-    def __init__(self): ...
+    def __init__(self) -> None: ...
 
-    def _get_params(self, attr, deep=True):
+    def _get_params(self, attr: str, deep: bool = True) -> dict[str, Any]:
         out = super().get_params(deep=deep)
         if not deep:
             return out
@@ -156,7 +163,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
                     out[f"{name}__{key}"] = value
         return out
 
-    def _set_params(self, attr, **params):
+    def _set_params(self, attr: str, **params: Any) -> BaseComposition:
         # Ensure strict ordering of parameter setting:
         # 1. All steps
         if attr in params:
@@ -178,7 +185,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
         super().set_params(**params)
         return self
 
-    def _replace_estimator(self, attr, name, new_val):
+    def _replace_estimator(self, attr: str, name: str, new_val: object) -> None:
         # assumes `name` is a valid estimator name
         new_estimators = list(getattr(self, attr))
         for i, (estimator_name, _) in enumerate(new_estimators):
@@ -187,7 +194,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
                 break
         setattr(self, attr, new_estimators)
 
-    def _validate_names(self, names):
+    def _validate_names(self, names: Sequence[str]) -> None:
         if len(set(names)) != len(names):
             raise ValueError(f"Names provided are not unique: {list(names)!r}")
         invalid_names = set(names).intersection(self.get_params(deep=False))

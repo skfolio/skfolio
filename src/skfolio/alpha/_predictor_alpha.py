@@ -13,6 +13,7 @@ import numpy as np
 import sklearn as sk
 import sklearn.model_selection as sks
 import sklearn.utils.metadata_routing as skm
+from sklearn.utils import Bunch
 
 import skfolio.typing as skt
 from skfolio._constants import (
@@ -356,7 +357,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         )
         return router
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> PredictorAlpha:
         """Fit the alpha model from scratch (batch mode).
 
         This method works with any sklearn-compatible predictor. It resets all
@@ -385,7 +386,9 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> PredictorAlpha:
         """Incrementally fit the alpha model with new observations (online mode).
 
         This method supports streaming/online updates. It maintains internal
@@ -427,10 +430,10 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> PredictorAlpha:
         """Fit predictor and calibration state from one batch."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -626,7 +629,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         scores_flat: FloatArray,
         predictor_target_flat: FloatArray,
         train_mask: BoolArray,
-        routed_params,
+        routed_params: Bunch,
     ) -> None:
         """Fit or update the user-provided predictor on new valid samples."""
         if not self._predictor_fitted:
@@ -652,7 +655,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         train_mask: BoolArray,
         idio_variances: FloatArray,
         method: str,
-        routed_params,
+        routed_params: Bunch,
     ) -> FloatArray | None:
         """Predict uncalibrated alpha before the predictor consumes new targets."""
         if self._predictor_fitted:

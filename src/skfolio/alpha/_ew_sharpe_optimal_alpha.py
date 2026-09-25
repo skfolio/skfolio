@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
@@ -409,7 +411,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.normalize_weights = normalize_weights
         self.n_jobs = n_jobs
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Fit the alpha model.
 
         Resets all internal state, processes the provided panel and stores the latest
@@ -436,7 +440,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="fit", **fit_params)
         return self
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Fit the alpha model and return historical alpha forecasts.
 
         The returned alpha at observation :math:`t` only uses coefficient updates whose
@@ -462,7 +468,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._reset()
         return self._fit(X, y, method="fit", transform=True, **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Incrementally fit the alpha model with new observations.
 
         This method supports streaming/online updates. It maintains internal buffers to
@@ -488,7 +496,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="partial_fit", **fit_params)
         return self
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Incrementally fit the alpha model and return new historical alpha forecasts.
 
         Only rows corresponding to the newly supplied observations are returned.
@@ -515,11 +525,11 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
         transform: bool = False,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray | None:
         """Fit the model state and optionally return historical alpha forecasts."""
         routed_params = skm.process_routing(self, method, **fit_params)

@@ -45,7 +45,7 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         cs_weights: ArrayLike | None = None,
         cs_groups: ArrayLike | None = None,
     ):
@@ -112,7 +112,7 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     def fit_transform(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         cs_weights: ArrayLike | None = None,
         cs_groups: ArrayLike | None = None,
     ) -> FloatArray:

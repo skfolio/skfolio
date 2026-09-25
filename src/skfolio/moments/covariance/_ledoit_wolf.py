@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import sklearn.covariance as skc
 
 from skfolio.moments.covariance._base import BaseCovariance
@@ -102,9 +104,9 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
 
     def __init__(
         self,
-        store_precision=True,
-        assume_centered=False,
-        block_size=1000,
+        store_precision: bool = True,
+        assume_centered: bool = False,
+        block_size: int = 1000,
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
@@ -121,7 +123,9 @@ class LedoitWolf(BaseCovariance, skc.LedoitWolf):
             block_size=block_size,
         )
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> LedoitWolf:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> LedoitWolf:
         """Fit the Ledoit-Wolf shrunk covariance model to X.
 
         Parameters

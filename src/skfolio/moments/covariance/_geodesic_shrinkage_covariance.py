@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from enum import auto
+from typing import Any
 
 import numpy as np
 import scipy.linalg as scl
@@ -179,7 +180,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> GeodesicShrinkageCovariance:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> GeodesicShrinkageCovariance:
         """Fit the Geodesic Shrinkage Covariance estimator.
 
         Parameters

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -119,7 +121,7 @@ class InverseVolatility(BaseOptimization):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> InverseVolatility:
         """Fit the Inverse Volatility estimator.
 
@@ -237,7 +239,7 @@ class EqualWeighted(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y=None) -> EqualWeighted:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> EqualWeighted:
         """Fit the Equal Weighted estimator.
 
         Parameters
@@ -335,7 +337,7 @@ class Random(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the Random Weighted estimator.
 
         Parameters

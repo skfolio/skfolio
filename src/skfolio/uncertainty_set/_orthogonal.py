@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import numbers
+from typing import Any
 
 import numpy as np
 import scipy.linalg as sla
@@ -136,7 +137,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalMuUncertaintySet:
         r"""Fit the orthogonal mu uncertainty set.
 
@@ -174,7 +175,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalMuUncertaintySet:
         r"""Update the orthogonal mu uncertainty set.
 
@@ -212,7 +213,7 @@ class OrthogonalMuUncertaintySet(BaseMuUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalMuUncertaintySet:
         """Fit the estimator from a fitted factor-model return distribution."""
         self._validate_params()
@@ -415,7 +416,7 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalCovarianceUncertaintySet:
         r"""Fit the orthogonal covariance uncertainty set.
 
@@ -453,7 +454,7 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalCovarianceUncertaintySet:
         r"""Update the orthogonal covariance uncertainty set.
 
@@ -491,7 +492,7 @@ class OrthogonalCovarianceUncertaintySet(BaseCovarianceUncertaintySet):
         y: ArrayLike | None = None,
         *,
         return_distribution: ReturnDistribution | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> OrthogonalCovarianceUncertaintySet:
         """Fit the estimator from a fitted factor-model return distribution."""
         self._validate_params()

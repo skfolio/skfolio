@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -151,7 +153,9 @@ class BlackLitterman(BasePrior):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> BlackLitterman:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> BlackLitterman:
         """Fit the Black & Litterman estimator.
 
         Parameters

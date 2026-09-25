@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
@@ -45,7 +46,7 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any): ...
 
 
 class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
@@ -98,4 +99,4 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any): ...

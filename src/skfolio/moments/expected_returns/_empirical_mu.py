@@ -44,7 +44,7 @@ class EmpiricalMu(BaseMu):
     def __init__(self, window_size: int | None = None):
         self.window_size = window_size
 
-    def fit(self, X: ArrayLike, y=None) -> EmpiricalMu:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> EmpiricalMu:
         """Fit the Mu Empirical estimator model.
 
         Parameters

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn as sk
 import sklearn.utils.metadata_routing as skm
@@ -165,7 +167,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         self.transform_by_group = transform_by_group
         self.n_jobs = n_jobs
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute factor exposure from a clean descriptor state.
 
         Parameters
@@ -188,7 +192,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         self._reset()
         return self._fit_transform(X, method="fit_transform", **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update descriptor state and compute factor exposure.
 
         Parameters
@@ -219,7 +225,7 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
         X: AssetPanel,
         *,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray:
         """Compute factor exposure using the requested descriptor transform method."""
         routing_method = method.removesuffix("_transform")

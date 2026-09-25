@@ -175,7 +175,7 @@ class ClaytonCopula(BaseBivariateCopula):
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> ClaytonCopula:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> ClaytonCopula:
         r"""Fit the Bivariate Clayton Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -343,7 +344,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> SchurComplementary:
         """Fit the Schur Complementary estimator.
 
         Parameters
