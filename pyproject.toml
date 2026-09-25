@@ -162,15 +162,23 @@ select = [
     "RUF", # the ruff developer's own rules
     "D",
     "ANN201", # missing return type on public functions
+    "ANN001", # missing argument type
+    "ANN003", # missing **kwargs type
 ]
 ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "ANN201"]
+"tests/*" = ["D", "ANN201", "ANN001", "ANN003"]
+"**/conftest.py" = ["ANN001", "ANN003"]
+# Argument annotations are enforced on public modules first. Private modules and
+# packages (`_name.py`, `_name/`) are exempt until annotated; the `[!_]` keeps
+# `__init__.py` in scope.
+"src/**/_[!_]*.py" = ["ANN001", "ANN003"]
+"src/**/_[!_]*/**" = ["ANN001", "ANN003"]
 # Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
 # interleaved with the `# %%` narrative cells, and a bare expression at the end of a
 # cell is how a value gets rendered in the gallery output.
-"examples/*" = ["D", "E402", "B018", "ANN201"]
+"examples/*" = ["D", "E402", "B018", "ANN201", "ANN001", "ANN003"]
 
 [tool.ruff.lint.isort]
 case-sensitive = true

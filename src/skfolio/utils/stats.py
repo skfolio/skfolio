@@ -546,7 +546,7 @@ def cov_nearest(
     raise ValueError("Unable to find the nearest positive definite matrix")
 
 
-def commutation_matrix(x) -> csr_matrix:
+def commutation_matrix(x: np.ndarray) -> csr_matrix:
     """Compute the commutation matrix.
 
     Parameters
