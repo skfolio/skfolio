@@ -9,6 +9,211 @@ import skfolio.measures as skm
 from skfolio.datasets import load_sp500_dataset
 from skfolio.preprocessing import prices_to_returns
 
+WEIGHTED_RETURN_MEASURES = [
+    skm.mean,
+    skm.mean_absolute_deviation,
+    skm.first_lower_partial_moment,
+    skm.variance,
+    skm.semi_variance,
+    skm.standard_deviation,
+    skm.semi_deviation,
+    skm.third_central_moment,
+    skm.skew,
+    skm.fourth_central_moment,
+    skm.kurtosis,
+    skm.value_at_risk,
+    skm.cvar,
+    skm.entropic_risk_measure,
+]
+
+
+@pytest.mark.parametrize(
+    "measure,kwargs,expected",
+    [
+        (skm.mean, {}, [0.16, 0.4, np.nan]),
+        (skm.variance, {"biased": True}, [0.0024, 0.0, np.nan]),
+        (skm.variance, {}, [0.005, np.nan, np.nan]),
+        (skm.semi_variance, {"biased": True}, [0.00144, 0.0, np.nan]),
+        (skm.semi_variance, {}, [0.003, np.nan, np.nan]),
+    ],
+)
+def test_weighted_moments_normalize_each_column(measure, kwargs, expected):
+    returns = np.array([[0.1, np.nan, np.nan], [0.2, 0.4, np.nan]])
+    # The first column keeps weights [0.4, 0.6]; the second keeps only weight 1.
+    # The first column's unbiased correction is 1 - 0.4**2 - 0.6**2 = 0.48.
+    np.testing.assert_allclose(
+        measure(returns, sample_weight=np.array([0.4, 0.6]), **kwargs),
+        expected,
+        rtol=1e-12,
+        atol=1e-15,
+    )
+
+
+@pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
+@pytest.mark.parametrize("uniform", [False, True])
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_weighted_measures_ignore_missing_returns(measure, uniform, two_dimensional):
+    returns = np.array(
+        [
+            [np.nan, 0.1, np.nan],
+            [0.1, np.nan, np.nan],
+            [-0.5, -0.5, np.nan],
+            [np.nan, 0.3, np.nan],
+            [np.nan, 0.2, np.nan],
+            [-0.3, -0.3, np.nan],
+            [0.8, 0.8, np.nan],
+        ]
+    )
+    weights = np.ones(7) if uniform else np.arange(1.0, 8.0)
+    weights /= weights.sum()
+    if not two_dimensional:
+        returns = returns[:, 0]
+    expected = []
+    columns = returns.T if two_dimensional else [returns]
+    for column in columns:
+        valid = ~np.isnan(column)
+        if not valid.any():
+            expected.append(np.nan)
+        else:
+            remaining = weights[valid] / weights[valid].sum()
+            expected.append(measure(column[valid], sample_weight=remaining))
+    expected = np.array(expected) if two_dimensional else expected[0]
+    original = returns.copy()
+    original_weights = weights.copy()
+    returns.setflags(write=False)
+    weights.setflags(write=False)
+
+    actual = measure(returns, sample_weight=weights)
+
+    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-15)
+    if uniform:
+        np.testing.assert_allclose(actual, measure(returns), rtol=1e-12, atol=1e-15)
+    np.testing.assert_array_equal(returns, original)
+    np.testing.assert_array_equal(weights, original_weights)
+
+
+@pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
+@pytest.mark.parametrize(
+    "returns,weights",
+    [
+        ([], []),
+        ([np.nan, np.nan], [0.2, 0.8]),
+        ([0.1, np.nan], [0.0, 1.0]),
+    ],
+)
+def test_weighted_measures_without_usable_mass(measure, returns, weights):
+    assert np.isnan(measure(np.array(returns), sample_weight=np.array(weights)))
+
+
+@pytest.mark.parametrize("measure", [skm.variance, skm.semi_variance])
+@pytest.mark.parametrize("biased", [False, True])
+@pytest.mark.parametrize("tiny", [None, 1e-200, 1e-320])
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_weighted_second_moments_after_missing_returns(
+    measure, biased, tiny, two_dimensional
+):
+    returns = np.array([[0.01, np.nan], [0.03, 0.02], [np.nan, 0.04]])
+    weights = np.array([tiny, tiny, 1.0]) if tiny else np.array([0.2, 0.3, 0.5])
+    kwargs = {"biased": biased}
+    if measure is skm.semi_variance:
+        kwargs["min_acceptable_return"] = np.array([0.04, 0.01])
+    if not two_dimensional:
+        returns = returns[:, 0]
+        if measure is skm.semi_variance:
+            kwargs["min_acceptable_return"] = 0.04
+    actual = measure(returns, sample_weight=weights, **kwargs)
+    columns = returns.T if two_dimensional else [returns]
+    expected = []
+    for j, column in enumerate(columns):
+        valid = ~np.isnan(column)
+        remaining = weights[valid] / weights[valid].sum()
+        args = kwargs.copy()
+        if measure is skm.semi_variance and two_dimensional:
+            args["min_acceptable_return"] = kwargs["min_acceptable_return"][j]
+        expected.append(measure(column[valid], sample_weight=remaining, **args))
+    np.testing.assert_allclose(actual, expected if two_dimensional else expected[0])
+
+
+@pytest.mark.parametrize("tiny", [1e-200, 1e-320])
+def test_weighted_mean_with_tiny_surviving_mass(tiny):
+    returns = np.array([0.01, 0.03, np.nan])
+    weights = np.array([tiny, tiny, 1.0])
+    np.testing.assert_allclose(skm.mean(returns, sample_weight=weights), 0.02)
+    np.testing.assert_allclose(
+        skm.mean(returns[:, None], sample_weight=weights), [0.02]
+    )
+
+
+@pytest.mark.parametrize("measure", [skm.variance, skm.semi_variance])
+def test_unbiased_second_moment_requires_two_positive_weights(measure):
+    kwargs = {"min_acceptable_return": 0.1} if measure is skm.semi_variance else {}
+    assert np.isnan(
+        measure(np.array([0.01, np.nan]), sample_weight=np.array([0.2, 0.8]), **kwargs)
+    )
+    assert np.isnan(
+        measure(np.array([0.01, 0.02]), sample_weight=np.array([1.0, 0.0]), **kwargs)
+    )
+    # The scalar and column paths must agree even if rounding leaves a tiny
+    # positive correction for the column with only one usable observation.
+    result = measure(
+        np.array([[0.01, 0.02], [np.nan, 0.04]]),
+        sample_weight=np.array([0.43, 0.57]),
+        **kwargs,
+    )
+    assert np.isnan(result[0])
+    assert np.isfinite(result[1])
+
+
+@pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
+def test_weighted_measures_empty_matrix(measure):
+    np.testing.assert_array_equal(
+        measure(np.empty((2, 0)), sample_weight=np.array([0.2, 0.8])), []
+    )
+
+
+@pytest.mark.parametrize("measure", [skm.value_at_risk, skm.cvar])
+def test_weighted_tail_missing_mass_and_fractional_boundary(measure):
+    # The worst return carries exactly the tail mass 1 - beta, so the VaR is the
+    # next loss and the CVaR is the worst loss.
+    expected = -0.1 if measure is skm.value_at_risk else 0.1
+    np.testing.assert_allclose(
+        measure(
+            np.array([-0.1, 0.1, np.nan]),
+            beta=0.5,
+            sample_weight=np.array([0.25, 0.25, 0.5]),
+        ),
+        expected,
+    )
+    # Only half of the second observation belongs to the lower 50% tail.
+    expected = 0.1 if measure is skm.value_at_risk else 0.22
+    np.testing.assert_allclose(
+        measure(
+            np.array([-0.3, -0.1, 0.2, np.nan]),
+            beta=0.5,
+            sample_weight=np.array([0.15, 0.20, 0.15, 0.50]),
+        ),
+        expected,
+    )
+
+
+@pytest.mark.parametrize("beta", [0.0, 0.5, 1.0])
+def test_weighted_var_endpoints_ignore_zero_mass(beta):
+    returns = np.array([-0.5, 0.1, 0.2, 0.9, np.nan])
+    weights = np.array([0.0, 0.2, 0.3, 0.0, 0.5])
+    expected = -0.1 if beta == 1 else -0.2
+    assert skm.value_at_risk(returns, beta=beta, sample_weight=weights) == expected
+
+
+def test_weighted_tail_zero_beta_rounding():
+    rng = np.random.default_rng(0)
+    returns = rng.normal(size=11)
+    weights = rng.random(11)
+    weights /= weights.sum()
+    assert skm.value_at_risk(returns, beta=0, sample_weight=weights) == -returns.max()
+    np.testing.assert_allclose(
+        skm.cvar(returns, beta=0, sample_weight=weights), -weights @ returns
+    )
+
 
 @pytest.fixture(scope="module")
 def returns_1d():
@@ -600,19 +805,25 @@ def test_value_at_risk_sample_weight(returns):
 @pytest.mark.parametrize(
     "n_observations,beta,rank",
     [
-        (20, 0.95, 1),
-        (100, 0.99, 1),
-        (100, 0.95, 5),
-        (200, 0.95, 10),
-        (1000, 0.99, 10),
-        (10, 0.9, 1),
+        (20, 0.95, 2),
+        (100, 0.99, 2),
+        (100, 0.95, 6),
+        (200, 0.95, 11),
+        (1000, 0.99, 11),
+        (1000, 0.975, 26),
+        (10, 0.9, 2),
+        (100, 0.8, 21),
         (252, 0.95, 13),
+        (100, 0.995, 1),
+        (100, 0.95 + 1e-12, 5),
+        (100, 0.95 - 1e-12, 6),
     ],
 )
 def test_value_at_risk_integer_tail_size(n_observations, beta, rank):
-    # When (1 - beta) * n_observations is an integer k, the VaR is the k-th worst
-    # loss even though that product is inexact in floating point, e.g.
-    # (1 - 0.95) * 100 == 5.000000000000004.
+    # When (1 - beta) * n_observations is an integer k, the VaR is the (k + 1)-th
+    # largest loss even though that product is inexact in floating point, e.g.
+    # (1 - 0.95) * 100 == 5.000000000000004 and (1 - 0.9) * 10 == 0.9999999999999998.
+    # Offsetting beta by 1e-12 moves the tail size across the boundary.
     losses = np.random.default_rng(42).permutation(
         np.arange(1, n_observations + 1, dtype=float)
     )
@@ -621,6 +832,66 @@ def test_value_at_risk_integer_tail_size(n_observations, beta, rank):
     q = np.ones(n_observations) / n_observations
     np.testing.assert_almost_equal(
         skm.value_at_risk(-losses, beta=beta, sample_weight=q), expected
+    )
+    np.testing.assert_almost_equal(skm.drawdown_at_risk(-losses, beta=beta), expected)
+
+
+def test_value_at_risk_integer_tail_size_2d():
+    rng = np.random.default_rng(42)
+    losses = np.arange(1, 101, dtype=float)
+    returns = np.column_stack([-rng.permutation(losses), -rng.permutation(losses)])
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 95])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 95]
+    )
+
+
+def test_value_at_risk_integer_tail_size_nan():
+    # NaN returns are excluded: the second column has 20 valid returns, so k = 1.
+    rng = np.random.default_rng(42)
+    col = np.full(100, np.nan)
+    col[:20] = -rng.permutation(np.arange(1, 21, dtype=float))
+    returns = np.column_stack([-rng.permutation(np.arange(1, 101, dtype=float)), col])
+    np.testing.assert_almost_equal(skm.value_at_risk(col, beta=0.95), 19)
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 19])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 19]
+    )
+
+
+@pytest.mark.parametrize(
+    "beta,small_weight,large_weight",
+    [(0.9, 0.02, 0.08), (0.95, 0.01, 0.09)],
+)
+def test_value_at_risk_sample_weight_integer_tail_mass(
+    beta, small_weight, large_weight
+):
+    # The five largest losses carry a total weight of 1 - beta, so the VaR is the
+    # sixth largest loss even though the cumulative weights are inexact.
+    losses = np.arange(1, 21, dtype=float)
+    sample_weight = np.where(losses > 10, small_weight, large_weight)
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=sample_weight), 15
+    )
+
+
+@pytest.mark.parametrize(
+    "first_weight,expected",
+    [
+        (1 / 16 - 2**-35, 0.01),
+        (1 / 16, 0.01),
+        (1 / 16 + 2**-35, 0.20),
+    ],
+)
+def test_value_at_risk_sample_weight_tail_boundary(first_weight, expected):
+    # The worst observation has a weight just below, equal to, or just above the
+    # tail probability 1 - beta = 1/16. All values are exactly representable.
+    returns = np.array([-0.20, -0.01])
+    sample_weight = np.array([first_weight, 1 - first_weight])
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.9375, sample_weight=sample_weight), expected
     )
 
 
