@@ -227,7 +227,7 @@ def safe_indexing(
     X: ArrayLike | pd.DataFrame,
     indices: ArrayLike | slice | None,
     axis: int = 0,
-):
+) -> ArrayLike | pd.DataFrame:
     """Return rows, items or columns of X using indices.
 
     Parameters
@@ -267,7 +267,7 @@ def safe_split(
     y: ArrayLike | None = None,
     indices: IntArray | slice | None = None,
     axis: int = 0,
-):
+) -> tuple[ArrayLike, ArrayLike | None]:
     """Create subset of dataset.
 
     Slice X, y according to indices for cross-validation.
@@ -464,7 +464,7 @@ def check_estimator(
     estimator: skb.BaseEstimator | Literal["passthrough"] | None,
     default: skb.BaseEstimator | None,
     check_type: Any,
-):
+) -> Any:  # a `BaseEstimator | Literal["passthrough"] | None` union breaks callers
     """Check the estimator type and return its cloned version if provided, otherwise
     return the default estimator.
 
@@ -861,7 +861,7 @@ def fit_single_estimator(
     indices: IntArray | slice | None = None,
     axis: int = 0,
     method: str = "fit",
-):
+) -> Any:
     """Fit (or partial-fit) an estimator on a subset of the data.
 
     Parameters
@@ -1017,7 +1017,7 @@ def deduplicate_names(names: ArrayLike) -> list[str]:
     return names
 
 
-def get_feature_names(X):
+def get_feature_names(X) -> np.ndarray | None:
     """Get feature names from X.
 
     Support for other array containers should place its implementation here.
