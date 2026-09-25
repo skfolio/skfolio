@@ -384,7 +384,7 @@ def cov_to_corr(cov: FloatArray) -> tuple[FloatArray, FloatArray]:
     return corr, std
 
 
-def corr_to_cov(corr: FloatArray, std: FloatArray):
+def corr_to_cov(corr: FloatArray, std: FloatArray) -> FloatArray:
     """Convert a correlation matrix to a covariance matrix given its
     standard-deviation vector.
 
@@ -417,7 +417,7 @@ def cov_nearest(
     higham: bool = False,
     higham_max_iteration: int = 100,
     warn: bool = False,
-):
+) -> FloatArray:
     """Compute the nearest covariance matrix that is positive definite and admits a
     Cholesky decomposition. The variances are unchanged.
 
@@ -546,7 +546,7 @@ def cov_nearest(
     raise ValueError("Unable to find the nearest positive definite matrix")
 
 
-def commutation_matrix(x):
+def commutation_matrix(x: np.ndarray) -> csr_matrix:
     """Compute the commutation matrix.
 
     Parameters

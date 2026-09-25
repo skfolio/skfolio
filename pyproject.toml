@@ -161,15 +161,31 @@ select = [
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
     "D",
+    "ANN201", # missing return type on public functions
+    "ANN001", # missing argument type
+    "ANN003", # missing **kwargs type
+    "ANN202", # missing return type on private functions
+    "ANN204", # missing return type on special methods
+    "ANN401", # `Any` in annotations
 ]
 ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D"]
+"tests/*" = ["D", "ANN201", "ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
+"**/conftest.py" = ["ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
+# Annotation rules are enforced on public modules first. Private modules and
+# packages (`_name.py`, `_name/`) are exempt until annotated; the `[!_]` keeps
+# `__init__.py` in scope.
+"src/**/_[!_]*.py" = ["ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
+"src/**/_[!_]*/**" = ["ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
 # Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
 # interleaved with the `# %%` narrative cells, and a bare expression at the end of a
 # cell is how a value gets rendered in the gallery output.
-"examples/*" = ["D", "E402", "B018"]
+"examples/*" = ["D", "E402", "B018", "ANN201", "ANN001", "ANN003", "ANN202", "ANN204", "ANN401"]
+
+[tool.ruff.lint.flake8-annotations]
+# `*args: Any` / `**kwargs: Any` forward arbitrary arguments; don't flag them as ANN401.
+allow-star-arg-any = true
 
 [tool.ruff.lint.isort]
 case-sensitive = true

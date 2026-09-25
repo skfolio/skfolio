@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import sklearn.base as skb
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
@@ -21,7 +22,7 @@ __all__ = ["validate_asset_panel", "validate_cross_sectional_data"]
 
 
 def validate_cross_sectional_data(
-    _estimator,
+    _estimator: skb.BaseEstimator,
     /,
     X: ArrayLike,
     y: ArrayLike | Literal["no_validation"] | None = "no_validation",
@@ -195,7 +196,7 @@ def validate_cross_sectional_data(
 
 
 def validate_asset_panel(
-    _estimator,
+    _estimator: skb.BaseEstimator,
     /,
     asset_panel: AssetPanel | AssetPanelView,
     required_fields: list[str] | None = None,
