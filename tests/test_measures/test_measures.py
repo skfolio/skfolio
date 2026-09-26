@@ -1071,6 +1071,17 @@ def test_get_drawdowns(returns, expected_ndim, compounded):
     assert res.ndim == expected_ndim
 
 
+@pytest.mark.parametrize(
+    "compounded,expected",
+    [(False, [-0.1, -0.05, -0.08]), (True, [-0.1, -0.055, -0.08335])],
+)
+def test_get_drawdowns_counts_loss_from_start(compounded, expected):
+    # The starting wealth is the first peak, so a loss on the first observation
+    # is a drawdown.
+    res = skm.get_drawdowns(np.array([-0.1, 0.05, -0.03]), compounded=compounded)
+    np.testing.assert_almost_equal(res, expected)
+
+
 def test_get_drawdowns_nan(returns_1d_nan):
     res = skm.get_drawdowns(returns_1d_nan, compounded=False)
     np.testing.assert_almost_equal(res, [np.nan, 0.0, -0.5, np.nan, np.nan, -0.8, 0.0])
@@ -1124,8 +1135,8 @@ def test_max_drawdown(returns, compounded, expected):
     [
         ("1d", False, 0.24444925),
         ("1d", True, 0.28518241),
-        ("2d", False, [0.2444493, 0.5652300]),
-        ("2d", True, [0.2851824, 0.5607065]),
+        ("2d", False, [0.2444493, 0.5653650]),
+        ("2d", True, [0.2851824, 0.5608338]),
         ("1d_nan", False, 0.325),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
@@ -1180,8 +1191,8 @@ def test_edar(returns, compounded, expected):
     [
         ("1d", False, 0.360642004),
         ("1d", True, 0.383078682),
-        ("2d", False, [0.360642, 0.7670693]),
-        ("2d", True, [0.3830787, 0.6368674]),
+        ("2d", False, [0.360642, 0.7670837]),
+        ("2d", True, [0.3830787, 0.6368838]),
         ("1d_nan", False, 0.47169905),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
