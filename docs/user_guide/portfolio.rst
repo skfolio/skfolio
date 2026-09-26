@@ -199,6 +199,9 @@ In addition, it also implements weights related methods:
     # Plots
     portfolio.plot_contribution()
     portfolio.plot_composition()
+    portfolio.plot_composition_treemap(
+        groups={"Asset A": ["Equity", "US"], "Asset B": ["Bond", "US"]}
+    )
 
 
 
@@ -218,4 +221,3 @@ corresponding to a train/test fold.
     from skfolio import MultiPeriodPortfolio
 
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
-

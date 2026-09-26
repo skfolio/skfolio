@@ -8,6 +8,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.pipeline import Pipeline
 
 import skfolio.measures as mt
 from skfolio import (
@@ -19,7 +20,10 @@ from skfolio import (
     RiskMeasure,
 )
 from skfolio.datasets import load_sp500_dataset
+from skfolio.optimization import MeanRisk
+from skfolio.portfolio import FailedPortfolio
 from skfolio.portfolio._base import _MEASURES
+from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -570,69 +574,179 @@ def test_portfolio_nan_handling(X, weights):
     np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)
 
 
-def _small_portfolio(with_groups: bool = True) -> Portfolio:
+TREEMAP_GROUPS = {
+    "a": ["Equity", "US"],
+    "b": ["Equity", "EU"],
+    "c": ["Bond", "US"],
+    "d": ["Bond", "EU"],
+}
+
+
+@pytest.fixture
+def X_treemap() -> pd.DataFrame:
     rng = np.random.default_rng(42)
-    X_small = pd.DataFrame(
-        rng.normal(0.001, 0.02, (60, 4)),
-        columns=["asset_a", "asset_b", "asset_c", "asset_d"],
-    )
-    weights = np.array([0.4, 0.3, 0.2, 0.1])
-    groups = None
-    if with_groups:
-        groups = {
-            "asset_a": ["Equity", "US"],
-            "asset_b": ["Equity", "EU"],
-            "asset_c": ["Bond", "US"],
-            "asset_d": ["Bond", "EU"],
-        }
-    return Portfolio(X=X_small, weights=weights, asset_groups=groups)
+    return pd.DataFrame(rng.normal(0.001, 0.02, (60, 4)), columns=["a", "b", "c", "d"])
 
 
-def test_asset_groups_attribute():
-    ptf = _small_portfolio()
-    assert ptf.asset_groups == {
-        "asset_a": ["Equity", "US"],
-        "asset_b": ["Equity", "EU"],
-        "asset_c": ["Bond", "US"],
-        "asset_d": ["Bond", "EU"],
+def _get_treemap_hierarchy(fig) -> list[tuple[str, str]]:
+    """Return the (label, parent label) pairs of the treemap nodes."""
+    trace = fig.data[0]
+    label_by_id = dict(zip(trace.ids, trace.labels, strict=True))
+    return [
+        (label, label_by_id.get(parent, ""))
+        for label, parent in zip(trace.labels, trace.parents, strict=True)
+    ]
+
+
+def _get_treemap_node(fig, name: str) -> dict:
+    """Return the value, net weight and color of the treemap node `name`."""
+    trace = fig.data[0]
+    i = [node_name for node_name, _ in trace.customdata].index(name)
+    return {
+        "value": trace.values[i],
+        "net_weight": trace.customdata[i][1],
+        "color": trace.marker.colors[i],
     }
-    # default is None
-    assert (
-        Portfolio(
-            X=pd.DataFrame(np.ones((5, 2)), columns=["a", "b"]),
-            weights=np.array([0.5, 0.5]),
-        ).asset_groups
-        is None
+
+
+def _parse_rgb(color: str) -> tuple[float, ...]:
+    return tuple(float(c) for c in color.removeprefix("rgb(")[:-1].split(","))
+
+
+def test_plot_composition_treemap(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    trace = fig.data[0]
+    assert trace.branchvalues == "total"
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  70.0%", "ptf  100.0%"),
+        ("US  40.0%", "Equity  70.0%"),
+        ("a", "US  40.0%"),
+        ("EU  30.0%", "Equity  70.0%"),
+        ("b", "EU  30.0%"),
+        ("Bond  30.0%", "ptf  100.0%"),
+        ("US  20.0%", "Bond  30.0%"),
+        ("c", "US  20.0%"),
+        ("EU  10.0%", "Bond  30.0%"),
+        ("d", "EU  10.0%"),
+    ]
+    np.testing.assert_almost_equal(
+        trace.values, [1.0, 0.7, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]
     )
-    # survives pickling (stored in __slots__ and __reduce__)
-    assert pickle.loads(pickle.dumps(ptf)).asset_groups == ptf.asset_groups
+    assert fig.layout.title.text == "Portfolio Composition"
+    assert "Gross Weight" not in trace.hovertemplate
 
 
-def test_plot_composition_treemap():
-    import plotly.graph_objects as go
+def test_plot_composition_treemap_group_formats(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    fig_dict = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"], ["US", "EU", "US", "EU"]]
+    )
+    assert _get_treemap_hierarchy(fig_dict) == _get_treemap_hierarchy(fig_array)
 
-    ptf = _small_portfolio()
-    # uses the asset_groups attribute by default
+    fig_scalar = ptf.plot_composition_treemap(
+        groups={"a": "Equity", "b": "Equity", "c": "Bond", "d": "Bond"}
+    )
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"]]
+    )
+    assert _get_treemap_hierarchy(fig_scalar) == _get_treemap_hierarchy(fig_array)
+
+
+def test_plot_composition_treemap_without_groups(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
     fig = ptf.plot_composition_treemap()
-    assert isinstance(fig, go.Figure)
-    # explicit level names
-    fig = ptf.plot_composition_treemap(level_names=["Class", "Region"])
-    assert isinstance(fig, go.Figure)
-    # explicit groups override the attribute
-    fig = ptf.plot_composition_treemap(
-        groups={a: ["G"] for a in ptf.assets}, level_names=["Group"]
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("a", "ptf  100.0%"),
+        ("b", "ptf  100.0%"),
+        ("c", "ptf  100.0%"),
+        ("d", "ptf  100.0%"),
+    ]
+
+
+def test_plot_composition_treemap_short_positions(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.8, 0.5, -0.2, -0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+
+    assert _get_treemap_node(fig, "ptf")["value"] == pytest.approx(1.6)
+
+    short = _get_treemap_node(fig, "c")
+    assert short["value"] == pytest.approx(0.2)
+    assert short["net_weight"] == pytest.approx(-0.2)
+
+    bond = _get_treemap_node(fig, "Bond")
+    assert bond["value"] == pytest.approx(0.3)
+    assert bond["net_weight"] == pytest.approx(-0.3)
+    assert ("Bond  -30.0%", "ptf  100.0%") in _get_treemap_hierarchy(fig)
+
+    long_red, _, long_blue = _parse_rgb(_get_treemap_node(fig, "a")["color"])
+    short_red, _, short_blue = _parse_rgb(short["color"])
+    assert long_blue > long_red
+    assert short_red > short_blue
+
+    assert (
+        "Long 130.0% | Short -30.0% | Net 100.0% | Gross 160.0%"
+        in fig.layout.title.text
     )
-    assert isinstance(fig, go.Figure)
-    # portfolio without groups still renders a flat treemap
-    assert isinstance(_small_portfolio(with_groups=False).plot_composition_treemap(),
-                      go.Figure)
+    assert "Gross Weight" in fig.data[0].hovertemplate
 
 
-def test_plot_composition_treemap_errors():
-    ptf = _small_portfolio()
-    # groups keys must match the portfolio assets
-    with pytest.raises(ValueError, match="must be the same"):
-        ptf.plot_composition_treemap(groups={"asset_a": ["G"]})
-    # level_names length must match the number of levels
-    with pytest.raises(ValueError, match="number of level names"):
-        ptf.plot_composition_treemap(level_names=["only_one"])
+def test_plot_composition_treemap_ignores_zero_weights_and_extra_assets(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.6, 0.4, 0.0, 0.0], name="ptf")
+    groups = {"a": ["Equity", "US"], "b": ["Equity", "EU"], "e": ["Cash", "US"]}
+    fig = ptf.plot_composition_treemap(groups=groups)
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  100.0%", "ptf  100.0%"),
+        ("US  60.0%", "Equity  100.0%"),
+        ("a", "US  60.0%"),
+        ("EU  40.0%", "Equity  100.0%"),
+        ("b", "EU  40.0%"),
+    ]
+
+
+def test_plot_composition_treemap_optimization_groups(X_treemap):
+    model = MeanRisk(groups=TREEMAP_GROUPS, linear_constraints=["Equity <= 0.6"])
+    ptf = model.fit_predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=model.groups)
+    assert _get_treemap_node(fig, "Equity")["net_weight"] <= 0.6 + 1e-6
+
+
+def test_plot_composition_treemap_pre_selection(X_treemap):
+    pipe = Pipeline(
+        [("pre_selection", SelectKExtremes(k=2)), ("optimization", MeanRisk())]
+    ).set_output(transform="pandas")
+    pipe.fit(X_treemap)
+    ptf = pipe.predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    leaves = {label for label in fig.data[0].labels if label in TREEMAP_GROUPS}
+    assert leaves == set(ptf.nonzero_assets)
+
+
+def test_plot_composition_treemap_failed_portfolio(X_treemap):
+    fig = FailedPortfolio(X=X_treemap).plot_composition_treemap(groups=TREEMAP_GROUPS)
+    assert not fig.data[0].labels
+
+
+@pytest.mark.parametrize(
+    "groups,match",
+    [
+        (
+            {"a": ["Equity"], "b": ["Equity"], "c": ["Bond"]},
+            r"missing from `groups`: \['d'\]",
+        ),
+        (
+            {"a": ["Equity", "US"], "b": ["Equity"], "c": ["Bond"], "d": ["Bond"]},
+            "same number of group levels",
+        ),
+        ([["Equity", "Equity", "Bond"]], "array-like of shape"),
+        (["Equity", "Equity", "Bond", "Bond"], "array-like of shape"),
+    ],
+)
+def test_plot_composition_treemap_errors(X_treemap, groups, match):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    with pytest.raises(ValueError, match=match):
+        ptf.plot_composition_treemap(groups=groups)

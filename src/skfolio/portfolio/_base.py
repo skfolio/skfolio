@@ -168,13 +168,6 @@ class BasePortfolio:
         The confidence level of the Portfolio EDaR (Entropic Drawdown at Risk).
         The default value is `0.95`.
 
-    asset_groups : dict[str, list[str]], optional
-        A dictionary mapping each asset name to a list of group levels, ordered from
-        the top level to the bottom level (for example
-        ``{"AAPL": ["Equity", "US"]}``). It is used to represent the asset hierarchy,
-        for example in :meth:`~skfolio.portfolio.Portfolio.plot_composition_treemap`.
-        The default (`None`) means no group hierarchy is attached to the Portfolio.
-
     Attributes
     ----------
     n_observations : float
@@ -412,7 +405,6 @@ class BasePortfolio:
         # public
         "tag",
         "name",
-        "asset_groups",
         # public read-only
         "returns",
         "observations",
@@ -514,7 +506,6 @@ class BasePortfolio:
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        asset_groups: dict[str, list[str]] | None = None,
     ):
         self._loaded = False
         self._annualized_factor = annualized_factor
@@ -533,7 +524,6 @@ class BasePortfolio:
         self.drawdown_at_risk_beta = drawdown_at_risk_beta
         self.cdar_beta = cdar_beta
         self.edar_beta = edar_beta
-        self.asset_groups = asset_groups
 
         self.name = str(id(self)) if name is None else name
         if fitness_measures is None:
