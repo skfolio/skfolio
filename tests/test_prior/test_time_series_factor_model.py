@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from sklearn import config_context
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LassoCV, LinearRegression
 
 from skfolio.moments import ImpliedCovariance
 from skfolio.prior import (
@@ -219,3 +219,46 @@ def test_fixed_shape_loading_matrix_default_shapes(X, factors):
 def test_loading_matrix_regression_metadata_routing():
     router = LoadingMatrixRegression().get_metadata_routing()
     assert router.owner == "LoadingMatrixRegression"
+
+
+def test_loading_matrix_regression_fit_returns_self(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    model = LoadingMatrixRegression()
+    assert model.fit(X_test, factors_test) is model
+
+
+def test_loading_matrix_regression_routes_sample_weight(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = LoadingMatrixRegression(
+            linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+        )
+        model.fit(X_test, factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(model.loading_matrix_[0], expected.coef_)
+
+
+def test_factor_model_routes_sample_weight_to_loading_matrix(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = TimeSeriesFactorModel(
+            loading_matrix_estimator=LoadingMatrixRegression(
+                linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+            )
+        )
+        model.fit(X_test, factors=factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(
+        model.return_distribution_.factor_model.loading_matrix[0], expected.coef_
+    )
