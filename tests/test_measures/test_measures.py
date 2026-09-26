@@ -1072,14 +1072,31 @@ def test_get_drawdowns(returns, expected_ndim, compounded):
 
 
 @pytest.mark.parametrize(
-    "compounded,expected",
-    [(False, [-0.1, -0.05, -0.08]), (True, [-0.1, -0.055, -0.08335])],
+    "values,compounded,expected",
+    [
+        ([-0.1, 0.05, -0.03], False, [-0.1, -0.05, -0.08]),
+        ([-0.1, 0.05, -0.03], True, [-0.1, -0.055, -0.08335]),
+        ([np.nan, -0.1, 0.05], False, [np.nan, -0.1, -0.05]),
+        ([np.nan, -0.1, 0.05], True, [np.nan, -0.1, -0.055]),
+        ([-1.0, 0.5], False, [-1.0, -0.5]),
+        ([-1.0, 0.5], True, [-1.0, -1.0]),
+    ],
 )
-def test_get_drawdowns_counts_loss_from_start(compounded, expected):
+def test_get_drawdowns_counts_loss_from_start(values, compounded, expected):
     # The starting wealth is the first peak, so a loss on the first observation
     # is a drawdown.
-    res = skm.get_drawdowns(np.array([-0.1, 0.05, -0.03]), compounded=compounded)
+    res = skm.get_drawdowns(np.array(values), compounded=compounded)
     np.testing.assert_almost_equal(res, expected)
+
+
+def test_get_drawdowns_2d_nan_columns():
+    returns = np.array(
+        [[np.nan, np.nan, 0.1], [-0.1, np.nan, -0.2], [0.05, np.nan, 0.0]]
+    )
+    res = skm.get_drawdowns(returns, compounded=False)
+    np.testing.assert_almost_equal(
+        res, [[np.nan, np.nan, 0.0], [-0.1, np.nan, -0.2], [-0.05, np.nan, -0.2]]
+    )
 
 
 def test_get_drawdowns_nan(returns_1d_nan):
