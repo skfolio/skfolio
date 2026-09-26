@@ -56,7 +56,9 @@ def mean(
     result = sample_weight @ returns
     # Scan returns for NaNs only if the weighted mean contains NaN.
     if not np.isnan(result).any():
-        return result
+        # Rescale so that weights not summing to one give the same result
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return result / sample_weight.sum()
     returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
     return _weighted_sum(returns, weights=weights)
 
@@ -1124,7 +1126,7 @@ def _prepare_weighted_returns(
         Return values, possibly containing NaNs.
 
     weights : ndarray of shape (n_observations,)
-        Normalized, non-negative observation weights.
+        Non-negative observation weights.
 
     Returns
     -------
@@ -1134,8 +1136,8 @@ def _prepare_weighted_returns(
 
     weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Missing returns receive zero weight, and the remaining weights are
-        rescaled to sum to one. If no positive weight remains, the normalized
-        weights are NaN.
+        rescaled to sum to one, even when the input weights do not. If no positive
+        weight remains, the normalized weights are NaN.
         Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
         containing NaNs, each column gets its own normalized weight vector.
     """
@@ -1144,10 +1146,11 @@ def _prepare_weighted_returns(
         weights = np.where(
             missing, 0.0, weights[:, None] if returns.ndim == 2 else weights
         )
-        # This is a new array: normalize in place, with 0/0 marking empty columns.
-        with np.errstate(invalid="ignore"):
-            weights /= weights.sum(axis=0)
         returns = np.where(missing, 0.0, returns)
+    # Normalize into a new array, so the caller's weights are left untouched and 0/0
+    # marks columns without positive weight.
+    with np.errstate(invalid="ignore"):
+        weights = weights / weights.sum(axis=0)
     return returns, weights
 
 
