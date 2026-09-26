@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import sklearn.base as skb
+from sklearn import config_context
 
 from skfolio import MultiPeriodPortfolio, RiskMeasure
 from skfolio.distribution import VineCopula
@@ -103,3 +104,33 @@ def test_distribution_estimator_sample_without_n_samples(X):
     model = SyntheticData(distribution_estimator=_SampleWithoutNSamplesEstimator())
     with pytest.raises(ValueError, match="must have `n_samples` as parameter"):
         model.fit(X)
+
+
+class _WeightedGaussianEstimator(skb.BaseEstimator):
+    def fit(self, X, y=None, sample_weight=None):
+        X = np.asarray(X)
+        self.sample_weight_ = sample_weight
+        self.mean_ = np.average(X, axis=0, weights=sample_weight)
+        self.covariance_ = np.cov(X, rowvar=False, aweights=sample_weight)
+        return self
+
+    def sample(self, n_samples=1):
+        rng = np.random.default_rng(42)
+        return rng.multivariate_normal(self.mean_, self.covariance_, size=n_samples)
+
+
+def test_metadata_routing(X):
+    X = X.iloc[-300:]
+    sample_weight = np.linspace(0.5, 1.5, len(X))
+    with config_context(enable_metadata_routing=True):
+        model = SyntheticData(
+            distribution_estimator=_WeightedGaussianEstimator().set_fit_request(
+                sample_weight=True
+            )
+        )
+        model.fit(X, sample_weight=sample_weight)
+
+    np.testing.assert_array_equal(
+        model.distribution_estimator_.sample_weight_, sample_weight
+    )
+    assert model.return_distribution_.returns.shape == (1000, 20)

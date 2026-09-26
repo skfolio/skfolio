@@ -161,7 +161,7 @@ class SyntheticData(BasePrior):
         """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
-            distance_estimator=self.distribution_estimator,
+            distribution_estimator=self.distribution_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router

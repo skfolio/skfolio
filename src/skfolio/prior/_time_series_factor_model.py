@@ -447,9 +447,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.multi_output_regressor_ = skmo.MultiOutputRegressor(
             _linear_regressor, n_jobs=self.n_jobs
         )
-        self.multi_output_regressor_.fit(
-            X=y, y=X, **routed_params.factor_prior_estimator.fit
-        )
+        self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
         # noinspection PyUnresolvedReferences
         n_assets = X.shape[1]
         self.loading_matrix_ = np.array(
@@ -461,3 +459,4 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
                 for i in range(n_assets)
             ]
         )
+        return self
