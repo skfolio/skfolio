@@ -64,16 +64,6 @@ Local development requires Python 3.10 or later and
    `uv sync` creates `.venv` and installs skfolio in editable mode, including the
    default `dev` dependency group.
 
-   `uv sync` also writes a `uv.lock`, which is deliberately not committed
-   (`.gitignore` excludes `*.lock`). skfolio is a library, so its users install
-   it next to their own packages and get whatever versions `pyproject.toml`
-   allows, not the versions in a lock file. CI tests that range instead of one
-   pinned set: the Linux jobs install the minimum supported versions on the
-   oldest Python and the latest releases on every supported Python, and the
-   macOS and Windows jobs use the latest releases. So your local environment may
-   differ from a colleague's on the same commit. If a failure only shows up on
-   one side, compare `uv pip list` and refresh with `uv sync --upgrade`.
-
 3. Create a branch for your changes:
 
    ```shell
@@ -108,11 +98,19 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
+The commit hook runs the same Ruff commands on staged files and also checks YAML
+syntax and file endings.
 
-### Refreshing your environment
+### Dependency versions
 
-To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
+skfolio is a library that supports the dependency versions allowed by
+`pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
+minimum supported versions to the latest releases, and lints with the latest Ruff
+release.
+
+`uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
+failure that you cannot reproduce locally, update your environment to the latest
+allowed versions:
 
 ```shell
 uv sync --upgrade
