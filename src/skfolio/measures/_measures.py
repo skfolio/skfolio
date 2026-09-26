@@ -815,6 +815,9 @@ def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
 
     Notes
     -----
+    The running peak starts at the initial wealth (0 for uncompounded and 1 for
+    compounded cumulative returns), so a loss on the first observation is a drawdown.
+
     NaN handling:
     Missing values (NaNs) remain at their original locations in the output and are
     treated as neutral elements during accumulation, so they do not propagate to
@@ -832,9 +835,11 @@ def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
         mask = None
         cum_clean = cumulative_returns
 
+    # The starting wealth (0 uncompounded, 1.0 compounded) is the first peak, so a loss
+    # on the first observation is a drawdown. It also replaces the -Inf left by leading
+    # NaNs.
     peak = np.maximum.accumulate(cum_clean, axis=0)
-    # Identify -Inf positions due to NaN at the start and replace with baseline
-    peak = np.where(peak == -np.inf, 1.0 if compounded else 0.0, peak)
+    np.maximum(peak, 1.0 if compounded else 0.0, out=peak)
 
     if compounded:
         drawdowns = cum_clean / peak - 1
