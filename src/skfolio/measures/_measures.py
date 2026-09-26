@@ -56,9 +56,11 @@ def mean(
     result = sample_weight @ returns
     # Scan returns for NaNs only if the weighted mean contains NaN.
     if not np.isnan(result).any():
-        # Rescale so that weights not summing to one give the same result
-        with np.errstate(divide="ignore", invalid="ignore"):
-            return result / sample_weight.sum()
+        total = sample_weight.sum()
+        if not _sums_to_one(total, n_observations=sample_weight.shape[0]):
+            with np.errstate(divide="ignore", invalid="ignore"):
+                result = result / total
+        return result
     returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
     return _weighted_sum(returns, weights=weights)
 
@@ -1146,12 +1148,37 @@ def _prepare_weighted_returns(
         weights = np.where(
             missing, 0.0, weights[:, None] if returns.ndim == 2 else weights
         )
+        # This is a new array: normalize in place, with 0/0 marking empty columns.
+        with np.errstate(invalid="ignore"):
+            weights /= weights.sum(axis=0)
         returns = np.where(missing, 0.0, returns)
-    # Normalize into a new array, so the caller's weights are left untouched and 0/0
-    # marks columns without positive weight.
-    with np.errstate(invalid="ignore"):
-        weights = weights / weights.sum(axis=0)
+    elif not _sums_to_one(weights.sum(), n_observations=weights.shape[0]):
+        # Rescale into a new array, so the caller's weights are left untouched.
+        with np.errstate(invalid="ignore"):
+            weights = weights / weights.sum()
     return returns, weights
+
+
+def _sums_to_one(total: float, n_observations: int) -> bool:
+    """Return whether weights with this total already sum to one up to rounding.
+
+    Weights within the rounding error of their sum are left as they are, so that
+    results for normalized weights are unchanged by the rescaling.
+
+    Parameters
+    ----------
+    total : float
+        Sum of the weights.
+
+    n_observations : int
+        Number of weights in the sum.
+
+    Returns
+    -------
+    value : bool
+        True if `total` is within ``4 * n_observations * eps`` of one.
+    """
+    return abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps
 
 
 def _weighted_variance(
