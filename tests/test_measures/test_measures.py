@@ -93,6 +93,26 @@ def test_weighted_measures_ignore_missing_returns(measure, uniform, two_dimensio
 
 
 @pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
+@pytest.mark.parametrize("two_dimensional", [False, True])
+def test_weighted_measures_rescale_weights(measure, two_dimensional):
+    returns = np.array(
+        [[0.1, -0.2], [-0.5, 0.3], [0.2, 0.1], [-0.3, -0.4], [0.8, 0.05], [-0.1, 0.2]]
+    )
+    if not two_dimensional:
+        returns = returns[:, 0]
+    weights = np.arange(1.0, 7.0)
+    weights.setflags(write=False)
+
+    np.testing.assert_allclose(
+        measure(returns, sample_weight=weights),
+        measure(returns, sample_weight=weights / weights.sum()),
+        rtol=1e-12,
+        atol=1e-15,
+    )
+    np.testing.assert_array_equal(weights, np.arange(1.0, 7.0))
+
+
+@pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
 @pytest.mark.parametrize(
     "returns,weights",
     [
