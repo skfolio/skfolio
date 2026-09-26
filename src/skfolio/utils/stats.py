@@ -200,6 +200,7 @@ def n_bins_knuth(x: FloatArray) -> int:
     n = len(x)
 
     def func(y: FloatArray) -> float:
+        """Compute the negative Knuth log-posterior for `y[0]` bins."""
         y = y[0]
         if y <= 0:
             return np.inf

@@ -201,6 +201,16 @@ class EmpiricalPrior(BasePrior):
         return self._fit(X, y, method="partial_fit", **fit_params)
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `mu_estimator` and `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add(
@@ -388,6 +398,7 @@ class EmpiricalPrior(BasePrior):
                 )
 
     def _initialize(self):
+        """Initialize the fitted sub-estimators and the zero-fill warning state."""
         self._zero_fill_warned_assets = set()
         self.mu_estimator_ = check_estimator(
             self.mu_estimator,

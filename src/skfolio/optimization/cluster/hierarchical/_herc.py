@@ -473,6 +473,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         # Recurse from the root until each of the defined cluster is reached and
         # update the weights using the naive risk parity.
         def _recurse(node):
+            """Split the weight of `node` between its subtrees by naive risk parity."""
             # Stop when the cluster is reached
             if set(node.pre_order()) in clusters_sets:
                 return

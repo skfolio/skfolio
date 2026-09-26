@@ -8,6 +8,16 @@ repos:
       - id: end-of-file-fixer
         exclude: LICENSE
 
+  # Docstring presence in `src`. Checks live in `[tool.numpydoc_validation]`.
+  - repo: https://github.com/numpy/numpydoc
+    rev: v1.11.0
+    hooks:
+      - id: numpydoc-validation
+        # UTF-8 mode: numpydoc reads files with the locale encoding, which fails on
+        # Windows for some non-ASCII characters.
+        entry: python -X utf8 -m numpydoc lint
+        files: ^src/
+
   # Use Ruff from the local development environment. CI checks the latest release.
   - repo: local
     hooks:

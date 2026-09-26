@@ -98,8 +98,9 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-The commit hook runs the same Ruff commands on staged files and also checks YAML
-syntax and file endings.
+The commit hook runs the same Ruff commands on staged files, checks that every
+module, class and function in `src` has a docstring, and checks YAML syntax and file
+endings.
 
 ### Dependency versions
 
@@ -150,6 +151,20 @@ documentation deployment workflow.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
+
+### Docstrings
+
+Every module, class and function in `src` has a docstring, including private helpers
+and nested functions. Dunder methods are exempt, and `__init__` parameters are
+documented in the class docstring. Public classes, functions and methods use the
+numpydoc sections, such as `Parameters` and `Returns`. A one-line summary is enough
+for private helpers.
+
+To list missing docstrings across `src`:
+
+```shell
+uv run pre-commit run numpydoc-validation --all-files
+```
 
 ### Docstring examples
 

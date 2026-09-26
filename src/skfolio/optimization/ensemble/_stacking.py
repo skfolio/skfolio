@@ -284,6 +284,16 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         return super()._get_params("estimators", deep=deep)
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of each estimator in
+        `estimators`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:

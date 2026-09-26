@@ -322,8 +322,11 @@ def cache_method(cache_name: str) -> Callable:
     # the cache key.
     # This is a known issue when we use functools.lru_cache on class methods.
     def decorating_function(method):
+        """Wrap `method` so that its results are cached in `cache_name`."""
+
         @wraps(method)
         def wrapper(self, *args, **kwargs):
+            """Return the cached result of `method`, computing it if missing."""
             func_name = method.__name__
             key = _make_key(args, kwargs)
             try:

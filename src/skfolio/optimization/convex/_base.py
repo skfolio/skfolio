@@ -2043,9 +2043,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+        """Fourth central moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+        """Fourth lower partial moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -2439,6 +2441,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping()
@@ -2448,7 +2460,31 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
+        """Fit the Convex Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : ConvexOptimization
+            Fitted estimator.
+        """
+        ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2619,6 +2655,13 @@ def _solve(
     risk_measure,
     scale_objective,
 ):
+    """Solve `problem` and return the weights and problem values.
+
+    Weights and expression values are divided by the homogenization `factor`, the
+    objective by `scale_objective`, and the variance and semi-variance risks once more
+    by `factor`. Warns when the solution is not optimal and raises a
+    `cvxpy.SolverError` when the solver fails.
+    """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():

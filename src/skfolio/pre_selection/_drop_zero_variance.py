@@ -73,5 +73,6 @@ class DropZeroVariance(skf.SelectorMixin, skb.BaseEstimator):
         return self
 
     def _get_support_mask(self):
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_

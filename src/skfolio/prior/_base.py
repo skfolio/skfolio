@@ -13,7 +13,7 @@ import sklearn.base as skb
 from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike
 
-_all__ = ["BasePrior"]
+__all__ = ["BasePrior"]
 
 
 class BasePrior(skb.BaseEstimator, ABC):
@@ -32,4 +32,27 @@ class BasePrior(skb.BaseEstimator, ABC):
     def __init__(self): ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y=None, **fit_params):
+        """Fit the prior estimator and set `return_distribution_`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BasePrior
+            Fitted estimator.
+        """
+        ...

@@ -319,6 +319,7 @@ class FactorModel:
             reduced_idx = {name: i for i, name in enumerate(reduced_names)}
 
             def _map_to_selected(values: FloatArray) -> FloatArray:
+                """Map reduced-regression values to the selected factors."""
                 mapped = np.full(n_selected, np.nan)
                 for i, name in enumerate(factor_names):
                     j = reduced_idx.get(name)
@@ -633,6 +634,7 @@ class FactorModel:
             enriched_panel = panel
 
         def align_2d(values: FloatArray, fill_value: float) -> FloatArray:
+            """Align a 2D model array to the panel, filling gaps with `fill_value`."""
             out = np.full(
                 (panel.n_observations, panel.n_assets), fill_value, dtype=float
             )
@@ -642,6 +644,7 @@ class FactorModel:
             return out
 
         def align_3d(values: FloatArray) -> FloatArray:
+            """Align a 3D model array to the panel, filling gaps with NaN."""
             values = np.asarray(values, dtype=float)
             out = np.full(
                 (panel.n_observations, panel.n_assets, values.shape[2]),
@@ -720,6 +723,7 @@ class FactorModel:
                 asset_indexer = _positions_to_indexer(positions)
 
         def _subset(arr: AnyArray | None, axis: int = 0) -> AnyArray | None:
+            """Select the requested assets along `axis`, passing `None` through."""
             if arr is None:
                 return None
             if asset_indexer is None:
@@ -822,6 +826,7 @@ class FactorModel:
         observation_indexer = _positions_to_indexer(indices)
 
         def _slice(arr: AnyArray | None) -> AnyArray | None:
+            """Select the requested observations, passing `None` through."""
             return arr[observation_indexer] if arr is not None else None
 
         return FactorModel(
@@ -3030,6 +3035,7 @@ class FactorModel:
         lag = self.exposure_lag
 
         def align(field: str) -> AnyArray | None:
+            """Return `field` trimmed for the exposure lag, or `None` if unset."""
             arr = getattr(self, field)
             if arr is None:
                 return None
@@ -3480,6 +3486,7 @@ def _exceedance_agg(threshold: float):
     """Return an aggregation function for t-stat exceedance rate."""
 
     def _agg(raw_t: FloatArray) -> FloatArray:
+        """Return the per-factor rate of absolute t-stats above `threshold`."""
         significant = np.abs(raw_t) > threshold
         n_valid = np.sum(np.isfinite(raw_t), axis=0)
         return safe_divide(np.nansum(significant, axis=0), n_valid, fill_value=0.0)

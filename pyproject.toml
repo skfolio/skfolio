@@ -180,6 +180,13 @@ max-line-length = 320
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.numpydoc_validation]
+# Require a docstring on every module, class and function, including private and
+# nested ones. Ruff's `D` rules skip members of `_`-prefixed modules. `__init__` is
+# documented in the class docstring and dunder methods follow the Python data model.
+checks = ["GL08"]
+exclude = ['\.__\w+__$']
+
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations
 # (including constructors) in coverage, and preserve the default exclusions.

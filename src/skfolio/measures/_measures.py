@@ -1158,7 +1158,7 @@ def _weighted_variance(
     min_acceptable_return: float | FloatArray | None = None,
     downside: bool = False,
 ) -> float | FloatArray:
-    """Compute weighted variance or semi-variance, excluding NaN returns.
+    r"""Compute weighted variance or semi-variance, excluding NaN returns.
 
     The remaining weights are rescaled to sum to one separately for each column.
 
@@ -1172,7 +1172,8 @@ def _weighted_variance(
 
     biased : bool
         If True, return the population second moment. If False, divide it by
-        ``1 - sum(weights**2)`` using the weights after excluding NaN returns.
+        :math:`1 - \sum_i w_i^2`, where :math:`w_i` are the weights after excluding
+        NaN returns.
 
     min_acceptable_return : float or ndarray of shape (n_assets,), optional
         Reference return for computing deviations. If None, use each column's
@@ -1237,10 +1238,12 @@ def _standardized_evar(losses: FloatArray, beta: float) -> float:
     c = np.log(losses.size) + np.log1p(-beta)
 
     def objective(log_t: float) -> float:
+        """Compute :math:`f(t)`, where `log_t` is the log of :math:`t`."""
         t = np.exp(log_t)
         return (np.log(np.exp(t * losses).sum()) - c) / t
 
     def gradient_sign(log_t: float) -> float:
+        """Compute :math:`g(t)`, where `log_t` is the log of :math:`t`."""
         t = np.exp(log_t)
         exp_losses = np.exp(t * losses)
         total = exp_losses.sum()

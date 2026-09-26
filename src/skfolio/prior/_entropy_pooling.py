@@ -464,6 +464,15 @@ class EntropyPooling(BasePrior):
         self.solver_params = solver_params
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
@@ -1368,6 +1377,7 @@ def _replace_prior_views(
     )
 
     def repl(match) -> str:
+        """Return the prior value times the multipliers of a matched pattern."""
         pre_multiplier = float(match.group(1)) if match.group(1) else 1.0
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0

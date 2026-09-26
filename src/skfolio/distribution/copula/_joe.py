@@ -68,7 +68,7 @@ class JoeCopula(BaseBivariateCopula):
         Rotation are needed for archimedean copulas (e.g., Joe, Gumbel, Clayton)
         because their parameters only model positive dependence, and they exhibit
         asymmetric tail behavior. To model negative dependence, one uses rotations
-        to “flip” the copula's tail dependence.
+        to "flip" the copula's tail dependence.
 
     Parameters
     ----------
