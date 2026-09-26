@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-09-26)
+
+### Features
+
+- **portfolio**: Add plot_composition_treemap ([#248](https://github.com/skfolio/skfolio/pull/248),
+  [`288293d`](https://github.com/skfolio/skfolio/commit/288293dd771805e444de1bc5a15aafc6da08895f))
+
+### Testing
+
+- Pin the expected message on every pytest.raises
+  ([#357](https://github.com/skfolio/skfolio/pull/357),
+  [`bf79675`](https://github.com/skfolio/skfolio/commit/bf7967593ea69961fb8981c3c81d9bc271b8c73d))
+
+- **utils**: Cover the untested branches of utils/tools.py
+  ([#354](https://github.com/skfolio/skfolio/pull/354),
+  [`f45fa1e`](https://github.com/skfolio/skfolio/commit/f45fa1e1915ae17d0b07a3912af44946e38e77e4))
+
+
 ## v1.3.4 (2026-09-25)
 
 ### Bug Fixes
