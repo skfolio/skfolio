@@ -87,15 +87,18 @@ def compute_pseudo_observations(X: ArrayLike) -> FloatArray:
 
 
 def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArray:
-    """
+    r"""
     Compute empirical tail concentration for the two variables in X.
     This function computes the concentration at each quantile provided.
 
-    The tail concentration are estimated as:
-      - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
-      - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+    The lower and upper tail concentrations are estimated as:
 
-    where U₁ and U₂ are the pseudo-observations.
+    .. math::
+        \lambda_L(q) = P(U_2 \le q \mid U_1 \le q)
+
+        \lambda_U(q) = P(U_2 \ge q \mid U_1 \ge q)
+
+    where :math:`U_1` and :math:`U_2` are the pseudo-observations.
 
     Parameters
     ----------

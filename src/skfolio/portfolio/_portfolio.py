@@ -13,7 +13,9 @@ from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import sklearn.utils.validation as skv
+from plotly.colors import find_intermediate_color
 
 import skfolio.typing as skt
 from skfolio._constants import (
@@ -703,11 +705,7 @@ class Portfolio(BasePortfolio):
         return self.__class__.__name__ == "FailedPortfolio"
 
     def _get_init_params(self) -> dict:
-        """Return the parameters needed to reconstruct this portfolio.
-
-        Dict inputs of `previous_weights` and `transaction_costs` are restored so that
-        excluded assets and their cost rates are preserved.
-        """
+        """Return the constructor parameters, restoring the original dict inputs."""
         params = super()._get_init_params()
         params.update(self._original_named_inputs)
         return params
@@ -1137,6 +1135,104 @@ class Portfolio(BasePortfolio):
             return self.weights[np.where(self.assets == asset)[0][0]]
         except IndexError:
             raise IndexError("{asset} is not a valid asset name.") from None
+
+    def plot_composition_treemap(self, groups: skt.Groups | None = None) -> go.Figure:
+        r"""Plot the Portfolio composition as a treemap nested by asset groups.
+
+        Each asset is a tile with an area proportional to its absolute weight
+        :math:`|w_i|`, so that long and short positions are both sized by their gross
+        exposure. Long positions are shown in blue and short positions in red, with a
+        color intensity increasing with :math:`|w_i|`. Each group is sized by the sum
+        of the absolute weights of its assets and its header shows the net weight of
+        the group. When the Portfolio has short positions, the subtitle reports the
+        long, short, net and gross exposures.
+
+        Parameters
+        ----------
+        groups : dict[str, list[str]] or array-like of shape (n_groups, n_assets), optional
+            Asset groups defining the treemap hierarchy, in the same format as the
+            `groups` parameter of the optimization estimators. The first group level is
+            the top of the hierarchy. If a dictionary is provided, its (key/value) pair
+            must be the (asset name/asset groups) and keys that are not assets of the
+            Portfolio are ignored. Each asset with a non-zero weight must have one label
+            per group level. The default (`None`) is to place all assets directly under
+            the Portfolio root.
+
+            For example:
+
+                * `groups = {"SX5E": ["Equity", "Europe"], "SPX": ["Equity", "US"], "TLT": ["Bond", "US"]}`
+                * `groups = [["Equity", "Equity", "Bond"], ["Europe", "US", "US"]]`
+
+        Returns
+        -------
+        plot : Figure
+            Returns the plot Figure object.
+        """
+        invested_index = np.flatnonzero(np.abs(self.weights) > _ZERO_THRESHOLD)
+        weights = self.weights[invested_index]
+        group_labels = _get_group_labels(
+            groups=groups, assets=self.assets, asset_index=invested_index
+        )
+        asset_paths = [
+            (*labels, str(asset))
+            for labels, asset in zip(
+                group_labels, self.assets[invested_index], strict=True
+            )
+        ]
+        abs_weights = np.abs(weights)
+        net_weights = _sum_by_node(leaf_paths=asset_paths, leaf_values=weights)
+        gross_weights = _sum_by_node(leaf_paths=asset_paths, leaf_values=abs_weights)
+        max_abs_weight = abs_weights.max(initial=0.0)
+
+        nodes = list(net_weights)
+        asset_nodes = set(asset_paths)
+        labels, colors, customdata = [], [], []
+        for node in nodes:
+            name = node[-1] if node else self.name
+            net_weight = net_weights[node]
+            if node in asset_nodes:
+                labels.append(name)
+                colors.append(
+                    _get_tile_color(weight=net_weight, max_abs_weight=max_abs_weight)
+                )
+            else:
+                # Plotly renders group headers from the labels only
+                labels.append(f"{name}  {net_weight:.1%}")
+                colors.append(_TREEMAP_GROUP_COLOR)
+            customdata.append([name, net_weight])
+
+        hovertemplate = "<b>%{customdata[0]}</b><br>Weight: %{customdata[1]:.2%}"
+        title = "Portfolio Composition"
+        if np.any(weights < 0):
+            hovertemplate += "<br>Gross Weight: %{percentRoot:.2%}"
+            long_exposure = weights[weights > 0].sum()
+            short_exposure = weights[weights < 0].sum()
+            title += (
+                f"<br><sup>Long {long_exposure:.1%} | Short {short_exposure:.1%} | "
+                f"Net {long_exposure + short_exposure:.1%} | "
+                f"Gross {long_exposure - short_exposure:.1%}</sup>"
+            )
+
+        fig = go.Figure(
+            go.Treemap(
+                ids=[str(node) for node in nodes],
+                parents=[str(node[:-1]) if node else "" for node in nodes],
+                labels=labels,
+                values=[gross_weights[node] for node in nodes],
+                branchvalues="total",
+                customdata=customdata,
+                texttemplate="<b>%{label}</b><br>%{customdata[1]:.1%}",
+                hovertemplate=hovertemplate + "<extra></extra>",
+                marker={
+                    "colors": colors,
+                    "line": {"color": "white", "width": 2},
+                    "cornerradius": 4,
+                    "pad": {"t": 24, "l": 4, "r": 4, "b": 4},
+                },
+            )
+        )
+        fig.update_layout(title=title, margin={"t": 80, "l": 20, "r": 20, "b": 20})
+        return fig
 
     def predicted_attribution(
         self,
@@ -1607,3 +1703,76 @@ def _compute_contribution(
                 * weight
             )
     return contributions, _assets
+
+
+# Default Plotly template colors
+_TREEMAP_LONG_COLOR = "rgb(99, 110, 250)"
+_TREEMAP_SHORT_COLOR = "rgb(239, 85, 59)"
+_TREEMAP_GROUP_COLOR = "rgb(229, 236, 246)"
+
+
+def _get_group_labels(
+    groups: skt.Groups | None, assets: StrArray, asset_index: IntArray
+) -> list[list[str]]:
+    """Get the group labels of the assets at `asset_index`, from the top to the bottom
+    group level.
+    """
+    if groups is None:
+        return [[] for _ in asset_index]
+
+    if isinstance(groups, dict):
+        missing_assets = [
+            str(asset) for asset in assets[asset_index] if asset not in groups
+        ]
+        if missing_assets:
+            raise ValueError(
+                "The following assets have a non-zero weight but are missing from "
+                f"`groups`: {missing_assets}."
+            )
+        group_labels = [
+            np.atleast_1d(groups[asset]).astype(str).tolist()
+            for asset in assets[asset_index]
+        ]
+        if len({len(labels) for labels in group_labels}) > 1:
+            raise ValueError(
+                "All assets with a non-zero weight must have the same number of group "
+                "levels in `groups`."
+            )
+        return group_labels
+
+    groups = np.asarray(groups)
+    if groups.ndim != 2 or groups.shape[1] != len(assets):
+        raise ValueError(
+            "`groups` must be a dictionary or an array-like of shape "
+            f"(n_groups, n_assets) with n_assets={len(assets)}, got an array of shape "
+            f"{groups.shape}."
+        )
+    return groups[:, asset_index].T.astype(str).tolist()
+
+
+def _sum_by_node(
+    leaf_paths: list[tuple[str, ...]], leaf_values: FloatArray
+) -> dict[tuple[str, ...], float]:
+    """Sum the leaf values over each node of the tree.
+
+    Each leaf is identified by its path from the root, and its value is added to the
+    leaf and to all its ancestors. The root is the empty path.
+    """
+    sums = {}
+    for path, value in zip(leaf_paths, leaf_values, strict=True):
+        for depth in range(len(path) + 1):
+            node = path[:depth]
+            sums[node] = sums.get(node, 0.0) + value
+    return sums
+
+
+def _get_tile_color(weight: float, max_abs_weight: float) -> str:
+    """Get the color of an asset tile: blue for a long position and red for a short
+    position, with an intensity increasing linearly from 35% for a weight close to zero
+    to 100% for the largest absolute weight.
+    """
+    base_color = _TREEMAP_LONG_COLOR if weight > 0 else _TREEMAP_SHORT_COLOR
+    intensity = 0.35 + 0.65 * abs(weight) / max_abs_weight
+    return find_intermediate_color(
+        "rgb(255, 255, 255)", base_color, intensity, colortype="rgb"
+    )

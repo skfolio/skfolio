@@ -466,6 +466,8 @@ class EntropyPooling(BasePrior):
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
 
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
         Returns
         -------
         routing : MetadataRouter

@@ -38,16 +38,14 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         self.prior_estimator = prior_estimator
 
     def get_metadata_routing(self):
-        """Get metadata routing of this object.
+        """Get metadata routing for this estimator.
 
-        Metadata passed to `fit` is routed to the `fit` method of `prior_estimator`.
-        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
 
         Returns
         -------
         routing : MetadataRouter
-            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
-            routing information.
+            Metadata routing configuration.
         """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
@@ -126,16 +124,14 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         return X, y
 
     def get_metadata_routing(self):
-        """Get metadata routing of this object.
+        """Get metadata routing for this estimator.
 
-        Metadata passed to `fit` is routed to the `fit` method of `prior_estimator`.
-        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
 
         Returns
         -------
         routing : MetadataRouter
-            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
-            routing information.
+            Metadata routing configuration.
         """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,

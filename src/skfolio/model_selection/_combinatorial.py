@@ -48,13 +48,13 @@ class BaseCombinatorialCV(ABC):
         y : array-like of shape (n_samples,), optional
             The (multi-)target variable.
 
-        Returns
-        -------
+        Yields
+        ------
         train : ndarray
             The training set indices for that split.
 
         test : list[ndarray]
-            The list of testing set indices for that split.
+            The testing set indices of each test group for that split.
         """
         ...
 

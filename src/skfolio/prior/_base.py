@@ -13,7 +13,7 @@ import sklearn.base as skb
 from skfolio.prior._model import ReturnDistribution
 from skfolio.typing import ArrayLike
 
-_all__ = ["BasePrior"]
+__all__ = ["BasePrior"]
 
 
 class BasePrior(skb.BaseEstimator, ABC):
@@ -40,9 +40,8 @@ class BasePrior(skb.BaseEstimator, ABC):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like, optional
-            Not used by most prior estimators, present for API consistency by
-            convention.
+        y : Ignored
+            Not used, present for API consistency by convention.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.3.4"
+version = "1.4.0"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -180,14 +180,12 @@ max-line-length = 320
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.interrogate]
-# Docstring coverage over `src`. Ruff's `D` rules cover public docstrings; this
-# gate also counts private helpers and nested functions.
-# `__init__` methods are documented in the class docstring (numpydoc), and dunder
-# methods follow the data model, so neither needs its own docstring.
-ignore-init-method = true
-ignore-magic = true
-fail-under = 100
+[tool.numpydoc_validation]
+# Require a docstring on every module, class and function, including private and
+# nested ones. Ruff's `D` rules skip members of `_`-prefixed modules. `__init__` is
+# documented in the class docstring and dunder methods follow the Python data model.
+checks = ["GL08"]
+exclude = ['\.__\w+__$']
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations

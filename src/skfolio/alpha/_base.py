@@ -70,8 +70,7 @@ class BaseAlpha(skb.BaseEstimator, ABC):
             Ignored. Present for compatibility with scikit-learn's API.
 
         **fit_params : dict
-            Additional fit parameters. Metadata routing may pass these parameters to
-            sub-estimators when applicable.
+            Additional fit parameters passed to the sub-estimators.
 
         Returns
         -------

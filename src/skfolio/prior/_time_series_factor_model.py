@@ -155,6 +155,10 @@ class TimeSeriesFactorModel(BasePrior):
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
 
+        Includes the metadata requested by this estimator and routes metadata passed
+        to `fit` to the `fit` method of `factor_prior_estimator` and
+        `loading_matrix_estimator`.
+
         Returns
         -------
         routing : MetadataRouter
@@ -395,6 +399,8 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
 
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `linear_regressor`.
 
         Returns
         -------

@@ -2043,23 +2043,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
-        """Fourth Central Moment risk measure (not implemented).
-
-        Raises
-        ------
-        NotImplementedError
-            Always, as this risk measure is not supported.
-        """
+        """Fourth central moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
-        """Fourth Lower Partial Moment risk measure (not implemented).
-
-        Raises
-        ------
-        NotImplementedError
-            Always, as this risk measure is not supported.
-        """
+        """Fourth lower partial moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -2453,17 +2441,15 @@ class ConvexOptimization(BaseOptimization, ABC):
         return risk, constraints
 
     def get_metadata_routing(self):
-        """Get metadata routing of this object.
+        """Get metadata routing for this estimator.
 
-        Metadata passed to `fit` and `partial_fit` is routed to the corresponding
-        method of `prior_estimator`.
-        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `prior_estimator`.
 
         Returns
         -------
         routing : MetadataRouter
-            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
-            routing information.
+            Metadata routing configuration.
         """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
@@ -2669,51 +2655,12 @@ def _solve(
     risk_measure,
     scale_objective,
 ):
-    """Solve the CVXPY problem and return the rescaled weights and problem values.
+    """Solve `problem` and return the weights and problem values.
 
-    Weights and expression values (except `"factor"` itself) are divided by the
-    homogenization `factor`, the objective by `scale_objective`, and the variance
-    and semi-variance risks once more by `factor`.
-    A warning is emitted if the solution status is not optimal.
-
-    Parameters
-    ----------
-    w : cvxpy Variable
-        The CVXPY Variable representing assets weights.
-
-    factor : cvxpy Variable or Constant
-        Homogenization factor used to rescale the solution.
-
-    expressions : dict[str, cvxpy Expression]
-        Named CVXPY expressions whose values are returned in `problem_values`.
-
-    problem : cvxpy Problem
-        The CVXPY problem to solve.
-
-    solver : str
-        The solver to use.
-
-    solver_params : dict
-        Parameters passed to `problem.solve`.
-
-    risk_measure : RiskMeasure | ExtraRiskMeasure
-        Risk measure of the problem.
-
-    scale_objective : cvxpy Constant
-        Scale applied to the objective function.
-
-    Returns
-    -------
-    weights : ndarray
-        Optimal asset weights.
-
-    problem_values : dict[str, float | ndarray]
-        Values of `expressions` and of the objective at the solution.
-
-    Raises
-    ------
-    cvxpy.SolverError
-        If the solver fails or finds no solution.
+    Weights and expression values are divided by the homogenization `factor`, the
+    objective by `scale_objective`, and the variance and semi-variance risks once more
+    by `factor`. Warns when the solution is not optimal and raises a
+    `cvxpy.SolverError` when the solver fails.
     """
     try:
         # We suppress cvxpy warning as it is redundant with our warning

@@ -319,10 +319,7 @@ class FactorModel:
             reduced_idx = {name: i for i, name in enumerate(reduced_names)}
 
             def _map_to_selected(values: FloatArray) -> FloatArray:
-                """Map reduced-regression factor values to the selected factors.
-
-                Factors absent from the reduced regression are set to NaN.
-                """
+                """Map reduced-regression values to the selected factors."""
                 mapped = np.full(n_selected, np.nan)
                 for i, name in enumerate(factor_names):
                     j = reduced_idx.get(name)
@@ -637,10 +634,7 @@ class FactorModel:
             enriched_panel = panel
 
         def align_2d(values: FloatArray, fill_value: float) -> FloatArray:
-            """Align a 2D model array to the panel observations and assets.
-
-            Panel observations not in the model are filled with `fill_value`.
-            """
+            """Align a 2D model array to the panel, filling gaps with `fill_value`."""
             out = np.full(
                 (panel.n_observations, panel.n_assets), fill_value, dtype=float
             )
@@ -650,10 +644,7 @@ class FactorModel:
             return out
 
         def align_3d(values: FloatArray) -> FloatArray:
-            """Align a 3D model array to the panel observations and assets.
-
-            Panel observations not in the model are filled with NaN.
-            """
+            """Align a 3D model array to the panel, filling gaps with NaN."""
             values = np.asarray(values, dtype=float)
             out = np.full(
                 (panel.n_observations, panel.n_assets, values.shape[2]),
@@ -3495,7 +3486,7 @@ def _exceedance_agg(threshold: float):
     """Return an aggregation function for t-stat exceedance rate."""
 
     def _agg(raw_t: FloatArray) -> FloatArray:
-        """Return the per-factor fraction of finite |t-stats| above `threshold`."""
+        """Return the per-factor rate of absolute t-stats above `threshold`."""
         significant = np.abs(raw_t) > threshold
         n_valid = np.sum(np.isfinite(raw_t), axis=0)
         return safe_divide(np.nansum(significant, axis=0), n_valid, fill_value=0.0)

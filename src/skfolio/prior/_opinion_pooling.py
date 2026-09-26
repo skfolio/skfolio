@@ -343,6 +343,9 @@ class OpinionPooling(BasePrior, BaseComposition):
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
 
+        Routes metadata passed to `fit` to the `fit` method of each estimator in
+        `estimators`.
+
         Returns
         -------
         routing : MetadataRouter

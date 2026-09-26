@@ -98,20 +98,20 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-CI runs the latest Ruff release; if CI lint fails and local passes, run `uv sync --upgrade`.
+The commit hook runs the same Ruff commands on staged files, checks that every
+module, class and function in `src` has a docstring, and checks YAML syntax and file
+endings.
 
-Every function, method and class in `src` needs a docstring, private helpers
-included (`__init__` and dunder methods excepted). CI enforces this at 100% with
-[interrogate](https://interrogate.readthedocs.io/); the pre-commit hook runs the
-same check. To list what is missing:
+### Dependency versions
 
-```shell
-uvx interrogate@1.7.0 -vv src
-```
+skfolio is a library that supports the dependency versions allowed by
+`pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
+minimum supported versions to the latest releases, and lints with the latest Ruff
+release.
 
-### Refreshing your environment
-
-To refresh all dependencies to the latest versions allowed by `pyproject.toml`:
+`uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
+failure that you cannot reproduce locally, update your environment to the latest
+allowed versions:
 
 ```shell
 uv sync --upgrade
@@ -151,6 +151,20 @@ documentation deployment workflow.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
+
+### Docstrings
+
+Every module, class and function in `src` has a docstring, including private helpers
+and nested functions. Dunder methods are exempt, and `__init__` parameters are
+documented in the class docstring. Public classes, functions and methods use the
+numpydoc sections, such as `Parameters` and `Returns`. A one-line summary is enough
+for private helpers.
+
+To list missing docstrings across `src`:
+
+```shell
+uv run pre-commit run numpydoc-validation --all-files
+```
 
 ### Docstring examples
 

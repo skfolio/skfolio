@@ -111,16 +111,14 @@ class InverseVolatility(BaseOptimization):
         self.prior_estimator = prior_estimator
 
     def get_metadata_routing(self):
-        """Get metadata routing of this object.
+        """Get metadata routing for this estimator.
 
-        Metadata passed to `fit` is routed to the `fit` method of `prior_estimator`.
-        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
 
         Returns
         -------
         routing : MetadataRouter
-            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
-            routing information.
+            Metadata routing configuration.
         """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(

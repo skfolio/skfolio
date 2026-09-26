@@ -269,19 +269,20 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         return X
 
     def tail_concentration(self, quantiles: ArrayLike) -> FloatArray:
-        """
+        r"""
         Compute the tail concentration function for a set of quantiles.
 
-        The tail concentration function is defined as follows:
-         - For quantiles q ≤ 0.5:
-             C(q) = P(U ≤ q, V ≤ q) / q
+        The tail concentration function is defined as:
 
-         - For quantiles q > 0.5:
-             C(q) = (1 - 2q + P(U ≤ q, V ≤ q)) / (1 - q)
+        .. math::
+            C(q) = \begin{cases}
+                \frac{P(U \le q, V \le q)}{q} & \text{if } q \le 0.5 \\
+                \frac{1 - 2q + P(U \le q, V \le q)}{1 - q} & \text{if } q > 0.5
+            \end{cases}
 
-        where U and V are the pseudo-observations of the first and second variables,
-        respectively. This function returns the concentration values for each q
-        provided.
+        where :math:`U` and :math:`V` are the pseudo-observations of the first and
+        second variables, respectively. This function returns the concentration values
+        for each :math:`q` provided.
 
         Parameters
         ----------
@@ -319,7 +320,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     def plot_tail_concentration(
         self, X: ArrayLike | None = None, title: str | None = None
     ) -> go.Figure:
-        """
+        r"""
         Plot the tail concentration function.
 
         This method computes the tail concentration function at 100 evenly spaced
@@ -327,12 +328,15 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         The plot displays the concentration values on the y-axis and the quantile levels
         on the x-axis.
 
-        The tail concentration is defined as:
-          - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
-          - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+        The lower and upper tail concentrations are defined as:
 
-        where U₁ and U₂ are the pseudo-observations of the first and second variables,
-        respectively.
+        .. math::
+            \lambda_L(q) = P(U_2 \le q \mid U_1 \le q)
+
+            \lambda_U(q) = P(U_2 \ge q \mid U_1 \ge q)
+
+        where :math:`U_1` and :math:`U_2` are the pseudo-observations of the first and
+        second variables, respectively.
 
         Parameters
         ----------

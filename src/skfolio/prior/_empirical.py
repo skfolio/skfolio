@@ -203,6 +203,9 @@ class EmpiricalPrior(BasePrior):
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
 
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `mu_estimator` and `covariance_estimator`.
+
         Returns
         -------
         routing : MetadataRouter

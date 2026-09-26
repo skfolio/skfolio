@@ -141,6 +141,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
         @wraps(original_fit)
         def _wrapped_fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
+            """Run `original_fit` and try the fallback chain if it fails."""
             self.fallback_ = None
             self.fallback_chain_ = None
             self.error_ = None

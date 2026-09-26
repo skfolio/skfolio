@@ -31,7 +31,7 @@ class DenoiseCovariance(BaseCovariance):
     differentiating the eigenvalues associated with noise from the eigenvalues
     associated with signal.
     Denoising replaces the eigenvalues of the eigenvectors classified as random by
-    Marčenko-Pastur with a constant eigenvalue.
+    Marchenko-Pastur with a constant eigenvalue.
 
     Parameters
     ----------
@@ -79,7 +79,7 @@ class DenoiseCovariance(BaseCovariance):
     ----------
     .. [1]  "Machine Learning for Asset Managers".
         Elements in Quantitative Finance.
-        Lòpez de Prado (2020).
+        López de Prado (2020).
     """
 
     covariance_estimator_: BaseCovariance
@@ -101,7 +101,7 @@ class DenoiseCovariance(BaseCovariance):
     def get_metadata_routing(self):
         """Get metadata routing for this estimator.
 
-        Routes the `fit` metadata to the `fit` method of `covariance_estimator`.
+        Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
 
         Returns
         -------
@@ -160,12 +160,7 @@ class DenoiseCovariance(BaseCovariance):
         e_val, e_vec = e_val[indices], e_vec[:, indices]
 
         def _marchenko(x_var):
-            """Sum of squared errors between the Marchenko-Pastur and empirical pdfs.
-
-            The Marchenko-Pastur pdf for the variance `x_var` is compared to a
-            Gaussian KDE of the correlation eigenvalues. It is minimized over `x_var`
-            to fit the noise variance.
-            """
+            """Return the squared error between the Marchenko-Pastur and KDE pdfs."""
             e_min, e_max = (
                 x_var * (1 - (1.0 / q) ** 0.5) ** 2,
                 x_var * (1 + (1.0 / q) ** 0.5) ** 2,

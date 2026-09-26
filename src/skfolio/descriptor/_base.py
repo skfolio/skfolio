@@ -370,11 +370,7 @@ class _BaseRollingLogReturn(BaseDescriptor):
         _validate_non_negative_integer(self.skip, "skip")
 
     def _initialize(self) -> None:
-        """Initialize the rolling-window buffers and accumulators.
-
-        The circular buffers hold the last `skip + window` contributions and active
-        masks for each asset.
-        """
+        """Initialize the circular buffers of the last `skip + window` contributions."""
         n_assets = self.n_assets_
         buffer_length = self.skip + self.window
         self._rolling_buffer_length = buffer_length

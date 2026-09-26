@@ -949,7 +949,7 @@ class BasePortfolio:
                 perf_func = getattr(mt, str(perf_measure.value))
 
                 def func(returns):
-                    """Compute the ratio measure (excess perf over risk)."""
+                    """Compute the excess performance over risk on `returns`."""
                     return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
                         returns
                     )
@@ -1351,12 +1351,7 @@ def _resolve_annualization_factor(
     *,
     owner_name: str,
 ) -> float:
-    """Resolve the annualization factor from the new and deprecated arguments.
-
-    Pops the deprecated `annualized_factor` from `kwargs` (warning if used), raises
-    a `TypeError` for any other remaining keyword argument and returns the default
-    annualization factor when the resolved value is None.
-    """
+    """Resolve the annualization factor from the current and deprecated arguments."""
     params = {"annualization_factor": annualization_factor}
     if "annualized_factor" in kwargs:
         params["annualized_factor"] = kwargs.pop("annualized_factor")

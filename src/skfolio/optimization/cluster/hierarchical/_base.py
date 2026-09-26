@@ -457,18 +457,15 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return min_weights, max_weights
 
     def get_metadata_routing(self):
-        """Get metadata routing of this object.
+        """Get metadata routing for this estimator.
 
-        Metadata passed to `fit` is routed to the `fit` method of
-        `prior_estimator`, `distance_estimator` and
-        `hierarchical_clustering_estimator`.
-        See :ref:`Metadata Routing User Guide <metadata_routing>` for more details.
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`,
+        `distance_estimator` and `hierarchical_clustering_estimator`.
 
         Returns
         -------
         routing : MetadataRouter
-            A :class:`~sklearn.utils.metadata_routing.MetadataRouter` encapsulating
-            routing information.
+            Metadata routing configuration.
         """
         # noinspection PyTypeChecker
         router = (

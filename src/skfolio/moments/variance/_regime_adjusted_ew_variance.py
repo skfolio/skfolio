@@ -444,10 +444,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         return self
 
     def _validate_params(self):
-        """Validate parameters and resolve the effective `min_observations`.
-
-        Warns when `regime_half_life` exceeds 138.
-        """
+        """Validate parameters and resolve the effective `min_observations`."""
         if not isinstance(self.regime_method, RegimeAdjustmentMethod):
             raise ValueError(
                 f"regime_method must be a RegimeAdjustmentMethod, got "
@@ -512,11 +509,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
                 )
 
     def _initialize(self):
-        """Initialize internal state with zero-seeded accumulators.
-
-        Also resolves the effective regime half-life, regime decay and regime minimum
-        observations, and creates the HAC return buffer when `hac_lags` is set.
-        """
+        """Initialize the accumulators and resolve the effective regime parameters."""
         n_assets = self.n_features_in_
         self._decay = half_life_to_decay_factor(self.half_life)
         self._var = np.zeros(n_assets)
