@@ -209,6 +209,47 @@ def test_portfolio_annualized(X, weights, annualization_factor):
     )
 
 
+@pytest.mark.parametrize("risk_free_rate", [0.0, 0.02 / 252, 0.05 / 252])
+def test_portfolio_annualized_ratios_with_risk_free_rate(X, weights, risk_free_rate):
+    """`risk_free_rate` is a per-period rate, so annualizing a ratio must scale
+    the whole ratio. Annualizing the mean and the risk separately left the rate
+    un-annualized in the numerator, which silently inflated the annualized
+    ratios by roughly (annual rate / annual volatility)."""
+    annualization_factor = 252.0
+    portfolio = Portfolio(
+        X=X,
+        weights=weights,
+        annualization_factor=annualization_factor,
+        risk_free_rate=risk_free_rate,
+    )
+
+    np.testing.assert_almost_equal(
+        portfolio.sharpe_ratio,
+        (portfolio.mean - risk_free_rate) / portfolio.standard_deviation,
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sharpe_ratio,
+        portfolio.sharpe_ratio * np.sqrt(annualization_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sortino_ratio,
+        portfolio.sortino_ratio * np.sqrt(annualization_factor),
+    )
+
+    # over the full sample the rolling measure and the scalar measure must
+    # agree; they disagreed for every non-zero risk_free_rate
+    for measure in [
+        RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        RatioMeasure.ANNUALIZED_SORTINO_RATIO,
+    ]:
+        rolling = portfolio.rolling_measure(
+            measure=measure, window=portfolio.n_observations
+        )
+        np.testing.assert_almost_equal(
+            getattr(portfolio, str(measure.value)), rolling.iloc[-1]
+        )
+
+
 def test_portfolio_deprecated_annualized_factor(X, weights):
     with pytest.warns(FutureWarning, match="annualized_factor"):
         portfolio = Portfolio(X=X, weights=weights, annualized_factor=12)

@@ -853,11 +853,19 @@ class BasePortfolio:
         elif isinstance(measure, RatioMeasure):
             # ratio
             if measure.is_annualized:
-                mean = self.annualized_mean
+                # Annualize the whole ratio rather than the numerator and the
+                # denominator separately. Annualizing them separately leaves
+                # `risk_free_rate` un-annualized against an annualized mean, so
+                # the same rate would be per-period in `sharpe_ratio` and annual
+                # in `annualized_sharpe_ratio`. It would also disagree with
+                # `rolling_measure`, which scales the non-annualized ratio by
+                # sqrt(annualization_factor).
+                value = getattr(
+                    self, str(measure.non_annualized_measure.value)
+                ) * np.sqrt(self.annualization_factor)
             else:
-                mean = self.mean
-            risk = getattr(self, str(measure.linked_risk_measure.value))
-            value = (mean - self.risk_free_rate) / risk
+                risk = getattr(self, str(measure.linked_risk_measure.value))
+                value = (self.mean - self.risk_free_rate) / risk
         else:
             raise ValueError(f"{measure} is not a Measure.")
         return value
