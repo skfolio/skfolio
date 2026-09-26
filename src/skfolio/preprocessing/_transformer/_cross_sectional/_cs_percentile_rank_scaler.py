@@ -156,8 +156,7 @@ class CSPercentileRankScaler(BaseCSTransformer):
         ------
         ValueError
             If `min_group_size` is not an integer `>= 1`, `X` is not a non-empty 2D
-            array, `cs_weights` is invalid, `cs_groups` is invalid, or any observation
-            has no estimation asset.
+            array, `cs_weights` is invalid, or `cs_groups` is invalid.
         """
         self._validate_params()
 

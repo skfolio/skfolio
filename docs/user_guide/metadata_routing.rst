@@ -56,5 +56,3 @@ Then, in order to route the metadata, you must use `set_fit_request`:
     )
     model.fit(X, implied_vol=implied_vol)
     print(model.weights_)
-
-

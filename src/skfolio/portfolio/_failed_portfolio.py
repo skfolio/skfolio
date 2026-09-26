@@ -29,6 +29,10 @@ class FailedPortfolio(Portfolio):
         rebalancings. This lets the process complete without raising while preserving
         the full timeline for downstream analysis and diagnostics.
 
+        In a sequential evaluation, a failed period contributes no returns and no
+        holdings. The last successful holdings are kept unchanged and supplied as
+        `previous_weights` to the next fit.
+
     Parameters
     ----------
     X : array-like of shape (n_observations, n_assets)
@@ -84,7 +88,7 @@ class FailedPortfolio(Portfolio):
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
-    annualized_factor : float, default=252.0
+    annualization_factor : float, default=252.0
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
@@ -93,6 +97,10 @@ class FailedPortfolio(Portfolio):
         `FailedPortfolio`.
 
     compounded : bool, default=False
+        Accepted for API compatibility with `Portfolio` but not used by
+        `FailedPortfolio`.
+
+    weight_drift : bool, default=False
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
@@ -161,9 +169,10 @@ class FailedPortfolio(Portfolio):
         transaction_costs: skt.MultiInput = None,
         management_fees: skt.MultiInput = None,
         risk_free_rate: float = 0,
-        annualized_factor: float = 252,
+        annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
+        weight_drift: bool = False,
         sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
@@ -174,6 +183,7 @@ class FailedPortfolio(Portfolio):
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
+        **kwargs,
     ):
         super().__init__(
             X=X,
@@ -184,9 +194,10 @@ class FailedPortfolio(Portfolio):
             risk_free_rate=risk_free_rate,
             name=name,
             tag=tag,
-            annualized_factor=annualized_factor,
+            annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
+            weight_drift=weight_drift,
             sample_weight=sample_weight,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,
@@ -198,6 +209,7 @@ class FailedPortfolio(Portfolio):
             cdar_beta=cdar_beta,
             edar_beta=edar_beta,
             fallback_chain=fallback_chain,
+            **kwargs,
         )
 
         self.optimization_error = optimization_error

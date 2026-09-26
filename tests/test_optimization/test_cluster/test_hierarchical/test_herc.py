@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import clone, config_context
 
@@ -94,11 +95,11 @@ def test_herc_empirical_prior(X):
     )
 
 
-def test_herc_factor_model(X, y):
+def test_herc_factor_model(X, factors):
     model = HierarchicalEqualRiskContribution(
         risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
@@ -148,7 +149,7 @@ def test_metadata_routing(X_medium, implied_vol_medium):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_medium)
 
         model.fit(X_medium, implied_vol=implied_vol_medium)
@@ -427,3 +428,39 @@ def test_sample_weight(X, risk_measure, view_params, expected_weights):
     ptf.sample_weight = sample_weight
 
     assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)
+
+
+def test_herc_invalid_risk_measure_type(X):
+    model = HierarchicalEqualRiskContribution().set_params(risk_measure="variance")
+    with pytest.raises(
+        TypeError, match="must be of type `RiskMeasure` or `ExtraRiskMeasure`"
+    ):
+        model.fit(X)
+
+
+@pytest.mark.parametrize(
+    "risk_measure", [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
+)
+def test_herc_unsupported_risk_measure(X, risk_measure):
+    model = HierarchicalEqualRiskContribution(risk_measure=risk_measure)
+    with pytest.raises(ValueError, match="currently not supported in HERC"):
+        model.fit(X)
+
+
+def test_herc_inconsistent_clusters_raise():
+    class InconsistentClustering(HierarchicalClustering):
+        """Clustering whose labels do not follow its own dendrogram."""
+
+        def fit(self, X, y=None):
+            super().fit(X, y)
+            self.labels_ = np.arange(len(self.labels_)) % 2
+            self.n_clusters_ = 2
+            return self
+
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(0.0005, 0.01, (60, 6)), columns=list("ABCDEF"))
+    model = HierarchicalEqualRiskContribution(
+        hierarchical_clustering_estimator=InconsistentClustering()
+    )
+    with pytest.raises(ValueError, match="Corrupted"):
+        model.fit(X)

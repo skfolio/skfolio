@@ -189,7 +189,7 @@ def test_measure_score_custom(X):
 
 
 class TestMakeScorerResponseMethod:
-    """Validate the ``response_method`` parameter."""
+    """Validate the `response_method` parameter."""
 
     def test_default_response_method_is_predict(self):
         scorer = make_scorer(lambda pred: 1.0)
@@ -231,7 +231,7 @@ class TestBaseScorerInheritance:
 
 
 class TestEstimatorScorerCall:
-    """Test that ``_EstimatorScorer`` calls score_func correctly."""
+    """Test that `_EstimatorScorer` calls score_func correctly."""
 
     def test_passes_estimator_and_x(self):
         received = {}
@@ -278,7 +278,7 @@ class TestEstimatorScorerCall:
         assert result == 5.0
 
     def test_accepts_y_parameter(self):
-        """Scorer accepts ``y`` for sklearn protocol compatibility."""
+        """Scorer accepts `y` for sklearn protocol compatibility."""
 
         def fn(estimator, X_test):
             return 1.0

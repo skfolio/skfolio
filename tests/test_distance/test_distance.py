@@ -60,14 +60,14 @@ class TestPearsonDistance:
     #  PearsonDistance raises an error when fitting an empty array
     def test_fitting_empty_array(self):
         pd = PearsonDistance()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
             pd.fit([])
 
     #  PearsonDistance raises an error when fitting an array with NaN values
     def test_fitting_array_with_nan_values(self):
         pd = PearsonDistance()
         X = np.array([[1, 2, 3], [4, np.nan, 6], [7, 8, 9]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Input X contains NaN"):
             pd.fit(X)
 
 
@@ -122,17 +122,23 @@ class TestCovarianceDistance:
     def test_metadata_routing_errors(self, X, implied_vol):
         distance = CovarianceDistance(covariance_estimator=ImpliedCovariance())
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             distance.fit(X)
 
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             distance.fit(X, implied_vol=implied_vol)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             with config_context(enable_metadata_routing=True):
                 distance.fit(X)
 
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             with config_context(enable_metadata_routing=True):
                 distance.fit(X, implied_vol=implied_vol)
 
@@ -144,7 +150,7 @@ class TestCovarianceDistance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 distance.fit(X)
 
             distance.fit(X, implied_vol=implied_vol)
@@ -188,3 +194,31 @@ class TestMutualInformation:
         assert distance.n_bins_method == NBinsMethod.FREEDMAN
         assert distance.n_bins is None
         assert distance.normalize is True
+
+    def test_knuth_n_bins_method(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins_method=NBinsMethod.KNUTH)
+        distance.fit(X)
+        assert distance.codependence_.shape == (3, 3)
+        assert np.all(distance.distance_ >= 0) and np.all(distance.distance_ <= 1)
+        np.testing.assert_allclose(np.diag(distance.distance_), 0.0, atol=1e-12)
+
+    def test_invalid_n_bins_method(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins_method="invalid")
+        with pytest.raises(ValueError, match="n_bins_method invalid is not valid"):
+            distance.fit(X)
+
+    def test_not_normalized(self):
+        rng = np.random.default_rng(0)
+        X = rng.standard_normal((60, 3))
+        distance = MutualInformation(n_bins=5, normalize=False)
+        distance.fit(X)
+        normalized = MutualInformation(n_bins=5, normalize=True).fit(X)
+        assert distance.codependence_.shape == (3, 3)
+        assert np.all(distance.distance_ >= 0)
+        # Un-normalized mutual information is the raw score, which is not bounded by 1
+        assert not np.allclose(distance.codependence_, normalized.codependence_)
+        assert np.all(distance.codependence_ >= 0)

@@ -14,9 +14,10 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.moments import EquilibriumMu
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray, ObjArray
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, input_to_array
 
@@ -25,20 +26,20 @@ class BlackLitterman(BasePrior):
     """Black & Litterman estimator.
 
     The Black & Litterman model [1]_ takes a Bayesian approach by using a prior estimate
-    of the assets expected returns and covariance matrix, which are updated using the
+    of the expected asset returns and covariance matrix, which are updated using the
     analyst views to get a posterior estimate.
 
     Parameters
     ----------
     views : array-like of floats of shape (n_views,)
-        The analyst views about the assets expected returns.
+        The analyst views about the expected asset returns.
         The views must match the following patterns:
 
             * Absolute view: "asset_i = a"
             * Relative view: "asset_i - asset_j = b"
 
         With "asset_i" and "asset_j" the assets names and "a" and "b" the analyst views
-        about the assets expected returns expressed in the same frequency as the
+        about the expected asset returns expressed in the same frequency as the
         returns `X`.
 
         For example:
@@ -62,8 +63,8 @@ class BlackLitterman(BasePrior):
 
     prior_estimator : BasePrior, optional
         The assets' :ref:`prior estimator <prior>`. It is used to estimate
-        the :class:`~skfolio.prior.ReturnDistribution` containing the estimation of the
-        assets expected returns, covariance matrix, returns and Cholesky decomposition.
+        the :class:`~skfolio.prior.ReturnDistribution` containing estimates of
+        expected asset returns, covariance matrix, returns and Cholesky decomposition.
         The default (`None`) is to use `EmpiricalPrior(mu_estimator=EquilibriumMu())`.
 
     tau : float, default=0.05
@@ -76,7 +77,7 @@ class BlackLitterman(BasePrior):
     view_confidences : array-like of floats of shape (n_views,), optional
         Instead of using a diagonal uncertainty matrix (Omega) proportional to the prior
         covariance matrix, you can provide the vector of view confidences (between 0
-        and 1) as describe by the Idzorek's method [2]_.
+        and 1) as described in Idzorek's method [2]_.
 
     risk_free_rate : float, default=0.0
         The risk-free rate.
@@ -119,12 +120,12 @@ class BlackLitterman(BasePrior):
         Idzorek T, 2007.
     """
 
-    groups_: ObjArray
-    views_: ObjArray
+    groups_: StrArray
+    views_: StrArray
     picking_matrix_: FloatArray
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -164,7 +165,7 @@ class BlackLitterman(BasePrior):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

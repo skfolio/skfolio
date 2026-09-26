@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import cvxpy as cp
 import numpy as np
 import pytest
 from sklearn import config_context
+from sklearn.base import clone
 
 from skfolio import RiskMeasure
+from skfolio.datasets import load_sp500_dataset
 from skfolio.moments import ImpliedCovariance
 from skfolio.optimization.convex import (
     RiskBudgeting,
 )
-from skfolio.prior import EmpiricalPrior
+from skfolio.preprocessing import prices_to_returns
+from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 
 
 @pytest.fixture(scope="module")
@@ -139,6 +143,38 @@ def test_risk_budgeting_groups(X, groups, linear_constraints):
     )
 
 
+def test_risk_budgeting_factor_constraint(X, factors):
+    factor_returns = factors.loc[X.index].rename(columns={"MTUM": "Momentum"})
+    model = RiskBudgeting(
+        prior_estimator=TimeSeriesFactorModel(),
+        linear_constraints=["Momentum == 0"],
+    )
+    model.fit(X, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    momentum_exposure = model.weights_ @ factor_model.loading_matrix[:, 0]
+
+    np.testing.assert_almost_equal(momentum_exposure, 0.0)
+
+
+def test_risk_budgeting_factor_family_constraint(X, factors):
+    factor_returns = factors.loc[X.index].rename(columns={"MTUM": "Momentum"})
+    factor_families = ["style", "quality", "style", "defensive", "style"]
+    model = RiskBudgeting(
+        prior_estimator=TimeSeriesFactorModel(factor_families=factor_families),
+        linear_constraints=["style <= -0.05"],
+    )
+    model.fit(X, factors=factor_returns)
+
+    factor_model = model.prior_estimator_.return_distribution_.factor_model
+    style_mask = factor_model.factor_families == "style"
+    family_exposure = (
+        model.weights_ @ factor_model.loading_matrix[:, style_mask]
+    ).sum()
+
+    assert family_exposure <= -0.05
+
+
 @pytest.mark.filterwarnings("ignore:The EVaR problem will be relaxed")
 def test_risk_budgeting_transaction_costs_and_management_fees(X_small, risk_measure):
     model = RiskBudgeting(risk_measure=risk_measure)
@@ -163,13 +199,41 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
 
     # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
+
+
+def test_risk_budgeting_non_investable_nan_assets(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, investable_mask = nan_investable_test_data
+
+    model = RiskBudgeting(
+        risk_budget=np.array([1.0, 2.0, 99.0, 3.0]),
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+    )
+    model.fit(X)
+
+    return_distribution = model.prior_estimator_.return_distribution_
+    assert return_distribution.n_assets == X.shape[1]
+    assert return_distribution.n_investable_assets == np.count_nonzero(investable_mask)
+    np.testing.assert_array_equal(model.investable_mask_, investable_mask)
+    assert model.weights_.shape == (X.shape[1],)
+    assert np.isfinite(model.weights_).all()
+    np.testing.assert_allclose(model.weights_[~investable_mask], 0)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+    assert np.all(model.weights_[investable_mask] > 0)
+
+    portfolio = model.predict(X)
+    expected_returns = (
+        X.iloc[:, investable_mask].to_numpy() @ model.weights_[investable_mask]
+    )
+    np.testing.assert_allclose(portfolio.returns, expected_returns)
 
 
 @pytest.mark.parametrize("weights", [0.05, np.ones(20) / 20, list(np.ones(20) / 20)])
@@ -231,3 +295,79 @@ def test_risk_budgeting_negative_weight_constraints(X_small):
         ),
     ):
         model.fit(X_small)
+
+
+@pytest.fixture(scope="module")
+def X_full():
+    """The full price history, unsliced.
+
+    The ill-conditioning covered below needs the whole sample: the shorter windows the
+    other fixtures use are not concentrated enough to reproduce it.
+    """
+    return prices_to_returns(load_sp500_dataset())
+
+
+@pytest.fixture(scope="module")
+def concentrated_prior():
+    """A prior whose views concentrate `sample_weight` onto few scenarios.
+
+    CVaR risk budgeting on this distribution is bounded and feasible, but so
+    ill-conditioned that CLARABEL 0.11 freezes with a non-zero dual residual and
+    terminates in `InsufficientProgress`. CLARABEL 0.10 solves it, so which solver
+    gets there is a property of the installed version, not of skfolio. See issue #292.
+    """
+    return EntropyPooling(
+        mean_views=["AMD >= BAC", "JPM <= prior(JPM) * 0.8"],
+        cvar_views=["GE == 0.12"],
+    )
+
+
+@pytest.mark.skipif("SCS" not in cp.installed_solvers(), reason="SCS is not installed")
+def test_cvar_on_concentrated_sample_weight_is_recovered_by_the_scs_fallback(
+    X_full, concentrated_prior
+):
+    """An explicit SCS fallback recovers CVaR risk budgeting on concentrated scenarios.
+
+    Without it, this raises `SolverError` on CLARABEL 0.11. The assertion is on the
+    outcome and not on the fallback firing: on CLARABEL 0.10 the primary estimator
+    succeeds on its own and no fallback is used.
+    """
+    model = RiskBudgeting(
+        risk_measure=RiskMeasure.CVAR, prior_estimator=concentrated_prior
+    )
+    model.set_params(
+        fallback=clone(model).set_params(
+            solver="SCS",
+            solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
+        )
+    )
+    model.fit(X_full)
+
+    np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
+    assert np.all(model.weights_ > 0)
+
+    if model.fallback_ is not None:
+        # The primary solver failed: the same estimator finished the problem on SCS.
+        assert model.fallback_.solver == "SCS"
+        assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+        assert model.fallback_chain_[-1][1] == "success"
+
+
+def test_risk_budgeting_invalid_risk_measure_type(X):
+    # `set_params` bypasses the enum conversion performed in `__init__`.
+    model = RiskBudgeting().set_params(risk_measure="variance")
+    with pytest.raises(TypeError, match="risk_measure must be of type `RiskMeasure`"):
+        model.fit(X)
+
+
+def test_risk_budgeting_non_default_solver():
+    # Any solver other than CLARABEL falls through to empty params. Risk budgeting
+    # needs an exponential cone, which none of the always-available solvers
+    # support, but the params are set before the solve, so the branch is still
+    # exercised by the failing solve.
+    rng = np.random.default_rng(0)
+    X = rng.normal(0.0005, 0.01, (60, 6))
+    model = RiskBudgeting(solver="SCIPY")
+    with pytest.raises(cp.SolverError, match="Solver 'SCIPY' failed"):
+        model.fit(X)
+    assert model._solver_params == {}

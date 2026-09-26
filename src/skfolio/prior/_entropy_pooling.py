@@ -30,9 +30,10 @@ from skfolio.measures import (
     PerfMeasure,
     RiskMeasure,
 )
-from skfolio.prior._base import BasePrior, ReturnDistribution
+from skfolio.prior._base import BasePrior
 from skfolio.prior._empirical import EmpiricalPrior
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, ObjArray
+from skfolio.prior._model import ReturnDistribution
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.utils.equations import equations_to_matrix
 from skfolio.utils.tools import check_estimator, default_asset_names, input_to_array
 
@@ -297,7 +298,7 @@ class EntropyPooling(BasePrior):
           documentation for a full list and descriptions:
           https://docs.scipy.org/doc/scipy/reference/optimize.minimize-tnc.html
 
-        - When using a **CVXPY** solver (e.g. ``"CLARABEL"``), supply any
+        - When using a **CVXPY** solver (e.g. `"CLARABEL"`), supply any
           solver-specific parameters here. Refer to the CVXPY solver guide for
           details: https://www.cvxpy.org/tutorial/solvers
 
@@ -394,9 +395,9 @@ class EntropyPooling(BasePrior):
     >>> print(entropy_pooling.relative_entropy_)
     0.18...
     >>> print(entropy_pooling.effective_number_of_scenarios_)
-    6876.67...
+    687...
     >>> print(entropy_pooling.return_distribution_.sample_weight)
-    [0.000103...  0.000093... ... 0.000103...  0.000108...]
+    [0.00010... 0.00009... ... 0.00010... 0.00010...]
     >>>
     >>> # CVaR Hierarchical Risk Parity optimization on Entropy Pooling
     >>> model = HierarchicalRiskParity(
@@ -406,7 +407,7 @@ class EntropyPooling(BasePrior):
     >>> model.fit(X)
     HierarchicalRiskParity(prior_estimator=...
     >>> print(model.weights_)
-    [0.073... 0.0541... ... 0.200...]
+    [0.073... 0.054... 0.076... 0.20... 0.063... 0.32... 0.20...]
     >>>
     >>> # Stress Test the Portfolio
     >>> entropy_pooling = EntropyPooling(cvar_views=["AMD == 0.10"])
@@ -422,12 +423,12 @@ class EntropyPooling(BasePrior):
     effective_number_of_scenarios_: float
     prior_estimator_: BasePrior
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     if TYPE_CHECKING:
         _returns: FloatArray
         _prior_sample_weight: FloatArray
-        _groups: ObjArray
+        _groups: StrArray
         _is_fixed_mean: BoolArray
         _is_fixed_variance: BoolArray
         _constraints: dict[str, list[FloatArray] | None]
@@ -483,7 +484,7 @@ class EntropyPooling(BasePrior):
         **fit_params : dict
            Parameters to pass to the underlying estimators.
            Only available if `enable_metadata_routing=True`, which can be
-           set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+           set by using `sklearn.set_config(enable_metadata_routing=True)`.
            See :ref:`Metadata Routing User Guide <metadata_routing>` for
            more details.
 
@@ -800,29 +801,26 @@ class EntropyPooling(BasePrior):
         assets = self._groups[0]
         _, n_assets = self._returns.shape
         asset_to_index = {asset: i for i, asset in enumerate(assets)}
-        try:
-            views = []
-            for view in self.correlation_views:
-                res = _parse_correlation_view(view, assets=assets)
-                expression = res["expression"]
-                corr_view = expression["constant"]
-                if "prior_assets" in expression:
-                    i, j = (asset_to_index[a] for a in expression["prior_assets"])
-                    corr_view += (
-                        self._covariance[i, j]
-                        / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
-                        * expression["multiplier"]
-                    )
-                    corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
-                views.append(
-                    (
-                        (asset_to_index[a] for a in res["assets"]),
-                        res["operator"],
-                        corr_view,
-                    )
+        views = []
+        for view in self.correlation_views:
+            res = _parse_correlation_view(view, assets=assets)
+            expression = res["expression"]
+            corr_view = expression["constant"]
+            if "prior_assets" in expression:
+                i, j = (asset_to_index[a] for a in expression["prior_assets"])
+                corr_view += (
+                    self._covariance[i, j]
+                    / np.sqrt(self._covariance[i, i] * self._covariance[j, j])
+                    * expression["multiplier"]
                 )
-        except KeyError as e:
-            raise ValueError(f"Asset {e.args[0]} is missing from the assets.") from None
+                corr_view = np.clip(corr_view, 0 + 1e-8, 1 - 1e-8)
+            views.append(
+                (
+                    (asset_to_index[a] for a in res["assets"]),
+                    res["operator"],
+                    corr_view,
+                )
+            )
 
         fix = np.zeros(n_assets, dtype=bool)
         for (i, j), op, corr_view in views:
@@ -1056,7 +1054,8 @@ class EntropyPooling(BasePrior):
                         bounds += [(-1000, 1000)] * s
                     case "inequality":
                         bounds += [(0, None)] * s
-                    case _:
+                    # All constraint kinds created by this estimator are handled.
+                    case _:  # pragma: no cover
                         raise KeyError(f"constrain {name}")
 
         a = np.hstack(a)

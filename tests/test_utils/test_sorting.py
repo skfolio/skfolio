@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from skfolio.utils.sorting import dominate, non_denominated_sort
+from skfolio.utils.sorting import dominate, non_dominated_sort
 
 
 @pytest.fixture(scope="module")
@@ -123,8 +123,30 @@ def test_dominate():
     assert not dominate(np.array([2, 3, 4]), np.array([1, 2, 5]))
 
 
+@pytest.mark.parametrize(
+    ("shape_1", "shape_2"),
+    [
+        ((), (1,)),
+        ((1,), ()),
+        ((), ()),
+        ((1, 1), (1,)),
+        ((1,), (1, 1)),
+        ((1, 1), (1, 1)),
+        ((1, 1, 1), (1,)),
+        ((1,), (1, 1, 1)),
+        ((1, 1, 1), (1, 1, 1)),
+    ],
+)
+def test_dominate_rejects_non_1d_fitnesses(shape_1, shape_2):
+    fitness_1 = np.ones(shape_1)
+    fitness_2 = np.ones(shape_2)
+
+    with pytest.raises(ValueError, match="must be 1D array"):
+        dominate(fitness_1, fitness_2)
+
+
 def test_non_dominated_sort(fitnesses):
-    res = non_denominated_sort(fitnesses=fitnesses, first_front_only=False)
+    res = non_dominated_sort(fitnesses=fitnesses, first_front_only=False)
 
     assert res == [
         [19, 20, 24, 36, 37, 50, 53, 55, 62, 64, 65, 72, 77],
@@ -140,6 +162,6 @@ def test_non_dominated_sort(fitnesses):
         [4, 29],
     ]
 
-    res = non_denominated_sort(fitnesses=fitnesses, first_front_only=True)
+    res = non_dominated_sort(fitnesses=fitnesses, first_front_only=True)
 
     assert res == [[19, 20, 24, 36, 37, 50, 53, 55, 62, 64, 65, 72, 77]]

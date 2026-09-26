@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -13,6 +15,8 @@ from skfolio.optimization import (
     MeanRisk,
     SchurComplementary,
 )
+from skfolio.optimization.cluster.hierarchical import _schur
+from skfolio.optimization.cluster.hierarchical._schur import _compute_weights
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
@@ -129,9 +133,9 @@ def test_schur_prior_estimator(X):
     )
 
 
-def test_schur_factor_model(X, y):
+def test_schur_factor_model(X, factors):
     model = SchurComplementary(prior_estimator=TimeSeriesFactorModel())
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
@@ -253,3 +257,114 @@ def test_hrp_weight_constraints_error(X):
     model.fit(X)
     assert model.effective_gamma_ == 0.5
     assert not np.any(np.isnan(model.weights_))
+
+
+def test_schur_invalid_gamma(X):
+    model = SchurComplementary(gamma=1.5)
+    with pytest.raises(ValueError, match=r"gamma must be between 0 and 1\. Got 1\.5"):
+        model.fit(X)
+
+
+@pytest.fixture
+def non_spd_schur_inputs():
+    # The covariance is positive definite, but nearly rank one. Its left Schur
+    # block has negative variances, which correlation clipping cannot repair.
+    v = np.array([1.0, 2.0, 3.0, 4.0])
+    covariance = np.outer(v, v) + 1e-6 * np.eye(4)
+    sorted_assets = np.array([2, 3, 0, 1])
+    return covariance, sorted_assets
+
+
+def _compute_weights_from(inputs, force_spd):
+    covariance, sorted_assets = inputs
+    return _compute_weights(
+        gamma=0.5,
+        sorted_assets=sorted_assets,
+        covariance=covariance,
+        max_weights=np.ones(4),
+        min_weights=np.zeros(4),
+        force_spd=force_spd,
+    )
+
+
+def test_compute_weights_rejects_unrepairable_block(non_spd_schur_inputs):
+    assert _compute_weights_from(non_spd_schur_inputs, force_spd=False) is None
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", RuntimeWarning)
+        with pytest.raises(
+            ValueError, match=r"Schur complement failed with gamma=0\.5000"
+        ):
+            _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+    assert not [
+        warning for warning in caught if issubclass(warning.category, RuntimeWarning)
+    ]
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+@pytest.mark.parametrize(
+    "bad_left,bad_right", [(True, False), (False, True), (True, True)]
+)
+def test_compute_weights_force_spd_repairs_blocks(monkeypatch, bad_left, bad_right):
+    # Simulate indefinite augmented blocks with positive variances so the real
+    # correlation-clipping repair can run. Exercise left, right, and both repairs.
+    bad_block = np.array([[1.0, 1.1], [1.1, 1.0]])
+    blocks = [bad_block if bad else np.eye(2) for bad in (bad_left, bad_right)]
+    augmented = iter(blocks)
+    monkeypatch.setattr(_schur, "_schur_augmentation", lambda *a, **kw: next(augmented))
+    calls = []
+    cov_nearest = _schur.cov_nearest
+
+    def record_repair(cov):
+        calls.append(cov.copy())
+        return cov_nearest(cov)
+
+    monkeypatch.setattr(_schur, "cov_nearest", record_repair)
+    weights = _compute_weights_from((np.eye(4), np.arange(4)), force_spd=True)
+
+    assert len(calls) == bad_left + bad_right
+    for block in calls:
+        np.testing.assert_array_equal(block, bad_block)
+    assert np.all(np.isfinite(weights))
+    np.testing.assert_allclose(weights.sum(), 1.0)
+    assert np.all((weights >= 0) & (weights <= 1))
+
+
+def test_compute_weights_force_spd_failure_raises(non_spd_schur_inputs, monkeypatch):
+    def failing_cov_nearest(cov):
+        raise np.linalg.LinAlgError("cannot repair")
+
+    monkeypatch.setattr(_schur, "cov_nearest", failing_cov_nearest)
+    with pytest.raises(ValueError, match=r"Schur complement failed with gamma=0\.5000"):
+        _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+
+
+@pytest.mark.filterwarnings("error::RuntimeWarning")
+def test_compute_weights_uses_repaired_blocks_in_later_splits(monkeypatch):
+    bad_block = np.eye(4)
+    bad_block[0, 1] = bad_block[1, 0] = 1.1
+    root_blocks = iter([bad_block, np.eye(4)])
+    schur_augmentation = _schur._schur_augmentation
+    later_blocks = []
+
+    def augment(a, b, d, gamma):
+        if len(a) == 4:
+            return next(root_blocks)
+        later_blocks.append(a.copy())
+        return schur_augmentation(a, b, d, gamma=gamma)
+
+    monkeypatch.setattr(_schur, "_schur_augmentation", augment)
+    weights = _compute_weights(
+        gamma=0.5,
+        sorted_assets=np.arange(8),
+        covariance=np.eye(8),
+        max_weights=np.ones(8),
+        min_weights=np.zeros(8),
+        force_spd=True,
+    )
+
+    assert len(later_blocks) == 4
+    for block in later_blocks:
+        assert np.all(np.linalg.eigvalsh(block) > 0)
+    assert np.all(np.isfinite(weights))
+    np.testing.assert_allclose(weights.sum(), 1.0)
+    assert np.all((weights >= 0) & (weights <= 1))

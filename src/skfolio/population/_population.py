@@ -9,6 +9,7 @@ A population is a collection of portfolios.
 from __future__ import annotations
 
 import inspect
+import warnings
 from typing import Any
 
 import numpy as np
@@ -22,7 +23,7 @@ from skfolio.measures import BaseMeasure, RatioMeasure
 from skfolio.portfolio import BasePortfolio, FailedPortfolio, MultiPeriodPortfolio
 from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.figure import kde_trace
-from skfolio.utils.sorting import non_denominated_sort
+from skfolio.utils.sorting import non_dominated_sort
 from skfolio.utils.tools import deduplicate_names, optimal_rounding_decimals
 
 
@@ -112,6 +113,7 @@ class Population(list):
         for portfolio in self:
             for key, value in params.items():
                 setattr(portfolio, key, value)
+        return self
 
     @staticmethod
     def _validate_item(
@@ -248,7 +250,7 @@ class Population(list):
         df.columns = deduplicate_names(names)
         return df
 
-    def non_denominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
+    def non_dominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
         """Fast non-dominated sorting.
         Sort the portfolios into different non-domination levels.
         Complexity O(MN^2) where M is the number of objectives and N the number of
@@ -274,14 +276,30 @@ class Population(list):
             ]
         ):
             raise ValueError(
-                "Cannot compute non denominated sorting with Portfolios "
+                "Cannot compute non-dominated sorting with Portfolios "
                 "containing mixed `fitness_measures`"
             )
         fitnesses = np.array([portfolio.fitness for portfolio in self])
-        fronts = non_denominated_sort(
+        fronts = non_dominated_sort(
             fitnesses=fitnesses, first_front_only=first_front_only
         )
         return fronts
+
+    # TODO remove deprecated non_denominated_sort in v2.0
+    def non_denominated_sort(self, first_front_only: bool = False) -> list[list[int]]:
+        """Alias of :meth:`non_dominated_sort`.
+
+        .. deprecated::
+            `non_denominated_sort` is deprecated and will be removed in version 2.0.
+            Use :meth:`non_dominated_sort` instead.
+        """
+        warnings.warn(
+            "`Population.non_denominated_sort` is deprecated and will be removed in "
+            "version 2.0. Use `Population.non_dominated_sort` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.non_dominated_sort(first_front_only=first_front_only)
 
     def filter(
         self, names: skt.Names | None = None, tags: skt.Tags | None = None
@@ -600,7 +618,7 @@ class Population(list):
 
         Parameters
         ----------
-        measure : ct.Measure, default=RatioMeasure.SHARPE_RATIO
+        measure : Measure, default=RatioMeasure.SHARPE_RATIO
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
@@ -726,10 +744,31 @@ class Population(list):
 
         Examples
         --------
+        >>> import numpy as np
+        >>> from skfolio import Population, Portfolio, RatioMeasure, RiskMeasure
+        >>> rng = np.random.default_rng(0)
+        >>> # Daily returns for two assets.
+        >>> X = rng.normal(0.0005, [0.02, 0.01], size=(252, 2))
+        >>> population = Population(
+        ...     [
+        ...         Portfolio(X, weights=[0.6, 0.4], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.7, 0.3], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.8, 0.2], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.4, 0.6], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.3, 0.7], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.2, 0.8], tag="Asset 2 tilt"),
+        ...     ]
+        ... )
+
+        Plot all portfolios in one box:
+
         >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
-        >>> fig = population.plot_measure_box(
+
+        Plot one box per tag:
+
+        >>> fig = population.boxplot_measure(
         ...     measure=RatioMeasure.SHARPE_RATIO,
-        ...     tag_list=["Benchmark", "Risk Parity Model"]
+        ...     tag_list=["Asset 1 tilt", "Asset 2 tilt"],
         ... )
         """
         if tag_list is None:
@@ -972,7 +1011,7 @@ class Population(list):
             The list of measure to show on point hover.
 
         show_fronts : bool, default=False
-            If this is set to True, the pareto fronts are highlighted.
+            If this is set to True, the Pareto fronts are highlighted.
             The default is `False`.
 
         color_scale : Measure | str, optional
@@ -1022,7 +1061,7 @@ class Population(list):
             df["tag"] = df["tag"].astype(str).replace("None", "")
 
         if show_fronts:
-            fronts = self.non_denominated_sort(first_front_only=False)
+            fronts = self.non_dominated_sort(first_front_only=False)
             df["front"] = str(-1)
             for i, front in enumerate(fronts):
                 for idx in front:
@@ -1057,8 +1096,8 @@ class Population(list):
                                 str(e)
                                 + ": %{"
                                 + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
+                                # Use Plotly's default format for dimensionless ratios.
+                                + ("" if e.is_ratio else ":,.3%")
                                 + "}"
                                 for e, v in [(x, "x"), (y, "y"), (z, "z")]
                             ]
@@ -1160,7 +1199,7 @@ class Population(list):
 
         Parameters
         ----------
-        measure : ct.Measure, default = RatioMeasure.SHARPE_RATIO
+        measure : Measure, default = RatioMeasure.SHARPE_RATIO
            The measure.
 
         window : int, default=30

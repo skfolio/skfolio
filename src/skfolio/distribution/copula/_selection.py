@@ -83,7 +83,7 @@ def select_bivariate_copula(
 
     X = np.asarray(X)
     if X.ndim != 2 or X.shape[1] != 2:
-        raise ValueError("X must contains two columns for Bivariate Copula")
+        raise ValueError("X must contain two columns for Bivariate Copula")
 
     kendall_tau, p_value = st.kendalltau(X[:, 0], X[:, 1])
     if p_value >= independence_level:

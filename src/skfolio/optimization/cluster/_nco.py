@@ -39,7 +39,7 @@ class NestedClustersOptimization(BaseOptimization):
     Marcos Lopez de Prado.
 
     It uses a distance matrix to compute clusters using a clustering algorithm (
-    Hierarchical Tree Clustering, KMeans, etc..). For each cluster, the inner-cluster
+    Hierarchical Tree Clustering, KMeans, etc.). For each cluster, the inner-cluster
     weights are computed by fitting the inner-estimator on each cluster using the whole
     training data. Then the outer-cluster weights are computed by training the
     outer-estimator using out-of-sample estimates of the inner-estimators with
@@ -227,8 +227,11 @@ class NestedClustersOptimization(BaseOptimization):
     ...     outer_estimator=outer_estimator,
     ... )
     >>> model.fit(X)
+    NestedClustersOptimization(...)
     >>> print(model.weights_)
+    [0.0327 0.0029 0.     ... 0.0864 0.0236 0.0736]
     >>> print(model.clustering_estimator_.labels_)
+    [4 4 3 4 2 3 4 1 3 0 1 1 4 0 1 0 2 1 4 2]
 
     References
     ----------
@@ -318,7 +321,7 @@ class NestedClustersOptimization(BaseOptimization):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 

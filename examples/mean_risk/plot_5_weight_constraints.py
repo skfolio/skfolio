@@ -61,9 +61,9 @@ model.weights_
 #
 # Examples:
 #
-#   * budget = 1    –> fully invested portfolio
-#   * budget = 0    –> market neutral portfolio
-#   * budget = None –> no constraints on the sum of weights
+#   * budget = 1    -> fully invested portfolio
+#   * budget = 0    -> market neutral portfolio
+#   * budget = None -> no constraints on the sum of weights
 
 model = MeanRisk(budget=0.5)
 model.fit(X)
@@ -105,14 +105,14 @@ model.weights_
 #   useful.
 #
 # Example:
-#   * min_weights = 0                     –> long only portfolio (no short selling).
-#   * min_weights = None                  –> no lower bound (same as -np.Inf).
-#   * min_weights = -2                    –> each weight must be above -200%.
-#   * min_weights = [0, -2, 0.5]          –> "AAPL", "GE" and "JPM" must be above 0%, -200% and 50% respectively.
+#   * min_weights = 0                     -> long only portfolio (no short selling).
+#   * min_weights = None                  -> no lower bound (same as -np.Inf).
+#   * min_weights = -2                    -> each weight must be above -200%.
+#   * min_weights = [0, -2, 0.5]          -> "AAPL", "GE" and "JPM" must be above 0%, -200% and 50% respectively.
 #   * min_weights = {"AAPL": 0, "GE": -2} -> "AAPL", "GE" and "JPM"  must be above 0%, -200% and 0% (default) respectively.
-#   * max_weights = 0                     –> no long position (short only portfolio).
-#   * max_weights = None                  –> no upper bound (same as +np.Inf).
-#   * max_weights = 2                     –> each weight must be below 200%.
+#   * max_weights = 0                     -> no long position (short only portfolio).
+#   * max_weights = None                  -> no upper bound (same as +np.Inf).
+#   * max_weights = 2                     -> each weight must be below 200%.
 #   * max_weights = [1, 2, -0.5]          -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and -50% respectively.
 #   * max_weights = {"AAPL": 1, "GE": 2}  -> "AAPL", "GE" and "JPM"  must be below 100%, 200% and 100% (default).
 
@@ -176,7 +176,7 @@ model.weights_
 # The `groups` parameter can be a 2D array-like or a dictionary. If a dictionary is
 # provided, its (key/value)  pair must be the (asset name/asset groups).
 # You can reference these groups and/or the asset names in `linear_constraint`, which
-# is a list if strings following the below patterns:
+# is a list of strings following the below patterns:
 #
 #   * "2.5 * ref1 + 0.10 * ref2 + 0.0013 <= 2.5 * ref3"
 #   * "ref1 >= 2.9 * ref2"

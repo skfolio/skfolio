@@ -162,8 +162,8 @@ class BenchmarkTracker(MeanRisk):
         Add a custom objective to the existing objective expression.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
-    add_constraints : Callable[[cp.Variable], cp.Expression|list[cp.Expression]], optional
-        Add a custom constraint or a list of constraints.
+    add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
+        Add a custom constraint or a list of constraints to the existing constraints.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     portfolio_params : dict, optional
@@ -298,7 +298,7 @@ class BenchmarkTracker(MeanRisk):
         **fit_params : dict
             Parameters to pass to the underlying estimators.
             Only available if `enable_metadata_routing=True`, which can be
-            set by using ``sklearn.set_config(enable_metadata_routing=True)``.
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
             See :ref:`Metadata Routing User Guide <metadata_routing>` for
             more details.
 
@@ -324,7 +324,7 @@ class BenchmarkTracker(MeanRisk):
                 f"DataFrame/array, got shape {y.shape}."
             )
 
-        X, y = skv.validate_data(self, X, y)
+        X, y = skv.validate_data(self, X, y, ensure_all_finite="allow-nan")
 
         excess_returns = X - y[:, np.newaxis]
 

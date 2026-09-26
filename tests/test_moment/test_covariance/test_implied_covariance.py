@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn.linear_model as skl
 from sklearn import config_context
@@ -55,7 +56,7 @@ def test_compute_implied_vol(implied_vol):
 
 def test_implied_covariance_without_vol(X):
     model = ImpliedCovariance()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
         model.fit(X)
 
 
@@ -161,6 +162,25 @@ def test_implied_covariance_default(X, implied_vol):
     )
 
 
+def test_implied_covariance_deprecated_annualized_factor():
+    with pytest.warns(FutureWarning, match="annualized_factor"):
+        model = ImpliedCovariance(annualized_factor=12)
+
+    assert model.annualization_factor == 12
+    assert model.annualized_factor is None
+
+    with pytest.warns(FutureWarning, match="annualized_factor"):
+        model.set_params(annualized_factor=52)
+
+    assert model.annualization_factor == 52
+    assert model.annualized_factor is None
+
+
+def test_implied_covariance_annualization_factor_conflict():
+    with pytest.raises(ValueError, match="annualized_factor"):
+        ImpliedCovariance(annualization_factor=252, annualized_factor=252)
+
+
 def test_implied_covariance_no_intercept(X, implied_vol):
     model = ImpliedCovariance(
         linear_regressor=skl.LinearRegression(fit_intercept=False)
@@ -220,21 +240,26 @@ def test_implied_covariance_volatility_risk_premium_adj_non_pos(
     X, implied_vol, volatility_risk_premium_adj
 ):
     model = ImpliedCovariance(volatility_risk_premium_adj=volatility_risk_premium_adj)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match="volatility_risk_premium_adj must be strictly positive"
+    ):
         model.fit(X, implied_vol=implied_vol)
 
 
 @pytest.mark.parametrize("n_folds", [0.1, 1, 2])
 def test_implied_covariance_window_too_big(X, implied_vol, n_folds):
     model = ImpliedCovariance(window_size=len(X) // n_folds)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Not enough observations to compute the volatility regression coefficients",
+    ):
         model.fit(X, implied_vol=implied_vol)
 
 
 @pytest.mark.parametrize("window_size", [-1, 0, 1, 2])
 def test_implied_covariance_small_error(X, implied_vol, window_size):
     model = ImpliedCovariance(window_size=window_size)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="window must be strictly greater than 2"):
         model.fit(X, implied_vol=implied_vol)
 
 
@@ -248,7 +273,10 @@ def test_implied_covariance_small(X, implied_vol, window_size):
 def test_implied_covariance_meta_data_routing_error(X, implied_vol):
     with config_context(enable_metadata_routing=True):
         model = ImpliedCovariance(prior_covariance_estimator=ImpliedCovariance())
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             model.fit(X, implied_vol=implied_vol)
 
 
@@ -285,3 +313,55 @@ def test_implied_covariance_ledoit_wolf(X, implied_vol):
     np.fill_diagonal(model_led_ref.covariance_, 0)
 
     np.testing.assert_almost_equal(model.covariance_, model_led_ref.covariance_, 3)
+
+
+@pytest.fixture
+def synthetic_implied_vol(X):
+    """Deterministic implied volatilities aligned with `X` (no download needed)."""
+    rng = np.random.default_rng(0)
+    return pd.DataFrame(
+        rng.uniform(0.1, 0.4, size=X.shape), index=X.index, columns=X.columns
+    )
+
+
+def test_implied_covariance_set_params_annualization_conflict():
+    model = ImpliedCovariance()
+    with pytest.raises(
+        ValueError,
+        match="`annualized_factor` is deprecated; pass only `annualization_factor`",
+    ):
+        model.set_params(annualized_factor=12, annualization_factor=252)
+
+
+def test_implied_covariance_volatility_risk_premium_adj_missing_assets(
+    X, synthetic_implied_vol
+):
+    # A dict covering only some assets is rejected by `input_to_array`, which
+    # fills the gaps with NaN and refuses them.
+    model = ImpliedCovariance(volatility_risk_premium_adj={"AAPL": 1.0})
+    with pytest.raises(ValueError, match=r"`volatility_risk_premium_adj` contains NaN"):
+        model.fit(X, implied_vol=synthetic_implied_vol)
+
+
+def test_implied_covariance_volatility_risk_premium_adj_scalar_nan(
+    X, synthetic_implied_vol
+):
+    # A scalar NaN bypasses `input_to_array` and reaches the estimator's own guard.
+    model = ImpliedCovariance(volatility_risk_premium_adj=np.nan)
+    with pytest.raises(
+        ValueError,
+        match="volatility_risk_premium_adj must contain a value for each assets",
+    ):
+        model.fit(X, implied_vol=synthetic_implied_vol)
+
+
+def test_implied_covariance_implied_vol_must_be_2d(X):
+    model = ImpliedCovariance()
+    with pytest.raises(ValueError, match="must be 2D array of shape"):
+        model.fit(X, implied_vol=np.ones(len(X)))
+
+
+def test_implied_covariance_implied_vol_shape_mismatch(X):
+    model = ImpliedCovariance()
+    with pytest.raises(ValueError, match=r"implied_vol.shape == .* expected"):
+        model.fit(X, implied_vol=np.ones((len(X), 3)))

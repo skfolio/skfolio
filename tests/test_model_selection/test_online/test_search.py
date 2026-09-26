@@ -14,7 +14,10 @@ from skfolio.model_selection import (
     OnlineRandomizedSearch,
     online_score,
 )
-from skfolio.model_selection._online._search import _rank_scores
+from skfolio.model_selection._online._search import (
+    _check_refit_for_multimetric,
+    _rank_scores,
+)
 from skfolio.model_selection._online._validation import (
     _score_multi_period_portfolio,
     _validate_sizes,
@@ -299,7 +302,7 @@ class TestOnlineGridSearch:
         assert hasattr(search, "best_params_")
 
     def test_callable_refit_receives_full_cv_results(self, X):
-        """Callable refit receives the full ``cv_results_`` dictionary."""
+        """Callable refit receives the full `cv_results_` dictionary."""
         seen = {}
 
         def refit(results):
@@ -414,9 +417,37 @@ class TestOnlineGridSearch:
         for p in preds:
             assert isinstance(p, MultiPeriodPortfolio)
 
+    def test_weight_drift_routing_retains_fitted_best_estimator(self, X):
+        model = _make_online_estimator()
+        search = OnlineGridSearch(
+            model,
+            param_grid={
+                "prior_estimator__covariance_estimator__half_life": [40],
+            },
+            warmup_size=WARMUP,
+            test_size=TEST_SIZE,
+            return_predictions=True,
+            portfolio_params={
+                "weight_drift": True,
+                "compounded": True,
+                "risk_free_rate": 0.001,
+            },
+        )
+        search.fit(X)
+
+        assert model.portfolio_params is None
+        assert hasattr(search.best_estimator_, "weights_")
+        assert search.best_estimator_.portfolio_params == {"weight_drift": True}
+        [prediction] = search.cv_results_["predictions"]
+        assert prediction.compounded is True
+        assert prediction.risk_free_rate == 0.001
+        assert all(portfolio.weight_drift for portfolio in prediction)
+        assert all(portfolio.compounded for portfolio in prediction)
+        assert all(portfolio.risk_free_rate == 0.001 for portfolio in prediction)
+
     @pytest.mark.filterwarnings("ignore:Estimator fit failed:UserWarning")
     def test_return_predictions_aligns_failed_candidates(self, X):
-        """Failed candidates keep a ``None`` placeholder in predictions."""
+        """Failed candidates keep a `None` placeholder in predictions."""
         from skfolio.portfolio import MultiPeriodPortfolio
 
         search = OnlineGridSearch(
@@ -508,7 +539,9 @@ class TestOnlineGridSearch:
             EWCovariance(),
             param_grid={"half_life": [20, 40]},
         )
-        with pytest.raises(NotFittedError):
+        with pytest.raises(
+            NotFittedError, match="This OnlineGridSearch instance is not fitted yet"
+        ):
             search.predict(X)
 
     def test_pipeline_raises(self, X):
@@ -639,6 +672,65 @@ class TestOnlineRandomizedSearch:
         assert isinstance(search.best_score_, float)
 
 
+@pytest.mark.parametrize("search_cls", [OnlineGridSearch, OnlineRandomizedSearch])
+def test_search_entry_rebalancing_params(search_cls, X):
+    """Search entry parameters only affect the first candidate portfolio."""
+    transaction_costs = 0.001
+    search_params = (
+        {"param_grid": {"transaction_costs": [transaction_costs]}}
+        if search_cls is OnlineGridSearch
+        else {
+            "param_distributions": {"transaction_costs": [transaction_costs]},
+            "n_iter": 1,
+            "random_state": 0,
+        }
+    )
+    search = search_cls(
+        _make_online_estimator(),
+        **search_params,
+        warmup_size=WARMUP,
+        test_size=TEST_SIZE,
+        return_predictions=True,
+        entry_rebalancing_params={"transaction_costs": 0.0, "fallback": None},
+    )
+
+    search.fit(X)
+
+    prediction = search.cv_results_["predictions"][0]
+    assert len(prediction) >= 2
+    assert prediction[0].transaction_costs == 0.0
+    assert all(ptf.transaction_costs == transaction_costs for ptf in prediction[1:])
+    assert search.best_estimator_.transaction_costs == transaction_costs
+
+
+def test_search_invalid_entry_rebalancing_param_raises(X):
+    """Invalid entry parameter names raise before candidate evaluation."""
+    search = OnlineGridSearch(
+        _make_online_estimator(),
+        param_grid={"risk_aversion": [1.0]},
+        warmup_size=WARMUP,
+        test_size=TEST_SIZE,
+        entry_rebalancing_params={"not_a_parameter": 1},
+    )
+
+    with pytest.raises(ValueError, match="contains invalid parameter names"):
+        search.fit(X)
+
+
+def test_search_entry_rebalancing_params_rejects_component_estimator(X):
+    """Search entry parameters require a portfolio optimization estimator."""
+    search = OnlineGridSearch(
+        EWCovariance(),
+        param_grid={"half_life": [20]},
+        warmup_size=WARMUP,
+        test_size=50,
+        entry_rebalancing_params={"half_life": 10},
+    )
+
+    with pytest.raises(ValueError, match="entry_rebalancing_params"):
+        search.fit(X)
+
+
 class TestValidateSizes:
     def test_float_warmup_size_raises(self):
         with pytest.raises(TypeError, match="warmup_size must be an integer"):
@@ -696,4 +788,105 @@ class TestSearchFloatSizeRejection:
             test_size=50.0,
         )
         with pytest.raises(TypeError, match="test_size must be an integer"):
+            search.fit(X)
+
+
+def test_rank_scores_empty():
+    ranks = _rank_scores(np.array([]))
+    assert ranks.dtype == np.int32
+    assert ranks.shape == (0,)
+
+
+def test_check_refit_for_multimetric_false_is_accepted():
+    assert _check_refit_for_multimetric(False, {"a": None, "b": None}) is None
+
+
+class TestOnlineGridSearchRefitEdgeCases:
+    def test_multi_metric_callable_refit(self, X):
+        """Multi-metric search with a callable refit selects by the callable."""
+        from skfolio.metrics import (
+            diagonal_calibration_ratio,
+            mahalanobis_calibration_ratio,
+        )
+
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            scoring={
+                "mahalanobis": mahalanobis_calibration_ratio,
+                "diagonal": diagonal_calibration_ratio,
+            },
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 1,
+        )
+        search.fit(X)
+
+        assert search.best_index_ == 1
+        assert search.best_params_ == {"half_life": 40}
+        assert not hasattr(search, "best_score_")
+        assert search.best_estimator_.half_life == 40
+
+    def test_callable_refit_non_integer_raises(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 0.5,
+        )
+        with pytest.raises(TypeError, match="best_index_ returned is not an integer"):
+            search.fit(X)
+
+    def test_callable_refit_out_of_range_raises(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, 40]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 2,
+        )
+        with pytest.raises(IndexError, match="best_index_ index out of range"):
+            search.fit(X)
+
+    @pytest.mark.filterwarnings("ignore:Estimator fit failed:UserWarning")
+    def test_callable_refit_selecting_failed_candidate_warns(self, X):
+        """Selecting a failed candidate leaves `best_estimator_` unset."""
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20, -1]},
+            warmup_size=WARMUP,
+            test_size=50,
+            refit=lambda cv_results: 1,
+            error_score=np.nan,
+        )
+        with pytest.warns(UserWarning, match="`best_estimator_` is not available"):
+            search.fit(X)
+
+        assert search.best_index_ == 1
+        assert not hasattr(search, "best_estimator_")
+
+    def test_error_score_raise_propagates(self, X):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [-1]},
+            warmup_size=WARMUP,
+            test_size=50,
+            error_score="raise",
+        )
+        with pytest.raises(ValueError, match="half_life must be positive"):
+            search.fit(X)
+
+    @pytest.mark.parametrize("error_score", ["foo", True])
+    def test_invalid_error_score_raises(self, X, error_score):
+        search = OnlineGridSearch(
+            EWCovariance(),
+            param_grid={"half_life": [20]},
+            warmup_size=WARMUP,
+            test_size=50,
+            error_score=error_score,
+        )
+        with pytest.raises(
+            ValueError, match="error_score must be the string 'raise' or a real number"
+        ):
             search.fit(X)

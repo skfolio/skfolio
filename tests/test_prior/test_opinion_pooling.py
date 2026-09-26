@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import sklearn.utils.metadata_routing as skm
 
 from skfolio import RiskMeasure
 from skfolio.distribution import Gaussian, GaussianCopula, VineCopula
@@ -31,17 +32,17 @@ def test_validate_opinion_probabilities_defaults(X):
 
 
 @pytest.mark.parametrize(
-    "probs",
+    "probs,match",
     [
-        [1.0, 1.0],  # sum >1
-        [-0.1, 0.1],  # negative
-        [0.6],  # wrong length
+        ([1.0, 1.0], "must sum to at most 1"),
+        ([-0.1, 0.1], "must be between 0 and 1"),
+        ([0.6], "does not match number of estimators"),
     ],
 )
-def test_validate_opinion_probabilities_errors(X, probs):
+def test_validate_opinion_probabilities_errors(X, probs, match):
     model1 = EntropyPooling()
     model2 = EntropyPooling()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         model = OpinionPooling(
             estimators=[("expert_1", model1), ("expert_2", model2)],
             opinion_probabilities=probs,
@@ -137,7 +138,7 @@ def test_is_linear_pooling(X, is_linear_pooling, expected):
     np.testing.assert_almost_equal(sw[:5], expected, 5)
 
 
-def test_factor_model(X, y):
+def test_factor_model(X, factors):
     view_1 = EntropyPooling(mean_views=["QUAL >= 0.04"])
     view_2 = EntropyPooling(mean_views=["QUAL <= -0.01"])
 
@@ -147,14 +148,14 @@ def test_factor_model(X, y):
     )
     model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
 
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.return_distribution_.sample_weight
     assert np.all(sw >= 0)
     np.testing.assert_almost_equal(np.sum(sw), 1, 8)
 
 
-def test_factor_synthetic_data(X, y):
+def test_factor_synthetic_data(X, factors):
     factor_synth = SyntheticData(
         n_samples=10_000,
         distribution_estimator=VineCopula(
@@ -173,7 +174,7 @@ def test_factor_synthetic_data(X, y):
     )
 
     model = TimeSeriesFactorModel(factor_prior_estimator=opinion)
-    model.fit(X, y)
+    model.fit(X, factors=factors)
 
     sw = model.return_distribution_.sample_weight
     assert np.all(sw >= 0)
@@ -217,3 +218,45 @@ def test_optimization(X):
         ],
         5,
     )
+
+
+def test_named_estimators_and_params():
+    model1 = EntropyPooling()
+    model2 = EntropyPooling()
+    model = OpinionPooling(estimators=[("expert_1", model1), ("expert_2", model2)])
+
+    named = model.named_estimators
+    assert named["expert_1"] is model1
+    assert named["expert_2"] is model2
+
+    assert model.set_params(expert_1__mean_views=["AAPL == 0.01"]) is model
+    assert model.get_params()["expert_1__mean_views"] == ["AAPL == 0.01"]
+    assert model1.mean_views == ["AAPL == 0.01"]
+
+
+def test_get_metadata_routing():
+    model = OpinionPooling(
+        estimators=[("expert_1", EntropyPooling()), ("expert_2", EntropyPooling())]
+    )
+    assert isinstance(model.get_metadata_routing(), skm.MetadataRouter)
+
+
+def test_estimator_without_sample_weight_raises(X):
+    model = OpinionPooling(
+        estimators=[("expert_1", EmpiricalPrior()), ("expert_2", EntropyPooling())]
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"Estimator `EmpiricalPrior` did not produce a "
+        r"`return_distribution_\.sample_weight`",
+    ):
+        model.fit(X)
+
+
+def test_negative_divergence_penalty_raises(X):
+    model = OpinionPooling(
+        estimators=[("expert_1", EntropyPooling()), ("expert_2", EntropyPooling())],
+        divergence_penalty=-1.0,
+    )
+    with pytest.raises(ValueError, match="`divergence_penalty` cannot be negative"):
+        model.fit(X)

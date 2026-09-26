@@ -47,13 +47,21 @@ a full record of failures instead of stopping on the first failed rebalancing.
 # Load the S&P 500 :ref:`dataset <datasets>` and split into train/test.
 import pandas as pd
 from plotly.io import show
+from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import validate_data
 
+from skfolio import RiskMeasure
 from skfolio.datasets import load_sp500_dataset
 from skfolio.model_selection import WalkForward, cross_val_predict
-from skfolio.optimization import BaseOptimization, EqualWeighted, MeanRisk
+from skfolio.optimization import (
+    BaseOptimization,
+    EqualWeighted,
+    MeanRisk,
+    RiskBudgeting,
+)
 from skfolio.preprocessing import prices_to_returns
+from skfolio.prior import EntropyPooling
 from skfolio.typing import Fallback, MultiInput
 from skfolio.utils.stats import rand_weights
 
@@ -92,6 +100,42 @@ print(model.fallback_chain_)
 # The fallback audit trail is also propagated to the predicted portfolio:
 portfolio = model.predict(X_test)
 assert portfolio.fallback_chain == model.fallback_chain_
+
+# %%
+# Falling back to another solver
+# -----------------------------
+# A solver can encounter numerical difficulties even when a problem is feasible.
+# Here, entropy pooling concentrates scenario probabilities, making CVaR risk budgeting
+# difficult for CLARABEL. We use the full price history and configure a fallback that
+# refits the same estimator with SCS, using its own tolerances and iteration limit.
+# Install the optional solver with `pip install scs`.
+X_full = prices_to_returns(load_sp500_dataset())
+model = RiskBudgeting(
+    risk_measure=RiskMeasure.CVAR,
+    prior_estimator=EntropyPooling(
+        mean_views=["AMD >= BAC", "JPM <= prior(JPM) * 0.8"],
+        cvar_views=["GE == 0.12"],
+    ),
+)
+model.set_params(
+    fallback=clone(model).set_params(
+        solver="SCS",
+        solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
+    )
+)
+model.fit(X_full)
+
+# %%
+# `fallback_` contains the fitted estimator that recovered the optimization:
+print(model.fallback_)
+
+# %%
+# `fallback_chain_` records the primary error and the successful fallback:
+print(model.fallback_chain_)
+
+# %%
+# Other CLARABEL versions may solve the problem directly. In that case, both
+# diagnostic attributes are `None`.
 
 # %%
 # Multiple fallbacks
@@ -168,6 +212,7 @@ print(pred.n_fallback_portfolios)
 # which contain the fallback statistics:
 print(pred.summary().iloc[-4:])
 
+
 # %%
 # Failure handling
 # ================
@@ -207,6 +252,7 @@ class CustomOptimization(BaseOptimization):
         n_assets = X.shape[1]
         self.weights_ = rand_weights(n_assets)
         return self
+
 
 # %%
 # By default, as with all scikit-learn estimators, failures raise an error during `fit`:
@@ -273,4 +319,3 @@ print(failed_ptf.optimization_error)
 # To replay the optimization on the failed period, we can run:
 
 # model.fit(failed_ptf.X)
-

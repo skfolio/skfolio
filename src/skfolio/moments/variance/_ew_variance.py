@@ -87,7 +87,7 @@ class EWVariance(BaseVariance):
     where :math:`S_i` is the raw internal EWMA accumulator. For assets with a
     long history, the correction is negligible (:math:`\lambda^{n_i} \to 0`).
 
-    The ``min_observations`` parameter controls a warm-up period: an asset's
+    The `min_observations` parameter controls a warm-up period: an asset's
     variance estimate remains NaN in the output until it has accumulated enough
     valid observations for a reliable estimate.
 
@@ -122,10 +122,10 @@ class EWVariance(BaseVariance):
 
     min_observations : int, optional
         Minimum number of valid observations per asset before its variance estimate
-        is considered reliable and exposed in the output ``variance_``. Until this
+        is considered reliable and exposed in the output `variance_`. Until this
         threshold is reached, the asset's variance estimate remains NaN.
 
-        The default (``None``) uses ``int(half_life)`` as the threshold, ensuring
+        The default (`None`) uses `int(half_life)` as the threshold, ensuring
         the late-listing initialization bias has decayed to at most 50%. Set to
         1 to disable warm-up entirely.
 
@@ -142,18 +142,18 @@ class EWVariance(BaseVariance):
         Truncating to a reasonable window (e.g., 252 trading days) speeds up
         computation without materially affecting results.
 
-        The default (``None``) uses all available data.
+        The default (`None`) uses all available data.
 
     Attributes
     ----------
     variance_ : ndarray of shape (n_assets,)
         Estimated variance vector. Contains NaN for assets that are inactive
-        or that have not yet accumulated ``min_observations`` valid observations.
+        or that have not yet accumulated `min_observations` valid observations.
 
     location_ : ndarray of shape (n_assets,)
-        Estimated location (mean). If ``assume_centered=True``, this is zeros.
+        Estimated location (mean). If `assume_centered=True`, this is zeros.
         Otherwise, it tracks the EWMA mean of returns. Contains NaN for inactive
-        assets when ``assume_centered=False``.
+        assets when `assume_centered=False`.
 
     n_features_in_ : int
        Number of assets seen during `fit`.
@@ -175,22 +175,28 @@ class EWVariance(BaseVariance):
     >>> # Batch fitting
     >>> model = EWVariance(half_life=40)
     >>> model.fit(X)
+    EWVariance()
     >>> print(model.variance_.shape)
+    (20,)
     >>>
     >>> # Streaming updates with partial_fit
     >>> model2 = EWVariance(half_life=20)
     >>> model2.partial_fit(X[:100])  # Initial fit
+    EWVariance(half_life=20)
     >>> model2.partial_fit(X[100:200])  # Update with new data
+    EWVariance(half_life=20)
     >>> model2.partial_fit(X[200:])  # Continue updating
+    EWVariance(half_life=20)
     >>>
     >>> # NaN-aware fitting with active_mask
     >>> # Asset 2 is listed starting from observation 50
     >>> active_mask = np.ones(X.shape, dtype=bool)
     >>> active_mask[:50, 2] = False
     >>> X_nan = X.copy()
-    >>> X_nan[:50, 2] = np.nan
+    >>> X_nan.iloc[:50, 2] = np.nan
     >>> model3 = EWVariance(half_life=40)
     >>> model3.fit(X_nan, active_mask=active_mask)
+    EWVariance()
     """
 
     def __init__(
@@ -226,9 +232,9 @@ class EWVariance(BaseVariance):
         active_mask : array-like of shape (n_observations, n_assets), optional
             Boolean mask indicating whether each asset is structurally active at
             each observation. Use this to distinguish between holidays
-            (``active_mask=True`` and NaN return: variance is frozen) and
+            (`active_mask=True` and NaN return: variance is frozen) and
             inactive periods such as pre-listing or post-delisting
-            (``active_mask=False``: variance is set to NaN). If ``None``
+            (`active_mask=False`: variance is set to NaN). If `None`
             (default), all assets are assumed active.
 
         Returns
@@ -276,13 +282,13 @@ class EWVariance(BaseVariance):
         active_mask = _validate_mask(X=X, mask=active_mask, name="active_mask")
 
         if first_call:
+            self._validate_params()
             if self.window_size is not None:
                 X = apply_window_size(X, window_size=self.window_size)
                 if active_mask is not None:
                     active_mask = apply_window_size(
                         active_mask, window_size=self.window_size
                     )
-            self._validate_params()
             self._initialize()
 
         if active_mask is not None:
@@ -332,7 +338,7 @@ class EWVariance(BaseVariance):
     def _initialize(self) -> None:
         r"""Initialize internal state.
 
-        ``_var`` is zero-initialized (never NaN) so that EWMA arithmetic needs
+        `_var` is zero-initialized (never NaN) so that EWMA arithmetic needs
         no NaN-fill step. Active state is tracked separately; NaN is applied
         only at output time.
         """

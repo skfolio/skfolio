@@ -65,7 +65,7 @@ from skfolio.distribution.univariate import (
     StudentT,
     select_univariate_dist,
 )
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.figure import kde_trace
 from skfolio.utils.tools import input_to_array, validate_input_list
 
@@ -198,16 +198,19 @@ class VineCopula(BaseMultivariateDist):
     >>> prices = load_factors_dataset()
     >>> X = prices_to_returns(prices)
     >>>
-    >>> # Instanciate the VineCopula model
+    >>> # Instantiate the VineCopula model
     >>> vine = VineCopula()
     >>> # Fit the model
     >>> vine.fit(X)
+    VineCopula(...)
     >>> # Display the vine trees and fitted copulas
     >>> vine.display_vine()
+    Root Nodes
+    ...
     >>> # Log-likelihood, AIC and BIC
-    >>> vine.score(X)
-    >>> vine.aic(X)
-    >>> vine.bic(X)
+    >>> log_likelihood = vine.score(X)
+    >>> aic = vine.aic(X)
+    >>> bic = vine.bic(X)
     >>>
     >>> # Generate 10 samples from the fitted vine copula
     >>> samples = vine.sample(n_samples=10)
@@ -215,6 +218,7 @@ class VineCopula(BaseMultivariateDist):
     >>> # Set QUAL, SIZE and MTUM as central
     >>> vine = VineCopula(central_assets=["QUAL", "SIZE", "MTUM"])
     >>> vine.fit(X)
+    VineCopula(...)
     >>> # Sample by conditioning on QUAL and SIZE returns
     >>> samples = vine.sample(
     ...    n_samples=4,
@@ -223,14 +227,12 @@ class VineCopula(BaseMultivariateDist):
     ...        "SIZE": -0.2,
     ...        "MTUM": (None, -0.3) # MTUM sampled between -Inf and -30%
     ...    },
-    ...)
+    ... )
     >>> # Plots Scatter matrix of sampled returns vs historical X
     >>> fig = vine.plot_scatter_matrix(X=X)
-    >>> fig.show()
     >>>
     >>> # Plots univariate distributions of sampled returns vs historical X
     >>> fig = vine.plot_marginal_distributions(X=X)
-    >>> fig.show()
 
     References
     ----------
@@ -253,7 +255,7 @@ class VineCopula(BaseMultivariateDist):
     trees_: list[Tree]
     marginal_distributions_: list[BaseUnivariateDist]
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
     central_assets_: set[int | str]
 
     _log_transform: BoolArray
@@ -750,11 +752,6 @@ class VineCopula(BaseMultivariateDist):
 
         missing_central_vars = set(conditioning_vars).difference(self.central_assets_)
 
-        if not set(conditioning_vars).issubset(set(range(n_assets))):
-            raise ValueError(
-                "The keys of `conditioning` must be asset indices or names "
-                "from the input X."
-            )
         if len(conditioning_vars) >= n_assets:
             raise ValueError(
                 "`conditioning` must be provided for strictly fewer assets "

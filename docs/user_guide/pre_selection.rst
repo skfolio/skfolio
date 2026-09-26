@@ -14,6 +14,10 @@ It follows the same API as scikit-learn's `estimator`: the `fit_transform` metho
 
 `X` can be any array-like structure (numpy array, pandas DataFrame, etc.)
 
+Pre-selection is one way to handle missing returns before fitting estimators that
+require finite inputs. See :ref:`Missing Data and Changing Universes <missing_data>`
+for the trade-off between pre-selection, imputation and native NaN-aware estimators.
+
 
 Available transformers are:
     * :class:`DropZeroVariance`
@@ -72,4 +76,3 @@ Pre-Selection transformers are fully compatible with :class:`sklearn.pipeline.Pi
 
     portfolio = pipe.predict(X_test)
     print(portfolio.annualized_sharpe_ratio)
-

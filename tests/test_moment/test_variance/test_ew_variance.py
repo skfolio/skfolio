@@ -575,3 +575,11 @@ class TestEWVarianceEdgeCases:
         assert np.isfinite(model.variance_[4])
         assert np.isfinite(model.location_[4])
         assert model.variance_[4] > 0
+
+
+def test_ew_variance_invalid_window_size(X_synth):
+    model = EWVariance(window_size=0)
+    with pytest.raises(
+        ValueError, match="window_size must be a positive integer, got 0"
+    ):
+        model.fit(X_synth)

@@ -44,7 +44,7 @@ In `cross_val_predict`, the data is split according to the `cv` parameter.
 The portfolio optimization estimator is fitted on the training set and portfolios are
 predicted on the corresponding test set.
 
-For `scikit-learn` cross-validations methods such as `Kfold` and `skfolio`'s
+For `scikit-learn` cross-validation methods such as `KFold` and `skfolio`'s
 `WalkForward`, the output is a :class:`~skfolio.portfolio.MultiPeriodPortfolio`, where
 each :class:`~skfolio.portfolio.Portfolio` corresponds to the prediction on a single
 train/test split (resulting in K portfolios for `KFold`).
@@ -55,6 +55,55 @@ Monte Carlo-style methods such as :class:`MultipleRandomizedCV`, the output is a
 :class:`~skfolio.portfolio.MultiPeriodPortfolio`. This is because each test produces a
 collection of multiple paths rather than a single path.
 
+Portfolio parameters can be set in the portfolio optimizer's `portfolio_params` or
+passed to `cross_val_predict`. The parameters shared by
+:class:`~skfolio.portfolio.Portfolio` and
+:class:`~skfolio.portfolio.MultiPeriodPortfolio` (`compounded`, `risk_free_rate`,
+`annualization_factor`, `fitness_measures` and the risk measure parameters) are applied
+to the resulting `MultiPeriodPortfolio` and to each `Portfolio` it contains. A value
+passed to `cross_val_predict` takes precedence over the optimizer's `portfolio_params`.
+When omitted, it is inherited from the optimizer's `portfolio_params`, and
+`risk_free_rate` falls back to the optimizer's `risk_free_rate` parameter when it has
+one. For example, `MeanRisk(portfolio_params={"compounded": True})` produces a
+compounded `MultiPeriodPortfolio` from `cross_val_predict` without repeating the
+setting. These parameters only affect how the portfolios are measured: a
+`risk_free_rate` passed to `cross_val_predict` does not change the optimizer's own
+`risk_free_rate`.
+
+`weight_drift` applies to each `Portfolio` of the path. With `weight_drift=True`, the
+weights held within each test window drift with the asset returns, and the path runs
+sequentially. A value passed to `cross_val_predict` overrides the optimizer's
+`portfolio_params`. Optimizer parameters such as `transaction_costs`,
+`management_fees` and `previous_weights` are not accepted in the function's
+`portfolio_params`: set them on the optimizer, which forwards them to the predicted
+`Portfolio` objects. `name`, `tag`, `sample_weight` and `check_observations_order`
+apply to the resulting `MultiPeriodPortfolio` only.
+
+By default, the resulting portfolio inherits its children's sample weights.
+An explicit `sample_weight` overrides them (see :ref:`portfolio`).
+
+For example, to evaluate a drifted, compounded path with transaction costs:
+
+.. code-block:: python
+
+    pred = cross_val_predict(
+        MeanRisk(transaction_costs=0.001 / 5),
+        X,
+        cv=WalkForward(test_size=5, train_size=252),
+        portfolio_params={"weight_drift": True, "compounded": True},
+    )
+
+With a sequential splitter, the `ending_weights` of each portfolio are passed as
+`previous_weights` to the next fit. They equal the target weights when
+`weight_drift=False` and the weights after the last observation when
+`weight_drift=True`, so transaction costs and `max_turnover` are then measured from the
+holdings a fund would trade from. A failed period keeps the last successful ending
+weights. The sequential path requires one portfolio per fold and raises for estimators
+that return a :class:`~skfolio.population.Population`. With non-sequential splitters
+such as `KFold`, drift is evaluated inside each test fold and is not propagated. See
+:ref:`backtesting_and_evaluation` for the choice between `weight_drift=False` and
+`weight_drift=True`.
+
 **Example:**
 
 .. code-block:: python
@@ -63,7 +112,11 @@ collection of multiple paths rather than a single path.
     from sklearn.model_selection import KFold
 
     from skfolio.datasets import load_sp500_dataset
-    from skfolio.model_selection import WalkForward CombinatorialPurgedCV, cross_val_predict
+    from skfolio.model_selection import (
+        CombinatorialPurgedCV,
+        WalkForward,
+        cross_val_predict,
+    )
     from skfolio.optimization import MeanRisk
     from skfolio.preprocessing import prices_to_returns
 
@@ -126,9 +179,9 @@ train/test sets to generate multiple testing paths.
 
 To avoid data leakage, purging and embargoing can be performed.
 
-Purging consist of removing from the training set all observations
+Purging consists of removing from the training set all observations
 whose labels overlapped in time with those labels included in the testing set.
-Embargoing consist of removing from the training set observations that immediately
+Embargoing consists of removing from the training set observations that immediately
 follow an observation in the testing set, since financial features often incorporate
 series that exhibit serial correlation (like ARMA processes).
 
@@ -158,7 +211,7 @@ When used with :func:`cross_val_predict`, the object returned is a
 
 The default parameters of the `CombinatorialPurgedCV` are `n_folds=10` and
 `n_test_folds=8`. You may want to choose these parameters to target a number of test
-paths and an average training size. The later depends on the number of observations.
+paths and an average training size. The latter depends on the number of observations.
 For that, you can use the function :func:`optimal_folds_number` as shown in the example
 :ref:`sphx_glr_auto_examples_clustering_plot_3_hrp_vs_herc.py`.
 

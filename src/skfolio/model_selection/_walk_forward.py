@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import warnings
 from collections.abc import Iterator
 
 import numpy as np
@@ -20,6 +19,11 @@ import sklearn.model_selection as sks
 import sklearn.utils as sku
 
 from skfolio.typing import ArrayLike, IntArray
+from skfolio.utils.tools import (
+    _is_integer_number,
+    _validate_non_negative_integer,
+    _validate_positive_integer,
+)
 
 
 class WalkForward(sks.BaseCrossValidator):
@@ -105,11 +109,7 @@ class WalkForward(sks.BaseCrossValidator):
         use all past observations.
         The default is `False`.
 
-    expend_train : bool, optional
-        Deprecated alias for `expand_train`. If provided, a `FutureWarning`
-        is raised.
-
-        reduce_test : bool, default=False
+    reduce_test : bool, default=False
         If set to `True`, the last train/test split will be returned even if the
         test set is partial (i.e., it contains fewer observations than `test_size`),
         otherwise, it will be ignored.
@@ -227,9 +227,9 @@ class WalkForward(sks.BaseCrossValidator):
     >>> cv = WalkForward(test_size=3, train_size=12, freq="WOM-3FRI")
     >>>
     >>> for i, (train_index, test_index) in enumerate(cv.split(X)):
-    >>> ...     print(f"Fold {i}:")
-    >>> ...     print(f"  Train: size={len(train_index)}")
-    >>> ...     print(f"  Test:  size={len(test_index)}")
+    ...     print(f"Fold {i}:")
+    ...     print(f"  Train: size={len(train_index)}")
+    ...     print(f"  Test:  size={len(test_index)}")
     Fold 0:
       Train: size=256
       Test:  size=59
@@ -248,36 +248,16 @@ class WalkForward(sks.BaseCrossValidator):
         freq: str | pd.offsets.BaseOffset | None = None,
         freq_offset: pd.offsets.BaseOffset | dt.timedelta | None = None,
         previous: bool = False,
-        expend_train: bool | None = None,
+        expand_train: bool = False,
         reduce_test: bool = False,
         purged_size: int = 0,
-        *,
-        expand_train: bool | None = None,
     ):
-        # TODO: expend_train is depreciated and replaced by expand_train, remove in next version
-        if expand_train is not None and expend_train is not None:
-            if expand_train != expend_train:
-                raise ValueError(
-                    "`expand_train` and `expend_train` must match when both are "
-                    "provided."
-                )
-        if expend_train is not None:
-            warnings.warn(
-                "`expend_train` is deprecated and will be removed in a future "
-                "release. Use `expand_train` instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-        if expand_train is None:
-            expand_train = False if expend_train is None else expend_train
-
         self.test_size = test_size
         self.train_size = train_size
         self.freq = freq
         self.freq_offset = freq_offset
         self.previous = previous
         self.expand_train = expand_train
-        self.expend_train = expand_train
         self.reduce_test = reduce_test
         self.purged_size = purged_size
 
@@ -304,20 +284,22 @@ class WalkForward(sks.BaseCrossValidator):
 
         test : ndarray
             The testing set indices for that split.
+
+        Raises
+        ------
+        ValueError
+            If a window size has an invalid type, if a training or test window size
+            is not positive, or if `purged_size` is not a non-negative integer.
         """
+        test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
 
-        if not isinstance(self.test_size, int):
-            raise ValueError("test_size` must be an integer")
-
         if self.freq is None:
-            if not isinstance(self.train_size, int):
-                raise ValueError("When `freq` is None, `train_size` must be an integer")
             return _split_without_period(
                 n_samples=n_samples,
-                train_size=self.train_size,
-                test_size=self.test_size,
+                train_size=train_size,
+                test_size=test_size,
                 purged_size=self.purged_size,
                 expand_train=self.expand_train,
                 reduce_test=self.reduce_test,
@@ -327,11 +309,11 @@ class WalkForward(sks.BaseCrossValidator):
             raise ValueError(
                 "X must be a DataFrame with an index of type DatetimeIndex"
             )
-        if isinstance(self.train_size, int):
+        if isinstance(train_size, int):
             return _split_from_period_without_train_offset(
                 n_samples=n_samples,
-                train_size=self.train_size,
-                test_size=self.test_size,
+                train_size=train_size,
+                test_size=test_size,
                 freq=self.freq,
                 freq_offset=self.freq_offset,
                 previous=self.previous,
@@ -342,8 +324,8 @@ class WalkForward(sks.BaseCrossValidator):
             )
         return _split_from_period_with_train_offset(
             n_samples=n_samples,
-            train_size=self.train_size,
-            test_size=self.test_size,
+            train_size=train_size,
+            test_size=test_size,
             freq=self.freq,
             freq_offset=self.freq_offset,
             previous=self.previous,
@@ -371,18 +353,26 @@ class WalkForward(sks.BaseCrossValidator):
         -------
         n_folds : int
             Returns the number of splitting iterations in the cross-validator.
+
+        Raises
+        ------
+        ValueError
+            If `X` is `None`, if a window size has an invalid type, if a training or
+            test window size is not positive, or if `purged_size` is not a
+            non-negative integer.
         """
         if X is None:
             raise ValueError("The 'X' parameter should not be None.")
+        test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
 
         if self.freq is None:
-            n = n_samples - self.train_size - self.purged_size
+            n = n_samples - train_size - self.purged_size
 
-            if self.reduce_test and n % self.test_size != 0:
-                return n // self.test_size + 1
-            return n // self.test_size
+            if self.reduce_test and n % test_size != 0:
+                return n // test_size + 1
+            return n // test_size
 
         if not hasattr(X, "index") or not isinstance(X.index, pd.DatetimeIndex):
             raise ValueError(
@@ -404,20 +394,57 @@ class WalkForward(sks.BaseCrossValidator):
         )
         n = len(idx)
 
-        if isinstance(self.train_size, int):
-            max_start = (
-                n - self.train_size - (0 if self.reduce_test else self.test_size)
-            )
-            return _special_div(max_start, self.test_size) + 1 if max_start > 0 else 0
+        if isinstance(train_size, int):
+            max_start = n - train_size - (0 if self.reduce_test else test_size)
+            return _special_div(max_start, test_size) + 1 if max_start > 0 else 0
 
-        train_idx = ts_index.get_indexer(date_range - self.train_size, method="ffill")
+        train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
         if np.all(train_idx == -1):
             return 0
         first_valid = np.argmax(train_idx > -1)
-        last_allowed_start = n if self.reduce_test else n - self.test_size
+        last_allowed_start = n if self.reduce_test else n - test_size
         if first_valid >= last_allowed_start:
             return 0
-        return _special_div(last_allowed_start - first_valid, self.test_size) + 1
+        return _special_div(last_allowed_start - first_valid, test_size) + 1
+
+    def _validate_window_sizes(
+        self,
+    ) -> tuple[int, int | pd.offsets.BaseOffset | dt.timedelta]:
+        """Validate and normalize window sizes used by the public split methods.
+
+        Returns
+        -------
+        test_size : int
+            Normalized test-window size.
+
+        train_size : int | pandas.offsets.DateOffset | datetime.timedelta
+            Normalized integer training-window size or the unchanged calendar offset.
+
+        Raises
+        ------
+        ValueError
+            If a window size has an invalid type, if `test_size` or an integer
+            `train_size` is not positive, or if `purged_size` is not a non-negative
+            integer.
+        """
+        _validate_positive_integer(self.test_size, "test_size")
+
+        train_size = self.train_size
+        if _is_integer_number(train_size):
+            train_size = int(train_size)
+            _validate_positive_integer(train_size, "train_size")
+        elif self.freq is None:
+            raise ValueError(
+                f"train_size must be an integer when freq is None, got {train_size!r}"
+            )
+        elif not isinstance(train_size, (pd.offsets.BaseOffset, dt.timedelta)):
+            raise ValueError(
+                "train_size must be an integer, pandas DateOffset, or datetime "
+                f"timedelta when freq is set, got {train_size!r}"
+            )
+
+        _validate_non_negative_integer(self.purged_size, "purged_size")
+        return int(self.test_size), train_size
 
 
 def _split_without_period(
@@ -598,7 +625,7 @@ def _split_from_period_with_train_offset(
     purged_size: int,
     expand_train: bool,
     reduce_test: bool,
-    ts_index,
+    ts_index: pd.DatetimeIndex,
 ) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with date-offset training windows.
 
@@ -666,18 +693,19 @@ def _split_from_period_with_train_offset(
         if i >= n:
             return
 
+        # Offset windows anchor the test boundary, so purge from training only.
         if i + test_size >= n:
             if not reduce_test:
                 return
             test_indices = np.arange(idx[i], n_samples)
         else:
-            test_indices = np.arange(idx[i], idx[i + test_size] - purged_size)
+            test_indices = np.arange(idx[i], idx[i + test_size])
 
         if expand_train:
             train_start = 0
         else:
             train_start = train_idx[i]
-        train_indices = np.arange(train_start, idx[i])
+        train_indices = np.arange(train_start, idx[i] - purged_size)
         yield train_indices, test_indices
 
         i += test_size

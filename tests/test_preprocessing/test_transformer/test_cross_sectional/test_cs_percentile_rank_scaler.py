@@ -39,7 +39,7 @@ def _reference_transform(
     for t in range(n_obs):
         global_idx = np.flatnonzero(estimation[t])
         if global_idx.size == 0:
-            raise ValueError("each observation needs at least one estimation asset")
+            continue
         global_sample = X[t, global_idx]
 
         for i in np.flatnonzero(finite[t]):
@@ -421,9 +421,18 @@ class TestValidation:
         with pytest.raises(ValueError, match=match):
             CSPercentileRankScaler().fit_transform(X, cs_weights=cs_weights)
 
-    def test_empty_estimation_universe_raises(self):
+    def test_empty_estimation_universe_returns_nan(self):
         X = np.array([[1.0, 2.0, 3.0, 4.0]])
         cs_weights = np.zeros_like(X)
 
-        with pytest.raises(ValueError, match="estimation asset"):
-            CSPercentileRankScaler().fit_transform(X, cs_weights=cs_weights)
+        transformed = CSPercentileRankScaler().fit_transform(X, cs_weights=cs_weights)
+
+        assert np.all(np.isnan(transformed))
+
+    def test_all_nan_row_returns_nan(self):
+        X = np.array([[10.0, 20.0, 30.0, 40.0], [np.nan, np.nan, np.nan, np.nan]])
+
+        transformed = CSPercentileRankScaler().fit_transform(X)
+
+        np.testing.assert_allclose(transformed[0], [0.125, 0.375, 0.625, 0.875])
+        assert np.all(np.isnan(transformed[1]))

@@ -17,7 +17,7 @@ import sklearn.base as skb
 import sklearn.utils.validation as skv
 
 from skfolio.exceptions import NonPositiveVarianceError
-from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, ObjArray
+from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.stats import (
     _squared_mahalanobis_dist_from_cholesky,
     cov_nearest,
@@ -40,7 +40,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
 
     nearest : bool, default=True
         If this is set to True, the covariance is replaced by the nearest covariance
-        matrix that is positive definite and with a Cholesky decomposition than can be
+        matrix that is positive definite and with a Cholesky decomposition that can be
         computed. The variance is left unchanged.
         A covariance matrix that is not positive definite often occurs in high
         dimensional problems. It can be due to multicollinearity, floating-point
@@ -78,14 +78,14 @@ class BaseCovariance(skb.BaseEstimator, ABC):
     Notes
     -----
     All estimators should specify all the parameters that can be set
-    at the class level in their ``__init__`` as explicit keyword
-    arguments (no ``*args`` or ``**kwargs``).
+    at the class level in their `__init__` as explicit keyword
+    arguments (no `*args` or `**kwargs`).
     """
 
     covariance_: FloatArray
     location_: FloatArray
     n_features_in_: int
-    feature_names_in_: ObjArray
+    feature_names_in_: StrArray
 
     def __init__(
         self,
@@ -100,8 +100,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y=None, **fit_params): ...
 
     def score(self, X_test: ArrayLike, y=None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
@@ -149,13 +148,16 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance, LedoitWolf
-        >>> X_train = np.random.randn(100, 5)
-        >>> X_test = np.random.randn(50, 5)
+        >>> rng = np.random.default_rng(0)
+        >>> X_train = rng.standard_normal((100, 5))
+        >>> X_test = rng.standard_normal((50, 5))
         >>> emp = EmpiricalCovariance().fit(X_train)
         >>> lw = LedoitWolf().fit(X_train)
         >>> # Compare models on held-out data
-        >>> print(f"Empirical: {emp.score(X_test):.2f}")
-        >>> print(f"LedoitWolf: {lw.score(X_test):.2f}")
+        >>> print("Empirical:", emp.score(X_test))
+        Empirical: -6.97...
+        >>> print("LedoitWolf:", lw.score(X_test))
+        LedoitWolf: -6.88...
         """
         skv.check_is_fitted(self, "covariance_")
         X_test = skv.validate_data(
@@ -238,12 +240,15 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance
-        >>> X = np.random.randn(100, 3)
+        >>> rng = np.random.default_rng(0)
+        >>> X = rng.standard_normal((100, 3))
         >>> model = EmpiricalCovariance()
         >>> model.fit(X)
+        EmpiricalCovariance()
         >>> distances = model.mahalanobis(X)
-        >>> # Distances follow approximately chi-squared distribution with n_assets DoF
-        >>> print(f"Mean distance: {distances.mean():.2f}, Expected: {3:.2f}")
+        >>> # The mean squared distance should be close to the number of assets (3).
+        >>> print(distances.mean())
+        2.9...
         """
         skv.check_is_fitted(self, "covariance_")
 

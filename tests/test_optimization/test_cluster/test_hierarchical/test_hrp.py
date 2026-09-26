@@ -100,11 +100,11 @@ def test_hrp_empirical_prior(X):
     )
 
 
-def test_hrp_factor_model(X, y):
+def test_hrp_factor_model(X, factors):
     model = HierarchicalRiskParity(
         risk_measure=RiskMeasure.CVAR, prior_estimator=TimeSeriesFactorModel()
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     np.testing.assert_almost_equal(
         model.weights_,
         np.array(
@@ -173,7 +173,7 @@ def test_metadata_routing(X_medium, implied_vol_medium):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_medium)
 
         model.fit(X_medium, implied_vol=implied_vol_medium)
@@ -256,6 +256,7 @@ def test_hrp_weight_constraints(X):
 
 
 def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
+    X = X.iloc[-100:, :6]
     model = HierarchicalRiskParity(
         risk_measure=risk_measure,
         hierarchical_clustering_estimator=HierarchicalClustering(
@@ -265,7 +266,6 @@ def test_hrp_weight_constraints_rand(X, risk_measure, linkage_method):
     np.random.seed(42)
     for _ in range(5):
         min_weights, max_weights = _random_weights_bounds(n_assets=X.shape[1])
-        print(min_weights)
         model.set_params(min_weights=min_weights, max_weights=max_weights)
         model.fit(X)
         assert np.all(model.weights_ - min_weights >= -1e-8)
@@ -511,3 +511,60 @@ def test_sample_weight(X, risk_measure, view_params, expected_weights):
     ptf.sample_weight = sample_weight
 
     assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)
+
+
+def test_hrp_invalid_risk_measure_type(small_X):
+    model = HierarchicalRiskParity().set_params(risk_measure="variance")
+    with pytest.raises(
+        TypeError, match="must be of type `RiskMeasure` or `ExtraRiskMeasure`"
+    ):
+        model.fit(small_X)
+
+
+@pytest.mark.parametrize(
+    "risk_measure", [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
+)
+def test_hrp_unsupported_risk_measure(small_X, risk_measure):
+    model = HierarchicalRiskParity(risk_measure=risk_measure)
+    with pytest.raises(ValueError, match="currently not supported in HRP"):
+        model.fit(small_X)
+
+
+def test_hrp_none_weight_bounds(small_X):
+    model = HierarchicalRiskParity(min_weights=None, max_weights=None)
+    model.fit(small_X)
+    assert np.all(model.weights_ >= 0)
+    np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+@pytest.mark.parametrize(
+    "params,error,match",
+    [
+        (dict(min_weights=-0.1), ValueError, "`min_weights` must be strictly positive"),
+        (dict(min_weights=0.5), ValueError, "Invalid `min_weights`: sum is 1.5000"),
+        (
+            dict(max_weights=1.5),
+            ValueError,
+            "`max_weights` must be less than or equal to 1.0",
+        ),
+        (dict(max_weights=0.2), ValueError, "Invalid `max_weights`: sum is 0.6000"),
+        (
+            dict(min_weights={"AAPL": 0.5}, max_weights={"AAPL": 0.2}),
+            NameError,
+            (
+                "Items of `min_weights` must be less than or equal to items of"
+                " `max_weights`"
+            ),
+        ),
+    ],
+)
+def test_hrp_weight_bounds_validation(small_X, params, error, match):
+    model = HierarchicalRiskParity(**params)
+    with pytest.raises(error, match=match):
+        model.fit(small_X)
+
+
+def test_hierarchical_clean_input_none():
+    model = HierarchicalRiskParity()
+    with pytest.raises(ValueError, match="Cannot convert None to array"):
+        model._clean_input(None, n_assets=3, fill_value=0, name="min_weights")

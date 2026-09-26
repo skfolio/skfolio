@@ -56,47 +56,10 @@ class TestEWMu:
             ),
         )
 
-    def test_ew_mu_deprecated_alpha(self, X):
-        """Test backward compatibility with deprecated alpha parameter."""
-        import warnings
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            model = EWMu(alpha=0.2)
-            model.fit(X)
-            # Check deprecation warning was issued
-            assert len(w) == 1
-            assert issubclass(w[0].category, FutureWarning)
-            assert "alpha" in str(w[0].message)
-
-        # These values were computed with the original pandas-based implementation
-        np.testing.assert_almost_equal(
-            model.mu_,
-            np.array(
-                [
-                    -1.24726372e-02,
-                    -9.45067113e-03,
-                    1.61657194e-03,
-                    -1.83966453e-03,
-                    2.83363890e-03,
-                    9.19409711e-04,
-                    -2.64229605e-03,
-                    -5.19784162e-04,
-                    1.54353089e-03,
-                    6.95047714e-05,
-                    4.90700510e-04,
-                    6.30137508e-04,
-                    -6.19996526e-03,
-                    -4.15448322e-04,
-                    -3.22012113e-03,
-                    4.39614645e-05,
-                    -1.16913798e-02,
-                    -5.00326373e-04,
-                    -4.56242603e-03,
-                    1.86622274e-03,
-                ]
-            ),
-        )
+    def test_ew_mu_rejects_removed_alpha(self):
+        """Test that removed alpha parameter is rejected at construction."""
+        with pytest.raises(TypeError, match="alpha"):
+            EWMu(alpha=0.2)
 
     def test_ew_mu_partial_fit(self, X):
         """Test streaming/online updates with partial_fit."""
@@ -145,21 +108,13 @@ class TestEWMu:
 
     def test_ew_mu_validation(self):
         """Test parameter validation."""
-        # Cannot specify both alpha and half_life
-        with pytest.raises(ValueError, match="Cannot specify both"):
-            EWMu(alpha=0.2, half_life=40).fit(np.random.randn(10, 3))
+        # Removed alpha parameter
+        with pytest.raises(TypeError, match="alpha"):
+            EWMu(alpha=0.2, half_life=40)
 
         # half_life must be positive
         with pytest.raises(ValueError, match="half_life must be positive"):
             EWMu(half_life=-5).fit(np.random.randn(10, 3))
-
-        # alpha must be in (0, 1)
-        import warnings
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            with pytest.raises(ValueError, match="alpha must satisfy"):
-                EWMu(alpha=1.5).fit(np.random.randn(10, 3))
 
     def test_ew_mu_min_observations_validation(self):
         """Test min_observations parameter validation."""
@@ -625,7 +580,7 @@ class TestEquilibriumMu:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
@@ -639,6 +594,7 @@ class TestShrunkMu:
     def test_shrinkage_mu(self, X):
         model = ShrunkMu()
         model.fit(X)
+        assert np.issubdtype(model.mu_.dtype, np.floating)
         np.testing.assert_almost_equal(
             model.mu_,
             np.array(
@@ -757,6 +713,13 @@ class TestShrunkMu:
             ),
         )
 
+    def test_james_stein_outputs_are_real(self, X):
+        model = ShrunkMu(method=ShrunkMuMethods.JAMES_STEIN)
+        model.fit(X)
+        assert not np.iscomplexobj(model.mu_)
+        assert np.isreal(model.alpha_)
+        assert np.isreal(model.beta_)
+
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
             model = ShrunkMu(
@@ -765,7 +728,7 @@ class TestShrunkMu:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
@@ -773,3 +736,34 @@ class TestShrunkMu:
         # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
+
+
+def test_equilibrium_mu_with_explicit_weights(X):
+    n_assets = X.shape[1]
+    weights = np.ones(n_assets) / n_assets
+    model = EquilibriumMu(weights=weights).fit(X)
+    model_default = EquilibriumMu().fit(X)
+    np.testing.assert_allclose(model.mu_, model_default.mu_)
+
+    weights = np.zeros(n_assets)
+    weights[0] = 1.0
+    model = EquilibriumMu(weights=weights).fit(X)
+    np.testing.assert_allclose(
+        model.mu_, model.risk_aversion * model.covariance_estimator_.covariance_[:, 0]
+    )
+
+
+def test_ew_mu_invalid_window_size(X):
+    model = EWMu(window_size=0)
+    with pytest.raises(
+        ValueError, match="window_size must be a positive integer, got 0"
+    ):
+        model.fit(X)
+
+
+def test_shrunk_mu_invalid_method_type(X):
+    model = ShrunkMu(method="james_stein")
+    with pytest.raises(
+        ValueError, match="`method` must be of type ShrunkMuMethods, got str"
+    ):
+        model.fit(X)

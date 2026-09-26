@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 import pytest
 import sklearn.cluster as skc
 import sklearn.model_selection as sks
@@ -10,6 +11,7 @@ from skfolio import RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.model_selection import CombinatorialPurgedCV
 from skfolio.moments import ImpliedCovariance
+from skfolio.optimization import EqualWeighted
 from skfolio.optimization.cluster import NestedClustersOptimization
 from skfolio.optimization.convex import MeanRisk, ObjectiveFunction
 from skfolio.population import Population
@@ -261,10 +263,12 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
         )
         model = NestedClustersOptimization(inner_estimator=est)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_medium)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="param_key has wrong number of observations"
+        ):
             model.fit(X_medium, implied_vol=implied_vol)
 
         model.fit(X_medium, implied_vol=implied_vol_medium)
@@ -273,3 +277,20 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
     assert model.inner_estimators_[
         0
     ].prior_estimator_.covariance_estimator_.r2_scores_.shape == (5,)
+
+
+def test_nco_with_y_and_cv():
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(0.0005, 0.01, (60, 6)), columns=list("ABCDEF"))
+    y = pd.Series(rng.normal(0.0, 0.01, 60), name="benchmark")
+    # One cluster per asset: `y` is only consumed by the cv split and the
+    # outer estimator.
+    model = NestedClustersOptimization(
+        inner_estimator=EqualWeighted(),
+        outer_estimator=EqualWeighted(),
+        clustering_estimator=skc.KMeans(n_clusters=6, n_init="auto", random_state=0),
+        cv=3,
+    )
+    model.fit(X, y)
+    assert model.inner_estimators_ == []
+    np.testing.assert_almost_equal(model.weights_, np.full(6, 1 / 6))

@@ -12,6 +12,7 @@ from skfolio.datasets._base import (
     load_sp500_implied_vol_dataset,
     load_sp500_index,
 )
+from skfolio.datasets._synthetic import make_synthetic_characteristics
 
 __all__ = [
     "load_factors_dataset",
@@ -20,4 +21,5 @@ __all__ = [
     "load_sp500_dataset",
     "load_sp500_implied_vol_dataset",
     "load_sp500_index",
+    "make_synthetic_characteristics",
 ]

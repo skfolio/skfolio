@@ -153,21 +153,33 @@ class CovarianceForecastEvaluation:
     n_portfolios : int
         Number of test portfolios.
 
-    name : str or None, default=None
+    name : str, optional
         Display name for the evaluation.
 
     Examples
     --------
+    >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.model_selection import online_covariance_forecast_evaluation
     >>> from skfolio.moments import EWCovariance
+    >>> from skfolio.preprocessing import prices_to_returns
     >>>
-    >>> evaluation = online_covariance_forecast_evaluation(  # doctest: +SKIP
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices).tail(504)
+    >>> evaluation = online_covariance_forecast_evaluation(
     ...     EWCovariance(half_life=30),
     ...     X,
     ...     warmup_size=252,
     ... )
-    >>> evaluation.summary()  # doctest: +SKIP
-    >>> evaluation.plot_calibration()  # doctest: +SKIP
+    >>> evaluation.summary()
+                                        mean  ...           target
+    Mahalanobis ratio               1.405...  ...              1.0
+    Diagonal ratio                  1.090...  ...              1.0
+    Portfolio standardized returns  0.010...  ...    mean=0, std=1
+    Portfolio QLIKE                -7.923...  ...  lower is better
+    <BLANKLINE>
+    [4 rows x 7 columns]
+    >>> evaluation.plot_calibration()
+    Figure(...)
     """
 
     observations: FloatArray
@@ -365,7 +377,7 @@ class CovarianceForecastEvaluation:
             window,
         )
         if title is None:
-            title = f"Rolling Calibration Diagnostics ({window}-observation window)"
+            title = f"Rolling Calibration Diagnostics ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -419,7 +431,7 @@ class CovarianceForecastEvaluation:
                 window,
             )
         if title is None:
-            title = f"Rolling Portfolio QLIKE Loss ({window}-observation window)"
+            title = f"Rolling Portfolio QLIKE Loss ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -474,7 +486,7 @@ class CovarianceForecastEvaluation:
             )
 
         if title is None:
-            title = f"Rolling Exceedance Rate ({window}-observation window)"
+            title = f"Rolling Exceedance Rate ({window} observations)"
 
         fig = _plot_lines(
             series_map,
@@ -508,7 +520,7 @@ class CovarianceForecastComparison:
     evaluations : list of CovarianceForecastEvaluation
         Evaluation results to compare.
 
-    names : list of str or None, default=None
+    names : list of str, optional
         Override display names. When provided, must have the same length as
         `evaluations`. When `None`, defaults to each evaluation's
         :attr:`~CovarianceForecastEvaluation.name` (falling back to
@@ -516,24 +528,37 @@ class CovarianceForecastComparison:
 
     Examples
     --------
+    >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.model_selection import (
     ...     CovarianceForecastComparison,
     ...     online_covariance_forecast_evaluation,
     ... )
     >>> from skfolio.moments import EWCovariance
+    >>> from skfolio.preprocessing import prices_to_returns
     >>>
-    >>> evaluatio_30 = online_covariance_forecast_evaluation(  # doctest: +SKIP
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices).tail(504)
+    >>> evaluation_30 = online_covariance_forecast_evaluation(
     ...     EWCovariance(half_life=30), X, warmup_size=252,
     ... )
-    >>> evaluatio_60 = online_covariance_forecast_evaluation(  # doctest: +SKIP
+    >>> evaluation_60 = online_covariance_forecast_evaluation(
     ...     EWCovariance(half_life=60), X, warmup_size=252,
     ... )
-    >>> comparison = CovarianceForecastComparison(  # doctest: +SKIP
-    ...     [evaluatio_30, evaluatio_60],
+    >>> comparison = CovarianceForecastComparison(
+    ...     [evaluation_30, evaluation_60],
     ...     names=["EWCov(30)", "EWCov(60)"],
     ... )
-    >>> comparison.summary()  # doctest: +SKIP
-    >>> comparison.plot_calibration()  # doctest: +SKIP
+    >>> comparison.summary()
+    estimator                      EWCov(30)  ...        EWCov(60)
+                                        mean  ...           target
+    Mahalanobis ratio               1.405...  ...              1.0
+    Diagonal ratio                  1.090...  ...              1.0
+    Portfolio standardized returns  0.010...  ...    mean=0, std=1
+    Portfolio QLIKE                -7.923...  ...  lower is better
+    <BLANKLINE>
+    [4 rows x 14 columns]
+    >>> comparison.plot_calibration()
+    Figure(...)
     """
 
     evaluations: list[CovarianceForecastEvaluation]
@@ -677,7 +702,7 @@ class CovarianceForecastComparison:
             all_bands.update(est_bands)
 
         if title is None:
-            title = f"Rolling Calibration Diagnostics ({window}-observation window)"
+            title = f"Rolling Calibration Diagnostics ({window} observations)"
 
         return _plot_lines(
             all_series,
@@ -731,7 +756,7 @@ class CovarianceForecastComparison:
                 )
 
         if title is None:
-            title = f"Rolling Portfolio QLIKE Loss ({window}-observation window)"
+            title = f"Rolling Portfolio QLIKE Loss ({window} observations)"
 
         return _plot_lines(
             series_map,
@@ -782,7 +807,7 @@ class CovarianceForecastComparison:
         if title is None:
             title = (
                 f"Rolling Exceedance Rate (confidence_level={confidence_level}, "
-                f"{window}-observation window)"
+                f"{window} observations)"
             )
         fig = _plot_lines(
             series_map,
@@ -925,16 +950,25 @@ def covariance_forecast_evaluation(
     >>> from skfolio.preprocessing import prices_to_returns
     >>>
     >>> prices = load_sp500_dataset()
-    >>> X = prices_to_returns(prices)
-    >>> evaluation = covariance_forecast_evaluation(  # doctest: +SKIP
+    >>> X = prices_to_returns(prices).tail(504)
+    >>> evaluation = covariance_forecast_evaluation(
     ...     LedoitWolf(),
     ...     X,
     ...     train_size=252,
     ...     test_size=5,
     ... )
-    >>> evaluation.summary()  # doctest: +SKIP
-    >>> evaluation.bias_statistic  # doctest: +SKIP
-    >>> evaluation.plot_calibration()  # doctest: +SKIP
+    >>> evaluation.summary()
+                                        mean  ...           target
+    Mahalanobis ratio                1.169...  ...              1.0
+    Diagonal ratio                  1.313...  ...              1.0
+    Portfolio standardized returns  0.028...  ...    mean=0, std=1
+    Portfolio QLIKE                -6.082...  ...  lower is better
+    <BLANKLINE>
+    [4 rows x 7 columns]
+    >>> evaluation.bias_statistic
+    array([1.380...])
+    >>> evaluation.plot_calibration()
+    Figure(...)
     """
     estimator = sk.clone(estimator)
     X, y = sku.indexable(X, y)
@@ -1155,6 +1189,7 @@ def _rolling(
     series : Series
         Rolling statistic with the warmup period removed.
     """
+    _validate_rolling_window(window, len(observations))
     series = pd.Series(arr, index=observations)
     if stats_type == "std":
         return series.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1222,6 +1257,7 @@ def _rolling_portfolio_band(
     p95 : Series
         Rolling 95th percentile across portfolios.
     """
+    _validate_rolling_window(window, len(observations))
     df = pd.DataFrame(arr, index=observations)
     if stats_type == "std":
         rolled = df.rolling(window=window).std(ddof=1).iloc[window - 1 :]
@@ -1232,6 +1268,15 @@ def _rolling_portfolio_band(
         rolled.quantile(0.05, axis=1),
         rolled.quantile(0.95, axis=1),
     )
+
+
+def _validate_rolling_window(window: int, n_observations: int) -> None:
+    """Validate rolling window length against available observations."""
+    if window > n_observations:
+        raise ValueError(
+            "`window` must be less than or equal to the number of evaluation "
+            f"observations; got window={window} and n_observations={n_observations}."
+        )
 
 
 def _median_portfolio_stats(arr: FloatArray, stats_func: Callable) -> dict[str, object]:

@@ -80,16 +80,17 @@ class NormalInverseGaussian(BaseUnivariateDist):
     >>>
     >>> # Fit the model to the data.
     >>> model.fit(X)
+    NormalInverseGaussian(...)
     >>>
     >>> # Display the fitted parameters.
     >>> print(model.fitted_repr)
-    NormalInverseGaussian(0.422, -0.0321, 0.000913, 0.00739)
+    NormalInverseGaussian(a=0.42, b=-0.032, loc=0.00091, scale=0.0074)
     >>>
     >>> # Compute the log-likelihood, total log-likelihood, CDF, PPF, AIC, and BIC
     >>> log_likelihood = model.score_samples(X)
     >>> score = model.score(X)
     >>> cdf = model.cdf(X)
-    >>> ppf = model.ppf(X)
+    >>> ppf = model.ppf([0.01, 0.05, 0.5, 0.95, 0.99])
     >>> aic = model.aic(X)
     >>> bic = model.bic(X)
     >>>
@@ -98,7 +99,6 @@ class NormalInverseGaussian(BaseUnivariateDist):
     >>>
     >>> # Plot the estimated probability density function (PDF).
     >>> fig = model.plot_pdf()
-    >>> fig.show()
     """
 
     a_: float

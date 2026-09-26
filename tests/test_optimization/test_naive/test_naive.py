@@ -12,16 +12,18 @@ from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 
 
 class TestInverseVolatility:
-    def test_fit(self, X, y):
+    def test_fit(self, X, factors):
         model = InverseVolatility()
         model.fit(X)
+        assert model.n_features_in_ == X.shape[1]
+        np.testing.assert_array_equal(model.feature_names_in_, X.columns)
         np.testing.assert_almost_equal(sum(model.weights_), 1)
         w = 1 / np.std(np.asarray(X), axis=0)
         w /= sum(w)
         np.testing.assert_almost_equal(model.weights_, w)
 
         model = InverseVolatility(prior_estimator=TimeSeriesFactorModel())
-        model.fit(X, y)
+        model.fit(X, factors=factors)
 
     def test_metadata_routing(self, X, implied_vol):
         with config_context(enable_metadata_routing=True):
@@ -33,7 +35,7 @@ class TestInverseVolatility:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)

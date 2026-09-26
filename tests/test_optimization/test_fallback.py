@@ -14,6 +14,7 @@ from skfolio.optimization import (
     BaseOptimization,
     EqualWeighted,
     HierarchicalRiskParity,
+    InverseVolatility,
     MeanRisk,
     ObjectiveFunction,
 )
@@ -50,7 +51,7 @@ class CustomOptimization(BaseOptimization):
         )
         self.fail = fail
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None, **fit_params):
         X = skv.validate_data(self, X)
         if self.fail:
             raise RuntimeError("CustomOptimization forced failure")
@@ -112,6 +113,22 @@ def test_fallback(X):
     ptf = model.predict(X)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
+
+
+def test_fallback_inverse_volatility(X):
+    model = MeanRisk(solver="NOT_A_SOLVER", fallback=InverseVolatility()).fit(X)
+    expected_weights = 1 / np.std(X.to_numpy(), axis=0)
+    expected_weights /= expected_weights.sum()
+
+    assert isinstance(model.fallback_, InverseVolatility)
+    assert model.fallback_chain_[-1] == ("InverseVolatility()", "success")
+    assert model.n_features_in_ == X.shape[1]
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    np.testing.assert_allclose(model.weights_, expected_weights)
+
+    portfolio = model.predict(X)
+    assert isinstance(portfolio, Portfolio)
+    np.testing.assert_allclose(portfolio.returns, X.to_numpy() @ expected_weights)
 
 
 def test_fallback_with_clone(X):
@@ -204,19 +221,15 @@ def test_predict_after_fallback_returns_portfolio(X):
     assert ptf.weights is not None and np.isclose(ptf.weights.sum(), 1.0)
 
 
-def test_fallback_factor_model(X, y):
+def test_fallback_factor_model(X, factors):
     model = CustomOptimization(
         fail=True, fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel())
     )
-    model.fit(X, y)
+    model.fit(X, factors=factors)
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
-        (
-            "CustomOptimization(fail=True,\n                   "
-            "fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel()))",
-            "CustomOptimization forced failure",
-        ),
+        (str(model), "CustomOptimization forced failure"),
         ("MeanRisk(prior_estimator=TimeSeriesFactorModel())", "success"),
     ]
     assert model.error_ is None
@@ -585,3 +598,89 @@ def test_fallback_needs_previous_weights(X):
         fallback=[MeanRisk(), MeanRisk(max_turnover=0.5)],
     )
     assert model.needs_previous_weights is True
+
+
+def test_subclass_without_fit_keeps_parent_wrapped_fit():
+    class ChildWithoutFit(CustomOptimization):
+        pass
+
+    class ChildReusingWrappedFit(CustomOptimization):
+        fit = CustomOptimization.fit
+
+    assert ChildWithoutFit.fit is CustomOptimization.fit
+    assert ChildReusingWrappedFit.fit is CustomOptimization.fit
+    assert ChildWithoutFit.fit._fallback_wrapped is True
+
+
+def test_fallback_empty_list_raises_primary_error(X):
+    model = CustomOptimization(fail=True, fallback=[])
+    with pytest.raises(RuntimeError, match="CustomOptimization forced failure"):
+        model.fit(X)
+    assert model.fallback_chain_ == [(str(model), "CustomOptimization forced failure")]
+
+
+def test_fallback_previous_weights_conflict_warns(X):
+    prev = np.full(X.shape[1], 1 / X.shape[1])
+    model = CustomOptimization(
+        fail=True,
+        previous_weights=prev,
+        fallback=CustomOptimization(fail=False, previous_weights=np.zeros(X.shape[1])),
+    )
+    with pytest.warns(
+        UserWarning, match="previous_weights are automatically propagated"
+    ):
+        model.fit(X)
+    np.testing.assert_array_equal(model.fallback_.previous_weights, prev)
+
+
+def test_predict_copies_portfolio_params(X):
+    model = CustomOptimization(portfolio_params={"name": "custom_ptf"})
+    ptf = model.fit(X).predict(X)
+    assert ptf.name == "custom_ptf"
+    assert model.portfolio_params == {"name": "custom_ptf"}
+
+
+def test_invalid_string_fallback_raises(X):
+    model = CustomOptimization(fail=True, fallback="bad")
+    with pytest.raises(ValueError, match="Unsupported string fallback: 'bad'"):
+        model.fit(X)
+    with pytest.raises(ValueError, match="Unsupported string fallback: 'bad'"):
+        _ = model.needs_previous_weights
+
+
+def test_invalid_type_fallback_raises(X):
+    model = CustomOptimization(fail=True, fallback=5)
+    with pytest.raises(
+        TypeError, match=r"must inherit from BaseOptimization \(got int\)"
+    ):
+        model.fit(X)
+    with pytest.raises(
+        TypeError, match=r"must inherit from BaseOptimization \(got int\)"
+    ):
+        _ = model.needs_previous_weights
+
+
+@pytest.mark.parametrize(
+    "transaction_costs,expected",
+    [
+        ({"AAPL": 0.01}, True),
+        ({"AAPL": 0.0}, False),
+        ({}, False),
+        ([], False),
+        (["not-a-number"], True),
+    ],
+)
+def test_needs_previous_weights_transaction_costs(transaction_costs, expected):
+    model = MeanRisk(transaction_costs=transaction_costs)
+    assert model.needs_previous_weights is expected
+
+
+def test_weight_drift_needs_previous_weights():
+    assert MeanRisk().needs_previous_weights is False
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": True}).needs_previous_weights is True
+    )
+    assert (
+        MeanRisk(portfolio_params={"weight_drift": False}).needs_previous_weights
+        is False
+    )

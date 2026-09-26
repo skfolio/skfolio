@@ -1,5 +1,0 @@
-skfolio
-numpy
-pandas
-scikit-learn
-plotly

@@ -7,7 +7,7 @@
 #        • Latest deps on all supported Pythons
 #        • Min deps only on oldest Python
 #   3. Cross-OS tests on macOS & Windows (latest deps)
-#   4. Canary on next Python (allowed to fail)
+#   4. Documentation build (gallery not executed)
 #
 # -----------------------------------------------------------------------------
 
@@ -33,7 +33,8 @@ defaults:
     shell: bash   # consistent shell across Linux/macOS/Windows
 
 env:
-  MAIN_PYTHON: "3.13"  # primary Python used for linting & coverage
+  MAIN_PYTHON: "3.14"  # Python for lint, coverage, cross-OS tests, and docs
+  UV_PYTHON_DOWNLOADS: never
 
 # -----------------------------------------------------------------------------
 # 1) Lint & format
@@ -44,9 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -54,16 +56,36 @@ jobs:
         with:
           version: latest
 
-      - name: Create venv
-        run: uv venv
+      - name: Select Python for uv
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
-      - name: Install project (dev extras)
-        run: uv pip install -e ".[dev]"
+      # CI intentionally checks against the latest Ruff release.
+      - name: Ruff version
+        run: uvx ruff@latest --version
 
-      - name: Ruff (lint + format check)
+      - name: Ruff lint
+        run: uvx ruff@latest check --output-format=github
+
+      - name: Ruff format
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        run: uvx ruff@latest format --check
+
+      - name: Check distribution contents
         run: |
-          uv run ruff check --output-format=github
-          uv run ruff format --check
+          uv build
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from tarfile import open as open_tar
+          from zipfile import ZipFile
+
+          with ZipFile(next(Path("dist").glob("*.whl"))) as wheel:
+              unexpected = [name for name in wheel.namelist() if PurePosixPath(name).name == "conftest.py"]
+              assert not unexpected, f"Test configuration shipped in wheel: {unexpected}"
+          with open_tar(next(Path("dist").glob("*.tar.gz"))) as sdist:
+              names = {name.partition("/")[2] for name in sdist.getnames()}
+              missing = {"conftest.py", "src/conftest.py"} - names
+              assert not missing, f"Missing source test configuration: {sorted(missing)}"
+          PY
 
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux
@@ -73,6 +95,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     timeout-minutes: 50
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    permissions:
+      contents: read
+      # Authenticate protected-branch uploads without exposing a repository token.
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -89,11 +117,13 @@ jobs:
             deps: "latest"
           - python-version: "3.13"
             deps: "latest"
+          - python-version: "3.14"
+            deps: "latest"
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -107,27 +137,59 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.deps }}" = "min" ]; then
-            uv pip install -e . --resolution=lowest-direct
-            uv pip install -e ".[dev]"
+            # Resolve runtime requirements alone, then protect that solution
+            # while installing current compatible development tools.
+            uv pip compile pyproject.toml --python .venv --resolution lowest-direct --python-version "$UV_PYTHON" --output-file "$RUNNER_TEMP/skfolio-minimum-runtime.txt"
+            uv pip install --python .venv --editable . --group dev --constraint "$RUNNER_TEMP/skfolio-minimum-runtime.txt"
           else
-            uv pip install -e ".[dev]"
+            uv pip install --python .venv --upgrade --editable . --group dev
           fi
 
-      # Run tests normally for all jobs except the single coverage job
+      - name: List dependencies
+        run: uv pip list --python .venv
+
+      - name: Check dependencies
+        run: uv pip check --python .venv
+
+      # Reuse this environment so deptry can map imports to installed distributions
+      # (e.g. `cvxpy` to `cvxpy-base`). One run covers the shared package source.
+      - name: Dependency check
+        if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
+        run: uv run --no-sync deptry src
+
+      # Use the environment installed above; syncing could change the
+      # dependencies selected for the minimum/latest compatibility checks.
       - name: Run tests
         if: ${{ !(matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest') }}
-        run: uv run pytest -q
+        run: uv run --no-sync pytest -q tests
 
       # Coverage on a single representative job (Py MAIN_PYTHON + latest)
       - name: Run tests with coverage (main Python • latest only)
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
-        run: uv run pytest -q --cov=skfolio --cov-report=xml
+        run: uv run --no-sync pytest -q --cov=skfolio --cov-report=xml
 
+      # Upload failures block same-repo pull requests, where they reveal an
+      # authentication or configuration regression before it reaches `main`.
+      # They do not block pushes to `main`, so a Codecov outage cannot hold
+      # back the release workflow, and they do not block fork pull requests,
+      # whose tokenless uploads can fail intermittently under Codecov rate
+      # limits. The step below reports non-blocking failures as a warning.
       - name: Upload coverage to Codecov
+        id: codecov
         if: ${{ matrix.python-version == env.MAIN_PYTHON && matrix.deps == 'latest' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
+        continue-on-error: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository }}
         with:
-          fail_ci_if_error: false
+          fail_ci_if_error: true
+          # Uploads for pushes to `main` and for pull requests opened from
+          # branches of this repository require authentication. Pull requests
+          # from forks cannot request OIDC tokens and use the tokenless
+          # upload path instead.
+          use_oidc: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+      - name: Warn on Codecov upload failure
+        if: ${{ !cancelled() && steps.codecov.outcome == 'failure' }}
+        run: echo '::warning title=Codecov upload failed::Coverage was not uploaded. The Codecov report for this commit is missing and the main branch report may go stale.'
 
 # -----------------------------------------------------------------------------
 # 3) Cross-OS tests
@@ -143,9 +205,10 @@ jobs:
         os: [macos-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: ${{ env.MAIN_PYTHON }}
 
@@ -154,38 +217,56 @@ jobs:
           version: latest
 
       - name: Create venv
-        run: uv venv
+        run: |
+          echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+          uv venv --python "${{ steps.python.outputs.python-path }}"
 
       - name: Install project (latest deps)
-        run: uv pip install -e ".[dev]"
+        run: uv pip install --python .venv --upgrade --editable . --group dev
+
+      - name: List dependencies
+        run: uv pip list --python .venv
+
+      - name: Check dependencies
+        run: uv pip check --python .venv
 
       - name: Run tests
-        run: uv run pytest -q
+        run: uv run --no-sync pytest -q tests
 
 # -----------------------------------------------------------------------------
-# 4) Canary on next Python
+# 4) Documentation build
 # -----------------------------------------------------------------------------
-#  canary:
-#    name: Canary (Linux • Py 3.15-dev • latest)
-#    runs-on: ubuntu-latest
-#    continue-on-error: true   # informational only
-#    timeout-minutes: 50
-#    steps:
-#      - uses: actions/checkout@v6
-#
-#      - uses: actions/setup-python@v6
-#        with:
-#          python-version: "3.15-dev"
-#
-#      - uses: astral-sh/setup-uv@v7
-#        with:
-#          version: latest
-#
-#      - name: Create venv
-#        run: uv venv
-#
-#      - name: Install project (latest deps)
-#        run: uv pip install -e ".[dev]"
-#
-#      - name: Run tests
-#        run: uv run pytest -q
+  docs:
+    name: Docs build (Linux)
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # sphinx-last-updated-by-git needs the full history
+
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.MAIN_PYTHON }}
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: latest
+
+      - name: Select Python for uv
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+
+      - name: Install documentation environment
+        run: uv sync --no-dev --group docs
+
+      # Fast mode checks that the documentation sources build. It skips gallery
+      # execution, the JupyterLite site build and the sphinx-llm Markdown sub-build,
+      # which the deployment workflow runs in full.
+      - name: Build docs in fast mode
+        working-directory: ./docs
+        env:
+          SKFOLIO_DOCS_FAST: "1"
+        run: uv run --no-dev --group docs sphinx-build -b html . _build

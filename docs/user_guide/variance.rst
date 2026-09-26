@@ -26,9 +26,11 @@ Available estimators are:
 For online learning and streaming workflows, :class:`EWVariance` and
 :class:`RegimeAdjustedEWVariance` support incremental updates with
 `partial_fit`. They also support NaN-aware updates with `active_mask`, which
-helps distinguish active assets with missing returns, for example on holidays,
-from structurally inactive assets such as pre-listing or post-delisting
-periods.
+helps distinguish assets that belong to the universe but have missing returns (e.g.
+holidays), from assets outside the universe (e.g. pre-listing or post-delisting
+periods).
+See :ref:`Missing Data and Changing Universes <missing_data>` for the full convention
+on NaNs, universe membership, estimator warmup and investability.
 
 **Example:**
 

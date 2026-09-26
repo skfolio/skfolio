@@ -238,7 +238,7 @@ class TestCombinatorialPurgedCVMaxCombinations:
             CombinatorialPurgedCV(n_folds=50, n_test_folds=25)
 
 
-def optimal_folds_number_full_search(
+def _optimal_folds_number_full_search(
     n_observations: int,
     target_train_size: int,
     target_n_test_paths: int,
@@ -289,12 +289,18 @@ def test_optimal_folds_number(
         target_n_test_paths=target_n_test_paths,
     )
     assert res == expected
+    if n_observations <= 100:
+        assert res == _optimal_folds_number_full_search(
+            n_observations=n_observations,
+            target_train_size=target_train_size,
+            target_n_test_paths=target_n_test_paths,
+        )
 
 
 def test_optimal_folds_number_weight():
-    n_observations = 5000
-    target_train_size = 250
-    target_n_test_paths = 50
+    n_observations = 500
+    target_train_size = 50
+    target_n_test_paths = 20
 
     n_folds, n_test_folds = optimal_folds_number(
         n_observations=n_observations,
@@ -304,10 +310,10 @@ def test_optimal_folds_number_weight():
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
-    assert n_folds == 51
-    assert n_test_folds == 50
-    assert int(avg_train_size) == 98
-    assert n_test_paths == 50
+    assert n_folds == 21
+    assert n_test_folds == 20
+    assert int(avg_train_size) == 23
+    assert n_test_paths == 20
 
     n_folds, n_test_folds = optimal_folds_number(
         n_observations=n_observations,
@@ -318,10 +324,10 @@ def test_optimal_folds_number_weight():
     avg_train_size = n_observations / n_folds * (n_folds - n_test_folds)
     n_test_paths = math.comb(n_folds, n_test_folds) * n_test_folds // n_folds
 
-    assert n_folds == 20
-    assert n_test_folds == 19
-    assert int(avg_train_size) == 250
-    assert n_test_paths == 19
+    assert n_folds == 10
+    assert n_test_folds == 9
+    assert int(avg_train_size) == 50
+    assert n_test_paths == 9
 
 
 def test_cross_val_predict_and_grid_search(X):
@@ -409,3 +415,32 @@ def test_combinatorial_purged_cv_regression():
         # Should contain valid indices
         for test_array in test:
             assert np.all((test_array >= 0) & (test_array < len(X)))
+
+
+@pytest.mark.parametrize(
+    "kwargs,match",
+    [
+        ({"n_folds": 3.5}, "The number of folds must be of Integral type"),
+        ({"n_folds": 2, "n_test_folds": 2}, "`n_folds` must be at least 3"),
+        ({"n_folds": 3, "n_test_folds": 1}, "`n_test_folds` must at least 2"),
+        (
+            {"n_folds": 3, "n_test_folds": 3},
+            "requires `n_folds` to be greater than `n_test_folds`",
+        ),
+        ({"n_folds": 3, "n_test_folds": 2, "purged_size": -1}, "`purged_size`"),
+        ({"n_folds": 3, "n_test_folds": 2, "embargo_size": -1}, "`embargo_size`"),
+    ],
+)
+def test_combinatorial_purged_cv_invalid_init(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        CombinatorialPurgedCV(**kwargs)
+
+
+def test_combinatorial_purged_cv_split_rejects_too_large_purge_and_embargo():
+    X = np.zeros((12, 2))
+    cv = CombinatorialPurgedCV(n_folds=3, n_test_folds=2, purged_size=2, embargo_size=1)
+    with pytest.raises(
+        ValueError,
+        match="sum of `purged_size` and `embargo_size` must be smaller than the size",
+    ):
+        list(cv.split(X))

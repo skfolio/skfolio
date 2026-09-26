@@ -40,7 +40,7 @@ def _reference_percentile_rank(
     for t in range(n_obs):
         global_idx = np.flatnonzero(estimation[t])
         if global_idx.size == 0:
-            raise ValueError("each observation needs at least one estimation asset")
+            continue
         global_sample = X[t, global_idx]
 
         for i in np.flatnonzero(finite[t]):
@@ -532,9 +532,19 @@ class TestValidation:
         with pytest.raises(ValueError, match=">= -1"):
             CSGaussianRankScaler().fit_transform(X, cs_groups=cs_groups)
 
-    def test_empty_estimation_universe_raises(self):
+    def test_empty_estimation_universe_returns_nan(self):
         X = np.array([[1.0, 2.0, 3.0, 4.0]])
         cs_weights = np.zeros_like(X)
 
-        with pytest.raises(ValueError, match="estimation asset"):
-            CSGaussianRankScaler().fit_transform(X, cs_weights=cs_weights)
+        transformed = CSGaussianRankScaler().fit_transform(X, cs_weights=cs_weights)
+
+        assert np.all(np.isnan(transformed))
+
+    def test_all_nan_row_returns_nan(self):
+        X = np.array([[10.0, 20.0, 30.0, 40.0], [np.nan, np.nan, np.nan, np.nan]])
+
+        transformed = CSGaussianRankScaler().fit_transform(X)
+
+        expected_first_row = CSGaussianRankScaler().fit_transform(X[[0]])[0]
+        np.testing.assert_allclose(transformed[0], expected_first_row, rtol=1e-12)
+        assert np.all(np.isnan(transformed[1]))

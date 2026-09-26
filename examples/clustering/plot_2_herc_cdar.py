@@ -126,7 +126,7 @@ ptf2.plot_contribution(measure=RiskMeasure.CDAR)
 # %%
 # Distance Estimator
 # ==================
-# The distance metric used has also an important effect on the clustering.
+# The distance metric used also has an important effect on the clustering.
 # The default is to use the distance of the pearson correlation matrix.
 # This can be changed using the :ref:`distance estimators <distance>`.
 # For example, let's create a third model with a distance computed from the absolute

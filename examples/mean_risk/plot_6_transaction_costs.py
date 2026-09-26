@@ -20,8 +20,8 @@ optimization:
 
 .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
-with :math:`\mu` the vector af assets expected returns and :math:`w` the vector of
-assets weights.
+with :math:`\mu` the vector of expected asset returns and :math:`w` the vector of
+asset weights.
 
 the `transaction_costs` parameter can be a float, a dictionary or an array-like of
 shape `(n_assets, )`. If a float is provided, it is applied to each asset.
@@ -32,13 +32,15 @@ The default is 0.0 (no transaction costs).
 .. warning::
 
     According to the above formula, the periodicity of the transaction costs
-    needs to be homogenous to the periodicity of :math:`\mu`. For example, if
-    the input `X` is composed of **daily** returns, the `transaction_costs` need
-    to be expressed as **daily** costs.
+    must match the periodicity of :math:`\mu`. For example, if the input
+    `X` is composed of **daily** returns, the `transaction_costs` need to be
+    expressed as **daily** costs.
 
-This means that you need to convert this fixed transaction costs into daily costs. To
-achieve this, you need the notion of expected investment duration. This is crucial since
-the optimization problem has no notion of investment duration.
+This means that fixed transaction costs must be converted to an equivalent per-period
+cost. The reason is that a transaction cost is paid once per rebalancing while a
+position earns its expected return on every period it is held. To convert the
+one-off cost, you need the notion of expected investment duration. This is crucial
+since the optimization problem itself has no notion of investment duration.
 
 For example, let's assume that asset A has an expected daily return of 0.01%
 with a TC of 1% and asset B has an expected daily return of 0.005% with no TC.
@@ -56,7 +58,9 @@ Example:
         * 1 year expected return B ~= 1.3%
 
 So in order to take that duration into account, you should divide the fix TC by the
-expected investment duration.
+expected investment duration. See
+:ref:`Periodicity Convention <periodicity_convention>` for the general convention on
+expressing optimization inputs in the periodicity of `X`.
 """
 
 # %%

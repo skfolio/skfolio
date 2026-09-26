@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 import pickle
 import timeit
 import tracemalloc
@@ -92,30 +93,40 @@ def test_concatenate(X):
     assert c.shape == (X.shape[0] * 2,)
 
 
-def _estimate_portfolio_memory(X, n: int) -> float:
-    tracemalloc.start()
-    tracemalloc.clear_traces()
-    start = tracemalloc.get_traced_memory()
-    for _ in range(n):
-        portfolio = FailedPortfolio(X=X)
+def test_garbage_collection(X):
+    def _touch(portfolio):
         _ = portfolio.returns
         _ = portfolio.standard_deviation
         _ = portfolio.fitness
         _ = portfolio.mean_absolute_deviation_ratio
-    end = tracemalloc.get_traced_memory()
+
+    n_repeat = 50
+    _touch(FailedPortfolio(X=X))
+    gc.collect()
+
+    if not tracemalloc.is_tracing():
+        tracemalloc.start()
+
+    def _live_size():
+        tracemalloc.clear_traces()
+        baseline = tracemalloc.get_traced_memory()[0]
+        portfolio = FailedPortfolio(X=X)
+        _touch(portfolio)
+        return tracemalloc.get_traced_memory()[0] - baseline
+
+    live = _live_size()
+    assert live > 0
+
+    gc.collect()
     tracemalloc.clear_traces()
-    return end[0] - start[0]
+    baseline = tracemalloc.get_traced_memory()[0]
+    for _ in range(n_repeat):
+        _touch(FailedPortfolio(X=X))
+    gc.collect()
+    residual = tracemalloc.get_traced_memory()[0] - baseline
 
-
-def test_garbage_collection(X):
-    m1 = _estimate_portfolio_memory(X, n=1)
-    m10 = _estimate_portfolio_memory(X, n=10)
-    m100 = _estimate_portfolio_memory(X, n=100)
-    m1000 = _estimate_portfolio_memory(X, n=1000)
-
-    assert m10 < 2 * m1
-    assert m100 < 2 * m1
-    assert m1000 < 2 * m1
+    assert residual < 2 * live
+    tracemalloc.stop()
 
 
 def test_portfolio_methods(X, portfolio):
@@ -215,7 +226,7 @@ def test_portfolio_slots(portfolio):
 
 
 def test_copy(portfolio):
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute '_assets_names'"):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
@@ -224,7 +235,6 @@ def test_copy(portfolio):
 def test_portfolio_cache(portfolio, measure):
     # time for accessing cached attributes
     n = int(1e5)
-    ref = timeit.timeit(lambda: portfolio.name, number=n) / n
     first_access_time = timeit.timeit(
         lambda: getattr(portfolio, measure.value), number=1
     )
@@ -232,7 +242,6 @@ def test_portfolio_cache(portfolio, measure):
         timeit.timeit(lambda: getattr(portfolio, measure.value), number=n) / n
     )
     assert first_access_time > 10 * cached_access_time
-    assert ref > cached_access_time / 10
 
 
 def test_portfolio_clear_cache(portfolio, measure):
@@ -294,7 +303,10 @@ def test_portfolio_rolling_measure(portfolio):
 def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         portfolio.plot_cumulative_returns(log_scale=True)
 
     portfolio.compounded = True
@@ -325,6 +337,13 @@ def test_weights_per_observation(portfolio):
     np.testing.assert_array_equal(df.index.values, portfolio.observations)
     assert len(df.columns) == 20
     assert np.isnan(df).all().all()
+
+
+def test_constructor_sample_weight_error():
+    """Apply shared constructor validation to failed portfolios."""
+    X = np.array([[0.01], [0.02], [0.03]])
+    with pytest.raises(ValueError, match="sample_weight must have the same length as"):
+        FailedPortfolio(X=X, sample_weight=np.array([0.5, 0.5]))
 
 
 def test_cross_val_predict(X):

@@ -117,7 +117,7 @@ class BaseNode(ABC):
     @abstractmethod
     def clear_cache(self, **kwargs):
         """Clear the cached pseudo-values and margin values (u and v)."""
-        pass
+        ...
 
     def __repr__(self) -> str:
         """String representation of the node."""
