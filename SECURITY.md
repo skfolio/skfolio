@@ -46,6 +46,7 @@ For production use, we recommend pinning to a specific released version.
 We use GitHub-native controls to reduce supply chain risk and detect vulnerabilities:
 
 - Dependency Review is enabled on pull requests and blocks introducing high-severity vulnerabilities and non-approved licenses (MIT, BSD-3-Clause, BSD-2-Clause, Apache-2.0, ISC)
+- CI audits the resolved runtime dependencies, transitive packages included, with `pip-audit` on every pull request and push to `main`
 - Dependabot is enabled for both alerts and automated update PRs; it checks Python dependencies and GitHub Actions, opening grouped PRs for minor/patch updates
 - CodeQL code scanning is enabled via GitHub Security
 - SBOM (SPDX JSON) is exported and attached to each release

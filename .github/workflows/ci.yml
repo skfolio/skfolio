@@ -87,6 +87,14 @@ jobs:
               assert not missing, f"Missing source test configuration: {sorted(missing)}"
           PY
 
+      # Audit what `pip install skfolio` resolves today, transitive packages
+      # included. Dependency Review only sees changes to `pyproject.toml`, and
+      # without a committed lock the dependency graph lists direct requirements only.
+      - name: Audit runtime dependencies
+        run: |
+          uv pip compile pyproject.toml --quiet --generate-hashes --output-file "$RUNNER_TEMP/runtime-requirements.txt"
+          uvx pip-audit@2.10.1 --requirement "$RUNNER_TEMP/runtime-requirements.txt" --require-hashes --disable-pip --strict --progress-spinner off
+
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux
 # -----------------------------------------------------------------------------
