@@ -64,6 +64,16 @@ Local development requires Python 3.10 or later and
    `uv sync` creates `.venv` and installs skfolio in editable mode, including the
    default `dev` dependency group.
 
+   `uv sync` also writes a `uv.lock`, which is deliberately not committed
+   (`.gitignore` excludes `*.lock`). skfolio is a library, so its users install
+   it next to their own packages and get whatever versions `pyproject.toml`
+   allows, not the versions in a lock file. CI tests that range instead of one
+   pinned set: the Linux jobs install the minimum supported versions on the
+   oldest Python and the latest releases on every supported Python, and the
+   macOS and Windows jobs use the latest releases. So your local environment may
+   differ from a colleague's on the same commit. If a failure only shows up on
+   one side, compare `uv pip list` and refresh with `uv sync --upgrade`.
+
 3. Create a branch for your changes:
 
    ```shell
