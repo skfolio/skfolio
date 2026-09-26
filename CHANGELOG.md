@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.4.1 (2026-09-26)
+
+### Bug Fixes
+
+- **measures**: Count the starting wealth as the first drawdown peak
+  ([#375](https://github.com/skfolio/skfolio/pull/375),
+  [`9d88b5f`](https://github.com/skfolio/skfolio/commit/9d88b5fc60e8b9240fffd5f162ce568764e91881))
+
+### Continuous Integration
+
+- Run the pre-commit hooks in CI ([#353](https://github.com/skfolio/skfolio/pull/353),
+  [`f01f187`](https://github.com/skfolio/skfolio/commit/f01f18789794ee806cdaf31f98b4c28c9b36fef6))
+
+### Documentation
+
+- Require docstrings in src with numpydoc validation
+  ([#355](https://github.com/skfolio/skfolio/pull/355),
+  [`9d3c710`](https://github.com/skfolio/skfolio/commit/9d3c710c4e177bb097758871f7c1d936156324f5))
+
+- **contributing**: Explain why uv.lock is not committed (#345)
+  ([#358](https://github.com/skfolio/skfolio/pull/358),
+  [`d5aeefa`](https://github.com/skfolio/skfolio/commit/d5aeefac8120b9aa05df81d0ba43a607f386579b))
+
+
 ## v1.4.0 (2026-09-26)
 
 ### Features
