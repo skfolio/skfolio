@@ -604,7 +604,9 @@ class TestOnlinePredict:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         model = _make_online_estimator()
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be at least the number of observations"
+        ):
             online_predict(model, X, warmup_size=X.shape[0], test_size=1)
 
     def test_freq(self, X):
@@ -811,7 +813,9 @@ class TestOnlineScore:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         est = EWCovariance(half_life=30)
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be at least the number of observations"
+        ):
             online_score(est, X, warmup_size=X.shape[0], test_size=1)
 
     def test_float_warmup_raises(self, X):

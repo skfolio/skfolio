@@ -60,14 +60,14 @@ class TestPearsonDistance:
     #  PearsonDistance raises an error when fitting an empty array
     def test_fitting_empty_array(self):
         pd = PearsonDistance()
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
             pd.fit([])
 
     #  PearsonDistance raises an error when fitting an array with NaN values
     def test_fitting_array_with_nan_values(self):
         pd = PearsonDistance()
         X = np.array([[1, 2, 3], [4, np.nan, 6], [7, 8, 9]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Input X contains NaN"):
             pd.fit(X)
 
 
@@ -122,17 +122,23 @@ class TestCovarianceDistance:
     def test_metadata_routing_errors(self, X, implied_vol):
         distance = CovarianceDistance(covariance_estimator=ImpliedCovariance())
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             distance.fit(X)
 
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             distance.fit(X, implied_vol=implied_vol)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             with config_context(enable_metadata_routing=True):
                 distance.fit(X)
 
-        with pytest.raises(UnsetMetadataPassedError):
+        with pytest.raises(
+            UnsetMetadataPassedError,
+            match="are passed but are not explicitly set as requested",
+        ):
             with config_context(enable_metadata_routing=True):
                 distance.fit(X, implied_vol=implied_vol)
 
@@ -144,7 +150,7 @@ class TestCovarianceDistance:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 distance.fit(X)
 
             distance.fit(X, implied_vol=implied_vol)

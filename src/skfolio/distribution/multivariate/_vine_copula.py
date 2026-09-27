@@ -17,7 +17,7 @@
 #     k-1 variables.
 #
 # In an OOP approach, we can use the below equivalent graphical adjacency rule:
-# Two edges in T_{k-1} (which are “nodes” when building T_k) are connected by an edge
+# Two edges in T_{k-1} (which are "nodes" when building T_k) are connected by an edge
 # in T_k if and only if they share exactly one node in T_{k-1}.
 #
 #  By using the concept of central assets in the MST, this novel implementation is able

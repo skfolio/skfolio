@@ -1096,8 +1096,8 @@ class Population(list):
                                 str(e)
                                 + ": %{"
                                 + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
+                                # Use Plotly's default format for dimensionless ratios.
+                                + ("" if e.is_ratio else ":,.3%")
                                 + "}"
                                 for e, v in [(x, "x"), (y, "y"), (z, "z")]
                             ]
@@ -1290,6 +1290,7 @@ class Population(list):
 
 
 def _ptf_name_with_tag(portfolio: BasePortfolio) -> str:
+    """Return the portfolio name suffixed with `_<tag>` when the tag is not None."""
     if portfolio.tag is None:
         return portfolio.name
     return f"{portfolio.name}_{portfolio.tag}"

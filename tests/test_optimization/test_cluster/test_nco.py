@@ -263,10 +263,12 @@ def test_metadata_routing(X_medium, implied_vol, implied_vol_medium):
         )
         model = NestedClustersOptimization(inner_estimator=est)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_medium)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="param_key has wrong number of observations"
+        ):
             model.fit(X_medium, implied_vol=implied_vol)
 
         model.fit(X_medium, implied_vol=implied_vol_medium)

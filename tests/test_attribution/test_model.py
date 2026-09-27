@@ -1285,7 +1285,7 @@ class TestAttributionPostInitValidation:
         result = self._single(simple_factor_model)
         with pytest.raises(
             ValueError,
-            match=r"requires `factors.exposure` to be 1D \(n_items,\), got 2D",
+            match=r"Single-point attribution requires `factors.exposure` to be 1D \(n_items,\), got 2D",
         ):
             replace(
                 result,
@@ -1327,37 +1327,42 @@ class TestAttributionPostInitValidation:
                 factors=replace(result.factors, mu_contrib_uncertainty=np.ones(5)),
             )
 
-    def test_single_asset_factor_contribs_must_be_2d(self, simple_factor_model):
+    @pytest.mark.parametrize("field", ["vol_contrib", "mu_contrib"])
+    def test_single_asset_factor_contribs_must_be_2d(self, simple_factor_model, field):
         result = self._single(simple_factor_model)
-        afc = result.asset_by_factor_contrib
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
-            match=r"requires `asset_factor_contribs.vol_contrib` to be 2D",
+            match=rf"Single-point attribution requires `asset_factor_contribs\.{field}` "
+            r"to be 2D \(n_assets, n_factors\), got 3D",
         ):
             replace(
                 result,
                 asset_by_factor_contrib=replace(
-                    afc, vol_contrib=afc.vol_contrib[np.newaxis]
+                    asset_factor_contributions,
+                    **{field: getattr(asset_factor_contributions, field)[np.newaxis]},
                 ),
             )
 
     def test_single_asset_factor_contribs_wrong_shape(self, simple_factor_model):
         result = self._single(simple_factor_model)
-        afc = result.asset_by_factor_contrib
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
             match=r"`asset_factor_contribs.vol_contrib` has shape \(1, 2\), expected \(3, 2\)",
         ):
             replace(
                 result,
-                asset_by_factor_contrib=replace(afc, vol_contrib=np.ones((1, 2))),
+                asset_by_factor_contrib=replace(
+                    asset_factor_contributions, vol_contrib=np.ones((1, 2))
+                ),
             )
 
     def test_single_asset_factor_contribs_asset_names_mismatch(
         self, simple_factor_model
     ):
         result = self._single(simple_factor_model)
-        afc = result.asset_by_factor_contrib
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
             match=r"`asset_factor_contribs.asset_names` does not match `assets.names`",
@@ -1365,7 +1370,7 @@ class TestAttributionPostInitValidation:
             replace(
                 result,
                 asset_by_factor_contrib=replace(
-                    afc, asset_names=np.array(["X", "Y", "Z"])
+                    asset_factor_contributions, asset_names=np.array(["X", "Y", "Z"])
                 ),
             )
 
@@ -1373,14 +1378,16 @@ class TestAttributionPostInitValidation:
         self, simple_factor_model
     ):
         result = self._single(simple_factor_model)
-        afc = result.asset_by_factor_contrib
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
             match=r"`asset_factor_contribs.factor_names` does not match `factors.names`",
         ):
             replace(
                 result,
-                asset_by_factor_contrib=replace(afc, factor_names=np.array(["X", "Y"])),
+                asset_by_factor_contrib=replace(
+                    asset_factor_contributions, factor_names=np.array(["X", "Y"])
+                ),
             )
 
     def test_no_factors(self, simple_factor_model):
@@ -1404,35 +1411,42 @@ class TestAttributionPostInitValidation:
 
     def test_rolling_component_field_wrong_length(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`systematic.vol` has shape \({n + 1},\), expected \({n},\)",
+            match=rf"`systematic.vol` has shape \({n_windows + 1},\), expected \({n_windows},\)",
         ):
-            replace(result, systematic=replace(result.systematic, vol=np.ones(n + 1)))
+            replace(
+                result,
+                systematic=replace(result.systematic, vol=np.ones(n_windows + 1)),
+            )
 
     def test_rolling_mu_uncertainty_must_be_1d(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
             match=r"requires `systematic.mu_uncertainty` to be a 1D array, got ndarray with ndim=2",
         ):
             replace(
                 result,
-                systematic=replace(result.systematic, mu_uncertainty=np.ones((n, 1))),
+                systematic=replace(
+                    result.systematic, mu_uncertainty=np.ones((n_windows, 1))
+                ),
             )
 
     def test_rolling_mu_uncertainty_wrong_length(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`systematic.mu_uncertainty` has shape \({n + 1},\), expected \({n},\)",
+            match=rf"`systematic.mu_uncertainty` has shape \({n_windows + 1},\), expected \({n_windows},\)",
         ):
             replace(
                 result,
-                systematic=replace(result.systematic, mu_uncertainty=np.ones(n + 1)),
+                systematic=replace(
+                    result.systematic, mu_uncertainty=np.ones(n_windows + 1)
+                ),
             )
 
     def test_rolling_breakdown_field_must_be_2d(self, rolling_static_model):
@@ -1445,88 +1459,116 @@ class TestAttributionPostInitValidation:
 
     def test_rolling_breakdown_field_wrong_shape(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`factors.exposure` has shape \({n}, 4\), expected \({n}, 3\)",
+            match=rf"`factors.exposure` has shape \({n_windows}, 4\), expected \({n_windows}, 3\)",
         ):
-            replace(result, factors=replace(result.factors, exposure=np.ones((n, 4))))
+            replace(
+                result,
+                factors=replace(result.factors, exposure=np.ones((n_windows, 4))),
+            )
 
     def test_rolling_exposure_std_wrong_shape(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`factors.exposure_std` has shape \({n}, 4\), expected \({n}, 3\)",
+            match=rf"`factors.exposure_std` has shape \({n_windows}, 4\), expected \({n_windows}, 3\)",
         ):
             replace(
-                result, factors=replace(result.factors, exposure_std=np.ones((n, 4)))
+                result,
+                factors=replace(result.factors, exposure_std=np.ones((n_windows, 4))),
             )
 
     def test_rolling_weight_std_wrong_shape(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`assets.weight_std` has shape \({n}, 7\), expected \({n}, 5\)",
+            match=rf"`assets.weight_std` has shape \({n_windows}, 7\), expected \({n_windows}, 5\)",
         ):
-            replace(result, assets=replace(result.assets, weight_std=np.ones((n, 7))))
+            replace(
+                result,
+                assets=replace(result.assets, weight_std=np.ones((n_windows, 7))),
+            )
 
     def test_rolling_mu_contrib_uncertainty_wrong_shape(self, rolling_static_model):
         result = self._rolling(rolling_static_model)
-        n = len(result.observations)
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`factors.mu_contrib_uncertainty` has shape \({n}, 4\), expected \({n}, 3\)",
+            match=rf"`factors.mu_contrib_uncertainty` has shape \({n_windows}, 4\), expected \({n_windows}, 3\)",
         ):
             replace(
                 result,
-                factors=replace(result.factors, mu_contrib_uncertainty=np.ones((n, 4))),
+                factors=replace(
+                    result.factors, mu_contrib_uncertainty=np.ones((n_windows, 4))
+                ),
             )
 
     @staticmethod
-    def _with_afc(result):
+    def _with_asset_factor_contributions(result):
         """Attach a consistent rolling asset-by-factor contribution."""
-        n = len(result.observations)
-        shape = (n, len(result.assets.names), len(result.factors.names))
-        afc = AssetByFactorContribution(
+        n_windows = len(result.observations)
+        contribution_shape = (
+            n_windows,
+            len(result.assets.names),
+            len(result.factors.names),
+        )
+        asset_factor_contributions = AssetByFactorContribution(
             asset_names=result.assets.names,
             factor_names=result.factors.names,
-            vol_contrib=np.zeros(shape),
-            mu_contrib=np.zeros(shape),
+            vol_contrib=np.zeros(contribution_shape),
+            mu_contrib=np.zeros(contribution_shape),
         )
-        return replace(result, asset_by_factor_contrib=afc)
+        return replace(result, asset_by_factor_contrib=asset_factor_contributions)
 
-    def test_rolling_asset_factor_contribs_must_be_3d(self, rolling_static_model):
-        result = self._with_afc(self._rolling(rolling_static_model))
-        afc = result.asset_by_factor_contrib
+    @pytest.mark.parametrize("field", ["vol_contrib", "mu_contrib"])
+    def test_rolling_asset_factor_contribs_must_be_3d(
+        self, rolling_static_model, field
+    ):
+        result = self._with_asset_factor_contributions(
+            self._rolling(rolling_static_model)
+        )
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
-            match=r"requires `asset_factor_contribs.vol_contrib` to be 3D",
+            match=rf"Rolling attribution requires `asset_factor_contribs\.{field}` "
+            r"to be 3D \(n_windows, n_assets, n_factors\), got 2D",
         ):
             replace(
                 result,
-                asset_by_factor_contrib=replace(afc, vol_contrib=afc.vol_contrib[0]),
+                asset_by_factor_contrib=replace(
+                    asset_factor_contributions,
+                    **{field: getattr(asset_factor_contributions, field)[0]},
+                ),
             )
 
     def test_rolling_asset_factor_contribs_wrong_shape(self, rolling_static_model):
-        result = self._with_afc(self._rolling(rolling_static_model))
-        afc = result.asset_by_factor_contrib
-        n = len(result.observations)
+        result = self._with_asset_factor_contributions(
+            self._rolling(rolling_static_model)
+        )
+        asset_factor_contributions = result.asset_by_factor_contrib
+        n_windows = len(result.observations)
         with pytest.raises(
             ValueError,
-            match=rf"`asset_factor_contribs.vol_contrib` has shape \({n}, 1, 3\), expected \({n}, 5, 3\)",
+            match=rf"`asset_factor_contribs.vol_contrib` has shape \({n_windows}, 1, 3\), expected \({n_windows}, 5, 3\)",
         ):
             replace(
                 result,
-                asset_by_factor_contrib=replace(afc, vol_contrib=np.ones((n, 1, 3))),
+                asset_by_factor_contrib=replace(
+                    asset_factor_contributions, vol_contrib=np.ones((n_windows, 1, 3))
+                ),
             )
 
     def test_rolling_asset_factor_contribs_asset_names_mismatch(
         self, rolling_static_model
     ):
-        result = self._with_afc(self._rolling(rolling_static_model))
-        afc = result.asset_by_factor_contrib
+        result = self._with_asset_factor_contributions(
+            self._rolling(rolling_static_model)
+        )
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
             match=r"`asset_factor_contribs.asset_names` does not match `assets.names`",
@@ -1534,15 +1576,18 @@ class TestAttributionPostInitValidation:
             replace(
                 result,
                 asset_by_factor_contrib=replace(
-                    afc, asset_names=np.array([f"X{i}" for i in range(5)])
+                    asset_factor_contributions,
+                    asset_names=np.array([f"X{i}" for i in range(5)]),
                 ),
             )
 
     def test_rolling_asset_factor_contribs_factor_names_mismatch(
         self, rolling_static_model
     ):
-        result = self._with_afc(self._rolling(rolling_static_model))
-        afc = result.asset_by_factor_contrib
+        result = self._with_asset_factor_contributions(
+            self._rolling(rolling_static_model)
+        )
+        asset_factor_contributions = result.asset_by_factor_contrib
         with pytest.raises(
             ValueError,
             match=r"`asset_factor_contribs.factor_names` does not match `factors.names`",
@@ -1550,7 +1595,7 @@ class TestAttributionPostInitValidation:
             replace(
                 result,
                 asset_by_factor_contrib=replace(
-                    afc, factor_names=np.array(["X", "Y", "Z"])
+                    asset_factor_contributions, factor_names=np.array(["X", "Y", "Z"])
                 ),
             )
 

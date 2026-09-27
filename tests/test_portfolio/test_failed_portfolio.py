@@ -226,7 +226,7 @@ def test_portfolio_slots(portfolio):
 
 
 def test_copy(portfolio):
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute '_assets_names'"):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
@@ -303,7 +303,10 @@ def test_portfolio_rolling_measure(portfolio):
 def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         portfolio.plot_cumulative_returns(log_scale=True)
 
     portfolio.compounded = True

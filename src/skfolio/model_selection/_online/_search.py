@@ -714,6 +714,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         self.param_grid = param_grid
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return every parameter combination of `param_grid`."""
         return ParameterGrid(self.param_grid)
 
 
@@ -1004,6 +1005,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         self.random_state = random_state
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return `n_iter` parameter settings sampled from `param_distributions`."""
         return ParameterSampler(
             self.param_distributions,
             n_iter=self.n_iter,

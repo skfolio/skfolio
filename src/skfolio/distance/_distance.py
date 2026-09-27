@@ -65,7 +65,7 @@ class PearsonDistance(BaseDistance):
     References
     ----------
     .. [1] "Building Diversified Portfolios that Outperform Out-of-Sample",
-        Lòpez de Prado, Journal of Portfolio Management (2016)
+        López de Prado, Journal of Portfolio Management (2016)
     """
 
     def __init__(self, absolute: bool = False, power: float = 1):
@@ -137,7 +137,7 @@ class KendallDistance(BaseDistance):
     References
     ----------
     .. [1] "Building Diversified Portfolios that Outperform Out-of-Sample",
-        Lòpez de Prado, Journal of Portfolio Management (2016)
+        López de Prado, Journal of Portfolio Management (2016)
     """
 
     def __init__(self, absolute: bool = False, power: float = 1):
@@ -209,7 +209,7 @@ class SpearmanDistance(BaseDistance):
     References
     ----------
     .. [1] "Building Diversified Portfolios that Outperform Out-of-Sample",
-        Lòpez de Prado, Journal of Portfolio Management (2016)
+        López de Prado, Journal of Portfolio Management (2016)
     """
 
     def __init__(self, absolute: bool = False, power: float = 1):
@@ -289,7 +289,7 @@ class CovarianceDistance(BaseDistance):
     References
     ----------
     .. [1] "Building Diversified Portfolios that Outperform Out-of-Sample",
-        Lòpez de Prado, Journal of Portfolio Management (2016)
+        López de Prado, Journal of Portfolio Management (2016)
     """
 
     covariance_estimator_: BaseCovariance
@@ -305,6 +305,15 @@ class CovarianceDistance(BaseDistance):
         self.power = power
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,

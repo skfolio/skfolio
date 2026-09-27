@@ -199,7 +199,7 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
@@ -368,6 +368,6 @@ def test_risk_budgeting_non_default_solver():
     rng = np.random.default_rng(0)
     X = rng.normal(0.0005, 0.01, (60, 6))
     model = RiskBudgeting(solver="SCIPY")
-    with pytest.raises(cp.SolverError):
+    with pytest.raises(cp.SolverError, match="Solver 'SCIPY' failed"):
         model.fit(X)
     assert model._solver_params == {}

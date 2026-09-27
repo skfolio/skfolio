@@ -235,6 +235,9 @@ It also provides methods for analyzing portfolio weights:
     # Plots
     portfolio.plot_contribution()
     portfolio.plot_composition()
+    portfolio.plot_composition_treemap(
+        groups={"Asset A": ["Equity", "US"], "Asset B": ["Bond", "US"]}
+    )
 
 
 
@@ -262,3 +265,8 @@ composed of multiple test `Portfolio`, each corresponding to a train/test fold.
     from skfolio import MultiPeriodPortfolio
 
     portfolio = MultiPeriodPortfolio(portfolios=[ptf1, ptf2, ptf3])
+
+Sample weights control each observation's contribution to measures such as mean
+and variance. By default, they are inherited from the children, with periods
+weighted by their observation counts. Set ``sample_weight`` on the parent to
+override them.
