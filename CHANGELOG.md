@@ -2,6 +2,48 @@
 
 <!-- version list -->
 
+## v1.4.1 (2026-09-26)
+
+### Bug Fixes
+
+- **measures**: Count the starting wealth as the first drawdown peak
+  ([#375](https://github.com/skfolio/skfolio/pull/375),
+  [`9d88b5f`](https://github.com/skfolio/skfolio/commit/9d88b5fc60e8b9240fffd5f162ce568764e91881))
+
+### Continuous Integration
+
+- Run the pre-commit hooks in CI ([#353](https://github.com/skfolio/skfolio/pull/353),
+  [`f01f187`](https://github.com/skfolio/skfolio/commit/f01f18789794ee806cdaf31f98b4c28c9b36fef6))
+
+### Documentation
+
+- Require docstrings in src with numpydoc validation
+  ([#355](https://github.com/skfolio/skfolio/pull/355),
+  [`9d3c710`](https://github.com/skfolio/skfolio/commit/9d3c710c4e177bb097758871f7c1d936156324f5))
+
+- **contributing**: Explain why uv.lock is not committed (#345)
+  ([#358](https://github.com/skfolio/skfolio/pull/358),
+  [`d5aeefa`](https://github.com/skfolio/skfolio/commit/d5aeefac8120b9aa05df81d0ba43a607f386579b))
+
+
+## v1.4.0 (2026-09-26)
+
+### Features
+
+- **portfolio**: Add plot_composition_treemap ([#248](https://github.com/skfolio/skfolio/pull/248),
+  [`288293d`](https://github.com/skfolio/skfolio/commit/288293dd771805e444de1bc5a15aafc6da08895f))
+
+### Testing
+
+- Pin the expected message on every pytest.raises
+  ([#357](https://github.com/skfolio/skfolio/pull/357),
+  [`bf79675`](https://github.com/skfolio/skfolio/commit/bf7967593ea69961fb8981c3c81d9bc271b8c73d))
+
+- **utils**: Cover the untested branches of utils/tools.py
+  ([#354](https://github.com/skfolio/skfolio/pull/354),
+  [`f45fa1e`](https://github.com/skfolio/skfolio/commit/f45fa1e1915ae17d0b07a3912af44946e38e77e4))
+
+
 ## v1.3.4 (2026-09-25)
 
 ### Bug Fixes

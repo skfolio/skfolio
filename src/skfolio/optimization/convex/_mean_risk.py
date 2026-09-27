@@ -973,6 +973,17 @@ class MeanRisk(ConvexOptimization):
         return self._fit(X, y, method="partial_fit", **fit_params)
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Extends the parent routing: metadata passed to `fit` and `partial_fit` is also
+        routed to the matching method of `mu_uncertainty_set_estimator` and
+        `covariance_uncertainty_set_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             super()
             .get_metadata_routing()
@@ -1608,6 +1619,7 @@ class MeanRisk(ConvexOptimization):
                 )
 
     def _initialize(self):
+        """Validate and clone the prior and uncertainty set sub-estimators."""
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),

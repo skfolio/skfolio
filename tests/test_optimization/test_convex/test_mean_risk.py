@@ -259,6 +259,27 @@ def test_mean_risk_minimize_risk(
     )
 
 
+@pytest.mark.parametrize(
+    "risk_measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_mean_risk_drawdown_from_first_observation(X, risk_measure):
+    # Every asset loses 20% on the first observation, so the deepest drawdown starts
+    # there.
+    X = X.iloc[-60:].copy()
+    X.iloc[0] = -0.2
+    model = MeanRisk(risk_measure=risk_measure)
+    p = model.fit_predict(X)
+    np.testing.assert_almost_equal(
+        getattr(p, risk_measure.value), model.problem_values_["risk"], 4
+    )
+
+
 def test_mean_risk_minimize_risk_2(
     X_small,
     precisions,

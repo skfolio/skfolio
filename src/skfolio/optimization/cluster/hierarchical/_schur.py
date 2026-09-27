@@ -500,6 +500,10 @@ def _compute_monotonic_weights(
         return weights, 0.0
 
     def objective(x: float) -> tuple[float, FloatArray | None]:
+        """Return the portfolio variance and weights for `gamma=x`.
+
+        The variance is `inf` and the weights are `None` if no weights can be computed.
+        """
         w = _compute_weights(
             gamma=x,
             sorted_assets=sorted_assets,

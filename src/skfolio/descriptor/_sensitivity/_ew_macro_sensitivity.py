@@ -283,6 +283,7 @@ class EWMacroSensitivity(BaseDescriptor):
         return result
 
     def _reset(self):
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 
