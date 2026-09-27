@@ -361,7 +361,8 @@ def _format_observation_range(observations: AnyArray) -> str:
             raise TypeError
         first_str = str(pd.Timestamp(first).date())
         last_str = str(pd.Timestamp(last).date())
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
+        # Not a date-like label (e.g. an integer index or a free-form string).
         first_str = str(first)
         last_str = str(last)
     return f"  ({first_str} -> {last_str})"

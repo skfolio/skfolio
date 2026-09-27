@@ -665,7 +665,7 @@ def _has_transaction_cost(x: Any) -> bool:
 
     try:
         arr = np.asarray(x, dtype=float)
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
         # If coercion fails, assume non-zero to be conservative
         return True
 
