@@ -173,13 +173,16 @@ def test_weighted_measures_empty_matrix(measure):
 
 @pytest.mark.parametrize("measure", [skm.value_at_risk, skm.cvar])
 def test_weighted_tail_missing_mass_and_fractional_boundary(measure):
+    # The worst return carries exactly the tail mass 1 - beta, so the VaR is the
+    # next loss and the CVaR is the worst loss.
+    expected = -0.1 if measure is skm.value_at_risk else 0.1
     np.testing.assert_allclose(
         measure(
             np.array([-0.1, 0.1, np.nan]),
             beta=0.5,
             sample_weight=np.array([0.25, 0.25, 0.5]),
         ),
-        0.1,
+        expected,
     )
     # Only half of the second observation belongs to the lower 50% tail.
     expected = 0.1 if measure is skm.value_at_risk else 0.22
@@ -800,6 +803,99 @@ def test_value_at_risk_sample_weight(returns):
 
 
 @pytest.mark.parametrize(
+    "n_observations,beta,rank",
+    [
+        (20, 0.95, 2),
+        (100, 0.99, 2),
+        (100, 0.95, 6),
+        (200, 0.95, 11),
+        (1000, 0.99, 11),
+        (1000, 0.975, 26),
+        (10, 0.9, 2),
+        (100, 0.8, 21),
+        (252, 0.95, 13),
+        (100, 0.995, 1),
+        (100, 0.95 + 1e-12, 5),
+        (100, 0.95 - 1e-12, 6),
+    ],
+)
+def test_value_at_risk_integer_tail_size(n_observations, beta, rank):
+    # When (1 - beta) * n_observations is an integer k, the VaR is the (k + 1)-th
+    # largest loss even though that product is inexact in floating point, e.g.
+    # (1 - 0.95) * 100 == 5.000000000000004 and (1 - 0.9) * 10 == 0.9999999999999998.
+    # Offsetting beta by 1e-12 moves the tail size across the boundary.
+    losses = np.random.default_rng(42).permutation(
+        np.arange(1, n_observations + 1, dtype=float)
+    )
+    expected = n_observations - rank + 1
+    np.testing.assert_almost_equal(skm.value_at_risk(-losses, beta=beta), expected)
+    q = np.ones(n_observations) / n_observations
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=q), expected
+    )
+    np.testing.assert_almost_equal(skm.drawdown_at_risk(-losses, beta=beta), expected)
+
+
+def test_value_at_risk_integer_tail_size_2d():
+    rng = np.random.default_rng(42)
+    losses = np.arange(1, 101, dtype=float)
+    returns = np.column_stack([-rng.permutation(losses), -rng.permutation(losses)])
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 95])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 95]
+    )
+
+
+def test_value_at_risk_integer_tail_size_nan():
+    # NaN returns are excluded: the second column has 20 valid returns, so k = 1.
+    rng = np.random.default_rng(42)
+    col = np.full(100, np.nan)
+    col[:20] = -rng.permutation(np.arange(1, 21, dtype=float))
+    returns = np.column_stack([-rng.permutation(np.arange(1, 101, dtype=float)), col])
+    np.testing.assert_almost_equal(skm.value_at_risk(col, beta=0.95), 19)
+    np.testing.assert_almost_equal(skm.value_at_risk(returns, beta=0.95), [95, 19])
+    q = np.ones(100) / 100
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.95, sample_weight=q), [95, 19]
+    )
+
+
+@pytest.mark.parametrize(
+    "beta,small_weight,large_weight",
+    [(0.9, 0.02, 0.08), (0.95, 0.01, 0.09)],
+)
+def test_value_at_risk_sample_weight_integer_tail_mass(
+    beta, small_weight, large_weight
+):
+    # The five largest losses carry a total weight of 1 - beta, so the VaR is the
+    # sixth largest loss even though the cumulative weights are inexact.
+    losses = np.arange(1, 21, dtype=float)
+    sample_weight = np.where(losses > 10, small_weight, large_weight)
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(-losses, beta=beta, sample_weight=sample_weight), 15
+    )
+
+
+@pytest.mark.parametrize(
+    "first_weight,expected",
+    [
+        (1 / 16 - 2**-35, 0.01),
+        (1 / 16, 0.01),
+        (1 / 16 + 2**-35, 0.20),
+    ],
+)
+def test_value_at_risk_sample_weight_tail_boundary(first_weight, expected):
+    # The worst observation has a weight just below, equal to, or just above the
+    # tail probability 1 - beta = 1/16. All values are exactly representable.
+    returns = np.array([-0.20, -0.01])
+    sample_weight = np.array([first_weight, 1 - first_weight])
+    np.testing.assert_almost_equal(
+        skm.value_at_risk(returns, beta=0.9375, sample_weight=sample_weight), expected
+    )
+
+
+@pytest.mark.parametrize(
     "returns,sample_weight,expected",
     [
         ("1d", False, 0.059240073),
@@ -885,13 +981,67 @@ def test_entropic_risk_measure_sample_weight(returns):
     "returns,expected",
     [
         ("1d", 0.213993692),
-        ("1d_nan", 0.50804718956),
+        ("1d_nan", 0.5),
         ("all_nan", np.nan),
     ],
     indirect=["returns"],
 )
 def test_evar(returns, expected):
     np.testing.assert_almost_equal(skm.evar(returns), expected)
+
+
+@pytest.mark.parametrize(
+    "returns,beta,expected",
+    [
+        (np.full(50, 0.01), 0.95, -0.01),
+        (np.full(50, -0.01), 0.95, 0.01),
+        (np.linspace(0.01, 0.1, 10), 0.95, -0.01),
+        (np.linspace(1e-5, 0.1, 10), 0.95, -1e-5),
+        (np.array([-0.1, -0.1, 0.0, 0.2]), 0.5, 0.1),
+        (np.array([0.02, -0.01, np.nan, 0.03]), 0.0, -0.04 / 3),
+        (np.array([0.02, -0.01, np.nan, 0.03]), 1.0, 0.01),
+        (np.array([]), 0.95, np.nan),
+    ],
+)
+def test_evar_closed_form(returns, beta, expected):
+    np.testing.assert_almost_equal(skm.evar(returns, beta=beta), expected, 12)
+
+
+@pytest.mark.parametrize("beta", [0.5, 0.9, 0.95, 0.99])
+@pytest.mark.parametrize(
+    "returns",
+    [
+        np.random.default_rng(0).uniform(0.001, 0.02, 500),
+        np.random.default_rng(1).standard_t(3, 300) * 0.01,
+        -np.random.default_rng(2).exponential(0.01, 200),
+    ],
+)
+def test_evar_properties(returns, beta):
+    evar = skm.evar(returns, beta=beta)
+    assert skm.cvar(returns, beta=beta) <= evar <= -returns.min()
+
+    spread = np.ptp(returns)
+    thetas = np.geomspace(spread / 500, spread * 100, 2000)
+    erm = min(skm.entropic_risk_measure(returns, theta=t, beta=beta) for t in thetas)
+    assert evar <= erm + 1e-12
+    np.testing.assert_almost_equal(evar, erm, 6)
+
+    np.testing.assert_almost_equal(skm.evar(returns + 0.01, beta=beta), evar - 0.01, 12)
+    np.testing.assert_almost_equal(skm.evar(3 * returns, beta=beta), 3 * evar, 12)
+
+
+@pytest.mark.parametrize(
+    "func,values",
+    [
+        (skm.evar, np.zeros(50)),
+        (skm.edar, skm.get_drawdowns(np.full(60, 0.001))),
+    ],
+)
+def test_evar_zero_is_positive(func, values):
+    value = func(values)
+    assert value == 0.0
+    # A negative zero would turn the associated ratio into -inf.
+    assert not np.signbit(value)
 
 
 @pytest.mark.parametrize(
@@ -919,6 +1069,34 @@ def test_get_cumulative_returns_nan(returns_1d_nan):
 def test_get_drawdowns(returns, expected_ndim, compounded):
     res = skm.get_drawdowns(returns, compounded)
     assert res.ndim == expected_ndim
+
+
+@pytest.mark.parametrize(
+    "values,compounded,expected",
+    [
+        ([-0.1, 0.05, -0.03], False, [-0.1, -0.05, -0.08]),
+        ([-0.1, 0.05, -0.03], True, [-0.1, -0.055, -0.08335]),
+        ([np.nan, -0.1, 0.05], False, [np.nan, -0.1, -0.05]),
+        ([np.nan, -0.1, 0.05], True, [np.nan, -0.1, -0.055]),
+        ([-1.0, 0.5], False, [-1.0, -0.5]),
+        ([-1.0, 0.5], True, [-1.0, -1.0]),
+    ],
+)
+def test_get_drawdowns_counts_loss_from_start(values, compounded, expected):
+    # The starting wealth is the first peak, so a loss on the first observation
+    # is a drawdown.
+    res = skm.get_drawdowns(np.array(values), compounded=compounded)
+    np.testing.assert_almost_equal(res, expected)
+
+
+def test_get_drawdowns_2d_nan_columns():
+    returns = np.array(
+        [[np.nan, np.nan, 0.1], [-0.1, np.nan, -0.2], [0.05, np.nan, 0.0]]
+    )
+    res = skm.get_drawdowns(returns, compounded=False)
+    np.testing.assert_almost_equal(
+        res, [[np.nan, np.nan, 0.0], [-0.1, np.nan, -0.2], [-0.05, np.nan, -0.2]]
+    )
 
 
 def test_get_drawdowns_nan(returns_1d_nan):
@@ -974,8 +1152,8 @@ def test_max_drawdown(returns, compounded, expected):
     [
         ("1d", False, 0.24444925),
         ("1d", True, 0.28518241),
-        ("2d", False, [0.2444493, 0.5652300]),
-        ("2d", True, [0.2851824, 0.5607065]),
+        ("2d", False, [0.2444493, 0.5653650]),
+        ("2d", True, [0.2851824, 0.5608338]),
         ("1d_nan", False, 0.325),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
@@ -1013,7 +1191,7 @@ def test_cdar(returns, compounded, expected):
     [
         ("1d", False, 0.996230976),
         ("1d", True, 0.791260923),
-        ("1d_nan", False, 0.812875503),
+        ("1d_nan", False, 0.8),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),
     ],
@@ -1030,8 +1208,8 @@ def test_edar(returns, compounded, expected):
     [
         ("1d", False, 0.360642004),
         ("1d", True, 0.383078682),
-        ("2d", False, [0.360642, 0.7670693]),
-        ("2d", True, [0.3830787, 0.6368674]),
+        ("2d", False, [0.360642, 0.7670837]),
+        ("2d", True, [0.3830787, 0.6368838]),
         ("1d_nan", False, 0.47169905),
         ("all_nan", False, np.nan),
         ("all_nan", True, np.nan),

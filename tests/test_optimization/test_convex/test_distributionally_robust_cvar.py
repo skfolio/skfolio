@@ -53,7 +53,7 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)

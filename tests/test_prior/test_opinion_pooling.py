@@ -32,17 +32,17 @@ def test_validate_opinion_probabilities_defaults(X):
 
 
 @pytest.mark.parametrize(
-    "probs",
+    "probs,match",
     [
-        [1.0, 1.0],  # sum >1
-        [-0.1, 0.1],  # negative
-        [0.6],  # wrong length
+        ([1.0, 1.0], "must sum to at most 1"),
+        ([-0.1, 0.1], "must be between 0 and 1"),
+        ([0.6], "does not match number of estimators"),
     ],
 )
-def test_validate_opinion_probabilities_errors(X, probs):
+def test_validate_opinion_probabilities_errors(X, probs, match):
     model1 = EntropyPooling()
     model2 = EntropyPooling()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         model = OpinionPooling(
             estimators=[("expert_1", model1), ("expert_2", model2)],
             opinion_probabilities=probs,

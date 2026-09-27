@@ -238,7 +238,9 @@ def test_stacking_prefit(X_tiny):
 
 def test_stacking_prefit_requires_fitted_estimators(X_tiny):
     model = StackingOptimization(estimators=[("ew", EqualWeighted())], cv="prefit")
-    with pytest.raises(NotFittedError):
+    with pytest.raises(
+        NotFittedError, match="This EqualWeighted instance is not fitted yet"
+    ):
         model.fit(X_tiny)
 
 

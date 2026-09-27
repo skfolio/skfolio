@@ -748,7 +748,10 @@ class TestDataValidation:
         panel, X = make_panel(returns, extra_fields={"beta": exposures})
         model = _make_beta_model(min_regression_assets=n_assets + 1)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError,
+            match="fewer than min_regression_assets=6 regression-eligible assets",
+        ) as exc_info:
             model.fit(X, characteristics=panel)
 
         message = str(exc_info.value)

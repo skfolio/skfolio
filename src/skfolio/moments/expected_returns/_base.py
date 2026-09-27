@@ -32,4 +32,20 @@ class BaseMu(skb.BaseEstimator, ABC):
     def __init__(self): ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None): ...
+    def fit(self, X: ArrayLike, y=None):
+        """Fit the expected returns estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        Returns
+        -------
+        self : BaseMu
+            Fitted estimator.
+        """
+        ...
