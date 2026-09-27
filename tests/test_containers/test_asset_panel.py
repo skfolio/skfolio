@@ -2522,6 +2522,30 @@ class TestEdgeCases:
     def test_format_observation_range_empty_returns_empty_string(self):
         assert _format_observation_range(np.array([])) == ""
 
+    @pytest.mark.parametrize(
+        "observations, expected",
+        [
+            (np.array(["2020-01-01", "2020-01-03"]), "  (2020-01-01 -> 2020-01-03)"),
+            (np.array([3, 9]), "  (3 -> 9)"),
+            (np.array(["start", "end"]), "  (start -> end)"),
+            (np.array([True, False]), "  (True -> False)"),
+            (np.array(["99999999999999999999", "1"]), "  (99999999999999999999 -> 1)"),
+        ],
+        ids=["dates", "integers", "unparseable-strings", "booleans", "out-of-bounds"],
+    )
+    def test_format_observation_range(self, observations, expected):
+        assert _format_observation_range(observations) == expected
+
+    def test_format_observation_range_does_not_swallow_unrelated_errors(
+        self, monkeypatch
+    ):
+        def broken_timestamp(value):
+            raise RuntimeError("unexpected")
+
+        monkeypatch.setattr(pd, "Timestamp", broken_timestamp)
+        with pytest.raises(RuntimeError, match="unexpected"):
+            _format_observation_range(np.array(["2020-01-01", "2020-01-03"]))
+
     def test_load_rejects_newer_format_version(self, tmp_path):
         _make_panel().save(tmp_path / "panel")
         metadata_path = tmp_path / "panel" / "_metadata.json"
