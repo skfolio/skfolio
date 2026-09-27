@@ -100,7 +100,26 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y=None, **fit_params):
+        """Fit the covariance estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators, if any.
+
+        Returns
+        -------
+        self : BaseCovariance
+            Fitted estimator.
+        """
+        ...
 
     def score(self, X_test: ArrayLike, y=None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.

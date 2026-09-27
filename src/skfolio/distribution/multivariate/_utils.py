@@ -244,6 +244,7 @@ class ChildNode(BaseNode):
 
     @u.setter
     def u(self, value: FloatArray) -> None:
+        """Set the first margin value (u) for the node."""
         self._u = value
 
     @property
@@ -287,6 +288,7 @@ class ChildNode(BaseNode):
 
     @v.setter
     def v(self, value: FloatArray):
+        """Set the second margin value (v) for the node."""
         self._v = value
 
     def get_var(self, is_left: bool) -> int:

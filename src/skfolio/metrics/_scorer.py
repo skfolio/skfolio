@@ -257,6 +257,7 @@ def make_scorer(
                 greater_is_better = False
 
         def score_func(pred: Portfolio) -> float:
+            """Return the value of `measure` for the predicted portfolio."""
             return getattr(pred, measure.value)
 
         score_func.__name__ = repr(measure)

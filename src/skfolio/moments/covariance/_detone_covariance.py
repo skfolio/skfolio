@@ -79,7 +79,7 @@ class DetoneCovariance(BaseCovariance):
     ----------
     .. [1]  "Machine Learning for Asset Managers".
         Elements in Quantitative Finance.
-        Lòpez de Prado (2020).
+        López de Prado (2020).
     """
 
     covariance_estimator_: BaseCovariance
@@ -101,6 +101,15 @@ class DetoneCovariance(BaseCovariance):
         self.n_markets = n_markets
 
     def get_metadata_routing(self):
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,

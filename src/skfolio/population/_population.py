@@ -1290,6 +1290,7 @@ class Population(list):
 
 
 def _ptf_name_with_tag(portfolio: BasePortfolio) -> str:
+    """Return the portfolio name suffixed with `_<tag>` when the tag is not None."""
     if portfolio.tag is None:
         return portfolio.name
     return f"{portfolio.name}_{portfolio.tag}"
