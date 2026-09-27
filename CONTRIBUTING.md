@@ -102,6 +102,24 @@ The commit hook runs the same Ruff commands on staged files, checks that every
 module, class and function in `src` has a docstring, and checks YAML syntax and file
 endings.
 
+Before you open a pull request, run CI's lint, dependency and test checks with one
+command:
+
+```shell
+make check
+```
+
+It runs, in order, the commit hooks on all files, the dependency check and the
+complete test suite, and stops at the first failure. `make help` lists the
+individual targets. Without `make`, for example on Windows, run the same three
+commands directly:
+
+```shell
+uv run pre-commit run --all-files
+uv run deptry src
+uv run pytest
+```
+
 ### Dependency versions
 
 skfolio is a library that supports the dependency versions allowed by
