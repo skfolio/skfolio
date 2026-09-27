@@ -909,6 +909,46 @@ Minimize tracking error vs a benchmark's returns:
     tracking_error = np.std(excess_returns, ddof=1)
     print(f"Tracking Error: {tracking_error:0.2%}")
 
+Solver Sequences
+****************
+
+A convex problem can be well posed and still defeat one algorithm: an interior point
+method such as `CLARABEL` may stall on an ill-conditioned instance that the first-order
+method `SCS` solves, and the reverse also happens. Convex estimators accept a
+`solver_path`, an ordered list of solvers used in place of `solver`. Each element is
+either a solver name, which takes the same default parameters as `solver` would, or a
+`(solver, solver_params)` tuple carrying its own:
+
+.. code-block:: python
+
+    model = RiskBudgeting(
+        risk_measure=RiskMeasure.CVAR,
+        solver_path=[
+            "CLARABEL",
+            ("SCS", {"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000}),
+        ],
+    )
+    model.fit(X_train)
+    # The solver that produced the solution:
+    print(model.solver_)
+
+The next solver is tried only when a solve **fails**, and each attempt is warned about,
+so a solution is never silently produced by a solver you did not list. A problem proven
+infeasible or unbounded stops the sequence, since a certificate is a property of the
+problem rather than of the solver. For a mixed-integer problem, solvers that cannot
+express integer variables are skipped with a warning. `solver_path` cannot be combined
+with a non-default `solver` or with `solver_params`, which would make the first attempt
+ambiguous.
+
+The sequence applies to each optimization, so on an efficient frontier a single hard
+point does not decide the outcome of the whole sweep, and `solver_` is then the list of
+solvers aligned with the optimizations.
+
+Use `solver_path` to change only how the same problem is solved. To retry with
+different data, a different prior, looser constraints or another estimator entirely,
+use `fallback` below.
+
+
 Fallbacks
 *********
 

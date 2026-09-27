@@ -46,6 +46,7 @@ __all__ = [
     "Result",
     "RiskResult",
     "Scoring",
+    "SolverPath",
     "StrArray",
     "Tags",
     "Target",
@@ -80,6 +81,7 @@ ExpressionFunction = Callable[[cp.Variable, Any], cp.Expression]
 Figure = go.Figure
 Names = str | list[str]
 Tags = str | list[str]
+SolverPath = list[str | tuple[str, dict]]
 Fallback: TypeAlias = Union[
     "BaseOptimization",
     list[Union["BaseOptimization", Literal["previous_weights"]]],

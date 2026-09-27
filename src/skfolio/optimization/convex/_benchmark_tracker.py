@@ -146,6 +146,12 @@ class BenchmarkTracker(MeanRisk):
         Solver parameters.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
+    solver_path : list[str | tuple[str, dict]], optional
+        An ordered list of solvers to try, used in place of `solver`. The first one
+        that succeeds produces the solution and `solver_` reports it.
+        See :class:`~skfolio.optimization.MeanRisk` for details.
+        The default (`None`) is to use `solver` alone.
+
     scale_objective : float, optional
         Scale each objective element by this value.
         See :class:`~skfolio.optimization.MeanRisk` for details.
@@ -185,6 +191,10 @@ class BenchmarkTracker(MeanRisk):
 
     problem_values_ :  dict[str, float]
         Expression values retrieved from the CVXPY problem.
+
+    solver_ : str
+        The solver that produced the solution. Without `solver_path` it is always
+        `solver`; with one, it is the first entry that succeeded.
 
     prior_estimator_ : BasePrior
         Fitted `prior_estimator` on excess returns.
@@ -238,6 +248,7 @@ class BenchmarkTracker(MeanRisk):
         risk_free_rate: float = 0.0,
         solver: str = "CLARABEL",
         solver_params: dict | None = None,
+        solver_path: skt.SolverPath | None = None,
         scale_objective: float | None = None,
         scale_constraints: float | None = None,
         save_problem: bool = False,
@@ -274,6 +285,7 @@ class BenchmarkTracker(MeanRisk):
             risk_free_rate=risk_free_rate,
             solver=solver,
             solver_params=solver_params,
+            solver_path=solver_path,
             scale_objective=scale_objective,
             scale_constraints=scale_constraints,
             save_problem=save_problem,
