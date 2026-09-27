@@ -17,10 +17,18 @@ from skfolio.prior import CharacteristicsFactorModel
 WINDOWS = {
     "mean": [3, 5],
     "std": [5],
+    "var": [4],
     "min": [4],
     "max": [4],
     "median": [3],
     "sum": [2],
+    "skew": [6],
+    "kurt": [6],
+    "sem": [4],
+    "count": [3],
+    "first": [3],
+    "last": [3],
+    "nunique": [3],
 }
 
 
@@ -294,6 +302,8 @@ class TestValidation:
             ({}, "non-empty dict"),
             ([3, 5], "non-empty dict"),
             ({"kurtosis": [3]}, "Unsupported aggregation"),
+            ({"quantile": [3]}, "Unsupported aggregation"),
+            ({"apply": [3]}, "Unsupported aggregation"),
             ({"mean": 3}, "list of positive integers"),
             ({"mean": "3"}, "list of positive integers"),
             ({"mean": []}, "at least one window size"),

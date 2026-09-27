@@ -23,7 +23,23 @@ __all__ = ["RollingFactor"]
 _FITTED_ATTR = "factor_names_"
 
 _LAG = "lag"
-_ROLLING_AGGREGATIONS = ("mean", "std", "min", "max", "median", "sum")
+# Reductions of `pandas.DataFrame.rolling` that take no required argument
+_ROLLING_AGGREGATIONS = (
+    "mean",
+    "std",
+    "var",
+    "min",
+    "max",
+    "median",
+    "sum",
+    "skew",
+    "kurt",
+    "sem",
+    "count",
+    "first",
+    "last",
+    "nunique",
+)
 _AGGREGATIONS = (*_ROLLING_AGGREGATIONS, _LAG)
 
 
@@ -50,9 +66,13 @@ class RollingFactor(BaseFactorExposure):
 
     Windows follow the as-of time-indexing convention: the window of size :math:`w`
     uses the :math:`w` observations ending at :math:`t` inclusive. Output is NaN until
-    the asset has a full active lookback window (:math:`w` observations for a rolling
-    statistic, :math:`k + 1` for a lag). A missing (NaN) source value inside the window
-    propagates to the output, as in pandas.
+    the asset has a full active lookback window: the asset must be active on all
+    :math:`w` observations of a rolling window, and on all :math:`k + 1` observations
+    from :math:`t - k` to :math:`t` for a lag. In particular an inactive observation
+    between :math:`t - k` and :math:`t` invalidates the lag even when the asset is
+    active at both endpoints, so that a lagged value never spans a listing gap. A
+    missing (NaN) source value inside the window propagates to the output, as in
+    pandas.
 
     Parameters
     ----------
@@ -62,10 +82,13 @@ class RollingFactor(BaseFactorExposure):
 
     windows : dict[str, list[int]]
         Mapping from an aggregation name to the window sizes to compute it over.
-        Supported aggregations are `"mean"`, `"std"`, `"min"`, `"max"`, `"median"`
-        and `"sum"`, computed over trailing windows, plus `"lag"`, which returns the
-        source value :math:`k` observations earlier. `"std"` uses one delta degree of
-        freedom, as in pandas. Window sizes (and lags) must be positive integers.
+        The aggregation is the name of a `pandas.DataFrame.rolling` reduction that
+        takes no required argument (`"mean"`, `"std"`, `"var"`, `"min"`, `"max"`,
+        `"median"`, `"sum"`, `"skew"`, `"kurt"`, `"sem"`, `"count"`, `"first"`,
+        `"last"`, `"nunique"`), computed over trailing windows with the pandas
+        conventions (e.g. `"std"` uses one delta degree of freedom), plus `"lag"`,
+        which returns the source value :math:`k` observations earlier. Window sizes
+        (and lags) must be positive integers.
         For example ``{"mean": [5, 21], "std": [21], "lag": [1]}`` produces the four
         factors `<source>_mean_5`, `<source>_mean_21`, `<source>_std_21` and
         `<source>_lag_1`, in that order.
