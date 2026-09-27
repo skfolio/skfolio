@@ -7,10 +7,11 @@ granularity -- `utils.stats` itself does not import `preprocessing` -- which mad
 latent rather than harmless: an import later added to `utils/__init__.py` could turn a
 working import into an `ImportError` surfacing far from the change that caused it.
 
-`validate_asset_panel` still needs `AssetPanel`, and imports it inside the function
-body so the dependency is resolved at call time instead of import time. These tests
-exist so that import stays where it is: moving it back to module scope reintroduces
-the cycle, and `test_no_package_import_cycles` says so by name.
+`validate_asset_panel` needs `AssetPanel`, so it lives in `skfolio.containers`, the
+layer that owns it. Its deprecated alias in `skfolio.utils.validation` resolves it in
+a module `__getattr__`, at access time rather than import time. These tests keep it
+that way: a module-level import of `containers` from `utils` reintroduces the cycle,
+and `test_no_package_import_cycles` says so by name.
 
 The check is static rather than a `sys.modules` assertion, because importing any
 submodule first executes `skfolio/__init__.py`, which imports the whole package -- so

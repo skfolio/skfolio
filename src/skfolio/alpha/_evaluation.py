@@ -25,7 +25,7 @@ from skfolio._constants import (
     _IDIO_VARIANCES,
     _REGRESSION_WEIGHTS,
 )
-from skfolio.containers import AssetPanel, AssetPanelView, Field3D
+from skfolio.containers import AssetPanel, AssetPanelView, Field3D, validate_asset_panel
 from skfolio.model_selection._validation import _route_params
 from skfolio.typing import FloatArray, IntArray, StrArray
 from skfolio.utils._factor_tools import _resolve_factor_subset
@@ -44,7 +44,6 @@ from skfolio.utils.tools import (
     _validate_positive_integer,
     _validate_positive_real,
 )
-from skfolio.utils.validation import validate_asset_panel
 
 __all__ = [
     "AlphaForecastComparison",

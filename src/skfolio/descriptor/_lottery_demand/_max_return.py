@@ -9,12 +9,11 @@ from __future__ import annotations
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, validate_asset_panel
 from skfolio.descriptor._base import BaseDescriptor
 from skfolio.typing import FloatArray
 from skfolio.utils._array_buffer import _update_buffer
 from skfolio.utils.tools import _is_integer_number
-from skfolio.utils.validation import validate_asset_panel
 
 _FITTED_ATTR = "max_return_"
 

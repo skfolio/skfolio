@@ -6,10 +6,9 @@
 
 from __future__ import annotations
 
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, validate_asset_panel
 from skfolio.descriptor._base import BaseDescriptor
 from skfolio.typing import FloatArray, IntArray
-from skfolio.utils.validation import validate_asset_panel
 
 
 class Passthrough(BaseDescriptor, stateless=True):

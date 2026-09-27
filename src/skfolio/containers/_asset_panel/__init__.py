@@ -10,6 +10,7 @@ from skfolio.containers._asset_panel._fields import (
     InactivePolicy,
 )
 from skfolio.containers._asset_panel._panel import AssetPanel
+from skfolio.containers._asset_panel._validation import validate_asset_panel
 from skfolio.containers._asset_panel._view import AssetPanelView
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "FieldCategorical",
     "InactivePolicy",
     "concat",
+    "validate_asset_panel",
 ]

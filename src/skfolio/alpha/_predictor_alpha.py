@@ -24,7 +24,7 @@ from skfolio._constants import (
 )
 from skfolio.alpha import ForecastUnit
 from skfolio.alpha._base import BaseAlpha, BaseAlphaDescriptorComposition
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, validate_asset_panel
 from skfolio.descriptor import BaseDescriptor
 from skfolio.preprocessing import BaseCSTransformer, CSWinsorizer
 from skfolio.typing import BoolArray, FloatArray
@@ -35,7 +35,6 @@ from skfolio.utils.tools import (
     check_estimator,
     half_life_to_decay_factor,
 )
-from skfolio.utils.validation import validate_asset_panel
 
 _FITTED_ATTR = "alpha_"
 

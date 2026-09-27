@@ -12,12 +12,11 @@ import numpy as np
 
 import skfolio.typing as skt
 from skfolio._constants import _BENCHMARK_WEIGHTS, _PASSTHROUGH
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, validate_asset_panel
 from skfolio.factor_exposure._base import BaseFactorExposure
 from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsorizer
 from skfolio.typing import FloatArray
 from skfolio.utils.tools import check_estimator
-from skfolio.utils.validation import validate_asset_panel
 
 __all__ = ["DerivedFactor"]
 

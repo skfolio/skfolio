@@ -198,6 +198,7 @@ Functions
     :template: function.rst
 
     containers.concat
+    containers.validate_asset_panel
 
 
 .. _base_ref:
@@ -1132,7 +1133,6 @@ Functions
     :toctree: generated/
     :template: function.rst
 
-    validation.validate_asset_panel
     validation.validate_cross_sectional_data
 
 .. _distribution_ref:

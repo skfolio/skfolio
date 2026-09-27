@@ -12,7 +12,7 @@ import skfolio.typing as skt
 from skfolio._constants import _EXPOSURES, _IDIO_VARIANCES, _PASSTHROUGH
 from skfolio.alpha import ForecastUnit
 from skfolio.alpha._base import BaseAlpha, BaseAlphaDescriptorComposition
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, validate_asset_panel
 from skfolio.descriptor import BaseDescriptor
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import safe_divide
@@ -20,7 +20,6 @@ from skfolio.utils.tools import (
     _validate_positive_real,
     _validate_unit_interval,
 )
-from skfolio.utils.validation import validate_asset_panel
 
 _FITTED_ATTR = "alpha_"
 

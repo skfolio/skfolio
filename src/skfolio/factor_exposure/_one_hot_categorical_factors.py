@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from skfolio.containers import MISSING_CATEGORY_CODE, AssetPanel
+from skfolio.containers import MISSING_CATEGORY_CODE, AssetPanel, validate_asset_panel
 from skfolio.factor_exposure._base import BaseFactorExposure
 from skfolio.typing import FloatArray, ObjArray
-from skfolio.utils.validation import validate_asset_panel
 
 
 class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
