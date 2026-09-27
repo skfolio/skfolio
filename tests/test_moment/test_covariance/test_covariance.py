@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.optimize as sco
 from sklearn import config_context
 from sklearn.covariance import OAS as SklearnOAS
 from sklearn.covariance import EmpiricalCovariance as SklearnEmpiricalCovariance
@@ -26,6 +29,7 @@ from skfolio.moments import (
     LedoitWolf,
     ShrunkCovariance,
 )
+from skfolio.moments.covariance import _denoise_covariance
 from skfolio.moments.covariance._base import _reduce_to_finite_active_block
 from skfolio.moments.covariance._geodesic_shrinkage_covariance import (
     _geodesic_interpolation,
@@ -1173,6 +1177,30 @@ class TestDenoiseCovariance:
         # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
+
+    def test_marchenko_pastur_variance(self, monkeypatch):
+        # Each asset has factor variance 0.5 and noise variance 1, so the noise
+        # carries 2/3 of the variance of every asset.
+        rng = np.random.default_rng(0)
+        n_observations, n_assets, n_factors = 2000, 200, 10
+        loadings = rng.normal(size=(n_assets, n_factors))
+        loadings *= np.sqrt(0.5) / np.linalg.norm(loadings, axis=1, keepdims=True)
+        X = rng.normal(size=(n_observations, n_factors)) @ loadings.T + rng.normal(
+            size=(n_observations, n_assets)
+        )
+
+        fitted_variances = []
+
+        def minimize(*args, **kwargs):
+            res = sco.minimize(*args, **kwargs)
+            fitted_variances.append(res["x"][0])
+            return res
+
+        monkeypatch.setattr(
+            _denoise_covariance, "sco", SimpleNamespace(minimize=minimize)
+        )
+        DenoiseCovariance().fit(X)
+        np.testing.assert_allclose(fitted_variances, [2 / 3], atol=0.02)
 
 
 class TestDetoneCovariance:
