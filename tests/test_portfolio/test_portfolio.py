@@ -387,7 +387,25 @@ def test_portfolio_sric(portfolio):
 
 
 def test_portfolio_diversification(portfolio):
-    np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
+    np.testing.assert_almost_equal(portfolio.diversification, 1.4503211175631066)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+def test_portfolio_diversification_volatility_estimator(X, weighted):
+    X = X.iloc[:24]
+    sample_weight = None
+    if weighted:
+        sample_weight = np.random.default_rng(42).random(len(X))
+        sample_weight /= sample_weight.sum()
+
+    single_asset = Portfolio(X, weights={"AAPL": 1.0}, sample_weight=sample_weight)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, sample_weight=sample_weight)
+    cov = np.cov(X, rowvar=False, aweights=sample_weight)
+    expected = weights @ np.sqrt(np.diag(cov)) / np.sqrt(weights @ cov @ weights)
+    np.testing.assert_almost_equal(portfolio.diversification, expected)
 
 
 @pytest.mark.parametrize(
