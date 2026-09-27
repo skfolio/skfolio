@@ -488,6 +488,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
         returns = return_distribution.returns
         covariance = cov_nearest(return_distribution.covariance)
 
+        if method == "partial_fit":
+            # Online priors accumulate the return history in their return
+            # distribution. Only the new observations are passed on, so that the
+            # distance estimator does not reprocess the history on every call.
+            n_new = np.shape(X)[0]
+            returns = returns[-n_new:]
+
         # To keep the asset_names
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
@@ -539,6 +546,11 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
         self.weights_ = weights
         self.effective_gamma_ = effective_gamma
+        if method == "partial_fit":
+            # A successful update clears the state left by a previous failure
+            self.error_ = None
+            self.fallback_ = None
+            self.fallback_chain_ = None
         return self
 
     def _compute_allocation(

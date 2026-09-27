@@ -426,6 +426,51 @@ class TestPartialFit:
         )
         np.testing.assert_array_equal(model_online.feature_names_in_, X.columns)
 
+    def test_chunked_partial_fit_processes_each_observation_once(self, X):
+        """The distance estimator must see the new observations only, not the
+        accumulated history, so its state matches a single batch fit."""
+        model_fit = _make_online_schur().fit(X)
+
+        model_online = _make_online_schur()
+        n = len(X)
+        for start, stop in [(0, n // 3), (n // 3, 2 * n // 3), (2 * n // 3, n)]:
+            model_online.partial_fit(X.iloc[start:stop])
+
+        np.testing.assert_allclose(
+            model_online.distance_estimator_.distance_,
+            model_fit.distance_estimator_.distance_,
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            model_online.prior_estimator_.return_distribution_.covariance,
+            model_fit.prior_estimator_.return_distribution_.covariance,
+            atol=1e-12,
+        )
+
+    def test_success_after_failure_clears_failure_state(self, X, monkeypatch):
+        """A successful partial_fit resets error_, fallback_ and fallback_chain_."""
+        n_assets = X.shape[1]
+        model = _make_online_schur(
+            fallback="previous_weights", previous_weights=np.ones(n_assets) / n_assets
+        )
+        model.partial_fit(X.iloc[:200])
+
+        original = _schur._compute_monotonic_weights
+
+        def _raise(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(_schur, "_compute_monotonic_weights", _raise)
+        model.partial_fit(X.iloc[200:260])
+        assert model.fallback_chain_ is not None
+
+        monkeypatch.setattr(_schur, "_compute_monotonic_weights", original)
+        model.partial_fit(X.iloc[260:320])
+        assert model.error_ is None
+        assert model.fallback_ is None
+        assert model.fallback_chain_ is None
+        np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
     def test_fit_resets_state(self, X):
         """fit after partial_fit starts from a clean state."""
         model = _make_online_schur()
