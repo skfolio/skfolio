@@ -117,3 +117,42 @@ def test_all_failed_population_skips_numeric_validation(monkeypatch):
     assert len(population) == 2
     assert all(isinstance(p, FailedPortfolio) for p in population)
     assert all(p.X is invalid for p in population)
+
+
+class TestHasTransactionCost:
+    def test_no_cost(self):
+        from skfolio.optimization._base import _has_transaction_cost
+
+        assert not _has_transaction_cost(None)
+        assert not _has_transaction_cost(0.0)
+        assert not _has_transaction_cost([0.0, 0.0])
+        assert not _has_transaction_cost(np.zeros(3))
+        assert not _has_transaction_cost({})
+        assert not _has_transaction_cost({"a": 0.0, "b": [0.0]})
+        assert not _has_transaction_cost([])
+
+    def test_cost(self):
+        from skfolio.optimization._base import _has_transaction_cost
+
+        assert _has_transaction_cost(0.001)
+        assert _has_transaction_cost([0.0, 0.01])
+        assert _has_transaction_cost({"a": 0.0, "b": {"c": 0.01}})
+
+    def test_uncoercible_values_are_treated_as_a_cost(self):
+        """Values numpy cannot coerce to floats take the conservative fallback."""
+        from skfolio.optimization._base import _has_transaction_cost
+
+        assert _has_transaction_cost("abc")  # ValueError
+        assert _has_transaction_cost([[0.0, 0.1], [0.2]])  # ValueError (ragged)
+        assert _has_transaction_cost(object())  # TypeError
+
+    def test_unrelated_errors_propagate(self):
+        """Only coercion failures are swallowed; a bug in the input is raised."""
+        from skfolio.optimization._base import _has_transaction_cost
+
+        class Broken:
+            def __array__(self, dtype=None, copy=None):
+                raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError, match="boom"):
+            _has_transaction_cost(Broken())

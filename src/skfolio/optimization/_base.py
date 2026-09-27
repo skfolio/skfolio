@@ -647,8 +647,9 @@ def _has_transaction_cost(x: Any) -> bool:
 
     try:
         arr = np.asarray(x, dtype=float)
-    except Exception:
-        # If coercion fails, assume non-zero to be conservative
+    except (TypeError, ValueError):
+        # Values that cannot be coerced to floats (e.g. strings or ragged
+        # sequences): assume a non-zero cost to be conservative.
         return True
 
     if arr.size == 0:

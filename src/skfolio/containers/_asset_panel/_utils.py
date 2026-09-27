@@ -356,12 +356,15 @@ def _format_observation_range(observations: AnyArray) -> str:
         return f"  ({observations[0]})"
     first = observations[0]
     last = observations[-1]
+    if isinstance(first, int | float | np.integer | np.floating):
+        return f"  ({first} -> {last})"
     try:
-        if isinstance(first, (int, float, np.integer, np.floating)):
-            raise TypeError
         first_str = str(pd.Timestamp(first).date())
         last_str = str(pd.Timestamp(last).date())
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
+        # Labels that pandas cannot parse as timestamps (`ValueError`, including
+        # `pd.errors.OutOfBoundsDatetime`), unsupported types (`TypeError`) or
+        # values outside the platform range (`OverflowError`) are shown as-is.
         first_str = str(first)
         last_str = str(last)
     return f"  ({first_str} -> {last_str})"
