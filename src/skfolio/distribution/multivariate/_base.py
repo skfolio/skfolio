@@ -31,7 +31,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     # Used for AIC and BIC
     _n_params: int
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     @property
@@ -47,7 +47,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseMultivariateDist:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseMultivariateDist:
         """Fit the multivariate distribution model.
 
         Parameters

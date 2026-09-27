@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Iterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -367,8 +367,8 @@ class MultiPeriodPortfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         check_observations_order: bool = False,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(
             returns=np.array([]),
             observations=np.array([]),
@@ -421,22 +421,22 @@ class MultiPeriodPortfolio(BasePortfolio):
             return False
         return value in self._portfolios
 
-    def __neg__(self):
+    def __neg__(self) -> MultiPeriodPortfolio:
         return self._create_from_child_portfolios([-p for p in self])
 
-    def __abs__(self):
+    def __abs__(self) -> MultiPeriodPortfolio:
         return self._create_from_child_portfolios([abs(p) for p in self])
 
-    def __round__(self, n: int):
+    def __round__(self, n: int) -> MultiPeriodPortfolio:
         return self._create_from_child_portfolios([round(p, n) for p in self])
 
-    def __floor__(self):
+    def __floor__(self) -> MultiPeriodPortfolio:
         return self._create_from_child_portfolios([p.__floor__() for p in self])
 
-    def __trunc__(self):
+    def __trunc__(self) -> MultiPeriodPortfolio:
         return self._create_from_child_portfolios([p.__trunc__() for p in self])
 
-    def __add__(self, other):
+    def __add__(self, other: MultiPeriodPortfolio) -> MultiPeriodPortfolio:
         if not isinstance(other, self.__class__):
             raise TypeError(
                 "Cannot add a MultiPeriodPortfolio with an object of type"
@@ -449,7 +449,7 @@ class MultiPeriodPortfolio(BasePortfolio):
             [p1 + p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
-    def __sub__(self, other):
+    def __sub__(self, other: MultiPeriodPortfolio) -> MultiPeriodPortfolio:
         if not isinstance(other, self.__class__):
             raise TypeError(
                 "Cannot subtract a MultiPeriodPortfolio with an object of type"
@@ -464,7 +464,9 @@ class MultiPeriodPortfolio(BasePortfolio):
             [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
-    def __mul__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+    def __mul__(
+        self, other: numbers.Number | list[numbers.Number] | FloatArray
+    ) -> MultiPeriodPortfolio:
         if np.isscalar(other):
             portfolios = [p * other for p in self]
         else:
@@ -473,14 +475,18 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     __rmul__ = __mul__
 
-    def __floordiv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+    def __floordiv__(
+        self, other: numbers.Number | list[numbers.Number] | FloatArray
+    ) -> MultiPeriodPortfolio:
         if np.isscalar(other):
             portfolios = [p // other for p in self]
         else:
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
         return self._create_from_child_portfolios(portfolios)
 
-    def __truediv__(self, other: numbers.Number | list[numbers.Number] | FloatArray):
+    def __truediv__(
+        self, other: numbers.Number | list[numbers.Number] | FloatArray
+    ) -> MultiPeriodPortfolio:
         if np.isscalar(other):
             portfolios = [p / other for p in self]
         else:
@@ -608,7 +614,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         return self._portfolios
 
     @portfolios.setter
-    def portfolios(self, value: list[Portfolio] | None = None):
+    def portfolios(self, value: list[Portfolio] | None = None) -> None:
         """Set the list of Portfolios and clear the attributes cache linked to the
         list of portfolios.
         """
@@ -827,7 +833,7 @@ class MultiPeriodPortfolio(BasePortfolio):
         self._set_portfolios([portfolio], append=True)
         self.clear()
 
-    def plot_weights_per_observation(self):
+    def plot_weights_per_observation(self) -> go.Figure:
         """Plot portfolio weights per observation as a stacked-area chart.
 
         This shows the composition of the portfolio over time, with each asset's weight

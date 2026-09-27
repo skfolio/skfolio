@@ -214,7 +214,7 @@ class EWVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWVariance:
@@ -248,7 +248,7 @@ class EWVariance(BaseVariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWVariance:

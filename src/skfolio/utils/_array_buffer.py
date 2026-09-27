@@ -23,7 +23,7 @@ class _ArrayBuffer:
 
     __slots__ = ("_buffer", "_size")
 
-    def __init__(self, values: AnyArray | None = None):
+    def __init__(self, values: AnyArray | None = None) -> None:
         self._buffer: AnyArray | None = None
         self._size: int = 0
         if values is not None:

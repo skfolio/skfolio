@@ -125,14 +125,14 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         self.portfolio_params = portfolio_params
         self.fallback = fallback
         self.previous_weights = previous_weights
         self.raise_on_failure = raise_on_failure
 
     # Automatically wrap all subclasses' fit to add fallback behavior
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
 
         original_fit = cls.__dict__.get("fit")
@@ -140,7 +140,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return
 
         @wraps(original_fit)
-        def _wrapped_fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
+        def _wrapped_fit(
+            self: BaseOptimization,
+            X: ArrayLike,
+            y: ArrayLike | None = None,
+            **fit_params: Any,
+        ) -> BaseOptimization:
             """Run `original_fit` and try the fallback chain if it fails."""
             self.fallback_ = None
             self.fallback_chain_ = None
@@ -176,7 +181,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         X: ArrayLike,
         y: ArrayLike | None,
         primary_error: Exception,
-        **fit_params,
+        **fit_params: Any,
     ) -> None:
         """Execute the configured fallback chain after a primary `fit` failure.
 
@@ -287,7 +292,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             raise
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseOptimization:
         """Fit the optimization estimator.
 
         Parameters
@@ -396,7 +401,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 )
         return population
 
-    def score(self, X: ArrayLike | ReturnDistribution, y: ArrayLike = None) -> float:
+    def score(self, X: ArrayLike | ReturnDistribution, y: None = None) -> float:
         """Prediction score using the Sharpe Ratio.
         If the prediction is a single `Portfolio`, the score is its Sharpe Ratio.
         If the prediction is a `Population`, the score is the mean Sharpe Ratio
@@ -422,7 +427,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             return result.measures_mean(RatioMeasure.SHARPE_RATIO)
         return result.sharpe_ratio
 
-    def fit_predict(self, X):
+    def fit_predict(self, X: ArrayLike) -> Portfolio | Population:
         """Perform `fit` on `X` and returns the predicted `Portfolio` or
         `Population` of `Portfolio` on `X` based on the fitted `weights`.
         For factor models, use `fit(X, factors=...)` then `predict(X)` separately.
@@ -544,7 +549,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         self,
         value: float | dict | ArrayLike | None,
         n_assets: int,
-        fill_value: Any,
+        fill_value: float,
         name: str,
     ) -> float | FloatArray:
         """Convert input to a cleaned float or 1D ndarray.
@@ -561,7 +566,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         n_assets : int
             Number of investable assets. Used to verify the shape of the converted array.
 
-        fill_value : Any
+        fill_value : float
             When `value` is a dictionary, keys not present in the asset names are filled
             with `fill_value` in the converted array.
 
@@ -650,7 +655,7 @@ def _validate_fallback(
     return fallback
 
 
-def _has_transaction_cost(x: Any) -> bool:
+def _has_transaction_cost(x: object) -> bool:
     """Return True if any non-zero transaction cost is present in `x`.
 
     Accepts scalars, arrays, nested mappings, or structures convertible to arrays.

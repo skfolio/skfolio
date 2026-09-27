@@ -328,7 +328,7 @@ class AssetPanel(_BaseAssetPanel):
         """Return the number of observations."""
         return self.n_observations
 
-    def __getitem__(self, key: Any) -> AnyArray | AssetPanelView:
+    def __getitem__(self, key: str | slice | ArrayLike) -> AnyArray | AssetPanelView:
         """Return field values or an observation view. Slice selectors are zero-copy.
         Integer or boolean array selectors follow NumPy fancy-indexing semantics on
          access and may copy.
@@ -485,7 +485,10 @@ class AssetPanel(_BaseAssetPanel):
         return self.fields[name]
 
     def isel(
-        self, *, observations: Any = None, assets: Any = None
+        self,
+        *,
+        observations: slice | ArrayLike | None = None,
+        assets: slice | ArrayLike | None = None,
     ) -> AssetPanel | AssetPanelView:
         """Select observations and assets by integer position.
 
@@ -519,8 +522,8 @@ class AssetPanel(_BaseAssetPanel):
     def sel(
         self,
         *,
-        observations: Any = None,
-        assets: Any = None,
+        observations: Any = None,  # noqa: ANN401  # any label selector
+        assets: Any = None,  # noqa: ANN401  # any label selector
         fields: str | Iterable[str] | None = None,
     ) -> AssetPanel | AssetPanelView:
         """Select observations, assets and fields by label.
@@ -563,7 +566,7 @@ class AssetPanel(_BaseAssetPanel):
             fields=field_names,
         )
 
-    def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:
+    def drop(self, *, observations: Any = None, assets: Any = None) -> AssetPanel:  # noqa: ANN401  # any label selector
         """Return a panel with selected labels removed.
 
         Parameters

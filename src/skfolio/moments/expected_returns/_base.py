@@ -29,10 +29,10 @@ class BaseMu(skb.BaseEstimator, ABC):
     mu_: FloatArray
 
     @abstractmethod
-    def __init__(self): ...
+    def __init__(self) -> None: ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> BaseMu:
         """Fit the expected returns estimator.
 
         Parameters

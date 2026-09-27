@@ -145,14 +145,14 @@ class TimeSeriesFactorModel(BasePrior):
         factor_families: ArrayLike | None = None,
         higham: bool = False,
         max_iteration: int = 100,
-    ):
+    ) -> None:
         self.loading_matrix_estimator = loading_matrix_estimator
         self.factor_prior_estimator = factor_prior_estimator
         self.factor_families = factor_families
         self.higham = higham
         self.max_iteration = max_iteration
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Includes the metadata requested by this estimator and routes metadata passed
@@ -183,10 +183,10 @@ class TimeSeriesFactorModel(BasePrior):
     def fit(
         self,
         X: ArrayLike,
-        y: Any = None,
+        y: None = None,
         *,
         factors: ArrayLike,
-        **fit_params,
+        **fit_params: Any,
     ) -> TimeSeriesFactorModel:
         """Fit the Time-series factor model estimator.
 
@@ -326,7 +326,7 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any) -> BaseLoadingMatrix:
         """Fit the Loading Matrix estimator.
 
         Sets `loading_matrix_` and `intercepts_`.
@@ -393,11 +393,11 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self,
         linear_regressor: skb.BaseEstimator | None = None,
         n_jobs: int | None = None,
-    ):
+    ) -> None:
         self.linear_regressor = linear_regressor
         self.n_jobs = n_jobs
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `linear_regressor`.
@@ -413,7 +413,9 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         )
         return router
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+    def fit(
+        self, X: ArrayLike, y: ArrayLike, **fit_params: Any
+    ) -> LoadingMatrixRegression:
         """Fit the Loading Matrix Regression Estimator.
 
         Parameters
@@ -448,7 +450,6 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
             _linear_regressor, n_jobs=self.n_jobs
         )
         self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
-        # noinspection PyUnresolvedReferences
         n_assets = X.shape[1]
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]

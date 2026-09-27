@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import sklearn.base as skb
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 from skfolio.prior import BasePrior
-from skfolio.typing import ArrayLike
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.uncertainty_set._model import (
     CompactCovarianceUncertaintySet,
     UncertaintySet,
@@ -34,10 +35,10 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
     prior_estimator_: BasePrior
 
     @abstractmethod
-    def __init__(self, prior_estimator: BasePrior | None = None):
+    def __init__(self, prior_estimator: BasePrior | None = None) -> None:
         self.prior_estimator = prior_estimator
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
@@ -54,7 +55,9 @@ class BaseMuUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> BaseMuUncertaintySet:
         """Fit the Mu Uncertainty set estimator.
 
         Parameters
@@ -95,10 +98,12 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
     prior_estimator_: BasePrior
 
     @abstractmethod
-    def __init__(self, prior_estimator: BasePrior | None = None):
+    def __init__(self, prior_estimator: BasePrior | None = None) -> None:
         self.prior_estimator = prior_estimator
 
-    def _validate_X_y(self, X: ArrayLike, y: ArrayLike | None = None):
+    def _validate_X_y(
+        self, X: ArrayLike, y: ArrayLike | None = None
+    ) -> tuple[FloatArray, FloatArray | None]:
         """Validate X and y if provided.
 
         Parameters
@@ -123,7 +128,7 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
             X, y = skv.validate_data(self, X, y, multi_output=True)
         return X, y
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
@@ -140,7 +145,9 @@ class BaseCovarianceUncertaintySet(skb.BaseEstimator, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> BaseCovarianceUncertaintySet:
         """Fit the Covariance Uncertainty set estimator.
 
         Parameters

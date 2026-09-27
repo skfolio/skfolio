@@ -1303,7 +1303,7 @@ def _tail_risk(
     returns = np.asarray(returns, dtype=float)
     eps = np.finfo(float).eps
 
-    def _unweighted(values):
+    def _unweighted(values: FloatArray) -> float | FloatArray:
         """Compute the unweighted tail measure using the enclosing settings."""
         size = values.shape[0]
         if size == 0:
@@ -1336,7 +1336,7 @@ def _tail_risk(
     weights = np.asarray(sample_weight, dtype=float)
     positive = weights > 0
 
-    def _weighted(column):
+    def _weighted(column: FloatArray) -> float:
         """Compute the weighted tail measure for one return column."""
         valid = ~np.isnan(column) & positive
         values, probs = column[valid], weights[valid]

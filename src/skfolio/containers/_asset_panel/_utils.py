@@ -179,7 +179,9 @@ def _validate_field_against_axes(
         )
 
 
-def _normalize_positional_selector(length: int, selector: Any) -> slice | IntArray:
+def _normalize_positional_selector(
+    length: int, selector: slice | ArrayLike | None
+) -> slice | IntArray:
     """Normalize a positional selector to a slice or integer positions."""
     if selector is None:
         return slice(None)
@@ -216,7 +218,7 @@ def _normalize_positional_selector(length: int, selector: Any) -> slice | IntArr
     return contiguous if contiguous is not None else selector_arr
 
 
-def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
+def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
     """Resolve unique-label selectors to positional selectors."""
     index = pd.Index(labels)
     if isinstance(selected, slice):
@@ -239,7 +241,7 @@ def _positions_from_unique_labels(labels: AnyArray, selected: Any) -> slice | In
     return np.asarray(positions, dtype=np.intp)
 
 
-def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:
+def _positions_from_labels(labels: AnyArray, selected: Any) -> slice | IntArray:  # noqa: ANN401  # any label selector
     """Resolve possibly repeated label selectors to positional selectors."""
     index = pd.Index(labels)
     if isinstance(selected, slice):

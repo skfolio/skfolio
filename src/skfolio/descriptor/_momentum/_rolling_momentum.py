@@ -124,5 +124,7 @@ class RollingMomentum(_BaseRollingLogReturn):
 
     momentum_: FloatArray
 
-    def __init__(self, window: int = 252, skip: int = 21, exponentiate: bool = False):
+    def __init__(
+        self, window: int = 252, skip: int = 21, exponentiate: bool = False
+    ) -> None:
         super().__init__(window=window, skip=skip, exponentiate=exponentiate)

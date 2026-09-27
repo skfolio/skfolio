@@ -161,15 +161,21 @@ select = [
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
     "D",
+    "ANN", # flake8-annotations
 ]
 ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D"]
+"tests/*" = ["D", "ANN"]
+"**/conftest.py" = ["ANN"]
 # Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
 # interleaved with the `# %%` narrative cells, and a bare expression at the end of a
 # cell is how a value gets rendered in the gallery output.
-"examples/*" = ["D", "E402", "B018"]
+"examples/*" = ["D", "E402", "B018", "ANN"]
+
+[tool.ruff.lint.flake8-annotations]
+# Allow `Any` on `*args` and `**kwargs`, which forward arbitrary arguments.
+allow-star-arg-any = true
 
 [tool.ruff.lint.isort]
 case-sensitive = true

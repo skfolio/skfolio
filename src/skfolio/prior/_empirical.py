@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numbers
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -132,14 +133,16 @@ class EmpiricalPrior(BasePrior):
         is_log_normal: bool = False,
         investment_horizon: float | None = None,
         max_history: int | None = None,
-    ):
+    ) -> None:
         self.mu_estimator = mu_estimator
         self.covariance_estimator = covariance_estimator
         self.is_log_normal = is_log_normal
         self.investment_horizon = investment_horizon
         self.max_history = max_history
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Fit the Empirical Prior estimator.
 
         Parameters
@@ -149,8 +152,9 @@ class EmpiricalPrior(BasePrior):
             listings, delistings) when both `mu_estimator` and
             `covariance_estimator` handle missing data.
 
-        y : Ignored
-            Not used, present for API consistency by convention.
+        y : array-like of shape (n_observations, n_targets), optional
+            Target data passed to `mu_estimator` and `covariance_estimator`.
+            Log-transformed when `is_log_normal=True`.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -167,7 +171,9 @@ class EmpiricalPrior(BasePrior):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: ArrayLike, y=None, **fit_params) -> EmpiricalPrior:
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Incrementally fit the Empirical Prior estimator.
 
         This method allows for streaming/online updates to the prior estimate.
@@ -183,8 +189,9 @@ class EmpiricalPrior(BasePrior):
             listings, delistings) when both `mu_estimator` and
             `covariance_estimator` handle missing data.
 
-        y : Ignored
-            Not used, present for API consistency by convention.
+        y : array-like of shape (n_observations, n_targets), optional
+            Target data passed to `mu_estimator` and `covariance_estimator`.
+            Log-transformed when `is_log_normal=True`.
 
         **fit_params : dict
             Parameters to pass to the underlying estimators.
@@ -200,7 +207,7 @@ class EmpiricalPrior(BasePrior):
         """
         return self._fit(X, y, method="partial_fit", **fit_params)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` and `partial_fit` to the matching method of
@@ -228,7 +235,9 @@ class EmpiricalPrior(BasePrior):
         )
         return router
 
-    def _fit(self, X: ArrayLike, y, method: str, **fit_params) -> EmpiricalPrior:
+    def _fit(
+        self, X: ArrayLike, y: ArrayLike | None, method: str, **fit_params: Any
+    ) -> EmpiricalPrior:
         """Core fitting logic shared by fit and partial_fit.
 
         Parameters
@@ -236,8 +245,9 @@ class EmpiricalPrior(BasePrior):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : Ignored
-            Not used, present for API consistency by convention.
+        y : array-like of shape (n_observations, n_targets) or None
+            Target data passed to `mu_estimator` and `covariance_estimator`.
+            Log-transformed when `is_log_normal=True`.
 
         method : str
             Either "fit" or "partial_fit". Determines which method to call
@@ -397,7 +407,7 @@ class EmpiricalPrior(BasePrior):
                     f"got {self.max_history}"
                 )
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize the fitted sub-estimators and the zero-fill warning state."""
         self._zero_fill_warned_assets = set()
         self.mu_estimator_ = check_estimator(

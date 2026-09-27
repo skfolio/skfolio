@@ -111,7 +111,7 @@ class CSTanhShrinker(BaseCSTransformer):
         *,
         knee: float = 3.0,
         atol: float = 1e-12,
-    ):
+    ) -> None:
         self.knee = knee
         self.atol = atol
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import numpy as np
 import sklearn.base as skb
 import sklearn.feature_selection as skf
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.typing import ArrayLike, BoolArray
@@ -79,10 +80,10 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
 
     to_keep_: BoolArray
 
-    def __init__(self, drop_assets_with_internal_nan: bool = False):
+    def __init__(self, drop_assets_with_internal_nan: bool = False) -> None:
         self.drop_assets_with_internal_nan = drop_assets_with_internal_nan
 
-    def fit(self, X: ArrayLike, y=None) -> SelectComplete:
+    def fit(self, X: ArrayLike, y: None = None) -> SelectComplete:
         """Run the SelectComplete transformer and get the appropriate assets.
 
         Parameters
@@ -115,7 +116,7 @@ class SelectComplete(skf.SelectorMixin, skb.BaseEstimator):
         skv.check_is_fitted(self)
         return self.to_keep_
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> sku.Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

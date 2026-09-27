@@ -170,13 +170,13 @@ class GumbelCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> GumbelCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> GumbelCopula:
         r"""Fit the Bivariate Gumbel Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
