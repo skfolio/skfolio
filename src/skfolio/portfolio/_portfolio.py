@@ -24,7 +24,7 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.attribution import Attribution
-from skfolio.measures import RiskMeasure, effective_number_assets
+from skfolio.measures import effective_number_assets
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
@@ -1049,7 +1049,7 @@ class Portfolio(BasePortfolio):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`
 
         to_df : bool, default=False
             If set to True, a DataFrame with asset names in index is returned,
@@ -1067,15 +1067,7 @@ class Portfolio(BasePortfolio):
             contribution = np.full(len(assets), np.nan)
         else:
             if spacing is None:
-                if measure in [
-                    RiskMeasure.MAX_DRAWDOWN,
-                    RiskMeasure.AVERAGE_DRAWDOWN,
-                    RiskMeasure.CDAR,
-                    RiskMeasure.EDAR,
-                ]:
-                    spacing = 1e-1
-                else:
-                    spacing = 1e-5
+                spacing = 1e-5
             args = self._get_init_params()
             args.pop("weights")
 

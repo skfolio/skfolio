@@ -574,7 +574,7 @@ class Population(list):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`.
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`.
 
         display_sub_ptf_name : bool, default=True
             If this is set to True, each sub-portfolio name composing a multi-period
@@ -948,7 +948,7 @@ class Population(list):
 
         spacing : float, optional
             Spacing "h" of the finite difference:
-            :math:`contribution(wi)= \frac{measure(wi-h) - measure(wi+h)}{2h}`
+            :math:`contribution(w_i) = w_i \frac{measure(w_i + h) - measure(w_i - h)}{2h}`
 
         display_sub_ptf_name : bool, default=True
             If this is set to True, each sub-portfolio name composing a multi-period
