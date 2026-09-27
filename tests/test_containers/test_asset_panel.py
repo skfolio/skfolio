@@ -2528,13 +2528,12 @@ class TestEdgeCases:
             (np.array(["2020-01-01", "2020-01-03"]), "  (2020-01-01 -> 2020-01-03)"),
             (np.array([3, 9]), "  (3 -> 9)"),
             (np.array(["start", "end"]), "  (start -> end)"),
-            (np.array([10**30, 10**31], dtype=object), f"  ({10**30} -> {10**31})"),
+            (np.array([True, False]), "  (True -> False)"),
+            (np.array(["99999999999999999999", "1"]), "  (99999999999999999999 -> 1)"),
         ],
-        ids=["dates", "integers", "unparseable-strings", "out-of-bounds"],
+        ids=["dates", "integers", "unparseable-strings", "booleans", "out-of-bounds"],
     )
-    def test_format_observation_range_falls_back_to_labels(
-        self, observations, expected
-    ):
+    def test_format_observation_range(self, observations, expected):
         assert _format_observation_range(observations) == expected
 
     def test_format_observation_range_does_not_swallow_unrelated_errors(
