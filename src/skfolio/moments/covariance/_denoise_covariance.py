@@ -159,8 +159,9 @@ class DenoiseCovariance(BaseCovariance):
         indices = e_val.argsort()[::-1]
         e_val, e_vec = e_val[indices], e_vec[:, indices]
 
-        def _marchenko(x_var):
+        def _marchenko(x):
             """Return the squared error between the Marchenko-Pastur and KDE pdfs."""
+            x_var = x[0]
             e_min, e_max = (
                 x_var * (1 - (1.0 / q) ** 0.5) ** 2,
                 x_var * (1 + (1.0 / q) ** 0.5) ** 2,
@@ -175,7 +176,7 @@ class DenoiseCovariance(BaseCovariance):
                 e_val.reshape(-1, 1)
             )
             # noinspection PyUnresolvedReferences
-            pdf_1 = np.exp(kde.score_samples(pdf_0.reshape(-1, 1)))
+            pdf_1 = np.exp(kde.score_samples(e_val_lin.reshape(-1, 1)))
             return np.sum((pdf_1 - pdf_0) ** 2)
 
         # noinspection PyTypeChecker

@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.4.2 (2026-09-27)
+
+### Bug Fixes
+
+- Correct metadata routing keys and Marchenko-Pastur fit
+  ([#376](https://github.com/skfolio/skfolio/pull/376),
+  [`8ce4a98`](https://github.com/skfolio/skfolio/commit/8ce4a982b48f248e431aebb004d55f13dca1f13f))
+
+
 ## v1.4.1 (2026-09-26)
 
 ### Bug Fixes
