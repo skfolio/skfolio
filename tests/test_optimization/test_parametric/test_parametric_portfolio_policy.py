@@ -19,10 +19,7 @@ from skfolio.descriptor import (
 from skfolio.factor_exposure import FixedWeightedFactor, OneHotCategoricalFactors
 from skfolio.model_selection import WalkForward, cross_val_predict
 from skfolio.optimization import ParametricPortfolioPolicy
-from skfolio.optimization.parametric._parametric_portfolio_policy import (
-    _crra,
-    _maximize_crra_utility,
-)
+from skfolio.optimization.parametric._parametric_portfolio_policy import _crra
 
 
 @pytest.fixture(scope="module")
@@ -376,6 +373,9 @@ class TestValidation:
             ({"benchmark_mcap_power": -1.0}, "benchmark_mcap_power"),
             ({"max_iter": -1}, "max_iter"),
             ({"tol": 0.0}, "tol"),
+            ({"transaction_costs": -0.01}, "transaction_costs"),
+            ({"long_only": "yes"}, "long_only"),
+            ({"solver": 3}, "solver"),
         ],
     )
     def test_invalid_params_raise(self, panel, X, params, match):
@@ -414,6 +414,147 @@ class TestValidation:
         np.testing.assert_almost_equal(model.weights_.sum(), 1.0)
 
 
+class TestConstraintsAndCosts:
+    def test_long_only_weights(self):
+        panel, X = _signal_panel()
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure(), long_only=True
+        ).fit(X, characteristics=panel)
+        valid = ~np.isnan(model.weights_history_).all(axis=1)
+        assert np.all(model.weights_history_[valid] >= 0)
+        np.testing.assert_allclose(
+            np.nansum(model.weights_history_[valid], axis=1), 1.0
+        )
+        assert model.coef_[0] > 0
+        assert model.utility_ >= model.benchmark_utility_ - 1e-12
+        # The unconstrained policy shorts some assets on the same data
+        unconstrained = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure()
+        ).fit(X, characteristics=panel)
+        assert np.nanmin(unconstrained.weights_history_) < 0
+
+    def test_transaction_costs_reduce_turnover(self):
+        panel, X = _signal_panel()
+        free = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure()
+        ).fit(X, characteristics=panel)
+        costly = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure(), transaction_costs=0.01
+        ).fit(X, characteristics=panel)
+
+        def turnover(model):
+            w = model.weights_history_
+            return np.abs(np.diff(w, axis=0)).sum(axis=1).mean()
+
+        assert turnover(costly) < turnover(free)
+        assert 0 < costly.coef_[0] < free.coef_[0]
+        assert costly.utility_ <= free.utility_
+
+    def test_transaction_costs_use_previous_weights(self):
+        panel, X = _signal_panel(n_observations=60)
+        n_assets = X.shape[1]
+        kwargs = dict(
+            characteristics_exposures=_signal_exposure(), transaction_costs=0.05
+        )
+        # Without previous weights the first observation has no turnover cost
+        from_nothing = ParametricPortfolioPolicy(**kwargs).fit(X, characteristics=panel)
+        # Starting from cash, the whole first allocation is charged
+        from_cash = ParametricPortfolioPolicy(
+            previous_weights=np.zeros(n_assets), **kwargs
+        ).fit(X, characteristics=panel)
+        # Starting from the (equal-weighted) benchmark costs nothing at the optimum
+        from_benchmark = ParametricPortfolioPolicy(
+            previous_weights=np.full(n_assets, 1 / n_assets), **kwargs
+        ).fit(X, characteristics=panel)
+        assert from_cash.utility_ < from_nothing.utility_
+        assert from_benchmark.utility_ == pytest.approx(from_nothing.utility_)
+
+    def test_solver_override(self, panel, X):
+        default = ParametricPortfolioPolicy(characteristics_exposures=_exposures()).fit(
+            X, characteristics=panel
+        )
+        bfgs = ParametricPortfolioPolicy(
+            characteristics_exposures=_exposures(), solver="BFGS"
+        ).fit(X, characteristics=panel)
+        # Both reach the optimum of the concave objective
+        assert bfgs.utility_ == pytest.approx(default.utility_, rel=1e-9)
+        np.testing.assert_allclose(bfgs.coef_, default.coef_, rtol=1e-3)
+        assert default.solver_result_.success
+
+    def test_zero_iterations_holds_benchmark(self):
+        panel, X = _signal_panel(n_observations=60)
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure(), max_iter=0
+        ).fit(X, characteristics=panel)
+        np.testing.assert_array_equal(model.coef_, 0.0)
+        assert model.utility_ == pytest.approx(model.benchmark_utility_)
+        valid = ~np.isnan(model.weights_history_).all(axis=1)
+        np.testing.assert_allclose(
+            np.nansum(model.weights_history_[valid], axis=1), 1.0
+        )
+
+
+class TestNoLookAhead:
+    def test_weights_do_not_depend_on_future_returns(self):
+        """The weights at t must be identical whether or not returns at t + 1 are
+        missing; only the realized path used in the objective changes."""
+        panel, X = _signal_panel()
+        X_missing = X.copy()
+        X_missing.iloc[10:15, 3] = np.nan
+        theta = np.array([0.5])
+        model = ParametricPortfolioPolicy(characteristics_exposures=_signal_exposure())
+        full = model.fit(X, characteristics=panel)
+        exposures, _ = full._compute_exposures(
+            full._validate_characteristics(panel, X), method="fit"
+        )
+        inputs = full._policy_inputs(
+            full._validate_characteristics(panel, X), exposures, full._investment_idx_
+        )
+        weights = full._policy_weights(theta, inputs, long_only=False)
+        # eligibility and weights at rows 9..14 are untouched by the missing returns
+        assert inputs.holdable[9:14].all()
+        np.testing.assert_allclose(weights[9:14].sum(axis=1), 1.0)
+        missing = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure()
+        )
+        missing.fit(X_missing, characteristics=panel)
+        # Same in-sample weights for the same coefficients: refit with theta fixed
+        for m in (full, missing):
+            w = m._policy_weights(theta, inputs, long_only=False)
+            np.testing.assert_allclose(w, weights)
+
+
+class TestPredictWeights:
+    def test_matches_history_for_stateless_characteristics(self):
+        panel, X = _signal_panel()
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure()
+        ).fit(X, characteristics=panel)
+        weights = model.predict_weights(panel)
+        assert isinstance(weights, pd.DataFrame)
+        assert list(weights.columns) == list(X.columns)
+        assert weights.index.equals(X.index)
+        np.testing.assert_allclose(weights.to_numpy(), model.weights_history_)
+
+    def test_applies_to_new_panel(self, panel, X):
+        train, test = panel[:200], panel[200:]
+        model = ParametricPortfolioPolicy(characteristics_exposures=_exposures())
+        model.fit(X.iloc[:200], characteristics=train)
+        weights = model.predict_weights(test)
+        assert weights.shape == (panel.n_observations - 200, X.shape[1])
+        valid = ~weights.isna().all(axis=1)
+        np.testing.assert_allclose(weights[valid].sum(axis=1), 1.0)
+        # inactive assets get a zero weight
+        inactive = ~test.active_mask & valid.to_numpy()[:, np.newaxis]
+        assert np.all(weights.to_numpy()[inactive] == 0)
+
+    def test_requires_fit(self, panel):
+        with pytest.raises(Exception, match="not fitted"):
+            ParametricPortfolioPolicy(
+                characteristics_exposures=_exposures()
+            ).predict_weights(panel)
+
+
 class TestSolver:
     def test_crra_derivatives(self):
         r = np.array([-0.5, 0.0, 0.1, 2.0])
@@ -426,37 +567,23 @@ class TestSolver:
             np.testing.assert_allclose(d2u, num_d2u, rtol=1e-4)
         np.testing.assert_allclose(_crra(r, 1.0)[0], np.log1p(r))
 
-    def test_solution_is_stationary_and_beats_benchmark(self):
-        rng = np.random.default_rng(3)
-        benchmark = rng.standard_normal(1000) * 0.01
-        tilts = rng.standard_normal((1000, 3)) * 0.01 + np.array([0.001, -0.002, 0.0])
-        theta, n_iter, utility, benchmark_utility = _maximize_crra_utility(
-            benchmark, tilts, risk_aversion=5.0, max_iter=100, tol=1e-12
-        )
-        assert utility > benchmark_utility
-        assert n_iter >= 1
-        _, du, _ = _crra(benchmark + tilts @ theta, 5.0)
-        gradient = tilts.T @ du / len(du)
-        np.testing.assert_allclose(gradient, 0.0, atol=1e-6)
-        assert theta[0] > 0 > theta[1]
+    def test_smooth_solution_is_stationary(self, panel, X):
+        model = ParametricPortfolioPolicy(characteristics_exposures=_exposures())
+        model.fit(X, characteristics=panel)
+        assert model.solver_result_.success
+        np.testing.assert_allclose(model.solver_result_.jac, 0.0, atol=1e-6)
+        assert model.utility_ >= model.benchmark_utility_
 
     def test_solution_stays_in_utility_domain(self):
-        rng = np.random.default_rng(4)
-        benchmark = rng.standard_normal(200) * 0.01
-        # Large tilt returns so that an undamped step would leave 1 + r > 0
-        tilts = rng.standard_normal((200, 2)) * 0.5 + 0.2
-        theta, _, utility, _ = _maximize_crra_utility(
-            benchmark, tilts, risk_aversion=2.0, max_iter=200, tol=1e-12
+        """Large tilt returns must not push the path below -100%."""
+        panel, X = _signal_panel(beta=0.5, seed=4)
+        model = ParametricPortfolioPolicy(
+            characteristics_exposures=_signal_exposure(), risk_aversion=2.0
+        ).fit(X, characteristics=panel)
+        path = np.nansum(
+            np.nan_to_num(model.weights_history_[:-1])
+            * np.nan_to_num(X.to_numpy()[1:]),
+            axis=1,
         )
-        assert np.all(1.0 + benchmark + tilts @ theta > 0)
-        assert np.isfinite(utility)
-
-    def test_zero_iterations_returns_benchmark(self):
-        benchmark = np.full(10, 0.01)
-        tilts = np.ones((10, 1)) * 0.01
-        theta, n_iter, utility, benchmark_utility = _maximize_crra_utility(
-            benchmark, tilts, risk_aversion=5.0, max_iter=0, tol=1e-12
-        )
-        np.testing.assert_array_equal(theta, 0.0)
-        assert n_iter == 0
-        assert utility == benchmark_utility
+        assert np.all(1.0 + path > 0)
+        assert np.isfinite(model.utility_)

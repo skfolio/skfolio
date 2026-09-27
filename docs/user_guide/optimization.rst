@@ -184,7 +184,10 @@ the weight of each asset is its benchmark weight plus a linear tilt in its
 
 The coefficients :math:`\theta` are chosen to maximize the average CRRA utility of
 the realized portfolio return path, using the characteristics known at :math:`t` and
-the returns of :math:`t + 1`. The characteristics are built with the same factor
+the returns of :math:`t + 1`. The policy can be constrained to be long-only
+(`long_only=True`) and penalized for turnover (`transaction_costs`), and the fitted
+coefficients can be applied to new characteristics without refitting through
+`predict_weights`. The characteristics are built with the same factor
 exposure estimators as the :class:`~skfolio.prior.CharacteristicsFactorModel` (see
 :ref:`Factor Exposures <factor_model_factor_exposures>`) from an
 :class:`~skfolio.containers.AssetPanel` passed to `fit` as `characteristics`.

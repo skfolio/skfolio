@@ -187,6 +187,44 @@ for gamma in [2, 5, 10, 20]:
     )
 
 # %%
+# Long-Only Policy and Transaction Costs
+# ======================================
+# The unconstrained policy is long-short around its benchmark. With
+# `long_only=True` the weights are truncated at zero and renormalized, and the
+# coefficients are fitted on the truncated policy, as in section 3.2 of the paper.
+# With `transaction_costs`, a proportional cost per unit of turnover is deducted
+# from the realized return in the objective (section 3.3), which pulls the
+# coefficients towards a less active policy. Both objectives are only piecewise
+# smooth, so a quasi-Newton solver with numerical gradients is used. Note that the
+# long-only coefficients are identified only up to a plateau: once the truncation
+# removes the benchmark component, the weights no longer depend on their scale.
+for kwargs in [dict(long_only=True), dict(transaction_costs=0.002)]:
+    policy = ParametricPortfolioPolicy(
+        characteristics_exposures=characteristics, **kwargs
+    ).fit(X, characteristics=panel)
+    weights = np.nan_to_num(policy.weights_history_)
+    turnover = np.abs(np.diff(weights, axis=0)).sum(axis=1).mean()
+    print(
+        f"{kwargs}: coefficients "
+        + ", ".join(f"{c:+.3f}" for c in policy.coef_)
+        + f", short exposure {policy.weights_[policy.weights_ < 0].sum():+.3f},"
+        f" mean turnover {turnover:.2%}"
+    )
+
+# %%
+# Applying the Policy to New Characteristics
+# ==========================================
+# The fitted coefficients are the policy, so they can be applied to the
+# characteristics of later observations without refitting.
+# :meth:`~skfolio.optimization.ParametricPortfolioPolicy.predict_weights` computes
+# the exposures with the fitted estimators (continuing their state) and returns
+# the weights of every observation of the new panel:
+train_size = 1000
+model.fit(X.iloc[:train_size], characteristics=panel[:train_size])
+weights = model.predict_weights(panel[train_size:])
+weights.tail(3).iloc[:, :5]
+
+# %%
 # Conclusion
 # ==========
 # A parametric portfolio policy compresses the portfolio choice into a handful of

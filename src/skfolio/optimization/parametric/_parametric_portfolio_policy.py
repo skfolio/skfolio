@@ -6,8 +6,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
+import scipy.optimize as sco
 import sklearn as sk
 import sklearn.utils.validation as skv
 
@@ -16,15 +19,41 @@ from skfolio._constants import _BENCHMARK_WEIGHTS, _MARKET_CAP
 from skfolio.containers import AssetPanel, InactivePolicy
 from skfolio.factor_exposure import BaseFactorExposure
 from skfolio.optimization._base import BaseOptimization
-from skfolio.typing import BoolArray, FloatArray, ObjArray
+from skfolio.typing import BoolArray, FloatArray, IntArray, ObjArray
 from skfolio.utils.tools import (
     _validate_non_negative_integer,
     _validate_non_negative_real,
     _validate_positive_real,
+    input_to_array,
 )
 from skfolio.utils.validation import validate_asset_panel
 
 __all__ = ["ParametricPortfolioPolicy"]
+
+_SMOOTH_SOLVER = "trust-exact"
+_NON_SMOOTH_SOLVER = "L-BFGS-B"
+
+
+@dataclass(frozen=True)
+class _PolicyInputs:
+    r"""Arrays a parametric policy is built from, aligned on the investment universe.
+
+    Attributes
+    ----------
+    tilt : ndarray of shape (n_observations, n_assets, n_characteristics)
+        Characteristics demeaned over the eligible assets and divided by their
+        number, i.e. :math:`\tilde{z}_{t,i} / N_t`. Zero for non-eligible assets.
+
+    benchmark : ndarray of shape (n_observations, n_assets)
+        Benchmark weights normalized over the eligible assets. Zero elsewhere.
+
+    holdable : ndarray of shape (n_observations, n_assets)
+        Eligibility of each asset at each observation.
+    """
+
+    tilt: FloatArray
+    benchmark: FloatArray
+    holdable: BoolArray
 
 
 class ParametricPortfolioPolicy(BaseOptimization):
@@ -47,14 +76,18 @@ class ParametricPortfolioPolicy(BaseOptimization):
     eligible assets at :math:`t`, :math:`\theta` is the vector of policy coefficients
     and :math:`\tilde{z}_{t,i}` are the characteristics demeaned cross-sectionally over
     the eligible assets, so that the deviation from the benchmark is self-financing and
-    the weights sum to one.
+    the weights sum to one. With `long_only=True` the weights are truncated at zero
+    and renormalized, :math:`w^+_{t,i} = \max(w_{t,i}, 0) / \sum_j \max(w_{t,j}, 0)`,
+    as in section 3.2 of [1]_.
 
     The coefficients :math:`\theta` maximize the average utility of the realized
     portfolio return path
 
     .. math::
 
-        \max_{\theta} \; \frac{1}{T} \sum_{t} u\left(\sum_{i} w_{t,i} \, r_{t+1,i}\right)
+        \max_{\theta} \; \frac{1}{T} \sum_{t} u\left(r^p_{t+1}\right), \qquad
+        r^p_{t+1} = \sum_{i} w_{t,i} \, r_{t+1,i}
+        - c \sum_i \lvert w_{t,i} - w_{t-1,i} \rvert
 
     with the constant relative risk aversion (CRRA) utility
 
@@ -63,16 +96,19 @@ class ParametricPortfolioPolicy(BaseOptimization):
         u(r) = \frac{(1 + r)^{1 - \gamma}}{1 - \gamma}
 
     (and :math:`u(r) = \log(1 + r)` when :math:`\gamma = 1`), where :math:`\gamma` is
-    `risk_aversion`. The weights at :math:`t` use the characteristics known at
-    :math:`t` and are evaluated on the returns of :math:`t + 1` (as-of convention), so
-    the objective uses only information available at the time of each decision.
+    `risk_aversion` and :math:`c` is `transaction_costs`, a proportional cost per unit
+    of turnover as in section 3.3 of [1]_. The weights at :math:`t` use only the
+    characteristics known at :math:`t` and are evaluated on the returns of
+    :math:`t + 1`, so the objective uses no information beyond the decision time.
 
-    Because the portfolio return is linear in :math:`\theta` and the utility is
-    concave, the objective is concave in :math:`\theta`. It is maximized with a damped
-    Newton method using the analytic gradient and Hessian, with a backtracking line
-    search that keeps :math:`1 + r > 0` at every step. Starting from
-    :math:`\theta = 0`, which corresponds to holding the benchmark, the method converges
-    to the global optimum.
+    Without the long-only constraint and transaction costs the portfolio return is
+    linear in :math:`\theta` and the objective is concave. It is then maximized with
+    the trust-region method of `scipy.optimize.minimize` using the analytic gradient
+    and Hessian, starting from :math:`\theta = 0` (the benchmark), which converges to
+    the global optimum. Otherwise the objective is only piecewise smooth (the
+    truncation and the turnover introduce kinks) and a quasi-Newton method with
+    numerical gradients is used from the same starting point; it finds a local
+    optimum.
 
     The characteristics are built with the same factor exposure estimators as
     :class:`~skfolio.prior.CharacteristicsFactorModel`
@@ -102,11 +138,33 @@ class ParametricPortfolioPolicy(BaseOptimization):
         equal weights and values in between shrink cap concentration. When different
         from `0`, the `characteristics` panel must contain a `market_cap` field.
 
-    max_iter : int, default=100
-        Maximum number of Newton iterations.
+    long_only : bool, default=False
+        If True, the policy weights are truncated at zero and renormalized to sum to
+        one at every observation, and the coefficients are fitted on the truncated
+        policy.
+
+    transaction_costs : float, default=0.0
+        Proportional transaction cost :math:`c \ge 0` per unit of one-way turnover,
+        in the unit of the returns. The cost of moving from the previous target
+        weights to the current ones is deducted from the realized portfolio return in
+        the objective. The turnover of the first observation is measured from
+        `previous_weights` when provided, and is zero otherwise.
+
+    solver : str, optional
+        Method of `scipy.optimize.minimize`. The default (`None`) is `"trust-exact"`
+        when the objective is smooth (no long-only constraint and no transaction
+        costs), which uses the analytic gradient and Hessian, and `"L-BFGS-B"` with
+        numerical gradients otherwise.
+
+    solver_params : dict, optional
+        Options passed to `scipy.optimize.minimize` through its `options` argument.
+
+    max_iter : int, default=1000
+        Maximum number of solver iterations (the `maxiter` option, unless overridden
+        in `solver_params`).
 
     tol : float, default=1e-10
-        Convergence tolerance on the Newton decrement of the average utility.
+        Solver tolerance (the `tol` argument of `scipy.optimize.minimize`).
 
     portfolio_params : dict, optional
         Portfolio parameters passed to the portfolio evaluated by the `predict` and
@@ -125,8 +183,9 @@ class ParametricPortfolioPolicy(BaseOptimization):
         The default (`None`) means no fallback.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
-        Previous weights of the assets. Used only when `fallback="previous_weights"`
-        and passed to the portfolio on `predict`.
+        Previous weights of the assets. Used as the starting point of the turnover
+        when `transaction_costs` is positive, when `fallback="previous_weights"`, and
+        passed to the portfolio on `predict`.
 
     raise_on_failure : bool, default=True
         If True, any failure during `fit` is raised immediately, no `weights_` are
@@ -159,7 +218,10 @@ class ParametricPortfolioPolicy(BaseOptimization):
         Average in-sample utility of the benchmark (:math:`\theta = 0`).
 
     n_iter_ : int
-        Number of Newton iterations run.
+        Number of solver iterations.
+
+    solver_result_ : scipy.optimize.OptimizeResult
+        Result returned by `scipy.optimize.minimize`.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -172,10 +234,25 @@ class ParametricPortfolioPolicy(BaseOptimization):
     -----
     An asset is eligible at :math:`t` when it belongs to the investment universe
     (the columns of `X`), is active in the panel at :math:`t`, has finite
-    characteristics at :math:`t` and, for the objective, a finite return at
-    :math:`t + 1`. Non-eligible assets receive a zero weight. Observations with no
-    eligible asset (for example the warm-up of rolling characteristics) are excluded
-    from the objective and have NaN rows in `weights_history_`.
+    characteristics at :math:`t` and a positive benchmark weight. Non-eligible assets
+    receive a zero weight. Observations with no eligible asset (for example the
+    warm-up of rolling characteristics) are excluded from the objective and have NaN
+    rows in `weights_history_`. A missing return at :math:`t + 1` of an asset held at
+    :math:`t` contributes zero to the realized portfolio return of that observation;
+    the weights themselves never depend on the availability of future returns.
+
+    With `long_only=True`, once the coefficients are large enough for the truncation
+    to remove the whole benchmark component, the weights become the normalized
+    positive part of the tilt and no longer depend on the scale of :math:`\theta`.
+    The coefficients of a long-only policy are therefore identified only up to that
+    plateau, and policies are better compared through their weights than through
+    the size of their coefficients.
+
+    The estimator is split into reusable steps: :meth:`_compute_exposures` builds the
+    characteristics, :meth:`_policy_inputs` prepares the tilt, benchmark and
+    eligibility arrays, :meth:`_policy_weights` maps coefficients to weights and
+    :meth:`_fit_coefficients` runs the utility maximization, so that policies with a
+    different coefficient estimation can reuse the infrastructure.
 
     References
     ----------
@@ -219,13 +296,18 @@ class ParametricPortfolioPolicy(BaseOptimization):
     utility_: float
     benchmark_utility_: float
     n_iter_: int
+    solver_result_: sco.OptimizeResult
 
     def __init__(
         self,
         characteristics_exposures: list[tuple[str, BaseFactorExposure]],
         risk_aversion: float = 5.0,
         benchmark_mcap_power: float = 1.0,
-        max_iter: int = 100,
+        long_only: bool = False,
+        transaction_costs: float = 0.0,
+        solver: str | None = None,
+        solver_params: dict | None = None,
+        max_iter: int = 1000,
         tol: float = 1e-10,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -241,6 +323,10 @@ class ParametricPortfolioPolicy(BaseOptimization):
         self.characteristics_exposures = characteristics_exposures
         self.risk_aversion = risk_aversion
         self.benchmark_mcap_power = benchmark_mcap_power
+        self.long_only = long_only
+        self.transaction_costs = transaction_costs
+        self.solver = solver
+        self.solver_params = solver_params
         self.max_iter = max_iter
         self.tol = tol
 
@@ -283,126 +369,50 @@ class ParametricPortfolioPolicy(BaseOptimization):
         returns = np.asarray(
             skv.validate_data(self, X, ensure_all_finite=False), dtype=float
         )
-        n_observations = returns.shape[0]
+        n_assets = returns.shape[1]
 
-        need_market_cap = self.benchmark_mcap_power != 0
-        characteristics = validate_asset_panel(
-            self,
-            asset_panel=characteristics,
-            required_fields=[_MARKET_CAP] if need_market_cap else None,
-            reserved_fields=[_BENCHMARK_WEIGHTS],
-            strictly_positive_when_active=[_MARKET_CAP] if need_market_cap else None,
-            copy=True,  # shallow copy: the user's panel is not mutated
-        )
-
-        if characteristics.n_observations != n_observations:
-            raise ValueError(
-                "`X` and `characteristics` must have the same number of observations, "
-                f"got {n_observations} and {characteristics.n_observations}."
-            )
-        if not np.array_equal(np.asarray(X.index), characteristics.observations):
-            raise ValueError("`X.index` must match `characteristics.observations`.")
-
-        asset_idx = {name: i for i, name in enumerate(characteristics.asset_names)}
-        try:
-            investment_idx = np.array([asset_idx[x] for x in X.columns], dtype=int)
-        except KeyError as e:
-            raise ValueError(
-                f"Asset {e.args[0]!r} from `X` is missing from `characteristics`."
-            ) from e
-
-        # Benchmark weights on the coverage universe, used by the cross-sectional
-        # transformations of the exposure estimators (same convention as
-        # `CharacteristicsFactorModel`) and, restricted to the eligible assets, as the
-        # benchmark of the policy.
-        active_mask = characteristics.active_mask
-        benchmark_mask = active_mask & characteristics.estimation_mask
-        if need_market_cap:
-            market_cap = characteristics[_MARKET_CAP]
-            benchmark_mask &= np.isfinite(market_cap)
-            cap_weights = np.zeros_like(market_cap, dtype=float)
-            cap_weights[benchmark_mask] = np.power(
-                market_cap[benchmark_mask], self.benchmark_mcap_power
-            )
-        else:
-            cap_weights = benchmark_mask.astype(float)
-        characteristics.add_2d_field(
-            name=_BENCHMARK_WEIGHTS,
-            values=cap_weights,
-            inactive_policy=InactivePolicy.ZERO,
-        )
+        characteristics = self._validate_characteristics(characteristics, X)
+        self._investment_idx_ = self._investment_index(characteristics, X.columns)
 
         # Characteristics (n_observations, n_coverage_assets, n_characteristics)
-        exposures, names = self._compute_exposures(characteristics)
+        exposures, names = self._compute_exposures(characteristics, method="fit")
+        inputs = self._policy_inputs(characteristics, exposures, self._investment_idx_)
 
-        # Restrict to the investment universe
-        z = exposures[:, investment_idx, :]
-        cap_weights = cap_weights[:, investment_idx]
-        active_mask = active_mask[:, investment_idx]
-        n_characteristics = z.shape[-1]
+        previous_weights = None
+        if self.previous_weights is not None:
+            previous_weights = input_to_array(
+                items=self.previous_weights,
+                n_assets=n_assets,
+                fill_value=0.0,
+                dim=1,
+                assets_names=getattr(self, "feature_names_in_", None),
+                name="previous_weights",
+            )
 
-        # Eligibility for holding a position at t
-        holdable = active_mask & np.isfinite(z).all(axis=-1) & (cap_weights > 0)
-
-        # Demean characteristics cross-sectionally over the eligible assets so that
-        # the policy tilt is self-financing, and scale by 1 / N_t.
-        z_tilde = _demean_and_scale(z, holdable)
-
-        # Benchmark weights normalized over the eligible assets
-        benchmark_weights = np.where(holdable, cap_weights, 0.0)
-        benchmark_sum = benchmark_weights.sum(axis=1, keepdims=True)
-        benchmark_weights = np.divide(
-            benchmark_weights,
-            benchmark_sum,
-            out=np.zeros_like(benchmark_weights),
-            where=benchmark_sum > 0,
-        )
-
-        # Objective on the realized path: weights at t are evaluated on returns at
-        # t + 1. Only pairs with a finite next return contribute.
-        next_returns = returns[1:]
-        contributes = holdable[:-1] & np.isfinite(next_returns)
-        if not np.array_equal(contributes, holdable[:-1]):
-            # An eligible asset with a missing next return is dropped from that
-            # observation's portfolio: rebuild the tilt and benchmark on the reduced
-            # set so that the objective weights stay self-financing.
-            z_obj = _demean_and_scale(z[:-1], contributes)
-            b_obj = np.where(contributes, cap_weights[:-1], 0.0)
-            b_sum = b_obj.sum(axis=1, keepdims=True)
-            b_obj = np.divide(b_obj, b_sum, out=np.zeros_like(b_obj), where=b_sum > 0)
-        else:
-            z_obj = z_tilde[:-1]
-            b_obj = benchmark_weights[:-1]
-
-        valid_obs = contributes.any(axis=1)
+        # Objective on the realized path: weights at t are evaluated on the returns
+        # of t + 1. Observations with no eligible asset are excluded.
+        valid_obs = inputs.holdable[:-1].any(axis=1)
         if not valid_obs.any():
             raise ValueError(
-                "No observation has an eligible asset with finite characteristics and "
-                "a finite next-period return. Check the warm-up of the characteristics "
-                "estimators and the coverage of `X`."
+                "No observation has an eligible asset with finite characteristics. "
+                "Check the warm-up of the characteristics estimators and the "
+                "coverage of `X`."
             )
-        r = np.where(contributes, next_returns, 0.0)[valid_obs]
-        # Benchmark return path and characteristic-weighted return path
-        benchmark_returns = np.einsum("ti,ti->t", b_obj[valid_obs], r)
-        tilt_returns = np.einsum("tik,ti->tk", z_obj[valid_obs], r)
+        next_returns = returns[1:]
 
-        if np.any(1.0 + benchmark_returns <= 0.0):
-            raise ValueError(
-                "The benchmark portfolio has a return lower than or equal to -100% at "
-                "some observation, which is outside the domain of the CRRA utility."
-            )
-
-        theta, n_iter, utility, benchmark_utility = _maximize_crra_utility(
-            benchmark_returns=benchmark_returns,
-            tilt_returns=tilt_returns,
-            risk_aversion=self.risk_aversion,
-            max_iter=self.max_iter,
-            tol=self.tol,
+        theta, result = self._fit_coefficients(
+            inputs=_PolicyInputs(
+                tilt=inputs.tilt[:-1][valid_obs],
+                benchmark=inputs.benchmark[:-1][valid_obs],
+                holdable=inputs.holdable[:-1][valid_obs],
+            ),
+            next_returns=next_returns[valid_obs],
+            previous_weights=previous_weights,
         )
 
         # In-sample weight path and the weights for the next period
-        weights_history = benchmark_weights + z_tilde @ theta
-        no_holding = ~holdable.any(axis=1)
+        weights_history = self._policy_weights(theta, inputs, self.long_only)
+        no_holding = ~inputs.holdable.any(axis=1)
         weights_history[no_holding] = np.nan
         if no_holding[-1]:
             raise ValueError(
@@ -412,13 +422,49 @@ class ParametricPortfolioPolicy(BaseOptimization):
 
         self.coef_ = theta
         self.characteristic_names_ = names
-        self.n_characteristics_ = n_characteristics
+        self.n_characteristics_ = len(names)
         self.weights_history_ = weights_history
-        self.utility_ = float(utility)
-        self.benchmark_utility_ = float(benchmark_utility)
-        self.n_iter_ = int(n_iter)
+        self.utility_ = float(-result.fun)
+        self.benchmark_utility_ = float(result.benchmark_utility)
+        self.n_iter_ = int(getattr(result, "nit", 0))
+        self.solver_result_ = result
         self.weights_ = weights_history[-1].copy()
         return self
+
+    def predict_weights(self, characteristics: AssetPanel) -> pd.DataFrame:
+        """Apply the fitted coefficients to new characteristics.
+
+        The characteristics are computed with the fitted exposure estimators,
+        continuing their state through `partial_fit_transform` when they support
+        online updates, so the panel should follow the observations seen in `fit`.
+        The fitted policy weights are then applied without refitting.
+
+        Parameters
+        ----------
+        characteristics : AssetPanel
+            Point-in-time panel of asset characteristics covering the investment
+            universe seen in `fit`.
+
+        Returns
+        -------
+        weights : DataFrame of shape (n_observations, n_assets)
+            Policy weights at every observation of the panel, aligned with
+            `feature_names_in_`. Observations with no eligible asset are NaN.
+        """
+        skv.check_is_fitted(self, "coef_")
+        asset_names = getattr(self, "feature_names_in_", None)
+        characteristics = self._validate_characteristics(characteristics, X=None)
+        if asset_names is None:
+            investment_idx = self._investment_idx_
+        else:
+            investment_idx = self._investment_index(characteristics, asset_names)
+        exposures, _ = self._compute_exposures(characteristics, method="partial_fit")
+        inputs = self._policy_inputs(characteristics, exposures, investment_idx)
+        weights = self._policy_weights(self.coef_, inputs, self.long_only)
+        weights[~inputs.holdable.any(axis=1)] = np.nan
+        return pd.DataFrame(
+            weights, index=characteristics.observations, columns=asset_names
+        )
 
     def _validate_params(self) -> None:
         """Validate hyperparameters."""
@@ -450,13 +496,84 @@ class ParametricPortfolioPolicy(BaseOptimization):
             raise ValueError(f"Characteristic names must be unique, got {names!r}.")
         _validate_positive_real(self.risk_aversion, "risk_aversion")
         _validate_non_negative_real(self.benchmark_mcap_power, "benchmark_mcap_power")
+        _validate_non_negative_real(self.transaction_costs, "transaction_costs")
         _validate_non_negative_integer(self.max_iter, "max_iter")
         _validate_positive_real(self.tol, "tol")
+        if not isinstance(self.long_only, bool | np.bool_):
+            raise ValueError(f"`long_only` must be a boolean, got {self.long_only!r}")
+        if self.solver is not None and not isinstance(self.solver, str):
+            raise ValueError(f"`solver` must be a string or None, got {self.solver!r}")
+
+    def _validate_characteristics(
+        self, characteristics: AssetPanel, X: pd.DataFrame | None
+    ) -> AssetPanel:
+        """Validate the panel and attach the benchmark weights used by the exposure
+        estimators' cross-sectional transformations (same convention as
+        `CharacteristicsFactorModel`). Returns a shallow copy.
+        """
+        need_market_cap = self.benchmark_mcap_power != 0
+        characteristics = validate_asset_panel(
+            self,
+            asset_panel=characteristics,
+            required_fields=[_MARKET_CAP] if need_market_cap else None,
+            reserved_fields=[_BENCHMARK_WEIGHTS],
+            strictly_positive_when_active=[_MARKET_CAP] if need_market_cap else None,
+            reset=X is not None,
+            copy=True,  # shallow copy: the user's panel is not mutated
+        )
+        if X is not None:
+            if characteristics.n_observations != X.shape[0]:
+                raise ValueError(
+                    "`X` and `characteristics` must have the same number of "
+                    f"observations, got {X.shape[0]} and "
+                    f"{characteristics.n_observations}."
+                )
+            if not np.array_equal(np.asarray(X.index), characteristics.observations):
+                raise ValueError("`X.index` must match `characteristics.observations`.")
+
+        benchmark_mask = characteristics.active_mask & characteristics.estimation_mask
+        if need_market_cap:
+            market_cap = characteristics[_MARKET_CAP]
+            benchmark_mask &= np.isfinite(market_cap)
+            cap_weights = np.zeros_like(market_cap, dtype=float)
+            cap_weights[benchmark_mask] = np.power(
+                market_cap[benchmark_mask], self.benchmark_mcap_power
+            )
+        else:
+            cap_weights = benchmark_mask.astype(float)
+        characteristics.add_2d_field(
+            name=_BENCHMARK_WEIGHTS,
+            values=cap_weights,
+            inactive_policy=InactivePolicy.ZERO,
+        )
+        return characteristics
+
+    @staticmethod
+    def _investment_index(characteristics: AssetPanel, asset_names) -> IntArray:
+        """Positions of the investment universe in the coverage universe."""
+        asset_idx = {name: i for i, name in enumerate(characteristics.asset_names)}
+        try:
+            return np.array([asset_idx[x] for x in asset_names], dtype=int)
+        except KeyError as e:
+            raise ValueError(
+                f"Asset {e.args[0]!r} from `X` is missing from `characteristics`."
+            ) from e
 
     def _compute_exposures(
-        self, characteristics: AssetPanel
+        self, characteristics: AssetPanel, method: str
     ) -> tuple[FloatArray, ObjArray]:
         """Compute and stack the characteristic exposures.
+
+        Parameters
+        ----------
+        characteristics : AssetPanel
+            Validated panel with benchmark weights attached.
+
+        method : str
+            `"fit"` clones the estimators and computes the exposures from a clean
+            state. `"partial_fit"` continues the fitted estimators' state through
+            `partial_fit_transform` when available, and falls back to
+            `fit_transform` otherwise.
 
         Returns
         -------
@@ -466,14 +583,19 @@ class ParametricPortfolioPolicy(BaseOptimization):
         names : ndarray of shape (n_characteristics,)
             Characteristic names, expanded for multi-factor estimators.
         """
-        self.characteristics_exposures_ = [
-            (name, sk.clone(estimator))
-            for name, estimator in self.characteristics_exposures
-        ]
+        if method == "fit":
+            self.characteristics_exposures_ = [
+                (name, sk.clone(estimator))
+                for name, estimator in self.characteristics_exposures
+            ]
         exposures = []
         names = []
         for name, estimator in self.characteristics_exposures_:
-            exposure = np.asarray(estimator.fit_transform(characteristics), dtype=float)
+            if method == "partial_fit" and hasattr(estimator, "partial_fit_transform"):
+                exposure = estimator.partial_fit_transform(characteristics)
+            else:
+                exposure = estimator.fit_transform(characteristics)
+            exposure = np.asarray(exposure, dtype=float)
             if exposure.ndim == 2:
                 exposures.append(exposure[:, :, np.newaxis])
                 names.append(name)
@@ -493,22 +615,188 @@ class ParametricPortfolioPolicy(BaseOptimization):
                 )
         return np.concatenate(exposures, axis=-1), np.array(names, dtype=object)
 
+    @staticmethod
+    def _policy_inputs(
+        characteristics: AssetPanel, exposures: FloatArray, investment_idx: IntArray
+    ) -> _PolicyInputs:
+        """Restrict the exposures to the investment universe and build the tilt,
+        benchmark and eligibility arrays.
 
-def _demean_and_scale(z: FloatArray, mask: BoolArray) -> FloatArray:
-    r"""Demean characteristics cross-sectionally over `mask` and divide by the number
-    of masked assets, giving the per-asset tilt :math:`\tilde{z}_{t,i} / N_t`.
-    Entries outside `mask` are set to zero.
-    """
-    counts = mask.sum(axis=1)[:, np.newaxis, np.newaxis]
-    masked = np.where(mask[:, :, np.newaxis], z, 0.0)
-    means = np.divide(
-        masked.sum(axis=1, keepdims=True),
-        counts,
-        out=np.zeros((z.shape[0], 1, z.shape[2])),
-        where=counts > 0,
-    )
-    tilt = np.where(mask[:, :, np.newaxis], z - means, 0.0)
-    return np.divide(tilt, counts, out=np.zeros_like(tilt), where=counts > 0)
+        An asset is eligible at `t` when it is active, has finite characteristics and
+        a positive benchmark weight. The characteristics are demeaned over the
+        eligible assets and divided by their number, and the benchmark weights are
+        normalized over the eligible assets. Nothing depends on future observations.
+        """
+        z = exposures[:, investment_idx, :]
+        cap_weights = characteristics[_BENCHMARK_WEIGHTS][:, investment_idx]
+        active_mask = characteristics.active_mask[:, investment_idx]
+
+        holdable = active_mask & np.isfinite(z).all(axis=-1) & (cap_weights > 0)
+
+        counts = holdable.sum(axis=1)[:, np.newaxis, np.newaxis]
+        masked = np.where(holdable[:, :, np.newaxis], z, 0.0)
+        means = np.divide(
+            masked.sum(axis=1, keepdims=True),
+            counts,
+            out=np.zeros((z.shape[0], 1, z.shape[2])),
+            where=counts > 0,
+        )
+        tilt = np.where(holdable[:, :, np.newaxis], z - means, 0.0)
+        tilt = np.divide(tilt, counts, out=np.zeros_like(tilt), where=counts > 0)
+
+        benchmark = np.where(holdable, cap_weights, 0.0)
+        benchmark_sum = benchmark.sum(axis=1, keepdims=True)
+        benchmark = np.divide(
+            benchmark,
+            benchmark_sum,
+            out=np.zeros_like(benchmark),
+            where=benchmark_sum > 0,
+        )
+        return _PolicyInputs(tilt=tilt, benchmark=benchmark, holdable=holdable)
+
+    @staticmethod
+    def _policy_weights(
+        theta: FloatArray, inputs: _PolicyInputs, long_only: bool
+    ) -> FloatArray:
+        """Map coefficients to the policy weights, shape (n_observations, n_assets).
+
+        Non-eligible assets have a zero weight. With `long_only`, the weights are
+        truncated at zero and renormalized to sum to one; if no weight is positive
+        the benchmark is held.
+        """
+        weights = inputs.benchmark + inputs.tilt @ np.asarray(theta, dtype=float)
+        if long_only:
+            weights = np.maximum(weights, 0.0)
+            total = weights.sum(axis=1, keepdims=True)
+            weights = np.divide(
+                weights, total, out=inputs.benchmark.copy(), where=total > 0
+            )
+        return weights
+
+    def _fit_coefficients(
+        self,
+        inputs: _PolicyInputs,
+        next_returns: FloatArray,
+        previous_weights: FloatArray | None,
+    ) -> tuple[FloatArray, sco.OptimizeResult]:
+        """Maximize the average CRRA utility of the realized policy return path.
+
+        Parameters
+        ----------
+        inputs : _PolicyInputs
+            Policy inputs at the decision times, restricted to observations with at
+            least one eligible asset.
+
+        next_returns : ndarray of shape (n_observations, n_assets)
+            Returns realized over the period following each decision time. Missing
+            returns of held assets contribute zero.
+
+        previous_weights : ndarray of shape (n_assets,) or None
+            Weights held before the first observation, for the turnover.
+
+        Returns
+        -------
+        theta : ndarray of shape (n_characteristics,)
+            Optimal coefficients.
+
+        result : scipy.optimize.OptimizeResult
+            Solver result with the additional attribute `benchmark_utility`.
+        """
+        gamma = float(self.risk_aversion)
+        cost = float(self.transaction_costs)
+        smooth = not self.long_only and cost == 0.0
+        n_characteristics = inputs.tilt.shape[-1]
+        r = np.where(inputs.holdable & np.isfinite(next_returns), next_returns, 0.0)
+
+        def portfolio_returns(theta: FloatArray) -> FloatArray:
+            weights = self._policy_weights(theta, inputs, self.long_only)
+            path = np.einsum("ti,ti->t", weights, r)
+            if cost > 0.0:
+                start = (
+                    np.zeros(weights.shape[1])
+                    if previous_weights is None
+                    else previous_weights
+                )
+                previous = np.vstack([start[np.newaxis, :], weights[:-1]])
+                turnover = np.abs(weights - previous).sum(axis=1)
+                if previous_weights is None:
+                    turnover[0] = 0.0
+                path = path - cost * turnover
+            return path
+
+        def objective(theta: FloatArray) -> float:
+            path = portfolio_returns(theta)
+            if np.any(1.0 + path <= 0.0):
+                return np.inf
+            return -float(np.mean(_crra(path, gamma)[0]))
+
+        theta0 = np.zeros(n_characteristics)
+        benchmark_utility = -objective(theta0)
+        if not np.isfinite(benchmark_utility):
+            raise ValueError(
+                "The benchmark portfolio has a return lower than or equal to -100% at "
+                "some observation, which is outside the domain of the CRRA utility."
+            )
+
+        options = {"maxiter": int(self.max_iter)}
+        if self.solver_params is not None:
+            options.update(self.solver_params)
+        method = self.solver
+        if method is None:
+            method = _SMOOTH_SOLVER if smooth else _NON_SMOOTH_SOLVER
+
+        kwargs = {}
+        if smooth:
+            # The portfolio return is linear in theta: precompute its coefficients
+            benchmark_returns = np.einsum("ti,ti->t", inputs.benchmark, r)
+            tilt_returns = np.einsum("tik,ti->tk", inputs.tilt, r)
+            n = len(benchmark_returns)
+
+            def gradient(theta: FloatArray) -> FloatArray:
+                path = benchmark_returns + tilt_returns @ theta
+                if np.any(1.0 + path <= 0.0):
+                    return np.full(n_characteristics, np.nan)
+                return -(tilt_returns.T @ _crra(path, gamma)[1]) / n
+
+            def hessian(theta: FloatArray) -> FloatArray:
+                path = benchmark_returns + tilt_returns @ theta
+                d2u = _crra(path, gamma)[2]
+                return -((tilt_returns * d2u[:, np.newaxis]).T @ tilt_returns) / n
+
+            kwargs["jac"] = gradient
+            if method in (
+                "trust-exact",
+                "trust-ncg",
+                "trust-krylov",
+                "Newton-CG",
+                "dogleg",
+            ):
+                kwargs["hess"] = hessian
+
+        if self.max_iter == 0:
+            # Hold the benchmark without calling the solver
+            result = sco.OptimizeResult(
+                x=theta0,
+                fun=-benchmark_utility,
+                nit=0,
+                success=True,
+                message="max_iter=0",
+            )
+        else:
+            result = sco.minimize(
+                objective,
+                theta0,
+                method=method,
+                tol=self.tol,
+                options=options,
+                **kwargs,
+            )
+        if not np.isfinite(result.fun):
+            raise ValueError(
+                f"The solver failed to find a feasible policy: {result.message}"
+            )
+        result.benchmark_utility = benchmark_utility
+        return np.asarray(result.x, dtype=float), result
 
 
 def _crra(
@@ -523,91 +811,3 @@ def _crra(
     du = np.power(wealth, -risk_aversion)
     d2u = -risk_aversion * np.power(wealth, -risk_aversion - 1.0)
     return u, du, d2u
-
-
-def _maximize_crra_utility(
-    benchmark_returns: FloatArray,
-    tilt_returns: FloatArray,
-    risk_aversion: float,
-    max_iter: int,
-    tol: float,
-) -> tuple[FloatArray, int, float, float]:
-    """Maximize the average CRRA utility of `benchmark_returns + tilt_returns @ theta`.
-
-    The objective is concave in `theta`. It is maximized with a damped Newton method
-    using the analytic gradient and Hessian, and a backtracking line search that keeps
-    the portfolio wealth positive and enforces sufficient increase.
-
-    Parameters
-    ----------
-    benchmark_returns : ndarray of shape (n_observations,)
-        Realized benchmark returns.
-
-    tilt_returns : ndarray of shape (n_observations, n_characteristics)
-        Realized returns of the unit characteristic tilts.
-
-    risk_aversion : float
-        Relative risk aversion of the CRRA utility.
-
-    max_iter : int
-        Maximum number of Newton iterations.
-
-    tol : float
-        Tolerance on the Newton decrement.
-
-    Returns
-    -------
-    theta : ndarray of shape (n_characteristics,)
-        Optimal coefficients.
-
-    n_iter : int
-        Number of iterations run.
-
-    utility : float
-        Average utility at `theta`.
-
-    benchmark_utility : float
-        Average utility at `theta = 0`.
-    """
-    n_characteristics = tilt_returns.shape[1]
-    theta = np.zeros(n_characteristics)
-
-    def objective(t: FloatArray) -> float:
-        portfolio_returns = benchmark_returns + tilt_returns @ t
-        if np.any(1.0 + portfolio_returns <= 0.0):
-            return -np.inf
-        return float(np.mean(_crra(portfolio_returns, risk_aversion)[0]))
-
-    benchmark_utility = objective(theta)
-    utility = benchmark_utility
-    n_iter = 0
-    for n_iter in range(1, max_iter + 1):
-        portfolio_returns = benchmark_returns + tilt_returns @ theta
-        _, du, d2u = _crra(portfolio_returns, risk_aversion)
-        gradient = tilt_returns.T @ du / len(du)
-        hessian = (tilt_returns * d2u[:, np.newaxis]).T @ tilt_returns / len(du)
-        try:
-            direction = np.linalg.solve(-hessian, gradient)
-        except np.linalg.LinAlgError:
-            direction = np.linalg.lstsq(-hessian, gradient, rcond=None)[0]
-        if not np.all(np.isfinite(direction)) or gradient @ direction <= 0:
-            # Not an ascent direction (numerically singular Hessian): use the gradient
-            direction = gradient
-        decrement = gradient @ direction
-        if decrement <= tol:
-            n_iter -= 1
-            break
-        # Backtracking line search (Armijo) inside the utility domain
-        step = 1.0
-        while step > 1e-12:
-            candidate = theta + step * direction
-            value = objective(candidate)
-            if value >= utility + 1e-4 * step * decrement:
-                break
-            step *= 0.5
-        else:
-            break
-        theta = candidate
-        utility = value
-
-    return theta, n_iter, utility, benchmark_utility
