@@ -135,6 +135,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
     def __init__(self): ...
 
     def _get_params(self, attr, deep=True):
+        """Get parameters, including those of the named sub-estimators in `attr`."""
         out = super().get_params(deep=deep)
         if not deep:
             return out
@@ -157,6 +158,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
         return out
 
     def _set_params(self, attr, **params):
+        """Set parameters, including replacing the named sub-estimators in `attr`."""
         # Ensure strict ordering of parameter setting:
         # 1. All steps
         if attr in params:
@@ -179,6 +181,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
         return self
 
     def _replace_estimator(self, attr, name, new_val):
+        """Replace the sub-estimator called `name` in `attr` with `new_val`."""
         # assumes `name` is a valid estimator name
         new_estimators = list(getattr(self, attr))
         for i, (estimator_name, _) in enumerate(new_estimators):
@@ -188,6 +191,7 @@ class BaseComposition(skb.BaseEstimator, ABC):
         setattr(self, attr, new_estimators)
 
     def _validate_names(self, names):
+        """Validate that the sub-estimator names are unique and valid."""
         if len(set(names)) != len(names):
             raise ValueError(f"Names provided are not unique: {list(names)!r}")
         invalid_names = set(names).intersection(self.get_params(deep=False))

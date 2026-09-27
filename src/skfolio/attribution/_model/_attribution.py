@@ -1485,6 +1485,12 @@ def _plot_contribution_chart(
     observations: AnyArray | None = None,
     confidence_level: float | None = None,
 ):
+    """Plot the volatility or return contributions of an attribution.
+
+    Single-point attribution is drawn as bars and rolling attribution as one line per
+    component. Realized return contributions with standard errors show them in the
+    hover text and, when `confidence_level` is set, as error bars or confidence bands.
+    """
     if is_risk:
         title = "Vol Contribution"
         title_rolling = f"{title} Over Time"

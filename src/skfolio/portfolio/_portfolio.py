@@ -701,9 +701,11 @@ class Portfolio(BasePortfolio):
 
     @property
     def _is_failed_portfolio(self) -> bool:
+        """Whether this portfolio is a `FailedPortfolio`."""
         return self.__class__.__name__ == "FailedPortfolio"
 
     def _get_init_params(self) -> dict:
+        """Return the constructor parameters, restoring the original dict inputs."""
         params = super()._get_init_params()
         params.update(self._original_named_inputs)
         return params
