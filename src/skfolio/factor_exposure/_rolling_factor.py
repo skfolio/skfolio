@@ -41,6 +41,7 @@ _ROLLING_AGGREGATIONS = (
     "nunique",
 )
 _AGGREGATIONS = (*_ROLLING_AGGREGATIONS, _LAG)
+_GAP_POLICIES = ("invalidate", "skip")
 
 
 class RollingFactor(BaseFactorExposure):
@@ -65,14 +66,23 @@ class RollingFactor(BaseFactorExposure):
     optionally passed through the cross-sectional outlier and scoring transformers.
 
     Windows follow the as-of time-indexing convention: the window of size :math:`w`
-    uses the :math:`w` observations ending at :math:`t` inclusive. Output is NaN until
-    the asset has a full active lookback window: the asset must be active on all
-    :math:`w` observations of a rolling window, and on all :math:`k + 1` observations
-    from :math:`t - k` to :math:`t` for a lag. In particular an inactive observation
-    between :math:`t - k` and :math:`t` invalidates the lag even when the asset is
-    active at both endpoints, so that a lagged value never spans a listing gap. A
-    missing (NaN) source value inside the window propagates to the output, as in
-    pandas.
+    uses the :math:`w` observations ending at :math:`t` inclusive. How inactive
+    observations (listing gaps) are handled depends on `gap_policy`:
+
+    - `"invalidate"` (default): output is NaN until the asset has a full active
+      lookback window. The asset must be active on all :math:`w` observations of a
+      rolling window, and on all :math:`k + 1` observations from :math:`t - k` to
+      :math:`t` for a lag. An inactive observation inside the lookback invalidates
+      the output even when the asset is active at both endpoints, so that a value
+      never spans a listing gap.
+    - `"skip"`: the lookback is measured in active observations. A window of
+      :math:`w` aggregates the asset's last :math:`w` active observations and a lag
+      of :math:`k` returns its :math:`k`-th most recent active value, both skipping
+      over inactive observations. Output is NaN until the asset has :math:`w`
+      (respectively :math:`k + 1`) active observations in total.
+
+    In both cases a missing (NaN) source value inside the window propagates to the
+    output, as in pandas, and inactive observations are NaN.
 
     Parameters
     ----------
@@ -92,6 +102,11 @@ class RollingFactor(BaseFactorExposure):
         For example ``{"mean": [5, 21], "std": [21], "lag": [1]}`` produces the four
         factors `<source>_mean_5`, `<source>_mean_21`, `<source>_std_21` and
         `<source>_lag_1`, in that order.
+
+    gap_policy : {"invalidate", "skip"}, default="invalidate"
+        Handling of inactive observations inside the lookback. `"invalidate"`
+        requires a full active lookback window; `"skip"` measures the lookback in
+        active observations, skipping over listing gaps. See the class description.
 
     family : str, default="style"
         The factor family this exposure belongs to (e.g., "market", "style", "industry",
@@ -174,6 +189,7 @@ class RollingFactor(BaseFactorExposure):
         *,
         source: str,
         windows: dict[str, list[int]],
+        gap_policy: str = "invalidate",
         family: str = "style",
         outlier_transformer: skt.CSTransformer = "passthrough",
         scoring_transformer: skt.CSTransformer = None,
@@ -182,6 +198,7 @@ class RollingFactor(BaseFactorExposure):
         super().__init__(family=family)
         self.source = source
         self.windows = windows
+        self.gap_policy = gap_policy
         self.outlier_transformer = outlier_transformer
         self.scoring_transformer = scoring_transformer
         self.transform_by_group = transform_by_group
@@ -258,27 +275,13 @@ class RollingFactor(BaseFactorExposure):
             self._validate_params()
             self._initialize()
 
-        n_observations, n_assets = X.n_observations, X.n_assets
         values = np.asarray(X[self.source], dtype=float)
         active_mask = X.active_mask
 
-        # Prepend the rows carried over from previous calls so that windows spanning
-        # a chunk boundary are computed on the full history.
-        n_history = self._history_values.shape[0]
-        values_ext = np.concatenate([self._history_values, values], axis=0)
-        active_ext = np.concatenate([self._history_active_mask, active_mask], axis=0)
-
-        exposures = np.empty((n_observations, n_assets, self.n_factors_), dtype=float)
-        for j, (aggregation, window) in enumerate(self._specs):
-            raw = _rolling_aggregate(values_ext, aggregation, window)
-            lookback = window + 1 if aggregation == _LAG else window
-            ready = _full_active_window(active_ext, lookback)
-            exposures[:, :, j] = np.where(ready, raw, np.nan)[n_history:]
-
-        # Carry over the trailing rows needed by the longest lookback
-        keep = max(0, values_ext.shape[0] - (self._max_lookback - 1))
-        self._history_values = values_ext[keep:].copy()
-        self._history_active_mask = active_ext[keep:].copy()
+        if self.gap_policy == "skip":
+            exposures = self._compute_skipping_gaps(values, active_mask)
+        else:
+            exposures = self._compute_invalidating_gaps(values, active_mask)
 
         # Cross-sectional transformations, applied column by column
         cs_weight = X[_BENCHMARK_WEIGHTS]
@@ -302,6 +305,90 @@ class RollingFactor(BaseFactorExposure):
 
         return exposures
 
+    def _compute_invalidating_gaps(
+        self, values: FloatArray, active_mask: BoolArray
+    ) -> FloatArray:
+        """Compute the raw exposures with `gap_policy="invalidate"`.
+
+        The trailing rows of the previous calls are prepended so that windows
+        spanning a chunk boundary are computed on the full history.
+        """
+        n_observations, n_assets = values.shape
+        n_history = self._history_values.shape[0]
+        values_ext = np.concatenate([self._history_values, values], axis=0)
+        active_ext = np.concatenate([self._history_active_mask, active_mask], axis=0)
+
+        exposures = np.empty((n_observations, n_assets, self.n_factors_), dtype=float)
+        for j, (aggregation, window) in enumerate(self._specs):
+            raw = _rolling_aggregate(values_ext, aggregation, window)
+            lookback = window + 1 if aggregation == _LAG else window
+            ready = _full_active_window(active_ext, lookback)
+            exposures[:, :, j] = np.where(ready, raw, np.nan)[n_history:]
+
+        # Carry over the trailing rows needed by the longest lookback
+        keep = max(0, values_ext.shape[0] - (self._max_lookback - 1))
+        self._history_values = values_ext[keep:].copy()
+        self._history_active_mask = active_ext[keep:].copy()
+        return exposures
+
+    def _compute_skipping_gaps(
+        self, values: FloatArray, active_mask: BoolArray
+    ) -> FloatArray:
+        """Compute the raw exposures with `gap_policy="skip"`.
+
+        Each asset's active observations are compacted to the top of its column,
+        preceded by the last active values carried over from previous calls, so that
+        the pandas reductions run on the sequence of active observations only. The
+        results are scattered back to the active rows.
+        """
+        n_observations, n_assets = values.shape
+        n_history = self._history_values.shape[0]
+
+        # Stable sort brings the active rows of each column to the top, in order
+        order = np.argsort(~active_mask, axis=0, kind="stable")
+        compact_new = np.take_along_axis(values, order, axis=0)
+        n_active = active_mask.sum(axis=0)
+        compact_new[np.arange(n_observations)[:, np.newaxis] >= n_active] = np.nan
+
+        compact = np.concatenate([self._history_values, compact_new], axis=0)
+
+        # Number of active observations seen before each new compact row, to
+        # require a full lookback of active observations whatever the aggregation
+        # (pandas' `count` does not respect `min_periods` on missing values).
+        seen_before = (
+            self._n_active_seen[np.newaxis, :]
+            + np.arange(n_observations)[:, np.newaxis]
+        )
+
+        raw = np.empty((compact.shape[0], n_assets, self.n_factors_), dtype=float)
+        for j, (aggregation, window) in enumerate(self._specs):
+            raw[:, :, j] = _rolling_aggregate(compact, aggregation, window)
+            lookback = window + 1 if aggregation == _LAG else window
+            raw[n_history:, :, j][seen_before < lookback - 1] = np.nan
+
+        # Scatter the results of the new active rows back to their positions
+        exposures = np.full((n_observations, n_assets, self.n_factors_), np.nan)
+        rows = np.arange(n_observations)[:, np.newaxis]
+        valid = rows < n_active
+        col = np.broadcast_to(np.arange(n_assets), (n_observations, n_assets))
+        exposures[order[valid], col[valid]] = raw[n_history:][valid]
+
+        # Carry over the last active values of each asset. The history keeps
+        # `max_lookback - 1` rows per asset, NaN-padded at the top for assets with
+        # fewer active observations so far.
+        keep = self._max_lookback - 1
+        total_active = n_history + n_active
+        history = np.full((keep, n_assets), np.nan)
+        if keep > 0:
+            take = total_active[np.newaxis, :] - keep + np.arange(keep)[:, np.newaxis]
+            in_range = take >= 0
+            take = np.clip(take, 0, compact.shape[0] - 1)
+            gathered = np.take_along_axis(compact, take, axis=0)
+            history[in_range] = gathered[in_range]
+        self._history_values = history
+        self._n_active_seen = self._n_active_seen + n_active
+        return exposures
+
     def _reset(self) -> None:
         """Reset the fitted state so the next call behaves like a fresh fit."""
         for attr in (
@@ -313,12 +400,18 @@ class RollingFactor(BaseFactorExposure):
             "_max_lookback",
             "_history_values",
             "_history_active_mask",
+            "_n_active_seen",
         ):
             if hasattr(self, attr):
                 delattr(self, attr)
 
     def _validate_params(self) -> None:
         """Validate hyperparameters."""
+        if self.gap_policy not in _GAP_POLICIES:
+            raise ValueError(
+                f"`gap_policy` must be one of {list(_GAP_POLICIES)}, got "
+                f"{self.gap_policy!r}"
+            )
         if not isinstance(self.windows, dict) or len(self.windows) == 0:
             raise ValueError(
                 "`windows` must be a non-empty dict mapping an aggregation name to a "
@@ -367,7 +460,13 @@ class RollingFactor(BaseFactorExposure):
             size + 1 if aggregation == _LAG else size
             for aggregation, size in self._specs
         )
-        self._history_values = np.empty((0, self.n_assets_), dtype=float)
+        if self.gap_policy == "skip":
+            self._history_values = np.full(
+                (self._max_lookback - 1, self.n_assets_), np.nan
+            )
+            self._n_active_seen = np.zeros(self.n_assets_, dtype=int)
+        else:
+            self._history_values = np.empty((0, self.n_assets_), dtype=float)
         self._history_active_mask = np.empty((0, self.n_assets_), dtype=bool)
 
         self.outlier_transformer_ = check_estimator(

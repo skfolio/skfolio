@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skfolio.containers import FieldCategorical
+from skfolio._constants import _BENCHMARK_WEIGHTS
+from skfolio.containers import AssetPanel, FieldCategorical, InactivePolicy
 from skfolio.datasets import make_synthetic_characteristics
 from skfolio.factor_exposure import RollingFactor
 from skfolio.preprocessing import CSStandardScaler, CSWinsorizer
@@ -353,3 +354,111 @@ class TestCharacteristicsFactorModel:
         factor_names = list(model.factor_model_.factor_names)
         assert factor_names == ["returns_mean_5", "returns_std_10", "returns_lag_1"]
         assert set(model.factor_model_.factor_families) == {"rolling"}
+
+
+def _gappy_panel(seed=0, n_observations=40, n_assets=4):
+    """Panel with listing gaps: inactive observations are NaN in the field."""
+    rng = np.random.default_rng(seed)
+    values = rng.standard_normal((n_observations, n_assets))
+    active = rng.random((n_observations, n_assets)) > 0.25
+    active[:, 0] = True
+    active[4, 1] = True
+    active[5:9, 1] = False
+    active[9, 1] = True
+    values[~active] = np.nan
+    panel = AssetPanel(
+        fields={"signal": values},
+        asset_names=np.array([f"a{i}" for i in range(n_assets)]),
+        observations=np.arange(n_observations),
+        active_mask=active,
+    )
+    panel.add_2d_field(
+        name=_BENCHMARK_WEIGHTS,
+        values=np.where(active, 1.0 / n_assets, 0.0),
+        inactive_policy=InactivePolicy.ZERO,
+    )
+    return panel, values, active
+
+
+GAP_WINDOWS = {"mean": [3], "std": [4], "lag": [1, 2], "max": [2], "count": [3]}
+
+
+class TestGapPolicy:
+    def test_invalid_policy_raises(self, simple_panel):
+        with pytest.raises(ValueError, match="gap_policy"):
+            RollingFactor(
+                source="returns", windows={"mean": [3]}, gap_policy="ignore"
+            ).fit_transform(simple_panel)
+
+    def test_skip_matches_per_asset_compacted_reference(self):
+        """With gap_policy="skip" every asset is aggregated over its own sequence of
+        active observations."""
+        panel, values, active = _gappy_panel()
+        factor = _raw_factor(source="signal", windows=GAP_WINDOWS, gap_policy="skip")
+        result = factor.fit_transform(panel)
+
+        expected = np.full_like(result, np.nan)
+        for j in range(panel.n_assets):
+            idx = np.flatnonzero(active[:, j])
+            series = pd.Series(values[idx, j])
+            for k, (aggregation, window) in enumerate(factor._specs):
+                if aggregation == "lag":
+                    ref = series.shift(window).to_numpy(copy=True)
+                    lookback = window + 1
+                else:
+                    ref = getattr(series.rolling(window), aggregation)().to_numpy(
+                        copy=True
+                    )
+                    lookback = window
+                # NaN until the asset has a full lookback of active observations
+                ref[: lookback - 1] = np.nan
+                expected[idx, j, k] = ref
+        np.testing.assert_allclose(result, expected, equal_nan=True)
+        assert np.isnan(result[~active]).all()
+
+    def test_skip_lag_reaches_across_a_gap(self):
+        panel, values, _ = _gappy_panel()
+        invalidate = _raw_factor(
+            source="signal", windows={"lag": [1]}, gap_policy="invalidate"
+        ).fit_transform(panel)
+        skip = _raw_factor(
+            source="signal", windows={"lag": [1]}, gap_policy="skip"
+        ).fit_transform(panel)
+        # asset 1 is inactive on rows 5 to 8: at row 9 the invalidating lag is
+        # NaN, the skipping lag returns the value of row 4
+        assert np.isnan(invalidate[9, 1, 0])
+        assert skip[9, 1, 0] == values[4, 1]
+        assert np.isnan(skip).sum() < np.isnan(invalidate).sum()
+
+    def test_skip_without_gaps_equals_invalidate(self, simple_panel):
+        invalidate = _raw_factor(
+            source="returns", windows=GAP_WINDOWS, gap_policy="invalidate"
+        ).fit_transform(simple_panel)
+        skip = _raw_factor(
+            source="returns", windows=GAP_WINDOWS, gap_policy="skip"
+        ).fit_transform(simple_panel)
+        np.testing.assert_allclose(skip, invalidate, equal_nan=True)
+
+    @pytest.mark.parametrize("bounds", [(1, 7, 8, 25), tuple(range(1, 40))])
+    def test_skip_chunked_partial_fit_matches_fit(self, bounds):
+        panel, _, _ = _gappy_panel()
+        full = _raw_factor(
+            source="signal", windows=GAP_WINDOWS, gap_policy="skip"
+        ).fit_transform(panel)
+        factor = _raw_factor(source="signal", windows=GAP_WINDOWS, gap_policy="skip")
+        edges = [0, *bounds, panel.n_observations]
+        chunks = [
+            factor.partial_fit_transform(panel[start:stop])
+            for start, stop in itertools.pairwise(edges)
+        ]
+        np.testing.assert_allclose(np.concatenate(chunks), full, equal_nan=True)
+
+    def test_skip_fit_transform_resets_state(self):
+        panel, _, _ = _gappy_panel()
+        factor = _raw_factor(source="signal", windows=GAP_WINDOWS, gap_policy="skip")
+        factor.partial_fit_transform(panel[:20])
+        result = factor.fit_transform(panel)
+        expected = _raw_factor(
+            source="signal", windows=GAP_WINDOWS, gap_policy="skip"
+        ).fit_transform(panel)
+        np.testing.assert_allclose(result, expected, equal_nan=True)

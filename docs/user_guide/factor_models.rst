@@ -818,6 +818,8 @@ skfolio provides four factor exposure estimators:
   `RollingFactor(source="returns", windows={"mean": [21, 63], "std": [21], "lag": [1]})`.
   Each output column is scored cross-sectionally like any other style factor, and
   the estimator carries the trailing rows it needs across `partial_fit` calls.
+  `gap_policy` controls listing gaps: `"invalidate"` (default) requires a full
+  active lookback window, `"skip"` measures the lookback in active observations.
 
 Custom exposure estimators are created by subclassing
 :class:`~skfolio.factor_exposure.BaseFactorExposure`.
