@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
 from skfolio.containers import AssetPanel
 from skfolio.descriptor._base import BaseDescriptor
-from skfolio.typing import FloatArray
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import _market_returns
 from skfolio.utils.tools import (
     _validate_positive_integer,
@@ -129,13 +130,13 @@ class EWMacroSensitivity(BaseDescriptor):
         aggregation_period: int = 1,
         min_periods: int | None = None,
         eps: float = 1e-12,
-    ):
+    ) -> None:
         self.half_life = half_life
         self.aggregation_period = aggregation_period
         self.min_periods = min_periods
         self.eps = eps
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRequest:
         """Return metadata routing for the external reference series."""
         request = skm.MetadataRequest(owner=self.__class__.__name__)
         # AssetPanel transformers route fit_transform metadata through the fit bucket,
@@ -146,7 +147,11 @@ class EWMacroSensitivity(BaseDescriptor):
         return request
 
     def fit_transform(
-        self, X: AssetPanel, y=None, reference_returns=None, **fit_params
+        self,
+        X: AssetPanel,
+        y: None = None,
+        reference_returns: ArrayLike | None = None,
+        **fit_params: Any,
     ) -> FloatArray:
         """Compute exponentially weighted macro sensitivities.
 
@@ -175,7 +180,11 @@ class EWMacroSensitivity(BaseDescriptor):
         )
 
     def partial_fit_transform(
-        self, X: AssetPanel, y=None, reference_returns=None, **fit_params
+        self,
+        X: AssetPanel,
+        y: None = None,
+        reference_returns: ArrayLike | None = None,
+        **fit_params: Any,
     ) -> FloatArray:
         """Update EWMA state and return macro sensitivities for this batch.
 
@@ -282,7 +291,7 @@ class EWMacroSensitivity(BaseDescriptor):
 
         return result
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)

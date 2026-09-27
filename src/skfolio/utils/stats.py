@@ -547,7 +547,7 @@ def cov_nearest(
     raise ValueError("Unable to find the nearest positive definite matrix")
 
 
-def commutation_matrix(x) -> csr_matrix:
+def commutation_matrix(x: FloatArray) -> csr_matrix:
     """Compute the commutation matrix.
 
     Parameters
@@ -557,7 +557,7 @@ def commutation_matrix(x) -> csr_matrix:
 
     Returns
     -------
-    K : ndarray of shape (m * n, m * n)
+    K : csr_matrix of shape (m * n, m * n)
         The commutation matrix.
     """
     (m, n) = x.shape

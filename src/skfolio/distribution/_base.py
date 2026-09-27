@@ -42,7 +42,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         Seed or random state to ensure reproducibility.
     """
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         self.random_state = random_state
 
     @property
@@ -58,7 +58,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseDistribution:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseDistribution:
         """Fit the univariate distribution model.
 
         Parameters
@@ -92,7 +92,8 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         ...
 
-    def sample(self, n_samples: int = 1):
+    @abstractmethod
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the fitted model.
 
         Parameters
@@ -107,7 +108,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         pass
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: None = None) -> float:
         """Compute the total log-likelihood under the model.
 
         Parameters

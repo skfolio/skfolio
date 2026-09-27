@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.special as scs
@@ -248,7 +250,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         is_linear_pooling: bool = True,
         divergence_penalty: float = 0.0,
         n_jobs: int | None = None,
-    ):
+    ) -> None:
         self.estimators = estimators
         self.opinion_probabilities = opinion_probabilities
         self.prior_estimator = prior_estimator
@@ -257,7 +259,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         self.n_jobs = n_jobs
 
     @property
-    def named_estimators(self):
+    def named_estimators(self) -> sku.Bunch:
         """Dictionary to access any fitted sub-estimators by name.
 
         Returns
@@ -296,7 +298,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> OpinionPooling:
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -320,7 +322,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -340,7 +342,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return super()._get_params("estimators", deep=deep)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of each estimator in
@@ -359,7 +361,7 @@ class OpinionPooling(BasePrior, BaseComposition):
             )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> OpinionPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> OpinionPooling:
         """Fit the Opinion Pooling estimator.
 
         Parameters

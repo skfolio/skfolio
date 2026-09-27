@@ -11,6 +11,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
+
+import sklearn.base as skb
 
 import skfolio.typing as skt
 from skfolio.measures import BaseMeasure
@@ -29,7 +32,7 @@ class _BaseScorer:
         sign: int,
         kwargs: dict,
         response_method: str | None = "predict",
-    ):
+    ) -> None:
         self._score_func = score_func
         self._sign = sign
         self._kwargs = kwargs
@@ -60,7 +63,12 @@ class _PortfolioScorer(_BaseScorer):
     Created by :func:`make_scorer` with `response_method="predict"`.
     """
 
-    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
+    def __call__(
+        self,
+        estimator: skb.BaseEstimator,
+        X_test: ArrayLike,
+        y: None = None,
+    ) -> float:
         """Compute the score of the estimator prediction on X.
 
         Parameters
@@ -94,7 +102,12 @@ class _EstimatorScorer(_BaseScorer):
     Created by :func:`make_scorer` with `response_method=None`.
     """
 
-    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
+    def __call__(
+        self,
+        estimator: skb.BaseEstimator,
+        X_test: ArrayLike,
+        y: None = None,
+    ) -> float:
         """Score a fitted non-predictor estimator against test data.
 
         Parameters
@@ -124,7 +137,7 @@ def make_scorer(
     score_func: skt.Measure | Callable,
     greater_is_better: bool | None = None,
     response_method: str | None = "predict",
-    **kwargs,
+    **kwargs: Any,
 ) -> _PortfolioScorer | _EstimatorScorer:
     """Make a scorer from a :ref:`measure <measures_ref>`, a portfolio score
     function, or a non-predictor estimator score function.

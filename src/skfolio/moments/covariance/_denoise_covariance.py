@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.optimize as sco
 import sklearn.neighbors as skn
@@ -17,7 +19,7 @@ import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
 from skfolio.moments.covariance._empirical_covariance import EmpiricalCovariance
-from skfolio.typing import ArrayLike
+from skfolio.typing import ArrayLike, FloatArray
 from skfolio.utils.stats import corr_to_cov, cov_to_corr
 from skfolio.utils.tools import check_estimator
 
@@ -90,7 +92,7 @@ class DenoiseCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -98,7 +100,7 @@ class DenoiseCovariance(BaseCovariance):
         )
         self.covariance_estimator = covariance_estimator
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
@@ -108,14 +110,13 @@ class DenoiseCovariance(BaseCovariance):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> DenoiseCovariance:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> DenoiseCovariance:
         """Fit the Covariance Denoising estimator.
 
         Parameters
@@ -146,7 +147,6 @@ class DenoiseCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep
@@ -159,7 +159,7 @@ class DenoiseCovariance(BaseCovariance):
         indices = e_val.argsort()[::-1]
         e_val, e_vec = e_val[indices], e_vec[:, indices]
 
-        def _marchenko(x_var):
+        def _marchenko(x_var: FloatArray) -> float:
             """Return the squared error between the Marchenko-Pastur and KDE pdfs."""
             e_min, e_max = (
                 x_var * (1 - (1.0 / q) ** 0.5) ** 2,
@@ -174,11 +174,9 @@ class DenoiseCovariance(BaseCovariance):
             kde = skn.KernelDensity(kernel="gaussian", bandwidth=0.01).fit(
                 e_val.reshape(-1, 1)
             )
-            # noinspection PyUnresolvedReferences
             pdf_1 = np.exp(kde.score_samples(pdf_0.reshape(-1, 1)))
             return np.sum((pdf_1 - pdf_0) ** 2)
 
-        # noinspection PyTypeChecker
         res = sco.minimize(_marchenko, x0=0.5, bounds=((1e-5, 1 - 1e-5),))
 
         var = res["x"][0]

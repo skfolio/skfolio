@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import inspect
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -143,12 +144,12 @@ class SyntheticData(BasePrior):
         distribution_estimator: skb.BaseEstimator | None = None,
         n_samples: int = 1000,
         sample_args: dict | None = None,
-    ):
+    ) -> None:
         self.distribution_estimator = distribution_estimator
         self.n_samples = n_samples
         self.sample_args = sample_args
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of
@@ -159,14 +160,13 @@ class SyntheticData(BasePrior):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             distance_estimator=self.distribution_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> SyntheticData:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> SyntheticData:
         """Fit the Synthetic Data estimator.
 
         Parameters
@@ -199,7 +199,6 @@ class SyntheticData(BasePrior):
         _check_sample_method(self.distribution_estimator_)
 
         # fitting distribution estimator on prior returns
-        # noinspection PyUnresolvedReferences
         self.distribution_estimator_.fit(
             X, y, **routed_params.distribution_estimator.fit
         )
@@ -210,7 +209,6 @@ class SyntheticData(BasePrior):
 
         # sample from the distribution estimator
         sample_args = self.sample_args if self.sample_args is not None else {}
-        # noinspection PyUnresolvedReferences
         synthetic_data = self.distribution_estimator_.sample(
             n_samples=self.n_samples, **sample_args
         )

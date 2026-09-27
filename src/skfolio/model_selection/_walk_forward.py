@@ -251,7 +251,7 @@ class WalkForward(sks.BaseCrossValidator):
         expand_train: bool = False,
         reduce_test: bool = False,
         purged_size: int = 0,
-    ):
+    ) -> None:
         self.test_size = test_size
         self.train_size = train_size
         self.freq = freq
@@ -262,7 +262,7 @@ class WalkForward(sks.BaseCrossValidator):
         self.purged_size = purged_size
 
     def split(
-        self, X: ArrayLike, y=None, groups=None
+        self, X: ArrayLike, y: None = None, groups: None = None
     ) -> Iterator[tuple[IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
@@ -271,10 +271,10 @@ class WalkForward(sks.BaseCrossValidator):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : array-like of shape (n_observations,)
+        groups : None
             Always ignored, exists for compatibility.
 
         Yields
@@ -335,7 +335,12 @@ class WalkForward(sks.BaseCrossValidator):
             ts_index=X.index,
         )
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: ArrayLike | None = None,
+        y: None = None,
+        groups: None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         Parameters
@@ -343,10 +348,10 @@ class WalkForward(sks.BaseCrossValidator):
          X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : array-like of shape (n_observations,)
+        groups : None
             Always ignored, exists for compatibility.
 
         Returns
@@ -534,7 +539,7 @@ def _split_from_period_without_train_offset(
     purged_size: int,
     expand_train: bool,
     reduce_test: bool,
-    ts_index,
+    ts_index: pd.DatetimeIndex,
 ) -> Iterator[tuple[IntArray, IntArray]]:
     """Generate calendar-based splits with integer training periods.
 

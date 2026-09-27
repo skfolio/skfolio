@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -91,7 +93,7 @@ class DetoneCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -100,7 +102,7 @@ class DetoneCovariance(BaseCovariance):
         self.covariance_estimator = covariance_estimator
         self.n_markets = n_markets
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
@@ -110,14 +112,13 @@ class DetoneCovariance(BaseCovariance):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> DetoneCovariance:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> DetoneCovariance:
         """Fit the Covariance Detoning estimator.
 
         Parameters
@@ -148,7 +149,6 @@ class DetoneCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep

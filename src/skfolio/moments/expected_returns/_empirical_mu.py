@@ -41,10 +41,10 @@ class EmpiricalMu(BaseMu):
         has assets names that are all strings.
     """
 
-    def __init__(self, window_size: int | None = None):
+    def __init__(self, window_size: int | None = None) -> None:
         self.window_size = window_size
 
-    def fit(self, X: ArrayLike, y=None) -> EmpiricalMu:
+    def fit(self, X: ArrayLike, y: None = None) -> EmpiricalMu:
         """Fit the Mu Empirical estimator model.
 
         Parameters

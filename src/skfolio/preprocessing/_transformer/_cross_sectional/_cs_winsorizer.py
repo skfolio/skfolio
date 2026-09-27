@@ -77,7 +77,7 @@ class CSWinsorizer(BaseCSTransformer):
            [12. , 20. ,  nan, 36. ]])
     """
 
-    def __init__(self, *, low: float = 0.01, high: float = 0.99):
+    def __init__(self, *, low: float = 0.01, high: float = 0.99) -> None:
         self.low = low
         self.high = high
 

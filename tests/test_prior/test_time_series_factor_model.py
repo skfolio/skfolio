@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from sklearn import config_context
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LassoCV, LinearRegression
 
 from skfolio.moments import ImpliedCovariance
 from skfolio.prior import (
@@ -162,7 +162,6 @@ def test_metadata_routing(X, implied_vol):
 
         model.fit(X_test, factors=X_test, implied_vol=implied_vol_test)
 
-    # noinspection PyUnresolvedReferences
     assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (6,)
 
 
@@ -219,3 +218,21 @@ def test_fixed_shape_loading_matrix_default_shapes(X, factors):
 def test_loading_matrix_regression_metadata_routing():
     router = LoadingMatrixRegression().get_metadata_routing()
     assert router.owner == "LoadingMatrixRegression"
+
+
+def test_loading_matrix_regression_routes_fit_params(X, factors):
+    X_test = X.iloc[-300:, :3]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.1, 1.0, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = LoadingMatrixRegression(
+            linear_regressor=LinearRegression(fit_intercept=False).set_fit_request(
+                sample_weight=True
+            )
+        )
+        model.fit(X_test, factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression(fit_intercept=False).fit(
+        factors_test, X_test, sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(model.loading_matrix_, expected.coef_)

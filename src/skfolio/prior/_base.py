@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 import sklearn.base as skb
 
@@ -29,10 +30,10 @@ class BasePrior(skb.BaseEstimator, ABC):
     return_distribution_: ReturnDistribution
 
     @abstractmethod
-    def __init__(self): ...
+    def __init__(self) -> None: ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BasePrior:
         """Fit the prior estimator and set `return_distribution_`.
 
         Parameters

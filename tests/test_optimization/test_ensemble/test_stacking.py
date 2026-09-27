@@ -188,12 +188,10 @@ def test_metadata_routing_for_stacking_estimators(X_medium, implied_vol_medium):
         model.predict(X_medium)
 
     for i in range(2):
-        # noinspection PyUnresolvedReferences
         assert model.estimators_[
             i
         ].prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
-    # noinspection PyUnresolvedReferences
     assert not hasattr(
         model.estimators_[2].prior_estimator_.covariance_estimator_, "r2_scores_"
     )
