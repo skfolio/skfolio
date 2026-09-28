@@ -116,6 +116,9 @@ DEP002 = ["clarabel"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"skfolio.datasets" = ["data/*.csv.gz"]
+
 [tool.semantic_release]
 version_toml = [
     "pyproject.toml:project.version",

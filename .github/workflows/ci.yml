@@ -83,11 +83,21 @@ jobs:
           uv build
           python - <<'PY'
           from pathlib import Path, PurePosixPath
+          from tarfile import open as open_tar
           from zipfile import ZipFile
 
+          datasets = {path.name for path in Path("src/skfolio/datasets/data").glob("*.csv.gz")}
+          assert datasets, "No bundled datasets found in the source tree"
+
           with ZipFile(next(Path("dist").glob("*.whl"))) as wheel:
-              unexpected = [name for name in wheel.namelist() if PurePosixPath(name).name == "conftest.py"]
+              names = wheel.namelist()
+              unexpected = [name for name in names if PurePosixPath(name).name == "conftest.py"]
               assert not unexpected, f"Test configuration shipped in wheel: {unexpected}"
+              missing = datasets - {PurePosixPath(name).name for name in names}
+              assert not missing, f"Bundled datasets missing from wheel: {sorted(missing)}"
+          with open_tar(next(Path("dist").glob("*.tar.gz"))) as sdist:
+              missing = datasets - {PurePosixPath(name).name for name in sdist.getnames()}
+              assert not missing, f"Bundled datasets missing from sdist: {sorted(missing)}"
           PY
 
 # -----------------------------------------------------------------------------
