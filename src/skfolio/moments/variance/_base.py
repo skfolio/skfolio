@@ -61,15 +61,15 @@ class BaseVariance(skb.BaseEstimator, ABC):
     variance_: FloatArray
     location_: FloatArray
 
-    def __init__(self, assume_centered: bool = False):
+    def __init__(self, assume_centered: bool = False) -> None:
         self.assume_centered = assume_centered
 
     @abstractmethod
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
-    ):
+        y: None = None,
+    ) -> BaseVariance:
         """Fit the variance estimator.
 
         Parameters

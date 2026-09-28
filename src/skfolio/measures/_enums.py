@@ -39,19 +39,19 @@ class BaseMeasure(AutoEnum):
 
     @property
     @abstractmethod
-    def is_perf(self):
+    def is_perf(self) -> bool:
         """Whether the measure is a performance measure."""
         ...
 
     @property
     @abstractmethod
-    def is_risk(self):
+    def is_risk(self) -> bool:
         """Whether the measure is a risk measure."""
         ...
 
     @property
     @abstractmethod
-    def is_ratio(self):
+    def is_ratio(self) -> bool:
         """Whether the measure is a ratio measure."""
         ...
 
@@ -61,7 +61,7 @@ class BaseMeasure(AutoEnum):
         return self.name[:10] == "ANNUALIZED"
 
     @property
-    def annualized_measure(self):
+    def annualized_measure(self) -> BaseMeasure:
         """Annualized version of the measure.
 
         Raises
@@ -82,7 +82,7 @@ class BaseMeasure(AutoEnum):
             ) from None
 
     @property
-    def non_annualized_measure(self):
+    def non_annualized_measure(self) -> BaseMeasure:
         """Non-annualized version of the measure.
 
         Raises

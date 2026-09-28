@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.spatial.distance as scd
@@ -68,11 +70,11 @@ class PearsonDistance(BaseDistance):
         López de Prado, Journal of Portfolio Management (2016)
     """
 
-    def __init__(self, absolute: bool = False, power: float = 1):
+    def __init__(self, absolute: bool = False, power: float = 1) -> None:
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> PearsonDistance:
+    def fit(self, X: ArrayLike, y: None = None) -> PearsonDistance:
         """Fit the Pearson Distance estimator.
 
         Parameters
@@ -140,11 +142,11 @@ class KendallDistance(BaseDistance):
         López de Prado, Journal of Portfolio Management (2016)
     """
 
-    def __init__(self, absolute: bool = False, power: float = 1):
+    def __init__(self, absolute: bool = False, power: float = 1) -> None:
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> KendallDistance:
+    def fit(self, X: ArrayLike, y: None = None) -> KendallDistance:
         """Fit the Kendall estimator.
 
         Parameters
@@ -212,11 +214,11 @@ class SpearmanDistance(BaseDistance):
         López de Prado, Journal of Portfolio Management (2016)
     """
 
-    def __init__(self, absolute: bool = False, power: float = 1):
+    def __init__(self, absolute: bool = False, power: float = 1) -> None:
         self.absolute = absolute
         self.power = power
 
-    def fit(self, X: ArrayLike, y=None) -> SpearmanDistance:
+    def fit(self, X: ArrayLike, y: None = None) -> SpearmanDistance:
         """Fit the Spearman estimator.
 
         Parameters
@@ -299,12 +301,12 @@ class CovarianceDistance(BaseDistance):
         covariance_estimator: BaseCovariance | None = None,
         absolute: bool = False,
         power: float = 1,
-    ):
+    ) -> None:
         self.covariance_estimator = covariance_estimator
         self.absolute = absolute
         self.power = power
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
@@ -314,14 +316,15 @@ class CovarianceDistance(BaseDistance):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> CovarianceDistance:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> CovarianceDistance:
         """Fit the Covariance Distance estimator.
 
         Parameters
@@ -390,11 +393,11 @@ class DistanceCorrelation(BaseDistance):
         Gábor J. Szekely , 2005
     """
 
-    def __init__(self, threshold: float = 0.5):
+    def __init__(self, threshold: float = 0.5) -> None:
         self.threshold = threshold
 
     @staticmethod
-    def _dcorr(x: FloatArray, y: FloatArray):
+    def _dcorr(x: FloatArray, y: FloatArray) -> float:
         """Calculate the distance correlation between two variables."""
         x = scd.squareform(scd.pdist(x.reshape(-1, 1)))
         y = scd.squareform(scd.pdist(y.reshape(-1, 1)))
@@ -405,7 +408,7 @@ class DistanceCorrelation(BaseDistance):
         )
         return value
 
-    def fit(self, X: ArrayLike, y=None) -> DistanceCorrelation:
+    def fit(self, X: ArrayLike, y: None = None) -> DistanceCorrelation:
         """Fit the Distance Correlation estimator.
 
         Parameters
@@ -493,12 +496,12 @@ class MutualInformation(BaseDistance):
         n_bins_method: NBinsMethod = NBinsMethod.FREEDMAN,
         n_bins: int | None = None,
         normalize: bool = True,
-    ):
+    ) -> None:
         self.n_bins_method = n_bins_method
         self.n_bins = n_bins
         self.normalize = normalize
 
-    def fit(self, X: ArrayLike, y=None) -> MutualInformation:
+    def fit(self, X: ArrayLike, y: None = None) -> MutualInformation:
         """Fit the Mutual Information estimator.
 
         Parameters
@@ -532,14 +535,14 @@ class MutualInformation(BaseDistance):
         dist = corr.copy()
         for i, j in zip(*np.triu_indices(n_assets), strict=True):
             n_bins = max(n_bins_list[i], n_bins_list[j])
-            x = X[:, i]
-            y = X[:, j]
-            contingency = np.histogram2d(x, y, bins=n_bins)[0]
+            x_i = X[:, i]
+            x_j = X[:, j]
+            contingency = np.histogram2d(x_i, x_j, bins=n_bins)[0]
             mutual_information = skmc.mutual_info_score(
                 None, None, contingency=contingency
             )
-            entropy_x = sct.entropy(np.histogram(x, n_bins)[0])
-            entropy_y = sct.entropy(np.histogram(y, n_bins)[0])
+            entropy_x = sct.entropy(np.histogram(x_i, n_bins)[0])
+            entropy_y = sct.entropy(np.histogram(x_j, n_bins)[0])
             if self.normalize:
                 corr[i, j] = mutual_information / min(entropy_x, entropy_y)
                 dist[i, j] = max(

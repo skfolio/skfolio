@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import numpy as np
 import sklearn as sk
@@ -190,7 +191,7 @@ class ImpliedCovariance(BaseCovariance):
         higham_max_iteration: int = 100,
         # TODO remove deprecated annualized_factor in v2.0
         annualized_factor: float | None = None,
-    ):
+    ) -> None:
         if annualized_factor is not None:
             if annualization_factor is not None:
                 raise ValueError(
@@ -219,7 +220,7 @@ class ImpliedCovariance(BaseCovariance):
         self.volatility_risk_premium_adj = volatility_risk_premium_adj
         self.annualized_factor = None
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Includes the metadata requested by this estimator, such as `implied_vol`, and
@@ -231,7 +232,6 @@ class ImpliedCovariance(BaseCovariance):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add_self_request(self)
@@ -242,7 +242,7 @@ class ImpliedCovariance(BaseCovariance):
         )
         return router
 
-    def set_params(self, **params) -> ImpliedCovariance:
+    def set_params(self, **params: Any) -> ImpliedCovariance:
         """Set estimator parameters."""
         # TODO remove deprecated annualized_factor in v2.0
         if "annualized_factor" in params:
@@ -264,7 +264,11 @@ class ImpliedCovariance(BaseCovariance):
         return super().set_params(**params)
 
     def fit(
-        self, X: ArrayLike, y=None, implied_vol: ArrayLike = None, **fit_params
+        self,
+        X: ArrayLike,
+        y: None = None,
+        implied_vol: ArrayLike = None,
+        **fit_params: Any,
     ) -> ImpliedCovariance:
         """Fit the implied covariance estimator.
 
@@ -292,7 +296,6 @@ class ImpliedCovariance(BaseCovariance):
             Fitted estimator.
         """
         if implied_vol is not None:
-            # noinspection PyTypeChecker
             fit_params["implied_vol"] = implied_vol
 
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -304,7 +307,6 @@ class ImpliedCovariance(BaseCovariance):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.prior_covariance_estimator_.fit(
             X, y, **routed_params.prior_covariance_estimator.fit
         )
@@ -486,7 +488,6 @@ def check_implied_vol(implied_vol: ArrayLike, X: ArrayLike) -> FloatArray:
     implied_vol : ndarray of shape (n_observations, n_assets)
         Validated implied volatilities.
     """
-    # noinspection PyUnresolvedReferences
     n_observations, n_assets = X.shape
 
     if implied_vol is None:
@@ -513,5 +514,4 @@ def check_implied_vol(implied_vol: ArrayLike, X: ArrayLike) -> FloatArray:
             )
 
     skv.check_non_negative((n_observations, n_assets), "`implied_vol`")
-    # noinspection PyTypeChecker
     return implied_vol

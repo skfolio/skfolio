@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -393,7 +395,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=RiskMeasure.CVAR,
             prior_estimator=prior_estimator,
@@ -427,7 +429,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> DistributionallyRobustCVaR:
         """Fit the Distributionally Robust CVaR Optimization estimator.
 
@@ -518,12 +520,10 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         ]
 
         for i in range(n_observations):
-            # noinspection PyTypeChecker
             constraints.append(
                 cp.norm(-u[i] - a1 * w, np.inf) * self._scale_constraints
                 <= lb * self._scale_constraints
             )
-            # noinspection PyTypeChecker
             constraints.append(
                 cp.norm(-v[i] - a2 * w, np.inf) * self._scale_constraints
                 <= lb * self._scale_constraints

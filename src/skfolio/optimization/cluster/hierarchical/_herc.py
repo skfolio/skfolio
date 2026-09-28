@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -346,7 +348,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -365,7 +367,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         self.solver_params = solver_params
 
     def fit(
-        self, X: ArrayLike, y: None = None, **fit_params
+        self, X: ArrayLike, y: None = None, **fit_params: Any
     ) -> HierarchicalEqualRiskContribution:
         """Fit the Hierarchical Equal Risk Contribution estimator.
 
@@ -428,7 +430,6 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
@@ -436,7 +437,6 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.hierarchical_clustering_estimator_.fit(
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )
@@ -472,7 +472,7 @@ class HierarchicalEqualRiskContribution(BaseHierarchicalOptimization):
         # Compute the cluster weights using the dendrogram structure.
         # Recurse from the root until each of the defined cluster is reached and
         # update the weights using the naive risk parity.
-        def _recurse(node):
+        def _recurse(node: sch.ClusterNode) -> None:
             """Split the weight of `node` between its subtrees by naive risk parity."""
             # Stop when the cluster is reached
             if set(node.pre_order()) in clusters_sets:

@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v1.4.3 (2026-09-27)
+
+### Bug Fixes
+
+- Narrow two broad except Exception handlers to the expected errors
+  ([#380](https://github.com/skfolio/skfolio/pull/380),
+  [`f82b8ed`](https://github.com/skfolio/skfolio/commit/f82b8edf61026c74a16e7e06da4e16d3e7d96ae9))
+
+### Chores
+
+- Remove the unused JupyterLab Docker image ([#360](https://github.com/skfolio/skfolio/pull/360),
+  [`fdb8fbb`](https://github.com/skfolio/skfolio/commit/fdb8fbb60181d180097b83c508ffd5c55dfb170a))
+
+### Refactoring
+
+- Enforce ruff annotation rules across src ([#366](https://github.com/skfolio/skfolio/pull/366),
+  [`7a91670`](https://github.com/skfolio/skfolio/commit/7a91670fc7ef095d37a3c48055d3f3797946cc04))
+
+
+## v1.4.2 (2026-09-27)
+
+### Bug Fixes
+
+- Correct metadata routing keys and Marchenko-Pastur fit
+  ([#376](https://github.com/skfolio/skfolio/pull/376),
+  [`8ce4a98`](https://github.com/skfolio/skfolio/commit/8ce4a982b48f248e431aebb004d55f13dca1f13f))
+
+
 ## v1.4.1 (2026-09-26)
 
 ### Bug Fixes

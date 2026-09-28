@@ -95,7 +95,7 @@ class _BaseAssetPanel(ABC):
             raise TypeError(f"Field '{name}' is not categorical.")
         return field.decode(missing_label=missing_label)
 
-    def sel_3d(self, name: str, *, labels: Any = None, groups: Any = None) -> AnyArray:
+    def sel_3d(self, name: str, *, labels: Any = None, groups: Any = None) -> AnyArray:  # noqa: ANN401  # any label selector
         """Select entries from the third axis of a 3D field by label.
 
         Exactly one of `labels` or `groups` must be provided. Selecting a single label

@@ -80,7 +80,6 @@ def test_metadata_routing(X, implied_vol):
 
         model.fit(X, implied_vol=implied_vol)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 

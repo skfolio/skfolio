@@ -11,6 +11,7 @@ import operator
 import warnings
 from collections.abc import Callable
 from enum import Enum
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -414,7 +415,7 @@ def _apply_margin_swap(X: FloatArray, first_margin: bool) -> FloatArray:
 
 
 def _apply_rotation_cdf(
-    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs
+    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs: Any
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding CDF values.
@@ -459,7 +460,7 @@ def _apply_rotation_partial_derivatives(
     X: FloatArray,
     rotation: CopulaRotation,
     first_margin: bool,
-    **kwargs,
+    **kwargs: Any,
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding partial derivatives.

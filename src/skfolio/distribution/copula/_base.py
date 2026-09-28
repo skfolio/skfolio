@@ -40,7 +40,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     # Used for AIC and BIC
     _n_params: int
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
@@ -104,7 +104,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseBivariateCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseBivariateCopula:
         """Fit the copula model.
 
         Parameters
@@ -242,7 +242,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         """
         ...
 
-    def sample(self, n_samples: int = 1):
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the bivariate copula using the inverse
         Rosenblatt transform.
 
