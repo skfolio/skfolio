@@ -85,10 +85,13 @@ test file:
 uv run pytest tests/path/to/test_file.py
 ```
 
-Run the complete test suite when appropriate:
+Before you open a pull request, run the complete test suite, which includes the
+docstring examples, and check that imports in `src` match the dependencies declared
+in `pyproject.toml`:
 
 ```shell
 uv run pytest
+uv run deptry src
 ```
 
 Format and lint your changes with:
@@ -100,7 +103,7 @@ uv run ruff format
 
 The commit hook runs the same Ruff commands on staged files, checks that every
 module, class and function in `src` has a docstring, and checks YAML syntax and file
-endings.
+endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
 
 ### Dependency versions
 
@@ -119,23 +122,6 @@ uv sync --upgrade
 
 Add `--group docs` or `--group notebooks` if you use those tools.
 
-### Before you open a pull request
-
-These commands reproduce the CI checks a code change usually trips, so a pull
-request that passes them locally should also pass CI:
-
-| CI check | Local command |
-|---|---|
-| Ruff lint and format, YAML syntax, end-of-file newlines | `uv run pre-commit run --all-files` |
-| Every import in `src` is a declared dependency | `uv run deptry src` |
-| Tests and docstring examples | `uv run pytest` |
-| Documentation build | see [Documentation](#documentation) |
-
-`uv run pytest` runs `tests` and the doctests in `src`, spread over four workers
-(`-n=4` in `pyproject.toml`). CI also runs the tests on the minimum supported
-dependency versions and on macOS and Windows. You don't need to reproduce those
-locally unless one of them fails.
-
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
@@ -151,9 +137,9 @@ For a fast build without executing the tutorials, as run by CI:
 SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
 ```
 
-Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build, and
-takes about a minute. On Windows PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"`
-first and drop the prefix.
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build. In
+PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"` before the build and
+`Remove-Item Env:SKFOLIO_DOCS_FAST` after it.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
@@ -227,13 +213,16 @@ Open a pull request through GitHub, or use the GitHub CLI:
 gh pr create --fill
 ```
 
+Use the same format for the pull request title. It becomes the commit message when
+the pull request is squash-merged.
+
 Draft pull requests are welcome and are a good place to discuss work in progress.
 Before requesting a review:
 
 - Include tests for feature changes and bug fixes.
 - Update the documentation when behavior or public APIs change.
 - Keep the pull request focused on one coherent change.
-- Confirm that the relevant local checks pass.
+- Confirm that the [tests and code quality checks](#tests-and-code-quality) pass.
 - Ensure that continuous integration passes.
 
 [gh-issues]: https://github.com/skfolio/skfolio/issues
