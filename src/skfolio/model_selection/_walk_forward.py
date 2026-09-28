@@ -289,13 +289,20 @@ class WalkForward(sks.BaseCrossValidator):
         ------
         ValueError
             If a window size has an invalid type, if a training or test window size
-            is not positive, or if `purged_size` is not a non-negative integer.
+            is not positive, if `purged_size` is not a non-negative integer, or if
+            training and purging leave no observation for testing in observation
+            mode.
         """
         test_size, train_size = self._validate_window_sizes()
         X, y = sku.indexable(X, y)
         n_samples = X.shape[0]
 
         if self.freq is None:
+            _validate_observation_count(
+                n_samples=n_samples,
+                train_size=train_size,
+                purged_size=self.purged_size,
+            )
             return _split_without_period(
                 n_samples=n_samples,
                 train_size=train_size,
@@ -363,8 +370,9 @@ class WalkForward(sks.BaseCrossValidator):
         ------
         ValueError
             If `X` is `None`, if a window size has an invalid type, if a training or
-            test window size is not positive, or if `purged_size` is not a
-            non-negative integer.
+            test window size is not positive, if `purged_size` is not a non-negative
+            integer, or if training and purging leave no observation for testing in
+            observation mode.
         """
         if X is None:
             raise ValueError("The 'X' parameter should not be None.")
@@ -373,6 +381,11 @@ class WalkForward(sks.BaseCrossValidator):
         n_samples = X.shape[0]
 
         if self.freq is None:
+            _validate_observation_count(
+                n_samples=n_samples,
+                train_size=train_size,
+                purged_size=self.purged_size,
+            )
             n = n_samples - train_size - self.purged_size
 
             if self.reduce_test and n % test_size != 0:
@@ -452,6 +465,19 @@ class WalkForward(sks.BaseCrossValidator):
         return int(self.test_size), train_size
 
 
+def _validate_observation_count(
+    n_samples: int, train_size: int, purged_size: int
+) -> None:
+    """Raise when training and purging leave no observation for testing."""
+    total_size = train_size + purged_size
+    if total_size >= n_samples:
+        raise ValueError(
+            f"The sum of `train_size={train_size}` and `purged_size={purged_size}` "
+            f"(total={total_size}) must be less than the number of "
+            f"observations={n_samples}."
+        )
+
+
 def _split_without_period(
     n_samples: int,
     train_size: int,
@@ -491,19 +517,7 @@ def _split_without_period(
 
     test_indices : ndarray
         Test indices for the current split.
-
-    Raises
-    ------
-    ValueError
-        If there are not enough observations for at least one split.
     """
-    if train_size + purged_size >= n_samples:
-        raise ValueError(
-            f"The sum of `train_size={train_size}` with `purged_size={purged_size}` "
-            f"(total={train_size + purged_size}) must be at least the number of "
-            f"observations={n_samples}."
-        )
-
     indices = np.arange(n_samples)
 
     test_start = train_size + purged_size
