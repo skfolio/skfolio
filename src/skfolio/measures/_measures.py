@@ -1138,8 +1138,8 @@ def _prepare_weighted_returns(
 
     weights : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Missing returns receive zero weight, and the remaining weights are
-        rescaled to sum to one, even when the input weights do not. If no positive
-        weight remains, the normalized weights are NaN.
+        rescaled to sum to one. If no positive weight remains, the normalized
+        weights are NaN.
         Weights stay 1D for 1D returns or inputs without NaNs. For 2D returns
         containing NaNs, each column gets its own normalized weight vector.
     """
@@ -1152,18 +1152,17 @@ def _prepare_weighted_returns(
         with np.errstate(invalid="ignore"):
             weights /= weights.sum(axis=0)
         returns = np.where(missing, 0.0, returns)
-    elif not _sums_to_one(weights.sum(), n_observations=weights.shape[0]):
-        # Rescale into a new array, so the caller's weights are left untouched.
-        with np.errstate(invalid="ignore"):
-            weights = weights / weights.sum()
+    else:
+        total = weights.sum()
+        if not _sums_to_one(total, n_observations=weights.shape[0]):
+            # Rescale into a new array, so the caller's weights are left untouched.
+            with np.errstate(invalid="ignore"):
+                weights = weights / total
     return returns, weights
 
 
 def _sums_to_one(total: float, n_observations: int) -> bool:
-    """Return whether weights with this total already sum to one up to rounding.
-
-    Weights within the rounding error of their sum are left as they are, so that
-    results for normalized weights are unchanged by the rescaling.
+    r"""Check whether a sum of weights equals one up to floating-point rounding.
 
     Parameters
     ----------
@@ -1176,7 +1175,8 @@ def _sums_to_one(total: float, n_observations: int) -> bool:
     Returns
     -------
     value : bool
-        True if `total` is within ``4 * n_observations * eps`` of one.
+        True if :math:`|s - 1| \leq 4 n \epsilon`, where :math:`s` is `total`,
+        :math:`n` is `n_observations` and :math:`\epsilon` is the machine epsilon.
     """
     return abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps
 
@@ -1188,7 +1188,7 @@ def _weighted_variance(
     min_acceptable_return: float | FloatArray | None = None,
     downside: bool = False,
 ) -> float | FloatArray:
-    """Compute weighted variance or semi-variance, excluding NaN returns.
+    r"""Compute weighted variance or semi-variance, excluding NaN returns.
 
     The remaining weights are rescaled to sum to one separately for each column.
 
@@ -1198,11 +1198,12 @@ def _weighted_variance(
         Return values, possibly containing NaNs.
 
     sample_weight : ndarray of shape (n_observations,)
-        Normalized, non-negative observation weights.
+        Non-negative observation weights.
 
     biased : bool
         If True, return the population second moment. If False, divide it by
-        ``1 - sum(weights**2)`` using the weights after excluding NaN returns.
+        :math:`1 - \sum_i w_i^2`, where :math:`w_i` are the weights after excluding
+        NaN returns and rescaling.
 
     min_acceptable_return : float or ndarray of shape (n_assets,), optional
         Reference return for computing deviations. If None, use each column's
@@ -1308,8 +1309,8 @@ def _tail_risk(
         Confidence level in [0, 1] for VaR and [0, 1) for CVaR.
 
     sample_weight : ndarray of shape (n_observations,) or None
-        Normalized, non-negative observation weights. If None, the remaining
-        observations have equal weight.
+        Non-negative observation weights. If None, the remaining observations
+        have equal weight.
 
     conditional : bool
         If True, return CVaR, the average loss in the lower return tail.

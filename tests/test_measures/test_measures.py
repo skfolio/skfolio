@@ -112,6 +112,18 @@ def test_weighted_measures_rescale_weights(measure, two_dimensional):
     np.testing.assert_array_equal(weights, np.arange(1.0, 7.0))
 
 
+def test_weighted_moments_keep_normalized_weights():
+    # The sum is one ulp below one, so rescaling would change the results.
+    weights = np.arange(1.0, 7.0) / 21.0
+    returns = np.linspace(-0.05, 0.05, 6)
+    assert weights.sum() != 1.0
+    mean = weights @ returns
+    assert skm.mean(returns, sample_weight=weights) == mean
+    assert skm.variance(returns, sample_weight=weights, biased=True) == weights @ (
+        (returns - mean) ** 2
+    )
+
+
 @pytest.mark.parametrize("measure", WEIGHTED_RETURN_MEASURES)
 @pytest.mark.parametrize(
     "returns,weights",
@@ -119,6 +131,7 @@ def test_weighted_measures_rescale_weights(measure, two_dimensional):
         ([], []),
         ([np.nan, np.nan], [0.2, 0.8]),
         ([0.1, np.nan], [0.0, 1.0]),
+        ([0.1, 0.2], [0.0, 0.0]),
     ],
 )
 def test_weighted_measures_without_usable_mass(measure, returns, weights):
