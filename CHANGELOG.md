@@ -2,6 +2,21 @@
 
 <!-- version list -->
 
+## v1.4.5 (2026-09-28)
+
+### Bug Fixes
+
+- **portfolio**: Use consistent volatilities in diversification
+  ([#385](https://github.com/skfolio/skfolio/pull/385),
+  [`22ed379`](https://github.com/skfolio/skfolio/commit/22ed3796dec7b71bfd99241be89a95875b5dcb22))
+
+### Build System
+
+- Define the Ruff scope once and drop the pre-commit regexes
+  ([#388](https://github.com/skfolio/skfolio/pull/388),
+  [`68de6c6`](https://github.com/skfolio/skfolio/commit/68de6c6dff60532fa83dce61d5e35188531e6ebe))
+
+
 ## v1.4.4 (2026-09-28)
 
 ### Bug Fixes
