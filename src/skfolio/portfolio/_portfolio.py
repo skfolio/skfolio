@@ -24,7 +24,7 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.attribution import Attribution
-from skfolio.measures import RiskMeasure, effective_number_assets
+from skfolio.measures import RiskMeasure, effective_number_assets, standard_deviation
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
@@ -952,11 +952,15 @@ class Portfolio(BasePortfolio):
 
     @property
     def diversification(self) -> float:
-        """Weighted average of volatility divided by the portfolio volatility."""
+        """Weighted average of asset volatilities divided by the portfolio volatility.
+
+        Missing asset returns count as zero, as in the portfolio returns.
+        """
         if self._is_failed_portfolio:
             return np.nan
-        rets = _to_numpy_returns(self.X)
-        return self.weights @ np.std(rets, axis=0) / self.standard_deviation
+        rets = _nan_to_zero(_to_numpy_returns(self.X))
+        assets_std = standard_deviation(rets, sample_weight=self.sample_weight)
+        return self.weights @ assets_std / self.standard_deviation
 
     @property
     def sric(self) -> float:
