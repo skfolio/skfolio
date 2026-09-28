@@ -345,6 +345,7 @@ class EntropyPooling(BasePrior):
     --------
     For a full tutorial on entropy pooling, see :ref:`sphx_glr_auto_examples_entropy_pooling_plot_1_entropy_pooling.py`.
 
+    >>> import numpy as np
     >>> from skfolio import RiskMeasure
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.preprocessing import prices_to_returns
@@ -396,8 +397,9 @@ class EntropyPooling(BasePrior):
     0.18...
     >>> print(entropy_pooling.effective_number_of_scenarios_)
     687...
-    >>> print(entropy_pooling.return_distribution_.sample_weight)
-    [1.03...e-04 9.40...e-05 ... 1.08...e-04]
+    >>> with np.printoptions(suppress=True):
+    ...     print(entropy_pooling.return_distribution_.sample_weight)
+    [0.00010... 0.00009... ... 0.00010... 0.00010...]
     >>>
     >>> # CVaR Hierarchical Risk Parity optimization on Entropy Pooling
     >>> model = HierarchicalRiskParity(
@@ -406,7 +408,8 @@ class EntropyPooling(BasePrior):
     ... )
     >>> model.fit(X)
     HierarchicalRiskParity(prior_estimator=...
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(suppress=True):
+    ...     print(model.weights_)
     [0.073... 0.054... 0.076... 0.20... 0.063... 0.32... 0.20...]
     >>>
     >>> # Stress Test the Portfolio

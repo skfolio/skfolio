@@ -723,6 +723,7 @@ class MeanRisk(ConvexOptimization):
     For complete tutorials on mean-risk optimization, see the
     :ref:`mean_risk_examples` gallery.
 
+    >>> import numpy as np
     >>> from skfolio import RiskMeasure
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.optimization import MeanRisk, ObjectiveFunction
@@ -736,7 +737,8 @@ class MeanRisk(ConvexOptimization):
     >>> model = MeanRisk(risk_measure=RiskMeasure.VARIANCE)
     >>> model.fit(X)
     MeanRisk()
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.026  0.     0.     ... 0.0097 0.1157 0.0892]
     >>>
     >>> # Maximum Sharpe Ratio optimization
@@ -746,7 +748,8 @@ class MeanRisk(ConvexOptimization):
     ... )
     >>> model.fit(X)
     MeanRisk(objective_function=MAXIMIZE_RATIO, risk_measure=Standard Deviation)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.1014 0.0009 0.     ... 0.2149 0.0006 0.    ]
     >>>
     >>> # Minimum CVaR optimization with weight and linear constraints
@@ -758,7 +761,8 @@ class MeanRisk(ConvexOptimization):
     >>> model.fit(X)
     MeanRisk(linear_constraints=['AMD <= 0.10', 'BAC + JPM >= 0.15'],
              max_weights=0.2, risk_measure=CVaR)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0112 0.     0.0147 ... 0.     0.1103 0.0834]
     >>>
     >>> # Compute portfolios along the mean-variance efficient frontier

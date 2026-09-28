@@ -101,7 +101,8 @@ class SyntheticData(BasePrior):
     ... )
     >>> model.fit(X)
     MeanRisk(...)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0021 0.     0.     ... 0.     0.1559 0.0641]
     >>>
     >>> # Minimum CVaR optimization on Stressed Factors
@@ -120,7 +121,8 @@ class SyntheticData(BasePrior):
     >>> model = MeanRisk(risk_measure=RiskMeasure.CVAR, prior_estimator=factor_model)
     >>> model.fit(X, factors=factors)
     MeanRisk(...)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.     0.     0.     ... 0.0616 0.     0.9384 0.    ]
     >>>
     >>> # Stress Test the Portfolio

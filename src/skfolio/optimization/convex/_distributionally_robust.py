@@ -332,6 +332,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     For a complete tutorial on distributionally robust CVaR optimization, see the
     :ref:`distributionally_robust_examples` gallery.
 
+    >>> import numpy as np
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.optimization import DistributionallyRobustCVaR
     >>> from skfolio.preprocessing import prices_to_returns
@@ -344,7 +345,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
     >>> model.fit(X)
     DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.     0.     0.0706 ... 0.0706 0.0706 0.0706]
     >>>
     >>> # Increasing the radius increases the uncertainty around the distribution,
@@ -352,7 +354,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.10)
     >>> model.fit(X)
     DistributionallyRobustCVaR(wasserstein_ball_radius=0.1)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.05 0.05 0.05 ... 0.05 0.05 0.05]
 
     References

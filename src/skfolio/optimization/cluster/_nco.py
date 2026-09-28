@@ -202,6 +202,7 @@ class NestedClustersOptimization(BaseOptimization):
     For complete tutorials on nested clusters optimization, see the
     :ref:`cluster_examples` gallery.
 
+    >>> import numpy as np
     >>> from skfolio import RiskMeasure
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.optimization import (
@@ -229,7 +230,8 @@ class NestedClustersOptimization(BaseOptimization):
     ... )
     >>> model.fit(X)
     NestedClustersOptimization(...)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0327 0.0029 0.     ... 0.0864 0.0236 0.0736]
     >>> print(model.clustering_estimator_.labels_)
     [4 4 3 4 2 3 4 1 3 0 1 1 4 0 1 0 2 1 4 2]

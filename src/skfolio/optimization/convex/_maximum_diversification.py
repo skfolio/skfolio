@@ -452,6 +452,7 @@ class MaximumDiversification(MeanRisk):
     For a complete tutorial on maximum diversification optimization, see the
     :ref:`maximum_diversification_examples` gallery.
 
+    >>> import numpy as np
     >>> from skfolio.datasets import load_sp500_dataset
     >>> from skfolio.optimization import MaximumDiversification
     >>> from skfolio.preprocessing import prices_to_returns
@@ -464,7 +465,8 @@ class MaximumDiversification(MeanRisk):
     >>> model = MaximumDiversification()
     >>> model.fit(X)
     MaximumDiversification()
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0821 0.0697 0.0243 ... 0.0945 0.0893 0.0143]
     >>>
     >>> portfolio = model.predict(X)
@@ -475,7 +477,8 @@ class MaximumDiversification(MeanRisk):
     >>> model = MaximumDiversification(max_weights=0.08)
     >>> model.fit(X)
     MaximumDiversification(max_weights=0.08)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.08   0.0706 0.0288 ... 0.08   0.08   0.0289]
     """
 

@@ -273,6 +273,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     For a full tutorial on Schur Complementary Allocation, see
     :ref:`sphx_glr_auto_examples_clustering_plot_6_schur.py`.
 
+    >>> import numpy as np
     >>> from skfolio import RiskMeasure
     >>> from skfolio.cluster import HierarchicalClustering, LinkageMethod
     >>> from skfolio.datasets import load_sp500_dataset
@@ -289,7 +290,8 @@ class SchurComplementary(BaseHierarchicalOptimization):
     >>> model = SchurComplementary(gamma=0.5)
     >>> model.fit(X)
     SchurComplementary()
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0358 0.0061 0.0262 ... 0.0426 0.1129 0.048 ]
     >>>
     >>> # Advanced model:
@@ -306,7 +308,8 @@ class SchurComplementary(BaseHierarchicalOptimization):
     ... )
     >>> model.fit(X)
     SchurComplementary(...)
-    >>> print(model.weights_.round(4))
+    >>> with np.printoptions(precision=4, suppress=True):
+    ...     print(model.weights_)
     [0.0323 0.0095 0.0234 ... 0.0402 0.0515 0.0605]
     """
 
