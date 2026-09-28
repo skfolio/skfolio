@@ -952,19 +952,13 @@ class Portfolio(BasePortfolio):
 
     @property
     def diversification(self) -> float:
-        """Weighted average of volatility divided by the portfolio volatility.
+        """Weighted average of asset volatilities divided by the portfolio volatility.
 
-        Asset volatilities use the estimator of `standard_deviation` (sample standard
-        deviation, weighted by `sample_weight`), so a single-asset portfolio has a
-        diversification of one.
+        Missing asset returns count as zero, as in the portfolio returns.
         """
         if self._is_failed_portfolio:
             return np.nan
-        rets = _to_numpy_returns(self.X)
-        if np.isnan(rets).any():
-            # Portfolio returns count missing asset returns as zero, so volatilities
-            # that exclude them would not be comparable.
-            return np.nan
+        rets = _nan_to_zero(_to_numpy_returns(self.X))
         assets_std = standard_deviation(rets, sample_weight=self.sample_weight)
         return self.weights @ assets_std / self.standard_deviation
 

@@ -88,7 +88,7 @@ def test_population_nullable_returns(weight_drift):
     for actual, reference in zip(population[1:], expected, strict=True):
         np.testing.assert_allclose(actual.returns, reference.returns)
         np.testing.assert_allclose(actual.ending_weights, reference.ending_weights)
-        assert np.isnan(actual.diversification)
+        np.testing.assert_allclose(actual.diversification, reference.diversification)
 
 
 @pytest.mark.parametrize("bad", [np.inf, "bad"])

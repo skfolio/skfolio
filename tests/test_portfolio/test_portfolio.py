@@ -408,6 +408,21 @@ def test_portfolio_diversification_volatility_estimator(X, weighted):
     np.testing.assert_almost_equal(portfolio.diversification, expected)
 
 
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_portfolio_diversification_missing_returns(X, weight_drift):
+    X = X.iloc[:24]
+    X_gaps = X.copy()
+    X_gaps.iloc[::5, X.columns.get_loc("AAPL")] = np.nan
+    single_asset = Portfolio(X_gaps, weights={"AAPL": 1.0}, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = {"AAPL": 0.5, "BAC": 0.3, "KO": 0.2}
+    expected = Portfolio(X, weights=weights, weight_drift=weight_drift)
+    X_unlisted = X.assign(XOM=np.nan)
+    portfolio = Portfolio(X_unlisted, weights=weights, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(portfolio.diversification, expected.diversification)
+
+
 @pytest.mark.parametrize(
     "dtype", ["Float64", {"A": "Float64"}], ids=["nullable", "mixed"]
 )
