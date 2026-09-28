@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from graphlib import TopologicalSorter
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,13 @@ from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.typing import AnyArray, BoolArray, FloatArray, ObjArray, StrArray
+from skfolio.typing import (
+    AnyArray,
+    BoolArray,
+    FloatArray,
+    ObjArray,
+    StrArray,
+)
 from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
 from skfolio.utils._factor_tools import (
     _expand_factor_names,
@@ -854,11 +860,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Fit the characteristics factor model.
 
@@ -893,7 +899,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             Currency excess returns. Required only when `currency_factor` is set.
             Columns must contain the unique currency factor names produced by
             `currency_factor`. Assets are mapped to these columns through the one-hot
-            currency exposures.
+            currency exposures. Values must be finite for the fitted observations.
+            Leading rows consumed by descriptor warmup and exposure lag are not used
+            and may contain NaN.
 
         **fit_params : dict
             Parameters passed to underlying estimators. Only available when
@@ -925,11 +933,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def partial_fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Incrementally fit the characteristics factor model.
 
@@ -966,7 +974,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             Currency excess returns. Required only when `currency_factor` is set.
             Columns must contain the unique currency factor names produced by
             `currency_factor`. Assets are mapped to these columns through the one-hot
-            currency exposures.
+            currency exposures. Values must be finite for the fitted observations.
+            Leading rows consumed by descriptor warmup and exposure lag are not used
+            and may contain NaN.
 
         **fit_params : dict
             Parameters passed to underlying estimators. Only available when
@@ -991,12 +1001,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def _fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Core fitting logic shared by fit and partial_fit."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -1031,9 +1041,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                     method=method,
                 )
             )
-            currency_excess_returns = _validate_currency_excess_returns(
+            currency_excess_returns = _select_currency_excess_returns(
                 currency_excess_returns=currency_excess_returns,
-                observations=observations,
                 currency_factor_names=ccy_factor_names,
             )
         else:
@@ -1225,14 +1234,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         _, n_reduced_factors = factor_returns_reduced.shape
 
         if ccy_exposures is not None:
-            ccy_factor_returns = currency_excess_returns.loc[
-                observations, ccy_factor_names
-            ].to_numpy(dtype=float, copy=False)
-            if not np.all(np.isfinite(ccy_factor_returns)):
-                raise ValueError(
-                    "`currency_excess_returns` must contain only finite values "
-                    "for the fitted observations and currency factors."
-                )
+            _validate_finite_currency_returns(currency_excess_returns)
+            ccy_factor_returns = currency_excess_returns.to_numpy(dtype=float)
             factor_returns_reduced_with_ccy = np.concatenate(
                 [factor_returns_reduced, ccy_factor_returns], axis=1
             )
@@ -1486,7 +1489,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.factors))
 
-    def set_params(self, **params) -> CharacteristicsFactorModel:
+    def set_params(self, **params: Any) -> CharacteristicsFactorModel:
         """Set the parameters of this estimator.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -2173,14 +2176,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             for name in layer:
                 factor_estimator = self.named_factor_estimators_[name]
                 if isinstance(factor_estimator, DerivedFactor):
-                    try:
-                        source_exposure, _, _ = results_dict[factor_estimator.source]
-                    except KeyError:
-                        raise ValueError(
-                            f"DerivedFactor '{name}' depends on"
-                            f" '{factor_estimator.source}' which was not found."
-                            f" Available factors: {list(results_dict.keys())}"
-                        ) from None
+                    # The dependency layers validate the source and place it in an
+                    # earlier layer, so its exposure is already computed.
+                    source_exposure, _, _ = results_dict[factor_estimator.source]
                 else:
                     source_exposure = None
 
@@ -3010,24 +3008,31 @@ def _cap_weights_from_mask(
     return weights
 
 
-def _validate_currency_excess_returns(
-    currency_excess_returns: pd.DataFrame,
-    observations: AnyArray,
-    currency_factor_names: StrArray,
+def _select_currency_excess_returns(
+    currency_excess_returns: pd.DataFrame, currency_factor_names: StrArray
 ) -> pd.DataFrame:
-    """Validate and select direct currency factor returns."""
+    """Select the currency factor columns of `currency_excess_returns`."""
     missing = set(currency_factor_names) - set(currency_excess_returns.columns)
     if missing:
         raise ValueError(
             "`currency_excess_returns` is missing currency factor columns: "
             f"{sorted(missing)}."
         )
-    currency_excess_returns = currency_excess_returns.loc[
-        observations, currency_factor_names
-    ]
-    if not np.all(np.isfinite(currency_excess_returns.to_numpy(dtype=float))):
-        raise ValueError("`currency_excess_returns` must contain only finite values.")
-    return currency_excess_returns
+    return currency_excess_returns[currency_factor_names]
+
+
+def _validate_finite_currency_returns(currency_excess_returns: pd.DataFrame) -> None:
+    """Validate that currency excess returns are finite for the fitted observations."""
+    is_finite = np.isfinite(currency_excess_returns.to_numpy(dtype=float))
+    if is_finite.all():
+        return
+    currencies = currency_excess_returns.columns[~is_finite.all(axis=0)].tolist()
+    observation = currency_excess_returns.index[~is_finite.all(axis=1)][0]
+    raise ValueError(
+        "`currency_excess_returns` must contain only finite values for the fitted "
+        "observations (after descriptor warmup and exposure lag). Found non-finite "
+        f"values for {currencies}, first at observation {observation}."
+    )
 
 
 def _validate_covariance_readiness(

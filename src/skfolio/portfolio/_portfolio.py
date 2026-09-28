@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import numbers
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,7 @@ from skfolio._constants import (
     _TRANSACTION_COSTS,
 )
 from skfolio.attribution import Attribution
-from skfolio.measures import effective_number_assets
+from skfolio.measures import effective_number_assets, standard_deviation
 from skfolio.portfolio._base import _ZERO_THRESHOLD, BasePortfolio
 from skfolio.typing import AnyArray, ArrayLike, FloatArray, IntArray, StrArray
 from skfolio.utils.tools import (
@@ -175,7 +175,9 @@ class Portfolio(BasePortfolio):
             * Annualized Sortino Ratio = Sortino Ratio * sqrt(factor)
 
     risk_free_rate : float, default=0.0
-        Risk-free rate. The default value is `0.0`.
+        Risk-free rate, expressed in the same frequency as the returns (for example,
+        :math:`0.04 / 252` for a 4% annual rate with daily returns).
+        The default value is `0.0`.
 
     compounded : bool, default=False
         If `True`, cumulative returns are compounded.
@@ -542,8 +544,8 @@ class Portfolio(BasePortfolio):
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
         fallback_chain: list[tuple[str, str]] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         weights_provided = weights is not None
         rets = _to_numpy_returns(X) if weights_provided else None
         # extract assets names from X
@@ -733,42 +735,42 @@ class Portfolio(BasePortfolio):
                     f"Cannot combine two Portfolios with different `{name}`"
                 )
 
-    def __neg__(self):
+    def __neg__(self) -> Portfolio:
         if self._is_failed_portfolio:
             return self.copy()
         args = self._get_init_params()
         args["weights"] = -self.weights
         return self.__class__(**args)
 
-    def __abs__(self):
+    def __abs__(self) -> Portfolio:
         if self._is_failed_portfolio:
             return self.copy()
         args = self._get_init_params()
         args["weights"] = np.abs(self.weights)
         return self.__class__(**args)
 
-    def __round__(self, n: int):
+    def __round__(self, n: int) -> Portfolio:
         if self._is_failed_portfolio:
             return self.copy()
         args = self._get_init_params()
         args["weights"] = np.round(self.weights, n)
         return self.__class__(**args)
 
-    def __floor__(self):
+    def __floor__(self) -> Portfolio:
         if self._is_failed_portfolio:
             return self.copy()
         args = self._get_init_params()
         args["weights"] = np.floor(self.weights)
         return self.__class__(**args)
 
-    def __trunc__(self):
+    def __trunc__(self) -> Portfolio:
         if self._is_failed_portfolio:
             return self.copy()
         args = self._get_init_params()
         args["weights"] = np.trunc(self.weights)
         return self.__class__(**args)
 
-    def __add__(self, other):
+    def __add__(self, other: Portfolio) -> Portfolio:
         if not isinstance(other, Portfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"
@@ -782,7 +784,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = self.weights + other.weights
         return self.__class__(**args)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Portfolio) -> Portfolio:
         if not isinstance(other, Portfolio):
             raise TypeError(
                 f"Cannot add a Portfolio with an object of type {type(other)}"
@@ -796,7 +798,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = self.weights - other.weights
         return self.__class__(**args)
 
-    def __mul__(self, other: numbers.Number):
+    def __mul__(self, other: numbers.Number) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be multiplied by a number, but received a"
@@ -810,7 +812,7 @@ class Portfolio(BasePortfolio):
 
     __rmul__ = __mul__
 
-    def __floordiv__(self, other: numbers.Number):
+    def __floordiv__(self, other: numbers.Number) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be floor divided by a number, but received a"
@@ -822,7 +824,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = np.floor_divide(self.weights, other)
         return self.__class__(**args)
 
-    def __truediv__(self, other: numbers.Number):
+    def __truediv__(self, other: numbers.Number) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be divided by a number, but received a"
@@ -952,11 +954,15 @@ class Portfolio(BasePortfolio):
 
     @property
     def diversification(self) -> float:
-        """Weighted average of volatility divided by the portfolio volatility."""
+        """Weighted average of asset volatilities divided by the portfolio volatility.
+
+        Missing asset returns count as zero, as in the portfolio returns.
+        """
         if self._is_failed_portfolio:
             return np.nan
-        rets = _to_numpy_returns(self.X)
-        return self.weights @ np.std(rets, axis=0) / self.standard_deviation
+        rets = _nan_to_zero(_to_numpy_returns(self.X))
+        assets_std = standard_deviation(rets, sample_weight=self.sample_weight)
+        return self.weights @ assets_std / self.standard_deviation
 
     @property
     def sric(self) -> float:

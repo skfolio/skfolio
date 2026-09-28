@@ -117,7 +117,6 @@ def prices_to_returns(
     if fill_nan:
         df.ffill(inplace=True)
     # Drop rows according to drop_inceptions_nan
-    # noinspection PyTypeChecker
     df.dropna(how="any" if drop_inceptions_nan else "all", inplace=True)
     # Drop column if all its values are missing
     df.dropna(axis=1, how="all", inplace=True)

@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import sklearn as sk
 import sklearn.model_selection as sks
+import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
@@ -310,7 +311,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def __init__(
         self,
         *,
-        predictor: Any,
+        predictor: Any,  # noqa: ANN401  # duck-typed regressor
         descriptors: list[tuple[str, BaseDescriptor]],
         horizon: int = 1,
         signal_lag: int = 1,
@@ -326,7 +327,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         half_life: float = 20,
         cv: sks.BaseCrossValidator | int | None = None,
         n_jobs: int = 1,
-    ):
+    ) -> None:
         self.predictor = predictor
         self.descriptors = descriptors
         self.horizon = horizon
@@ -344,7 +345,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.cv = cv
         self.n_jobs = n_jobs
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Return metadata routing for descriptors and the predictor."""
         router = super().get_metadata_routing()
         router.add(
@@ -356,7 +357,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         )
         return router
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> PredictorAlpha:
         """Fit the alpha model from scratch (batch mode).
 
         This method works with any sklearn-compatible predictor. It resets all
@@ -385,7 +386,9 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> PredictorAlpha:
         """Incrementally fit the alpha model with new observations (online mode).
 
         This method supports streaming/online updates. It maintains internal
@@ -427,10 +430,10 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> PredictorAlpha:
         """Fit predictor and calibration state from one batch."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -626,7 +629,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         scores_flat: FloatArray,
         predictor_target_flat: FloatArray,
         train_mask: BoolArray,
-        routed_params,
+        routed_params: sku.Bunch,
     ) -> None:
         """Fit or update the user-provided predictor on new valid samples."""
         if not self._predictor_fitted:
@@ -652,7 +655,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         train_mask: BoolArray,
         idio_variances: FloatArray,
         method: str,
-        routed_params,
+        routed_params: sku.Bunch,
     ) -> FloatArray | None:
         """Predict uncalibrated alpha before the predictor consumes new targets."""
         if self._predictor_fitted:

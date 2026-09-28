@@ -55,7 +55,7 @@ def test_nullable_numeric_input(dtype):
     assert actual.X is X
     np.testing.assert_allclose(actual.returns, expected.returns)
     np.testing.assert_allclose(actual._get_weights_path(), expected._get_weights_path())
-    assert np.isnan(actual.diversification)
+    np.testing.assert_allclose(actual.diversification, expected.diversification)
     pd.testing.assert_frame_equal(X, before)
 
 
@@ -79,7 +79,7 @@ def test_sparse_dataframe(returns, sparse):
     assert actual.X is X
     np.testing.assert_allclose(actual.returns, expected.returns)
     np.testing.assert_allclose(actual._get_weights_path(), expected._get_weights_path())
-    assert np.isnan(actual.diversification)
+    np.testing.assert_allclose(actual.diversification, expected.diversification)
     pd.testing.assert_frame_equal(X, before)
 
 

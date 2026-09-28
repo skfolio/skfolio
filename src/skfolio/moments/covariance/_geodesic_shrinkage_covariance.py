@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from enum import auto
+from typing import Any
 
 import numpy as np
 import scipy.linalg as scl
@@ -162,7 +163,7 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         super().__init__(
             nearest=nearest,
             higham=higham,
@@ -172,7 +173,7 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         self.shrinkage = shrinkage
         self.target = target
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
@@ -188,7 +189,9 @@ class GeodesicShrinkageCovariance(BaseCovariance):
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> GeodesicShrinkageCovariance:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> GeodesicShrinkageCovariance:
         """Fit the Geodesic Shrinkage Covariance estimator.
 
         Parameters

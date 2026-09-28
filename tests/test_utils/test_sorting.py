@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from skfolio.utils.sorting import dominate, non_dominated_sort
+from skfolio.utils.sorting import dominate, non_denominated_sort, non_dominated_sort
 
 
 @pytest.fixture(scope="module")
@@ -165,3 +165,15 @@ def test_non_dominated_sort(fitnesses):
     res = non_dominated_sort(fitnesses=fitnesses, first_front_only=True)
 
     assert res == [[19, 20, 24, 36, 37, 50, 53, 55, 62, 64, 65, 72, 77]]
+
+
+@pytest.mark.parametrize("first_front_only", [False, True])
+def test_non_dominated_sort_empty(first_front_only):
+    assert non_dominated_sort(np.empty((0, 2)), first_front_only) == []
+
+
+def test_non_denominated_sort_is_deprecated_alias(fitnesses):
+    with pytest.warns(FutureWarning, match="non_denominated_sort"):
+        res = non_denominated_sort(fitnesses=fitnesses, first_front_only=True)
+
+    assert res == non_dominated_sort(fitnesses=fitnesses, first_front_only=True)

@@ -1174,7 +1174,6 @@ class TestDenoiseCovariance:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
 
@@ -1671,7 +1670,6 @@ class TestDetoneCovariance:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.covariance_.shape == (20, 20)
 

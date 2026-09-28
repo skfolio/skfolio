@@ -36,7 +36,9 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]:
+    def split(
+        self, X: ArrayLike, y: ArrayLike | None = None
+    ) -> tuple[IntArray, list[IntArray]]:
         """Generate indices to split data into training and test set.
 
         Parameters
@@ -284,18 +286,23 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
                 path_ids[i, j] = np.argwhere(recombine_paths == i)[j][1]
         return path_ids
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: None = None,
+        y: None = None,
+        groups: None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         Parameters
         ----------
-        X : object
+        X : None
             Always ignored, exists for compatibility.
 
-        y : object
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : object
+        groups : None
             Always ignored, exists for compatibility.
 
         Returns
@@ -306,7 +313,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         return self.n_splits
 
     def split(
-        self, X: ArrayLike, y=None, groups=None
+        self, X: ArrayLike, y: ArrayLike | None = None, groups: ArrayLike | None = None
     ) -> Iterator[tuple[IntArray, list[IntArray]]]:
         """Generate indices to split data into training and test set.
 
@@ -380,7 +387,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             ]
             yield train_index, test_index_list
 
-    def summary(self, X) -> pd.Series:
+    def summary(self, X: ArrayLike) -> pd.Series:
         """Return a summary of the cross-validation configuration for `X`.
 
         Parameters
@@ -446,7 +453,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         fig.update_layout(title="Split Train (0) /Test (1) Folds per Combination")
         return fig
 
-    def plot_train_test_index(self, X) -> skt.Figure:
+    def plot_train_test_index(self, X: ArrayLike) -> skt.Figure:
         """Plot the training and test indices for each combinations by assigning `0` to
         training, `1` to test and `-1` to both purge and embargo indices.
         """

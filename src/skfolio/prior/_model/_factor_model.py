@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Literal, NamedTuple
@@ -3482,7 +3483,7 @@ def _check_correlation_method(correlation_method: CorrelationMethod) -> None:
         raise TypeError("correlation_method must be a `CorrelationMethod`.")
 
 
-def _exceedance_agg(threshold: float):
+def _exceedance_agg(threshold: float) -> Callable[[FloatArray], FloatArray]:
     """Return an aggregation function for t-stat exceedance rate."""
 
     def _agg(raw_t: FloatArray) -> FloatArray:

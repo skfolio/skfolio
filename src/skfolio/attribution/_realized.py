@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import fields
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -1488,7 +1488,7 @@ def _compute_attribution_uncertainty(
     return systematic_uncertainty, per_factor_uncertainty, per_family_uncertainty
 
 
-def _stack_dataclass(items: list):
+def _stack_dataclass(items: list) -> Any:  # noqa: ANN401  # same type as items
     """Stack a list of dataclass instances into one with arrays stacked along axis 0."""
     first_item = items[0]
     cls = first_item.__class__

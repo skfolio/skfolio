@@ -108,7 +108,7 @@ class StudentT(BaseUnivariateDist):
         loc: float | None = None,
         scale: float | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.loc = loc
         self.scale = scale
@@ -118,7 +118,7 @@ class StudentT(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"loc": self.loc_, "scale": self.scale_, "df": self.dof_}
 
-    def fit(self, X: ArrayLike, y=None) -> StudentT:
+    def fit(self, X: ArrayLike, y: None = None) -> StudentT:
         """Fit the univariate Student's t distribution model.
 
         Parameters

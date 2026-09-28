@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v1.4.5 (2026-09-28)
+
+### Bug Fixes
+
+- **portfolio**: Use consistent volatilities in diversification
+  ([#385](https://github.com/skfolio/skfolio/pull/385),
+  [`22ed379`](https://github.com/skfolio/skfolio/commit/22ed3796dec7b71bfd99241be89a95875b5dcb22))
+
+### Build System
+
+- Define the Ruff scope once and drop the pre-commit regexes
+  ([#388](https://github.com/skfolio/skfolio/pull/388),
+  [`68de6c6`](https://github.com/skfolio/skfolio/commit/68de6c6dff60532fa83dce61d5e35188531e6ebe))
+
+
+## v1.4.4 (2026-09-28)
+
+### Bug Fixes
+
+- Bound Knuth binning and check currency returns on fitted rows
+  ([#387](https://github.com/skfolio/skfolio/pull/387),
+  [`a41d67c`](https://github.com/skfolio/skfolio/commit/a41d67c7e4e6714082ecd54045bf9fdc8b0cb852))
+
+### Documentation
+
+- Record why doctest print options live in src/conftest.py
+  ([#389](https://github.com/skfolio/skfolio/pull/389),
+  [`98f4c72`](https://github.com/skfolio/skfolio/commit/98f4c72bc3143ac37ce7d1e3192acf1a44d0c847))
+
+- **contributing**: Document the CI checks and the PR title format
+  ([#372](https://github.com/skfolio/skfolio/pull/372),
+  [`1052d0b`](https://github.com/skfolio/skfolio/commit/1052d0bb4a87a12e4dacc16b26ea51abdfe4449e))
+
+
+## v1.4.3 (2026-09-27)
+
+### Bug Fixes
+
+- Narrow two broad except Exception handlers to the expected errors
+  ([#380](https://github.com/skfolio/skfolio/pull/380),
+  [`f82b8ed`](https://github.com/skfolio/skfolio/commit/f82b8edf61026c74a16e7e06da4e16d3e7d96ae9))
+
+### Chores
+
+- Remove the unused JupyterLab Docker image ([#360](https://github.com/skfolio/skfolio/pull/360),
+  [`fdb8fbb`](https://github.com/skfolio/skfolio/commit/fdb8fbb60181d180097b83c508ffd5c55dfb170a))
+
+### Refactoring
+
+- Enforce ruff annotation rules across src ([#366](https://github.com/skfolio/skfolio/pull/366),
+  [`7a91670`](https://github.com/skfolio/skfolio/commit/7a91670fc7ef095d37a3c48055d3f3797946cc04))
+
+
 ## v1.4.2 (2026-09-27)
 
 ### Bug Fixes

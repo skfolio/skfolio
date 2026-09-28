@@ -174,13 +174,13 @@ class JoeCopula(BaseBivariateCopula):
         kendall_tau: float | None = None,
         tolerance: float = 1e-4,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.itau = itau
         self.kendall_tau = kendall_tau
         self.tolerance = tolerance
 
-    def fit(self, X: ArrayLike, y=None) -> JoeCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> JoeCopula:
         r"""Fit the Bivariate Joe Copula.
 
         If `itau` is True, estimates :math:`\theta` using Kendall's tau inversion.
@@ -222,7 +222,6 @@ class JoeCopula(BaseBivariateCopula):
                 else:
                     self.theta_ = _THETA_BOUNDS[1]
             else:
-                # noinspection PyTypeChecker
                 self.theta_ = so.brentq(
                     _tau_diff,
                     args=(abs_kendall_tau,),

@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from enum import auto
+from typing import Any
 
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -138,12 +139,12 @@ class ShrunkMu(BaseMu):
         covariance_estimator: BaseCovariance | None = None,
         vol_weighted_target: bool = False,
         method: ShrunkMuMethods = ShrunkMuMethods.JAMES_STEIN,
-    ):
+    ) -> None:
         self.covariance_estimator = covariance_estimator
         self.vol_weighted_target = vol_weighted_target
         self.method = method
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.
 
         Routes metadata passed to `fit` to the `fit` method of `covariance_estimator`.
@@ -153,14 +154,13 @@ class ShrunkMu(BaseMu):
         routing : MetadataRouter
             Metadata routing configuration.
         """
-        # noinspection PyTypeChecker
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             covariance_estimator=self.covariance_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> ShrunkMu:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> ShrunkMu:
         """Fit the ShrunkMu estimator model.
 
         Parameters
@@ -196,7 +196,6 @@ class ShrunkMu(BaseMu):
             default=EmpiricalCovariance(),
             check_type=BaseCovariance,
         )
-        # noinspection PyArgumentList
         self.covariance_estimator_.fit(X, y, **routed_params.covariance_estimator.fit)
 
         # we validate and convert to numpy after all models have been fitted to keep

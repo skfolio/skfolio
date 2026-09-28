@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "skfolio"
-version = "1.4.2"
+version = "1.4.5"
 maintainers = [
     { name = "Hugo Delatte", email = "hugo.delatte@skfoliolabs.com" },
     { name = "Matteo Manzi", email = "matteomanzi09@gmail.com" },
@@ -144,7 +144,13 @@ insertion_flag = "<!-- version list -->"
 exclude_commit_patterns = ['^v?\d+\.\d+\.\d+ \[skip ci\]']
 
 [tool.ruff]
-include = ["pyproject.toml", "conftest.py", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
+# File types to check. Ruff's default `include` also covers Markdown and changes
+# between releases, and CI runs the latest release.
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+# `force-exclude` also applies the exclusions to the staged files that pre-commit
+# passes explicitly, so the hooks and CI check the same files.
+extend-exclude = ["docs"]
+force-exclude = true
 line-length = 88
 src = ["src"]
 target-version = "py310"
@@ -156,20 +162,25 @@ select = [
     "I", # isort
     "A", # prevent using keywords that clobber python builtins
     "B", # bugbear: security warnings
-    "F", # pyflakes
     "ISC", # implicit string concatenation
     "UP", # alert you when better syntax is available in your python version
     "RUF", # the ruff developer's own rules
-    "D",
+    "D", # pydocstyle
+    "ANN", # flake8-annotations
 ]
 ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D"]
+"tests/*" = ["D", "ANN"]
+"**/conftest.py" = ["ANN"]
 # Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
 # interleaved with the `# %%` narrative cells, and a bare expression at the end of a
 # cell is how a value gets rendered in the gallery output.
-"examples/*" = ["D", "E402", "B018"]
+"examples/*" = ["D", "E402", "B018", "ANN"]
+
+[tool.ruff.lint.flake8-annotations]
+# Allow `Any` on `*args` and `**kwargs`, which forward arbitrary arguments.
+allow-star-arg-any = true
 
 [tool.ruff.lint.isort]
 case-sensitive = true

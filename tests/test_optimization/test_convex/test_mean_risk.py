@@ -627,11 +627,9 @@ def test_mean_risk_get_params():
 def test_mean_risk_set_params():
     model = MeanRisk()
     with pytest.raises(AttributeError, match="has no attribute 'set_params'"):
-        # noinspection PyTypeChecker
         model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     model = MeanRisk(prior_estimator=EmpiricalPrior(mu_estimator=EmpiricalMu()))
-    # noinspection PyTypeChecker
     model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     params = model.get_params(deep=True)
@@ -906,7 +904,6 @@ def test_regularization(X, risk_measure, mean_risk_params_coef):
 
     # MAXIMIZE_RETURN
     risk = obj_ref * 1.2
-    # noinspection PyTypeChecker
     model.set_params(
         l1_coef=0,
         l2_coef=0,
@@ -973,7 +970,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -997,7 +993,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -1019,7 +1014,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         scale_objective=1e-3,
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
@@ -1081,7 +1075,6 @@ def test_transaction_costs(X, risk_measure):
     w_ref = model.weights_
     # uniform transaction_costs for all assets and empty prev_weight --> no impact on
     # weights
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=0.1 / 252, previous_weights=np.ones(n_assets) / n_assets
     )
@@ -1095,7 +1088,6 @@ def test_transaction_costs(X, risk_measure):
     asset_2 = p_ref.composition.index[1]
     above = 5e-2
     transaction_costs = {asset_1: 0.2, asset_2: 0.5}
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=transaction_costs,
         previous_weights=np.ones(n_assets) / n_assets,
@@ -1123,7 +1115,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     min_risk = model.problem_values_["risk"]
 
     risk = min_risk * 1.1
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         **{target_risk_arg: risk},
@@ -1132,7 +1123,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     p = model.fit_predict(X)
     ret = model.problem_values_["expected_return"]
     np.testing.assert_almost_equal(risk, getattr(p, risk_measure.value), precision)
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         min_return=ret,
@@ -1142,7 +1132,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     np.testing.assert_almost_equal(ret, p.mean, precision)
 
     risks = [risk, risk * 1.1]
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         min_return=None,
@@ -1347,7 +1336,6 @@ def test_metadata_routing(X_small, implied_vol_small):
 
         model.fit(X_small, implied_vol=implied_vol_small)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 
@@ -1478,7 +1466,6 @@ def test_scip_clarabel_convergence(X):
     )
     model.fit(X)
     w1 = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(solver="SCIP")
     model.fit(X)
     w2 = model.weights_
@@ -1502,7 +1489,6 @@ def test_mip_threshold_constraints_long(X, objective_function):
 
     threshold_long = 0.05
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     model.fit(X)
     w2 = model.weights_
@@ -1533,14 +1519,12 @@ def test_mip_threshold_constraints_long_short(X, objective_function):
 
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
     assert np.any((w1 > threshold_short + 1e-8) & (w1 < 0 - 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     with pytest.raises(
         ValueError,
         match=r"When 'threshold_long' is provided*",
     ):
         model.fit(X)
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
     model.fit(X)
     w2 = model.weights_
@@ -1587,7 +1571,6 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
     assert np.any((w < threshold_long - 1e-8) & (w > 0 + 1e-8))
     assert np.any((w > threshold_short + 1e-8) & (w < 0 - 1e-8))
 
-    # noinspection PyTypeChecker
     model.set_params(
         cardinality=cardinality,
         threshold_long=threshold_long,
