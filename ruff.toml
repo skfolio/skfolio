@@ -1,0 +1,46 @@
+# Ruff configuration: the single source for lint and format rules and their scope.
+#
+# Everything is linted except the Sphinx configuration and extensions in `docs/`.
+# `force-exclude` applies that exclusion to paths passed explicitly as well, so the
+# pre-commit hooks, which pass staged filenames, lint exactly what `ruff check` does.
+extend-exclude = ["docs"]
+force-exclude = true
+line-length = 88
+src = ["src"]
+target-version = "py310"
+
+[lint]
+select = [
+    "E", # pycodestyle
+    "F", # pyflakes
+    "I", # isort
+    "A", # prevent using keywords that clobber python builtins
+    "B", # bugbear: security warnings
+    "ISC", # implicit string concatenation
+    "UP", # alert you when better syntax is available in your python version
+    "RUF", # the ruff developer's own rules
+    "D", # pydocstyle
+    "ANN", # flake8-annotations
+]
+ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
+
+[lint.per-file-ignores]
+"tests/*" = ["D", "ANN"]
+"**/conftest.py" = ["ANN"]
+# Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
+# interleaved with the `# %%` narrative cells, and a bare expression at the end of a
+# cell is how a value gets rendered in the gallery output.
+"examples/*" = ["D", "E402", "B018", "ANN"]
+
+[lint.flake8-annotations]
+# Allow `Any` on `*args` and `**kwargs`, which forward arbitrary arguments.
+allow-star-arg-any = true
+
+[lint.isort]
+case-sensitive = true
+
+[lint.pycodestyle]
+max-line-length = 320
+
+[lint.pydocstyle]
+convention = "numpy"

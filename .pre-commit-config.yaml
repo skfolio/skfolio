@@ -21,17 +21,17 @@ repos:
   # Use Ruff from the local development environment. CI checks the latest release.
   - repo: local
     hooks:
-      # Explicit filenames bypass Ruff's `include`, so match its scope here.
+      # Scope and rules live in `ruff.toml`; `force-exclude` applies its exclusions
+      # to the staged filenames pre-commit passes.
       - id: ruff
         name: ruff-lint
         entry: uv run ruff check --fix --exit-non-zero-on-fix
         language: unsupported
-        files: ^(pyproject\.toml|conftest\.py|(src|tests|examples)/.*\.py)$
+        types_or: [python, pyi, toml]
         require_serial: true
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format
         language: unsupported
-        types: [python]
-        files: ^(conftest\.py|(src|tests|examples)/.*\.py)$
+        types_or: [python, pyi]
         require_serial: true
