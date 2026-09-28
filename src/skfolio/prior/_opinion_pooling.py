@@ -56,9 +56,10 @@ class OpinionPooling(BasePrior, BaseComposition):
         :class:`~skfolio.prior.EntropyPooling`.
 
     opinion_probabilities : array-like of float, optional
-        Probability mass assigned to each opinion, in [0,1] summing to ≤1.
-        Any leftover mass is assigned to the uniform (uninformative) prior.
-        The default (None), is to assign the same probability to each opinion.
+        Probability mass assigned to each opinion. Entries must be in :math:`[0, 1]`
+        and sum to at most one. Any leftover mass is assigned to the uniform
+        (uninformative) prior.
+        The default (`None`) assigns the same probability to each opinion.
 
     prior_estimator : BasePrior, optional
         Common prior for all `estimators`. If provided, each estimator from `estimators`
@@ -143,10 +144,10 @@ class OpinionPooling(BasePrior, BaseComposition):
     prior_estimator_ : BasePrior
         Fitted `prior_estimator` if provided.
 
-    opinion_probabilities_ : ndarray of shape (n_opinions,)
+    opinion_probabilities_ : ndarray of shape (n_opinions,) or (n_opinions + 1,)
         Final opinion probabilities after applying the KL-divergence penalty.
-        If the initial `opinion_probabilities` doesn't sum to one, the last element of
-        `opinion_probabilities_` is the probability assigned to the uniform prior.
+        If the initial `opinion_probabilities` sum to less than one, the last element
+        of `opinion_probabilities_` is the probability assigned to the uniform prior.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -436,9 +437,11 @@ class OpinionPooling(BasePrior, BaseComposition):
         n_observations = len(returns)
 
         # Add the remaining part of the opinion_probabilities to the uniform prior
-        q_weight = 1.0 - opinion_probabilities.sum()
-        if q_weight > 1e-8:
-            opinion_probabilities = np.append(opinion_probabilities, q_weight)
+        total = opinion_probabilities.sum()
+        if np.isclose(total, 1.0):
+            opinion_probabilities = opinion_probabilities / total
+        else:
+            opinion_probabilities = np.append(opinion_probabilities, 1.0 - total)
             q = np.ones(n_observations) / n_observations
             sample_weights = np.vstack((sample_weights, q))
 
@@ -469,7 +472,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         if self.opinion_probabilities is None:
             return np.ones(n_opinions) / n_opinions
 
-        opinion_probabilities = np.asarray(self.opinion_probabilities)
+        opinion_probabilities = np.asarray(self.opinion_probabilities, dtype=float)
 
         if len(opinion_probabilities) != n_opinions:
             raise ValueError(
@@ -479,9 +482,10 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         if np.any(opinion_probabilities < 0) or np.any(opinion_probabilities > 1):
             raise ValueError(
-                "`The entries of `opinion_probabilities` must be between 0 and 1"
+                "The entries of `opinion_probabilities` must be between 0 and 1"
             )
-        if opinion_probabilities.sum() > 1.0:
+        total = opinion_probabilities.sum()
+        if total > 1.0 and not np.isclose(total, 1.0):
             raise ValueError(
                 "The entries of `opinion_probabilities` must sum to at most 1; "
                 "any remaining mass (1-sum) is allocated to the uniform prior."
@@ -500,6 +504,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         consensus = opinion_probabilities @ sample_weights
         divergences = np.sum(scs.rel_entr(sample_weights, consensus), axis=1)
-        opinion_probabilities *= np.exp(-self.divergence_penalty * divergences)
-        opinion_probabilities /= opinion_probabilities.sum()
-        return opinion_probabilities
+        opinion_probabilities = opinion_probabilities * np.exp(
+            -self.divergence_penalty * divergences
+        )
+        return opinion_probabilities / opinion_probabilities.sum()
