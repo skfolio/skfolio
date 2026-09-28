@@ -954,9 +954,9 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
     ... )
     >>> search.fit(X)
     OnlineRandomizedSearch(...)
-    >>> search.best_params_
-    {'prior_estimator__covariance_estimator__half_life': 63.31...,
-     'prior_estimator__mu_estimator__half_life': 14.18...}
+    >>> {name: round(float(value), 2) for name, value in search.best_params_.items()}
+    {'prior_estimator__covariance_estimator__half_life': 63.32,
+     'prior_estimator__mu_estimator__half_life': 14.18}
     >>> search.best_estimator_
     MeanRisk(...)
     """

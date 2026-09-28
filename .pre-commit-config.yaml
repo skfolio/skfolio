@@ -26,12 +26,12 @@ repos:
         name: ruff-lint
         entry: uv run ruff check --fix --exit-non-zero-on-fix
         language: unsupported
-        files: ^(pyproject\.toml|conftest\.py|(src|tests|examples)/.*\.py)$
+        files: ^(pyproject\.toml|(src|tests|examples)/.*\.py)$
         require_serial: true
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format
         language: unsupported
         types: [python]
-        files: ^(conftest\.py|(src|tests|examples)/.*\.py)$
+        files: ^(src|tests|examples)/.*\.py$
         require_serial: true

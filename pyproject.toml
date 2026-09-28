@@ -109,12 +109,6 @@ notebooks = [
     "ipywidgets",
 ]
 
-[tool.deptry]
-# `src/conftest.py` configures the doctests and is deliberately kept out of the wheel
-# (the "Check distribution contents" CI step asserts it), so it is development
-# tooling that happens to live under `src` and must not be scanned as package code.
-extend_exclude = ["src/conftest\\.py"]
-
 [tool.deptry.per_rule_ignores]
 # clarabel is the default solver, loaded by CVXPY.
 DEP002 = ["clarabel"]
@@ -144,7 +138,7 @@ insertion_flag = "<!-- version list -->"
 exclude_commit_patterns = ['^v?\d+\.\d+\.\d+ \[skip ci\]']
 
 [tool.ruff]
-include = ["pyproject.toml", "conftest.py", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
+include = ["pyproject.toml", "src/**/*.py", "tests/**/*.py", "examples/**/*.py"]
 line-length = 88
 src = ["src"]
 target-version = "py310"

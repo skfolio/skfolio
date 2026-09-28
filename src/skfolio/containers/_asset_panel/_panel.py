@@ -268,8 +268,13 @@ class AssetPanel(_BaseAssetPanel):
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
     >>> panel.copy(deep=True)
     AssetPanel(n_observations=252, n_assets=4, n_fields=5)
-    >>> panel.save("asset_panel")
-    >>> loaded = AssetPanel.load("asset_panel", mmap_mode="r")
+    >>> import tempfile
+    >>> from pathlib import Path
+    >>> with tempfile.TemporaryDirectory() as tmp_dir:
+    ...     path = Path(tmp_dir) / "asset_panel"
+    ...     panel.save(path)
+    ...     AssetPanel.load(path)
+    AssetPanel(n_observations=252, n_assets=4, n_fields=5)
     """
 
     fields: dict[str, BaseField]

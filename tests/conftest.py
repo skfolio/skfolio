@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from urllib.error import HTTPError, URLError
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -19,9 +22,11 @@ from skfolio.datasets import (
 from skfolio.preprocessing import prices_to_returns
 
 
-def pytest_configure(config):
-    # globally turn off scientific notation in every test session
-    np.set_printoptions(suppress=True, precision=6)
+@pytest.fixture(autouse=True)
+def _numpy_printoptions():
+    """Turn off scientific notation in unit tests, without leaking into doctests."""
+    with np.printoptions(suppress=True, precision=6):
+        yield
 
 
 def pytest_collection_modifyitems(items) -> None:
@@ -29,6 +34,22 @@ def pytest_collection_modifyitems(items) -> None:
     for item in items:
         if isinstance(item, pytest.Function) and "remote_dataset" in item.fixturenames:
             item.add_marker(pytest.mark.network)
+
+
+@pytest.fixture(scope="session")
+def remote_dataset() -> Callable[..., pd.DataFrame]:
+    """Use the loader's cache and skip when an uncached dataset is unreachable."""
+
+    def _load(loader: Callable[..., pd.DataFrame], *args, **kwargs) -> pd.DataFrame:
+        try:
+            return loader(*args, **kwargs)
+        except HTTPError:
+            # HTTPError subclasses URLError, but HTTP failures should fail the test.
+            raise
+        except (URLError, TimeoutError) as exc:
+            pytest.skip(f"{loader.__name__} is not cached and unreachable: {exc}")
+
+    return _load
 
 
 @pytest.fixture
