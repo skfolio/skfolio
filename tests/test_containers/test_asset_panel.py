@@ -2201,6 +2201,19 @@ class TestConcat:
         with pytest.raises(ValueError, match="third_axis_labels"):
             concat([left, right])
 
+    def test_concat_requires_matching_3d_axis_name(self):
+        left = _make_full_panel()
+        right = _make_full_panel()
+        right.fields["exposures"] = Field3D(
+            right["exposures"],
+            third_axis_name="characteristic",
+            third_axis_labels=["mkt", "size", "value"],
+            third_axis_groups=["market", "style", "style"],
+        )
+
+        with pytest.raises(ValueError, match="different third_axis_name"):
+            concat([left, right])
+
     def test_concat_verify_observations_rejects_duplicates(self):
         left = _make_panel(observations=np.arange(N_OBS))
         right = _make_panel(observations=np.arange(N_OBS))
@@ -2490,6 +2503,24 @@ class TestEdgeCases:
         columns = momentum_line.split()
         assert columns[2] == columns[3]
         assert columns[-1] == "0"
+
+    def test_info_without_2d_fields_omits_missing_summary(self):
+        panel = _make_full_panel()
+        del panel.fields["momentum"]
+        del panel.fields["sector"]
+
+        report = panel.info()
+
+        assert "Fields        : 1" in report
+        assert "Missing       :" not in report
+
+    def test_info_with_empty_active_mask_reports_zero_active_missing(self):
+        panel = _make_full_panel()
+        panel.active_mask = np.zeros_like(panel.active_mask)
+
+        report = panel.info()
+
+        assert "Missing       : 7.5% total, 0.0% in Active Mask" in report
 
     def test_info_truncates_long_categorical_level_lists(self):
         panel = _make_panel()

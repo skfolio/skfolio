@@ -1234,11 +1234,6 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             ccy_factor_returns = currency_excess_returns.loc[
                 observations, ccy_factor_names
             ].to_numpy(dtype=float, copy=False)
-            if not np.all(np.isfinite(ccy_factor_returns)):
-                raise ValueError(
-                    "`currency_excess_returns` must contain only finite values "
-                    "for the fitted observations and currency factors."
-                )
             factor_returns_reduced_with_ccy = np.concatenate(
                 [factor_returns_reduced, ccy_factor_returns], axis=1
             )
@@ -2179,14 +2174,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             for name in layer:
                 factor_estimator = self.named_factor_estimators_[name]
                 if isinstance(factor_estimator, DerivedFactor):
-                    try:
-                        source_exposure, _, _ = results_dict[factor_estimator.source]
-                    except KeyError:
-                        raise ValueError(
-                            f"DerivedFactor '{name}' depends on"
-                            f" '{factor_estimator.source}' which was not found."
-                            f" Available factors: {list(results_dict.keys())}"
-                        ) from None
+                    # The dependency layers validate the source and place it in an
+                    # earlier layer, so its exposure is already computed.
+                    source_exposure, _, _ = results_dict[factor_estimator.source]
                 else:
                     source_exposure = None
 

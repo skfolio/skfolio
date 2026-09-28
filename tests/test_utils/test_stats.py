@@ -32,6 +32,7 @@ from skfolio.utils.stats import (
     cs_spearman_correlation,
     inverse_multiply,
     is_cholesky_dec,
+    is_positive_definite,
     minimize_relative_weight_deviation,
     multiply_by_inverse,
     n_bins_freedman,
@@ -125,6 +126,29 @@ def test_n_bins_freedman_returns_default_for_constant_input():
 def test_n_bins_knuth(returns):
     n_bins = n_bins_knuth(returns)
     assert n_bins == 346
+
+
+def test_n_bins_knuth_objective_rejects_non_positive_bins(monkeypatch):
+    # Nelder-Mead does not step below one bin on real data, so drive the objective
+    # directly to check that a non-positive bin count is scored as infinitely bad.
+    values = []
+
+    def fake_fmin(func, x0, disp):
+        values.append(func(np.array([0.0])))
+        return np.array([x0])
+
+    monkeypatch.setattr("scipy.optimize.fmin", fake_fmin)
+    n_bins_knuth(np.arange(10.0))
+
+    assert values == [np.inf]
+
+
+@pytest.mark.parametrize(
+    ("x", "expected"),
+    [(np.eye(2), True), (np.array([[1.0, 2.0], [2.0, 1.0]]), False)],
+)
+def test_is_positive_definite(x, expected):
+    assert is_positive_definite(x) == expected
 
 
 def test_cov_nearest(nasdaq_X):
