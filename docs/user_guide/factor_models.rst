@@ -1419,7 +1419,10 @@ subtracting the cash rates defining each excess return (time indices omitted):
     &= R^{excess,local}_i + R^{ccy}_{C_i}
 
 The currency excess return series are computed by the user and supplied through
-`currency_excess_returns`, with one column per currency factor.
+`currency_excess_returns`, with one column per currency factor. Values must be finite
+for the fitted observations. Leading rows consumed by descriptor warmup and exposure lag
+are not used and may contain NaN, such as the first row of a series computed with
+`pct_change`.
 
 Unlike equity factor returns, currency factor returns are not estimated by the
 regression but instead are observed FX series in the investor's numeraire which are then

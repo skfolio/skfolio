@@ -38,5 +38,4 @@ Dependencies
 - cvxpy-base (>= 1.5.0)
 - clarabel (>= 0.10.0)
 - scikit-learn (>= 1.6.0)
-- joblib (>= 1.3.2)
 - plotly (>= 6.0.0)

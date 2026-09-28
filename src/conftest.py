@@ -35,6 +35,9 @@ def _doctest_environment(request, tmp_path, monkeypatch, remote_dataset):
     of the working tree. Optimizer and SyntheticData arrays use four decimal places;
     other arrays keep eight to preserve small values. NumPy scalars
     display as plain numbers, including inside dictionaries.
+
+    The print options favour readable examples over matching a default Python
+    session. Keep them here rather than in the examples.
     """
     name = request.node.name
     if name in NETWORK_DOCTESTS:

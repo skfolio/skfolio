@@ -79,6 +79,9 @@ sequentially. A value passed to `cross_val_predict` overrides the optimizer's
 `Portfolio` objects. `name`, `tag`, `sample_weight` and `check_observations_order`
 apply to the resulting `MultiPeriodPortfolio` only.
 
+By default, the resulting portfolio inherits its children's sample weights.
+An explicit `sample_weight` overrides them (see :ref:`portfolio`).
+
 For example, to evaluate a drifted, compounded path with transaction costs:
 
 .. code-block:: python

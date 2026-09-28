@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import AssetPanel
@@ -110,11 +112,13 @@ class GrowthRate(BaseDescriptor):
 
     growth_rate_: FloatArray
 
-    def __init__(self, field: str, lag: int):
+    def __init__(self, field: str, lag: int) -> None:
         self.field = field
         self.lag = lag
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute simple growth rates of the configured field.
 
         Parameters
@@ -137,7 +141,9 @@ class GrowthRate(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute simple growth rates of the configured field.
 
         This method supports online updates by continuing from the current fitted state.
@@ -219,7 +225,8 @@ class GrowthRate(BaseDescriptor):
 
         return result
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state and delete the internal observation buffer."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
         if hasattr(self, "_buffer"):

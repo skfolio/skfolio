@@ -114,7 +114,7 @@ class CSGaussianRankScaler(BaseCSTransformer):
 
     def __init__(
         self, *, min_group_size: int = 8, scale: bool = True, atol: float = 1e-12
-    ):
+    ) -> None:
         self.min_group_size = min_group_size
         self.scale = scale
         self.atol = atol

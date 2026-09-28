@@ -280,7 +280,7 @@ class TestDownloadDatasetCache:
 
         monkeypatch.setattr(_base.ur, "urlretrieve", interrupted)
 
-        with pytest.raises(error):
+        with pytest.raises(error, match="connection lost"):
             download_dataset("dataset", data_home=tmp_path)
 
         assert not dest.exists()

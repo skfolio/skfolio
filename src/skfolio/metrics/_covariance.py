@@ -31,7 +31,7 @@ _NUMERICAL_THRESHOLD = 1e-12
 def mahalanobis_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Mahalanobis calibration ratio.
 
@@ -101,7 +101,7 @@ def mahalanobis_calibration_ratio(
 def diagonal_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Diagonal calibration ratio based on marginal variances.
 
@@ -173,7 +173,7 @@ def diagonal_calibration_ratio(
 def portfolio_variance_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration ratio.
@@ -257,7 +257,7 @@ def portfolio_variance_calibration_ratio(
 def mahalanobis_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Mahalanobis calibration loss.
 
@@ -307,7 +307,7 @@ def mahalanobis_calibration_loss(
 def diagonal_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Diagonal calibration loss.
 
@@ -354,7 +354,7 @@ def diagonal_calibration_loss(
 def portfolio_variance_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration loss.
@@ -414,7 +414,7 @@ def portfolio_variance_calibration_loss(
 def portfolio_variance_qlike_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""QLIKE loss for a projected portfolio variance forecast [1]_.

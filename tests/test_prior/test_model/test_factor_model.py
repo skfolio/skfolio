@@ -570,7 +570,10 @@ class TestSummary:
             factor_model_with_families.summary(families="unknown")
 
     def test_families_raises_when_none_in_model(self, factor_model):
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match="`family_names_to_keep` was specified but `factor_families` is None",
+        ):
             factor_model.summary(families="style")
 
     def test_stability_weighting(self, factor_model_with_weights):
@@ -670,7 +673,7 @@ class TestExposureICSummary:
         assert captured["factor_indices"] == [0, 2]
 
     def test_requires_time_series(self, factor_model_no_ts):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`_ic` requires"):
             factor_model_no_ts.exposure_ic_summary()
 
     def test_custom_horizon(self, factor_model):
@@ -778,7 +781,7 @@ class TestPlotCumulativeExposureIC:
         assert ic.shape[1] == fm.family_constraint_basis.n_reduced_factors
 
     def test_requires_time_series(self, factor_model_no_ts):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`_ic` requires"):
             factor_model_no_ts.plot_cumulative_exposure_ic()
 
 
@@ -2706,7 +2709,7 @@ class TestPlotExposureDistribution:
     def test_unknown_factor_and_missing_exposures_raise(
         self, factor_model, factor_model_no_ts
     ):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Unknown factor"):
             factor_model.plot_exposure_distribution("unknown")
         with pytest.raises(ValueError, match="exposures"):
             factor_model_no_ts.plot_exposure_distribution("factor_0")

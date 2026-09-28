@@ -76,12 +76,12 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         min_n_assets: int | None = None,
         threshold: float = -0.5,
         fitness_measures: list[skt.Measure] | None = None,
-    ):
+    ) -> None:
         self.min_n_assets = min_n_assets
         self.threshold = threshold
         self.fitness_measures = fitness_measures
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> SelectNonDominated:
         """Run the Non Dominated transformer and get the appropriate assets.
 
         Parameters
@@ -158,6 +158,7 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self.to_keep_ = np.isin(np.arange(n_assets), list(new_assets_idx))
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_
