@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.4.4 (2026-09-28)
+
+### Bug Fixes
+
+- Bound Knuth binning and check currency returns on fitted rows
+  ([#387](https://github.com/skfolio/skfolio/pull/387),
+  [`a41d67c`](https://github.com/skfolio/skfolio/commit/a41d67c7e4e6714082ecd54045bf9fdc8b0cb852))
+
+### Documentation
+
+- Record why doctest print options live in src/conftest.py
+  ([#389](https://github.com/skfolio/skfolio/pull/389),
+  [`98f4c72`](https://github.com/skfolio/skfolio/commit/98f4c72bc3143ac37ce7d1e3192acf1a44d0c847))
+
+- **contributing**: Document the CI checks and the PR title format
+  ([#372](https://github.com/skfolio/skfolio/pull/372),
+  [`1052d0b`](https://github.com/skfolio/skfolio/commit/1052d0bb4a87a12e4dacc16b26ea51abdfe4449e))
+
+
 ## v1.4.3 (2026-09-27)
 
 ### Bug Fixes
