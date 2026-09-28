@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.4.6 (2026-09-28)
+
+### Bug Fixes
+
+- **portfolio**: Annualize risk_free_rate with the mean in annualized ratios
+  ([#288](https://github.com/skfolio/skfolio/pull/288),
+  [`b7dfc0d`](https://github.com/skfolio/skfolio/commit/b7dfc0de1ea815b8dc139fbdaccf8c76066ded52))
+
+- **pre-selection**: Retain unlisted expirations
+  ([#328](https://github.com/skfolio/skfolio/pull/328),
+  [`c9dfb6f`](https://github.com/skfolio/skfolio/commit/c9dfb6f84b466bbc4bcae4ef5b522ddc37dd106f))
+
+
 ## v1.4.5 (2026-09-28)
 
 ### Bug Fixes
