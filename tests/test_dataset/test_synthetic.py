@@ -124,14 +124,24 @@ def test_n_industries_controls_levels():
 
 
 @pytest.mark.parametrize(
-    "kwargs",
+    "kwargs,match",
     [
-        {"n_industries": 0},
-        {"n_industries": 99},
-        {"systematic_variance_ratio": 0.0},
-        {"systematic_variance_ratio": 1.0},
+        ({"n_industries": 0}, "n_industries must be between 1 and 16"),
+        ({"n_industries": 99}, "n_industries must be between 1 and 16"),
+        ({"systematic_variance_ratio": 0.0}, "systematic_variance_ratio must be in"),
+        ({"systematic_variance_ratio": 1.0}, "systematic_variance_ratio must be in"),
     ],
 )
-def test_invalid_arguments(kwargs):
-    with pytest.raises(ValueError):
+def test_invalid_arguments(kwargs, match):
+    with pytest.raises(ValueError, match=match):
         make_synthetic_characteristics(n_assets=10, n_observations=30, **kwargs)
+
+
+def test_single_asset_has_degenerate_cross_section():
+    """A single asset has zero cross-sectional dispersion, so the standardized
+    loadings must fall back to centering only instead of dividing by zero."""
+    panel = make_synthetic_characteristics(
+        n_assets=1, n_observations=20, n_industries=1, random_state=0
+    )
+    assert panel.n_assets == 1
+    assert np.isfinite(panel["returns"]).all()

@@ -36,13 +36,34 @@ class BaseCombinatorialCV(ABC):
     """
 
     @abstractmethod
-    def split(self, X: ArrayLike, y=None) -> tuple[IntArray, list[IntArray]]:
-        pass
+    def split(
+        self, X: ArrayLike, y: ArrayLike | None = None
+    ) -> tuple[IntArray, list[IntArray]]:
+        """Generate indices to split data into training and test set.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data, where `n_samples` is the number of samples and `n_features`
+            is the number of features.
+
+        y : array-like of shape (n_samples,), optional
+            The (multi-)target variable.
+
+        Yields
+        ------
+        train : ndarray
+            The training set indices for that split.
+
+        test : list[ndarray]
+            The testing set indices of each test group for that split.
+        """
+        ...
 
     @abstractmethod
     def get_path_ids(self) -> IntArray:
         """Return the path id of each test sets in each split."""
-        pass
+        ...
 
     __repr__ = sks.BaseCrossValidator.__repr__
 
@@ -265,18 +286,23 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
                 path_ids[i, j] = np.argwhere(recombine_paths == i)[j][1]
         return path_ids
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: None = None,
+        y: None = None,
+        groups: None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         Parameters
         ----------
-        X : object
+        X : None
             Always ignored, exists for compatibility.
 
-        y : object
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : object
+        groups : None
             Always ignored, exists for compatibility.
 
         Returns
@@ -287,7 +313,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         return self.n_splits
 
     def split(
-        self, X: ArrayLike, y=None, groups=None
+        self, X: ArrayLike, y: ArrayLike | None = None, groups: ArrayLike | None = None
     ) -> Iterator[tuple[IntArray, list[IntArray]]]:
         """Generate indices to split data into training and test set.
 
@@ -361,7 +387,21 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             ]
             yield train_index, test_index_list
 
-    def summary(self, X) -> pd.Series:
+    def summary(self, X: ArrayLike) -> pd.Series:
+        """Return a summary of the cross-validation configuration for `X`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Data to split. Only its number of observations (rows) is used.
+
+        Returns
+        -------
+        summary : pandas.Series
+            Number of observations, total number of folds, number of test folds,
+            purge size, embargo size, average training size, number of test paths
+            and number of training combinations.
+        """
         n_observations = X.shape[0]
         avg_train_size = _avg_train_size(
             n_observations=n_observations,
@@ -413,7 +453,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         fig.update_layout(title="Split Train (0) /Test (1) Folds per Combination")
         return fig
 
-    def plot_train_test_index(self, X) -> skt.Figure:
+    def plot_train_test_index(self, X: ArrayLike) -> skt.Figure:
         """Plot the training and test indices for each combinations by assigning `0` to
         training, `1` to test and `-1` to both purge and embargo indices.
         """
@@ -581,6 +621,7 @@ def optimal_folds_number(
         x: int,
         y: int,
     ) -> float:
+        """Return the weighted relative distance to the target train size and paths."""
         n_test_paths = _n_test_paths(n_folds=x, n_test_folds=y)
         avg_train_size = _avg_train_size(
             n_observations=n_observations, n_folds=x, n_test_folds=y

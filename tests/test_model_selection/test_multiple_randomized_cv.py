@@ -350,3 +350,22 @@ def test_big_comb():
     # now get_path_ids matches subsample ids
     path_ids = cv.get_path_ids()
     assert np.array_equal(path_ids, [0, 0, 1, 1, 2, 2, 3, 3, 4, 4])
+
+
+def test_split_rejects_non_integer_parameters():
+    X = np.random.default_rng(0).standard_normal((60, 10))
+    wf = WalkForward(test_size=10, train_size=20)
+
+    cv = MultipleRandomizedCV(
+        walk_forward=wf, n_subsamples=2, asset_subset_size=2, window_size=30.0
+    )
+    with pytest.raises(ValueError, match="`window_size` must be an integer"):
+        list(cv.split(X))
+
+    cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2, asset_subset_size=2.0)
+    with pytest.raises(TypeError, match="`asset_subset_size` must be an integer"):
+        list(cv.split(X))
+
+    cv = MultipleRandomizedCV(walk_forward=wf, n_subsamples=2.0, asset_subset_size=2)
+    with pytest.raises(TypeError, match="`num_subsamples` must be an integer"):
+        list(cv.split(X))

@@ -27,4 +27,15 @@ updates:
       prefix: "deps(actions)"
       include: "scope"
 
-
+  # Keep the YAML and end-of-file hooks up to date.
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "deps(pre-commit)"
+      include: "scope"

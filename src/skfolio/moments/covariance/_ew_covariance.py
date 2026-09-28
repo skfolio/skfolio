@@ -200,22 +200,28 @@ class EWCovariance(BaseCovariance):
     >>> # Batch fitting
     >>> model = EWCovariance(half_life=40)
     >>> model.fit(X)
+    EWCovariance()
     >>> print(model.covariance_.shape)
+    (20, 20)
     >>>
     >>> # Streaming updates with partial_fit
     >>> model2 = EWCovariance(half_life=20)
     >>> model2.partial_fit(X[:100])  # Initial fit
+    EWCovariance(half_life=20)
     >>> model2.partial_fit(X[100:200])  # Update with new data
+    EWCovariance(half_life=20)
     >>> model2.partial_fit(X[200:])  # Continue updating
+    EWCovariance(half_life=20)
     >>>
     >>> # NaN-aware fitting with active_mask
     >>> # Asset 2 is listed starting from observation 50
     >>> active_mask = np.ones(X.shape, dtype=bool)
     >>> active_mask[:50, 2] = False
     >>> X_nan = X.copy()
-    >>> X_nan[:50, 2] = np.nan
+    >>> X_nan.iloc[:50, 2] = np.nan
     >>> model3 = EWCovariance(half_life=40)
     >>> model3.fit(X_nan, active_mask=active_mask)
+    EWCovariance()
     """
 
     def __init__(
@@ -241,7 +247,7 @@ class EWCovariance(BaseCovariance):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWCovariance:
@@ -274,7 +280,7 @@ class EWCovariance(BaseCovariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWCovariance:
@@ -311,13 +317,13 @@ class EWCovariance(BaseCovariance):
         active_mask = _validate_mask(X=X, mask=active_mask, name="active_mask")
 
         if first_call:
+            self._validate_params()
             if self.window_size is not None:
                 X = apply_window_size(X, window_size=self.window_size)
                 if active_mask is not None:
                     active_mask = apply_window_size(
                         active_mask, window_size=self.window_size
                     )
-            self._validate_params()
             self._initialize()
 
         if active_mask is not None:

@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from skfolio.moments import BaseCovariance
 from skfolio.moments.variance import EWVariance
-from skfolio.prior import CharacteristicsFactorModel
+from skfolio.prior import BasePrior, CharacteristicsFactorModel, EmpiricalPrior
 
 from .conftest import make_panel, passthrough_factor
 
@@ -1123,3 +1124,68 @@ class TestPartialFitInvestmentUniverse:
             self.model_full.factor_model_.idio_returns,
             rtol=1e-10,
         )
+
+
+class _FitOnlyPrior(BasePrior):
+    """Prior estimator without incremental learning support."""
+
+    def __init__(self):
+        pass
+
+    def fit(self, X, y=None, **fit_params):
+        self.return_distribution_ = EmpiricalPrior().fit(X).return_distribution_
+        return self
+
+
+class _FitOnlyCovariance(BaseCovariance):
+    """Covariance estimator without incremental learning support.
+
+    Tolerates the warmup NaNs in standardized idiosyncratic returns, so the first
+    `partial_fit` succeeds and the second fails on the missing `partial_fit`.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def fit(self, X, y=None, **fit_params):
+        X = np.asarray(X, dtype=float)
+        self.covariance_ = np.ma.cov(np.ma.masked_invalid(X), rowvar=False).filled(
+            np.nan
+        )
+        return self
+
+
+class TestPartialFitRequiresIncrementalSubEstimators:
+    # Long enough that the first batch clears the idiosyncratic variance warmup,
+    # so the second batch fails on the missing `partial_fit` and nothing else.
+    N_OBS = 200
+    N_ASSETS = 40
+
+    def _batches(self):
+        panel, X, *_ = _make_single_factor_data(self.N_OBS, self.N_ASSETS)
+        split = self.N_OBS // 2
+        return (X.iloc[:split], panel[:split]), (X.iloc[split:], panel[split:])
+
+    def test_factor_prior_estimator_without_partial_fit_raises(self):
+        (X1, panel1), (X2, panel2) = self._batches()
+        model = _make_model(factor_prior_estimator=_FitOnlyPrior())
+        model.partial_fit(X1, characteristics=panel1)
+
+        with pytest.raises(
+            ValueError,
+            match="provide a factor_prior_estimator that also implements `partial_fit`",
+        ):
+            model.partial_fit(X2, characteristics=panel2)
+
+    def test_idio_corr_estimator_without_partial_fit_raises(self):
+        (X1, panel1), (X2, panel2) = self._batches()
+        model = _make_model(
+            idio_corr_threshold=0.1, idio_corr_estimator=_FitOnlyCovariance()
+        )
+        model.partial_fit(X1, characteristics=panel1)
+
+        with pytest.raises(
+            ValueError,
+            match="provide an idio_corr_estimator that also implements `partial_fit`",
+        ):
+            model.partial_fit(X2, characteristics=panel2)

@@ -10,7 +10,6 @@ from abc import ABC
 from dataclasses import dataclass, field
 from dataclasses import fields as dataclass_fields
 from enum import auto
-from typing import Any
 
 import numpy as np
 
@@ -405,7 +404,7 @@ def _all_integer_like(values: AnyArray) -> bool:
     return all(_is_integer_number(value) for value in values)
 
 
-def _is_string_like(value: Any) -> bool:
+def _is_string_like(value: object) -> bool:
     """Return True when a value is string-like."""
     return isinstance(value, (str, np.str_))
 

@@ -18,7 +18,7 @@ introducing survivorship bias.
 
 An additional challenge arises with assets that have known expiration dates
 (e.g., options, bonds, futures). If an asset is due to expire in the next period, it
-may be preferable to exit early, especially if it’s not cash-settled.
+may be preferable to exit early, especially if it's not cash-settled.
 
 In this tutorial, we will demonstrate how to implement all these rules in a single
 `Pipeline` that can be used with cross-validation techniques such as `WalkForward` and
@@ -35,7 +35,7 @@ hyperparameter tuning tools like `GridSearchCV`.
 # * `expired`: Asset that expired.
 # * `complete`: Asset with a complete price history.
 #
-# We’ll convert these prices to returns and split the dataset into 3 rebalancing
+# We'll convert these prices to returns and split the dataset into 3 rebalancing
 # periods of 4 days each.
 
 import datetime as dt
@@ -139,7 +139,7 @@ df
 # %%
 # Step-by-Step Fitting with `WalkForward`
 # =======================================
-# Let’s break down the `cross_val_predict` by calling `fit` and `predict` on each
+# Let's break down the `cross_val_predict` by calling `fit` and `predict` on each
 # period:
 print("Rebalancing Period 1")
 model.fit(X.iloc[:4])
@@ -174,4 +174,3 @@ grid_search = GridSearchCV(
 grid_search.fit(X)
 print(grid_search.best_params_)
 model = grid_search.best_estimator_
-

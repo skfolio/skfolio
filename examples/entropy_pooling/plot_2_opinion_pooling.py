@@ -38,7 +38,7 @@ Logarithmic Opinion Pooling
 
 Robust Pooling with Divergence Penalty
 --------------------------------------
-By specifying a `divergence_penalty`, you can penalize each opinion’s
+By specifying a `divergence_penalty`, you can penalize each opinion's
 divergence from the group consensus, yielding a more robust aggregate distribution.
 
 In this tutorial, we will:
@@ -72,7 +72,12 @@ from skfolio.measures import (
 )
 from skfolio.optimization import HierarchicalRiskParity, RiskBudgeting
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EntropyPooling, TimeSeriesFactorModel, OpinionPooling, SyntheticData
+from skfolio.prior import (
+    EntropyPooling,
+    OpinionPooling,
+    SyntheticData,
+    TimeSeriesFactorModel,
+)
 from skfolio.utils.figure import plot_kde_distributions
 
 # Load stock price and factor data

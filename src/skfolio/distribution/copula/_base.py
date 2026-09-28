@@ -40,7 +40,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     # Used for AIC and BIC
     _n_params: int
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     def _validate_X(self, X: ArrayLike, reset: bool) -> FloatArray:
@@ -89,22 +89,22 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     @abstractmethod
     def lower_tail_dependence(self) -> float:
         """Theoretical lower tail dependence coefficient."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def upper_tail_dependence(self) -> float:
         """Theoretical upper tail dependence coefficient."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        pass
+        ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseBivariateCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseBivariateCopula:
         """Fit the copula model.
 
         Parameters
@@ -122,7 +122,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         self : BaseBivariateCopula
             Returns the instance itself.
         """
-        pass
+        ...
 
     @abstractmethod
     def cdf(self, X: ArrayLike) -> FloatArray:
@@ -140,7 +140,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         cdf : ndarray of shape (n_observations,)
             CDF values for each observation in X.
         """
-        pass
+        ...
 
     @abstractmethod
     def partial_derivative(
@@ -172,7 +172,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         p : ndarray of shape (n_observations,)
             h-function values :math:`h(u \mid v) \;=\; p` for each observation in X.
         """
-        pass
+        ...
 
     @abstractmethod
     def inverse_partial_derivative(
@@ -222,7 +222,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         .. [1] "Multivariate Models and Dependence Concepts", Joe, H. (1997)
         .. [2] "An Introduction to Copulas", Nelsen, R. B. (2006)
         """
-        pass
+        ...
 
     @abstractmethod
     def score_samples(self, X: ArrayLike) -> FloatArray:
@@ -240,9 +240,9 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         density : ndarray of shape (n_observations,)
             The log-likelihood of each sample under the fitted copula.
         """
-        pass
+        ...
 
-    def sample(self, n_samples: int = 1):
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the bivariate copula using the inverse
         Rosenblatt transform.
 
@@ -269,19 +269,20 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         return X
 
     def tail_concentration(self, quantiles: ArrayLike) -> FloatArray:
-        """
+        r"""
         Compute the tail concentration function for a set of quantiles.
 
-        The tail concentration function is defined as follows:
-         - For quantiles q ≤ 0.5:
-             C(q) = P(U ≤ q, V ≤ q) / q
+        The tail concentration function is defined as:
 
-         - For quantiles q > 0.5:
-             C(q) = (1 - 2q + P(U ≤ q, V ≤ q)) / (1 - q)
+        .. math::
+            C(q) = \begin{cases}
+                \frac{P(U \le q, V \le q)}{q} & \text{if } q \le 0.5 \\
+                \frac{1 - 2q + P(U \le q, V \le q)}{1 - q} & \text{if } q > 0.5
+            \end{cases}
 
-        where U and V are the pseudo-observations of the first and second variables,
-        respectively. This function returns the concentration values for each q
-        provided.
+        where :math:`U` and :math:`V` are the pseudo-observations of the first and
+        second variables, respectively. This function returns the concentration values
+        for each :math:`q` provided.
 
         Parameters
         ----------
@@ -319,7 +320,7 @@ class BaseBivariateCopula(BaseDistribution, ABC):
     def plot_tail_concentration(
         self, X: ArrayLike | None = None, title: str | None = None
     ) -> go.Figure:
-        """
+        r"""
         Plot the tail concentration function.
 
         This method computes the tail concentration function at 100 evenly spaced
@@ -327,12 +328,15 @@ class BaseBivariateCopula(BaseDistribution, ABC):
         The plot displays the concentration values on the y-axis and the quantile levels
         on the x-axis.
 
-        The tail concentration is defined as:
-          - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
-          - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+        The lower and upper tail concentrations are defined as:
 
-        where U₁ and U₂ are the pseudo-observations of the first and second variables,
-        respectively.
+        .. math::
+            \lambda_L(q) = P(U_2 \le q \mid U_1 \le q)
+
+            \lambda_U(q) = P(U_2 \ge q \mid U_1 \ge q)
+
+        where :math:`U_1` and :math:`U_2` are the pseudo-observations of the first and
+        second variables, respectively.
 
         Parameters
         ----------

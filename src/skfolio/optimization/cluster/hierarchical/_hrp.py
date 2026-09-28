@@ -8,6 +8,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -310,7 +312,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -326,7 +328,9 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> HierarchicalRiskParity:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> HierarchicalRiskParity:
         """Fit the Hierarchical Risk Parity Optimization estimator.
 
         Parameters
@@ -381,7 +385,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             returns = pd.DataFrame(returns, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
 
@@ -389,7 +392,6 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        # noinspection PyArgumentList
         self.hierarchical_clustering_estimator_.fit(
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )

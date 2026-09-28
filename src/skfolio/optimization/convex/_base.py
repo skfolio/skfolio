@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -27,7 +28,7 @@ from skfolio._constants import (
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import AnyArray, ArrayLike, BoolArray, FloatArray, StrArray
 from skfolio.uncertainty_set import (
     BaseCovarianceUncertaintySet,
     BaseMuUncertaintySet,
@@ -35,7 +36,12 @@ from skfolio.uncertainty_set import (
     UncertaintySet,
 )
 from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_matrix
-from skfolio.utils.tools import AutoEnum, cache_method, input_to_array
+from skfolio.utils.tools import (
+    AutoEnum,
+    _get_liquidation_turnover_and_cost,
+    cache_method,
+    input_to_array,
+)
 
 INSTALLED_SOLVERS = cp.installed_solvers()
 
@@ -220,6 +226,12 @@ class ConvexOptimization(BaseOptimization, ABC):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -279,6 +291,8 @@ class ConvexOptimization(BaseOptimization, ABC):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -616,7 +630,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
@@ -692,7 +706,6 @@ class ConvexOptimization(BaseOptimization, ABC):
             Result of calling the custom function.
         """
         try:
-            # noinspection PyUnresolvedReferences
             func_code = func.__code__
         except AttributeError as err:
             raise ValueError("Custom functions is invalid") from err
@@ -715,7 +728,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "the weight variable OR the weight variable and the estimator object."
             ) from err
 
-    def _clear_models_cache(self):
+    def _clear_models_cache(self) -> None:
         """Clear the cache of CVX models."""
         self._cvx_cache = {}
 
@@ -826,7 +839,54 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "solvers, supported options include MOSEK, GUROBI, or CPLEX."
             )
 
-        # Constraints
+        constraints += self._weight_and_exposure_constraints(
+            w=w,
+            factor=factor,
+            min_weights=min_weights,
+            max_weights=max_weights,
+            allow_negative_weights=allow_negative_weights,
+        )
+        constraints += self._budget_constraints(w=w, factor=factor)
+
+        if is_mip:
+            constraints += self._mixed_integer_constraints(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+                groups=groups,
+            )
+
+        constraints += self._linear_constraints(
+            w=w,
+            factor=factor,
+            groups=groups,
+            assets_names=assets_names,
+            investable_mask=investable_mask,
+            return_distribution=return_distribution,
+        )
+        constraints += self._matrix_inequality_constraints(
+            n_assets=n_assets, w=w, factor=factor, investable_mask=investable_mask
+        )
+
+        return constraints
+
+    def _weight_and_exposure_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
+        allow_negative_weights: bool,
+    ) -> list[cpc.Constraint]:
+        """Constrain individual asset weights and total long and short exposure.
+
+        Weight bounds must already be aligned with the investable assets.
+        """
+        constraints = []
         if min_weights is not None:
             if not allow_negative_weights and np.any(min_weights < 0):
                 raise ValueError(
@@ -862,6 +922,13 @@ class ConvexOptimization(BaseOptimization, ABC):
                 <= max_short * factor * self._scale_constraints
             )
 
+        return constraints
+
+    def _budget_constraints(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> list[cpc.Constraint]:
+        """Constrain the sum of weights using the configured budget or limits."""
+        constraints = []
         if self.min_budget is not None:
             constraints.append(
                 cp.sum(w) * self._scale_constraints
@@ -888,72 +955,105 @@ class ConvexOptimization(BaseOptimization, ABC):
                 == float(self.budget) * factor * self._scale_constraints
             )
 
-        if is_mip:
-            is_short = np.any(min_weights < 0)
+        return constraints
 
-            if max_weights is None or min_weights is None:
-                raise ValueError(
-                    "'max_weights' and 'min_weights' must be provided with cardinality "
-                    "constraint"
-                )
-            if np.all(min_weights > 0):
-                raise ValueError(
-                    "Cardinality and Threshold constraint can only be applied "
-                    "if 'min_weights' are not all strictly positive (you allow some "
-                    "weights to be 0)"
-                )
+    def _mixed_integer_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        min_weights: FloatArray | None,
+        max_weights: FloatArray | None,
+        threshold_long: FloatArray | None,
+        threshold_short: FloatArray | None,
+        groups: AnyArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build cardinality and position-threshold constraints.
 
-            if self.group_cardinalities is not None and groups is None:
-                raise ValueError(
-                    "When 'group_cardinalities' is provided, you must also "
-                    "also provide 'groups'"
-                )
+        Bounds, thresholds, and groups must already be aligned with the investable
+        assets. All-zero thresholds must be converted to `None`. The caller checks
+        that the solver supports mixed-integer problems.
+        """
+        is_short = np.any(min_weights < 0)
 
-            if (
-                self.threshold_long is not None
-                and self.threshold_short is None
-                and is_short
-            ):
-                raise ValueError(
-                    "When 'threshold_long' is provided and 'min_weights' can be negative "
-                    "(short positions are allowed), then 'threshold_short' must also be "
-                    "provided"
-                )
+        if max_weights is None or min_weights is None:
+            raise ValueError(
+                "'max_weights' and 'min_weights' must be provided with cardinality "
+                "constraint"
+            )
+        if np.all(min_weights > 0):
+            raise ValueError(
+                "Cardinality and Threshold constraint can only be applied "
+                "if 'min_weights' are not all strictly positive (you allow some "
+                "weights to be 0)"
+            )
 
-            if threshold_short is not None and threshold_long is None:
-                raise ValueError(
-                    "When 'threshold_short' is provided, 'threshold_long' must also be "
-                    "provided"
-                )
+        if self.group_cardinalities is not None and groups is None:
+            raise ValueError(
+                "When 'group_cardinalities' is provided, you must also "
+                "also provide 'groups'"
+            )
 
-            if self.threshold_short is not None and is_short:
-                constraints += _mip_weight_constraints_threshold_short(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                    threshold_short=threshold_short,
-                )
-            else:
-                constraints += _mip_weight_constraints_no_short_threshold(
-                    n_assets=n_assets,
-                    w=w,
-                    factor=factor,
-                    scale_constraints=self._scale_constraints,
-                    cardinality=self.cardinality,
-                    group_cardinalities=self.group_cardinalities,
-                    max_weights=max_weights,
-                    groups=groups,
-                    min_weights=min_weights,
-                    threshold_long=threshold_long,
-                )
+        if (
+            self.threshold_long is not None
+            and self.threshold_short is None
+            and is_short
+        ):
+            raise ValueError(
+                "When 'threshold_long' is provided and 'min_weights' can be negative "
+                "(short positions are allowed), then 'threshold_short' must also be "
+                "provided"
+            )
 
+        if threshold_short is not None and threshold_long is None:
+            raise ValueError(
+                "When 'threshold_short' is provided, 'threshold_long' must also be "
+                "provided"
+            )
+
+        if self.threshold_short is not None and is_short:
+            return _mip_weight_constraints_threshold_short(
+                n_assets=n_assets,
+                w=w,
+                factor=factor,
+                scale_constraints=self._scale_constraints,
+                cardinality=self.cardinality,
+                group_cardinalities=self.group_cardinalities,
+                max_weights=max_weights,
+                groups=groups,
+                min_weights=min_weights,
+                threshold_long=threshold_long,
+                threshold_short=threshold_short,
+            )
+
+        return _mip_weight_constraints_no_short_threshold(
+            n_assets=n_assets,
+            w=w,
+            factor=factor,
+            scale_constraints=self._scale_constraints,
+            cardinality=self.cardinality,
+            group_cardinalities=self.group_cardinalities,
+            max_weights=max_weights,
+            groups=groups,
+            min_weights=min_weights,
+            threshold_long=threshold_long,
+        )
+
+    def _linear_constraints(
+        self,
+        w: cp.Variable,
+        factor: skt.Factor,
+        groups: AnyArray | None,
+        assets_names: StrArray | None,
+        investable_mask: BoolArray | None,
+        return_distribution: ReturnDistribution | None,
+    ) -> list[cpc.Constraint]:
+        """Build equalities and inequalities from `linear_constraints`.
+
+        Supplied groups must already be aligned with the investable assets.
+        Factor constraints use the factor model from `return_distribution`.
+        """
+        constraints = []
         if self.linear_constraints is not None:
             if groups is None:
                 if assets_names is None:
@@ -1003,6 +1103,21 @@ class ConvexOptimization(BaseOptimization, ABC):
                     <= 0
                 )
 
+        return constraints
+
+    def _matrix_inequality_constraints(
+        self,
+        n_assets: int,
+        w: cp.Variable,
+        factor: skt.Factor,
+        investable_mask: BoolArray | None,
+    ) -> list[cpc.Constraint]:
+        """Build `left_inequality @ w <= right_inequality * factor` constraints.
+
+        When `investable_mask` is provided, the matrix must include all original
+        assets, including non-investable ones.
+        """
+        constraints = []
         if self.left_inequality is not None and self.right_inequality is not None:
             left_inequality = np.asarray(self.left_inequality)
             right_inequality = np.asarray(self.right_inequality)
@@ -1354,16 +1469,25 @@ class ConvexOptimization(BaseOptimization, ABC):
             name=_TRANSACTION_COSTS,
         )
         if np.all(transaction_costs == 0):
-            return cp.Constant(0)
+            cost = cp.Constant(0)
+        else:
+            previous_weights = self._clean_previous_weights(n_assets=n_assets)
+            if np.isscalar(transaction_costs):
+                cost = transaction_costs * cp.norm(previous_weights * factor - w, 1)
+            else:
+                cost = cp.norm(
+                    cp.multiply(transaction_costs, (previous_weights * factor - w)), 1
+                )
 
-        previous_weights = self._clean_previous_weights(n_assets=n_assets)
-
-        if np.isscalar(transaction_costs):
-            return transaction_costs * cp.norm(previous_weights * factor - w, 1)
-        return cp.norm(
-            cp.multiply(transaction_costs, (previous_weights * factor - w)),
-            1,
+        _, liquidation_cost = _get_liquidation_turnover_and_cost(
+            previous_weights=self.previous_weights,
+            transaction_costs=self.transaction_costs,
+            assets_names=getattr(self, "feature_names_in_", None),
+            investable_mask=getattr(self, "investable_mask_", None),
         )
+        if liquidation_cost:
+            cost += liquidation_cost * factor
+        return cost
 
     @cache_method("_cvx_cache")
     def _cvx_management_fee(
@@ -1425,7 +1549,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     def _turnover(
         self, n_assets: int, w: cp.Variable, factor: skt.Factor
     ) -> cp.Expression:
-        """Expression of the portfolio turnover.
+        """Per-asset turnover in the investable optimization universe.
 
         Parameters
         ----------
@@ -1918,10 +2042,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
-    def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_central_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth central moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
-    def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_lower_partial_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth lower partial moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -2304,7 +2434,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         ones = np.ones((observation_nb, 1))
         risk = 2 * cp.sum(x + y)
         gmd_w = np.array(owa_gmd_weights(observation_nb) / 2).reshape(-1, 1)
-        # noinspection PyTypeChecker
         constraints = [
             ptf_returns * self._scale_constraints
             - ptf_transaction_cost * self._scale_constraints
@@ -2314,7 +2443,17 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping()
@@ -2324,8 +2463,33 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params):
-        pass
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> ConvexOptimization:
+        """Fit the Convex Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : ConvexOptimization
+            Fitted estimator.
+        """
+        ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2487,15 +2651,22 @@ def _mip_weight_constraints_threshold_short(
 
 
 def _solve(
-    w,
-    factor,
-    expressions,
-    problem,
-    solver,
-    solver_params,
-    risk_measure,
-    scale_objective,
-):
+    w: cp.Variable,
+    factor: skt.Factor,
+    expressions: dict[str, cp.Expression],
+    problem: cp.Problem,
+    solver: str,
+    solver_params: dict,
+    risk_measure: RiskMeasure,
+    scale_objective: cp.Constant,
+) -> tuple[FloatArray, dict[str, float]]:
+    """Solve `problem` and return the weights and problem values.
+
+    Weights and expression values are divided by the homogenization `factor`, the
+    objective by `scale_objective`, and the variance and semi-variance risks once more
+    by `factor`. Warns when the solution is not optimal and raises a
+    `cvxpy.SolverError` when the solver fails.
+    """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():

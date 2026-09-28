@@ -102,19 +102,19 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  index=[0 1]
       Test:   index=[2]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 1:
       Train:  index=[1 2]
       Test:   index=[3]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 2:
       Train:  index=[0 1]
       Test:   index=[2]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     Fold 3:
       Train:  index=[1 2]
       Test:   index=[3]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     >>> print(f"Path ids: {cv.get_path_ids()}")
     Path ids: [0 0 1 1]
     >>>
@@ -135,19 +135,19 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  index=[4 5]
       Test:   index=[6]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 1:
       Train:  index=[5 6]
       Test:   index=[7]
-      Assets: columns=[0 1 4]
+      Assets: columns=[1 2 3]
     Fold 2:
       Train:  index=[5 6]
       Test:   index=[7]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     Fold 3:
       Train:  index=[6 7]
       Test:   index=[8]
-      Assets: columns=[1 3 4]
+      Assets: columns=[2 3 4]
     >>>
     >>> # Walk Forward with time-based (calendar) rebalancing.
     >>> # Rebalance every 3 months on the third Friday, and train on the last 12 months.
@@ -169,29 +169,29 @@ class MultipleRandomizedCV:
     Fold 0:
       Train:  size=256
       Test:   size=59
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 1:
       Train:  size=253
       Test:   size=61
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 2:
       Train:  size=251
       Test:   size=69
-      Assets: columns=[ 9 16 17]
+      Assets: columns=[6 8 9]
     Fold 3:
       Train:  size=256
       Test:   size=59
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     Fold 4:
       Train:  size=253
       Test:   size=61
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     Fold 5:
       Train:  size=251
       Test:   size=69
-      Assets: columns=[ 7 10 14]
+      Assets: columns=[ 7  8 16]
     >>> print(f"Path ids: {cv.get_path_ids()}")
-    [0 0 0 1 1 1]
+    Path ids: [0 0 0 1 1 1]
     """
 
     if TYPE_CHECKING:
@@ -204,7 +204,7 @@ class MultipleRandomizedCV:
         asset_subset_size: int,
         window_size: int | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         self.walk_forward = walk_forward
         self.n_subsamples = n_subsamples
         self.asset_subset_size = asset_subset_size
@@ -212,7 +212,7 @@ class MultipleRandomizedCV:
         self.random_state = random_state
 
     def split(
-        self, X: ArrayLike, y=None
+        self, X: ArrayLike, y: None = None
     ) -> Iterator[tuple[IntArray, IntArray, IntArray]]:
         """Generate indices to split data into training and test set.
 
@@ -221,7 +221,7 @@ class MultipleRandomizedCV:
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
         Yields
@@ -305,7 +305,12 @@ class MultipleRandomizedCV:
                     asset_indices[i, :],
                 )
 
-    def get_n_splits(self, X=None, y=None, groups=None) -> int:
+    def get_n_splits(
+        self,
+        X: ArrayLike | None = None,
+        y: None = None,
+        groups: None = None,
+    ) -> int:
         """Return the number of splitting iterations in the cross-validator.
 
         When combining a frequency-based walk-forward with `window_size`, the exact
@@ -320,10 +325,10 @@ class MultipleRandomizedCV:
             (i.e. `window_size` is `None` or the inner walk-forward has no frequency).
             Ignored after :meth:`split` has been called.
 
-        y : array-like of shape (n_observations, n_targets)
+        y : None
             Always ignored, exists for compatibility.
 
-        groups : array-like of shape (n_observations,)
+        groups : None
             Always ignored, exists for compatibility.
 
         Returns

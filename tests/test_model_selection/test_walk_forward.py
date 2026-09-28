@@ -995,3 +995,25 @@ def test_walk_forward_offset_with_date_based_training_window(X_medium):
         (dt.date(2020, 1, 2), dt.date(2022, 12, 1)),
         (dt.date(2022, 12, 2), dt.date(2022, 12, 28)),
     )
+
+
+def test_walk_forward_get_n_splits_offset_train_window_before_index(X_small):
+    cv = WalkForward(test_size=1, train_size=pd.DateOffset(years=100), freq="MS")
+    assert cv.get_n_splits(X_small) == 0
+
+
+def test_walk_forward_get_n_splits_offset_train_window_leaves_no_test_window(
+    X_small,
+):
+    # X_small covers 2022 (first observation 2022-01-03): the "MS" schedule has 11
+    # rebalancing dates (Feb..Dec). Shifting them back 6 months leaves the first
+    # valid training start at position 6, which is not before the last allowed
+    # start `n - test_size = 11 - 5 = 6`, so no test window fits.
+    cv = WalkForward(test_size=5, train_size=pd.DateOffset(months=6), freq="MS")
+    assert cv.get_n_splits(X_small) == 0
+    assert (
+        WalkForward(
+            test_size=4, train_size=pd.DateOffset(months=6), freq="MS"
+        ).get_n_splits(X_small)
+        == 1
+    )

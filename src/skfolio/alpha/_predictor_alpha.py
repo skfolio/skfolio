@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import sklearn as sk
 import sklearn.model_selection as sks
+import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
@@ -240,7 +241,9 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     >>> from skfolio.alpha import ForecastUnit, PredictorAlpha
     >>> from skfolio.descriptor import EWMomentum, BookToPrice, Reversal, Passthrough
     >>>
-    >>> X = make_synthetic_characteristics()
+    >>> X = make_synthetic_characteristics(
+    ...     n_assets=100, n_observations=504, n_industries=5, random_state=0
+    ... )
     >>> rng = np.random.default_rng(0)
     >>>
     >>> # Alpha models regress forward idiosyncratic returns. In production these
@@ -264,9 +267,10 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ...     third_axis_name="factors",
     ...     third_axis_labels=["market", "beta", "size"],
     ... )
+    AssetPanel(n_observations=504, n_assets=100, n_fields=25)
     >>>
     >>> alpha_model = PredictorAlpha(
-    ...     predictor=SGDRegressor(),
+    ...     predictor=SGDRegressor(random_state=0),
     ...     descriptors=[
     ...         ("momentum", EWMomentum()),
     ...         ("book_to_price", BookToPrice()),
@@ -279,12 +283,17 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ...     forecast_unit=ForecastUnit.IDIO_SHARPE,
     ... )
     >>>
-    >>> alpha_model.fit(X)
-    >>> print(alpha_model.alpha_)
+    >>> alpha_model.fit(X[:-5])
+    PredictorAlpha(...)
+    >>> # Preview five forecasts; NaN means no forecast is available.
+    >>> print(alpha_model.alpha_[:5])
+    [-0.000494... nan          0.000636...  -0.000259... nan]
     >>>
-    >>> # Online learning (requires predictor with partial_fit)
+    >>> # Update with the next five observations (requires partial_fit support)
     >>> alpha_model.partial_fit(X[-5:])
-    >>> print(alpha_model.alpha_)
+    PredictorAlpha(...)
+    >>> print(alpha_model.alpha_[:5])
+    [-0.00538... nan         0.0129...   0.00477...  nan]
 
     See Also
     --------
@@ -302,7 +311,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def __init__(
         self,
         *,
-        predictor: Any,
+        predictor: Any,  # noqa: ANN401  # duck-typed regressor
         descriptors: list[tuple[str, BaseDescriptor]],
         horizon: int = 1,
         signal_lag: int = 1,
@@ -318,7 +327,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         half_life: float = 20,
         cv: sks.BaseCrossValidator | int | None = None,
         n_jobs: int = 1,
-    ):
+    ) -> None:
         self.predictor = predictor
         self.descriptors = descriptors
         self.horizon = horizon
@@ -336,7 +345,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.cv = cv
         self.n_jobs = n_jobs
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Return metadata routing for descriptors and the predictor."""
         router = super().get_metadata_routing()
         router.add(
@@ -348,7 +357,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         )
         return router
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> PredictorAlpha:
         """Fit the alpha model from scratch (batch mode).
 
         This method works with any sklearn-compatible predictor. It resets all
@@ -377,7 +386,9 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._reset()
         return self._fit(X, y, method="fit", **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> PredictorAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> PredictorAlpha:
         """Incrementally fit the alpha model with new observations (online mode).
 
         This method supports streaming/online updates. It maintains internal
@@ -419,10 +430,10 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> PredictorAlpha:
         """Fit predictor and calibration state from one batch."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -618,7 +629,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         scores_flat: FloatArray,
         predictor_target_flat: FloatArray,
         train_mask: BoolArray,
-        routed_params,
+        routed_params: sku.Bunch,
     ) -> None:
         """Fit or update the user-provided predictor on new valid samples."""
         if not self._predictor_fitted:
@@ -644,7 +655,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         train_mask: BoolArray,
         idio_variances: FloatArray,
         method: str,
-        routed_params,
+        routed_params: sku.Bunch,
     ) -> FloatArray | None:
         """Predict uncalibrated alpha before the predictor consumes new targets."""
         if self._predictor_fitted:
@@ -814,6 +825,7 @@ class PredictorAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
 
     @property
     def _needs_idio_variances(self) -> bool:
+        """Whether calibration or the `IDIO_SHARPE` unit requires `idio_variances`."""
         return (
             self.calibrate_to_return_units
             or self.forecast_unit is ForecastUnit.IDIO_SHARPE

@@ -799,3 +799,38 @@ class TestShrinkage:
         )
         with pytest.raises(ValueError, match="shrinkage_bounds"):
             ms.fit_transform(data_with_groups)
+
+
+class TestShrinkageGroupBranches:
+    """Group-specific priors and the no-valid-asset early return."""
+
+    def test_large_group_uses_group_prior(self, data_with_groups):
+        # Groups of 3 assets each meet min_group_size=3 -> group-specific priors
+        ms_group = EWMarketBeta(
+            half_life=5, min_periods=5, shrinkage_group="industry", min_group_size=3
+        )
+        ms_global = EWMarketBeta(
+            half_life=5, min_periods=5, shrinkage_group="industry", min_group_size=5
+        )
+        betas_group = ms_group.fit_transform(data_with_groups)[-1]
+        betas_global = ms_global.fit_transform(data_with_groups)[-1]
+
+        assert not np.any(np.isnan(betas_group))
+        assert not np.allclose(betas_group, betas_global)
+
+    def test_no_valid_assets_returns_raw_betas(self, data_with_groups):
+        from skfolio.containers import MISSING_CATEGORY_CODE
+
+        X = data_with_groups.copy()
+        codes = np.full(X["market_cap"].shape, MISSING_CATEGORY_CODE, dtype=np.int32)
+        X["industry"] = FieldCategorical(
+            codes, levels=np.array(["Tech", "Finance", "Utilities"])
+        )
+
+        ms_raw = EWMarketBeta(half_life=5, min_periods=5)
+        ms_shrunk = EWMarketBeta(half_life=5, min_periods=5, shrinkage_group="industry")
+        raw = ms_raw.fit_transform(X)
+        shrunk = ms_shrunk.fit_transform(X)
+
+        # Without any valid group label, shrinkage is a no-op
+        np.testing.assert_allclose(shrunk, raw, equal_nan=True)

@@ -162,7 +162,7 @@ class HierarchicalClustering(skb.ClusterMixin, skb.BaseEstimator):
         self,
         max_clusters: int | None = None,
         linkage_method: LinkageMethod = LinkageMethod.WARD,
-    ):
+    ) -> None:
         self.max_clusters = max_clusters
         self.linkage_method = linkage_method
 

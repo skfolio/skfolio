@@ -109,7 +109,7 @@ def comparison_multi_portfolio():
 
 class TestCovarianceForecastEvaluation:
     def test_frozen(self, evaluation_integer_index):
-        with pytest.raises(AttributeError):
+        with pytest.raises(AttributeError, match="cannot assign to field 'horizon'"):
             evaluation_integer_index.horizon = 10
 
     def test_fields(self, evaluation_full):
@@ -345,7 +345,9 @@ class TestCovarianceForecastComparison:
             CovarianceForecastComparison([])
 
     def test_frozen(self, comparison):
-        with pytest.raises(AttributeError):
+        with pytest.raises(
+            AttributeError, match="cannot assign to field 'evaluations'"
+        ):
             comparison.evaluations = []
 
     def test_summary(self, comparison):
@@ -674,3 +676,22 @@ class TestBatchCovarianceForecastEvaluation:
         assert np.isfinite(ev.diagonal_calibration_ratio[0])
         assert np.all(np.isfinite(ev.portfolio_standardized_return[0]))
         assert np.all(np.isfinite(ev.portfolio_variance_qlike_loss[0]))
+
+
+def test_covariance_forecast_evaluation_skips_fully_inactive_test_window(X_array):
+    ev_clean = covariance_forecast_evaluation(
+        LedoitWolf(), X_array, train_size=100, test_size=5
+    )
+    X_nan = X_array.copy()
+    # Last test window (indices 495:500) has no finite observation for any asset.
+    X_nan[495:, :] = np.nan
+    ev = covariance_forecast_evaluation(
+        LedoitWolf(), X_nan, train_size=100, test_size=5
+    )
+    assert (
+        ev.mahalanobis_calibration_ratio.shape[0]
+        == ev_clean.mahalanobis_calibration_ratio.shape[0] - 1
+    )
+    np.testing.assert_allclose(
+        ev.mahalanobis_calibration_ratio, ev_clean.mahalanobis_calibration_ratio[:-1]
+    )

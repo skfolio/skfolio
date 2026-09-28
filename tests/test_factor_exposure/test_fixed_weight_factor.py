@@ -355,3 +355,44 @@ def test_characteristics_factor_model_accepts_one_date_update_after_initial_fit(
         )
 
     _assert_characteristics_factor_model_outputs_equal(batch, online)
+
+
+def test_fit_transform_resets_fitted_descriptors(simple_panel):
+    """Test that a second fit_transform starts from a clean descriptor state."""
+    factor = FixedWeightedFactor(
+        descriptors=[("market_cap", Passthrough("market_cap"))],
+        outlier_transformer="passthrough",
+        scoring_transformer="passthrough",
+    )
+    first = factor.fit_transform(simple_panel)
+    fitted_first = factor.descriptors_
+    second = factor.fit_transform(simple_panel)
+
+    np.testing.assert_allclose(first, second)
+    assert factor.descriptors_ is not fitted_first
+
+
+def test_named_descriptors_and_set_params(simple_panel):
+    """Test the descriptor composition accessors and nested parameter setting."""
+    factor = FixedWeightedFactor(
+        descriptors=[("mcap", Passthrough("market_cap"))],
+        outlier_transformer="passthrough",
+        scoring_transformer="passthrough",
+    )
+    assert isinstance(factor.named_descriptors["mcap"], Passthrough)
+    assert factor.named_descriptors["mcap"].field == "market_cap"
+
+    out = factor.set_params(mcap__field="book_equity", min_coverage=0.5)
+    assert out is factor
+    assert factor.min_coverage == 0.5
+    assert factor.get_params()["mcap__field"] == "book_equity"
+
+    result = factor.fit_transform(simple_panel)
+    np.testing.assert_allclose(result, simple_panel["book_equity"])
+
+
+def test_empty_descriptors_raise(simple_panel):
+    """Test that `descriptors` must be a non-empty list of (name, descriptor)."""
+    factor = FixedWeightedFactor(descriptors=[])
+    with pytest.raises(ValueError, match="Invalid 'descriptors' attribute"):
+        factor.fit_transform(simple_panel)

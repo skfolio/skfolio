@@ -15,6 +15,8 @@ class TestInverseVolatility:
     def test_fit(self, X, factors):
         model = InverseVolatility()
         model.fit(X)
+        assert model.n_features_in_ == X.shape[1]
+        np.testing.assert_array_equal(model.feature_names_in_, X.columns)
         np.testing.assert_almost_equal(sum(model.weights_), 1)
         w = 1 / np.std(np.asarray(X), axis=0)
         w /= sum(w)
@@ -33,12 +35,11 @@ class TestInverseVolatility:
                 )
             )
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
                 model.fit(X)
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 

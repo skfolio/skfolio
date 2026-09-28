@@ -809,3 +809,11 @@ class TestLateListingPSD:
         assert np.all(eigvals >= -1e-10), (
             f"Non-PD with half_life={half_life}: min eigval={eigvals.min():.2e}"
         )
+
+
+def test_ew_covariance_invalid_window_size(X_synth):
+    model = EWCovariance(window_size=0)
+    with pytest.raises(
+        ValueError, match="window_size must be a positive integer, got 0"
+    ):
+        model.fit(X_synth)

@@ -111,3 +111,20 @@ def test_plot_pdf(student_t_model):
     # Check that the figure has at least one trace and that the title is correct.
     assert len(fig.data) >= 1
     assert "Student's t PDF" in fig.layout.title.text
+
+
+@pytest.fixture
+def small_student_t_data():
+    return t.rvs(5, size=200, random_state=0).reshape(-1, 1)
+
+
+def test_fit_fixed_loc(small_student_t_data):
+    model = StudentT(loc=0.0).fit(small_student_t_data)
+    assert model.loc_ == 0.0
+    assert model.scale_ > 0
+
+
+def test_fit_fixed_scale(small_student_t_data):
+    model = StudentT(scale=1.0).fit(small_student_t_data)
+    assert model.scale_ == 1.0
+    assert np.isfinite(model.loc_)

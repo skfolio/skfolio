@@ -128,8 +128,8 @@ industry_factors = OneHotCategoricalFactors(category="industry", family="industr
 # which makes style exposures orthogonal to the industry factors (see
 # :ref:`Neutralization <factor_model_neutralization>`):
 from skfolio.descriptor import (
-    AssetsGrowthRate,
     AssetTurnover,
+    AssetsGrowthRate,
     BookLeverage,
     BookToPrice,
     CapexToAssetsChangeInIntensity,
@@ -137,15 +137,15 @@ from skfolio.descriptor import (
     CashFlowToPrice,
     DebtToAssets,
     DividendToPrice,
-    EarningsChangeToPrice,
-    EarningsToPrice,
-    EbitdaToEnterpriseValue,
     EWAmihudIlliquidity,
     EWMarketBeta,
     EWMomentum,
     EWResidualVolatility,
     EWShareTurnover,
     EWVolatility,
+    EarningsChangeToPrice,
+    EarningsToPrice,
+    EbitdaToEnterpriseValue,
     ForwardEarningsToPrice,
     GrossMargin,
     GrossProfitability,
@@ -568,7 +568,7 @@ evaluation = online_covariance_forecast_evaluation(
     model,
     X,
     params={"characteristics": panel},
-    warmup_size= 2 * year + month,
+    warmup_size=2 * year + month,
     test_size=week,
 )
 evaluation.summary()

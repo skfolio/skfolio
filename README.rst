@@ -12,7 +12,7 @@
 .. |Codecov| image:: https://codecov.io/gh/skfolio/skfolio/graph/badge.svg?token=KJ0SE4LHPV
    :target: https://codecov.io/gh/skfolio/skfolio
 
-.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg
+.. |PythonVersion| image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg
    :target: https://pypi.org/project/skfolio/
 
 .. |PyPi| image:: https://img.shields.io/pypi/v/skfolio
@@ -49,7 +49,6 @@
 .. |icon| image:: https://raw.githubusercontent.com/skfolio/skfolio/main/docs/_static/logo_animate.svg
     :width: 100
     :alt: skfolio documentation
-    :target: https://skfolio.org/
 
 
 .. skfolio-shared-introduction-start
@@ -875,23 +874,6 @@ Opinion Pooling
     )
 
     opinion_pooling.fit(X)
-
-Docker
-~~~~~~
-
-You can also spin up a reproducible JupyterLab environment using Docker:
-
-Build the image::
-
-    docker build -t skfolio-jupyterlab .
-
-Run the container::
-
-    docker run -p 8888:8888 -v <path-to-your-folder-containing-data>:/app/data -it skfolio-jupyterlab
-
-Browse:
-
-Open `localhost:8888/lab` and start using `skfolio`
 
 Recognition
 ~~~~~~~~~~~

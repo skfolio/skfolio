@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from typing import Any
+from typing import Any, SupportsIndex
 
 import numpy as np
 import pandas as pd
@@ -66,7 +66,7 @@ class Population(list):
             )
         return self.__class__(super().__add__(other))
 
-    def insert(self, index, item: BasePortfolio) -> None:
+    def insert(self, index: SupportsIndex, item: BasePortfolio) -> None:
         """Insert portfolio before index."""
         super().insert(index, self._validate_item(item))
 
@@ -645,7 +645,7 @@ class Population(list):
         measure_list: list[skt.Measure],
         tag_list: list[str] | None = None,
         n_bins: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> go.Figure:
         """Plot the population's distribution for each measure provided in the
         measure list.
@@ -744,10 +744,31 @@ class Population(list):
 
         Examples
         --------
+        >>> import numpy as np
+        >>> from skfolio import Population, Portfolio, RatioMeasure, RiskMeasure
+        >>> rng = np.random.default_rng(0)
+        >>> # Daily returns for two assets.
+        >>> X = rng.normal(0.0005, [0.02, 0.01], size=(252, 2))
+        >>> population = Population(
+        ...     [
+        ...         Portfolio(X, weights=[0.6, 0.4], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.7, 0.3], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.8, 0.2], tag="Asset 1 tilt"),
+        ...         Portfolio(X, weights=[0.4, 0.6], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.3, 0.7], tag="Asset 2 tilt"),
+        ...         Portfolio(X, weights=[0.2, 0.8], tag="Asset 2 tilt"),
+        ...     ]
+        ... )
+
+        Plot all portfolios in one box:
+
         >>> fig = population.boxplot_measure(measure=RiskMeasure.STANDARD_DEVIATION)
-        >>> fig = population.plot_measure_box(
+
+        Plot one box per tag:
+
+        >>> fig = population.boxplot_measure(
         ...     measure=RatioMeasure.SHARPE_RATIO,
-        ...     tag_list=["Benchmark", "Risk Parity Model"]
+        ...     tag_list=["Asset 1 tilt", "Asset 2 tilt"],
         ... )
         """
         if tag_list is None:
@@ -967,7 +988,7 @@ class Population(list):
         hover_measures: list[skt.Measure] | None = None,
         show_fronts: bool = False,
         color_scale: skt.Measure | str | None = None,
-        title="Portfolios",
+        title: str = "Portfolios",
     ) -> go.Figure:
         """Plot the 2D (or 3D) scatter points (or surface) of a given set of
         measures for each portfolio in the population.
@@ -1075,8 +1096,8 @@ class Population(list):
                                 str(e)
                                 + ": %{"
                                 + v
-                                + ":"
-                                + (",.3%" if not e.is_ratio else None)
+                                # Use Plotly's default format for dimensionless ratios.
+                                + ("" if e.is_ratio else ":,.3%")
                                 + "}"
                                 for e, v in [(x, "x"), (y, "y"), (z, "z")]
                             ]
@@ -1269,6 +1290,7 @@ class Population(list):
 
 
 def _ptf_name_with_tag(portfolio: BasePortfolio) -> str:
+    """Return the portfolio name suffixed with `_<tag>` when the tag is not None."""
     if portfolio.tag is None:
         return portfolio.name
     return f"{portfolio.name}_{portfolio.tag}"

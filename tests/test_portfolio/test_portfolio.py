@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gc
+import math
 import pickle
 import timeit
 import tracemalloc
@@ -9,10 +10,13 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.pipeline import Pipeline
 
 import skfolio.measures as mt
 from skfolio import (
+    BasePortfolio,
     ExtraRiskMeasure,
+    FailedPortfolio,
     MultiPeriodPortfolio,
     PerfMeasure,
     Portfolio,
@@ -20,7 +24,9 @@ from skfolio import (
     RiskMeasure,
 )
 from skfolio.datasets import load_sp500_dataset
+from skfolio.optimization import MeanRisk
 from skfolio.portfolio._base import _MEASURES
+from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -358,6 +364,10 @@ def test_portfolio_magic_methods(X, weights):
     assert np.array_equal(ptf.weights, np.round(ptf_1.weights, 2))
     ptf = ptf_1 // 2
     assert np.array_equal(ptf.weights, ptf_1.weights // 2)
+    ptf = math.floor(ptf_1)
+    assert np.array_equal(ptf.weights, np.floor(ptf_1.weights))
+    ptf = math.trunc(ptf_1)
+    assert np.array_equal(ptf.weights, np.trunc(ptf_1.weights))
     assert ptf_1 == ptf_1
     assert ptf_1 != ptf_2
     assert (ptf_1 > ptf_2) is ptf_1.dominates(ptf_2)
@@ -421,6 +431,28 @@ def test_portfolio_diversification(portfolio):
     np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
 
 
+@pytest.mark.parametrize(
+    "dtype", ["Float64", {"A": "Float64"}], ids=["nullable", "mixed"]
+)
+@pytest.mark.parametrize("with_missing", [False, True])
+def test_nullable_portfolio_diversification(dtype, with_missing):
+    ordinary = pd.DataFrame(
+        [[0.01, 0.02], [0.03, 0.04], [0.05, 0.02]], columns=["A", "B"]
+    )
+    if with_missing:
+        ordinary.iloc[1, 0] = np.nan
+    nullable = ordinary.astype(dtype)
+    original = nullable.copy(deep=True)
+    weights = [0.5, 0.5]
+
+    expected = Portfolio(X=ordinary, weights=weights)
+    portfolio = Portfolio(X=nullable, weights=weights)
+
+    np.testing.assert_allclose(portfolio.diversification, expected.diversification)
+    assert portfolio.X is nullable
+    pd.testing.assert_frame_equal(nullable, original)
+
+
 def test_portfolio_slots(portfolio):
     for attr in portfolio._slots():
         if attr[0] == "_":
@@ -432,7 +464,7 @@ def test_portfolio_slots(portfolio):
 
 
 def test_copy(portfolio):
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute '_assets_names'"):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
@@ -535,7 +567,10 @@ def test_portfolio_variance_from_assets(X, weights):
 def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         portfolio.plot_cumulative_returns(log_scale=True)
 
     portfolio.compounded = True
@@ -599,6 +634,76 @@ def test_sample_weight_error(portfolio, sample_weight):
         portfolio.sample_weight = [[1]]
 
 
+@pytest.mark.parametrize(
+    "sample_weight",
+    [
+        pytest.param(np.array([0.2, 0.3, 0.5]), id="array"),
+        pytest.param([0.2, 0.3, 0.5], id="list"),
+    ],
+)
+def test_constructor_sample_weight(sample_weight):
+    """Apply valid sample weights during portfolio construction."""
+    returns = np.array([0.018, 0.008, 0.032])
+    expected_mean = np.average(returns, weights=sample_weight)
+    expected_variance = np.cov(returns, aweights=sample_weight).item()
+
+    base_portfolio = BasePortfolio(
+        returns=returns,
+        observations=np.arange(returns.size, dtype=float),
+        sample_weight=sample_weight,
+    )
+    portfolio = Portfolio(
+        X=returns[:, np.newaxis],
+        weights=np.array([1.0]),
+        sample_weight=sample_weight,
+    )
+
+    np.testing.assert_array_equal(base_portfolio.sample_weight, sample_weight)
+    np.testing.assert_array_equal(portfolio.sample_weight, sample_weight)
+    assert base_portfolio.mean == pytest.approx(expected_mean)
+    assert portfolio.mean == pytest.approx(expected_mean)
+    assert base_portfolio.variance == pytest.approx(expected_variance)
+    assert portfolio.variance == pytest.approx(expected_variance)
+
+
+@pytest.mark.parametrize(
+    ("sample_weight", "match"),
+    [
+        pytest.param(
+            np.array([0.5, 0.5]),
+            "sample_weight must have the same length as",
+            id="wrong-length",
+        ),
+        pytest.param(
+            np.array([[0.2, 0.3, 0.5]]),
+            "sample_weight must be a 1D array",
+            id="wrong-dimension",
+        ),
+        pytest.param(
+            np.ones(3),
+            "sample_weight must sum to one",
+            id="wrong-sum",
+        ),
+    ],
+)
+def test_constructor_sample_weight_error(sample_weight: np.ndarray, match: str):
+    """Reject invalid sample weights at the shared constructor boundary."""
+    returns = np.array([0.018, 0.008, 0.032])
+
+    with pytest.raises(ValueError, match=match):
+        BasePortfolio(
+            returns=returns,
+            observations=np.arange(returns.size, dtype=float),
+            sample_weight=sample_weight,
+        )
+    with pytest.raises(ValueError, match=match):
+        Portfolio(
+            X=returns[:, np.newaxis],
+            weights=np.array([1.0]),
+            sample_weight=sample_weight,
+        )
+
+
 def test_weight_dict(X, weights):
     portfolio = Portfolio(X=X, weights=weights, previous_weights=np.arange(20))
     np.testing.assert_almost_equal(
@@ -650,6 +755,184 @@ def test_portfolio_nan_handling(X, weights):
     portfolio_nan = Portfolio(X=X_nan_zero_only, weights=weights)
     portfolio_ref = Portfolio(X=X, weights=weights)
     np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)
+
+
+TREEMAP_GROUPS = {
+    "a": ["Equity", "US"],
+    "b": ["Equity", "EU"],
+    "c": ["Bond", "US"],
+    "d": ["Bond", "EU"],
+}
+
+
+@pytest.fixture
+def X_treemap() -> pd.DataFrame:
+    rng = np.random.default_rng(42)
+    return pd.DataFrame(rng.normal(0.001, 0.02, (60, 4)), columns=["a", "b", "c", "d"])
+
+
+def _get_treemap_hierarchy(fig) -> list[tuple[str, str]]:
+    """Return the (label, parent label) pairs of the treemap nodes."""
+    trace = fig.data[0]
+    label_by_id = dict(zip(trace.ids, trace.labels, strict=True))
+    return [
+        (label, label_by_id.get(parent, ""))
+        for label, parent in zip(trace.labels, trace.parents, strict=True)
+    ]
+
+
+def _get_treemap_node(fig, name: str) -> dict:
+    """Return the value, net weight and color of the treemap node `name`."""
+    trace = fig.data[0]
+    i = [node_name for node_name, _ in trace.customdata].index(name)
+    return {
+        "value": trace.values[i],
+        "net_weight": trace.customdata[i][1],
+        "color": trace.marker.colors[i],
+    }
+
+
+def _parse_rgb(color: str) -> tuple[float, ...]:
+    return tuple(float(c) for c in color.removeprefix("rgb(")[:-1].split(","))
+
+
+def test_plot_composition_treemap(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    trace = fig.data[0]
+    assert trace.branchvalues == "total"
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  70.0%", "ptf  100.0%"),
+        ("US  40.0%", "Equity  70.0%"),
+        ("a", "US  40.0%"),
+        ("EU  30.0%", "Equity  70.0%"),
+        ("b", "EU  30.0%"),
+        ("Bond  30.0%", "ptf  100.0%"),
+        ("US  20.0%", "Bond  30.0%"),
+        ("c", "US  20.0%"),
+        ("EU  10.0%", "Bond  30.0%"),
+        ("d", "EU  10.0%"),
+    ]
+    np.testing.assert_almost_equal(
+        trace.values, [1.0, 0.7, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]
+    )
+    assert fig.layout.title.text == "Portfolio Composition"
+    assert "Gross Weight" not in trace.hovertemplate
+
+
+def test_plot_composition_treemap_group_formats(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    fig_dict = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"], ["US", "EU", "US", "EU"]]
+    )
+    assert _get_treemap_hierarchy(fig_dict) == _get_treemap_hierarchy(fig_array)
+
+    fig_scalar = ptf.plot_composition_treemap(
+        groups={"a": "Equity", "b": "Equity", "c": "Bond", "d": "Bond"}
+    )
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"]]
+    )
+    assert _get_treemap_hierarchy(fig_scalar) == _get_treemap_hierarchy(fig_array)
+
+
+def test_plot_composition_treemap_without_groups(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap()
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("a", "ptf  100.0%"),
+        ("b", "ptf  100.0%"),
+        ("c", "ptf  100.0%"),
+        ("d", "ptf  100.0%"),
+    ]
+
+
+def test_plot_composition_treemap_short_positions(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.8, 0.5, -0.2, -0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+
+    assert _get_treemap_node(fig, "ptf")["value"] == pytest.approx(1.6)
+
+    short = _get_treemap_node(fig, "c")
+    assert short["value"] == pytest.approx(0.2)
+    assert short["net_weight"] == pytest.approx(-0.2)
+
+    bond = _get_treemap_node(fig, "Bond")
+    assert bond["value"] == pytest.approx(0.3)
+    assert bond["net_weight"] == pytest.approx(-0.3)
+    assert ("Bond  -30.0%", "ptf  100.0%") in _get_treemap_hierarchy(fig)
+
+    long_red, _, long_blue = _parse_rgb(_get_treemap_node(fig, "a")["color"])
+    short_red, _, short_blue = _parse_rgb(short["color"])
+    assert long_blue > long_red
+    assert short_red > short_blue
+
+    assert (
+        "Long 130.0% | Short -30.0% | Net 100.0% | Gross 160.0%"
+        in fig.layout.title.text
+    )
+    assert "Gross Weight" in fig.data[0].hovertemplate
+
+
+def test_plot_composition_treemap_ignores_zero_weights_and_extra_assets(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.6, 0.4, 0.0, 0.0], name="ptf")
+    groups = {"a": ["Equity", "US"], "b": ["Equity", "EU"], "e": ["Cash", "US"]}
+    fig = ptf.plot_composition_treemap(groups=groups)
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  100.0%", "ptf  100.0%"),
+        ("US  60.0%", "Equity  100.0%"),
+        ("a", "US  60.0%"),
+        ("EU  40.0%", "Equity  100.0%"),
+        ("b", "EU  40.0%"),
+    ]
+
+
+def test_plot_composition_treemap_optimization_groups(X_treemap):
+    model = MeanRisk(groups=TREEMAP_GROUPS, linear_constraints=["Equity <= 0.6"])
+    ptf = model.fit_predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=model.groups)
+    assert _get_treemap_node(fig, "Equity")["net_weight"] <= 0.6 + 1e-6
+
+
+def test_plot_composition_treemap_pre_selection(X_treemap):
+    pipe = Pipeline(
+        [("pre_selection", SelectKExtremes(k=2)), ("optimization", MeanRisk())]
+    ).set_output(transform="pandas")
+    pipe.fit(X_treemap)
+    ptf = pipe.predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    leaves = {label for label in fig.data[0].labels if label in TREEMAP_GROUPS}
+    assert leaves == set(ptf.nonzero_assets)
+
+
+def test_plot_composition_treemap_failed_portfolio(X_treemap):
+    fig = FailedPortfolio(X=X_treemap).plot_composition_treemap(groups=TREEMAP_GROUPS)
+    assert not fig.data[0].labels
+
+
+@pytest.mark.parametrize(
+    "groups,match",
+    [
+        (
+            {"a": ["Equity"], "b": ["Equity"], "c": ["Bond"]},
+            r"missing from `groups`: \['d'\]",
+        ),
+        (
+            {"a": ["Equity", "US"], "b": ["Equity"], "c": ["Bond"], "d": ["Bond"]},
+            "same number of group levels",
+        ),
+        ([["Equity", "Equity", "Bond"]], "array-like of shape"),
+        (["Equity", "Equity", "Bond", "Bond"], "array-like of shape"),
+    ],
+)
+def test_plot_composition_treemap_errors(X_treemap, groups, match):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    with pytest.raises(ValueError, match=match):
+        ptf.plot_composition_treemap(groups=groups)
 
 
 class TestPortfolioFactorAttribution:
@@ -768,6 +1051,28 @@ class TestPortfolioFactorAttribution:
 
     # --- realized_attribution ---
 
+    def test_predicted_attribution_on_failed_portfolio_raises(
+        self, factor_model_and_portfolio
+    ):
+        fm, ptf = factor_model_and_portfolio
+        failed = FailedPortfolio(X=ptf.X)
+        with pytest.raises(
+            ValueError,
+            match=r"Cannot compute factor attribution on a failed portfolio\.",
+        ):
+            failed.predicted_attribution(fm)
+
+    def test_realized_attribution_observations_out_of_order_raises(
+        self, factor_model_and_portfolio
+    ):
+        fm, ptf = factor_model_and_portfolio
+        X_reversed = pd.DataFrame(
+            np.asarray(ptf.X), columns=ptf.assets, index=fm.observations[::-1]
+        )
+        ptf_reversed = Portfolio(X=X_reversed, weights=ptf.weights)
+        with pytest.raises(ValueError, match="duplicate-free subset"):
+            ptf_reversed.realized_attribution(fm)
+
     def test_realized_attribution_returns_attribution(self, factor_model_and_portfolio):
         from skfolio.attribution import Attribution
 
@@ -819,8 +1124,9 @@ class TestPortfolioFactorAttribution:
         with pytest.raises(ValueError, match="inside the overlapping"):
             ptf.realized_attribution(fm_gap)
 
+    @pytest.mark.parametrize("weight_drift", [False, True])
     def test_realized_attribution_asset_not_in_model_raises(
-        self, factor_model_and_portfolio
+        self, factor_model_and_portfolio, weight_drift
     ):
         fm, _ = factor_model_and_portfolio
         X_bad = pd.DataFrame(
@@ -828,7 +1134,9 @@ class TestPortfolioFactorAttribution:
             columns=["UNKNOWN_1", "UNKNOWN_2"],
             index=fm.observations,
         )
-        ptf_bad = Portfolio(X=X_bad, weights=np.array([0.5, 0.5]))
+        ptf_bad = Portfolio(
+            X=X_bad, weights=np.array([0.5, 0.5]), weight_drift=weight_drift
+        )
         with pytest.raises(ValueError, match="not in the factor model"):
             ptf_bad.realized_attribution(fm)
 
@@ -861,6 +1169,35 @@ class TestPortfolioFactorAttribution:
         np.testing.assert_almost_equal(
             result.total.vol, result_from_factor_model.total.vol
         )
+
+    def test_drifted_realized_attribution_uses_held_weights(
+        self, factor_model_and_portfolio
+    ):
+        factor_model, ptf = factor_model_and_portfolio
+        drifted = Portfolio(X=ptf.X, weights=ptf.weights, weight_drift=True)
+        asset_returns = np.asarray(ptf.X)
+        values = np.cumprod(1 + asset_returns, axis=0) * ptf.weights
+        wealth = values.sum(axis=1)
+        expected_weights = (
+            np.vstack((ptf.weights, values[:-1])) / np.r_[1, wealth[:-1]][:, None]
+        )
+
+        result = drifted.realized_attribution(factor_model)
+        expected = factor_model.realized_attribution(
+            weights=expected_weights,
+            portfolio_returns=drifted.returns,
+            annualization_factor=drifted.annualization_factor,
+            compute_uncertainty=True,
+        )
+        np.testing.assert_allclose(result.total.vol, expected.total.vol)
+        np.testing.assert_allclose(result.total.mu_contrib, expected.total.mu_contrib)
+
+        predicted = drifted.predicted_attribution(factor_model)
+        target_based = factor_model.predicted_attribution(
+            weights=drifted.weights,
+            annualization_factor=drifted.annualization_factor,
+        )
+        np.testing.assert_allclose(predicted.total.vol, target_based.total.vol)
 
     def test_realized_attribution_compute_uncertainty_false_no_regression_inputs(
         self, factor_model_and_portfolio
@@ -994,6 +1331,210 @@ class TestPortfolioNaNReturns:
 
     def test_original_X_preserved_with_nan(self):
         rets = np.array([[0.01, np.nan], [0.02, np.nan]])
+        original = rets.copy()
         weights = np.array([1.0, 0.0])
         ptf = Portfolio(X=rets, weights=weights)
-        np.testing.assert_array_equal(np.asarray(ptf.X), rets)
+        assert ptf.X is rets
+        np.testing.assert_array_equal(rets, original)
+
+    def test_nullable_float_returns_match_numpy_nan(self):
+        """Treat nullable floating returns like ordinary floating returns."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        columns = ["left", "right"]
+        ordinary = pd.DataFrame(
+            [[0.01, 0.0], [np.nan, 0.01], [0.02, 0.02]],
+            index=observations,
+            columns=columns,
+        )
+        nullable = ordinary.astype("Float64")
+        weights = np.array([0.5, 0.5])
+        # The missing left return contributes zero without changing either label axis.
+        expected = np.array([0.005, 0.005, 0.02])
+
+        ordinary_portfolio = Portfolio(X=ordinary, weights=weights)
+        nullable_portfolio = Portfolio(X=nullable, weights=weights)
+
+        np.testing.assert_allclose(ordinary_portfolio.returns, expected)
+        np.testing.assert_allclose(nullable_portfolio.returns, expected)
+        assert nullable_portfolio.assets.tolist() == columns
+        np.testing.assert_array_equal(nullable_portfolio.observations, observations)
+        assert nullable_portfolio.X is nullable
+
+    def test_mixed_nullable_float_returns_match_float(self):
+        """Handle nullable and NumPy-backed floating columns together."""
+        observations = pd.date_range("2024-01-01", periods=3)
+        X = pd.DataFrame(
+            {
+                "left": pd.Series(
+                    [0.01, pd.NA, 0.02], index=observations, dtype="Float64"
+                ),
+                "right": pd.Series(
+                    [0.0, 0.01, 0.02], index=observations, dtype="float64"
+                ),
+            }
+        )
+
+        portfolio = Portfolio(X=X, weights=np.array([0.5, 0.5]))
+
+        np.testing.assert_allclose(portfolio.returns, [0.005, 0.005, 0.02])
+
+
+class TestPortfolioValidation:
+    def test_non_2d_X_with_weights_raises(self):
+        # With weights, the returns conversion rejects a 1D input first.
+        with pytest.raises(ValueError, match="Expected 2D array, got 1D array"):
+            Portfolio(X=np.arange(5.0), weights=np.array([1.0]))
+
+    def test_non_2d_X_without_weights_raises(self):
+        with pytest.raises(ValueError, match="`X` must be a 2D array-like"):
+            Portfolio(X=np.arange(5.0), weights=None)
+
+    def test_unexpected_keyword_argument_raises(self, X, weights):
+        with pytest.raises(
+            TypeError,
+            match=r"Portfolio.__init__\(\) got an unexpected keyword argument 'foo'",
+        ):
+            Portfolio(X=X, weights=weights, foo=1)
+
+    def test_management_fees_from_dict(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights, management_fees={"AAPL": 0.001})
+        expected = np.zeros(X.shape[1])
+        expected[list(X.columns).index("AAPL")] = 0.001
+        np.testing.assert_array_equal(portfolio.management_fees, expected)
+
+    def test_repr_uses_name(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights, name="my_ptf")
+        assert repr(portfolio) == "<Portfolio my_ptf>"
+
+    def test_get_weight_unknown_asset_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(IndexError, match="is not a valid asset name"):
+            portfolio.get_weight("NOT_AN_ASSET")
+
+
+class TestPortfolioComparison:
+    def test_gt_with_non_portfolio_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(TypeError, match="`>` not supported between instances"):
+            _ = portfolio > 1
+
+    def test_ge_with_non_portfolio_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(TypeError, match="`>=` not supported between instances"):
+            _ = portfolio >= 1
+
+    def test_ge_is_eq_or_gt(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        other = Portfolio(X=X, weights=weights * 0.5)
+        assert portfolio >= Portfolio(X=X, weights=weights)
+        assert (portfolio >= other) is (
+            portfolio == other or portfolio.dominates(other)
+        )
+
+
+class TestPortfolioArithmeticErrors:
+    @pytest.fixture
+    def portfolio(self, X, weights):
+        return Portfolio(X=X, weights=weights)
+
+    def test_add_non_portfolio_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Cannot add a Portfolio with an object of type"
+        ):
+            _ = portfolio + 1
+
+    def test_add_portfolios_with_different_parameters_raises(self, portfolio, X):
+        other = Portfolio(X=X, weights=portfolio.weights, risk_free_rate=0.01)
+        with pytest.raises(
+            ValueError,
+            match="Cannot combine two Portfolios with different `risk_free_rate`",
+        ):
+            _ = portfolio + other
+
+    def test_sub_non_portfolio_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Cannot add a Portfolio with an object of type"
+        ):
+            _ = portfolio - 1
+
+    def test_sub_portfolios_with_different_parameters_raises(self, portfolio, X):
+        other = Portfolio(X=X, weights=portfolio.weights, risk_free_rate=0.01)
+        with pytest.raises(
+            ValueError,
+            match="Cannot combine two Portfolios with different `risk_free_rate`",
+        ):
+            _ = portfolio - other
+
+    def test_mul_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be multiplied by a number"
+        ):
+            _ = portfolio * "2"
+
+    def test_floordiv_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be floor divided by a number"
+        ):
+            _ = portfolio // "2"
+
+    def test_truediv_non_number_raises(self, portfolio):
+        with pytest.raises(
+            TypeError, match="Portfolio can only be divided by a number"
+        ):
+            _ = portfolio / "2"
+
+
+class TestPortfolioMeasures:
+    def test_fitness_measures_setter_validation(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a non-empty list of Measure"
+        ):
+            portfolio.fitness_measures = []
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a non-empty list of Measure"
+        ):
+            portfolio.fitness_measures = PerfMeasure.MEAN
+        with pytest.raises(
+            TypeError, match="`fitness_measures` must be a list of Measure"
+        ):
+            portfolio.fitness_measures = [PerfMeasure.MEAN, "variance"]
+
+    def test_measures_df(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        df = portfolio.measures_df
+        expected_index = [
+            m.value for enum in (PerfMeasure, RiskMeasure, RatioMeasure) for m in enum
+        ]
+        assert list(df.columns) == ["measures"]
+        assert list(df.index) == expected_index
+        assert df.loc["mean", "measures"] == portfolio.mean
+
+    def test_get_measure_with_non_measure_raises(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        with pytest.raises(ValueError, match=r"mean is not a Measure\."):
+            portfolio.get_measure("mean")
+
+    def test_get_measure_failure_warns_and_returns_nan(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        portfolio.value_at_risk_beta = "not a number"
+        with pytest.warns(
+            UserWarning, match="Unable to calculate the portfolio 'value_at_risk'"
+        ):
+            value = portfolio.get_measure(ExtraRiskMeasure.VALUE_AT_RISK)
+        assert np.isnan(value)
+
+    def test_plot_returns_distribution_with_percentile_cutoff(self, X, weights):
+        portfolio = Portfolio(X=X, weights=weights)
+        fig = portfolio.plot_returns_distribution(percentile_cutoff=1.0)
+        x = np.asarray(fig.data[0].x)
+        assert x.min() >= np.percentile(portfolio.returns, 1.0) - 1e-12
+        assert x.max() <= np.percentile(portfolio.returns, 99.0) + 1e-12
+
+
+def test_failed_portfolio_floor_and_trunc_are_copies(X):
+    # A failed portfolio has no weights to round, so both return a plain copy.
+    failed = FailedPortfolio(X=X)
+    for result in (math.floor(failed), math.trunc(failed)):
+        assert isinstance(result, FailedPortfolio)
+        assert result is not failed

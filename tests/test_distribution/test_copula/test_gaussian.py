@@ -332,3 +332,14 @@ def test_fitted_repr(fitted_model):
     assert param_str in rep, (
         f"fitted_repr does not contain formatted param: {param_str}"
     )
+
+
+def test_gaussian_copula_fit_mle_optimization_failure(random_data, monkeypatch):
+    from skfolio.distribution.copula import _gaussian
+
+    def failing_minimize_scalar(*args, **kwargs):
+        return _gaussian.so.OptimizeResult(success=False, message="boom", x=0.0)
+
+    monkeypatch.setattr(_gaussian.so, "minimize_scalar", failing_minimize_scalar)
+    with pytest.raises(RuntimeError, match="Optimization failed: boom"):
+        GaussianCopula(itau=False).fit(random_data)

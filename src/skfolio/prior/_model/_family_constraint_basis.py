@@ -95,7 +95,7 @@ class FamilyConstraintBasis:
     family_constraints: tuple[FamilyConstraint, ...]
     constraint_ratios: FloatArray
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         _validate_positive_integer(self.n_full_factors, "n_full_factors")
 
         family_constraints = self.family_constraints
@@ -127,7 +127,7 @@ class FamilyConstraintBasis:
         if not np.all(np.isfinite(constraint_ratios)):
             raise ValueError("constraint_ratios must contain only finite values.")
 
-    def __getitem__(self, observation_key) -> FamilyConstraintBasis:
+    def __getitem__(self, observation_key: int | slice) -> FamilyConstraintBasis:
         """Return a basis sliced along the observation axis."""
         if isinstance(observation_key, tuple):
             raise TypeError(
@@ -764,7 +764,7 @@ class FamilyConstraint:
     full_factor_indices: IntArray
     dropped_index_in_family: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         full_factor_indices = self.full_factor_indices
         if full_factor_indices.ndim != 1:
             raise ValueError("full_factor_indices must be a 1D array.")
@@ -958,12 +958,6 @@ def compute_family_constraint_basis(
 
     if not parsed_constraints:
         raise ValueError("constrained_families must contain at least one family.")
-
-    if n_factors <= len(parsed_constraints):
-        raise ValueError(
-            f"n_factors={n_factors} must exceed number of "
-            f"constraints={len(parsed_constraints)}."
-        )
 
     benchmark_weight_sums = benchmark_weights.sum(axis=1, keepdims=True)
     if np.any(benchmark_weight_sums <= 0):

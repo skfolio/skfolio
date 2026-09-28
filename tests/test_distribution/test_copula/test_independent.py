@@ -250,3 +250,8 @@ def test_upper_tail_dependence(fitted_model):
 def test_fitted_repr(fitted_model):
     rep = fitted_model.fitted_repr
     assert "IndependentCopula" in rep, "fitted_repr does not contain class name"
+
+
+def test_independent_tail_dependence(fitted_model):
+    assert fitted_model.lower_tail_dependence == 0
+    assert fitted_model.upper_tail_dependence == 0

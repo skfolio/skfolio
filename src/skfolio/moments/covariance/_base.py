@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -93,17 +94,35 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         self.assume_centered = assume_centered
         self.nearest = nearest
         self.higham = higham
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params):
-        pass
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BaseCovariance:
+        """Fit the covariance estimator.
 
-    def score(self, X_test: ArrayLike, y=None) -> float:
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators, if any.
+
+        Returns
+        -------
+        self : BaseCovariance
+            Fitted estimator.
+        """
+        ...
+
+    def score(self, X_test: ArrayLike, y: None = None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
 
         Evaluates how well the fitted covariance matrix explains new observations,
@@ -149,13 +168,16 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance, LedoitWolf
-        >>> X_train = np.random.randn(100, 5)
-        >>> X_test = np.random.randn(50, 5)
+        >>> rng = np.random.default_rng(0)
+        >>> X_train = rng.standard_normal((100, 5))
+        >>> X_test = rng.standard_normal((50, 5))
         >>> emp = EmpiricalCovariance().fit(X_train)
         >>> lw = LedoitWolf().fit(X_train)
         >>> # Compare models on held-out data
-        >>> print(f"Empirical: {emp.score(X_test):.2f}")
-        >>> print(f"LedoitWolf: {lw.score(X_test):.2f}")
+        >>> print("Empirical:", emp.score(X_test))
+        Empirical: -6.97...
+        >>> print("LedoitWolf:", lw.score(X_test))
+        LedoitWolf: -6.88...
         """
         skv.check_is_fitted(self, "covariance_")
         X_test = skv.validate_data(
@@ -238,12 +260,15 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         --------
         >>> import numpy as np
         >>> from skfolio.moments import EmpiricalCovariance
-        >>> X = np.random.randn(100, 3)
+        >>> rng = np.random.default_rng(0)
+        >>> X = rng.standard_normal((100, 3))
         >>> model = EmpiricalCovariance()
         >>> model.fit(X)
+        EmpiricalCovariance()
         >>> distances = model.mahalanobis(X)
-        >>> # Distances follow approximately chi-squared distribution with n_assets DoF
-        >>> print(f"Mean distance: {distances.mean():.2f}, Expected: {3:.2f}")
+        >>> # The mean squared distance should be close to the number of assets (3).
+        >>> print(distances.mean())
+        2.9...
         """
         skv.check_is_fitted(self, "covariance_")
 

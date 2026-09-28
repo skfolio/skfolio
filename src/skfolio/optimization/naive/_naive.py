@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -101,7 +103,7 @@ class InverseVolatility(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -110,8 +112,16 @@ class InverseVolatility(BaseOptimization):
         )
         self.prior_estimator = prior_estimator
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
@@ -119,7 +129,7 @@ class InverseVolatility(BaseOptimization):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> InverseVolatility:
         """Fit the Inverse Volatility estimator.
 
@@ -145,6 +155,8 @@ class InverseVolatility(BaseOptimization):
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
+
+        _ = skv.validate_data(self, X, skip_check_array=True)
 
         # fitting prior estimator
         self.prior_estimator_ = check_estimator(
@@ -227,7 +239,7 @@ class EqualWeighted(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -235,7 +247,7 @@ class EqualWeighted(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y=None) -> EqualWeighted:
+    def fit(self, X: ArrayLike, y: None = None) -> EqualWeighted:
         """Fit the Equal Weighted estimator.
 
         Parameters
@@ -325,7 +337,7 @@ class Random(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -333,7 +345,7 @@ class Random(BaseOptimization):
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> Random:
         """Fit the Random Weighted estimator.
 
         Parameters

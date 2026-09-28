@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -334,20 +336,24 @@ class DistributionallyRobustCVaR(ConvexOptimization):
     >>> from skfolio.optimization import DistributionallyRobustCVaR
     >>> from skfolio.preprocessing import prices_to_returns
     >>>
-    >>> # Load recent historical prices and convert them to returns
-    >>> prices = load_sp500_dataset()["2020":]
-    >>> X = prices_to_returns(prices)
+    >>> # Use the most recent 252 daily returns
+    >>> prices = load_sp500_dataset()
+    >>> X = prices_to_returns(prices).tail(252)
     >>>
     >>> # Distributionally robust CVaR optimization
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
     >>> model.fit(X)
+    DistributionallyRobustCVaR(wasserstein_ball_radius=0.01)
     >>> print(model.weights_)
+    [0.     0.     0.0706 ... 0.0706 0.0706 0.0706]
     >>>
     >>> # Increasing the radius increases the uncertainty around the distribution,
     >>> # which brings the weights closer to equal weighting
     >>> model = DistributionallyRobustCVaR(wasserstein_ball_radius=0.10)
     >>> model.fit(X)
+    DistributionallyRobustCVaR(wasserstein_ball_radius=0.1)
     >>> print(model.weights_)
+    [0.05 0.05 0.05 ... 0.05 0.05 0.05]
 
     References
     ----------
@@ -389,7 +395,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=RiskMeasure.CVAR,
             prior_estimator=prior_estimator,
@@ -423,7 +429,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> DistributionallyRobustCVaR:
         """Fit the Distributionally Robust CVaR Optimization estimator.
 
@@ -514,12 +520,10 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         ]
 
         for i in range(n_observations):
-            # noinspection PyTypeChecker
             constraints.append(
                 cp.norm(-u[i] - a1 * w, np.inf) * self._scale_constraints
                 <= lb * self._scale_constraints
             )
-            # noinspection PyTypeChecker
             constraints.append(
                 cp.norm(-v[i] - a2 * w, np.inf) * self._scale_constraints
                 <= lb * self._scale_constraints

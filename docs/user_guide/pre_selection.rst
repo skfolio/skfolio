@@ -76,4 +76,3 @@ Pre-Selection transformers are fully compatible with :class:`sklearn.pipeline.Pi
 
     portfolio = pipe.predict(X_test)
     print(portfolio.annualized_sharpe_ratio)
-

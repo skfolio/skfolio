@@ -686,6 +686,7 @@ Enum
     :toctree: generated/
     :template: class.rst
 
+    moments.GeodesicShrinkageTarget
     moments.RegimeAdjustmentMethod
     moments.RegimeAdjustmentTarget
 
@@ -706,6 +707,7 @@ Classes
     moments.LedoitWolf
     moments.OAS
     moments.ShrunkCovariance
+    moments.GeodesicShrinkageCovariance
     moments.GraphicalLassoCV
     moments.ImpliedCovariance
     moments.RegimeAdjustedEWCovariance
@@ -1116,6 +1118,22 @@ Functions
     stats.squared_standardized_euclidean_dist
     stats.symmetric_step_up_matrix
     stats.symmetrize
+
+.. _validation_ref:
+
+:mod:`skfolio.utils.validation`: Validation
+===========================================
+
+Functions
+---------
+.. currentmodule:: skfolio.utils
+
+.. autosummary::
+    :toctree: generated/
+    :template: function.rst
+
+    validation.validate_asset_panel
+    validation.validate_cross_sectional_data
 
 .. _distribution_ref:
 

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
@@ -301,7 +303,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     >>> from skfolio.alpha import EWSharpeOptimalAlpha, ForecastUnit
     >>> from skfolio.descriptor import EWMomentum, BookToPrice, Reversal, Passthrough
     >>>
-    >>> X = make_synthetic_characteristics()
+    >>> X = make_synthetic_characteristics(
+    ...     n_assets=100, n_observations=504, n_industries=5, random_state=0
+    ... )
     >>> rng = np.random.default_rng(0)
     >>>
     >>> # Alpha models regress forward idiosyncratic returns. In production these
@@ -325,6 +329,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ...     third_axis_name="factors",
     ...     third_axis_labels=["market", "beta", "size"],
     ... )
+    AssetPanel(n_observations=504, n_assets=100, n_fields=25)
     >>>
     >>> alpha_model = EWSharpeOptimalAlpha(
     ...     descriptors=[
@@ -340,15 +345,22 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     ... )
     >>>
     >>> # Latest alpha forecast for the current rebalance.
-    >>> alpha_model.fit(X)
-    >>> print(alpha_model.alpha_)
+    >>> alpha_model.fit(X[:-5])
+    EWSharpeOptimalAlpha(...)
+    >>> # Preview five forecasts; NaN means no forecast is available.
+    >>> print(alpha_model.alpha_[:5])
+    [ 0.00649... nan        -0.0216... 0.00358... nan]
     >>>
-    >>> # Online learning with partial_fit
+    >>> # Update with the next five observations
     >>> alpha_model.partial_fit(X[-5:])
-    >>> print(alpha_model.alpha_)
+    EWSharpeOptimalAlpha(...)
+    >>> print(alpha_model.alpha_[:5])
+    [ 0.00837... nan        -0.0341... 0.0222...  nan]
     >>>
     >>> # Historical as-of alpha forecasts with fit_transform
     >>> alphas = alpha_model.fit_transform(X)
+    >>> alphas.shape
+    (504, 100)
 
     Notes
     -----
@@ -384,7 +396,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         forecast_scale: float = 1.0,
         normalize_weights: bool = True,
         n_jobs: int = 1,
-    ):
+    ) -> None:
         self.descriptors = descriptors
         self.half_life = half_life
         self.ridge_scale = ridge_scale
@@ -399,7 +411,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.normalize_weights = normalize_weights
         self.n_jobs = n_jobs
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Fit the alpha model.
 
         Resets all internal state, processes the provided panel and stores the latest
@@ -426,7 +440,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="fit", **fit_params)
         return self
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Fit the alpha model and return historical alpha forecasts.
 
         The returned alpha at observation :math:`t` only uses coefficient updates whose
@@ -452,7 +468,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._reset()
         return self._fit(X, y, method="fit", transform=True, **fit_params)
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Incrementally fit the alpha model with new observations.
 
         This method supports streaming/online updates. It maintains internal buffers to
@@ -478,7 +496,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="partial_fit", **fit_params)
         return self
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Incrementally fit the alpha model and return new historical alpha forecasts.
 
         Only rows corresponding to the newly supplied observations are returned.
@@ -505,11 +525,11 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
         transform: bool = False,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray | None:
         """Fit the model state and optionally return historical alpha forecasts."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -679,7 +699,8 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 self._ew_target_cross_product
             )
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 

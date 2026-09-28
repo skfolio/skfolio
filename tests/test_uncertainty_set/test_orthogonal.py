@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 import pandas as pd
@@ -740,3 +740,81 @@ class TestMeanRiskIntegration:
                 model.covariance_uncertainty_set_estimator_.uncertainty_set_
             )
             assert isinstance(uncertainty_set, CompactCovarianceUncertaintySet)
+
+
+class TestOrthogonalWeightValidation:
+    """Cross-sectional weights resolved from the factor model are validated."""
+
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [OrthogonalMuUncertaintySet, OrthogonalCovarianceUncertaintySet],
+    )
+    def test_inconsistent_idio_covariance_length_raises(
+        self, make_factor_case, estimator_class
+    ):
+        factor_case = make_factor_case(seed=21)
+        factor_model = factor_case.return_distribution.factor_model
+        n_assets = factor_model.loading_matrix.shape[0]
+        bad_factor_model = replace(
+            factor_model, idio_covariance=np.full(n_assets + 1, 0.01)
+        )
+        return_distribution = replace(
+            factor_case.return_distribution, factor_model=bad_factor_model
+        )
+        model = estimator_class(cs_weighting=CSWeighting.INVERSE_IDIO_VARIANCE)
+
+        with pytest.raises(ValueError, match="produced invalid weights"):
+            model.fit(factor_case.X, return_distribution=return_distribution)
+
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [OrthogonalMuUncertaintySet, OrthogonalCovarianceUncertaintySet],
+    )
+    def test_zero_regression_weight_raises(self, make_factor_case, estimator_class):
+        factor_case = make_factor_case(seed=22, with_regression_weights=True)
+        factor_model = factor_case.return_distribution.factor_model
+        regression_weights = factor_case.regression_weights.copy()
+        regression_weights[-1, 0] = 0.0
+        bad_factor_model = replace(factor_model, regression_weights=regression_weights)
+        return_distribution = replace(
+            factor_case.return_distribution, factor_model=bad_factor_model
+        )
+        model = estimator_class(cs_weighting=CSWeighting.REGRESSION)
+
+        with pytest.raises(
+            ValueError, match="Cross-sectional weights must be finite and positive"
+        ):
+            model.fit(factor_case.X, return_distribution=return_distribution)
+
+    def test_idio_variance_shape_accepts_full_idio_covariance(self, make_factor_case):
+        factor_case = make_factor_case(seed=23)
+        factor_model = factor_case.return_distribution.factor_model
+        full_factor_model = replace(
+            factor_model, idio_covariance=np.diag(factor_case.idio_variance)
+        )
+        return_distribution = replace(
+            factor_case.return_distribution, factor_model=full_factor_model
+        )
+
+        model_diag = OrthogonalMuUncertaintySet(uncertainty_shape="idio_variance")
+        model_diag.fit(
+            factor_case.X, return_distribution=factor_case.return_distribution
+        )
+        model_full = OrthogonalMuUncertaintySet(uncertainty_shape="idio_variance")
+        model_full.fit(factor_case.X, return_distribution=return_distribution)
+
+        np.testing.assert_allclose(
+            model_full.uncertainty_set_.geometry, model_diag.uncertainty_set_.geometry
+        )
+
+    @pytest.mark.parametrize("confidence_level", [True, 1.5, 0.0, "0.9"])
+    def test_invalid_confidence_level_raises(self, make_factor_case, confidence_level):
+        factor_case = make_factor_case(seed=24)
+        model = OrthogonalMuUncertaintySet(confidence_level=confidence_level)
+
+        with pytest.raises(
+            ValueError, match=r"`confidence_level` must be a float in \(0, 1\)"
+        ):
+            model.fit(
+                factor_case.X, return_distribution=factor_case.return_distribution
+            )

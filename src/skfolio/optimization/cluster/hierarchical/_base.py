@@ -276,7 +276,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -297,7 +297,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         self,
         value: float | dict | FloatArray | list,
         n_assets: int,
-        fill_value: Any,
+        fill_value: float,
         name: str,
     ) -> FloatArray:
         """Convert input to cleaned 1D array
@@ -312,7 +312,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         n_assets : int
             Number of assets. Used to verify the shape of the converted array.
 
-        fill_value : Any
+        fill_value : float
             When `items` is a dictionary, elements that are not in `asset_names` are
             filled with `fill_value` in the converted array.
 
@@ -456,8 +456,17 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
         return min_weights, max_weights
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`,
+        `distance_estimator` and `hierarchical_clustering_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add(
@@ -476,5 +485,29 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: None = None, **fit_params):
-        pass
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> BaseHierarchicalOptimization:
+        """Fit the Hierarchical Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BaseHierarchicalOptimization
+            Fitted estimator.
+        """
+        ...

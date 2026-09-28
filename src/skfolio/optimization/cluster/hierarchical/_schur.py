@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -287,7 +288,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
     >>> # Default Schur Complementary allocation
     >>> model = SchurComplementary(gamma=0.5)
     >>> model.fit(X)
+    SchurComplementary()
     >>> print(model.weights_)
+    [0.0358 0.0061 0.0262 ... 0.0426 0.1129 0.048 ]
     >>>
     >>> # Advanced model:
     >>> #    * Ledoit-Wolf covariance shrinkage
@@ -299,9 +302,12 @@ class SchurComplementary(BaseHierarchicalOptimization):
     ...     distance_estimator=KendallDistance(absolute=True),
     ...     hierarchical_clustering_estimator=HierarchicalClustering(
     ...         linkage_method=LinkageMethod.WARD,
+    ...     ),
     ... )
     >>> model.fit(X)
+    SchurComplementary(...)
     >>> print(model.weights_)
+    [0.0323 0.0095 0.0234 ... 0.0402 0.0515 0.0605]
     """
 
     effective_gamma_: float
@@ -321,7 +327,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             prior_estimator=prior_estimator,
             distance_estimator=distance_estimator,
@@ -338,7 +344,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> SchurComplementary:
         """Fit the Schur Complementary estimator.
 
         Parameters
@@ -495,6 +503,10 @@ def _compute_monotonic_weights(
         return weights, 0.0
 
     def objective(x: float) -> tuple[float, FloatArray | None]:
+        """Return the portfolio variance and weights for `gamma=x`.
+
+        The variance is `inf` and the weights are `None` if no weights can be computed.
+        """
         w = _compute_weights(
             gamma=x,
             sorted_assets=sorted_assets,
@@ -694,23 +706,27 @@ def _compute_weights(
                 a_aug = _schur_augmentation(a, b, d, gamma=gamma)
                 d_aug = _schur_augmentation(d, b.T, a, gamma=gamma)
 
-                covariance[np.ix_(left_cluster, left_cluster)] = a_aug
-                covariance[np.ix_(right_cluster, right_cluster)] = d_aug
-
             if not force_spd:
                 if not is_cholesky_dec(a_aug) or not is_cholesky_dec(d_aug):
                     return None
             else:
                 try:
-                    if not is_cholesky_dec(a_aug):
-                        a_aug = cov_nearest(a_aug)
-                    if not is_cholesky_dec(a_aug):
-                        d_aug = cov_nearest(d_aug)
+                    # A block with non-positive variances cannot be repaired by
+                    # correlation clipping. Report the failure before NaNs spread.
+                    with np.errstate(invalid="raise", divide="raise", over="raise"):
+                        if not is_cholesky_dec(a_aug):
+                            a_aug = cov_nearest(a_aug)
+                        if not is_cholesky_dec(d_aug):
+                            d_aug = cov_nearest(d_aug)
                 except Exception:
                     raise ValueError(
                         f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
                     ) from None
+
+            # Subsequent splits must use the repaired blocks too.
+            covariance[np.ix_(left_cluster, left_cluster)] = a_aug
+            covariance[np.ix_(right_cluster, right_cluster)] = d_aug
 
             left_variance = _naive_portfolio_variance(a_aug)
             right_variance = _naive_portfolio_variance(d_aug)

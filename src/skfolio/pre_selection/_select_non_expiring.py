@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import sklearn.base as skb
 import sklearn.feature_selection as skf
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.typing import BoolArray
@@ -73,7 +74,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     ...        'asset3': [3, 4, 5, 6],
     ...        'asset4': [4, 5, 6, 7]
     ...    }, index=pd.date_range("2023-01-01", periods=4, freq="D")
-    ...)
+    ... )
     >>> expiration_dates = {
     ...    'asset1': pd.Timestamp("2023-01-10"),
     ...    'asset2': pd.Timestamp("2023-01-02"),
@@ -83,7 +84,7 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
     >>> selector = SelectNonExpiring(
     ...    expiration_dates=expiration_dates,
     ...    expiration_lookahead=pd.DateOffset(days=5)
-    ...)
+    ... )
     >>> selector.fit_transform(X)
                asset1  asset4
     2023-01-01      1      4
@@ -98,11 +99,11 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         self,
         expiration_dates: dict[str, dt.datetime | pd.Timestamp] | None = None,
         expiration_lookahead: pd.offsets.BaseOffset | dt.timedelta | None = None,
-    ):
+    ) -> None:
         self.expiration_dates = expiration_dates
         self.expiration_lookahead = expiration_lookahead
 
-    def fit(self, X: pd.DataFrame, y=None) -> SelectNonExpiring:
+    def fit(self, X: pd.DataFrame, y: None = None) -> SelectNonExpiring:
         """Run the SelectNonExpiring transformer and get the appropriate assets.
 
         Parameters
@@ -145,10 +146,11 @@ class SelectNonExpiring(skf.SelectorMixin, skb.BaseEstimator):
         return self
 
     def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> sku.Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         return tags

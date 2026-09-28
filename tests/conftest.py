@@ -24,6 +24,13 @@ def pytest_configure(config):
     np.set_printoptions(suppress=True, precision=6)
 
 
+def pytest_collection_modifyitems(items) -> None:
+    """Mark unit tests that depend on a remote dataset, including via fixtures."""
+    for item in items:
+        if isinstance(item, pytest.Function) and "remote_dataset" in item.fixturenames:
+            item.add_marker(pytest.mark.network)
+
+
 @pytest.fixture
 def random_data():
     """Fixture that returns a random numpy array in [0,1] of shape (100, 2)."""
@@ -53,8 +60,8 @@ def returns(X):
 
 
 @pytest.fixture(scope="module")
-def implied_vol():
-    implied_vol = load_sp500_implied_vol_dataset()
+def implied_vol(remote_dataset):
+    implied_vol = remote_dataset(load_sp500_implied_vol_dataset)
     implied_vol = implied_vol.loc[pd.Timestamp(2014, 1, 3) :]
     return implied_vol
 

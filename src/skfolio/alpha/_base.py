@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import numpy as np
 import sklearn as sk
 import sklearn.base as skb
+import sklearn.utils as sku
 from sklearn.utils import parallel as skp
 
 from skfolio import typing as skt
@@ -25,9 +27,10 @@ from skfolio.containers import (
 )
 from skfolio.descriptor import BaseDescriptor
 from skfolio.descriptor._base import BaseDescriptorComposition
+from skfolio.linear_model._cross_sectional._utils import _cs_neutralize
 from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsorizer
 from skfolio.typing import FloatArray, ObjArray
-from skfolio.utils._factor_tools import _neutralize_scores
+from skfolio.utils._factor_tools import _expand_factor_names, _factor_name_maps
 from skfolio.utils.tools import (
     AutoEnum,
     _validate_positive_integer,
@@ -57,8 +60,26 @@ class BaseAlpha(skb.BaseEstimator, ABC):
     asset_names_: ObjArray
 
     @abstractmethod
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha:
-        pass
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> BaseAlpha:
+        """Fit the alpha estimator and store the latest alpha forecast in `alpha_`.
+
+        Parameters
+        ----------
+        X : AssetPanel
+            Input panel data.
+
+        y : None
+            Ignored. Present for compatibility with scikit-learn's API.
+
+        **fit_params : dict
+            Additional fit parameters passed to the sub-estimators.
+
+        Returns
+        -------
+        self : BaseAlpha
+            Fitted estimator.
+        """
+        ...
 
 
 class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
@@ -114,7 +135,9 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
             check_type=BaseCSTransformer,
         )
 
-    def _compute_scores(self, X: AssetPanel, method: str, routed_params) -> FloatArray:
+    def _compute_scores(
+        self, X: AssetPanel, method: str, routed_params: sku.Bunch
+    ) -> FloatArray:
         """Compute transformed descriptor scores from the input panel."""
         cs_weights = X.estimation_mask.astype(float)
         cs_groups = (
@@ -207,3 +230,58 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
     def _target_gap(self) -> int:
         """Number of future rows required before a signal observation matures."""
         return self.signal_lag + self.horizon - 1
+
+
+def _neutralize_scores(
+    neutralize_against: list[str],
+    scores: FloatArray,
+    exposures: FloatArray,
+    cs_weights: FloatArray,
+    factor_names: ObjArray,
+    factor_families: ObjArray | None = None,
+) -> FloatArray:
+    """Neutralize descriptor scores against selected factor exposures.
+
+    Parameters
+    ----------
+    neutralize_against : list of str
+        Factor names or family names to neutralize each descriptor score against.
+
+    scores : ndarray of shape (n_observations, n_assets, n_descriptors)
+        Descriptor score panels. The array is modified in-place.
+
+    exposures : ndarray of shape (n_observations, n_assets, n_factors)
+        Factor exposures used as neutralization variables.
+
+    cs_weights : ndarray of shape (n_observations, n_assets)
+        Cross-sectional weights for the neutralization regressions.
+
+    factor_names : ndarray of shape (n_factors,)
+        Factor names.
+
+    factor_families : ndarray of shape (n_factors,), optional
+        Family label for each factor. If provided, `neutralize_against` may contain
+        family names.
+
+    Returns
+    -------
+    scores : ndarray of shape (n_observations, n_assets, n_descriptors)
+        The input score array with each descriptor replaced by its neutralized residuals.
+
+    Raises
+    ------
+    ValueError
+        If a neutralization target is neither a factor name nor a family name.
+    """
+    factor_to_idx, family_to_idx = _factor_name_maps(factor_names, factor_families)
+    targets_idx = _expand_factor_names(neutralize_against, factor_to_idx, family_to_idx)
+    if len(targets_idx) == 0:
+        return scores
+
+    x = exposures[:, :, targets_idx]
+    for i in range(scores.shape[2]):
+        scores[:, :, i], _ = _cs_neutralize(
+            y=scores[:, :, i], x=x, cs_weights=cs_weights
+        )
+
+    return scores

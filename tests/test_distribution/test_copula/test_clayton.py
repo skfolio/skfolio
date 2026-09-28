@@ -331,3 +331,16 @@ def test_fitted_repr(fitted_model):
     )
     rotation_str = str(fitted_model.rotation_)
     assert rotation_str in rep, f"fitted_repr does not include rotation: {rotation_str}"
+
+
+def test_clayton_tail_dependence_rotated(fitted_model):
+    """Lower tail dependence belongs to R0, upper to R180, none otherwise."""
+    expected = np.power(2.0, -1.0 / fitted_model.theta_)
+
+    fitted_model.rotation_ = CopulaRotation.R180
+    assert fitted_model.lower_tail_dependence == 0
+    assert np.isclose(fitted_model.upper_tail_dependence, expected)
+
+    fitted_model.rotation_ = CopulaRotation.R90
+    assert fitted_model.lower_tail_dependence == 0
+    assert fitted_model.upper_tail_dependence == 0

@@ -6,6 +6,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import cvxpy as cp
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -150,6 +153,12 @@ class MaximumDiversification(MeanRisk):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -209,6 +218,8 @@ class MaximumDiversification(MeanRisk):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -300,10 +311,11 @@ class MaximumDiversification(MeanRisk):
         provided, the target returns `y` must be provided in the `fit` method.
 
     max_turnover : float, optional
-        Upper bound constraint of the turnover.
-        The turnover is defined as the absolute difference between the portfolio weights
-        and the `previous_weights`. Note that another way to control for turnover is by
-        using the `transaction_costs` parameter.
+        Upper bound on each investable asset's absolute weight change from
+        `previous_weights`. For positions outside the investment universe,
+        transaction costs and the predicted portfolio's `turnover` are calculated
+        assuming full liquidation, without applying this limit. Transaction costs
+        can also be used to control turnover.
 
     min_return : float | array-like of shape (n_optimization), optional
         Lower bound constraint on the expected return.
@@ -451,15 +463,20 @@ class MaximumDiversification(MeanRisk):
     >>> # Maximum diversification optimization
     >>> model = MaximumDiversification()
     >>> model.fit(X)
+    MaximumDiversification()
     >>> print(model.weights_)
+    [0.0821 0.0697 0.0243 ... 0.0945 0.0893 0.0143]
     >>>
     >>> portfolio = model.predict(X)
     >>> print(portfolio.diversification)
+    1.87...
     >>>
-    >>> # Maximum diversification with an upper weight constraint
-    >>> model = MaximumDiversification(max_weights=0.20)
+    >>> # Limit each asset to 8% of the portfolio
+    >>> model = MaximumDiversification(max_weights=0.08)
     >>> model.fit(X)
+    MaximumDiversification(max_weights=0.08)
     >>> print(model.weights_)
+    [0.08   0.0706 0.0288 ... 0.08   0.08   0.0289]
     """
 
     def __init__(
@@ -499,7 +516,7 @@ class MaximumDiversification(MeanRisk):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
             risk_measure=RiskMeasure.STANDARD_DEVIATION,
@@ -541,7 +558,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> MaximumDiversification:
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -569,7 +586,7 @@ class MaximumDiversification(MeanRisk):
         # `X` is unchanged and only `feature_names_in_` is performed
         _ = skv.validate_data(self, X, skip_check_array=True)
 
-        def func(w, obj):
+        def func(w: cp.Variable, obj: MaximumDiversification) -> cp.Expression:
             """Weighted volatilities."""
             dist = obj.prior_estimator_.return_distribution_
             if obj.investable_mask_ is not None:

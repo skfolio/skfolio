@@ -31,23 +31,23 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     # Used for AIC and BIC
     _n_params: int
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         super().__init__(random_state=random_state)
 
     @property
     @abstractmethod
     def n_params(self) -> int:
         """Number of model parameters."""
-        pass
+        ...
 
     @property
     @abstractmethod
     def fitted_repr(self) -> str:
         """String representation of the fitted copula."""
-        pass
+        ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseMultivariateDist:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseMultivariateDist:
         """Fit the multivariate distribution model.
 
         Parameters
@@ -63,7 +63,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         self : BaseMultivariateDist
             Returns the instance itself.
         """
-        pass
+        ...
 
     @abstractmethod
     def score_samples(self, X: ArrayLike) -> FloatArray:
@@ -80,7 +80,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         density : ndarray of shape (n_observations,)
             The log-likelihood of each sample under the fitted distribution model.
         """
-        pass
+        ...
 
     @abstractmethod
     def sample(
@@ -121,7 +121,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
             A two-dimensional array where each row is a multivariate observation sampled
             from the fitted distribution model.
         """
-        pass
+        ...
 
     def plot_scatter_matrix(
         self,

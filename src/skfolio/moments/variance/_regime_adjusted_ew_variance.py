@@ -245,7 +245,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
     >>> # Standard EWMA with STVU
     >>> model = RegimeAdjustedEWVariance(half_life=23)
     >>> model.fit(X)
+    RegimeAdjustedEWVariance(half_life=23)
     >>> print(model.regime_multiplier_)
+    0.810...
     >>>
     >>> # With LOG method for robustness to outliers
     >>> model2 = RegimeAdjustedEWVariance(
@@ -253,6 +255,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     ...     regime_method=RegimeAdjustmentMethod.LOG
     ... )
     >>> model2.fit(X)
+    RegimeAdjustedEWVariance(half_life=11, regime_method=LOG)
     >>>
     >>> # With Newey-West HAC correction for autocorrelation
     >>> model3 = RegimeAdjustedEWVariance(
@@ -260,12 +263,14 @@ class RegimeAdjustedEWVariance(BaseVariance):
     ...     hac_lags=5    # 5-lag Newey-West correction
     ... )
     >>> model3.fit(X)
+    RegimeAdjustedEWVariance(hac_lags=5, half_life=23)
     >>>
     >>> # With an estimation universe focused on specific assets
     >>> estimation_mask = np.ones((len(X), X.shape[1]), dtype=bool)
     >>> estimation_mask[:, :5] = False  # Exclude first 5 assets from STVU
     >>> model4 = RegimeAdjustedEWVariance(half_life=23)
     >>> model4.fit(X, estimation_mask=estimation_mask)
+    RegimeAdjustedEWVariance(half_life=23)
     """
 
     regime_multiplier_: float
@@ -293,7 +298,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         estimation_mask: ArrayLike | None = None,
         active_mask: ArrayLike | None = None,
@@ -349,7 +354,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         estimation_mask: ArrayLike | None = None,
         active_mask: ArrayLike | None = None,
@@ -438,7 +443,8 @@ class RegimeAdjustedEWVariance(BaseVariance):
         self.variance_ = regime_multiplier**2 * variance
         return self
 
-    def _validate_params(self):
+    def _validate_params(self) -> None:
+        """Validate parameters and resolve the effective `min_observations`."""
         if not isinstance(self.regime_method, RegimeAdjustmentMethod):
             raise ValueError(
                 f"regime_method must be a RegimeAdjustmentMethod, got "
@@ -502,7 +508,8 @@ class RegimeAdjustedEWVariance(BaseVariance):
                     stacklevel=2,
                 )
 
-    def _initialize(self):
+    def _initialize(self) -> None:
+        """Initialize the accumulators and resolve the effective regime parameters."""
         n_assets = self.n_features_in_
         self._decay = half_life_to_decay_factor(self.half_life)
         self._var = np.zeros(n_assets)
@@ -539,7 +546,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         returns: FloatArray,
         estimation_mask: BoolArray | None,
         active_row: BoolArray | None,
-    ):
+    ) -> None:
         """Process a single row of returns.
 
         Parameters
@@ -679,5 +686,6 @@ class RegimeAdjustedEWVariance(BaseVariance):
         return result
 
     def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)

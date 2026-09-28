@@ -70,7 +70,9 @@ class EmpiricalVariance(BaseVariance):
     >>> X = prices_to_returns(prices)
     >>> model = EmpiricalVariance()
     >>> model.fit(X)
+    EmpiricalVariance()
     >>> print(model.variance_[:5])
+    [0.000747... 0.00151... 0.000681... 0.00101... 0.000275...]
     """
 
     def __init__(
@@ -78,7 +80,7 @@ class EmpiricalVariance(BaseVariance):
         window_size: int | None = None,
         ddof: int = 1,
         assume_centered: bool = False,
-    ):
+    ) -> None:
         super().__init__(assume_centered=assume_centered)
         self.window_size = window_size
         self.ddof = ddof
@@ -86,7 +88,7 @@ class EmpiricalVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
     ) -> EmpiricalVariance:
         """Fit the empirical variance estimator.
 

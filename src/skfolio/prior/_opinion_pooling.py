@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import scipy.special as scs
@@ -193,16 +195,30 @@ class OpinionPooling(BasePrior, BaseComposition):
     ... )
     >>>
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> print(opinion_pooling.return_distribution_.sample_weight)
-    >>>
-    >>> # CVaR Risk Parity optimization on opinion Pooling
+    [0.000117... 0.000117... 0.000117... ... 0.000117... 0.000117...
+     0.000117...]
+
+    We use SCS (`pip install scs`) for CVaR risk parity because concentrated scenario
+    probabilities can cause numerical difficulties for CLARABEL. To keep CLARABEL as
+    the primary solver and fall back to SCS on failure, see
+    :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
+
     >>> model = RiskBudgeting(
     ...     risk_measure=RiskMeasure.CVAR,
-    ...     prior_estimator=opinion_pooling
+    ...     prior_estimator=opinion_pooling,
+    ...     solver="SCS",
+    ...     solver_params={"eps_abs": 1e-6, "eps_rel": 1e-6, "max_iters": 100_000},
     ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.041... 0.031... 0.029... 0.044... 0.038... 0.033...
+     0.034... 0.077... 0.032... 0.067... 0.059... 0.057...
+     0.040... 0.056... 0.059... 0.077... 0.053... 0.038...
+     0.075... 0.050...]
     >>>
     >>> # Stress Test the Portfolio
     >>> opinion_1 = EntropyPooling(cvar_views=["AMD == 0.05"])
@@ -212,6 +228,7 @@ class OpinionPooling(BasePrior, BaseComposition):
     ...     opinion_probabilities=[0.6, 0.4],
     ... )
     >>> opinion_pooling.fit(X)
+    OpinionPooling(...)
     >>>
     >>> stressed_dist = opinion_pooling.return_distribution_
     >>>
@@ -233,7 +250,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         is_linear_pooling: bool = True,
         divergence_penalty: float = 0.0,
         n_jobs: int | None = None,
-    ):
+    ) -> None:
         self.estimators = estimators
         self.opinion_probabilities = opinion_probabilities
         self.prior_estimator = prior_estimator
@@ -242,7 +259,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         self.n_jobs = n_jobs
 
     @property
-    def named_estimators(self):
+    def named_estimators(self) -> sku.Bunch:
         """Dictionary to access any fitted sub-estimators by name.
 
         Returns
@@ -281,7 +298,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> OpinionPooling:
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -305,7 +322,7 @@ class OpinionPooling(BasePrior, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -325,7 +342,17 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return super()._get_params("estimators", deep=deep)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of each estimator in
+        `estimators`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:
             router.add(
@@ -334,7 +361,7 @@ class OpinionPooling(BasePrior, BaseComposition):
             )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> OpinionPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> OpinionPooling:
         """Fit the Opinion Pooling estimator.
 
         Parameters

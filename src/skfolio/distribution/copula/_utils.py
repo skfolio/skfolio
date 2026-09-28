@@ -11,6 +11,7 @@ import operator
 import warnings
 from collections.abc import Callable
 from enum import Enum
+from typing import Any
 
 import numpy as np
 import plotly.graph_objects as go
@@ -87,15 +88,18 @@ def compute_pseudo_observations(X: ArrayLike) -> FloatArray:
 
 
 def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArray:
-    """
+    r"""
     Compute empirical tail concentration for the two variables in X.
     This function computes the concentration at each quantile provided.
 
-    The tail concentration are estimated as:
-      - Lower tail: λ_L(q) = P(U₂ ≤ q | U₁ ≤ q)
-      - Upper tail: λ_U(q) = P(U₂ ≥ q | U₁ ≥ q)
+    The lower and upper tail concentrations are estimated as:
 
-    where U₁ and U₂ are the pseudo-observations.
+    .. math::
+        \lambda_L(q) = P(U_2 \le q \mid U_1 \le q)
+
+        \lambda_U(q) = P(U_2 \ge q \mid U_1 \ge q)
+
+    where :math:`U_1` and :math:`U_2` are the pseudo-observations.
 
     Parameters
     ----------
@@ -131,6 +135,7 @@ def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArr
         raise ValueError("quantiles must be between 0.0 and 1.0.")
 
     def func(q: FloatArray, is_lower: bool) -> FloatArray:
+        """Compute the empirical lower or upper tail concentration at quantiles `q`."""
         op = operator.le if is_lower else operator.ge
         cond = op(X[:, 0, np.newaxis], q)
         count = np.count_nonzero(cond, axis=0).astype(float)
@@ -410,7 +415,7 @@ def _apply_margin_swap(X: FloatArray, first_margin: bool) -> FloatArray:
 
 
 def _apply_rotation_cdf(
-    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs
+    func: Callable, X: FloatArray, rotation: CopulaRotation, **kwargs: Any
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding CDF values.
@@ -446,8 +451,6 @@ def _apply_rotation_cdf(
             cdf = np.sum(X, axis=1) - 1 + cdf
         case CopulaRotation.R270:
             cdf = X[:, 0] - cdf
-        case _:
-            raise ValueError(f"Unsupported rotation: {rotation}")
 
     return cdf
 
@@ -457,7 +460,7 @@ def _apply_rotation_partial_derivatives(
     X: FloatArray,
     rotation: CopulaRotation,
     first_margin: bool,
-    **kwargs,
+    **kwargs: Any,
 ) -> FloatArray:
     """
     Apply a copula rotation to X and compute the corresponding partial derivatives.
@@ -507,6 +510,4 @@ def _apply_rotation_partial_derivatives(
                 z = 1 - func(X=rotated_X, first_margin=not first_margin, **kwargs)
             else:
                 z = func(X=rotated_X, first_margin=not first_margin, **kwargs)
-        case _:
-            raise ValueError(f"Unsupported rotation: {rotation}")
     return z

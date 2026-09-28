@@ -90,3 +90,26 @@ def test_qq_plot(gaussian_model):
     # Verify that at least one trace is present and the title is set correctly.
     assert len(fig.data) >= 1
     assert "Gaussian QQ" in fig.layout.title.text
+
+
+@pytest.fixture
+def small_gaussian_data():
+    rng = np.random.default_rng(0)
+    return rng.normal(loc=0.5, scale=2.0, size=200).reshape(-1, 1)
+
+
+def test_fit_both_fixed_raises(small_gaussian_data):
+    with pytest.raises(ValueError, match="Either loc or scale must be None"):
+        Gaussian(loc=0.0, scale=1.0).fit(small_gaussian_data)
+
+
+def test_fit_fixed_loc(small_gaussian_data):
+    model = Gaussian(loc=0.0).fit(small_gaussian_data)
+    assert model.loc_ == 0.0
+    assert model.scale_ > 0
+
+
+def test_fit_fixed_scale(small_gaussian_data):
+    model = Gaussian(scale=1.0).fit(small_gaussian_data)
+    assert model.scale_ == 1.0
+    assert np.isclose(model.loc_, small_gaussian_data.mean())

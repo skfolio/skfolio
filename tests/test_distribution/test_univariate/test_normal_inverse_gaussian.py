@@ -127,3 +127,25 @@ def test_plot_pdf(nig_model):
     # Check that the figure contains at least one trace and title text is correct.
     assert len(fig.data) >= 1
     assert "NIG PDF" in fig.layout.title.text
+
+
+@pytest.fixture
+def small_nig_data():
+    return norminvgauss.rvs(1.5, 0.5, size=200, random_state=0).reshape(-1, 1)
+
+
+def test_fit_both_fixed_raises(small_nig_data):
+    with pytest.raises(ValueError, match="Either loc or scale must be None"):
+        NormalInverseGaussian(loc=0.0, scale=1.0).fit(small_nig_data)
+
+
+def test_fit_fixed_loc(small_nig_data):
+    model = NormalInverseGaussian(loc=0.0).fit(small_nig_data)
+    assert model.loc_ == 0.0
+    assert model.scale_ > 0
+
+
+def test_fit_fixed_scale(small_nig_data):
+    model = NormalInverseGaussian(scale=1.0).fit(small_nig_data)
+    assert model.scale_ == 1.0
+    assert np.isfinite(model.loc_)

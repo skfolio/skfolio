@@ -29,6 +29,7 @@ Available estimators are:
     * :class:`LedoitWolf`
     * :class:`OAS`
     * :class:`ShrunkCovariance`
+    * :class:`GeodesicShrinkageCovariance`
     * :class:`GraphicalLassoCV`
     * :class:`ImpliedCovariance`
 

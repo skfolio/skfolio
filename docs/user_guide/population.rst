@@ -105,5 +105,3 @@ efficient frontier. Calling the method `predict(X_test)` on that model will retu
     print(model.weights_.shape)
 
     population = model.predict(X_test)
-
-

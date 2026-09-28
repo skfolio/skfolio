@@ -8,6 +8,7 @@ import pytest
 from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraint,
     FamilyConstraintBasis,
+    _stack_family_full_indices,
     compute_family_constraint_basis,
 )
 
@@ -89,7 +90,9 @@ class TestFamilyConstraint:
 
     def test_frozen(self):
         family = FamilyConstraint("x", np.array([0, 1]), 0)
-        with pytest.raises(AttributeError):
+        with pytest.raises(
+            AttributeError, match="cannot assign to field 'family_name'"
+        ):
             family.family_name = "y"
 
 
@@ -757,3 +760,9 @@ class TestEdgeCases:
                 ),
                 constraint_ratios=np.array([[np.nan]]),
             )
+
+
+def test_stack_family_full_indices_returns_empty_array_without_families():
+    stacked = _stack_family_full_indices(())
+    assert stacked.dtype == int
+    assert stacked.shape == (0,)

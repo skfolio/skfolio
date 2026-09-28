@@ -62,7 +62,7 @@ specific tail:
 - **Gumbel and Joe:** Naturally capture upper tail dependence.
 - **Clayton:** Naturally captures lower tail dependence.
 
-However, financial data may exhibit tail behavior opposite to a copula’s inherent design,
+However, financial data may exhibit tail behavior opposite to a copula's inherent design,
 or even negative dependence. **Rotation** is a transformation that adjusts the copula to
 model the opposite tail. In effect, rotation swaps the roles of the upper and lower tails,
 enabling the model to capture tail dependence where it is most relevant.

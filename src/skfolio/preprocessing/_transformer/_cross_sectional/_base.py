@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import sklearn.base as skb
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 from sklearn.utils.validation import FLOAT_DTYPES
 
@@ -34,9 +35,9 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     """
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the transformer."""
-        pass
+        ...
 
     def _validate_params(self) -> None:
         """Validate estimator-specific parameters."""
@@ -45,10 +46,10 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         cs_weights: ArrayLike | None = None,
         cs_groups: ArrayLike | None = None,
-    ):
+    ) -> BaseCSTransformer:
         """Fit the transformer.
 
         Cross-sectional transformers are stateless and do not learn data-dependent
@@ -107,12 +108,12 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
         X_transformed : ndarray of shape (n_observations, n_assets)
             Transformed values.
         """
-        pass
+        ...
 
     def fit_transform(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         cs_weights: ArrayLike | None = None,
         cs_groups: ArrayLike | None = None,
     ) -> FloatArray:
@@ -147,7 +148,7 @@ class BaseCSTransformer(skb.OneToOneFeatureMixin, skb.BaseEstimator, ABC):
             cs_groups=cs_groups,
         )
 
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> sku.Tags:
         tags = super().__sklearn_tags__()
         tags.input_tags.allow_nan = True
         tags.requires_fit = False

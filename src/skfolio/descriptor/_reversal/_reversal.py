@@ -110,5 +110,5 @@ class Reversal(_BaseRollingLogReturn):
 
     reversal_: FloatArray
 
-    def __init__(self, window: int = 21):
+    def __init__(self, window: int = 21) -> None:
         super().__init__(window=window, skip=0, exponentiate=False)

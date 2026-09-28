@@ -119,3 +119,25 @@ def test_plot_pdf(johnsonsu_model):
     # Check that the figure contains at least one trace and title text is correct.
     assert len(fig.data) >= 1
     assert "Johnson SU PDF" in fig.layout.title.text
+
+
+@pytest.fixture
+def small_johnsonsu_data():
+    return johnsonsu.rvs(1.0, 1.5, size=200, random_state=0).reshape(-1, 1)
+
+
+def test_fit_both_fixed_raises(small_johnsonsu_data):
+    with pytest.raises(ValueError, match="Either loc or scale must be None"):
+        JohnsonSU(loc=0.0, scale=1.0).fit(small_johnsonsu_data)
+
+
+def test_fit_fixed_loc(small_johnsonsu_data):
+    model = JohnsonSU(loc=0.0).fit(small_johnsonsu_data)
+    assert model.loc_ == 0.0
+    assert model.scale_ > 0
+
+
+def test_fit_fixed_scale(small_johnsonsu_data):
+    model = JohnsonSU(scale=1.0).fit(small_johnsonsu_data)
+    assert model.scale_ == 1.0
+    assert np.isfinite(model.loc_)

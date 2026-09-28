@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import numpy as np
@@ -655,7 +656,7 @@ class AlphaForecastComparison:
             ]
         object.__setattr__(self, "_names", names)
 
-    def _named_evaluations(self):
+    def _named_evaluations(self) -> Iterator[tuple[str, AlphaForecastEvaluation]]:
         """Iterate over (name, evaluation) pairs."""
         return zip(self._names, self.evaluations, strict=True)
 

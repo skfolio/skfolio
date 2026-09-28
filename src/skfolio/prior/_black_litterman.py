@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
@@ -135,7 +137,7 @@ class BlackLitterman(BasePrior):
         tau: float = 0.05,
         view_confidences: ArrayLike | None = None,
         risk_free_rate: float = 0,
-    ):
+    ) -> None:
         self.views = views
         self.groups = groups
         self.prior_estimator = prior_estimator
@@ -143,15 +145,23 @@ class BlackLitterman(BasePrior):
         self.view_confidences = view_confidences
         self.risk_free_rate = risk_free_rate
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> BlackLitterman:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BlackLitterman:
         """Fit the Black & Litterman estimator.
 
         Parameters

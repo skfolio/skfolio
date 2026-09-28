@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from skfolio.containers import MISSING_CATEGORY_CODE, AssetPanel
@@ -64,7 +66,9 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
         super().__init__(family=family)
         self.category = category
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """One-hot encode the categorical field.
 
         Parameters
@@ -92,12 +96,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
         """
         validate_asset_panel(self, X, required_fields=[self.category])
 
-        try:
-            field = X.fields[self.category]
-        except KeyError as err:
-            raise ValueError(
-                f"Field '{self.category}' is not in the AssetPanel."
-            ) from err
+        field = X.fields[self.category]
 
         if not field.is_categorical:
             raise ValueError(f"Field '{self.category}' must be a CategoricalField.")

@@ -343,6 +343,3 @@ Parallelism
 The parameter search tools evaluate each parameter combination on each data
 fold independently. Computations can be run in parallel by using the keyword
 `n_jobs=-1`. See function signature for more details.
-
-
-

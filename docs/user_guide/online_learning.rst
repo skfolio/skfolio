@@ -181,6 +181,28 @@ be solved and `raise_on_failure=False`, `online_predict` records that rebalance 
 estimator uses previous weights, the last valid allocation remains the reference for
 later rebalances.
 
+Pass `portfolio_params={"weight_drift": True, "compounded": True}` to
+`online_predict` to evaluate the path with drifted weights and compounded returns. The
+`portfolio_params` of `online_predict` follow the same rules as those of
+:func:`~skfolio.model_selection.cross_val_predict`: the parameters shared by
+:class:`~skfolio.portfolio.Portfolio` and
+:class:`~skfolio.portfolio.MultiPeriodPortfolio` are applied to the returned
+`MultiPeriodPortfolio` and to each `Portfolio` it contains, take precedence over the
+optimizer's `portfolio_params` and are inherited from it when omitted. `weight_drift`
+applies to each `Portfolio` of the path. See :ref:`cross_validation` for the complete
+rules.
+
+When the estimator needs previous weights, the `ending_weights` of the last successful
+portfolio become the `previous_weights` of the next rebalancing. They equal its target
+weights with `weight_drift=False` and its weights after the final observation with
+`weight_drift=True`.
+
+`online_score`, `OnlineGridSearch` and `OnlineRandomizedSearch` accept the same
+`portfolio_params` when evaluating a portfolio optimizer. Because they score the
+resulting `MultiPeriodPortfolio`, these parameters can change the scores and the
+ranking of the parameter sets. When refitting is enabled, `weight_drift` is retained in
+`best_estimator_` because prediction requires it. The other parameters are not.
+
 To hold the last allocation instead of producing a failed rebalance, configure
 `fallback="previous_weights"`. Other fallback estimators are not available with
 `partial_fit`, because they would not have learned from the same sequence of past

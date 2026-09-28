@@ -19,6 +19,11 @@ from skfolio.alpha import (
     FixedWeightedAlpha,
     alpha_forecast_evaluation,
 )
+from skfolio.alpha._evaluation import (
+    _calibration_curve,
+    _compute_factor_correlation_diagnostics,
+    _coverage_stats,
+)
 from skfolio.containers import AssetPanel
 from skfolio.descriptor import Passthrough
 from skfolio.utils.stats import (
@@ -901,3 +906,104 @@ class TestAlphaForecastEvaluation:
         comparison = AlphaForecastComparison([evaluation])
 
         assert comparison.plot_cumulative_ic().data[0].name == "Estimator 0"
+
+    def test_comparison_uses_explicit_names(self, evaluation_with_diagnostics):
+        """Explicit names override the evaluation names in every summary."""
+        comparison = AlphaForecastComparison(
+            [evaluation_with_diagnostics, evaluation_with_diagnostics],
+            names=["first", "second"],
+        )
+
+        assert list(comparison.ic_summary().columns.levels[0]) == [
+            "first",
+            "second",
+        ]
+        assert [trace.name for trace in comparison.plot_cumulative_ic().data] == [
+            "First",
+            "Second",
+        ]
+
+    def test_three_dimensional_cs_weighting_field_raises(self):
+        """Cross-sectional weights must be a 2D field."""
+        panel = _factor_correlation_panel()
+
+        with pytest.raises(ValueError, match="must have shape"):
+            alpha_forecast_evaluation(
+                _fixed_signal_alpha(),
+                panel,
+                cs_weighting=_EXPOSURES,
+            )
+
+    def test_factor_exposures_none_disables_factor_diagnostics(self):
+        """`factor_exposures=None` skips factor correlations even with exposures."""
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            _factor_correlation_panel(),
+            factor_exposures=None,
+        )
+
+        assert evaluation.factor_correlation is None
+        assert evaluation.factor_correlation_method is None
+        assert evaluation.factor_names.size == 0
+
+    def test_factor_exposures_without_factors_gives_empty_correlations(self):
+        """A 3D exposure field with no factors yields zero-width correlations."""
+        panel = _factor_correlation_panel()
+        panel.add_3d_field(
+            "empty",
+            np.zeros((panel.n_observations, panel.n_assets, 0)),
+            third_axis_name="factors",
+            third_axis_labels=[],
+            third_axis_groups=[],
+        )
+
+        evaluation = alpha_forecast_evaluation(
+            _fixed_signal_alpha(),
+            panel,
+            factor_exposures="empty",
+        )
+
+        assert evaluation.factor_correlation.shape == (panel.n_observations, 0)
+        assert evaluation.factor_correlation_method is CorrelationMethod.PEARSON
+        assert evaluation.factor_names.size == 0
+        assert evaluation.factor_families.size == 0
+        assert evaluation.factor_correlation_summary().empty
+
+    def test_factor_correlation_diagnostics_validate_exposure_shape(self):
+        """Exposures must be aligned with the alpha array on the first two axes."""
+        panel = _factor_correlation_panel()
+        alpha = panel["signal"][:-1]
+
+        with pytest.raises(ValueError, match="first two axes matching alpha"):
+            _compute_factor_correlation_diagnostics(
+                alpha=alpha,
+                exposures_field=panel.get_field(_EXPOSURES),
+                estimation_mask=np.ones(alpha.shape, dtype=bool),
+                cs_weights=None,
+                method=CorrelationMethod.PEARSON,
+                min_count=3,
+            )
+
+    def test_calibration_curve_without_valid_pairs_is_empty(self):
+        """All-NaN forecasts produce an empty calibration curve with fixed columns."""
+        curve = _calibration_curve(np.full((3, 4), np.nan), np.ones((3, 4)))
+
+        assert curve.empty
+        assert list(curve.columns) == [
+            "bucket",
+            "mean_forecast",
+            "mean_target",
+            "n_observations",
+        ]
+
+    def test_coverage_stats(self):
+        """Coverage statistics summarize the coverage path and valid asset count."""
+        stats = _coverage_stats(
+            np.array([0.5, np.nan, 1.0]), np.array([2, 4, 6], dtype=int)
+        )
+
+        assert stats["mean"] == pytest.approx(0.75)
+        assert stats["std"] == pytest.approx(np.std([0.5, 1.0], ddof=1))
+        assert np.isnan(stats["ir"])
+        assert np.isnan(stats["hit_rate"])
+        assert stats["n_valid_assets"] == pytest.approx(4.0)

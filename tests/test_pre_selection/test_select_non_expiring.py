@@ -114,3 +114,32 @@ def test_pipeline(prices):
         pd.testing.assert_frame_equal(pred.composition, expected)
         assert len(pred.returns) == 8
         assert np.all(~np.isnan(pred.returns))
+
+
+def test_select_non_expiring_requires_datetime_index(X_df):
+    model = SelectNonExpiring(
+        expiration_dates={"asset1": pd.Timestamp("2023-01-10")},
+        expiration_lookahead=pd.DateOffset(days=1),
+    )
+    with pytest.raises(
+        ValueError, match="X must be a DataFrame with an index of type DatetimeIndex"
+    ):
+        model.fit(X_df.to_numpy())
+    with pytest.raises(
+        ValueError, match="X must be a DataFrame with an index of type DatetimeIndex"
+    ):
+        model.fit(X_df.reset_index(drop=True))
+
+
+def test_select_non_expiring_requires_expiration_dates(X_df):
+    model = SelectNonExpiring(expiration_lookahead=pd.DateOffset(days=1))
+    with pytest.raises(ValueError, match="`expiration_dates` must be provided"):
+        model.fit(X_df)
+
+
+def test_select_non_expiring_requires_expiration_lookahead(X_df):
+    model = SelectNonExpiring(
+        expiration_dates={"asset1": pd.Timestamp("2023-01-10")},
+    )
+    with pytest.raises(ValueError, match="`expiration_lookahead` must be provided"):
+        model.fit(X_df)

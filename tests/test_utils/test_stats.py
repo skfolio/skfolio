@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import warnings
 
 import cvxpy as cp
 import numpy as np
@@ -31,6 +32,7 @@ from skfolio.utils.stats import (
     cs_spearman_correlation,
     inverse_multiply,
     is_cholesky_dec,
+    is_positive_definite,
     minimize_relative_weight_deviation,
     multiply_by_inverse,
     n_bins_freedman,
@@ -67,8 +69,8 @@ def returns():
 
 
 @pytest.fixture(scope="module")
-def nasdaq_X():
-    prices = load_nasdaq_dataset()
+def nasdaq_X(remote_dataset):
+    prices = remote_dataset(load_nasdaq_dataset)
     nasdaq_X = prices_to_returns(prices)
     return nasdaq_X
 
@@ -124,6 +126,37 @@ def test_n_bins_freedman_returns_default_for_constant_input():
 def test_n_bins_knuth(returns):
     n_bins = n_bins_knuth(returns)
     assert n_bins == 346
+
+
+def test_n_bins_knuth_is_bounded_with_repeated_values():
+    # Repeated values keep improving the Knuth objective as the bins narrow.
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal(1000)
+    x[rng.random(1000) < 0.8] = 0.0
+
+    assert n_bins_knuth(x) <= len(x)
+
+
+def test_n_bins_knuth_is_bounded_when_freedman_exceeds_n():
+    # A narrow core with a few outliers puts the Freedman starting point above n.
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal(1000)
+    x[10:] *= 1e-3
+
+    assert n_bins_freedman(x) > len(x)
+    assert n_bins_knuth(x) <= len(x)
+
+
+def test_n_bins_knuth_can_return_n_bins():
+    assert n_bins_knuth(np.array([-2.6, -1.7, 1.5, 1.8, 2.2])) == 5
+
+
+@pytest.mark.parametrize(
+    ("x", "expected"),
+    [(np.eye(2), True), (np.array([[1.0, 2.0], [2.0, 1.0]]), False)],
+)
+def test_is_positive_definite(x, expected):
+    assert is_positive_definite(x) == expected
 
 
 def test_cov_nearest(nasdaq_X):
@@ -462,7 +495,7 @@ class TestAssertIsSquare:
         x = np.array([[1, 2, 3], [4, 5, 6]])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be square"):
             assert_is_square(x)
 
     #  The function receives a non-square matrix with shape (n,1)
@@ -472,7 +505,7 @@ class TestAssertIsSquare:
         x = np.array([[1], [2], [3]])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be square"):
             assert_is_square(x)
 
 
@@ -489,13 +522,13 @@ class TestAssertIsSymmetric:
     #  The function should raise a ValueError when given a non-square matrix.
     def test_non_square_matrix(self):
         matrix = np.array([[1, 2, 3], [4, 5, 6]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be square"):
             assert_is_symmetric(matrix)
 
     #  The function should raise a ValueError when given a non-symmetric matrix.
     def test_non_symmetric_matrix(self):
         matrix = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be symmetric"):
             assert_is_symmetric(matrix)
 
 
@@ -515,7 +548,7 @@ class TestAssertIsDistance:
         x = np.array([[0, 1, 2], [1, 0, 3]])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be square"):
             assert_is_distance(x)
 
     #  The function receives a non-symmetric matrix and raises a ValueError.
@@ -524,7 +557,7 @@ class TestAssertIsDistance:
         x = np.array([[0, 1, 2], [1, 0, 3], [2, 4, 0]])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be symmetric"):
             assert_is_distance(x)
 
     def test_nonzero_diagonal(self):
@@ -537,7 +570,7 @@ class TestAssertIsDistance:
 
     def test_near_symmetric_distance_matrix_above_tolerance(self):
         x = np.array([[0.0, 0.3, 0.2], [0.3 + 2e-5, 0.0, 0.1], [0.2, 0.1, 0.0]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be symmetric"):
             assert_is_distance(x)
 
 
@@ -572,7 +605,9 @@ class TestCovToCorr:
         cov = np.array([1, 2, 3])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="`cov` must be a 2D array, got a 1D array"
+        ):
             cov_to_corr(cov)
 
     #  Should raise a ValueError when given a 3D ndarray as input
@@ -581,7 +616,9 @@ class TestCovToCorr:
         cov = np.array([[[1, 0], [0, 1]], [[2, 0], [0, 2]], [[3, 0], [0, 3]]])
 
         # Act and Assert
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="`cov` must be a 2D array, got a 3D array"
+        ):
             cov_to_corr(cov)
 
 
@@ -604,7 +641,9 @@ class TestCorrToCov:
         corr = np.array([[1, 0.5], [0.5, 1]])
         std = np.array([[1, 2], [3, 4]])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="`std` must be a 1D array, got a 2D array"
+        ):
             corr_to_cov(corr, std)
 
 
@@ -646,7 +685,9 @@ class TestSafeDivide:
         corr = np.array([1, 0.5, 0.5, 1])
         std = np.array([1, 2])
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="`corr` must be a 2D array, got a 1D array"
+        ):
             corr_to_cov(corr, std)
 
 
@@ -663,15 +704,169 @@ class TestCovNearest:
     #  square.
     def test_raise_value_error_if_input_covariance_matrix_not_square(self):
         cov = np.array([[1, 0, 0], [0, 1, 0]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be square"):
             cov_nearest(cov)
 
     #  Should raise a ValueError if the input covariance matrix is not
     #  symmetric.
     def test_raise_value_error_if_input_covariance_matrix_not_symmetric(self):
         cov = np.array([[1, 2], [3, 4]])
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="The matrix must be symmetric"):
             cov_nearest(cov)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov",
+        [
+            pytest.param(np.ones((2, 2)) * 1e-4, id="singular"),
+            pytest.param(
+                np.array([[1.0, 4.0], [4.0, 1.0]]) * 1e-4,
+                id="materially-indefinite",
+            ),
+            pytest.param(
+                np.array([[1, 1 - 1e-14], [1 - 1e-14, 1]]) * 1e-4,
+                id="near-singular",
+            ),
+            pytest.param(
+                np.cov(
+                    np.random.default_rng(10).standard_normal((4, 6)) * 0.01,
+                    rowvar=False,
+                ),
+                id="seed-10",
+            ),
+            pytest.param(
+                np.cov(
+                    np.random.default_rng(0).standard_normal((20, 50)) * 0.01,
+                    rowvar=False,
+                ),
+                id="many-assets",
+            ),
+        ],
+    )
+    def test_repair_preserves_variances_and_is_idempotent(self, cov, higham):
+        original = cov.copy()
+        repaired = cov_nearest(cov, higham=higham)
+
+        assert np.isfinite(repaired).all()
+        np.testing.assert_array_equal(repaired, repaired.T)
+        np.testing.assert_array_equal(np.diag(repaired), np.diag(original))
+        np.testing.assert_array_equal(cov, original)
+        assert is_cholesky_dec(repaired)
+        assert np.linalg.eigh(repaired)[0][0] > 0
+        assert np.linalg.eigvalsh(repaired)[0] > 0
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            assert cov_nearest(repaired, higham=higham, warn=True) is repaired
+        assert not recorded
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov",
+        [np.array([[2.0, 0.3], [0.3, 0.5]]), np.diag([1e-20, 1.0, 1e20])],
+    )
+    def test_healthy_covariance_is_returned_unchanged(self, cov, higham):
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            assert cov_nearest(cov, higham=higham, warn=True) is cov
+        assert not recorded
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("scale", [1e-8, 1e8])
+    def test_repair_is_scale_invariant(self, higham, scale):
+        cov = np.outer([0.01, 0.02, 0.03], [0.01, 0.02, 0.03])
+        repaired = cov_nearest(cov, higham=higham)
+        scaled = cov_nearest(cov * scale, higham=higham)
+        assert_allclose(scaled / scale, repaired, rtol=1e-12, atol=0)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("matrix", [[[1, 2], [2, 4]], [[0.2, 0.6], [0.6, 1.8]]])
+    def test_float32_repair(self, higham, matrix):
+        cov = np.array(matrix, dtype=np.float32) * 1e-4
+        original = cov.copy()
+        repaired = cov_nearest(cov, higham=higham)
+        assert is_cholesky_dec(repaired)
+        assert np.linalg.eigh(repaired)[0][0] > 0
+        np.testing.assert_array_equal(np.diag(repaired), np.diag(cov))
+        np.testing.assert_array_equal(cov, original)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize("warn", [False, True])
+    def test_repair_warning_is_opt_in(self, higham, warn):
+        with warnings.catch_warnings(record=True) as recorded:
+            warnings.simplefilter("always")
+            cov_nearest(np.ones((2, 2)), higham=higham, warn=warn)
+        assert len(recorded) == int(warn)
+        if warn:
+            assert recorded[0].category is UserWarning
+            assert "nearest positive definite covariance" in str(recorded[0].message)
+
+    @pytest.mark.parametrize("higham", [False, True])
+    @pytest.mark.parametrize(
+        "cov,match",
+        [
+            (
+                np.diag([0.0, 1.0]),
+                "The covariance matrix must contain only finite values",
+            ),
+            (
+                np.diag([-1.0, 1.0]),
+                "The covariance matrix must contain only finite values",
+            ),
+            (
+                np.array([[1.0, np.inf], [np.inf, 1.0]]),
+                "The covariance matrix must contain only finite values",
+            ),
+            # NaN != NaN, so the symmetry check rejects this matrix first.
+            (np.array([[1.0, np.nan], [np.nan, 1.0]]), "The matrix must be symmetric"),
+        ],
+    )
+    def test_invalid_variances_or_nonfinite_values_raise(self, cov, match, higham):
+        with pytest.raises(ValueError, match=match):
+            cov_nearest(cov, higham=higham)
+
+    def test_higham_iteration_limit(self):
+        with pytest.raises(ValueError, match="Unable to find"):
+            cov_nearest(
+                np.array([[1.0, 2.0], [2.0, 1.0]]), higham=True, higham_max_iteration=1
+            )
+
+    @pytest.mark.parametrize(
+        "failures, negative_eigenvalue, raises",
+        [(1, -1e-20, False), (2, -1e-20, False), (2, -1e-8, True)],
+        ids=["retry", "roundoff-after-retry", "material-failure"],
+    )
+    def test_final_eigenvalue_check(
+        self, monkeypatch, failures, negative_eigenvalue, raises
+    ):
+        # Inject solver disagreement deterministically instead of relying on
+        # platform-dependent rounding near a zero eigenvalue.
+        eigvalsh = np.linalg.eigvalsh
+        checks = 0
+
+        def eigenvalues(matrix):
+            nonlocal checks
+            values = eigvalsh(matrix)
+            if np.all(np.diag(matrix) == 1e-4):
+                checks += 1
+                if checks <= failures:
+                    values[0] = negative_eigenvalue
+            return values
+
+        monkeypatch.setattr(np.linalg, "eigvalsh", eigenvalues)
+        cov = np.array([[1.0, 2.0], [2.0, 1.0]]) * 1e-4
+        if raises:
+            with pytest.raises(ValueError, match="Unable to find"):
+                cov_nearest(cov)
+        else:
+            repaired = cov_nearest(cov)
+            assert is_cholesky_dec(repaired)
+            np.testing.assert_array_equal(np.diag(repaired), np.diag(cov))
+        assert checks == 2
+
+    def test_failed_cholesky_after_retry_raises(self, monkeypatch):
+        monkeypatch.setattr("skfolio.utils.stats.is_cholesky_dec", lambda _: False)
+        with pytest.raises(ValueError, match="Unable to find"):
+            cov_nearest(np.ones((2, 2)))
 
 
 class TestMinimizeRelativeWeightDeviation:
@@ -693,7 +888,7 @@ class TestMinimizeRelativeWeightDeviation:
         )
 
     def test_non_feasible(self, weights):
-        with pytest.raises(cp.SolverError):
+        with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
             _ = minimize_relative_weight_deviation(
                 weights=weights, min_weights=np.zeros(6), max_weights=np.ones(6) * 0.1
             )
@@ -755,9 +950,9 @@ def test_unrank_all_positions(N, k):
 
 def test_unrank_invalid_index():
     """Out-of-range indices should raise ValueError."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Index -1 out of range"):
         combination_by_index(-1, 5, 2)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Index 10 out of range"):
         combination_by_index(math.comb(5, 2), 5, 2)
 
 
@@ -775,12 +970,12 @@ def test_unrank_edge_cases():
     """Handle k=0 and k=N edge cases correctly."""
     # k = 0: only one empty combination
     np.testing.assert_array_equal(combination_by_index(0, 5, 0), [])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Index 1 out of range"):
         combination_by_index(1, 5, 0)
 
     # k = N: only one full combination
     np.testing.assert_array_equal(combination_by_index(0, 5, 5), [0, 1, 2, 3, 4])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Index 1 out of range"):
         combination_by_index(1, 5, 5)
 
 
@@ -818,11 +1013,11 @@ def test_sample_unique_subsets_big_comb():
 
 
 def test_sample_unique_subsets_errors():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="n must be non-negative"):
         sample_unique_subsets(-1, 2, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="k=6 must satisfy 0 <= k <= n=5"):
         sample_unique_subsets(5, 6, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="n_subsets=11 must satisfy"):
         sample_unique_subsets(5, 2, math.comb(5, 2) + 1)
 
 
@@ -831,13 +1026,13 @@ def test_edge_cases():
     arr0 = sample_unique_subsets(5, 0, 1, random_state=1)
     assert isinstance(arr0, np.ndarray)
     assert arr0.shape == (1, 0)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="n_subsets=2 must satisfy"):
         sample_unique_subsets(5, 0, 2)
     # k=n
     arr1 = sample_unique_subsets(4, 4, 1, random_state=2)
     assert arr1.shape == (1, 4)
     assert arr1.tolist() == [list(range(4))]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="n_subsets=2 must satisfy"):
         sample_unique_subsets(4, 4, 2)
 
 

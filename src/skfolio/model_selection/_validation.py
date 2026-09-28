@@ -24,11 +24,16 @@ import sklearn.utils.metadata_routing as skm
 import sklearn.utils.parallel as skp
 from sklearn.pipeline import Pipeline
 
+from skfolio._constants import _RISK_FREE_RATE
 from skfolio.model_selection._combinatorial import BaseCombinatorialCV
 from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
 from skfolio.model_selection._walk_forward import WalkForward
 from skfolio.population import Population
-from skfolio.portfolio import MultiPeriodPortfolio, Portfolio
+from skfolio.portfolio import FailedPortfolio, MultiPeriodPortfolio, Portfolio
+from skfolio.portfolio._base import (
+    _PORTFOLIO_MEASURE_PARAMS,
+    _normalize_annualization_factor_alias,
+)
 from skfolio.typing import ArrayLike, IntArray
 from skfolio.utils.tools import fit_and_predict, safe_split
 
@@ -134,17 +139,38 @@ def cross_val_predict(
     column_indices : ndarray, optional
         Indices of the `X` columns to cross-validate on.
 
-    portfolio_params :  dict, optional
-        Additional portfolio parameters passed to `MultiPeriodPortfolio`.
+    portfolio_params : dict, optional
+        Portfolio parameters for the evaluation.
+
+        Parameters shared by `Portfolio` and `MultiPeriodPortfolio` (`compounded`,
+        `risk_free_rate`, `annualization_factor`, `fitness_measures` and the risk
+        measure parameters) are applied to the returned `MultiPeriodPortfolio` and to
+        each `Portfolio` it contains. A value passed here takes precedence over the
+        optimizer's `portfolio_params`. When omitted here, it is inherited from the
+        optimizer's `portfolio_params`. When omitted from both, `risk_free_rate` falls
+        back to the optimizer's `risk_free_rate` parameter when it has one. These
+        parameters only affect how the portfolios are measured, not the optimization.
+
+        `weight_drift` applies to each `Portfolio` of the path. With
+        `weight_drift=True`, the weights held within each test window drift with the
+        asset returns, and the path runs sequentially: the `ending_weights` of each
+        portfolio are passed as `previous_weights` to the next fit. A value passed here
+        overrides the optimizer's `portfolio_params`.
+
+        Optimizer parameters such as `transaction_costs`, `management_fees` and
+        `previous_weights` are not accepted here. Set them on the optimizer.
+
+        `name`, `tag`, `sample_weight` and `check_observations_order` apply to the
+        returned `MultiPeriodPortfolio` only.
 
     entry_rebalancing_params : dict, optional
-        Estimator parameters applied only while constructing the first portfolio of each
-        sequential path. This is useful when the strategy starts with no existing
-        position, while later portfolios represent regular rebalancing from the
-        previously predicted weights. For example, the entry rebalancing can relax
+        Portfolio optimizer parameters applied only while constructing the first
+        portfolio of each sequential path. This is useful when the strategy starts with
+        no existing position, while later portfolios represent regular rebalancing from
+        the previously predicted weights. For example, the entry rebalancing can relax
         `max_turnover` or use lower `transaction_costs` to avoid a slow ramp from cash
         caused by recurring rebalancing constraints. The first portfolio is included in
-        the result. The regular estimator parameters are used for all subsequent
+        the result. The regular optimizer parameters are used for all subsequent
         optimizations. When provided, `cross_val_predict` evaluates a sequential
         strategy path and propagates `previous_weights` between portfolios. This is only
         supported for sequential CV strategies such as
@@ -156,6 +182,17 @@ def cross_val_predict(
     -------
     predictions : MultiPeriodPortfolio | Population
         This is the result of calling `predict`
+
+    Notes
+    -----
+    With a sequential CV, each portfolio's `ending_weights` are passed as
+    `previous_weights` to the next fit when the estimator needs them. Otherwise,
+    fits remain independent and previous weights are assigned to the predicted
+    portfolios afterward for turnover and cost calculations. Ending weights equal
+    the target `weights` when `weight_drift=False` and the weights after the last
+    observation when `weight_drift=True`. Failed and empty portfolios are skipped
+    when propagating holdings. With a non-sequential CV, drift is applied inside
+    each test fold and nothing is propagated.
     """
     if not _is_portfolio_optimization_estimator(estimator):
         raise TypeError(
@@ -163,6 +200,10 @@ def cross_val_predict(
             "estimators. For non-portfolio optimization estimators, use "
             "`sklearn.model_selection.cross_val_predict`."
         )
+
+    estimator, portfolio_params, explicit_measure_param_names = (
+        _resolve_evaluation_portfolio_params(estimator, portfolio_params)
+    )
 
     X, y = safe_split(X, y, indices=column_indices, axis=1)
     X, y = sku.indexable(X, y)
@@ -177,8 +218,11 @@ def cross_val_predict(
 
     cv = sks.check_cv(cv, y)
     splits = list(cv.split(X, y, **routed_params.splitter.split))
-
-    portfolio_params = {} if portfolio_params is None else portfolio_params.copy()
+    if len(splits) == 0:
+        raise ValueError(
+            "The cross-validation strategy produced no splits. Check the number of "
+            "observations and cross-validation parameters."
+        )
 
     # We ensure that the folds are not shuffled
     if not isinstance(cv, BaseCombinatorialCV | MultipleRandomizedCV):
@@ -244,9 +288,9 @@ def cross_val_predict(
                     "Parallel processing has been disabled because the optimization "
                     "method requires sequential processing of previous weights or "
                     "`entry_rebalancing_params`. To suppress this warning, set "
-                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable "
-                    "sequential processing of previous weights by setting your "
-                    "Optimization's `needs_previous_weights` attribute to False.",
+                    "`n_jobs=None`, remove `entry_rebalancing_params`, or disable the "
+                    "options that require previous weights, such as `weight_drift`, "
+                    "transaction costs, `max_turnover`, or a previous-weights fallback.",
                     stacklevel=2,
                 )
             predictions = _run_path(
@@ -316,10 +360,14 @@ def cross_val_predict(
         sorted_fold_id = np.argsort([x[0] for x in test_indices])
         pred = MultiPeriodPortfolio(
             portfolios=[predictions[fold_id] for fold_id in sorted_fold_id],
-            check_observations_order=False,
             **portfolio_params,
         )
 
+    if is_sequential_cv and not use_sequential_path:
+        for path in pred if isinstance(pred, Population) else [pred]:
+            path.portfolios = _propagate_previous_weights(portfolios=path.portfolios)
+
+    _sync_measure_params_to_portfolios(pred, explicit_measure_param_names)
     return pred
 
 
@@ -436,14 +484,44 @@ def _route_params(
     return routed_params
 
 
-def _asset_names_enabled(X: ArrayLike) -> bool:
-    """Return whether X is a DataFrame and its column names are transferred inside
-    a Pipeline.
+def _has_asset_names(X: ArrayLike) -> bool:
+    """Return whether the optimizer's actual input carries string asset names."""
+    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)
+
+
+def _propagate_previous_weights(portfolios: list[Portfolio]) -> list[Portfolio]:
+    """Set previous weights along a path after independent fits.
+
+    The first portfolio retains the supplied initial holdings. Later portfolios
+    are reconstructed only when their previous holdings differ from the last
+    successful period's ending weights. Failed and empty periods do not advance
+    the holdings.
     """
-    return hasattr(X, "columns") and sk.get_config().get("transform_output") in [
-        "pandas",
-        "polars",
-    ]
+    result = []
+    previous_weights = None
+    for portfolio in portfolios:
+        if not isinstance(portfolio, FailedPortfolio) and portfolio.n_observations:
+            if previous_weights is not None:
+                params = portfolio._get_init_params()
+                current = params["previous_weights"]
+                if isinstance(current, dict) or isinstance(previous_weights, dict):
+                    same_weights = (
+                        isinstance(current, dict)
+                        and isinstance(previous_weights, dict)
+                        and current == previous_weights
+                    )
+                else:
+                    same_weights = np.array_equal(current, previous_weights)
+                if not same_weights:
+                    params["previous_weights"] = previous_weights
+                    portfolio = type(portfolio)(**params)
+            previous_weights = (
+                portfolio.ending_weights_dict
+                if _has_asset_names(X=portfolio.X)
+                else portfolio.ending_weights
+            )
+        result.append(portfolio)
+    return result
 
 
 def _get_last_step(estimator: skb.BaseEstimator | Pipeline) -> skb.BaseEstimator:
@@ -467,6 +545,120 @@ def _get_last_step(estimator: skb.BaseEstimator | Pipeline) -> skb.BaseEstimator
     return estimator
 
 
+def _resolve_evaluation_portfolio_params(
+    estimator: skb.BaseEstimator | Pipeline,
+    portfolio_params: dict | None,
+    *,
+    clone_estimator: bool = True,
+) -> tuple[skb.BaseEstimator | Pipeline, dict, set[str]]:
+    """Resolve parameters for individual and multi-period portfolio evaluation.
+
+    Settings listed in `_PORTFOLIO_MEASURE_PARAMS` configure every resulting
+    `MultiPeriodPortfolio` and each `Portfolio` it contains. When absent from the
+    evaluation call, the `MultiPeriodPortfolio` inherits the corresponding value from
+    the portfolio optimizer's `portfolio_params`. `risk_free_rate` also falls back to
+    the optimizer attribute when available. An evaluation-level `weight_drift` is
+    copied into the final estimator step so `predict` can construct each `Portfolio`
+    return series and its `ending_weights`.
+
+    Parameters
+    ----------
+    estimator : BaseEstimator | Pipeline
+        Estimator or pipeline whose last step produces `Portfolio` objects.
+
+    portfolio_params : dict, optional
+        Parameters supplied to the evaluation call, possibly including measure
+        parameters and `weight_drift`.
+
+    clone_estimator : bool, default=True
+        If True, the estimator is cloned before being modified. Online helpers pass
+        False because they operate on a clone whose fitted state must be kept.
+
+    Returns
+    -------
+    estimator : BaseEstimator | Pipeline
+        A clone carrying the evaluation-level `weight_drift`, or the input estimator
+        when `weight_drift` is not supplied.
+
+    multi_period_portfolio_params : dict
+        Resolved parameters for the resulting `MultiPeriodPortfolio` objects, without
+        `weight_drift`.
+
+    explicit_measure_param_names : set[str]
+        Canonical names of measure parameters explicitly supplied by the evaluation
+        call. After constructing each `MultiPeriodPortfolio`, its resolved values for
+        these parameters must be copied to every `Portfolio` it contains.
+    """
+    multi_period_portfolio_params = _normalize_annualization_factor_alias(
+        {} if portfolio_params is None else portfolio_params,
+        stacklevel=5,
+    )
+    explicit_measure_param_names = (
+        set(multi_period_portfolio_params) & _PORTFOLIO_MEASURE_PARAMS
+    )
+
+    last_step = _get_last_step(estimator)
+    estimator_portfolio_params = _normalize_annualization_factor_alias(
+        {} if last_step.portfolio_params is None else last_step.portfolio_params,
+        stacklevel=5,
+    )
+    for param in _PORTFOLIO_MEASURE_PARAMS:
+        if (
+            param not in multi_period_portfolio_params
+            and param in estimator_portfolio_params
+        ):
+            multi_period_portfolio_params[param] = estimator_portfolio_params[param]
+
+    if _RISK_FREE_RATE not in multi_period_portfolio_params and hasattr(
+        last_step, _RISK_FREE_RATE
+    ):
+        multi_period_portfolio_params[_RISK_FREE_RATE] = getattr(
+            last_step, _RISK_FREE_RATE
+        )
+
+    if "weight_drift" not in multi_period_portfolio_params:
+        return estimator, multi_period_portfolio_params, explicit_measure_param_names
+
+    weight_drift = multi_period_portfolio_params.pop("weight_drift")
+    if clone_estimator:
+        estimator = sk.clone(estimator)
+    last_step = _get_last_step(estimator)
+    individual_portfolio_params = (
+        {} if last_step.portfolio_params is None else last_step.portfolio_params.copy()
+    )
+    individual_portfolio_params["weight_drift"] = weight_drift
+    last_step.set_params(portfolio_params=individual_portfolio_params)
+    return estimator, multi_period_portfolio_params, explicit_measure_param_names
+
+
+def _sync_measure_params_to_portfolios(
+    prediction: MultiPeriodPortfolio | Population,
+    explicit_measure_param_names: set[str],
+) -> None:
+    """Copy the given measure parameters from each `MultiPeriodPortfolio` to the
+    `Portfolio` objects it contains.
+
+    The values are read from the constructed `MultiPeriodPortfolio` rather than from
+    the evaluation call, so that constructor defaults are applied once: an explicit
+    `annualization_factor=None` reaches the children as 252 and an explicit
+    `fitness_measures=None` as the default measures.
+    """
+    if not explicit_measure_param_names:
+        return
+
+    multi_period_portfolios = (
+        prediction if isinstance(prediction, Population) else [prediction]
+    )
+    for multi_period_portfolio in multi_period_portfolios:
+        measure_params = {
+            param: getattr(multi_period_portfolio, param)
+            for param in explicit_measure_param_names
+        }
+        for portfolio in multi_period_portfolio:
+            for param, value in measure_params.items():
+                setattr(portfolio, param, value)
+
+
 def _is_portfolio_optimization_estimator(
     estimator: skb.BaseEstimator | Pipeline,
 ) -> bool:
@@ -485,6 +677,12 @@ def _is_portfolio_optimization_estimator(
         `True` when `estimator` itself is a portfolio optimization estimator,
         or, for a `Pipeline`, when its last step is one.
     """
+    # Imported here rather than at module scope: `skfolio.optimization` imports
+    # `skfolio.model_selection` (through `optimization.cluster._nco` and
+    # `optimization.ensemble._stacking`), which imports this module, so a
+    # module-level import would close a package-level cycle between
+    # `skfolio.model_selection` and `skfolio.optimization`. Annotations are
+    # postponed, so the `TYPE_CHECKING` import above covers the signature.
     from skfolio.optimization._base import BaseOptimization
 
     return isinstance(_get_last_step(estimator), BaseOptimization)
@@ -552,9 +750,9 @@ def _run_path(
     """Run sequential fit/predict along a single path of ordered splits.
 
     Used when the final estimator requires previous portfolio weights between
-    consecutive folds (e.g. walk-forward validation). The function propagates
-    the `previous_weights` from the prediction of the previous fold to the
-    next one.
+    consecutive folds (e.g. walk-forward validation). The function passes each
+    portfolio's `ending_weights` as `previous_weights` to the next fit. A failed
+    prediction leaves the propagated weights unchanged.
 
     Parameters
     ----------
@@ -585,7 +783,6 @@ def _run_path(
     list[Portfolio]
         Portfolios predicted for each test fold in the path, in order.
     """
-    use_dict = _asset_names_enabled(X)
     predictions = []
     prev_weights = _get_last_step(estimator).previous_weights
     for i, (train, test, *column_indices) in enumerate(path_splits):
@@ -604,6 +801,16 @@ def _run_path(
             method=method,
             column_indices=column_indices[0] if column_indices else None,
         )
+        if isinstance(ptf, Population):
+            raise ValueError(
+                "Sequential propagation of `previous_weights` requires one "
+                "Portfolio per fold. The estimator returned a Population."
+            )
         predictions.append(ptf)
-        prev_weights = ptf.weights_dict if use_dict else ptf.weights
+        if not isinstance(ptf, FailedPortfolio) and ptf.n_observations:
+            prev_weights = (
+                ptf.ending_weights_dict
+                if _has_asset_names(X=ptf.X)
+                else ptf.ending_weights
+            )
     return predictions

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from enum import auto
 from functools import cached_property
 from itertools import combinations
+from typing import Any
 
 import numpy as np
 import scipy.sparse.csgraph as ssc
@@ -104,7 +105,7 @@ class BaseNode(ABC):
         The Tree containing this Node.
     """
 
-    def __init__(self, ref: int | Edge):
+    def __init__(self, ref: int | Edge) -> None:
         self._ref = ref
         self.edges: set[Edge] = set()
         self.tree: Tree | None = None  # Reference to the Tree containing this Node
@@ -115,9 +116,9 @@ class BaseNode(ABC):
         return self._ref
 
     @abstractmethod
-    def clear_cache(self, **kwargs):
+    def clear_cache(self, **kwargs: Any) -> None:
         """Clear the cached pseudo-values and margin values (u and v)."""
-        pass
+        ...
 
     def __repr__(self) -> str:
         """String representation of the node."""
@@ -149,12 +150,12 @@ class RootNode(BaseNode):
 
     def __init__(
         self, ref: int, central: bool, pseudo_values: FloatArray | None = None
-    ):
+    ) -> None:
         super().__init__(ref=ref)
         self.central = central
         self.pseudo_values = pseudo_values
 
-    def clear_cache(self, **kwargs):
+    def clear_cache(self, **kwargs: Any) -> None:
         """Clear the cached margin values (u and v)."""
         self.pseudo_values = None
 
@@ -177,7 +178,7 @@ class ChildNode(BaseNode):
         The Tree containing this Node.
     """
 
-    def __init__(self, ref: Edge):
+    def __init__(self, ref: Edge) -> None:
         super().__init__(ref=ref)
         # pointer from Edge to Node
         ref.ref_node = self
@@ -244,6 +245,7 @@ class ChildNode(BaseNode):
 
     @u.setter
     def u(self, value: FloatArray) -> None:
+        """Set the first margin value (u) for the node."""
         self._u = value
 
     @property
@@ -286,7 +288,8 @@ class ChildNode(BaseNode):
         return value
 
     @v.setter
-    def v(self, value: FloatArray):
+    def v(self, value: FloatArray) -> None:
+        """Set the second margin value (v) for the node."""
         self._v = value
 
     def get_var(self, is_left: bool) -> int:
@@ -309,7 +312,7 @@ class ChildNode(BaseNode):
         var = self.ref.cond_sets.conditioned[0 if is_left else 1]
         return var
 
-    def clear_cache(self, clear_count: bool):
+    def clear_cache(self, clear_count: bool) -> None:
         """Clear the cached margin values (u and v) and counts.
 
         Parameters
@@ -356,7 +359,7 @@ class Edge:
         node1: RootNode | ChildNode,
         node2: RootNode | ChildNode,
         dependence_method: DependenceMethod = DependenceMethod.KENDALL_TAU,
-    ):
+    ) -> None:
         self.node1 = node1
         self.node2 = node2
         self.dependence_method = dependence_method
@@ -400,7 +403,7 @@ class Edge:
             )
         return self.node1.ref.cond_sets + self.node2.ref.cond_sets
 
-    def ref_to_nodes(self):
+    def ref_to_nodes(self) -> None:
         """Connect this edge to its two nodes."""
         self.node1.edges.add(self)
         self.node2.edges.add(self)
@@ -505,7 +508,7 @@ class Tree:
         Whether to count the number of visit of each Node during sampling.
     """
 
-    def __init__(self, level: int, nodes: list[RootNode | ChildNode]):
+    def __init__(self, level: int, nodes: list[RootNode | ChildNode]) -> None:
         self.level = level
         self._nodes = nodes
         for node in nodes:
@@ -583,17 +586,17 @@ class Tree:
 
         self.edges = edges
 
-    def clear_cache(self, clear_count: bool = True):
+    def clear_cache(self, clear_count: bool = True) -> None:
         """Clear cached values for all nodes in the tree."""
         for node in self.nodes:
             node.clear_cache(clear_count=clear_count)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """String representation of the tree."""
         return f"Tree(level {self.level})"
 
 
-def _dependence(X, dependence_method: DependenceMethod) -> float:
+def _dependence(X: FloatArray, dependence_method: DependenceMethod) -> float:
     """Compute the dependence between two variables in X using the specified method.
 
     Parameters

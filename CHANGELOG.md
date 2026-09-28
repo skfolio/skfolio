@@ -2,6 +2,346 @@
 
 <!-- version list -->
 
+## v1.4.4 (2026-09-28)
+
+### Bug Fixes
+
+- Bound Knuth binning and check currency returns on fitted rows
+  ([#387](https://github.com/skfolio/skfolio/pull/387),
+  [`a41d67c`](https://github.com/skfolio/skfolio/commit/a41d67c7e4e6714082ecd54045bf9fdc8b0cb852))
+
+### Documentation
+
+- Record why doctest print options live in src/conftest.py
+  ([#389](https://github.com/skfolio/skfolio/pull/389),
+  [`98f4c72`](https://github.com/skfolio/skfolio/commit/98f4c72bc3143ac37ce7d1e3192acf1a44d0c847))
+
+- **contributing**: Document the CI checks and the PR title format
+  ([#372](https://github.com/skfolio/skfolio/pull/372),
+  [`1052d0b`](https://github.com/skfolio/skfolio/commit/1052d0bb4a87a12e4dacc16b26ea51abdfe4449e))
+
+
+## v1.4.3 (2026-09-27)
+
+### Bug Fixes
+
+- Narrow two broad except Exception handlers to the expected errors
+  ([#380](https://github.com/skfolio/skfolio/pull/380),
+  [`f82b8ed`](https://github.com/skfolio/skfolio/commit/f82b8edf61026c74a16e7e06da4e16d3e7d96ae9))
+
+### Chores
+
+- Remove the unused JupyterLab Docker image ([#360](https://github.com/skfolio/skfolio/pull/360),
+  [`fdb8fbb`](https://github.com/skfolio/skfolio/commit/fdb8fbb60181d180097b83c508ffd5c55dfb170a))
+
+### Refactoring
+
+- Enforce ruff annotation rules across src ([#366](https://github.com/skfolio/skfolio/pull/366),
+  [`7a91670`](https://github.com/skfolio/skfolio/commit/7a91670fc7ef095d37a3c48055d3f3797946cc04))
+
+
+## v1.4.2 (2026-09-27)
+
+### Bug Fixes
+
+- Correct metadata routing keys and Marchenko-Pastur fit
+  ([#376](https://github.com/skfolio/skfolio/pull/376),
+  [`8ce4a98`](https://github.com/skfolio/skfolio/commit/8ce4a982b48f248e431aebb004d55f13dca1f13f))
+
+
+## v1.4.1 (2026-09-26)
+
+### Bug Fixes
+
+- **measures**: Count the starting wealth as the first drawdown peak
+  ([#375](https://github.com/skfolio/skfolio/pull/375),
+  [`9d88b5f`](https://github.com/skfolio/skfolio/commit/9d88b5fc60e8b9240fffd5f162ce568764e91881))
+
+### Continuous Integration
+
+- Run the pre-commit hooks in CI ([#353](https://github.com/skfolio/skfolio/pull/353),
+  [`f01f187`](https://github.com/skfolio/skfolio/commit/f01f18789794ee806cdaf31f98b4c28c9b36fef6))
+
+### Documentation
+
+- Require docstrings in src with numpydoc validation
+  ([#355](https://github.com/skfolio/skfolio/pull/355),
+  [`9d3c710`](https://github.com/skfolio/skfolio/commit/9d3c710c4e177bb097758871f7c1d936156324f5))
+
+- **contributing**: Explain why uv.lock is not committed (#345)
+  ([#358](https://github.com/skfolio/skfolio/pull/358),
+  [`d5aeefa`](https://github.com/skfolio/skfolio/commit/d5aeefac8120b9aa05df81d0ba43a607f386579b))
+
+
+## v1.4.0 (2026-09-26)
+
+### Features
+
+- **portfolio**: Add plot_composition_treemap ([#248](https://github.com/skfolio/skfolio/pull/248),
+  [`288293d`](https://github.com/skfolio/skfolio/commit/288293dd771805e444de1bc5a15aafc6da08895f))
+
+### Testing
+
+- Pin the expected message on every pytest.raises
+  ([#357](https://github.com/skfolio/skfolio/pull/357),
+  [`bf79675`](https://github.com/skfolio/skfolio/commit/bf7967593ea69961fb8981c3c81d9bc271b8c73d))
+
+- **utils**: Cover the untested branches of utils/tools.py
+  ([#354](https://github.com/skfolio/skfolio/pull/354),
+  [`f45fa1e`](https://github.com/skfolio/skfolio/commit/f45fa1e1915ae17d0b07a3912af44946e38e77e4))
+
+
+## v1.3.4 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Compute evar in stable log-sum-exp form
+  ([#359](https://github.com/skfolio/skfolio/pull/359),
+  [`b5a0daa`](https://github.com/skfolio/skfolio/commit/b5a0daa4a77fdf22a4dc6ef447e22353969424e3))
+
+
+## v1.3.3 (2026-09-25)
+
+### Bug Fixes
+
+- **measures**: Make value_at_risk consistent at integer tail sizes
+  ([#343](https://github.com/skfolio/skfolio/pull/343),
+  [`0217735`](https://github.com/skfolio/skfolio/commit/021773536d6f263d3c5eea64e507552c7f1b9396))
+
+
+## v1.3.2 (2026-09-24)
+
+### Bug Fixes
+
+- **portfolio**: Preserve sample weights across multi-period updates
+  ([#338](https://github.com/skfolio/skfolio/pull/338),
+  [`657bcb7`](https://github.com/skfolio/skfolio/commit/657bcb755621d4bb0530e59d96323d5a8d32230a))
+
+
+## v1.3.1 (2026-09-23)
+
+### Bug Fixes
+
+- **population**: Prevent crash when plotting ratio measures on surfaces
+  ([#330](https://github.com/skfolio/skfolio/pull/330),
+  [`5b8a89f`](https://github.com/skfolio/skfolio/commit/5b8a89f34853bdd83866635a776a3c80a357ad9b))
+
+### Build System
+
+- Add deptry checks and remove direct joblib dependency
+  ([#320](https://github.com/skfolio/skfolio/pull/320),
+  [`505eb8b`](https://github.com/skfolio/skfolio/commit/505eb8b7a41687596e358e98bfdf6b31be20e1ab))
+
+### Documentation
+
+- Fix opinion pooling example and document solver fallback
+  ([#293](https://github.com/skfolio/skfolio/pull/293),
+  [`cb0147a`](https://github.com/skfolio/skfolio/commit/cb0147aa22fc828401e0b8a34d8e9085ae58ff6b))
+
+### Refactoring
+
+- **attribution**: Decompose Attribution.__post_init__
+  ([#322](https://github.com/skfolio/skfolio/pull/322),
+  [`eb73a4c`](https://github.com/skfolio/skfolio/commit/eb73a4cfe3136d5615a6047060705695d4462588))
+
+- **containers**: Decompose validate_asset_panel and AssetPanel.info
+  ([#324](https://github.com/skfolio/skfolio/pull/324),
+  [`9032831`](https://github.com/skfolio/skfolio/commit/9032831cb7a38998c175cd3ab842767c5aa23dc3))
+
+- **optimization**: Extract convex constraint and objective builders
+  ([#323](https://github.com/skfolio/skfolio/pull/323),
+  [`5e7191c`](https://github.com/skfolio/skfolio/commit/5e7191c4795880de9d2d28c3db7c92f5dd711f91))
+
+
+## v1.3.0 (2026-09-20)
+
+### Features
+
+- **moments**: Add GeodesicShrinkageCovariance estimator
+  ([#259](https://github.com/skfolio/skfolio/pull/259),
+  [`89a8edd`](https://github.com/skfolio/skfolio/commit/89a8eddd34a0192b9c7d9d960cd640002768787b))
+
+
+## v1.2.9 (2026-09-19)
+
+### Bug Fixes
+
+- **stats**: Stabilize cov_nearest for nearly singular covariance matrices
+  ([#332](https://github.com/skfolio/skfolio/pull/332),
+  [`83f91f4`](https://github.com/skfolio/skfolio/commit/83f91f4c8ac9eb458539f64963a89a9f0d263d69))
+
+
+## v1.2.8 (2026-09-16)
+
+### Bug Fixes
+
+- **portfolio**: Prevent multi-period arithmetic from resetting settings
+  ([#317](https://github.com/skfolio/skfolio/pull/317),
+  [`efbddac`](https://github.com/skfolio/skfolio/commit/efbddacb9eeb07e1c7b982968c1804a2a6637342))
+
+
+## v1.2.7 (2026-09-16)
+
+### Bug Fixes
+
+- **portfolio**: Validate portfolio constructor sample weights
+  ([#315](https://github.com/skfolio/skfolio/pull/315),
+  [`eaaace8`](https://github.com/skfolio/skfolio/commit/eaaace8976173d85fd8399a9eb4827feb5852fa1))
+
+### Documentation
+
+- Add missing doctest examples ([#314](https://github.com/skfolio/skfolio/pull/314),
+  [`fa5b935`](https://github.com/skfolio/skfolio/commit/fa5b93556f51f6893371807bfe63704b375821f1))
+
+
+## v1.2.6 (2026-09-15)
+
+### Bug Fixes
+
+- **optimization**: Normalize target weights in maximum-ratio optimization
+  ([#318](https://github.com/skfolio/skfolio/pull/318),
+  [`fecc0b7`](https://github.com/skfolio/skfolio/commit/fecc0b780f5db4b801030bace8265cb94ba40b52))
+
+
+## v1.2.5 (2026-09-15)
+
+### Bug Fixes
+
+- **pre-selection**: Apply absolute correlations
+  ([#311](https://github.com/skfolio/skfolio/pull/311),
+  [`74ad22d`](https://github.com/skfolio/skfolio/commit/74ad22d85a0e6c7bb6fd79562b062fff906702a7))
+
+### Testing
+
+- Expand coverage and fix edge-case failures ([#313](https://github.com/skfolio/skfolio/pull/313),
+  [`4aceaf5`](https://github.com/skfolio/skfolio/commit/4aceaf510581b6102924b7cb2c42ba81b0d7fe77))
+
+
+## v1.2.4 (2026-09-14)
+
+### Bug Fixes
+
+- **portfolio**: Support nullable pandas returns in Portfolio
+  ([#310](https://github.com/skfolio/skfolio/pull/310),
+  [`307a9a4`](https://github.com/skfolio/skfolio/commit/307a9a411379d5348a5e5214a09118f29ee0fbea))
+
+
+## v1.2.3 (2026-09-13)
+
+### Bug Fixes
+
+- **optimization**: Validate prediction feature order
+  ([#309](https://github.com/skfolio/skfolio/pull/309),
+  [`f2358a3`](https://github.com/skfolio/skfolio/commit/f2358a3a8a3b9361b5441d1d5f6b225e74627a8a))
+
+
+## v1.2.2 (2026-09-13)
+
+### Bug Fixes
+
+- **measures**: Correct semi-variance normalization with NaNs
+  ([#285](https://github.com/skfolio/skfolio/pull/285),
+  [`77bd86c`](https://github.com/skfolio/skfolio/commit/77bd86cedbca91668dc7f0ce02cc4bdfe3d311c6))
+
+
+## v1.2.1 (2026-09-13)
+
+### Bug Fixes
+
+- **model-selection**: Raise ValueError for empty CV schedules
+  ([#270](https://github.com/skfolio/skfolio/pull/270),
+  [`72d1dc5`](https://github.com/skfolio/skfolio/commit/72d1dc55869eca6553f80cead11b68c6ed34e153))
+
+
+## v1.2.0 (2026-09-13)
+
+### Features
+
+- Add weight drift and backtesting and evaluation user guide
+  ([#286](https://github.com/skfolio/skfolio/pull/286),
+  [`25294e7`](https://github.com/skfolio/skfolio/commit/25294e7b720c833e9839b568d0fffd992507452f))
+
+
+## v1.1.0 (2026-09-12)
+
+### Build System
+
+- Keep doctest configuration out of wheels ([#308](https://github.com/skfolio/skfolio/pull/308),
+  [`553f7a5`](https://github.com/skfolio/skfolio/commit/553f7a542189c6cabf52b159b0f8d1133afc6b52))
+
+### Chores
+
+- Remove the unreferenced Makefile ([#281](https://github.com/skfolio/skfolio/pull/281),
+  [`110c204`](https://github.com/skfolio/skfolio/commit/110c2049e6b0f70aaf0b0d0d7acae998ce42a3a8))
+
+- **deps**: Bump https://github.com/pre-commit/pre-commit-hooks
+  ([#289](https://github.com/skfolio/skfolio/pull/289),
+  [`b17dd58`](https://github.com/skfolio/skfolio/commit/b17dd586ee2c10363e5b86d61d5a8dcce051264b))
+
+- **lint**: Bring examples under the ruff gate ([#284](https://github.com/skfolio/skfolio/pull/284),
+  [`94ea5d5`](https://github.com/skfolio/skfolio/commit/94ea5d584296c71a45bba7139a3d7e50dc38d9c7))
+
+### Continuous Integration
+
+- Run the publishing workflows only on the canonical repository
+  ([#294](https://github.com/skfolio/skfolio/pull/294),
+  [`5ded7e2`](https://github.com/skfolio/skfolio/commit/5ded7e2cac2afc11ab9265e27dd5bdf3d7112d55))
+
+### Documentation
+
+- Comment the two cycle-breaking deferred imports
+  ([#306](https://github.com/skfolio/skfolio/pull/306),
+  [`029ae0b`](https://github.com/skfolio/skfolio/commit/029ae0bdaf0021fcce34abc2805365edc3a473c1))
+
+### Features
+
+- **exceptions**: Add a SkfolioError base class
+  ([#305](https://github.com/skfolio/skfolio/pull/305),
+  [`bfc864c`](https://github.com/skfolio/skfolio/commit/bfc864c2c90cd33e768adbab896c8c23335e25d3))
+
+### Refactoring
+
+- **utils**: Break import-time package cycles ([#279](https://github.com/skfolio/skfolio/pull/279),
+  [`085485b`](https://github.com/skfolio/skfolio/commit/085485b0f35576c1b36b4c4253cb7b944fee0c6f))
+
+### Testing
+
+- Make the suite hermetic and scope sklearn config
+  ([#291](https://github.com/skfolio/skfolio/pull/291),
+  [`bd55f43`](https://github.com/skfolio/skfolio/commit/bd55f43d1505252771fe161ae98b46dc4208242a))
+
+- **docs**: Execute and verify the docstring examples
+  ([#283](https://github.com/skfolio/skfolio/pull/283),
+  [`b500f88`](https://github.com/skfolio/skfolio/commit/b500f88569e98d3e8d1f40770151b5e1b0cd30bd))
+
+- **prior**: Stabilize entropy pooling tests and update CI to Python 3.14
+  ([#290](https://github.com/skfolio/skfolio/pull/290),
+  [`0ea53ad`](https://github.com/skfolio/skfolio/commit/0ea53ad2a4b415ba65f2c04da9382a1d5fc27d1a))
+
+
+## v1.0.6 (2026-09-08)
+
+### Bug Fixes
+
+- **deps**: Correct minimum requirements and simplify development setup and pre-commit
+  ([#280](https://github.com/skfolio/skfolio/pull/280),
+  [`30a6d9a`](https://github.com/skfolio/skfolio/commit/30a6d9ab1c088852537eb860f1910ae2974d8d3f))
+
+### Additional Release Information
+
+- **deps**: Contributor dependencies have moved from dev/docs extras to uv dependency groups. Use uv
+  sync for development (see CONTRIBUTING.md).
+
+
+## v1.0.5 (2026-09-07)
+
+### Bug Fixes
+
+- **datasets**: Make dataset cache writes atomic
+  ([#282](https://github.com/skfolio/skfolio/pull/282),
+  [`acc7a8b`](https://github.com/skfolio/skfolio/commit/acc7a8b67effe78aa79d32703c90814e0a8f429f))
+
+
 ## v1.0.4 (2026-08-31)
 
 ### Bug Fixes

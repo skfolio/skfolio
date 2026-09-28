@@ -35,7 +35,8 @@ solvers.
 # assets from the S&P 500 Index composition starting from 2018-01-02 up to 2022-12-28.
 
 from plotly.io import show
-from skfolio import RiskMeasure, Population
+
+from skfolio import Population, RiskMeasure
 from skfolio.datasets import load_sp500_dataset
 from skfolio.optimization import MeanRisk
 from skfolio.preprocessing import prices_to_returns
@@ -57,7 +58,7 @@ model.weights_
 
 # %%
 # Now, let's assume we don't want weights that are too small.
-# This means that, let’s say, if an asset is invested (non-zero weight), it needs to be
+# This means that, let's say, if an asset is invested (non-zero weight), it needs to be
 # between -100% to -10% **or** +15% to +100%:
 model_threshold = MeanRisk(
     min_weights=-1,

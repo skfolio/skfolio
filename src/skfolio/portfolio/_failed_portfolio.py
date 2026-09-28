@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import skfolio.typing as skt
 from skfolio.portfolio._portfolio import Portfolio
 from skfolio.typing import ArrayLike, FloatArray
@@ -28,6 +30,10 @@ class FailedPortfolio(Portfolio):
         with `raise_on_failure=False`, a `FailedPortfolio` is returned on failed
         rebalancings. This lets the process complete without raising while preserving
         the full timeline for downstream analysis and diagnostics.
+
+        In a sequential evaluation, a failed period contributes no returns and no
+        holdings. The last successful holdings are kept unchanged and supplied as
+        `previous_weights` to the next fit.
 
     Parameters
     ----------
@@ -93,6 +99,10 @@ class FailedPortfolio(Portfolio):
         `FailedPortfolio`.
 
     compounded : bool, default=False
+        Accepted for API compatibility with `Portfolio` but not used by
+        `FailedPortfolio`.
+
+    weight_drift : bool, default=False
         Accepted for API compatibility with `Portfolio` but not used by
         `FailedPortfolio`.
 
@@ -164,6 +174,7 @@ class FailedPortfolio(Portfolio):
         annualization_factor: float | None = None,
         fitness_measures: list[skt.Measure] | None = None,
         compounded: bool = False,
+        weight_drift: bool = False,
         sample_weight: FloatArray | None = None,
         min_acceptable_return: float | None = None,
         value_at_risk_beta: float = 0.95,
@@ -174,8 +185,8 @@ class FailedPortfolio(Portfolio):
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         super().__init__(
             X=X,
             weights=None,
@@ -188,6 +199,7 @@ class FailedPortfolio(Portfolio):
             annualization_factor=annualization_factor,
             fitness_measures=fitness_measures,
             compounded=compounded,
+            weight_drift=weight_drift,
             sample_weight=sample_weight,
             min_acceptable_return=min_acceptable_return,
             value_at_risk_beta=value_at_risk_beta,

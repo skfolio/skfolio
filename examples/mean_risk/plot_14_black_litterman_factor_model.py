@@ -37,7 +37,9 @@ prices = prices["2014":]
 factor_prices = factor_prices["2014":]
 
 X, factors = prices_to_returns(prices, factor_prices)
-X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
 
 # %%
 # Analyst views

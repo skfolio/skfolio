@@ -43,6 +43,7 @@ volumes_usd = np.random.rand(*X.shape) * 1e6
 # Let's create a custom pre-selection transformer to retain the top x% of assets
 # with the highest average volumes during the fitting period.
 
+
 class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
     to_keep_: np.ndarray
 
@@ -55,9 +56,7 @@ class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
 
         # Check parameters
         if not 0 < self.pct_to_keep <= 1:
-            raise ValueError(
-                "`pct_to_keep` must be between 0 and 1"
-            )
+            raise ValueError("`pct_to_keep` must be between 0 and 1")
 
         # Validate and convert volumes to a NumPy array
         volumes = skv.check_array(
@@ -78,7 +77,7 @@ class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
         mean_volumes = volumes.mean(axis=0)
 
         # Select the top `pct_to_keep` assets with the highest average volumes
-        n_to_keep = max(1, int(round(self.pct_to_keep * n_assets)))
+        n_to_keep = max(1, round(self.pct_to_keep * n_assets))
         selected_idx = np.argsort(mean_volumes)[-n_to_keep:]
 
         # Performance tip: `argpartition` could be used here for better efficiency
@@ -89,6 +88,7 @@ class VolumePreSelection(skf.SelectorMixin, skb.BaseEstimator):
     def _get_support_mask(self):
         skv.check_is_fitted(self)
         return self.to_keep_
+
 
 # %%
 # Pipeline
@@ -103,9 +103,7 @@ model = Pipeline(
     [
         (
             "pre_selection",
-            VolumePreSelection(pct_to_keep=0.3).set_fit_request(
-                volumes=True
-            ),
+            VolumePreSelection(pct_to_keep=0.3).set_fit_request(volumes=True),
         ),
         ("optimization", EqualWeighted()),
     ]

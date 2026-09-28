@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -158,6 +160,12 @@ class RiskBudgeting(ConvexOptimization):
         with :math:`\mu` the vector of assets' expected returns and :math:`w` the
         vector of assets weights.
 
+        For positions in `previous_weights` whose assets are no longer in the
+        investment universe, transaction costs are calculated assuming full
+        liquidation. These costs are included in both the optimization and
+        `Portfolio.total_cost`. For assets absent from `X`, `transaction_costs`
+        must be a single rate applied to all assets or a dictionary keyed by asset name.
+
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset cost) and the input `X` of the `fit` method must be a
@@ -217,6 +225,8 @@ class RiskBudgeting(ConvexOptimization):
     previous_weights : float | dict[str, float] | array-like of shape (n_assets, ), optional
         Previous weights of the assets. Previous weights are used to compute the
         portfolio cost and the portfolio turnover.
+        For named positions in assets absent from `X`, these calculations assume
+        full liquidation.
         If a float is provided, it is applied to each asset.
         If a dictionary is provided, its (key/value) pair must be the
         (asset name/asset previous weight) and the input `X` of the `fit` method must
@@ -471,7 +481,9 @@ class RiskBudgeting(ConvexOptimization):
     >>> # Variance risk parity optimization
     >>> model = RiskBudgeting(risk_measure=RiskMeasure.VARIANCE)
     >>> model.fit(X)
+    RiskBudgeting()
     >>> print(model.weights_)
+    [0.0422 0.0314 0.0343 ... 0.0473 0.0603 0.0565]
     >>>
     >>> # CVaR risk budgeting with custom asset budgets
     >>> risk_budget = {asset: 1.0 for asset in X.columns}
@@ -483,10 +495,13 @@ class RiskBudgeting(ConvexOptimization):
     ...     risk_budget=risk_budget,
     ... )
     >>> model.fit(X)
+    RiskBudgeting(...)
     >>> print(model.weights_)
+    [0.0623 0.0319 0.0347 ... 0.0502 0.0659 0.0595]
     >>>
     >>> portfolio = model.predict(X)
     >>> print(portfolio.cvar)
+    0.0251...
 
     References
     ----------
@@ -529,7 +544,7 @@ class RiskBudgeting(ConvexOptimization):
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -564,7 +579,9 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> RiskBudgeting:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> RiskBudgeting:
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters
@@ -690,7 +707,6 @@ class RiskBudgeting(ConvexOptimization):
         )
 
         # problem
-        # noinspection PyTypeChecker
         problem = cp.Problem(objective, constraints)
 
         # results

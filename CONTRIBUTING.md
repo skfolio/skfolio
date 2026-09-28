@@ -52,12 +52,17 @@ Local development requires Python 3.10 or later and
    cd skfolio
    ```
 
-2. Create a virtual environment and install the development dependencies:
+2. Install the development environment and Git commit hook:
 
    ```shell
-   uv venv
-   uv pip install --editable ".[dev]"
+   uv sync
+   uv run pre-commit install
    ```
+
+   If a hook modifies files, stage them and commit again.
+
+   `uv sync` creates `.venv` and installs skfolio in editable mode, including the
+   default `dev` dependency group.
 
 3. Create a branch for your changes:
 
@@ -80,10 +85,13 @@ test file:
 uv run pytest tests/path/to/test_file.py
 ```
 
-Run the complete test suite when appropriate:
+Before you open a pull request, run the complete test suite, which includes the
+docstring examples, and check that imports in `src` match the dependencies declared
+in `pyproject.toml`:
 
 ```shell
 uv run pytest
+uv run deptry src
 ```
 
 Format and lint your changes with:
@@ -93,20 +101,45 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
+The commit hook runs the same Ruff commands on staged files, checks that every
+module, class and function in `src` has a docstring, and checks YAML syntax and file
+endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
+
+### Dependency versions
+
+skfolio is a library that supports the dependency versions allowed by
+`pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
+minimum supported versions to the latest releases, and lints with the latest Ruff
+release.
+
+`uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
+failure that you cannot reproduce locally, update your environment to the latest
+allowed versions:
+
+```shell
+uv sync --upgrade
+```
+
+Add `--group docs` or `--group notebooks` if you use those tools.
+
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
 
 ```shell
-uv pip install --editable ".[dev,docs]"
+uv sync --group docs
 cd docs
 ```
 
-For a fast build without executing the tutorials:
+For a fast build without executing the tutorials, as run by CI:
 
 ```shell
-uv run sphinx-build -b html -D plot_gallery=0 . _build
+SKFOLIO_DOCS_FAST=1 uv run sphinx-build -b html . _build
 ```
+
+Fast mode also skips the JupyterLite site and the sphinx-llm Markdown build. In
+PowerShell, run `$env:SKFOLIO_DOCS_FAST = "1"` before the build and
+`Remove-Item Env:SKFOLIO_DOCS_FAST` after it.
 
 To execute a single tutorial, replace the filename in `filename_pattern`:
 
@@ -125,6 +158,20 @@ documentation deployment workflow.
 
 Sphinx-Gallery generates `docs/auto_examples` and `docs/_contents`.
 Edit the source tutorials under `examples` rather than editing these generated files.
+
+### Docstrings
+
+Every module, class and function in `src` has a docstring, including private helpers
+and nested functions. Dunder methods are exempt, and `__init__` parameters are
+documented in the class docstring. Public classes, functions and methods use the
+numpydoc sections, such as `Parameters` and `Returns`. A one-line summary is enough
+for private helpers.
+
+To list missing docstrings across `src`:
+
+```shell
+uv run pre-commit run numpydoc-validation --all-files
+```
 
 ### Docstring examples
 
@@ -166,13 +213,16 @@ Open a pull request through GitHub, or use the GitHub CLI:
 gh pr create --fill
 ```
 
+Use the same format for the pull request title. It becomes the commit message when
+the pull request is squash-merged.
+
 Draft pull requests are welcome and are a good place to discuss work in progress.
 Before requesting a review:
 
 - Include tests for feature changes and bug fixes.
 - Update the documentation when behavior or public APIs change.
 - Keep the pull request focused on one coherent change.
-- Confirm that the relevant local checks pass.
+- Confirm that the [tests and code quality checks](#tests-and-code-quality) pass.
 - Ensure that continuous integration passes.
 
 [gh-issues]: https://github.com/skfolio/skfolio/issues

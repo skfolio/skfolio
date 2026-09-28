@@ -185,3 +185,38 @@ def test_apply_rotation_partial_derivatives():
         dummy_partial_derivative, X, CopulaRotation.R90, first_margin=True
     )
     assert np.allclose(pd_r90, 1 - 0.5)
+
+
+def test_select_theta_and_rotation_mle_all_failures(monkeypatch):
+    from skfolio.distribution.copula import _utils
+
+    def failing_minimize_scalar(*args, **kwargs):
+        return _utils.so.OptimizeResult(success=False, message="boom", x=1.0, fun=0.0)
+
+    monkeypatch.setattr(_utils.so, "minimize_scalar", failing_minimize_scalar)
+    X = np.random.default_rng(0).random((10, 2))
+    with (
+        pytest.warns(RuntimeWarning, match="Optimization failed for rotation"),
+        pytest.raises(RuntimeError, match="Optimization failed for all rotations"),
+    ):
+        _select_theta_and_rotation_mle(dummy_neg_log_likelihood, X=X, bounds=(0.0, 5.0))
+
+
+def test_apply_copula_rotation_unsupported():
+    X = np.random.default_rng(0).random((10, 2))
+    with pytest.raises(ValueError, match="Unsupported rotation: foo"):
+        _apply_copula_rotation(X, rotation="foo")
+
+
+def test_apply_rotation_cdf_unsupported():
+    X = np.random.default_rng(0).random((10, 2))
+    with pytest.raises(ValueError, match="Unsupported rotation: foo"):
+        _apply_rotation_cdf(dummy_cdf, X=X, rotation="foo")
+
+
+def test_apply_rotation_partial_derivatives_unsupported():
+    X = np.random.default_rng(0).random((10, 2))
+    with pytest.raises(ValueError, match="Unsupported rotation: foo"):
+        _apply_rotation_partial_derivatives(
+            dummy_partial_derivative, X=X, rotation="foo", first_margin=True
+        )

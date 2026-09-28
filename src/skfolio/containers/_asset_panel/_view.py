@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -96,7 +96,7 @@ class AssetPanelView(_BaseAssetPanel):
         """Check whether a local or owner field exists."""
         return name in self._local_fields or name in self.owner.fields
 
-    def __getitem__(self, key: Any) -> AnyArray | AssetPanelView:
+    def __getitem__(self, key: str | slice | ArrayLike) -> AnyArray | AssetPanelView:
         """Return field values or a nested observation view.
 
         Parameters
@@ -324,6 +324,10 @@ class AssetPanelView(_BaseAssetPanel):
         panel : AssetPanel
             Panel containing only the view's observations and selected fields.
         """
+        # Imported here rather than at module scope: `_panel` imports
+        # `AssetPanelView` from this module, so a module-level import would close a
+        # cycle between `_view` and `_panel`. Annotations are postponed, so the
+        # `TYPE_CHECKING` import above covers the signature.
         from skfolio.containers._asset_panel._panel import AssetPanel
 
         field_names = _normalize_field_names(self.keys(), fields)

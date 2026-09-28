@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
 from sklearn import config_context
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import LassoCV, LinearRegression
 
 from skfolio.moments import ImpliedCovariance
 from skfolio.prior import (
+    BaseLoadingMatrix,
     BlackLitterman,
     EmpiricalPrior,
     LoadingMatrixRegression,
@@ -156,10 +157,107 @@ def test_metadata_routing(X, implied_vol):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_test, factors=X_test)
 
         model.fit(X_test, factors=X_test, implied_vol=implied_vol_test)
 
-    # noinspection PyUnresolvedReferences
     assert model.factor_prior_estimator_.covariance_estimator_.r2_scores_.shape == (6,)
+
+
+class _FixedShapeLoadingMatrix(BaseLoadingMatrix):
+    """Loading matrix estimator returning arrays of configurable shapes."""
+
+    def __init__(self, loading_shape=None, intercepts_shape=None):
+        self.loading_shape = loading_shape
+        self.intercepts_shape = intercepts_shape
+
+    def fit(self, X, y, **fit_params):
+        n_assets = np.shape(X)[1]
+        n_factors = np.shape(y)[1]
+        loading_shape = self.loading_shape or (n_assets, n_factors)
+        intercepts_shape = self.intercepts_shape or (n_assets,)
+        self.loading_matrix_ = np.zeros(loading_shape)
+        self.intercepts_ = np.zeros(intercepts_shape)
+        return self
+
+
+def test_factor_model_factor_families_ndim_error(X, factors):
+    model = TimeSeriesFactorModel(factor_families=[["a", "b", "c", "d", "e"]])
+    with pytest.raises(ValueError, match="`factor_families` must be a 1D array"):
+        model.fit(X, factors=factors)
+
+
+def test_factor_model_loading_matrix_shape_error(X, factors):
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=_FixedShapeLoadingMatrix(loading_shape=(20, 6))
+    )
+    with pytest.raises(
+        ValueError,
+        match=r"`loading_matrix_estimator\.loading_matrix_` must be a 2D array",
+    ):
+        model.fit(X, factors=factors)
+
+
+def test_factor_model_intercepts_shape_error(X, factors):
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=_FixedShapeLoadingMatrix(intercepts_shape=(20, 1))
+    )
+    with pytest.raises(
+        ValueError, match=r"`loading_matrix_estimator\.intercepts_` must be a 1D array"
+    ):
+        model.fit(X, factors=factors)
+
+
+def test_fixed_shape_loading_matrix_default_shapes(X, factors):
+    model = TimeSeriesFactorModel(loading_matrix_estimator=_FixedShapeLoadingMatrix())
+    model.fit(X, factors=factors)
+    assert model.return_distribution_.factor_model.loading_matrix.shape == (20, 5)
+
+
+def test_loading_matrix_regression_metadata_routing():
+    router = LoadingMatrixRegression().get_metadata_routing()
+    assert router.owner == "LoadingMatrixRegression"
+
+
+def test_loading_matrix_regression_fit_returns_self(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    model = LoadingMatrixRegression()
+    assert model.fit(X_test, factors_test) is model
+
+
+def test_loading_matrix_regression_routes_sample_weight(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = LoadingMatrixRegression(
+            linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+        )
+        model.fit(X_test, factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(model.loading_matrix_[0], expected.coef_)
+
+
+def test_factor_model_routes_sample_weight_to_loading_matrix(X, factors):
+    X_test = X.iloc[-300:]
+    factors_test = factors.loc[X_test.index]
+    sample_weight = np.linspace(0.5, 1.5, len(X_test))
+    with config_context(enable_metadata_routing=True):
+        model = TimeSeriesFactorModel(
+            loading_matrix_estimator=LoadingMatrixRegression(
+                linear_regressor=LinearRegression().set_fit_request(sample_weight=True)
+            )
+        )
+        model.fit(X_test, factors=factors_test, sample_weight=sample_weight)
+
+    expected = LinearRegression().fit(
+        factors_test, X_test.iloc[:, 0], sample_weight=sample_weight
+    )
+    np.testing.assert_almost_equal(
+        model.return_distribution_.factor_model.loading_matrix[0], expected.coef_
+    )

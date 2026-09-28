@@ -4,4 +4,3 @@ Ensemble Optimizations
 ----------------------
 
 Examples concerning ensemble optimizations.
-

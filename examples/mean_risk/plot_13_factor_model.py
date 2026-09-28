@@ -1,14 +1,31 @@
 r"""
-============
-Factor Model
-============
+    .. _factor-model:
 
-This tutorial shows how to use the :class:`~skfolio.prior.TimeSeriesFactorModel` estimator in
-the :class:`~skfolio.optimization.MeanRisk` optimization.
+========================
+Time-Series Factor Model
+========================
 
-A :ref:`Prior Estimator <prior>` in `skfolio` fits a :class:`ReturnDistribution`
-containing your pre-optimization inputs (:math:`\mu`, :math:`\Sigma`, returns, sample
-weight, Cholesky decomposition).
+`skfolio` supports time-series factor models through
+:class:`~skfolio.prior.TimeSeriesFactorModel` and characteristics-based
+cross-sectional factor models through
+:class:`~skfolio.prior.CharacteristicsFactorModel`.
+
+This tutorial uses :class:`~skfolio.prior.TimeSeriesFactorModel` to build a maximum
+Sharpe ratio portfolio with :class:`~skfolio.optimization.MeanRisk`. Factor returns
+are supplied as time series, and each asset's exposures are estimated by regressing
+its returns on those factor returns.
+
+:class:`~skfolio.prior.CharacteristicsFactorModel` builds exposures from
+point-in-time asset characteristics and estimates factor returns through
+cross-sectional regression at each date. See the :ref:`Factor Models user guide
+<factor_models>` for the methodology and the :ref:`Characteristics Factor Model
+tutorial <sphx_glr_auto_examples_factor_models_plot_characteristics_factor_model.py>`
+for a complete example.
+
+A :ref:`Prior Estimator <prior>` in `skfolio` estimates a
+:class:`~skfolio.prior.ReturnDistribution` containing the inputs to portfolio
+optimization (:math:`\mu`, :math:`\Sigma`, returns, sample weights and a Cholesky
+decomposition).
 
 The term "prior" is used in a general optimization sense, not confined to Bayesian
 priors. It denotes any **a priori** assumption or estimation method for the return
@@ -18,6 +35,7 @@ distribution before optimization, unifying **Frequentist**, **Bayesian** and
 1. Frequentist:
     * :class:`~skfolio.prior.EmpiricalPrior`
     * :class:`~skfolio.prior.TimeSeriesFactorModel`
+    * :class:`~skfolio.prior.CharacteristicsFactorModel`
     * :class:`~skfolio.prior.SyntheticData`
 
 2. Bayesian:
@@ -27,10 +45,10 @@ distribution before optimization, unifying **Frequentist**, **Bayesian** and
     * :class:`~skfolio.prior.EntropyPooling`
     * :class:`~skfolio.prior.OpinionPooling`
 
-In skfolio's API, all such methods share the same interface and adhere to scikit-learn's
-estimator API: the `fit` method accepts `X` (the asset returns) and stores the
-resulting :class:`~skfolio.prior.ReturnDistribution` in its `return_distribution_`
-attribute.
+Prior estimators follow scikit-learn's estimator API and store the fitted
+:class:`~skfolio.prior.ReturnDistribution` in `return_distribution_`. Their inputs
+depend on the model. `TimeSeriesFactorModel` takes asset returns in `X` and factor
+returns through the `factors` keyword argument.
 
 The :class:`~skfolio.prior.ReturnDistribution` is a dataclass containing:
 
@@ -51,12 +69,6 @@ i.e., the dimensionality of the estimation problem, making portfolio optimizatio
 more robust against noise in the data. Factor models also provide a decomposition of
 financial risk into systematic and security-specific components.
 
-The `fit` method takes `X` as the asset
-returns and `factors` as the factor returns. Pass factor returns with the `factors` keyword
-argument.
-
-In this tutorial we will build a Maximum Sharpe Ratio portfolio using the `TimeSeriesFactorModel`
-estimator.
 """
 
 # %%
@@ -75,7 +87,7 @@ from skfolio.datasets import load_factors_dataset, load_sp500_dataset
 from skfolio.moments import GerberCovariance, ShrunkMu
 from skfolio.optimization import MeanRisk, ObjectiveFunction
 from skfolio.preprocessing import prices_to_returns
-from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel, LoadingMatrixRegression
+from skfolio.prior import EmpiricalPrior, LoadingMatrixRegression, TimeSeriesFactorModel
 
 set_config(enable_metadata_routing=True)
 
@@ -83,13 +95,17 @@ prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
 
 X, factors = prices_to_returns(prices, factor_prices)
-X_train, X_test, factors_train, factors_test = train_test_split(X, factors, test_size=0.33, shuffle=False)
+X_train, X_test, factors_train, factors_test = train_test_split(
+    X, factors, test_size=0.33, shuffle=False
+)
 
 # %%
-# Factor Model
-# =============
-# We create a Maximum Sharpe Ratio model using the Factor Model that we fit on the
-# training set:
+# .. _id1:
+#
+# Time-Series Factor Model
+# ========================
+# We create a Maximum Sharpe Ratio model using `TimeSeriesFactorModel` and fit it
+# on the training set:
 model_factor_1 = MeanRisk(
     risk_measure=RiskMeasure.VARIANCE,
     objective_function=ObjectiveFunction.MAXIMIZE_RATIO,

@@ -12,6 +12,7 @@ import sklearn.feature_selection as skf
 import sklearn.utils.validation as skv
 
 from skfolio.typing import ArrayLike, BoolArray
+from skfolio.utils.tools import _validate_bool
 
 
 class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
@@ -57,11 +58,11 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
 
     to_keep_: BoolArray
 
-    def __init__(self, threshold: float = 0.95, absolute: bool = False):
+    def __init__(self, threshold: float = 0.95, absolute: bool = False) -> None:
         self.threshold = threshold
         self.absolute = absolute
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> DropCorrelated:
         """Run the correlation transformer and get the appropriate assets.
 
         Parameters
@@ -80,9 +81,13 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
+        _validate_bool(self.absolute, "absolute")
 
         n_assets = X.shape[1]
         corr = np.corrcoef(X.T)
+        # Keep pair ranking and mean-correlation decisions on the same scale.
+        if self.absolute:
+            corr = np.abs(corr)
         mean_corr = corr.mean(axis=0)
 
         triu_idx = np.triu_indices(n_assets, 1)
@@ -106,6 +111,7 @@ class DropCorrelated(skf.SelectorMixin, skb.BaseEstimator):
         self.to_keep_ = ~np.isin(np.arange(n_assets), list(to_remove))
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_

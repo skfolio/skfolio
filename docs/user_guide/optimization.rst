@@ -1016,4 +1016,3 @@ Example: proceed without raising and retrieve failure diagnostics
 
 For a complete tutorial illustrating failure handling and fallbacks, see
 :ref:`sphx_glr_auto_examples_mean_risk_plot_17_failure_and_fallbacks.py`.
-
