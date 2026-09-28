@@ -21,8 +21,8 @@ repos:
   # Use Ruff from the local development environment. CI checks the latest release.
   - repo: local
     hooks:
-      # Scope and rules live in `ruff.toml`; `force-exclude` applies its exclusions
-      # to the staged filenames pre-commit passes.
+      # `[tool.ruff]` sets the scope. `types_or` matches its `include` file types and
+      # `force-exclude` applies its exclusions to the staged files passed here.
       - id: ruff
         name: ruff-lint
         entry: uv run ruff check --fix --exit-non-zero-on-fix

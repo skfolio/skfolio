@@ -143,6 +143,54 @@ insertion_flag = "<!-- version list -->"
 # Version commits, including those created before the `v` prefix was added.
 exclude_commit_patterns = ['^v?\d+\.\d+\.\d+ \[skip ci\]']
 
+[tool.ruff]
+# File types to check. Ruff's default `include` also covers Markdown and changes
+# between releases, and CI runs the latest release.
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+# `force-exclude` also applies the exclusions to the staged files that pre-commit
+# passes explicitly, so the hooks and CI check the same files.
+extend-exclude = ["docs"]
+force-exclude = true
+line-length = 88
+src = ["src"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "F", # pyflakes
+    "I", # isort
+    "A", # prevent using keywords that clobber python builtins
+    "B", # bugbear: security warnings
+    "ISC", # implicit string concatenation
+    "UP", # alert you when better syntax is available in your python version
+    "RUF", # the ruff developer's own rules
+    "D", # pydocstyle
+    "ANN", # flake8-annotations
+]
+ignore = ["E203", "ISC001", "ISC002", "E111", "E114", "E117", "A005", "D401", "D205"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "ANN"]
+"**/conftest.py" = ["ANN"]
+# Sphinx-Gallery scripts: the module docstring is the RST page title, imports are
+# interleaved with the `# %%` narrative cells, and a bare expression at the end of a
+# cell is how a value gets rendered in the gallery output.
+"examples/*" = ["D", "E402", "B018", "ANN"]
+
+[tool.ruff.lint.flake8-annotations]
+# Allow `Any` on `*args` and `**kwargs`, which forward arbitrary arguments.
+allow-star-arg-any = true
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 320
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
 [tool.numpydoc_validation]
 # Require a docstring on every module, class and function, including private and
 # nested ones. Ruff's `D` rules skip members of `_`-prefixed modules. `__init__` is
