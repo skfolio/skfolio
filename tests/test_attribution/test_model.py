@@ -1316,6 +1316,11 @@ class TestAttributionPostInitValidation:
         ):
             replace(result, assets=replace(result.assets, weight_std=np.ones(7)))
 
+    def test_single_scalar_weight_std_skips_shape_check(self, simple_factor_model):
+        result = self._single(simple_factor_model)
+        updated = replace(result, assets=replace(result.assets, weight_std=0.0))
+        assert updated.assets.weight_std == 0.0
+
     def test_single_mu_contrib_uncertainty_wrong_shape(self, simple_factor_model):
         result = self._single(simple_factor_model)
         with pytest.raises(

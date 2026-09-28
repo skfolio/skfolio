@@ -106,7 +106,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         X : array-like of shape (n_samples, 1)
             List of samples.
         """
-        pass
+        ...
 
     def score(self, X: ArrayLike, y: None = None) -> float:
         """Compute the total log-likelihood under the model.
