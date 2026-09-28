@@ -128,19 +128,27 @@ def test_n_bins_knuth(returns):
     assert n_bins == 346
 
 
-def test_n_bins_knuth_objective_rejects_non_positive_bins(monkeypatch):
-    # Nelder-Mead does not step below one bin on real data, so drive the objective
-    # directly to check that a non-positive bin count is scored as infinitely bad.
-    values = []
+def test_n_bins_knuth_is_bounded_with_repeated_values():
+    # Repeated values keep improving the Knuth objective as the bins narrow.
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal(1000)
+    x[rng.random(1000) < 0.8] = 0.0
 
-    def fake_fmin(func, x0, disp):
-        values.append(func(np.array([0.0])))
-        return np.array([x0])
+    assert n_bins_knuth(x) <= len(x)
 
-    monkeypatch.setattr("scipy.optimize.fmin", fake_fmin)
-    n_bins_knuth(np.arange(10.0))
 
-    assert values == [np.inf]
+def test_n_bins_knuth_is_bounded_when_freedman_exceeds_n():
+    # A narrow core with a few outliers puts the Freedman starting point above n.
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal(1000)
+    x[10:] *= 1e-3
+
+    assert n_bins_freedman(x) > len(x)
+    assert n_bins_knuth(x) <= len(x)
+
+
+def test_n_bins_knuth_can_return_n_bins():
+    assert n_bins_knuth(np.array([-2.6, -1.7, 1.5, 1.8, 2.2])) == 5
 
 
 @pytest.mark.parametrize(

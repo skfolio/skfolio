@@ -181,6 +181,10 @@ def n_bins_freedman(x: FloatArray) -> int:
 def n_bins_knuth(x: FloatArray) -> int:
     """Compute the optimal histogram bin size using Knuth's rule [1]_.
 
+    The number of bins is bounded to :math:`[1, n]`, where :math:`n` is the number of
+    observations. Data with many repeated values, such as zero-filled returns, push the
+    estimate toward the upper bound.
+
     Parameters
     ----------
     x : ndarray of shape (n_observations,)
@@ -202,7 +206,8 @@ def n_bins_knuth(x: FloatArray) -> int:
     def func(y: FloatArray) -> float:
         """Compute the negative Knuth log-posterior for `y[0]` bins."""
         y = y[0]
-        if y <= 0:
+        # The histogram uses int(y) bins, so y < n + 1 allows up to n bins.
+        if not 1 <= y < n + 1:
             return np.inf
         bin_edges = np.linspace(x[0], x[-1], int(y) + 1)
         hist, _ = np.histogram(x, bin_edges)
@@ -214,9 +219,9 @@ def n_bins_knuth(x: FloatArray) -> int:
             + np.sum(scs.gammaln(hist + 0.5))
         )
 
-    n_bins_init = n_bins_freedman(x)
+    n_bins_init = min(n_bins_freedman(x), n)
     n_bins = sco.fmin(func, n_bins_init, disp=0)[0]
-    return round(n_bins)
+    return min(round(n_bins), n)
 
 
 def rand_weights_dirichlet(n: int) -> np.array:
