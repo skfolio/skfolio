@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.4.8 (2026-09-28)
+
+### Bug Fixes
+
+- **measures**: Rescale sample weights that do not sum to one
+  ([#373](https://github.com/skfolio/skfolio/pull/373),
+  [`d2dbbb0`](https://github.com/skfolio/skfolio/commit/d2dbbb0346860d898eaf3a0df7c8d862969c7a3a))
+
+
 ## v1.4.7 (2026-09-28)
 
 ### Bug Fixes
