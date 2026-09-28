@@ -41,9 +41,9 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         front. This is because all assets in the same front have the same rank.
         The default (`None`) is to select the first front.
 
-    threshold : float, default=0.0
+    threshold : float, default=-0.5
         Asset pairs with a correlation below this threshold are included in the
-        non-domination sorting. The default value is `0.0`.
+        non-domination sorting. The default value is `-0.5`.
 
     fitness_measures : list[Measure], optional
         A list of :ref:`measure <measures_ref>` used to compute the portfolio fitness.
@@ -100,9 +100,9 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         """
         if self.min_n_assets is not None:
             _validate_positive_integer(self.min_n_assets, "min_n_assets")
-        X = skv.validate_data(self, X)
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         if self.min_n_assets is not None and self.min_n_assets >= n_assets:

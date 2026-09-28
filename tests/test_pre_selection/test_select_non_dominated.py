@@ -7,6 +7,13 @@ from sklearn import config_context
 from skfolio.pre_selection import SelectNonDominated
 
 
+def _perfectly_correlated_returns(means, variances):
+    """Return perfectly correlated returns with the given means and variances."""
+    z = np.linspace(-1.0, 1.0, 9)
+    z = (z - z.mean()) / z.std(ddof=1)
+    return np.asarray(means) + z[:, None] * np.sqrt(variances)
+
+
 def test_select_non_dominated(X):
     with config_context(transform_output="pandas"):
         model = SelectNonDominated(min_n_assets=10)
@@ -59,17 +66,11 @@ def test_select_non_dominated_considers_negatively_correlated_pair():
 )
 def test_select_non_dominated_honors_exact_minimum(min_n_assets, expected):
     """Stop before adding another front when the minimum is exactly met."""
-    z = np.linspace(-1.0, 1.0, 9)
-    z = (z - z.mean()) / z.std(ddof=1)
-    means = np.array([0.03, 0.015, -0.01])
-    variances = np.array([1e-6, 2.5e-5, 1e-4])
     # Successive lower means and higher variances place each asset on a later
     # front; threshold=-1 excludes pair portfolios.
-    X = means + z[:, None] * np.sqrt(variances)
-
-    np.testing.assert_allclose(X.mean(axis=0), means)
-    np.testing.assert_allclose(X.var(axis=0, ddof=1), variances)
-    np.testing.assert_allclose(np.corrcoef(X.T), np.ones((3, 3)))
+    X = _perfectly_correlated_returns(
+        means=[0.03, 0.015, -0.01], variances=[1e-6, 2.5e-5, 1e-4]
+    )
 
     model = SelectNonDominated(min_n_assets=min_n_assets, threshold=-1.0).fit(X)
 
@@ -85,16 +86,23 @@ def test_select_non_dominated_rejects_invalid_minimum(min_n_assets):
         SelectNonDominated(min_n_assets=min_n_assets, threshold=-1.0).fit(X)
 
 
-def test_select_non_dominated_invalid_refit_preserves_state():
-    """Preserve fitted state when a changed minimum is invalid."""
+@pytest.mark.parametrize(
+    ("params", "match"),
+    [
+        ({"min_n_assets": 0}, "min_n_assets must be a positive integer"),
+        ({"threshold": 2.0}, "`threshold` must be between -1 and 1"),
+    ],
+)
+def test_select_non_dominated_invalid_refit_preserves_state(params, match):
+    """Preserve fitted state when a changed parameter is invalid."""
     model = SelectNonDominated(min_n_assets=1, threshold=-1.0).fit(
         np.arange(15, dtype=float).reshape(5, 3)
     )
     n_features_in = model.n_features_in_
     to_keep = model.to_keep_.copy()
 
-    model.set_params(min_n_assets=0)
-    with pytest.raises(ValueError, match="min_n_assets must be a positive integer"):
+    model.set_params(**params)
+    with pytest.raises(ValueError, match=match):
         model.fit(np.arange(20, dtype=float).reshape(5, 4))
 
     assert model.n_features_in_ == n_features_in
@@ -103,13 +111,11 @@ def test_select_non_dominated_invalid_refit_preserves_state():
 
 def test_select_non_dominated_keeps_complete_crossing_front():
     """Keep a complete front when it crosses the requested minimum."""
-    z = np.linspace(-1.0, 1.0, 9)
-    z = (z - z.mean()) / z.std(ddof=1)
-    means = np.array([0.03, 0.02, -0.01])
-    variances = np.array([4e-4, 1e-6, 9e-4])
     # Assets 0 and 1 trade return for risk and share the first front; asset 2
     # is dominated by both.
-    X = means + z[:, None] * np.sqrt(variances)
+    X = _perfectly_correlated_returns(
+        means=[0.03, 0.02, -0.01], variances=[4e-4, 1e-6, 9e-4]
+    )
 
     model = SelectNonDominated(min_n_assets=1, threshold=-1.0).fit(X)
 
