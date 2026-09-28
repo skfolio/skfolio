@@ -685,7 +685,7 @@ def test_walk_forward_rejects_insufficient_observations(n_samples, reduce_test):
     with pytest.raises(ValueError, match=match) as count_error:
         cv.get_n_splits(X)
     with pytest.raises(ValueError, match=match) as split_error:
-        list(cv.split(X))
+        cv.split(X)
     assert str(count_error.value) == str(split_error.value)
 
 

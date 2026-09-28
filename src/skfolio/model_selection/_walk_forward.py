@@ -298,6 +298,11 @@ class WalkForward(sks.BaseCrossValidator):
         n_samples = X.shape[0]
 
         if self.freq is None:
+            _validate_observation_count(
+                n_samples=n_samples,
+                train_size=train_size,
+                purged_size=self.purged_size,
+            )
             return _split_without_period(
                 n_samples=n_samples,
                 train_size=train_size,
@@ -360,9 +365,9 @@ class WalkForward(sks.BaseCrossValidator):
         ------
         ValueError
             If `X` is `None`, if a window size has an invalid type, if a training or
-            test window size is not positive, or if `purged_size` is not a
-            non-negative integer, or if training and purging leave no observation
-            for testing in observation mode.
+            test window size is not positive, if `purged_size` is not a non-negative
+            integer, or if training and purging leave no observation for testing in
+            observation mode.
         """
         if X is None:
             raise ValueError("The 'X' parameter should not be None.")
@@ -462,9 +467,9 @@ def _validate_observation_count(
     total_size = train_size + purged_size
     if total_size >= n_samples:
         raise ValueError(
-            f"The sum of `train_size={train_size!r}` and "
-            f"`purged_size={purged_size!r}` (total={total_size!r}) must be less "
-            f"than the number of observations={n_samples!r}."
+            f"The sum of `train_size={train_size}` and `purged_size={purged_size}` "
+            f"(total={total_size}) must be less than the number of "
+            f"observations={n_samples}."
         )
 
 
@@ -507,18 +512,7 @@ def _split_without_period(
 
     test_indices : ndarray
         Test indices for the current split.
-
-    Raises
-    ------
-    ValueError
-        If training and purging leave no observation for testing.
     """
-    _validate_observation_count(
-        n_samples=n_samples,
-        train_size=train_size,
-        purged_size=purged_size,
-    )
-
     indices = np.arange(n_samples)
 
     test_start = train_size + purged_size
