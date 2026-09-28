@@ -82,7 +82,8 @@ class BlackLitterman(BasePrior):
         and 1) as described in Idzorek's method [2]_.
 
     risk_free_rate : float, default=0.0
-        The risk-free rate.
+        Risk-free rate added to the posterior expected returns, expressed in the same
+        frequency as the returns `X`. The default value is `0.0`.
 
     Attributes
     ----------

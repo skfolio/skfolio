@@ -71,7 +71,9 @@ class MultiPeriodPortfolio(BasePortfolio):
 
 
     risk_free_rate : float, default=0.0
-        Risk-free rate. The default value is `0.0`.
+        Risk-free rate, expressed in the same frequency as the returns (for example,
+        :math:`0.04 / 252` for a 4% annual rate with daily returns).
+        The default value is `0.0`.
 
     compounded : bool, default=False
         If this is set to True, cumulative returns are compounded.

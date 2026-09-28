@@ -137,7 +137,7 @@ class BenchmarkTracker(MeanRisk):
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X`.
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     solver : str, default="CLARABEL"

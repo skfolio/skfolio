@@ -467,7 +467,8 @@ class MeanRisk(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     max_tracking_error : float, optional
@@ -1476,7 +1477,8 @@ class MeanRisk(ConvexOptimization):
                         "Cannot optimize for Maximum Ratio with your current "
                         "constraints and input. This is because your assets' "
                         "expected returns are all under-performing your risk-free "
-                        f"rate {self.risk_free_rate:.2%}."
+                        f"rate {self.risk_free_rate:.4%}. The risk-free rate must be "
+                        "expressed in the same frequency as the returns."
                     )
 
                 homogenization_factor = _optimal_homogenization_factor(

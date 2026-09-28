@@ -288,7 +288,8 @@ class RiskBudgeting(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     min_return : float | array-like of shape (n_optimization), optional

@@ -211,10 +211,8 @@ def test_portfolio_annualized(X, weights, annualization_factor):
 
 @pytest.mark.parametrize("risk_free_rate", [0.0, 0.02 / 252, 0.05 / 252])
 def test_portfolio_annualized_ratios_with_risk_free_rate(X, weights, risk_free_rate):
-    """`risk_free_rate` is a per-period rate, so annualizing a ratio must scale
-    the whole ratio. Annualizing the mean and the risk separately left the rate
-    un-annualized in the numerator, which silently inflated the annualized
-    ratios by roughly (annual rate / annual volatility)."""
+    """Test that annualized ratios scale the per-period ratio by the square root of
+    the annualization factor and match the full-window rolling measure."""
     annualization_factor = 252.0
     portfolio = Portfolio(
         X=X,
@@ -236,8 +234,7 @@ def test_portfolio_annualized_ratios_with_risk_free_rate(X, weights, risk_free_r
         portfolio.sortino_ratio * np.sqrt(annualization_factor),
     )
 
-    # over the full sample the rolling measure and the scalar measure must
-    # agree; they disagreed for every non-zero risk_free_rate
+    # Over the full sample, the rolling measure equals the scalar measure.
     for measure in [
         RatioMeasure.ANNUALIZED_SHARPE_RATIO,
         RatioMeasure.ANNUALIZED_SORTINO_RATIO,

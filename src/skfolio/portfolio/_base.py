@@ -138,7 +138,9 @@ class BasePortfolio:
             * Annualized Sortino Ratio = Sortino Ratio * sqrt(factor)
 
     risk_free_rate : float, default=0.0
-        Risk-free rate. The default value is `0.0`.
+        Risk-free rate, expressed in the same frequency as the returns (for example,
+        :math:`0.04 / 252` for a 4% annual rate with daily returns).
+        The default value is `0.0`.
 
     compounded : bool, default=False
         If this is set to True, cumulative returns are compounded.
@@ -856,21 +858,11 @@ class BasePortfolio:
                 )
                 value = np.nan
         elif isinstance(measure, RatioMeasure):
-            # ratio
+            excess_mean = self.mean - self.risk_free_rate
             if measure.is_annualized:
-                # Annualize the whole ratio rather than the numerator and the
-                # denominator separately. Annualizing them separately leaves
-                # `risk_free_rate` un-annualized against an annualized mean, so
-                # the same rate would be per-period in `sharpe_ratio` and annual
-                # in `annualized_sharpe_ratio`. It would also disagree with
-                # `rolling_measure`, which scales the non-annualized ratio by
-                # sqrt(annualization_factor).
-                value = getattr(
-                    self, str(measure.non_annualized_measure.value)
-                ) * np.sqrt(self.annualization_factor)
-            else:
-                risk = getattr(self, str(measure.linked_risk_measure.value))
-                value = (self.mean - self.risk_free_rate) / risk
+                excess_mean *= self.annualization_factor
+            risk = getattr(self, str(measure.linked_risk_measure.value))
+            value = excess_mean / risk
         else:
             raise ValueError(f"{measure} is not a Measure.")
         return value
