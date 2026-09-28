@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.4.7 (2026-09-28)
+
+### Bug Fixes
+
+- **model-selection**: Reject insufficient WalkForward data consistently
+  ([#335](https://github.com/skfolio/skfolio/pull/335),
+  [`d259aa8`](https://github.com/skfolio/skfolio/commit/d259aa8f13b831a85d74838f294eb5cac9fdfd5f))
+
+- **pre-selection**: Honor exact non-dominated minimum
+  ([#337](https://github.com/skfolio/skfolio/pull/337),
+  [`3d5c3c7`](https://github.com/skfolio/skfolio/commit/3d5c3c7ff22ae3501ad1cd524a92e66b83566b6e))
+
+
 ## v1.4.6 (2026-09-28)
 
 ### Bug Fixes
