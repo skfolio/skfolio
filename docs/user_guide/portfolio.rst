@@ -235,6 +235,9 @@ It also provides methods for analyzing portfolio weights:
     # Plots
     portfolio.plot_contribution()
     portfolio.plot_composition()
+    portfolio.plot_composition_treemap(
+        groups={"Asset A": ["Equity", "US"], "Asset B": ["Bond", "US"]}
+    )
 
 
 

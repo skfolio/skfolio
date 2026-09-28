@@ -155,7 +155,6 @@ class TestCovarianceDistance:
 
             distance.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert distance.covariance_estimator_.r2_scores_.shape == (20,)
         assert distance.distance_.shape == (20, 20)
 

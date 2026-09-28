@@ -17,7 +17,7 @@
 #     k-1 variables.
 #
 # In an OOP approach, we can use the below equivalent graphical adjacency rule:
-# Two edges in T_{k-1} (which are “nodes” when building T_k) are connected by an edge
+# Two edges in T_{k-1} (which are "nodes" when building T_k) are connected by an edge
 # in T_k if and only if they share exactly one node in T_{k-1}.
 #
 #  By using the concept of central assets in the MST, this novel implementation is able
@@ -31,6 +31,7 @@ import contextlib
 import numbers
 import warnings
 from collections import deque
+from collections.abc import Iterator
 
 import numpy as np
 import plotly.express as px
@@ -273,7 +274,7 @@ class VineCopula(BaseMultivariateDist):
         independence_level: float = 0.05,
         n_jobs: int | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.fit_marginals = fit_marginals
         self.marginal_candidates = marginal_candidates
@@ -300,7 +301,7 @@ class VineCopula(BaseMultivariateDist):
 
         return k
 
-    def fit(self, X: ArrayLike, y=None) -> VineCopula:
+    def fit(self, X: ArrayLike, y: None = None) -> VineCopula:
         """
         Fit the Vine Copula model to the data.
 
@@ -647,7 +648,7 @@ class VineCopula(BaseMultivariateDist):
 
         return samples
 
-    def clear_cache(self, clear_count: bool = True):
+    def clear_cache(self, clear_count: bool = True) -> None:
         """Clear cached intermediate results in the vine trees."""
         for tree in self.trees_:
             tree.clear_cache(clear_count=clear_count)
@@ -982,7 +983,7 @@ class VineCopula(BaseMultivariateDist):
         result_string = "\n".join(lines)
         return result_string
 
-    def display_vine(self):
+    def display_vine(self) -> None:
         """Display the vine trees and fitted copulas.
         Prints the structure of each tree and the details of each edge.
         """
@@ -1124,7 +1125,7 @@ class VineCopula(BaseMultivariateDist):
         return fig
 
     @contextlib.contextmanager
-    def _count_node_visits(self):
+    def _count_node_visits(self) -> Iterator[None]:
         """A context manager to enable counting node visits within the tree.
         Temporarily enables node visit counting for the duration of the context.
         After the block is executed, the original state is restored.
@@ -1170,7 +1171,12 @@ def _is_left_branch(
     return conditioning_counts[v1] <= conditioning_counts[v2]
 
 
-def _propagate_samples(X_rand, sampling_order, conditioning_vars, uniform_cond_samples):
+def _propagate_samples(
+    X_rand: FloatArray,
+    sampling_order: list[tuple[RootNode | ChildNode, bool]],
+    conditioning_vars: set[int],
+    uniform_cond_samples: dict[int, FloatArray],
+) -> None:
     """Propagate samples through the vine structure bottom-up following the
     elimination strategy (tree peeling) given by the Node orders and whether the next
     Node will on the right or left branch.

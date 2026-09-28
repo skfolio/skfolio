@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -93,16 +94,35 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         self.assume_centered = assume_centered
         self.nearest = nearest
         self.higham = higham
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BaseCovariance:
+        """Fit the covariance estimator.
 
-    def score(self, X_test: ArrayLike, y=None) -> float:
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators, if any.
+
+        Returns
+        -------
+        self : BaseCovariance
+            Fitted estimator.
+        """
+        ...
+
+    def score(self, X_test: ArrayLike, y: None = None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
 
         Evaluates how well the fitted covariance matrix explains new observations,

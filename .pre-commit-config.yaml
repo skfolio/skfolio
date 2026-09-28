@@ -8,20 +8,30 @@ repos:
       - id: end-of-file-fixer
         exclude: LICENSE
 
+  # Docstring presence in `src`. Checks live in `[tool.numpydoc_validation]`.
+  - repo: https://github.com/numpy/numpydoc
+    rev: v1.11.0
+    hooks:
+      - id: numpydoc-validation
+        # UTF-8 mode: numpydoc reads files with the locale encoding, which fails on
+        # Windows for some non-ASCII characters.
+        entry: python -X utf8 -m numpydoc lint
+        files: ^src/
+
   # Use Ruff from the local development environment. CI checks the latest release.
   - repo: local
     hooks:
-      # Explicit filenames bypass Ruff's `include`, so match its scope here.
+      # `[tool.ruff]` sets the scope. `types_or` matches its `include` file types and
+      # `force-exclude` applies its exclusions to the staged files passed here.
       - id: ruff
         name: ruff-lint
         entry: uv run ruff check --fix --exit-non-zero-on-fix
         language: unsupported
-        files: ^(pyproject\.toml|conftest\.py|(src|tests|examples)/.*\.py)$
+        types_or: [python, pyi, toml]
         require_serial: true
       - id: ruff-format
         name: ruff-format
         entry: uv run ruff format
         language: unsupported
-        types: [python]
-        files: ^(conftest\.py|(src|tests|examples)/.*\.py)$
+        types_or: [python, pyi]
         require_serial: true

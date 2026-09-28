@@ -194,7 +194,6 @@ class TestEmpiricalMuUncertaintySet:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
     def test_n_eff(self, X):
@@ -365,7 +364,6 @@ class TestEmpiricalCovarianceUncertaintySet:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
     def test_n_eff(self, X):

@@ -11,6 +11,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -398,7 +399,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     min_acceptable_return : float, optional
@@ -629,7 +631,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
@@ -705,7 +707,6 @@ class ConvexOptimization(BaseOptimization, ABC):
             Result of calling the custom function.
         """
         try:
-            # noinspection PyUnresolvedReferences
             func_code = func.__code__
         except AttributeError as err:
             raise ValueError("Custom functions is invalid") from err
@@ -728,7 +729,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "the weight variable OR the weight variable and the estimator object."
             ) from err
 
-    def _clear_models_cache(self):
+    def _clear_models_cache(self) -> None:
         """Clear the cache of CVX models."""
         self._cvx_cache = {}
 
@@ -2042,10 +2043,16 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
-    def _fourth_central_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_central_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth central moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
-    def _fourth_lower_partial_moment_risk(self, w: cp.Variable, factor: skt.Factor):
+    def _fourth_lower_partial_moment_risk(
+        self, w: cp.Variable, factor: skt.Factor
+    ) -> skt.RiskResult:
+        """Fourth lower partial moment risk, not supported in convex optimization."""
         raise NotImplementedError
 
     def _worst_realization_risk(
@@ -2428,7 +2435,6 @@ class ConvexOptimization(BaseOptimization, ABC):
         ones = np.ones((observation_nb, 1))
         risk = 2 * cp.sum(x + y)
         gmd_w = np.array(owa_gmd_weights(observation_nb) / 2).reshape(-1, 1)
-        # noinspection PyTypeChecker
         constraints = [
             ptf_returns * self._scale_constraints
             - ptf_transaction_cost * self._scale_constraints
@@ -2438,7 +2444,17 @@ class ConvexOptimization(BaseOptimization, ABC):
         ]
         return risk, constraints
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` and `partial_fit` to the matching method of
+        `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping()
@@ -2448,7 +2464,33 @@ class ConvexOptimization(BaseOptimization, ABC):
         return router
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params): ...
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> ConvexOptimization:
+        """Fit the Convex Optimization estimator.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_targets), optional
+            Price returns of factors or a target benchmark.
+            The default is `None`.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : ConvexOptimization
+            Fitted estimator.
+        """
+        ...
 
 
 def _mip_weight_constraints_no_short_threshold(
@@ -2610,15 +2652,22 @@ def _mip_weight_constraints_threshold_short(
 
 
 def _solve(
-    w,
-    factor,
-    expressions,
-    problem,
-    solver,
-    solver_params,
-    risk_measure,
-    scale_objective,
-):
+    w: cp.Variable,
+    factor: skt.Factor,
+    expressions: dict[str, cp.Expression],
+    problem: cp.Problem,
+    solver: str,
+    solver_params: dict,
+    risk_measure: RiskMeasure,
+    scale_objective: cp.Constant,
+) -> tuple[FloatArray, dict[str, float]]:
+    """Solve `problem` and return the weights and problem values.
+
+    Weights and expression values are divided by the homogenization `factor`, the
+    objective by `scale_objective`, and the variance and semi-variance risks once more
+    by `factor`. Warns when the solution is not optimal and raises a
+    `cvxpy.SolverError` when the solver fails.
+    """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
         with warnings.catch_warnings():

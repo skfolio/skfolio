@@ -111,7 +111,7 @@ class Attribution:
             raise IndexError(f"window index {i} out of range [0, {n_observations})")
         return _slice_window(self, i, n_observations)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate Attribution consistency after initialization."""
         # Rolling arrays add a leading window axis to their single-point shape.
         # Scalar and optional-field exceptions are handled by the validators.
@@ -976,11 +976,11 @@ _EXTENDED_QUALITATIVE = _concat_qualitative_palettes(
 
 
 def _slice_window(
-    obj: Any,
+    obj: Any,  # noqa: ANN401  # any field value
     i: int,
     n_observations: int,
     field_name: str | None = None,
-) -> Any:
+) -> Any:  # noqa: ANN401  # same type as obj
     """Return one rolling window while preserving static metadata fields."""
     if obj is None:
         return None
@@ -1252,7 +1252,7 @@ def _mean_return_ci_error_bars(
     return array, arrayminus
 
 
-def _to_column(v, n_rows: int) -> FloatArray:
+def _to_column(v: float | FloatArray | None, n_rows: int) -> FloatArray:
     """Convert scalar, 1D array, or None to a 2D column of shape (n_rows, 1)."""
     if v is None:
         return np.full((n_rows, 1), np.nan)
@@ -1475,8 +1475,8 @@ def _plot_rolling_lines(
 
 
 def _plot_contribution_chart(
-    data,
-    idio,
+    data: FactorBreakdown | FamilyBreakdown,
+    idio: Component,
     top_n: int,
     include_idio: bool,
     is_rolling: bool,
@@ -1484,7 +1484,13 @@ def _plot_contribution_chart(
     is_risk: bool,
     observations: AnyArray | None = None,
     confidence_level: float | None = None,
-):
+) -> go.Figure:
+    """Plot the volatility or return contributions of an attribution.
+
+    Single-point attribution is drawn as bars and rolling attribution as one line per
+    component. Realized return contributions with standard errors show them in the
+    hover text and, when `confidence_level` is set, as error bars or confidence bands.
+    """
     if is_risk:
         title = "Vol Contribution"
         title_rolling = f"{title} Over Time"

@@ -6,6 +6,9 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import cvxpy as cp
 import numpy as np
 import sklearn.utils.validation as skv
 
@@ -298,7 +301,8 @@ class MaximumDiversification(MeanRisk):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     max_tracking_error : float, optional
@@ -513,7 +517,7 @@ class MaximumDiversification(MeanRisk):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
             risk_measure=RiskMeasure.STANDARD_DEVIATION,
@@ -555,7 +559,7 @@ class MaximumDiversification(MeanRisk):
         )
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> MaximumDiversification:
         """Fit the Maximum Diversification Optimization estimator.
 
@@ -583,7 +587,7 @@ class MaximumDiversification(MeanRisk):
         # `X` is unchanged and only `feature_names_in_` is performed
         _ = skv.validate_data(self, X, skip_check_array=True)
 
-        def func(w, obj):
+        def func(w: cp.Variable, obj: MaximumDiversification) -> cp.Expression:
             """Weighted volatilities."""
             dist = obj.prior_estimator_.return_distribution_
             if obj.investable_mask_ is not None:

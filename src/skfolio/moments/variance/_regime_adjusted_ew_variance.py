@@ -298,7 +298,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         estimation_mask: ArrayLike | None = None,
         active_mask: ArrayLike | None = None,
@@ -354,7 +354,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         estimation_mask: ArrayLike | None = None,
         active_mask: ArrayLike | None = None,
@@ -443,7 +443,8 @@ class RegimeAdjustedEWVariance(BaseVariance):
         self.variance_ = regime_multiplier**2 * variance
         return self
 
-    def _validate_params(self):
+    def _validate_params(self) -> None:
+        """Validate parameters and resolve the effective `min_observations`."""
         if not isinstance(self.regime_method, RegimeAdjustmentMethod):
             raise ValueError(
                 f"regime_method must be a RegimeAdjustmentMethod, got "
@@ -507,7 +508,8 @@ class RegimeAdjustedEWVariance(BaseVariance):
                     stacklevel=2,
                 )
 
-    def _initialize(self):
+    def _initialize(self) -> None:
+        """Initialize the accumulators and resolve the effective regime parameters."""
         n_assets = self.n_features_in_
         self._decay = half_life_to_decay_factor(self.half_life)
         self._var = np.zeros(n_assets)
@@ -544,7 +546,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         returns: FloatArray,
         estimation_mask: BoolArray | None,
         active_row: BoolArray | None,
-    ):
+    ) -> None:
         """Process a single row of returns.
 
         Parameters
@@ -684,5 +686,6 @@ class RegimeAdjustedEWVariance(BaseVariance):
         return result
 
     def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)

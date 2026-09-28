@@ -181,6 +181,10 @@ def n_bins_freedman(x: FloatArray) -> int:
 def n_bins_knuth(x: FloatArray) -> int:
     """Compute the optimal histogram bin size using Knuth's rule [1]_.
 
+    The number of bins is bounded to :math:`[1, n]`, where :math:`n` is the number of
+    observations. Data with many repeated values, such as zero-filled returns, push the
+    estimate toward the upper bound.
+
     Parameters
     ----------
     x : ndarray of shape (n_observations,)
@@ -200,8 +204,10 @@ def n_bins_knuth(x: FloatArray) -> int:
     n = len(x)
 
     def func(y: FloatArray) -> float:
+        """Compute the negative Knuth log-posterior for `y[0]` bins."""
         y = y[0]
-        if y <= 0:
+        # The histogram uses int(y) bins, so y < n + 1 allows up to n bins.
+        if not 1 <= y < n + 1:
             return np.inf
         bin_edges = np.linspace(x[0], x[-1], int(y) + 1)
         hist, _ = np.histogram(x, bin_edges)
@@ -213,9 +219,9 @@ def n_bins_knuth(x: FloatArray) -> int:
             + np.sum(scs.gammaln(hist + 0.5))
         )
 
-    n_bins_init = n_bins_freedman(x)
+    n_bins_init = min(n_bins_freedman(x), n)
     n_bins = sco.fmin(func, n_bins_init, disp=0)[0]
-    return round(n_bins)
+    return min(round(n_bins), n)
 
 
 def rand_weights_dirichlet(n: int) -> np.array:
@@ -384,7 +390,7 @@ def cov_to_corr(cov: FloatArray) -> tuple[FloatArray, FloatArray]:
     return corr, std
 
 
-def corr_to_cov(corr: FloatArray, std: FloatArray):
+def corr_to_cov(corr: FloatArray, std: FloatArray) -> FloatArray:
     """Convert a correlation matrix to a covariance matrix given its
     standard-deviation vector.
 
@@ -417,7 +423,7 @@ def cov_nearest(
     higham: bool = False,
     higham_max_iteration: int = 100,
     warn: bool = False,
-):
+) -> FloatArray:
     """Compute the nearest covariance matrix that is positive definite and admits a
     Cholesky decomposition. The variances are unchanged.
 
@@ -546,7 +552,7 @@ def cov_nearest(
     raise ValueError("Unable to find the nearest positive definite matrix")
 
 
-def commutation_matrix(x):
+def commutation_matrix(x: FloatArray) -> csr_matrix:
     """Compute the commutation matrix.
 
     Parameters
@@ -556,7 +562,7 @@ def commutation_matrix(x):
 
     Returns
     -------
-    K : ndarray of shape (m * n, m * n)
+    K : csr_matrix of shape (m * n, m * n)
         The commutation matrix.
     """
     (m, n) = x.shape

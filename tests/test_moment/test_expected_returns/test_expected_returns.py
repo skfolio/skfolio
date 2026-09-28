@@ -585,7 +585,6 @@ class TestEquilibriumMu:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
 
@@ -733,7 +732,6 @@ class TestShrunkMu:
 
             model.fit(X, implied_vol=implied_vol)
 
-        # noinspection PyUnresolvedReferences
         assert model.covariance_estimator_.r2_scores_.shape == (20,)
         assert model.mu_.shape == (20,)
 

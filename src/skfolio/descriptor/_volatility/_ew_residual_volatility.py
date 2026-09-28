@@ -113,7 +113,7 @@ class EWResidualVolatility(_BaseEWResidualVolatility):
         beta_half_life: float = 60.0,
         min_periods: int | None = None,
         eps: float = 1e-12,
-    ):
+    ) -> None:
         super().__init__(
             half_life=half_life,
             beta_half_life=beta_half_life,

@@ -43,7 +43,7 @@ import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -138,7 +138,9 @@ class BasePortfolio:
             * Annualized Sortino Ratio = Sortino Ratio * sqrt(factor)
 
     risk_free_rate : float, default=0.0
-        Risk-free rate. The default value is `0.0`.
+        Risk-free rate, expressed in the same frequency as the returns (for example,
+        :math:`0.04 / 252` for a 4% annual rate with daily returns).
+        The default value is `0.0`.
 
     compounded : bool, default=False
         If this is set to True, cumulative returns are compounded.
@@ -520,8 +522,8 @@ class BasePortfolio:
         drawdown_at_risk_beta: float = 0.95,
         cdar_beta: float = 0.95,
         edar_beta: float = 0.95,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> None:
         self._loaded = False
         self._annualization_factor = _resolve_annualization_factor(
             annualization_factor,
@@ -551,7 +553,7 @@ class BasePortfolio:
             self._fitness_measures = fitness_measures
         self._loaded = True
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple[partial, tuple]:
         # For fast serialization and deserialization
         # We don't want to serialize generic slots but only init arguments.
         # Save them by name so constructor parameter order can change.
@@ -569,12 +571,12 @@ class BasePortfolio:
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.name}>"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, BasePortfolio) and np.array_equal(
             self.fitness, other.fitness
         )
 
-    def __gt__(self, other) -> bool:
+    def __gt__(self, other: BasePortfolio) -> bool:
         if not isinstance(other, BasePortfolio):
             raise TypeError(
                 "`>` not supported between instances of `Portfolio` and"
@@ -582,7 +584,7 @@ class BasePortfolio:
             )
         return self.dominates(other)
 
-    def __ge__(self, other) -> bool:
+    def __ge__(self, other: BasePortfolio) -> bool:
         if not isinstance(other, BasePortfolio):
             raise TypeError(
                 "`>=` not supported between instances of `Portfolio` and"
@@ -590,7 +592,7 @@ class BasePortfolio:
             )
         return self.__eq__(other) or self.__gt__(other)
 
-    def __copy__(self):
+    def __copy__(self) -> BasePortfolio:
         cls = self.__class__
         result = cls.__new__(cls)
         result._loaded = False
@@ -603,7 +605,7 @@ class BasePortfolio:
         result._loaded = True
         return result
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> Any:  # noqa: ANN401  # any attribute value
         try:
             return object.__getattribute__(self, name)
         except AttributeError as e:
@@ -617,7 +619,7 @@ class BasePortfolio:
             setattr(self, name, value)
             return value
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: object) -> None:
         if name != "_loaded" and self._loaded:
             if name in self._read_only_attrs:
                 raise AttributeError(
@@ -629,7 +631,7 @@ class BasePortfolio:
                 self.clear()
         object.__setattr__(self, name, value)
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str) -> None:
         # We only want to raise an error when the attribute doesn't exist and we don't
         # want to raise an error when it's a valid attribute that has not been assigned
         # a value.
@@ -646,6 +648,7 @@ class BasePortfolio:
 
     # Private methods
     def _slots(self) -> set[str]:
+        """Return the union of `__slots__` across the class MRO."""
         slots = set()
         for s in self.__class__.__mro__:
             slots.update(getattr(s, "__slots__", set()))
@@ -672,6 +675,7 @@ class BasePortfolio:
 
     @fitness_measures.setter
     def fitness_measures(self, value: list[skt.Measure]) -> None:
+        """Validate and set the fitness measures and clear the cached fitness."""
         if not isinstance(value, list) or len(value) == 0:
             raise TypeError("`fitness_measures` must be a non-empty list of Measure")
         for val in value:
@@ -689,6 +693,7 @@ class BasePortfolio:
 
     @annualization_factor.setter
     def annualization_factor(self, value: float) -> None:
+        """Set the annualization factor and clear the measures cache."""
         self._annualization_factor = value
         self.clear()
 
@@ -702,6 +707,7 @@ class BasePortfolio:
     # TODO remove deprecated annualized_factor in v2.0
     @annualized_factor.setter
     def annualized_factor(self, value: float) -> None:
+        """Set the deprecated alias of `annualization_factor` with a warning."""
         _warn_deprecated_annualized_factor(stacklevel=3)
         self.annualization_factor = value
 
@@ -712,6 +718,7 @@ class BasePortfolio:
 
     @sample_weight.setter
     def sample_weight(self, value: FloatArray | None) -> None:
+        """Validate and set the observations sample weights."""
         if value is not None:
             value = np.asarray(value)
             if value.ndim != 1:
@@ -794,7 +801,7 @@ class BasePortfolio:
         return pd.DataFrame(res, index=idx, columns=["measures"])
 
     # Public methods
-    def copy(self):
+    def copy(self) -> BasePortfolio:
         """Copy the Portfolio attributes without its measures values."""
         return self.__copy__()
 
@@ -851,13 +858,11 @@ class BasePortfolio:
                 )
                 value = np.nan
         elif isinstance(measure, RatioMeasure):
-            # ratio
+            excess_mean = self.mean - self.risk_free_rate
             if measure.is_annualized:
-                mean = self.annualized_mean
-            else:
-                mean = self.mean
+                excess_mean *= self.annualization_factor
             risk = getattr(self, str(measure.linked_risk_measure.value))
-            value = (mean - self.risk_free_rate) / risk
+            value = excess_mean / risk
         else:
             raise ValueError(f"{measure} is not a Measure.")
         return value
@@ -928,20 +933,23 @@ class BasePortfolio:
             if "drawdowns" in risk_func_args:
                 del risk_func_args["drawdowns"]
 
-                def meta_risk_func(returns):
+                def meta_risk_func(returns: pd.Series) -> float:
+                    """Compute the drawdown-based risk measure on `returns`."""
                     drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
                     return risk_func(drawdowns=drawdowns, **risk_func_args)
 
             else:
                 del risk_func_args["returns"]
 
-                def meta_risk_func(returns):
+                def meta_risk_func(returns: pd.Series) -> float:
+                    """Compute the returns-based risk measure on `returns`."""
                     return risk_func(returns=returns, **risk_func_args)
 
             if perf_measure is not None:
                 perf_func = getattr(mt, str(perf_measure.value))
 
-                def func(returns):
+                def func(returns: pd.Series) -> float:
+                    """Compute the excess performance over risk on `returns`."""
                     return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
                         returns
                     )
@@ -951,7 +959,8 @@ class BasePortfolio:
         else:
             perf_func = getattr(mt, str(perf_measure.value))
 
-            def func(returns):
+            def func(returns: pd.Series) -> float:
+                """Compute the performance measure on `returns`."""
                 return perf_func(returns)
 
         rolling = (
@@ -1250,7 +1259,9 @@ class BasePortfolio:
         )
         return fig
 
-    def plot_contribution(self, measure: skt.Measure, spacing: float | None = None):
+    def plot_contribution(
+        self, measure: skt.Measure, spacing: float | None = None
+    ) -> go.Figure:
         r"""Plot the contribution of each asset to a given measure.
 
         Parameters
@@ -1304,6 +1315,7 @@ class BasePortfolio:
 
 # TODO remove deprecated annualized_factor in v2.0
 def _warn_deprecated_annualized_factor(stacklevel: int = 2) -> None:
+    """Emit a FutureWarning that `annualized_factor` is deprecated."""
     warnings.warn(
         "`annualized_factor` is deprecated and will be removed in version 2.0. "
         "Use `annualization_factor` instead.",
@@ -1341,6 +1353,7 @@ def _resolve_annualization_factor(
     *,
     owner_name: str,
 ) -> float:
+    """Resolve the annualization factor from the current and deprecated arguments."""
     params = {"annualization_factor": annualization_factor}
     if "annualized_factor" in kwargs:
         params["annualized_factor"] = kwargs.pop("annualized_factor")

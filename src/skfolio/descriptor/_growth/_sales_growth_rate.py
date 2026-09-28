@@ -64,5 +64,5 @@ class SalesGrowthRate(GrowthRate):
     >>> sales_growth_rate = descriptor.fit_transform(X)
     """
 
-    def __init__(self, lag: int = 252):
+    def __init__(self, lag: int = 252) -> None:
         super().__init__(field="sales_ttm", lag=lag)

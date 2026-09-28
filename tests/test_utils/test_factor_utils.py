@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from skfolio.utils._factor_tools import _expand_factor_names
+from skfolio.utils._factor_tools import _expand_factor_names, _resolve_factor_subset
 from skfolio.utils.stats import _market_returns
 
 
@@ -84,3 +84,13 @@ def test_market_returns_raises_on_shape_mismatch():
 
     with pytest.raises(ValueError, match="weights must have the same shape"):
         _market_returns(asset_returns=returns, weights=weights)
+
+
+def test_resolve_factor_subset_rejects_mismatched_families():
+    with pytest.raises(ValueError, match="must have the same shape as `factor_names`"):
+        _resolve_factor_subset(
+            factor_names=np.array(["mkt", "size", "value"]),
+            factor_families=np.array(["market", "style"]),
+            factor_names_to_keep=None,
+            family_names_to_keep="style",
+        )

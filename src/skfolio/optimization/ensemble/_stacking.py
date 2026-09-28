@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import sklearn as sk
@@ -193,7 +194,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -209,7 +210,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         self.verbose = verbose
 
     @property
-    def named_estimators(self):
+    def named_estimators(self) -> sku.Bunch:
         """Dictionary to access any fitted sub-estimators by name.
 
         Returns
@@ -239,7 +240,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
 
         return names, estimators
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> StackingOptimization:
         """Set the parameters of an estimator from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -263,7 +264,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         super()._set_params("estimators", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -283,8 +284,17 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         """
         return super()._get_params("estimators", deep=deep)
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of each estimator in
+        `estimators`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         for name, estimator in self.estimators:
             router.add(
@@ -294,7 +304,7 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> StackingOptimization:
         """Fit the Stacking Optimization estimator.
 
@@ -337,7 +347,6 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             # Fit the base estimators on the whole training data. Those
             # base estimators will be used to retrieve the inner weights.
             # They are exposed publicly.
-            # noinspection PyCallingNonCallable
             self.estimators_ = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(fit_single_estimator)(
                     sk.clone(est), X, y, routed_params[name]["fit"]
@@ -366,7 +375,6 @@ class StackingOptimization(BaseOptimization, BaseComposition):
             cv = sks.check_cv(self.cv)
             if hasattr(cv, "random_state") and cv.random_state is None:
                 cv.random_state = np.random.RandomState()
-            # noinspection PyCallingNonCallable
             cv_predictions = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(cross_val_predict)(
                     sk.clone(est),
