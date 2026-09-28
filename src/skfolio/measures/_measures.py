@@ -56,6 +56,10 @@ def mean(
     result = sample_weight @ returns
     # Scan returns for NaNs only if the weighted mean contains NaN.
     if not np.isnan(result).any():
+        total = sample_weight.sum()
+        if not _sums_to_one(total, n_observations=sample_weight.shape[0]):
+            with np.errstate(divide="ignore", invalid="ignore"):
+                result = result / total
         return result
     returns, weights = _prepare_weighted_returns(returns, weights=sample_weight)
     return _weighted_sum(returns, weights=weights)
@@ -1129,7 +1133,7 @@ def _prepare_weighted_returns(
         Return values, possibly containing NaNs.
 
     weights : ndarray of shape (n_observations,)
-        Normalized, non-negative observation weights.
+        Non-negative observation weights.
 
     Returns
     -------
@@ -1153,7 +1157,33 @@ def _prepare_weighted_returns(
         with np.errstate(invalid="ignore"):
             weights /= weights.sum(axis=0)
         returns = np.where(missing, 0.0, returns)
+    else:
+        total = weights.sum()
+        if not _sums_to_one(total, n_observations=weights.shape[0]):
+            # Rescale into a new array, so the caller's weights are left untouched.
+            with np.errstate(invalid="ignore"):
+                weights = weights / total
     return returns, weights
+
+
+def _sums_to_one(total: float, n_observations: int) -> bool:
+    r"""Check whether a sum of weights equals one up to floating-point rounding.
+
+    Parameters
+    ----------
+    total : float
+        Sum of the weights.
+
+    n_observations : int
+        Number of weights in the sum.
+
+    Returns
+    -------
+    value : bool
+        True if :math:`|s - 1| \leq 4 n \epsilon`, where :math:`s` is `total`,
+        :math:`n` is `n_observations` and :math:`\epsilon` is the machine epsilon.
+    """
+    return abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps
 
 
 def _weighted_variance(
@@ -1173,12 +1203,12 @@ def _weighted_variance(
         Return values, possibly containing NaNs.
 
     sample_weight : ndarray of shape (n_observations,)
-        Normalized, non-negative observation weights.
+        Non-negative observation weights.
 
     biased : bool
         If True, return the population second moment. If False, divide it by
         :math:`1 - \sum_i w_i^2`, where :math:`w_i` are the weights after excluding
-        NaN returns.
+        NaN returns and rescaling.
 
     min_acceptable_return : float or ndarray of shape (n_assets,), optional
         Reference return for computing deviations. If None, use each column's
@@ -1286,8 +1316,8 @@ def _tail_risk(
         Confidence level in [0, 1] for VaR and [0, 1) for CVaR.
 
     sample_weight : ndarray of shape (n_observations,) or None
-        Normalized, non-negative observation weights. If None, the remaining
-        observations have equal weight.
+        Non-negative observation weights. If None, the remaining observations
+        have equal weight.
 
     conditional : bool
         If True, return CVaR, the average loss in the lower return tail.
