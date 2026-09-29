@@ -49,7 +49,6 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import scipy.stats as st
 
 import skfolio.typing as skt
 from skfolio import measures as mt
@@ -61,6 +60,7 @@ from skfolio.measures import (
     RiskMeasure,
 )
 from skfolio.typing import FloatArray, IntArray
+from skfolio.utils.figure import _kde_curve
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
     args_names,
@@ -1162,17 +1162,14 @@ class BasePortfolio:
         Returns
         -------
         plot : Figure
-            Returns the plot Figure object
+            Returns the plot Figure object. Constant returns are shown as a unit-height
+            vertical line at their observed value.
         """
-        returns = self.returns
-        if percentile_cutoff is None:
-            lower, upper = returns.min(), returns.max()
-        else:
-            lower = np.percentile(returns, percentile_cutoff)
-            upper = np.percentile(returns, 100.0 - percentile_cutoff)
-
-        x = np.linspace(lower, upper, 500)
-        y = st.gaussian_kde(self.returns, weights=self.sample_weight)(x)
+        x, y = _kde_curve(
+            x=self.returns,
+            sample_weight=self.sample_weight,
+            percentile_cutoff=percentile_cutoff,
+        )
 
         fig = go.Figure(
             go.Scatter(

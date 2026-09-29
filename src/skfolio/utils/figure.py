@@ -66,7 +66,8 @@ def plot_kde_distributions(
     fig : plotly.graph_objects.Figure
         A Plotly Figure object containing overlaid KDE plots for each asset,
         with separate traces for weighted and unweighted distributions if weights
-        are provided.
+        are provided. A constant distribution is shown as a unit-height vertical
+        line at its observed value.
     """
     asset_names = X.columns.tolist()
     X = X.values
@@ -173,14 +174,11 @@ def kde_trace(
     go.Scatter
         A Plotly Scatter trace with the KDE line and shaded area under the curve.
     """
-    if percentile_cutoff is None:
-        lower, upper = x.min(), x.max()
-    else:
-        lower = np.percentile(x, percentile_cutoff)
-        upper = np.percentile(x, 100.0 - percentile_cutoff)
-
-    xs = np.linspace(lower, upper, 500)
-    ys = st.gaussian_kde(x, weights=sample_weight)(xs)
+    xs, ys = _kde_curve(
+        x=x,
+        sample_weight=sample_weight,
+        percentile_cutoff=percentile_cutoff,
+    )
 
     # build RGBA fill color from the line_color hex
     r, g, b = tuple(int(line_color.lstrip("#")[i : i + 2], 16) for i in (0, 2, 4))
@@ -197,3 +195,21 @@ def kde_trace(
         fillcolor=fill_color,
         opacity=1.0,
     )
+
+
+def _kde_curve(
+    x: ArrayLike,
+    sample_weight: FloatArray | None,
+    percentile_cutoff: float | None,
+) -> tuple[FloatArray, FloatArray]:
+    """Return plotting coordinates for a Gaussian KDE or an exact point mass."""
+    lower, upper = x.min(), x.max()
+    if lower == upper:
+        return np.full(2, lower), np.array([0.0, 1.0])
+
+    if percentile_cutoff is not None:
+        lower = np.percentile(x, percentile_cutoff)
+        upper = np.percentile(x, 100.0 - percentile_cutoff)
+
+    xs = np.linspace(lower, upper, 500)
+    return xs, st.gaussian_kde(x, weights=sample_weight)(xs)

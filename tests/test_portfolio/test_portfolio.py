@@ -9,6 +9,7 @@ from copy import copy
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 from sklearn.pipeline import Pipeline
 
@@ -1560,6 +1561,24 @@ class TestPortfolioMeasures:
         x = np.asarray(fig.data[0].x)
         assert x.min() >= np.percentile(portfolio.returns, 1.0) - 1e-12
         assert x.max() <= np.percentile(portfolio.returns, 99.0) + 1e-12
+
+    def test_plot_returns_distribution_with_constant_returns(self):
+        """Render constant portfolio returns as a point mass at their value."""
+        constant_return = 0.02
+        sample_weight = np.arange(1.0, 21.0)
+        sample_weight /= sample_weight.sum()
+        portfolio = Portfolio(
+            X=np.full((20, 1), constant_return),
+            weights=np.array([1.0]),
+            sample_weight=sample_weight,
+        )
+
+        fig = portfolio.plot_returns_distribution(percentile_cutoff=1.0)
+
+        assert isinstance(fig, go.Figure)
+        np.testing.assert_array_equal(fig.data[0].x, [constant_return, constant_return])
+        np.testing.assert_array_equal(fig.data[0].y, [0.0, 1.0])
+        assert fig.layout.showlegend is False
 
 
 def test_failed_portfolio_floor_and_trunc_are_copies(X):
