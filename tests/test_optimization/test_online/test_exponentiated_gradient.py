@@ -247,3 +247,32 @@ def test_invalid_initial_allocation(X, initial):
     """The reference allocation must be positive and match the universe."""
     with pytest.raises(ValueError, match="initial_weights"):
         ExponentiatedGradient(initial_weights=initial).fit(X)
+
+
+@pytest.mark.parametrize("invalid", [np.nan, np.inf, -np.inf])
+def test_entropy_projection_rejects_nonfinite_reference(invalid):
+    """Reject invalid log references before attempting a budget solve."""
+    from skfolio.optimization.online._eg_update import project_entropy
+
+    with pytest.raises(ValueError, match="finite log weights"):
+        project_entropy(np.array([0.0, invalid]), np.zeros(2), np.ones(2))
+
+
+def test_upper_bounds_exhaust_budget(X):
+    """Upper bounds summing to one define a unique feasible allocation."""
+    upper = np.array([0.5, 0.25, 0.25, 0.0])
+    model = ExponentiatedGradient(max_weights=upper).fit(X)
+    np.testing.assert_array_equal(model.initial_weights_, upper)
+    np.testing.assert_array_equal(model.weights_, upper)
+    assert model.n_observations_ == len(X)
+
+
+def test_nonfinite_candidate_preserves_last_successful_state(X, monkeypatch):
+    """The base lifecycle must reject a faulty update without committing it."""
+    model = ExponentiatedGradient().fit(X[:40])
+    before = model.weights_.copy()
+    monkeypatch.setattr(model, "_solve_update", lambda row: np.full(4, np.nan))
+    with pytest.raises(ValueError, match="non-finite weights"):
+        model.partial_fit(X[40:41])
+    np.testing.assert_array_equal(model.weights_, before)
+    assert model.n_observations_ == 40
