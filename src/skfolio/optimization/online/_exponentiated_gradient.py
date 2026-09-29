@@ -5,10 +5,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 
+import skfolio.typing as skt
 from skfolio.optimization.online._base import BaseOnlineOptimization
 from skfolio.optimization.online._eg_update import entropy_update, project_entropy
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class ExponentiatedGradient(BaseOnlineOptimization):
@@ -72,7 +76,11 @@ class ExponentiatedGradient(BaseOnlineOptimization):
 
     Examples
     --------
-    >>> import numpy as np
+    >>> from collections.abc import Callable
+
+    import numpy as np
+
+    import skfolio.typing as skt
     >>> from skfolio.optimization import ExponentiatedGradient
     >>> X = np.array([[0.01, -0.01], [0.02, 0.0]])
     >>> model = ExponentiatedGradient().fit(X)
@@ -83,27 +91,27 @@ class ExponentiatedGradient(BaseOnlineOptimization):
     def __init__(
         self,
         *,
-        learning_rate=0.05,
-        initial_weights=None,
-        previous_weights=None,
-        portfolio_params=None,
-        min_weights=0.0,
-        max_weights=1.0,
-    ):
+        learning_rate: float | Callable[[int], float] = 0.05,
+        initial_weights: ArrayLike | None = None,
+        previous_weights: skt.MultiInput | None = None,
+        portfolio_params: dict | None = None,
+        min_weights: skt.MultiInput | None = 0.0,
+        max_weights: skt.MultiInput | None = 1.0,
+    ) -> None:
         """Initialize the update rule, allocation bounds and evaluation parameters."""
         super().__init__(initial_weights, previous_weights, portfolio_params)
         self.learning_rate = learning_rate
         self.min_weights = min_weights
         self.max_weights = max_weights
 
-    def _validate_params(self):
+    def _validate_params(self) -> None:
         """Validate the constant rate; scheduled rates are checked per update."""
         if callable(self.learning_rate):
             return
         self._validate_rate(self.learning_rate)
 
     @staticmethod
-    def _validate_rate(rate):
+    def _validate_rate(rate: object) -> None:
         """Require a finite nonnegative learning rate."""
         if (
             isinstance(rate, (bool, np.bool_))
@@ -113,7 +121,7 @@ class ExponentiatedGradient(BaseOnlineOptimization):
         ):
             raise ValueError("learning_rate must be finite and nonnegative.")
 
-    def _initialize(self, n_assets):
+    def _initialize(self, n_assets: int) -> None:
         """Validate bounds and project the initial allocation in KL geometry."""
         lower = self._bounds(self.min_weights, n_assets, 0, "min_weights")
         upper = self._bounds(self.max_weights, n_assets, 1, "max_weights")
@@ -131,7 +139,9 @@ class ExponentiatedGradient(BaseOnlineOptimization):
         self.min_weights_ = lower
         self.max_weights_ = upper
 
-    def _bounds(self, value, n_assets, default, name):
+    def _bounds(
+        self, value: skt.MultiInput | None, n_assets: int, default: float, name: str
+    ) -> FloatArray:
         """Resolve skfolio scalar, array or named bounds to an asset vector."""
         value = default if value is None else value
         cleaned = self._clean_input(
@@ -144,7 +154,7 @@ class ExponentiatedGradient(BaseOnlineOptimization):
             raise ValueError(f"{name} must contain finite bounds for each asset.")
         return result.copy()
 
-    def _validate_stream_params(self):
+    def _validate_stream_params(self) -> None:
         """Reject changed bounds until the estimator is explicitly refitted."""
         for name, default in (("min_weights", 0), ("max_weights", 1)):
             current = self._bounds(
@@ -159,7 +169,7 @@ class ExponentiatedGradient(BaseOnlineOptimization):
         "max_weights_",
     )
 
-    def _solve_update(self, returns_t):
+    def _solve_update(self, returns_t: FloatArray) -> FloatArray:
         """Return an entropy mirror-descent step without advancing state."""
         rate = (
             self.learning_rate(self.n_observations_)

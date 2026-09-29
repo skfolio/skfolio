@@ -9,8 +9,16 @@ import numpy as np
 from scipy.optimize import brentq
 from scipy.special import logsumexp
 
+from skfolio.typing import FloatArray
 
-def entropy_update(weights, returns, learning_rate, lower, upper):
+
+def entropy_update(
+    weights: FloatArray,
+    returns: FloatArray,
+    learning_rate: float,
+    lower: FloatArray,
+    upper: FloatArray,
+) -> FloatArray:
     """Take an EG step and apply bounds in KL, rather than Euclidean, geometry."""
     relatives = 1 + returns
     relatives /= relatives.max()
@@ -24,7 +32,9 @@ def entropy_update(weights, returns, learning_rate, lower, upper):
     return project_entropy(log_candidate, lower, upper)
 
 
-def project_entropy(log_candidate, lower, upper):
+def project_entropy(
+    log_candidate: FloatArray, lower: FloatArray, upper: FloatArray
+) -> FloatArray:
     """Minimize KL(w || candidate) over lower <= w <= upper, sum(w) = 1.
 
     The KKT solution is clip(exp(log_candidate - lambda), lower, upper).
@@ -44,7 +54,7 @@ def project_entropy(log_candidate, lower, upper):
     with np.errstate(divide="ignore"):
         log_lower, log_upper = np.log(lower), np.log(upper)
 
-    def allocation(multiplier):
+    def allocation(multiplier: float) -> FloatArray:
         """Evaluate the clipped exponential allocation for a budget multiplier."""
         return np.exp(np.clip(log_candidate - multiplier, log_lower, log_upper))
 

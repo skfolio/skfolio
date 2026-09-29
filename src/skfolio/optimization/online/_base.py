@@ -10,7 +10,9 @@ from abc import abstractmethod
 import numpy as np
 from sklearn.utils.validation import validate_data
 
+import skfolio.typing as skt
 from skfolio.optimization._base import BaseOptimization
+from skfolio.typing import ArrayLike, FloatArray
 
 
 class BaseOnlineOptimization(BaseOptimization):
@@ -42,15 +44,18 @@ class BaseOnlineOptimization(BaseOptimization):
     _requires_single_period_evaluation = True
 
     def __init__(
-        self, initial_weights=None, previous_weights=None, portfolio_params=None
-    ):
+        self,
+        initial_weights: ArrayLike | None = None,
+        previous_weights: skt.MultiInput | None = None,
+        portfolio_params: dict | None = None,
+    ) -> None:
         """Initialize allocation and portfolio evaluation parameters."""
         super().__init__(
             previous_weights=previous_weights, portfolio_params=portfolio_params
         )
         self.initial_weights = initial_weights
 
-    def fit(self, X, y=None):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseOnlineOptimization:
         """Reset learning and process returns in observation order.
 
         Parameters
@@ -68,7 +73,9 @@ class BaseOnlineOptimization(BaseOptimization):
         self._reset()
         return self.partial_fit(X, y)
 
-    def partial_fit(self, X, y=None):
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike | None = None
+    ) -> BaseOnlineOptimization:
         """Continue learning by consuming each row exactly once.
 
         Parameters
@@ -110,13 +117,13 @@ class BaseOnlineOptimization(BaseOptimization):
             self.n_observations_ += 1
         return self
 
-    def _validate_params(self):
+    def _validate_params(self) -> None:
         """Hook for concrete algorithm parameter checks."""
 
-    def _validate_stream_params(self):
+    def _validate_stream_params(self) -> None:
         """Hook for checking parameters that must remain fixed during a stream."""
 
-    def _initialize(self, n_assets):
+    def _initialize(self, n_assets: int) -> None:
         """Validate the initial allocation and initialize learning state."""
         weights = (
             np.full(n_assets, 1 / n_assets)
@@ -135,7 +142,7 @@ class BaseOnlineOptimization(BaseOptimization):
         self.weights_ = weights.copy()
         self.n_observations_ = 0
 
-    def _reset(self):
+    def _reset(self) -> None:
         """Discard learned attributes while preserving constructor parameters."""
         for name in self._state_attributes:
             if hasattr(self, name):
@@ -153,5 +160,5 @@ class BaseOnlineOptimization(BaseOptimization):
     )
 
     @abstractmethod
-    def _solve_update(self, returns_t):
+    def _solve_update(self, returns_t: FloatArray) -> FloatArray:
         """Return the target for t+1 without mutating learning state."""
