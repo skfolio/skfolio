@@ -111,7 +111,7 @@ class JohnsonSU(BaseUnivariateDist):
         loc: float | None = None,
         scale: float | None = None,
         random_state: int | None = None,
-    ):
+    ) -> None:
         super().__init__(random_state=random_state)
         self.loc = loc
         self.scale = scale
@@ -121,7 +121,7 @@ class JohnsonSU(BaseUnivariateDist):
         """Dictionary of parameters to pass to the underlying SciPy distribution."""
         return {"a": self.a_, "b": self.b_, "loc": self.loc_, "scale": self.scale_}
 
-    def fit(self, X: ArrayLike, y=None) -> JohnsonSU:
+    def fit(self, X: ArrayLike, y: None = None) -> JohnsonSU:
         """Fit the univariate Johnson SU distribution model.
 
         Parameters

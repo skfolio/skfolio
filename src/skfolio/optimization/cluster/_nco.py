@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -268,7 +269,7 @@ class NestedClustersOptimization(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -285,8 +286,17 @@ class NestedClustersOptimization(BaseOptimization):
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `distance_estimator`,
+        `clustering_estimator` and `inner_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add(
@@ -305,7 +315,7 @@ class NestedClustersOptimization(BaseOptimization):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> NestedClustersOptimization:
         """Fit the Nested Clusters Optimization estimator.
 
@@ -353,7 +363,6 @@ class NestedClustersOptimization(BaseOptimization):
             check_type=BaseOptimization,
         )
 
-        # noinspection PyArgumentList
         self.distance_estimator_.fit(X, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
         n_assets = distance.shape[0]
@@ -362,11 +371,9 @@ class NestedClustersOptimization(BaseOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        # noinspection PyUnresolvedReferences
         self.clustering_estimator_.fit(
             X=distance, y=None, **routed_params.clustering_estimator.fit
         )
-        # noinspection PyUnresolvedReferences
         labels = self.clustering_estimator_.labels_
         n_clusters = max(labels) + 1
         clusters = [np.argwhere(labels == i).flatten() for i in range(n_clusters)]
@@ -375,7 +382,6 @@ class NestedClustersOptimization(BaseOptimization):
         # Fit the inner estimator on the whole training data. Those
         # base estimators will be used to retrieve the inner weights.
         # They are exposed publicly.
-        # noinspection PyCallingNonCallable
         fitted_inner_estimators = skp.Parallel(n_jobs=self.n_jobs)(
             skp.delayed(fit_single_estimator)(
                 sk.clone(_inner_estimator),
@@ -420,7 +426,6 @@ class NestedClustersOptimization(BaseOptimization):
             cv = sks.check_cv(self.cv)
             if hasattr(cv, "random_state") and cv.random_state is None:
                 cv.random_state = np.random.RandomState()
-            # noinspection PyCallingNonCallable
             cv_predictions = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(cross_val_predict)(
                     sk.clone(_inner_estimator),

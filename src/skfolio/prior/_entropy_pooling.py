@@ -11,7 +11,7 @@ import operator
 import re
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
 import numpy as np
@@ -448,7 +448,7 @@ class EntropyPooling(BasePrior):
         groups: skt.Groups | None = None,
         solver: str = "TNC",
         solver_params: dict | None = None,
-    ):
+    ) -> None:
         self.prior_estimator = prior_estimator
         self.mean_views = mean_views
         self.variance_views = variance_views
@@ -463,14 +463,23 @@ class EntropyPooling(BasePrior):
         self.solver = solver
         self.solver_params = solver_params
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EntropyPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> EntropyPooling:
         """Fit the Entropy Pooling estimator.
 
         Parameters
@@ -1186,7 +1195,9 @@ class EntropyPooling(BasePrior):
                 "such as 'TNC'."
             ) from None
 
-    def _process_views(self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure):
+    def _process_views(
+        self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure
+    ) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
         """Process and convert view equations into constraint matrices.
 
         This method uses the provided view strings and groups to generate the equality
@@ -1367,7 +1378,8 @@ def _replace_prior_views(
         r"(?:\s*\*\s*([0-9\.]+))?"  # Optional post-multiplier
     )
 
-    def repl(match) -> str:
+    def repl(match: re.Match[str]) -> str:
+        """Return the prior value times the multipliers of a matched pattern."""
         pre_multiplier = float(match.group(1)) if match.group(1) else 1.0
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0

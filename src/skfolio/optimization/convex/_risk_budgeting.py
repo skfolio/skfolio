@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -286,7 +288,8 @@ class RiskBudgeting(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     min_return : float | array-like of shape (n_optimization), optional
@@ -542,7 +545,7 @@ class RiskBudgeting(ConvexOptimization):
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -577,7 +580,9 @@ class RiskBudgeting(ConvexOptimization):
         self.min_return = min_return
         self.risk_budget = risk_budget
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> RiskBudgeting:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> RiskBudgeting:
         """Fit the Risk Budgeting Optimization estimator.
 
         Parameters
@@ -703,7 +708,6 @@ class RiskBudgeting(ConvexOptimization):
         )
 
         # problem
-        # noinspection PyTypeChecker
         problem = cp.Problem(objective, constraints)
 
         # results

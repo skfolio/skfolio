@@ -59,7 +59,7 @@ jobs:
       - name: Select Python for uv
         run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
 
-      # CI intentionally checks against the latest Ruff release.
+      # Lint with the latest Ruff release.
       - name: Ruff version
         run: uvx ruff@latest --version
 
@@ -69,6 +69,14 @@ jobs:
       - name: Ruff format
         if: ${{ !cancelled() && steps.python.outcome == 'success' }}
         run: uvx ruff@latest format --check
+
+      # Run the pre-commit hooks except Ruff, which the steps above already run.
+      # `SKIP` lists hook ids from `.pre-commit-config.yaml`.
+      - name: Pre-commit hooks
+        if: ${{ !cancelled() && steps.python.outcome == 'success' }}
+        env:
+          SKIP: ruff,ruff-format
+        run: uvx pre-commit run --all-files --show-diff-on-failure
 
       - name: Check distribution contents
         run: |

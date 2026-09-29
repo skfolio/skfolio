@@ -311,7 +311,10 @@ def test_population_cumulative_returns(population):
     )
     assert population[:2].plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         population[:2].plot_cumulative_returns(log_scale=True)
 
     population.set_portfolio_params(compounded=True)

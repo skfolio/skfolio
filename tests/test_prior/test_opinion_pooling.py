@@ -32,22 +32,57 @@ def test_validate_opinion_probabilities_defaults(X):
 
 
 @pytest.mark.parametrize(
-    "probs",
+    "probs,match",
     [
-        [1.0, 1.0],  # sum >1
-        [-0.1, 0.1],  # negative
-        [0.6],  # wrong length
+        ([1.0, 1.0], "must sum to at most 1"),
+        ([0.6, 0.400011], "must sum to at most 1"),
+        ([-0.1, 0.1], "must be between 0 and 1"),
+        ([0.6], "does not match number of estimators"),
     ],
 )
-def test_validate_opinion_probabilities_errors(X, probs):
+def test_validate_opinion_probabilities_errors(X, probs, match):
     model1 = EntropyPooling()
     model2 = EntropyPooling()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match):
         model = OpinionPooling(
             estimators=[("expert_1", model1), ("expert_2", model2)],
             opinion_probabilities=probs,
         )
         model.fit(X)
+
+
+@pytest.mark.parametrize(
+    "probs",
+    [[0.33, 0.56, 0.11], [0.5, 0.3, 0.2 - 1e-7], np.array([1, 0, 0])],
+)
+def test_opinion_probabilities_close_to_one(X, probs):
+    # The first sum is one ulp above one and the second is 1e-7 below one.
+    model = OpinionPooling(
+        estimators=[
+            ("expert_1", EntropyPooling(mean_views=["AAPL >= 0.04"])),
+            ("expert_2", EntropyPooling(mean_views=["AAPL <= -0.01"])),
+            ("expert_3", EntropyPooling(mean_views=["BAC <= 0.00"])),
+        ],
+        opinion_probabilities=probs,
+        divergence_penalty=1.0,
+    )
+    model.fit(X)
+    assert model.opinion_probabilities_.shape == (3,)
+    np.testing.assert_almost_equal(model.opinion_probabilities_.sum(), 1.0)
+
+
+def test_opinion_probabilities_not_modified(X):
+    probs = np.array([0.5, 0.5])
+    model = OpinionPooling(
+        estimators=[
+            ("expert_1", EntropyPooling(mean_views=["AAPL >= 0.04"])),
+            ("expert_2", EntropyPooling(mean_views=["AAPL <= -0.01"])),
+        ],
+        opinion_probabilities=probs,
+        divergence_penalty=1.0,
+    )
+    model.fit(X)
+    np.testing.assert_array_equal(probs, [0.5, 0.5])
 
 
 def test_prior_error(X):

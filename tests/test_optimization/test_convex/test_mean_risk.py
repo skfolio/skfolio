@@ -259,6 +259,27 @@ def test_mean_risk_minimize_risk(
     )
 
 
+@pytest.mark.parametrize(
+    "risk_measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_mean_risk_drawdown_from_first_observation(X, risk_measure):
+    # Every asset loses 20% on the first observation, so the deepest drawdown starts
+    # there.
+    X = X.iloc[-60:].copy()
+    X.iloc[0] = -0.2
+    model = MeanRisk(risk_measure=risk_measure)
+    p = model.fit_predict(X)
+    np.testing.assert_almost_equal(
+        getattr(p, risk_measure.value), model.problem_values_["risk"], 4
+    )
+
+
 def test_mean_risk_minimize_risk_2(
     X_small,
     precisions,
@@ -605,12 +626,10 @@ def test_mean_risk_get_params():
 
 def test_mean_risk_set_params():
     model = MeanRisk()
-    with pytest.raises(AttributeError):
-        # noinspection PyTypeChecker
+    with pytest.raises(AttributeError, match="has no attribute 'set_params'"):
         model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     model = MeanRisk(prior_estimator=EmpiricalPrior(mu_estimator=EmpiricalMu()))
-    # noinspection PyTypeChecker
     model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     params = model.get_params(deep=True)
@@ -885,7 +904,6 @@ def test_regularization(X, risk_measure, mean_risk_params_coef):
 
     # MAXIMIZE_RETURN
     risk = obj_ref * 1.2
-    # noinspection PyTypeChecker
     model.set_params(
         l1_coef=0,
         l2_coef=0,
@@ -952,7 +970,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -976,7 +993,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -998,7 +1014,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         scale_objective=1e-3,
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
@@ -1060,7 +1075,6 @@ def test_transaction_costs(X, risk_measure):
     w_ref = model.weights_
     # uniform transaction_costs for all assets and empty prev_weight --> no impact on
     # weights
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=0.1 / 252, previous_weights=np.ones(n_assets) / n_assets
     )
@@ -1074,7 +1088,6 @@ def test_transaction_costs(X, risk_measure):
     asset_2 = p_ref.composition.index[1]
     above = 5e-2
     transaction_costs = {asset_1: 0.2, asset_2: 0.5}
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=transaction_costs,
         previous_weights=np.ones(n_assets) / n_assets,
@@ -1102,7 +1115,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     min_risk = model.problem_values_["risk"]
 
     risk = min_risk * 1.1
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         **{target_risk_arg: risk},
@@ -1111,7 +1123,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     p = model.fit_predict(X)
     ret = model.problem_values_["expected_return"]
     np.testing.assert_almost_equal(risk, getattr(p, risk_measure.value), precision)
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         min_return=ret,
@@ -1121,7 +1132,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     np.testing.assert_almost_equal(ret, p.mean, precision)
 
     risks = [risk, risk * 1.1]
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         min_return=None,
@@ -1183,7 +1193,7 @@ def test_groups(X, groups, linear_constraints):
     model.fit(X)
     w3 = model.weights_
     p3 = model.fit_predict(X)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="If `groups` is provided as a dictionary"):
         model.fit(np.array(X))
     np.testing.assert_almost_equal(w1, w3)
     np.testing.assert_almost_equal(p1.returns, p2.returns)
@@ -1321,12 +1331,11 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 
@@ -1457,7 +1466,6 @@ def test_scip_clarabel_convergence(X):
     )
     model.fit(X)
     w1 = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(solver="SCIP")
     model.fit(X)
     w2 = model.weights_
@@ -1481,7 +1489,6 @@ def test_mip_threshold_constraints_long(X, objective_function):
 
     threshold_long = 0.05
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     model.fit(X)
     w2 = model.weights_
@@ -1512,14 +1519,12 @@ def test_mip_threshold_constraints_long_short(X, objective_function):
 
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
     assert np.any((w1 > threshold_short + 1e-8) & (w1 < 0 - 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     with pytest.raises(
         ValueError,
         match=r"When 'threshold_long' is provided*",
     ):
         model.fit(X)
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
     model.fit(X)
     w2 = model.weights_
@@ -1566,7 +1571,6 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
     assert np.any((w < threshold_long - 1e-8) & (w > 0 + 1e-8))
     assert np.any((w > threshold_short + 1e-8) & (w < 0 - 1e-8))
 
-    # noinspection PyTypeChecker
     model.set_params(
         cardinality=cardinality,
         threshold_long=threshold_long,
@@ -1853,7 +1857,7 @@ def test_fallback(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_weights=1.0)
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(cp.error.SolverError, match="Solver 'CLARABEL' failed"):
         model.fit(X)
 
     model = MeanRisk(
@@ -1997,7 +2001,9 @@ def test_raise_on_failure_on_multi_all_fail(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_return=[0.003, 0.004])
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(
+        cp.error.SolverError, match="Solver 'CLARABEL' failed with parameters"
+    ):
         model.fit(X)
 
 
@@ -2597,6 +2603,7 @@ def test_non_default_solver(X_tiny):
 def test_unimplemented_fourth_moment_risks():
     model = MeanRisk()
     w = cp.Variable(2)
+    # Both methods raise a bare `NotImplementedError`, so there is no message to match.
     with pytest.raises(NotImplementedError):
         model._fourth_central_moment_risk(w=w, factor=cp.Constant(1))
     with pytest.raises(NotImplementedError):
@@ -2721,7 +2728,7 @@ def test_partial_fit_rejects_changed_invalid_objective(X_tiny):
 
 def test_partial_fit_solver_failure_raises(X_tiny):
     model = _make_online_mean_risk(min_weights=1.0)
-    with pytest.raises(cp.SolverError):
+    with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
         model.partial_fit(X_tiny)
     assert "Solver 'CLARABEL' failed" in model.error_
     # The failed solve never reaches the point where problem values are recorded.

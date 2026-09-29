@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from skfolio.optimization import EqualWeighted, InverseVolatility, MeanRisk
+from skfolio.optimization._base import _has_transaction_cost
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.portfolio import _portfolio as portfolio_module
 
@@ -87,7 +88,7 @@ def test_population_nullable_returns(weight_drift):
     for actual, reference in zip(population[1:], expected, strict=True):
         np.testing.assert_allclose(actual.returns, reference.returns)
         np.testing.assert_allclose(actual.ending_weights, reference.ending_weights)
-        assert np.isnan(actual.diversification)
+        np.testing.assert_allclose(actual.diversification, reference.diversification)
 
 
 @pytest.mark.parametrize("bad", [np.inf, "bad"])
@@ -117,3 +118,44 @@ def test_all_failed_population_skips_numeric_validation(monkeypatch):
     assert len(population) == 2
     assert all(isinstance(p, FailedPortfolio) for p in population)
     assert all(p.X is invalid for p in population)
+
+
+@pytest.mark.parametrize(
+    "costs, expected",
+    [
+        (None, False),
+        (0.0, False),
+        ([], False),
+        ({"a": 0.0, "b": [0.0, 0.0]}, False),
+        (0.001, True),
+        ({"a": 0.0, "b": 0.002}, True),
+        # Not convertible to a float array: assume a cost, to be conservative.
+        ("abc", True),
+        ([[0.0], [0.0, 0.0]], True),
+        ({1, 2}, True),
+        ([10**400], True),
+    ],
+    ids=[
+        "none",
+        "zero",
+        "empty",
+        "zero-mapping",
+        "scalar",
+        "mapping",
+        "string",
+        "ragged",
+        "set",
+        "overflow",
+    ],
+)
+def test_has_transaction_cost(costs, expected):
+    assert _has_transaction_cost(costs) is expected
+
+
+def test_has_transaction_cost_does_not_swallow_unrelated_errors(monkeypatch):
+    def broken_asarray(*args, **kwargs):
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(np, "asarray", broken_asarray)
+    with pytest.raises(RuntimeError, match="unexpected"):
+        _has_transaction_cost(0.1)

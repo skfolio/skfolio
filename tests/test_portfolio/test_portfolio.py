@@ -10,6 +10,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.pipeline import Pipeline
 
 import skfolio.measures as mt
 from skfolio import (
@@ -23,7 +24,9 @@ from skfolio import (
     RiskMeasure,
 )
 from skfolio.datasets import load_sp500_dataset
+from skfolio.optimization import MeanRisk
 from skfolio.portfolio._base import _MEASURES
+from skfolio.pre_selection import SelectKExtremes
 from skfolio.preprocessing import prices_to_returns
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import rand_weights
@@ -206,6 +209,44 @@ def test_portfolio_annualized(X, weights, annualization_factor):
     )
 
 
+@pytest.mark.parametrize("risk_free_rate", [0.0, 0.02 / 252, 0.05 / 252])
+def test_portfolio_annualized_ratios_with_risk_free_rate(X, weights, risk_free_rate):
+    """Test that annualized ratios scale the per-period ratio by the square root of
+    the annualization factor and match the full-window rolling measure."""
+    annualization_factor = 252.0
+    portfolio = Portfolio(
+        X=X,
+        weights=weights,
+        annualization_factor=annualization_factor,
+        risk_free_rate=risk_free_rate,
+    )
+
+    np.testing.assert_almost_equal(
+        portfolio.sharpe_ratio,
+        (portfolio.mean - risk_free_rate) / portfolio.standard_deviation,
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sharpe_ratio,
+        portfolio.sharpe_ratio * np.sqrt(annualization_factor),
+    )
+    np.testing.assert_almost_equal(
+        portfolio.annualized_sortino_ratio,
+        portfolio.sortino_ratio * np.sqrt(annualization_factor),
+    )
+
+    # Over the full sample, the rolling measure equals the scalar measure.
+    for measure in [
+        RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        RatioMeasure.ANNUALIZED_SORTINO_RATIO,
+    ]:
+        rolling = portfolio.rolling_measure(
+            measure=measure, window=portfolio.n_observations
+        )
+        np.testing.assert_almost_equal(
+            getattr(portfolio, str(measure.value)), rolling.iloc[-1]
+        )
+
+
 def test_portfolio_deprecated_annualized_factor(X, weights):
     with pytest.warns(FutureWarning, match="annualized_factor"):
         portfolio = Portfolio(X=X, weights=weights, annualized_factor=12)
@@ -384,7 +425,40 @@ def test_portfolio_sric(portfolio):
 
 
 def test_portfolio_diversification(portfolio):
-    np.testing.assert_almost_equal(portfolio.diversification, 1.449839842913199)
+    np.testing.assert_almost_equal(portfolio.diversification, 1.4503211175631066)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+def test_portfolio_diversification_volatility_estimator(X, weighted):
+    X = X.iloc[:24]
+    sample_weight = None
+    if weighted:
+        sample_weight = np.random.default_rng(42).random(len(X))
+        sample_weight /= sample_weight.sum()
+
+    single_asset = Portfolio(X, weights={"AAPL": 1.0}, sample_weight=sample_weight)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = np.full(X.shape[1], 1 / X.shape[1])
+    portfolio = Portfolio(X, weights=weights, sample_weight=sample_weight)
+    cov = np.cov(X, rowvar=False, aweights=sample_weight)
+    expected = weights @ np.sqrt(np.diag(cov)) / np.sqrt(weights @ cov @ weights)
+    np.testing.assert_almost_equal(portfolio.diversification, expected)
+
+
+@pytest.mark.parametrize("weight_drift", [False, True])
+def test_portfolio_diversification_missing_returns(X, weight_drift):
+    X = X.iloc[:24]
+    X_gaps = X.copy()
+    X_gaps.iloc[::5, X.columns.get_loc("AAPL")] = np.nan
+    single_asset = Portfolio(X_gaps, weights={"AAPL": 1.0}, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(single_asset.diversification, 1.0)
+
+    weights = {"AAPL": 0.5, "BAC": 0.3, "KO": 0.2}
+    expected = Portfolio(X, weights=weights, weight_drift=weight_drift)
+    X_unlisted = X.assign(XOM=np.nan)
+    portfolio = Portfolio(X_unlisted, weights=weights, weight_drift=weight_drift)
+    np.testing.assert_almost_equal(portfolio.diversification, expected.diversification)
 
 
 @pytest.mark.parametrize(
@@ -420,7 +494,7 @@ def test_portfolio_slots(portfolio):
 
 
 def test_copy(portfolio):
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match="has no attribute '_assets_names'"):
         _ = portfolio._assets_names
     _ = portfolio.nonzero_assets
     _ = copy(portfolio)
@@ -523,7 +597,10 @@ def test_portfolio_variance_from_assets(X, weights):
 def test_portfolio_plot_cumulative_returns(portfolio):
     assert portfolio.plot_cumulative_returns()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="Plotting with logarithm scaling must be done on cumulative returns",
+    ):
         portfolio.plot_cumulative_returns(log_scale=True)
 
     portfolio.compounded = True
@@ -708,6 +785,184 @@ def test_portfolio_nan_handling(X, weights):
     portfolio_nan = Portfolio(X=X_nan_zero_only, weights=weights)
     portfolio_ref = Portfolio(X=X, weights=weights)
     np.testing.assert_array_almost_equal(portfolio_nan.returns, portfolio_ref.returns)
+
+
+TREEMAP_GROUPS = {
+    "a": ["Equity", "US"],
+    "b": ["Equity", "EU"],
+    "c": ["Bond", "US"],
+    "d": ["Bond", "EU"],
+}
+
+
+@pytest.fixture
+def X_treemap() -> pd.DataFrame:
+    rng = np.random.default_rng(42)
+    return pd.DataFrame(rng.normal(0.001, 0.02, (60, 4)), columns=["a", "b", "c", "d"])
+
+
+def _get_treemap_hierarchy(fig) -> list[tuple[str, str]]:
+    """Return the (label, parent label) pairs of the treemap nodes."""
+    trace = fig.data[0]
+    label_by_id = dict(zip(trace.ids, trace.labels, strict=True))
+    return [
+        (label, label_by_id.get(parent, ""))
+        for label, parent in zip(trace.labels, trace.parents, strict=True)
+    ]
+
+
+def _get_treemap_node(fig, name: str) -> dict:
+    """Return the value, net weight and color of the treemap node `name`."""
+    trace = fig.data[0]
+    i = [node_name for node_name, _ in trace.customdata].index(name)
+    return {
+        "value": trace.values[i],
+        "net_weight": trace.customdata[i][1],
+        "color": trace.marker.colors[i],
+    }
+
+
+def _parse_rgb(color: str) -> tuple[float, ...]:
+    return tuple(float(c) for c in color.removeprefix("rgb(")[:-1].split(","))
+
+
+def test_plot_composition_treemap(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    trace = fig.data[0]
+    assert trace.branchvalues == "total"
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  70.0%", "ptf  100.0%"),
+        ("US  40.0%", "Equity  70.0%"),
+        ("a", "US  40.0%"),
+        ("EU  30.0%", "Equity  70.0%"),
+        ("b", "EU  30.0%"),
+        ("Bond  30.0%", "ptf  100.0%"),
+        ("US  20.0%", "Bond  30.0%"),
+        ("c", "US  20.0%"),
+        ("EU  10.0%", "Bond  30.0%"),
+        ("d", "EU  10.0%"),
+    ]
+    np.testing.assert_almost_equal(
+        trace.values, [1.0, 0.7, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.2, 0.1, 0.1]
+    )
+    assert fig.layout.title.text == "Portfolio Composition"
+    assert "Gross Weight" not in trace.hovertemplate
+
+
+def test_plot_composition_treemap_group_formats(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    fig_dict = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"], ["US", "EU", "US", "EU"]]
+    )
+    assert _get_treemap_hierarchy(fig_dict) == _get_treemap_hierarchy(fig_array)
+
+    fig_scalar = ptf.plot_composition_treemap(
+        groups={"a": "Equity", "b": "Equity", "c": "Bond", "d": "Bond"}
+    )
+    fig_array = ptf.plot_composition_treemap(
+        groups=[["Equity", "Equity", "Bond", "Bond"]]
+    )
+    assert _get_treemap_hierarchy(fig_scalar) == _get_treemap_hierarchy(fig_array)
+
+
+def test_plot_composition_treemap_without_groups(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1], name="ptf")
+    fig = ptf.plot_composition_treemap()
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("a", "ptf  100.0%"),
+        ("b", "ptf  100.0%"),
+        ("c", "ptf  100.0%"),
+        ("d", "ptf  100.0%"),
+    ]
+
+
+def test_plot_composition_treemap_short_positions(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.8, 0.5, -0.2, -0.1], name="ptf")
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+
+    assert _get_treemap_node(fig, "ptf")["value"] == pytest.approx(1.6)
+
+    short = _get_treemap_node(fig, "c")
+    assert short["value"] == pytest.approx(0.2)
+    assert short["net_weight"] == pytest.approx(-0.2)
+
+    bond = _get_treemap_node(fig, "Bond")
+    assert bond["value"] == pytest.approx(0.3)
+    assert bond["net_weight"] == pytest.approx(-0.3)
+    assert ("Bond  -30.0%", "ptf  100.0%") in _get_treemap_hierarchy(fig)
+
+    long_red, _, long_blue = _parse_rgb(_get_treemap_node(fig, "a")["color"])
+    short_red, _, short_blue = _parse_rgb(short["color"])
+    assert long_blue > long_red
+    assert short_red > short_blue
+
+    assert (
+        "Long 130.0% | Short -30.0% | Net 100.0% | Gross 160.0%"
+        in fig.layout.title.text
+    )
+    assert "Gross Weight" in fig.data[0].hovertemplate
+
+
+def test_plot_composition_treemap_ignores_zero_weights_and_extra_assets(X_treemap):
+    ptf = Portfolio(X=X_treemap, weights=[0.6, 0.4, 0.0, 0.0], name="ptf")
+    groups = {"a": ["Equity", "US"], "b": ["Equity", "EU"], "e": ["Cash", "US"]}
+    fig = ptf.plot_composition_treemap(groups=groups)
+    assert _get_treemap_hierarchy(fig) == [
+        ("ptf  100.0%", ""),
+        ("Equity  100.0%", "ptf  100.0%"),
+        ("US  60.0%", "Equity  100.0%"),
+        ("a", "US  60.0%"),
+        ("EU  40.0%", "Equity  100.0%"),
+        ("b", "EU  40.0%"),
+    ]
+
+
+def test_plot_composition_treemap_optimization_groups(X_treemap):
+    model = MeanRisk(groups=TREEMAP_GROUPS, linear_constraints=["Equity <= 0.6"])
+    ptf = model.fit_predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=model.groups)
+    assert _get_treemap_node(fig, "Equity")["net_weight"] <= 0.6 + 1e-6
+
+
+def test_plot_composition_treemap_pre_selection(X_treemap):
+    pipe = Pipeline(
+        [("pre_selection", SelectKExtremes(k=2)), ("optimization", MeanRisk())]
+    ).set_output(transform="pandas")
+    pipe.fit(X_treemap)
+    ptf = pipe.predict(X_treemap)
+    fig = ptf.plot_composition_treemap(groups=TREEMAP_GROUPS)
+    leaves = {label for label in fig.data[0].labels if label in TREEMAP_GROUPS}
+    assert leaves == set(ptf.nonzero_assets)
+
+
+def test_plot_composition_treemap_failed_portfolio(X_treemap):
+    fig = FailedPortfolio(X=X_treemap).plot_composition_treemap(groups=TREEMAP_GROUPS)
+    assert not fig.data[0].labels
+
+
+@pytest.mark.parametrize(
+    "groups,match",
+    [
+        (
+            {"a": ["Equity"], "b": ["Equity"], "c": ["Bond"]},
+            r"missing from `groups`: \['d'\]",
+        ),
+        (
+            {"a": ["Equity", "US"], "b": ["Equity"], "c": ["Bond"], "d": ["Bond"]},
+            "same number of group levels",
+        ),
+        ([["Equity", "Equity", "Bond"]], "array-like of shape"),
+        (["Equity", "Equity", "Bond", "Bond"], "array-like of shape"),
+    ],
+)
+def test_plot_composition_treemap_errors(X_treemap, groups, match):
+    ptf = Portfolio(X=X_treemap, weights=[0.4, 0.3, 0.2, 0.1])
+    with pytest.raises(ValueError, match=match):
+        ptf.plot_composition_treemap(groups=groups)
 
 
 class TestPortfolioFactorAttribution:

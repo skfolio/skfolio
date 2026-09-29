@@ -80,7 +80,7 @@ class EmpiricalVariance(BaseVariance):
         window_size: int | None = None,
         ddof: int = 1,
         assume_centered: bool = False,
-    ):
+    ) -> None:
         super().__init__(assume_centered=assume_centered)
         self.window_size = window_size
         self.ddof = ddof
@@ -88,7 +88,7 @@ class EmpiricalVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
     ) -> EmpiricalVariance:
         """Fit the empirical variance estimator.
 

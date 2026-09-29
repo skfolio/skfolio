@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from typing import Any
 
 import numpy as np
 
@@ -69,7 +70,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
     descriptors: list[tuple[str, BaseDescriptor]]
 
     @property
-    def named_descriptors(self):
+    def named_descriptors(self) -> sku.Bunch:
         """Dictionary to access any fitted factors by name.
 
         Returns
@@ -78,7 +79,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         """
         return sku.Bunch(**dict(self.descriptors))
 
-    def set_params(self, **params):
+    def set_params(self, **params: Any) -> BaseDescriptorComposition:
         """Set the parameters of a factor from the ensemble.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -102,7 +103,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         super()._set_params("descriptors", **params)
         return self
 
-    def get_params(self, deep=True):
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
         """Get the parameters of an estimator from the ensemble.
 
         Returns the parameters given in the constructor as well as the
@@ -122,7 +123,7 @@ class BaseDescriptorComposition(BaseComposition, ABC):
         """
         return super()._get_params("descriptors", deep=deep)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
         """Return metadata routing for descriptor estimators."""
         router = skm.MetadataRouter(owner=self.__class__.__name__)
         names, descriptors = self._validate_descriptors()
@@ -171,12 +172,14 @@ class _BaseRollingLogReturn(BaseDescriptor):
     _FITTED_ATTR: str
     _TRANSFORM_SIGN: float = 1.0
 
-    def __init__(self, window: int, skip: int = 0, exponentiate: bool = False):
+    def __init__(self, window: int, skip: int = 0, exponentiate: bool = False) -> None:
         self.window = window
         self.skip = skip
         self.exponentiate = exponentiate
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Compute the rolling log-return descriptor from a clean state.
 
         Parameters
@@ -198,7 +201,9 @@ class _BaseRollingLogReturn(BaseDescriptor):
         self._reset()
         return self.partial_fit_transform(X, y, **fit_params)
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Update state and compute the rolling log-return descriptor.
 
         This method supports online updates by continuing from the current fitted state.
@@ -349,7 +354,8 @@ class _BaseRollingLogReturn(BaseDescriptor):
         self._rolling_active_count[:] = np.sum(active_mask[start:end], axis=0)
         self._rolling_n_seen = n_observations
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state and delete the rolling-window buffers and accumulators."""
         if hasattr(self, self._FITTED_ATTR):
             delattr(self, self._FITTED_ATTR)
         for attr in (
@@ -364,10 +370,12 @@ class _BaseRollingLogReturn(BaseDescriptor):
                 delattr(self, attr)
 
     def _validate_params(self) -> None:
+        """Validate the `window` and `skip` parameters."""
         _validate_positive_integer(self.window, "window")
         _validate_non_negative_integer(self.skip, "skip")
 
     def _initialize(self) -> None:
+        """Initialize the circular buffers of the last `skip + window` contributions."""
         n_assets = self.n_assets_
         buffer_length = self.skip + self.window
         self._rolling_buffer_length = buffer_length
