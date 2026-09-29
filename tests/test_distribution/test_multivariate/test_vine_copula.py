@@ -4,6 +4,7 @@ import gc
 import tracemalloc
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio.distribution import (
@@ -1677,3 +1678,24 @@ def test_vine_sampling_order_incomplete(small_model):
 def test_vine_plot_marginal_distributions_raise_ndim(small_model):
     with pytest.raises(ValueError, match="X should be an 2D array"):
         small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))
+
+
+def test_vine_plot_marginal_distributions_with_fixed_conditioning(small_returns):
+    """Render a fixed conditioning value as a point mass."""
+    constant_return = -0.02
+    X = pd.DataFrame(small_returns, columns=["factor_0", "factor_1", "factor_2"])
+    model = VineCopula(
+        marginal_candidates=[Gaussian()],
+        copula_candidates=[GaussianCopula()],
+        central_assets=[0],
+        random_state=0,
+    ).fit(X)
+
+    fig = model.plot_marginal_distributions(
+        conditioning={"factor_0": constant_return}, subset=[0], n_samples=20
+    )
+
+    assert len(fig.data) == 1
+    assert fig.data[0].name == "factor_0 Generated"
+    np.testing.assert_array_equal(fig.data[0].x, [constant_return, constant_return])
+    np.testing.assert_array_equal(fig.data[0].y, [0.0, 1.0])

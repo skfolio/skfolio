@@ -94,3 +94,34 @@ def test_plot_kde_distributions_with_weights():
     names = [t.name for t in fig.data]
     # Check weighted suffix applied
     assert "asset1 SW" in names and "asset2 SW" in names
+
+
+def test_plot_kde_distributions_with_constant_asset():
+    """Render a constant asset without changing an ordinary weighted KDE."""
+    constant_return = 0.02
+    data = pd.DataFrame(
+        {
+            "constant": np.full(20, constant_return),
+            "varying": np.linspace(-0.01, 0.01, 20),
+        }
+    )
+    weights = np.arange(1.0, 21.0)
+
+    fig = plot_kde_distributions(data, sample_weight=weights, percentile_cutoff=1.0)
+
+    assert len(fig.data) == 4
+    assert [trace.name for trace in fig.data] == [
+        "constant",
+        "constant with Sample Weight",
+        "varying",
+        "varying with Sample Weight",
+    ]
+    for trace in fig.data[:2]:
+        np.testing.assert_array_equal(trace.x, [constant_return, constant_return])
+        np.testing.assert_array_equal(trace.y, [0.0, 1.0])
+        assert trace.fill == "tozeroy"
+    assert fig.data[0].line.dash == "solid"
+    assert fig.data[1].line.dash == "dash"
+    for trace in fig.data[2:]:
+        assert len(trace.x) == 500
+        assert np.ptp(trace.x) > 0
