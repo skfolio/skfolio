@@ -122,6 +122,21 @@ uv sync --upgrade
 
 Add `--group docs` or `--group notebooks` if you use those tools.
 
+CI also runs the tests on Python 3.10 with the minimum versions allowed by
+`pyproject.toml`. To reproduce a failure in that job, build the same environment
+in a separate `.venv-min`, which leaves your `.venv` unchanged:
+
+```shell
+uv venv --python 3.10 .venv-min
+uv pip compile pyproject.toml --python .venv-min --resolution lowest-direct --output-file .venv-min/minimum-runtime.txt
+uv pip install --python .venv-min --editable . --group dev --constraint .venv-min/minimum-runtime.txt
+VIRTUAL_ENV=.venv-min uv run --active --no-sync pytest
+```
+
+`uv pip compile` resolves the runtime dependencies alone, at their lowest allowed
+versions. `uv pip install` then adds the development tools without moving those
+versions. uv puts a `.gitignore` inside `.venv-min`, so Git ignores it.
+
 ## Documentation
 
 If your change affects the documentation, install the documentation dependencies:
