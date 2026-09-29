@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.4.9 (2026-09-29)
+
+### Bug Fixes
+
+- **prior**: Accept opinion probabilities that sum to one up to rounding
+  ([#390](https://github.com/skfolio/skfolio/pull/390),
+  [`e6ce378`](https://github.com/skfolio/skfolio/commit/e6ce3782b9d94cad66b2e93d8f4c5b774381bfa9))
+
+
 ## v1.4.8 (2026-09-28)
 
 ### Bug Fixes
