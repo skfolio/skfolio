@@ -67,7 +67,7 @@ class ReturnDistribution:
     factor_model: FactorModel | None = None
 
     def __post_init__(self) -> None:
-        """Validate array shapes."""
+        """Validate array shapes and the investable covariance block."""
         if self.mu.ndim != 1:
             raise ValueError("`mu` must be a 1D array of shape (n_assets,).")
 
@@ -101,6 +101,13 @@ class ReturnDistribution:
             raise ValueError(
                 "`factor_model` must be defined on the same asset universe as "
                 "`mu` and `covariance`."
+            )
+
+        investable = np.isfinite(self.mu) & np.isfinite(np.diag(self.covariance))
+        if not np.isfinite(self.covariance[np.ix_(investable, investable)]).all():
+            raise ValueError(
+                "The covariance matrix between investable assets must contain only "
+                "finite values."
             )
 
     @cached_property
