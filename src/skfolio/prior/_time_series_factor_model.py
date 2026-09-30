@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
 import numpy as np
+import pandas as pd
 import sklearn.base as skb
 import sklearn.linear_model as skl
 import sklearn.multioutput as skmo
@@ -26,7 +27,7 @@ from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import FactorModel, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import cov_nearest
-from skfolio.utils.tools import check_estimator, get_feature_names
+from skfolio.utils.tools import check_estimator, default_asset_names, get_feature_names
 
 
 class TimeSeriesFactorModel(BasePrior):
@@ -226,7 +227,12 @@ class TimeSeriesFactorModel(BasePrior):
             check_type=BaseLoadingMatrix,
         )
 
-        observations = X.index  # ty: ignore[unresolved-attribute]
+        if isinstance(X, pd.DataFrame):
+            observations = X.index
+        elif isinstance(factors, pd.DataFrame):
+            observations = factors.index
+        else:
+            observations = None
         factor_names = get_feature_names(factors)
 
         # Fitting prior estimator
@@ -245,8 +251,12 @@ class TimeSeriesFactorModel(BasePrior):
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
         X, factors = skv.validate_data(self, X, factors, multi_output=True)
-        _, n_assets = X.shape
+        n_observations, n_assets = X.shape
         _, n_factors = factors.shape
+        if observations is None:
+            observations = np.arange(n_observations)
+        if factor_names is None:
+            factor_names = default_asset_names(n_factors)
         factor_families = None
 
         if self.factor_families is not None:
@@ -295,7 +305,9 @@ class TimeSeriesFactorModel(BasePrior):
             sample_weight=factor_return_dist.sample_weight,
             factor_model=FactorModel(
                 observations=observations,  # ty: ignore[invalid-argument-type]
-                asset_names=self.feature_names_in_,
+                asset_names=getattr(
+                    self, "feature_names_in_", default_asset_names(n_assets)
+                ),
                 factor_names=factor_names,  # ty: ignore[invalid-argument-type]
                 factor_families=factor_families,
                 loading_matrix=loading_matrix,
@@ -450,7 +462,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
             _linear_regressor, n_jobs=self.n_jobs
         )
         self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
-        n_assets = X.shape[1]  # ty: ignore[unresolved-attribute]
+        n_assets = np.shape(X)[1]
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
         )

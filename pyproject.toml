@@ -212,10 +212,9 @@ error-on-warning = true
 # `invalid-method-override` requires an override to accept every call that the parent
 # method accepts. skfolio estimators declare only the `fit` inputs they use: `y` typed
 # as `None` or required, required keyword arguments such as `factors`, and no
-# `**fit_params` when no metadata is routed. Covariance estimators inherit
-# `mahalanobis` from both skfolio and scikit-learn bases, and `Population` restricts
-# the `list` methods to portfolios. Matching the parent signatures would add
-# parameters that these methods do not use, so the rule is disabled.
+# `**fit_params` when no metadata is routed. `Population` restricts the `list` methods
+# to portfolios. Matching the parent signatures would add parameters that these
+# methods do not use, so the rule is disabled.
 [tool.ty.rules]
 invalid-method-override = "ignore"
 

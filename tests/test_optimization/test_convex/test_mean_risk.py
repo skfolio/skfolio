@@ -2257,6 +2257,7 @@ class TestPartialFit:
         assert model.error_ is None
         assert model.fallback_ == "previous_weights"
         assert model.fallback_chain_[-1] == ("previous_weights", "success")
+        assert len(model.fallback_chain_) == 2
         assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
 
         ptf = model.predict(X)
@@ -2310,7 +2311,7 @@ class TestPartialFit:
         assert model.problem_values_ is None
         assert "previous_weights" in model.error_
         assert "None" in model.error_
-        assert model.fallback_chain_[-1][0] == "previous_weights"
+        assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
         ptf = model.predict(X)
         assert isinstance(ptf, FailedPortfolio)
@@ -2461,13 +2462,76 @@ def test_annualized_risk_measure_is_converted():
     assert model.risk_measure == RiskMeasure.VARIANCE
 
 
-def test_zero_thresholds_are_ignored(X_tiny):
+@pytest.mark.parametrize("solver,cardinality", [("CLARABEL", None), ("SCIP", 3)])
+@pytest.mark.parametrize("min_weights", [0, -1])
+@pytest.mark.parametrize(
+    "threshold_long,threshold_short",
+    [
+        (0.0, None),
+        (None, 0.0),
+        (0.0, 0.0),
+        ([0.0] * 6, [0.0] * 6),
+        (np.zeros(6), np.zeros(6)),
+        ({"A": 0.0}, {"B": 0.0}),
+    ],
+)
+def test_zero_thresholds_are_ignored(
+    X_tiny, solver, cardinality, min_weights, threshold_long, threshold_short
+):
     model = MeanRisk(
-        solver="SCIP", cardinality=3, threshold_long=0.0, threshold_short=0.0
-    )
+        solver=solver,
+        cardinality=cardinality,
+        min_weights=min_weights,
+        save_problem=True,
+    ).fit(X_tiny)
+    expected_weights = model.weights_.copy()
+
+    model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
     model.fit(X_tiny)
-    assert np.sum(np.abs(model.weights_) > 1e-8) <= 3
+
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.problem_.is_mixed_integer() == (cardinality is not None)
+    if cardinality is not None:
+        assert np.sum(np.abs(model.weights_) > 1e-8) <= cardinality
     np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+@pytest.mark.parametrize("threshold_short", [0.0, [0.0] * 6, np.zeros(6), {"A": 0.0}])
+def test_zero_short_threshold_with_long_threshold_raises(X_tiny, threshold_short):
+    model = MeanRisk(
+        min_weights=-1,
+        threshold_long=0.1,
+        threshold_short=threshold_short,
+        solver="SCIP",
+    )
+    with pytest.raises(ValueError, match="'threshold_short' must also be provided"):
+        model.fit(X_tiny)
+
+
+def test_thresholds_on_non_investable_assets_are_ignored(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+    model = MeanRisk(
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+        save_problem=True,
+    ).fit(X)
+    expected_weights = model.weights_.copy()
+
+    model.set_params(threshold_long={"C": 0.1}, threshold_short={"C": -0.05})
+    model.fit(X)
+
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.weights_[2] == 0.0
+    assert not model.problem_.is_mixed_integer()
+
+
+def test_zero_long_threshold_with_short_threshold_raises(X_tiny):
+    model = MeanRisk(
+        min_weights=-1, threshold_long=0.0, threshold_short=-0.05, solver="SCIP"
+    )
+    with pytest.raises(ValueError, match="'threshold_long' must also be provided"):
+        model.fit(X_tiny)
 
 
 def test_mip_constraints_require_mip_solver(X_tiny):
@@ -2488,6 +2552,14 @@ def test_mip_constraints_require_mip_solver(X_tiny):
         ),
         (
             dict(solver="SCIP", cardinality=2, max_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=None, max_weights=None),
             "'max_weights' and 'min_weights' must be provided",
         ),
         (
@@ -2751,7 +2823,7 @@ def test_partial_fit_previous_weights_fallback_failure_raises(X_tiny):
         model.partial_fit(X_tiny)
     assert "previous_weights" in model.error_
     assert model.problem_values_ is None
-    assert model.fallback_chain_[-1][0] == "previous_weights"
+    assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
 
 def test_partial_fit_previous_weights_fallback_saves_problem(X_tiny):

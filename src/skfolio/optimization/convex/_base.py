@@ -833,8 +833,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         is_mip = (
             (self.cardinality is not None and self.cardinality < n_assets)
             or (self.group_cardinalities is not None)
-            or self.threshold_long is not None
-            or self.threshold_short is not None
+            or threshold_long is not None
+            or threshold_short is not None
         )
 
         if is_mip and self.solver not in MI_SOLVERS:
@@ -981,13 +981,13 @@ class ConvexOptimization(BaseOptimization, ABC):
         assets. All-zero thresholds must be converted to `None`. The caller checks
         that the solver supports mixed-integer problems.
         """
-        is_short = np.any(min_weights < 0)  # ty: ignore[unsupported-operator]
-
         if max_weights is None or min_weights is None:
             raise ValueError(
                 "'max_weights' and 'min_weights' must be provided with cardinality "
                 "constraint"
             )
+        is_short = np.any(min_weights < 0)
+
         if np.all(min_weights > 0):
             raise ValueError(
                 "Cardinality and Threshold constraint can only be applied "
@@ -1001,11 +1001,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "also provide 'groups'"
             )
 
-        if (
-            self.threshold_long is not None
-            and self.threshold_short is None
-            and is_short
-        ):
+        if threshold_long is not None and threshold_short is None and is_short:
             raise ValueError(
                 "When 'threshold_long' is provided and 'min_weights' can be negative "
                 "(short positions are allowed), then 'threshold_short' must also be "
@@ -1018,7 +1014,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "provided"
             )
 
-        if self.threshold_short is not None and is_short:
+        if threshold_short is not None and is_short:
             return _mip_weight_constraints_threshold_short(
                 n_assets=n_assets,
                 w=w,
@@ -1030,7 +1026,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 groups=groups,
                 min_weights=min_weights,
                 threshold_long=threshold_long,  # ty: ignore[invalid-argument-type]
-                threshold_short=threshold_short,  # ty: ignore[invalid-argument-type]
+                threshold_short=threshold_short,
             )
 
         return _mip_weight_constraints_no_short_threshold(

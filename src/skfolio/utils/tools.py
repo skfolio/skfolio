@@ -790,7 +790,7 @@ def validate_input_list(
                     warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
         else:
             if asset not in asset_indices:
-                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+                raise ValueError(f"`{name}` {asset} is not in {asset_indices}.")
             res.append(int(asset))
     return res
 
@@ -1266,9 +1266,8 @@ def _filter_supported_params(
 ) -> dict[str, Any]:
     """Return keyword arguments accepted by an estimator method.
 
-    This helper is used for internally generated parameters that should be passed only
-    to estimators whose method signature explicitly accepts them. Parameters with value
-    `None` are omitted.
+    Use it to pass parameters only to estimators whose method signature explicitly
+    accepts them. Parameters with value `None` are omitted.
 
     Parameters
     ----------

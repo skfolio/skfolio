@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn import config_context
 from sklearn.linear_model import LassoCV, LinearRegression
@@ -12,6 +13,88 @@ from skfolio.prior import (
     TimeSeriesFactorModel,
 )
 from skfolio.utils.stats import safe_cholesky
+
+
+@pytest.fixture
+def small_factor_data():
+    rng = np.random.default_rng(0)
+    index = pd.date_range("2020-01-01", periods=60, name="date")
+    factors = pd.DataFrame(
+        rng.normal(0, 0.01, (60, 2)), index=index, columns=["market", "style"]
+    )
+    X = pd.DataFrame(
+        factors.to_numpy() @ np.array([[1.0, 0.5, 0.2], [0.2, 0.8, -0.3]])
+        + rng.normal(0, 0.002, (60, 3)),
+        index=index,
+        columns=["A", "B", "C"],
+    )
+    return X, factors
+
+
+@pytest.mark.parametrize("asset_input", ["dataframe", "numpy", "list"])
+@pytest.mark.parametrize("factor_input", ["dataframe", "numpy", "list"])
+def test_factor_model_array_like_inputs(small_factor_data, asset_input, factor_input):
+    X, factors = small_factor_data
+    model = TimeSeriesFactorModel(
+        loading_matrix_estimator=LoadingMatrixRegression(
+            linear_regressor=LinearRegression()
+        )
+    ).fit(X, factors=factors)
+    expected_mu = model.return_distribution_.mu.copy()
+    expected_covariance = model.return_distribution_.covariance.copy()
+    asset_inputs = {
+        "dataframe": X,
+        "numpy": X.to_numpy(),
+        "list": X.to_numpy().tolist(),
+    }
+    factor_inputs = {
+        "dataframe": factors,
+        "numpy": factors.to_numpy(),
+        "list": factors.to_numpy().tolist(),
+    }
+
+    assert (
+        model.fit(asset_inputs[asset_input], factors=factor_inputs[factor_input])
+        is model
+    )
+
+    factor_model = model.return_distribution_.factor_model
+    asset_names = X.columns if asset_input == "dataframe" else ["x0", "x1", "x2"]
+    factor_names = factors.columns if factor_input == "dataframe" else ["x0", "x1"]
+    observations = (
+        X.index if "dataframe" in (asset_input, factor_input) else np.arange(len(X))
+    )
+    np.testing.assert_array_equal(factor_model.asset_names, asset_names)
+    np.testing.assert_array_equal(factor_model.factor_names, factor_names)
+    np.testing.assert_array_equal(factor_model.observations, observations)
+    assert hasattr(model, "feature_names_in_") == (asset_input == "dataframe")
+    np.testing.assert_allclose(model.return_distribution_.mu, expected_mu)
+    np.testing.assert_allclose(
+        model.return_distribution_.covariance, expected_covariance
+    )
+
+    np.testing.assert_array_equal(factor_model.summary().index, factor_names)
+    np.testing.assert_array_equal(
+        factor_model.summary(factors=[factor_names[1]]).index, [factor_names[1]]
+    )
+    np.testing.assert_array_equal(factor_model.factor_returns_df.index, observations)
+    np.testing.assert_array_equal(factor_model.idio_returns_df.columns, asset_names)
+    selected = factor_model.select_assets([asset_names[2], asset_names[0]])
+    np.testing.assert_array_equal(
+        selected.loading_matrix, factor_model.loading_matrix[[2, 0]]
+    )
+
+
+def test_loading_matrix_regression_list_inputs(small_factor_data):
+    X, factors = small_factor_data
+    model = LoadingMatrixRegression().fit(X.to_numpy(), factors.to_numpy())
+    expected_loadings = model.loading_matrix_.copy()
+    expected_intercepts = model.intercepts_.copy()
+
+    model.fit(X.to_numpy().tolist(), factors.to_numpy().tolist())
+
+    np.testing.assert_array_equal(model.loading_matrix_, expected_loadings)
+    np.testing.assert_array_equal(model.intercepts_, expected_intercepts)
 
 
 def test_factor_model(X, factors):
