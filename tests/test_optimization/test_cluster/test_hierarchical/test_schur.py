@@ -265,6 +265,28 @@ def test_schur_invalid_gamma(X):
         model.fit(X)
 
 
+@pytest.mark.parametrize("turning_gamma", [0.0, 0.03])
+def test_schur_first_turning_point(monkeypatch, turning_gamma):
+    def compute_weights(gamma, **kwargs):
+        # Variance first turns at turning_gamma, then decreases again after 0.1.
+        offset = (
+            gamma - turning_gamma if gamma <= 0.1 else 0.15 - turning_gamma - gamma / 2
+        )
+        return np.array([0.5 + offset, 0.5 - offset])
+
+    monkeypatch.setattr(_schur, "_compute_weights", compute_weights)
+    weights, gamma = _schur._compute_monotonic_weights(
+        max_gamma=0.2,
+        sorted_assets=np.arange(2),
+        covariance=np.eye(2),
+        min_weights=np.zeros(2),
+        max_weights=np.ones(2),
+    )
+
+    assert gamma == pytest.approx(turning_gamma, abs=1e-4)
+    np.testing.assert_allclose(weights, [0.5, 0.5], atol=1e-4)
+
+
 @pytest.fixture
 def non_spd_schur_inputs():
     # The covariance is positive definite, but nearly rank one. Its left Schur
