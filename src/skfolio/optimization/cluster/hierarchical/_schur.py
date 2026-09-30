@@ -536,7 +536,7 @@ def _compute_monotonic_weights(
                 # points (monotonically decreasing from 0.0). If in [0, gammas[1]],
                 # we find the exact turning point by binary search.
                 try:
-                    _binary_search(
+                    return _binary_search(
                         objective,
                         low_gamma=gammas[0],
                         high_gamma=gammas[1],
