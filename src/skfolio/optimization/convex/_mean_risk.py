@@ -1578,12 +1578,14 @@ class MeanRisk(ConvexOptimization):
             try:
                 self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
             except Exception as fallback_error:
+                self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(fallback_error)))
                 self.error_ = str(fallback_error)
                 if self.raise_on_failure:
                     raise
                 warnings.warn(str(fallback_error), stacklevel=2)
                 self.weights_ = None
             else:
+                self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
                 self.error_ = None
             finally:
                 self.problem_values_ = None

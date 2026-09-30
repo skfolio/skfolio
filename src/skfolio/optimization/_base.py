@@ -212,8 +212,6 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # Log the primary error in fallback_chain_ only when fallbacks are provided
         self.fallback_chain_ = [(str(self), str(primary_error))]
 
-        n_assets = X.shape[1]
-
         if not isinstance(fallback, list | tuple):
             fallback = [fallback]
 
@@ -225,7 +223,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             try:
                 fb = _validate_fallback(fb)
                 if fb == _PREVIOUS_WEIGHTS:
-                    self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+                    self._fallback_to_previous_weights_or_raise(n_assets=np.shape(X)[1])
+                    self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
                     return
 
                 fb_est = sk.clone(fb)
@@ -245,9 +244,19 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
                 fb_est.fit(X, y, **fit_params)
 
+                # A fallback with raise_on_failure=False can return without weights.
+                if fb_est.weights_ is None:
+                    raise RuntimeError(
+                        fb_est.error_ or "Fallback estimator returned no weights."
+                    )
+
                 # Success: copy learned artifacts back to self
-                for name in ("weights_", "n_features_in_", "feature_names_in_"):
+                for name in ("weights_", "n_features_in_"):
                     setattr(self, name, getattr(fb_est, name))
+                if hasattr(fb_est, "feature_names_in_"):
+                    self.feature_names_in_ = fb_est.feature_names_in_
+                elif hasattr(self, "feature_names_in_"):
+                    del self.feature_names_in_
 
                 self.fallback_ = fb_est
                 self.fallback_chain_.append((str(fb_est), "success"))
@@ -273,23 +282,17 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         RuntimeError
             If `previous_weights` is `None` when the fallback is requested.
         """
-        try:
-            if self.previous_weights is None:
-                raise RuntimeError(
-                    "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
-                    "Provide valid previous weights or remove this fallback."
-                )
-            investable_mask = getattr(self, "investable_mask_", None)
-            if investable_mask is not None:
-                n_assets = int(np.count_nonzero(investable_mask))
-            weights = self._clean_previous_weights(n_assets=n_assets)
-            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
-            self.fallback_ = _PREVIOUS_WEIGHTS
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
-
-        except Exception as error:
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))
-            raise
+        if self.previous_weights is None:
+            raise RuntimeError(
+                "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
+                "Provide valid previous weights or remove this fallback."
+            )
+        investable_mask = getattr(self, "investable_mask_", None)
+        if investable_mask is not None:
+            n_assets = int(np.count_nonzero(investable_mask))
+        weights = self._clean_previous_weights(n_assets=n_assets)
+        self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+        self.fallback_ = _PREVIOUS_WEIGHTS
 
     @abstractmethod
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseOptimization:

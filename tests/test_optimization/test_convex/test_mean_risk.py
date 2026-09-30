@@ -2257,6 +2257,7 @@ class TestPartialFit:
         assert model.error_ is None
         assert model.fallback_ == "previous_weights"
         assert model.fallback_chain_[-1] == ("previous_weights", "success")
+        assert len(model.fallback_chain_) == 2
         assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
 
         ptf = model.predict(X)
@@ -2310,7 +2311,7 @@ class TestPartialFit:
         assert model.problem_values_ is None
         assert "previous_weights" in model.error_
         assert "None" in model.error_
-        assert model.fallback_chain_[-1][0] == "previous_weights"
+        assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
         ptf = model.predict(X)
         assert isinstance(ptf, FailedPortfolio)
@@ -2751,7 +2752,7 @@ def test_partial_fit_previous_weights_fallback_failure_raises(X_tiny):
         model.partial_fit(X_tiny)
     assert "previous_weights" in model.error_
     assert model.problem_values_ is None
-    assert model.fallback_chain_[-1][0] == "previous_weights"
+    assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
 
 def test_partial_fit_previous_weights_fallback_saves_problem(X_tiny):

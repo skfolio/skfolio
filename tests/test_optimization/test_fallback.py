@@ -77,6 +77,145 @@ class CustomOptimizationWithoutFallback(BaseOptimization):
         return self
 
 
+class OptimizationFailingBeforeValidation(CustomOptimization):
+    def fit(self, X, y=None):
+        raise RuntimeError("Failure before input validation")
+
+
+@pytest.fixture(params=["dataframe", "numpy", "list"])
+def fallback_data(request):
+    X = np.random.default_rng(0).normal(0, 0.01, (30, 4))
+    if request.param == "dataframe":
+        return pd.DataFrame(X, columns=["A", "B", "C", "D"])
+    if request.param == "list":
+        return X.tolist()
+    return X
+
+
+@pytest.mark.parametrize(
+    "optimizer", [CustomOptimization, OptimizationFailingBeforeValidation]
+)
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_array_like_input(fallback_data, optimizer, raise_on_failure):
+    model = optimizer(
+        fail=True, fallback=EqualWeighted(), raise_on_failure=raise_on_failure
+    )
+
+    assert model.fit(fallback_data) is model
+
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert model.n_features_in_ == 4
+    assert isinstance(model.fallback_, EqualWeighted)
+    assert model.fallback_chain_[-1] == ("EqualWeighted()", "success")
+    assert len(model.fallback_chain_) == 2
+    assert model.error_ is None
+    if isinstance(fallback_data, pd.DataFrame):
+        np.testing.assert_array_equal(model.feature_names_in_, fallback_data.columns)
+    else:
+        assert not hasattr(model, "feature_names_in_")
+    portfolio = model.predict(fallback_data)
+    assert isinstance(portfolio, Portfolio)
+    assert not isinstance(portfolio, FailedPortfolio)
+    np.testing.assert_allclose(portfolio.returns, np.mean(fallback_data, axis=1))
+
+
+def test_fallback_refit_clears_stale_feature_names():
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    model = OptimizationFailingBeforeValidation(fallback=EqualWeighted()).fit(X)
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+
+    X_array = X.iloc[:, :3].to_numpy()
+    model.fit(X_array)
+
+    assert not hasattr(model, "feature_names_in_")
+    assert model.n_features_in_ == 3
+    np.testing.assert_array_equal(model.weights_, np.full(3, 1 / 3))
+    np.testing.assert_allclose(model.predict(X_array).returns, X_array.mean(axis=1))
+
+
+@pytest.mark.parametrize("previous_weights", [None, [0.5, 0.5]])
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_previous_weights_failure_recorded_once(
+    fallback_data, previous_weights, raise_on_failure
+):
+    model = CustomOptimization(
+        fail=True,
+        fallback="previous_weights",
+        previous_weights=previous_weights,
+        raise_on_failure=raise_on_failure,
+    )
+    if raise_on_failure:
+        with pytest.raises((RuntimeError, ValueError), match="previous_weights"):
+            model.fit(fallback_data)
+    else:
+        with pytest.warns(UserWarning, match="previous_weights"):
+            model.fit(fallback_data)
+        assert model.weights_ is None
+
+    assert model.fallback_ is None
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        ("previous_weights", model.error_),
+    ]
+
+
+def test_fallback_previous_weights_failure_continues(fallback_data):
+    model = CustomOptimization(
+        fail=True, fallback=["previous_weights", EqualWeighted()]
+    ).fit(fallback_data)
+
+    assert len(model.fallback_chain_) == 3
+    assert model.fallback_chain_[1][0] == "previous_weights"
+    assert "'previous_weights' is None" in model.fallback_chain_[1][1]
+    assert model.fallback_chain_[2] == ("EqualWeighted()", "success")
+    assert model.error_ is None
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+
+
+def test_fallback_without_weights_continues(fallback_data):
+    failed_fallback = CustomOptimization(fail=True, raise_on_failure=False)
+    model = CustomOptimization(fail=True, fallback=[failed_fallback, EqualWeighted()])
+
+    with pytest.warns(UserWarning, match="CustomOptimization forced failure"):
+        model.fit(fallback_data)
+
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        (str(failed_fallback), "CustomOptimization forced failure"),
+        ("EqualWeighted()", "success"),
+    ]
+    assert isinstance(model.fallback_, EqualWeighted)
+    assert model.error_ is None
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert not isinstance(model.predict(fallback_data), FailedPortfolio)
+
+
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_without_weights_exhausted(fallback_data, raise_on_failure):
+    failed_fallback = CustomOptimization(fail=True, raise_on_failure=False)
+    model = CustomOptimization(
+        fail=True, fallback=failed_fallback, raise_on_failure=raise_on_failure
+    )
+
+    with pytest.warns(UserWarning, match="CustomOptimization forced failure"):
+        if raise_on_failure:
+            with pytest.raises(RuntimeError, match="CustomOptimization forced failure"):
+                model.fit(fallback_data)
+        else:
+            model.fit(fallback_data)
+            assert model.weights_ is None
+            assert isinstance(model.predict(fallback_data), FailedPortfolio)
+
+    assert model.fallback_ is None
+    assert model.error_ == "CustomOptimization forced failure"
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        (str(failed_fallback), "CustomOptimization forced failure"),
+    ]
+
+
 def test_custom_optimization_no_fallback_param_in_init_still_works(X):
     model = CustomOptimizationWithoutFallback()
     model.fit(X)
@@ -345,18 +484,22 @@ def test_cross_val_predict_failed_portfolio_when_raise_off(X):
     assert np.all(np.isnan(arr))
 
 
-def test_fallback_previous_weights_array(X):
-    n_assets = X.shape[1]
+def test_fallback_previous_weights_array(fallback_data):
+    n_assets = np.shape(fallback_data)[1]
     prev = np.arange(1, n_assets + 1, dtype=float)
     prev /= prev.sum()
     model = CustomOptimization(
         fail=True, fallback="previous_weights", previous_weights=prev
     )
-    model.fit(X)
+    model.fit(fallback_data)
     np.testing.assert_allclose(model.weights_, prev)
     assert model.fallback_ == "previous_weights"
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        ("previous_weights", "success"),
+    ]
     assert model.error_ is None
-    ptf = model.predict(X)
+    ptf = model.predict(fallback_data)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
 
