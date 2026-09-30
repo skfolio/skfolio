@@ -24,6 +24,7 @@ import numpy as np
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
+import sklearn.utils.metadata_routing as skm
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 import skfolio.typing as skt
@@ -38,7 +39,7 @@ from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.prior import ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, StrArray
-from skfolio.utils.tools import input_to_array
+from skfolio.utils.tools import _filter_supported_params, input_to_array
 
 
 class BaseOptimization(skb.BaseEstimator, ABC):
@@ -197,7 +198,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             The exception raised by the primary estimator.
 
         **fit_params : dict
-            Additional keyword arguments forwarded to each fallback's `fit`.
+            Additional keyword arguments routed separately to each fallback's `fit`.
 
         Raises
         ------
@@ -242,7 +243,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                         )
                     fb_est.set_params(previous_weights=self.previous_weights)
 
-                fb_est.fit(X, y, **fit_params)
+                params = _fallback_fit_params(
+                    fb_est, fit_params, owner=self.__class__.__name__
+                )
+                fb_est.fit(X, y, **params)
 
                 # A fallback with raise_on_failure=False can return without weights.
                 if fb_est.weights_ is None:
@@ -656,6 +660,46 @@ def _validate_fallback(
             f"Fallback estimators must inherit from BaseOptimization (got {type(fallback).__name__})."
         )
     return fallback
+
+
+def _fallback_fit_params(
+    fallback: BaseOptimization, fit_params: dict[str, Any], owner: str
+) -> dict[str, Any]:
+    """Select the fit parameters forwarded to a fallback estimator.
+
+    With metadata routing enabled, or when the fallback routes metadata to
+    sub-estimators, the parameters follow its metadata requests. Otherwise, the
+    fallback receives the parameters accepted by its `fit` signature.
+
+    Parameters
+    ----------
+    fallback : BaseOptimization
+        The fallback estimator.
+
+    fit_params : dict
+        Fit parameters passed to the primary estimator.
+
+    owner : str
+        Name of the primary estimator, used in routing error messages.
+
+    Returns
+    -------
+    dict
+        Fit parameters for the fallback's `fit`.
+    """
+    if not fit_params:
+        return {}
+    routing = skm.get_routing_for_object(fallback)
+    if (
+        isinstance(routing, skm.MetadataRouter)
+        or sk.get_config()["enable_metadata_routing"]
+    ):
+        router = skm.MetadataRouter(owner=owner).add(
+            fallback=routing,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router.route_params(caller="fit", params=fit_params).fallback.fit
+    return _filter_supported_params(fallback, "fit", **fit_params)
 
 
 def _has_transaction_cost(x: object) -> bool:

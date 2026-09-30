@@ -1258,9 +1258,8 @@ def _filter_supported_params(
 ) -> dict[str, Any]:
     """Return keyword arguments accepted by an estimator method.
 
-    This helper is used for internally generated parameters that should be passed only
-    to estimators whose method signature explicitly accepts them. Parameters with value
-    `None` are omitted.
+    Use it to pass parameters only to estimators whose method signature explicitly
+    accepts them. Parameters with value `None` are omitted.
 
     Parameters
     ----------
