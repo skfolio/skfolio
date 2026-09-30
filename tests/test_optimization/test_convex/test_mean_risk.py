@@ -2492,6 +2492,14 @@ def test_mip_constraints_require_mip_solver(X_tiny):
             "'max_weights' and 'min_weights' must be provided",
         ),
         (
+            dict(solver="SCIP", cardinality=2, min_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=None, max_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
             dict(solver="SCIP", cardinality=2, min_weights=0.05),
             "Cardinality and Threshold constraint can only be applied",
         ),
