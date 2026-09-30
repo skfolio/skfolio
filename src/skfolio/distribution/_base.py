@@ -202,5 +202,5 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         .. [1]  "Estimating the dimension of a model", Schwarz, G. (1978).
         """
         log_likelihood = self.score(X)
-        n = X.shape[0]
+        n = np.shape(X)[0]
         return -2 * log_likelihood + self.n_params * np.log(n)
