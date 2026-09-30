@@ -68,7 +68,7 @@ from skfolio.distribution.univariate import (
 )
 from skfolio.typing import ArrayLike, BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils.figure import kde_trace
-from skfolio.utils.tools import input_to_array, validate_input_list
+from skfolio.utils.tools import default_asset_names, input_to_array, validate_input_list
 
 _UNIFORM_SAMPLE_EPSILON = 1e-14
 
@@ -1033,7 +1033,7 @@ class VineCopula(BaseMultivariateDist):
 
         subset : list[int | str], optional
             Indices or names of assets to include in the plot. If None, all assets are
-            used.
+            used. Unnamed assets are labeled `x0`, `x1`, and so on.
 
         n_samples : int, default=500
             Number of samples used to control the density and readability of the plot.
@@ -1057,7 +1057,13 @@ class VineCopula(BaseMultivariateDist):
             A figure with overlaid univariate distributions for each asset.
         """
         n_assets = self.n_features_in_
-        subset = subset or list(range(n_assets))
+        asset_names = getattr(self, "feature_names_in_", default_asset_names(n_assets))
+        subset = validate_input_list(
+            items=subset or list(range(n_assets)),
+            n_assets=n_assets,
+            assets_names=asset_names,
+            name="subset",
+        )
         if X is not None:
             X = np.asarray(X)
             if X.ndim != 2:
@@ -1082,7 +1088,7 @@ class VineCopula(BaseMultivariateDist):
         for i, s in enumerate(subset):
             visible = True if i == 0 else "legendonly"
             color = colors[i % len(colors)]
-            asset = self.feature_names_in_[s]
+            asset = asset_names[s]
 
             traces.append(
                 kde_trace(
