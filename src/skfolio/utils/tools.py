@@ -782,7 +782,7 @@ def validate_input_list(
                     warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
         else:
             if asset not in asset_indices:
-                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+                raise ValueError(f"`{name}` {asset} is not in {asset_indices}.")
             res.append(int(asset))
     return res
 
