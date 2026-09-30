@@ -688,29 +688,59 @@ class TestShrunkMu:
             model.mu_,
             np.array(
                 [
-                    5.95933693e-05,
-                    -1.35794787e-04,
-                    1.64942731e-04,
-                    1.29423513e-04,
-                    1.81800576e-04,
-                    3.19823666e-04,
-                    1.13984606e-04,
-                    1.91136381e-04,
-                    1.55748848e-04,
-                    2.08027978e-04,
-                    4.61803341e-05,
-                    1.61649535e-04,
-                    6.17239528e-05,
-                    1.75289900e-04,
-                    1.84813270e-04,
-                    1.91313069e-04,
-                    2.49201958e-04,
-                    5.60390638e-05,
-                    1.98207784e-04,
-                    2.13797362e-04,
+                    2.96032617e-04,
+                    1.00644461e-04,
+                    4.01381979e-04,
+                    3.65862761e-04,
+                    4.18239824e-04,
+                    5.56262914e-04,
+                    3.50423854e-04,
+                    4.27575629e-04,
+                    3.92188096e-04,
+                    4.44467226e-04,
+                    2.82619582e-04,
+                    3.98088783e-04,
+                    2.98163201e-04,
+                    4.11729148e-04,
+                    4.21252518e-04,
+                    4.27752317e-04,
+                    4.85641206e-04,
+                    2.92478312e-04,
+                    4.34647032e-04,
+                    4.50236610e-04,
                 ]
             ),
         )
+
+    @pytest.mark.parametrize("vol_weighted_target", [False, True])
+    def test_bodnar_okhrin_matches_reference(self, X, vol_weighted_target):
+        # Bona fide estimators of Bodnar, Okhrin and Parolya (2019), Eq. (6)-(7):
+        # beta is (1 - alpha) * ybar' S^-1 mu_0 / mu_0' S^-1 mu_0.
+        model = ShrunkMu(
+            method=ShrunkMuMethods.BODNAR_OKHRIN,
+            vol_weighted_target=vol_weighted_target,
+        )
+        model.fit(X)
+        n_observations, n_assets = X.shape
+        sample_mu = np.mean(np.asarray(X), axis=0)
+        target = model.mu_target_
+        cov_inv = np.linalg.inv(model.covariance_estimator_.covariance_)
+        u = sample_mu @ cov_inv @ sample_mu
+        v = sample_mu @ cov_inv @ target
+        w = target @ cov_inv @ target
+        alpha = ((u - n_assets / (n_observations - n_assets)) * w - v**2) / (
+            u * w - v**2
+        )
+        beta = (1 - alpha) * v / w
+        np.testing.assert_allclose(model.alpha_, alpha, rtol=1e-10)
+        np.testing.assert_allclose(model.beta_, beta, rtol=1e-10)
+        np.testing.assert_allclose(
+            model.mu_, alpha * sample_mu + beta * target, rtol=1e-10
+        )
+        # beta * mu_0 is the projection of (1 - alpha) * ybar on mu_0 in the
+        # S^-1 inner product, so the residual is orthogonal to the target.
+        residual = (1 - model.alpha_) * sample_mu - model.beta_ * target
+        assert abs(residual @ cov_inv @ target) < 1e-10 * w
 
     def test_james_stein_outputs_are_real(self, X):
         model = ShrunkMu(method=ShrunkMuMethods.JAMES_STEIN)
