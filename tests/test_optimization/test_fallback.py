@@ -7,9 +7,11 @@ import sklearn as sk
 import sklearn.model_selection as sks
 import sklearn.utils.validation as skv
 from sklearn import config_context
+from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import Pipeline
 
 from skfolio.model_selection import cross_val_predict
+from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import (
     BaseOptimization,
     EqualWeighted,
@@ -17,12 +19,13 @@ from skfolio.optimization import (
     InverseVolatility,
     MeanRisk,
     ObjectiveFunction,
+    Random,
 )
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.pre_selection import (
     SelectKExtremes,
 )
-from skfolio.prior import TimeSeriesFactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 from skfolio.typing import FloatArray
 
 
@@ -80,6 +83,23 @@ class CustomOptimizationWithoutFallback(BaseOptimization):
 class OptimizationFailingBeforeValidation(CustomOptimization):
     def fit(self, X, y=None):
         raise RuntimeError("Failure before input validation")
+
+
+class MetadataOptimization(BaseOptimization):
+    def fit(self, X, y=None, *, sample_weight=None):
+        X = skv.validate_data(self, X)
+        self.sample_weight_ = sample_weight
+        self.weights_ = np.average(np.abs(X), axis=0, weights=sample_weight)
+        self.weights_ /= self.weights_.sum()
+        return self
+
+
+def implied_vol_prior(request=True):
+    return EmpiricalPrior(
+        covariance_estimator=ImpliedCovariance(
+            annualization_factor=1, volatility_risk_premium_adj=1
+        ).set_fit_request(implied_vol=request)
+    )
 
 
 @pytest.fixture(params=["dataframe", "numpy", "list"])
@@ -214,6 +234,92 @@ def test_fallback_without_weights_exhausted(fallback_data, raise_on_failure):
         (str(model), "CustomOptimization forced failure"),
         (str(failed_fallback), "CustomOptimization forced failure"),
     ]
+
+
+@pytest.mark.parametrize("fallback", [EqualWeighted(), Random(), InverseVolatility()])
+def test_fallback_ignores_primary_metadata(fallback_data, fallback):
+    with config_context(enable_metadata_routing=True):
+        model = MeanRisk(
+            min_return=10, prior_estimator=implied_vol_prior(), fallback=fallback
+        ).fit(fallback_data, implied_vol=np.full(np.shape(fallback_data), 0.2))
+
+    assert isinstance(model.fallback_, type(fallback))
+    assert len(model.fallback_chain_) == 2
+    assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+    assert model.fallback_chain_[1] == (str(fallback), "success")
+    assert model.error_ is None
+    assert model.weights_.shape == (4,)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+    assert isinstance(model.predict(fallback_data), Portfolio)
+
+
+@pytest.mark.parametrize("metadata_request", [True, "vols"])
+def test_fallback_routes_requested_metadata(fallback_data, metadata_request):
+    implied_vol = np.tile([0.1, 0.2, 0.3, 0.4], (30, 1))
+    key = "implied_vol" if metadata_request is True else metadata_request
+    with config_context(enable_metadata_routing=True):
+        fallback = InverseVolatility(
+            prior_estimator=implied_vol_prior(metadata_request)
+        )
+        model = CustomOptimization(fail=True, fallback=fallback).fit(
+            fallback_data, **{key: implied_vol, "unrelated": 123}
+        )
+
+    expected_weights = 1 / implied_vol[-1]
+    expected_weights /= expected_weights.sum()
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.fallback_chain_[-1][1] == "success"
+
+
+@pytest.mark.parametrize("metadata_request", [True, False, "weights"])
+def test_fallback_consumer_metadata_requests(fallback_data, metadata_request):
+    sample_weight = np.linspace(1, 2, len(fallback_data))
+    key = metadata_request if isinstance(metadata_request, str) else "sample_weight"
+    with config_context(enable_metadata_routing=True):
+        fallback = MetadataOptimization().set_fit_request(
+            sample_weight=metadata_request
+        )
+        model = CustomOptimization(fail=True, fallback=fallback).fit(
+            fallback_data, **{key: sample_weight, "unrelated": 123}
+        )
+
+    if metadata_request is False:
+        assert model.fallback_.sample_weight_ is None
+    else:
+        np.testing.assert_array_equal(model.fallback_.sample_weight_, sample_weight)
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_fallback_unset_metadata_request_raises(fallback_data, nested):
+    with config_context(enable_metadata_routing=True):
+        fallback = (
+            InverseVolatility(prior_estimator=implied_vol_prior(None))
+            if nested
+            else MetadataOptimization()
+        )
+        key = "implied_vol" if nested else "sample_weight"
+        model = CustomOptimization(fail=True, fallback=fallback)
+        with pytest.raises(UnsetMetadataPassedError, match=key):
+            model.fit(fallback_data, **{key: np.ones(30)})
+
+    assert model.fallback_ is None
+    assert len(model.fallback_chain_) == 2
+    assert key in model.fallback_chain_[1][1]
+
+
+def test_fallback_fit_parameters_without_metadata_routing(fallback_data):
+    sample_weight = np.linspace(1, 2, len(fallback_data))
+    with config_context(enable_metadata_routing=False):
+        model = CustomOptimization(fail=True, fallback=MetadataOptimization()).fit(
+            fallback_data, sample_weight=sample_weight, unrelated=123
+        )
+    np.testing.assert_array_equal(model.fallback_.sample_weight_, sample_weight)
+
+
+def test_primary_fit_still_rejects_unexpected_parameters(fallback_data):
+    with config_context(enable_metadata_routing=True):
+        with pytest.raises(TypeError, match="unexpected keyword argument 'unrelated'"):
+            EqualWeighted().fit(fallback_data, unrelated=123)
 
 
 def test_custom_optimization_no_fallback_param_in_init_still_works(X):
@@ -360,11 +466,13 @@ def test_predict_after_fallback_returns_portfolio(X):
     assert ptf.weights is not None and np.isclose(ptf.weights.sum(), 1.0)
 
 
-def test_fallback_factor_model(X, factors):
+@pytest.mark.parametrize("enable_metadata_routing", [False, True])
+def test_fallback_factor_model(X, factors, enable_metadata_routing):
     model = CustomOptimization(
         fail=True, fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel())
     )
-    model.fit(X, factors=factors)
+    with config_context(enable_metadata_routing=enable_metadata_routing):
+        model.fit(X, factors=factors, unrelated=123)
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
