@@ -7,8 +7,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
-from typing import Any, Literal, TypeVar
+from collections.abc import Collection, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -26,9 +26,10 @@ from skfolio.containers._asset_panel._utils import (
     _positions_from_unique_labels,
     _to_dataframe,
 )
-from skfolio.typing import AnyArray, ArrayLike, StrArray
+from skfolio.typing import AnyArray, ArrayLike, BoolArray, StrArray
 
-_BaseAssetPanelT = TypeVar("_BaseAssetPanelT", bound="_BaseAssetPanel")
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 class _BaseAssetPanel(ABC):
@@ -36,9 +37,19 @@ class _BaseAssetPanel(ABC):
     `AssetPanelView`.
     """
 
+    fields: Mapping[str, BaseField]
+    observations: AnyArray
+    asset_names: StrArray
+    active_mask: BoolArray
+    estimation_mask: BoolArray
+
     def __contains__(self, name: str) -> bool:
         """Check whether a field exists."""
         return name in self.keys()
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """Return the number of observations."""
 
     @property
     @abstractmethod
@@ -51,7 +62,7 @@ class _BaseAssetPanel(ABC):
         """Number of assets."""
 
     @abstractmethod
-    def keys(self) -> Iterable[str]:
+    def keys(self) -> Collection[str]:
         """Return field names."""
 
     @abstractmethod
@@ -61,6 +72,10 @@ class _BaseAssetPanel(ABC):
     @abstractmethod
     def __setitem__(self, name: str, value: BaseField | ArrayLike) -> None:
         """Add or replace a field."""
+
+    @abstractmethod
+    def copy(self, *, deep: bool = False) -> Self:
+        """Return a copy of the panel."""
 
     @property
     def shape(self) -> tuple[int]:
@@ -142,12 +157,12 @@ class _BaseAssetPanel(ABC):
         return field.values[:, :, positions]
 
     def add_2d_field(
-        self: _BaseAssetPanelT,
+        self,
         name: str,
         values: ArrayLike,
         *,
         inactive_policy: InactivePolicy = InactivePolicy.MISSING,
-    ) -> _BaseAssetPanelT:
+    ) -> Self:
         """Add or replace a numeric 2D field.
 
         Parameters
@@ -166,11 +181,11 @@ class _BaseAssetPanel(ABC):
         self : BaseAssetPanel
             The modified container.
         """
-        self[name] = Field2D(values, inactive_policy=inactive_policy)
+        self[name] = Field2D(values, inactive_policy=inactive_policy)  # ty: ignore[invalid-argument-type]
         return self
 
     def add_3d_field(
-        self: _BaseAssetPanelT,
+        self,
         name: str,
         values: ArrayLike,
         *,
@@ -178,7 +193,7 @@ class _BaseAssetPanel(ABC):
         third_axis_labels: StrArray | list[str] | list[Any],
         third_axis_groups: StrArray | list[str] | list[Any] | None = None,
         inactive_policy: InactivePolicy = InactivePolicy.MISSING,
-    ) -> _BaseAssetPanelT:
+    ) -> Self:
         """Add or replace a numeric 3D field.
 
         This is a convenience wrapper around assigning a `Field3D`. The first two axes
@@ -213,22 +228,22 @@ class _BaseAssetPanel(ABC):
             The modified container.
         """
         self[name] = Field3D(
-            values,
+            values,  # ty: ignore[invalid-argument-type]
             third_axis_name=third_axis_name,
-            third_axis_labels=third_axis_labels,
-            third_axis_groups=third_axis_groups,
+            third_axis_labels=third_axis_labels,  # ty: ignore[invalid-argument-type]
+            third_axis_groups=third_axis_groups,  # ty: ignore[invalid-argument-type]
             inactive_policy=inactive_policy,
         )
         return self
 
     def add_categorical_field(
-        self: _BaseAssetPanelT,
+        self,
         name: str,
         values: ArrayLike,
         *,
         levels: StrArray | list[str] | list[Any],
         inactive_policy: InactivePolicy = InactivePolicy.MISSING,
-    ) -> _BaseAssetPanelT:
+    ) -> Self:
         """Add or replace a 2D categorical field.
 
         This is a convenience wrapper around assigning a `FieldCategorical`. The field
@@ -256,8 +271,8 @@ class _BaseAssetPanel(ABC):
             The modified container.
         """
         self[name] = FieldCategorical(
-            values,
-            levels=levels,
+            values,  # ty: ignore[invalid-argument-type]
+            levels=levels,  # ty: ignore[invalid-argument-type]
             inactive_policy=inactive_policy,
         )
         return self

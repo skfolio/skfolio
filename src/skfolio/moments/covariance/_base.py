@@ -219,7 +219,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             raise ValueError("X_test has no row with any finite retained observation.")
         return float(np.nanmean(row_scores))
 
-    def mahalanobis(self, X_test: ArrayLike) -> FloatArray:
+    def mahalanobis(self, X_test: ArrayLike) -> FloatArray | float:
         r"""Compute the squared Mahalanobis distance of observations.
 
         The squared Mahalanobis distance of an observation :math:`r` is defined as:
@@ -297,7 +297,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             covariance = self.covariance_
         if np.isfinite(X_test).all():
             distances = squared_mahalanobis_dist(X_test, covariance, mean=mean)
-            return float(distances[0]) if is_1d else distances
+            return float(distances[0]) if is_1d else distances  # ty: ignore[not-subscriptable]
 
         distances = _mahalanobis_observed_subspaces(X_test, covariance, mean)
         if np.all(np.isnan(distances)):

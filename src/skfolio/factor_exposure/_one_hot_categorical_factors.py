@@ -102,7 +102,7 @@ class OneHotCategoricalFactors(BaseFactorExposure, stateless=True):
             raise ValueError(f"Field '{self.category}' must be a CategoricalField.")
 
         codes = field.values
-        factor_names = field.levels
+        factor_names = field.levels  # ty: ignore[unresolved-attribute]
         n_factors = len(factor_names)
         n_observations, n_assets = codes.shape
 

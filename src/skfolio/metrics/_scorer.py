@@ -65,7 +65,7 @@ class _PortfolioScorer(_BaseScorer):
 
     def __call__(
         self,
-        estimator: skb.BaseEstimator,
+        estimator: Any,  # noqa: ANN401  # duck-typed estimator
         X_test: ArrayLike,
         y: None = None,
     ) -> float:

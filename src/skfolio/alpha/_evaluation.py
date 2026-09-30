@@ -9,6 +9,7 @@ from __future__ import annotations
 import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,7 @@ from skfolio._constants import (
 )
 from skfolio.containers import AssetPanel, AssetPanelView, Field3D
 from skfolio.model_selection._validation import _route_params
-from skfolio.typing import FloatArray, IntArray, StrArray
+from skfolio.typing import BoolArray, FloatArray, IntArray, StrArray
 from skfolio.utils._factor_tools import _resolve_factor_subset
 from skfolio.utils.figure import format_plot_label, format_plot_labels
 from skfolio.utils.stats import (
@@ -642,23 +643,21 @@ class AlphaForecastComparison:
     def __post_init__(self) -> None:
         if not self.evaluations:
             raise ValueError("evaluations must contain at least one entry.")
-        if self.names is not None:
-            if len(self.names) != len(self.evaluations):
-                raise ValueError(
-                    f"names has length {len(self.names)} but evaluations has "
-                    f"length {len(self.evaluations)}."
-                )
-            names = list(self.names)
-        else:
+        if self.names is not None and len(self.names) != len(self.evaluations):
+            raise ValueError(
+                f"names has length {len(self.names)} but evaluations has "
+                f"length {len(self.evaluations)}."
+            )
+
+    def _named_evaluations(self) -> Iterator[tuple[str, AlphaForecastEvaluation]]:
+        """Iterate over (name, evaluation) pairs."""
+        names = self.names
+        if names is None:
             names = [
                 ev.name if ev.name is not None else f"Estimator {i}"
                 for i, ev in enumerate(self.evaluations)
             ]
-        object.__setattr__(self, "_names", names)
-
-    def _named_evaluations(self) -> Iterator[tuple[str, AlphaForecastEvaluation]]:
-        """Iterate over (name, evaluation) pairs."""
-        return zip(self._names, self.evaluations, strict=True)
+        return zip(names, self.evaluations, strict=True)
 
     def ic_summary(self) -> pd.DataFrame:
         """IC summary for all evaluations."""
@@ -873,7 +872,7 @@ def alpha_forecast_evaluation(
             "factor_correlation_method must be a `CorrelationMethod` or None."
         )
 
-    required_fields = [target]
+    required_fields: list[str] = [target]
     weighting_field = _field_required_by_cs_weighting(cs_weighting)
     if weighting_field is not None and weighting_field not in required_fields:
         required_fields.append(weighting_field)
@@ -885,7 +884,7 @@ def alpha_forecast_evaluation(
         else _resolve_factor_exposures_field(X, factor_exposures)
     )
     if factor_exposures_field is not None:
-        required_fields.append(factor_exposures)
+        required_fields.append(factor_exposures)  # ty: ignore[invalid-argument-type]
 
     validate_asset_panel(
         estimator,
@@ -1063,11 +1062,11 @@ def _compute_factor_correlation_diagnostics(
     *,
     alpha: FloatArray,
     exposures_field: Field3D | None,
-    estimation_mask: FloatArray,
+    estimation_mask: BoolArray,
     cs_weights: FloatArray | None,
     method: CorrelationMethod | None,
     min_count: int,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Compute alpha-factor correlation diagnostics."""
     if exposures_field is None or method is None:
         return _empty_factor_correlation_diagnostics()
@@ -1126,7 +1125,7 @@ def _compute_factor_correlation_diagnostics(
     }
 
 
-def _empty_factor_correlation_diagnostics() -> dict[str, object]:
+def _empty_factor_correlation_diagnostics() -> dict[str, Any]:
     """Return empty alpha-factor correlation diagnostics."""
     return {
         "factor_correlation": None,
@@ -1139,7 +1138,7 @@ def _empty_factor_correlation_diagnostics() -> dict[str, object]:
 def _evaluation_indices(
     alpha: FloatArray,
     target: FloatArray,
-    eligible_mask: FloatArray,
+    eligible_mask: BoolArray,
     evaluation_step: int,
 ) -> IntArray:
     """Return forecast dates with at least one valid evaluation asset."""
@@ -1157,11 +1156,11 @@ def _compute_diagnostics(
     *,
     alpha: FloatArray,
     target: FloatArray,
-    eligible_mask: FloatArray,
+    eligible_mask: BoolArray,
     cs_weights: FloatArray | None,
     quantiles: tuple[float, ...],
     min_count: int,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Compute IC, portfolio, spread, coverage and calibration diagnostics."""
     valid = np.isfinite(alpha) & np.isfinite(target) & eligible_mask
     eligible_count = np.sum(eligible_mask, axis=1)
@@ -1298,7 +1297,7 @@ def _quantile_spread(
     return out
 
 
-def _masked_mean(values: FloatArray, mask: FloatArray) -> FloatArray:
+def _masked_mean(values: FloatArray, mask: BoolArray) -> FloatArray:
     """Compute row-wise means over finite masked values."""
     valid = mask & np.isfinite(values)
     total = np.sum(np.where(valid, values, 0.0), axis=1)
@@ -1487,7 +1486,7 @@ def _forward_window_record(
     *,
     index_name: str,
     index_value: int,
-    diagnostics: dict[str, object] | None = None,
+    diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, float]:
     """Return one summary record for a forward target window."""
     record = {index_name: index_value}

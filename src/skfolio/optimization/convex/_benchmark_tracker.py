@@ -244,7 +244,7 @@ class BenchmarkTracker(MeanRisk):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,

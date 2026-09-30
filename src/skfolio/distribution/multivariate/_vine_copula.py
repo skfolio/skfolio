@@ -32,6 +32,7 @@ import numbers
 import warnings
 from collections import deque
 from collections.abc import Iterator
+from typing import cast
 
 import numpy as np
 import plotly.express as px
@@ -301,6 +302,11 @@ class VineCopula(BaseMultivariateDist):
 
         return k
 
+    @property
+    def _root_nodes(self) -> list[RootNode]:
+        """Nodes of the first tree, one per asset."""
+        return cast(list[RootNode], self.trees_[0].nodes)
+
     def fit(self, X: ArrayLike, y: None = None) -> VineCopula:
         """
         Fit the Vine Copula model to the data.
@@ -506,7 +512,7 @@ class VineCopula(BaseMultivariateDist):
         # Handle potential numerical issues by ensuring X doesn't contain exact 0 or 1.
         X = np.clip(X, UNIFORM_MARGINAL_EPSILON, 1 - UNIFORM_MARGINAL_EPSILON)
 
-        for i, node in enumerate(self.trees_[0].nodes):
+        for i, node in enumerate(self._root_nodes):
             node.pseudo_values = X[:, i]
 
         for tree in self.trees_:
@@ -598,7 +604,7 @@ class VineCopula(BaseMultivariateDist):
         )
 
         # Collect samples from the root tree.
-        samples = np.stack([node.pseudo_values for node in self.trees_[0].nodes]).T
+        samples = np.stack([node.pseudo_values for node in self._root_nodes]).T
         self.clear_cache()
 
         # Avoid Inf
@@ -681,9 +687,12 @@ class VineCopula(BaseMultivariateDist):
     def _init_conditioning(
         self,
         n_samples: int,
-        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike],
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike] | None,
     ) -> tuple[
-        np.random.RandomState, set[int], dict[int, float], dict[int, FloatArray]
+        np.random.RandomState,
+        set[int],
+        dict[int, float | tuple[float, float] | FloatArray],
+        dict[int, FloatArray],
     ]:
         """
         Initialised conditioning variables used in the conditioning sampling.
@@ -720,7 +729,7 @@ class VineCopula(BaseMultivariateDist):
         conditioning_vars : set[int]
             The conditioning variables.
 
-        conditioning_clean : dict[int, float]
+        conditioning_clean : dict[int, float | tuple[float, float] | ndarray]
             The cleaned conditioning dictionary.
 
         uniform_cond_samples : dict[int, FloatArray]
@@ -729,8 +738,8 @@ class VineCopula(BaseMultivariateDist):
         rng = sku.check_random_state(self.random_state)
 
         conditioning_vars = set()
-        conditioning_clean = dict()
-        uniform_cond_samples = dict()
+        conditioning_clean: dict[int, float | tuple[float, float] | FloatArray] = {}
+        uniform_cond_samples: dict[int, FloatArray] = {}
 
         if conditioning is None:
             return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
@@ -808,11 +817,11 @@ class VineCopula(BaseMultivariateDist):
                 samples = rng.uniform(low=u_min, high=u_max, size=n_samples)
 
             elif np.isscalar(value):
-                if not isinstance(value, numbers.Number):
+                if not isinstance(value, numbers.Real):
                     raise ValueError(
                         f"Conditioning values should be numbers, got {value}"
                     )
-                conditioning_clean[var] = value
+                conditioning_clean[var] = float(value)
                 if self._log_transform[var]:
                     value = np.log1p(value)
                 if self.fit_marginals:
@@ -834,13 +843,12 @@ class VineCopula(BaseMultivariateDist):
                     # Transform conditioning samples using the fitted marginal CDF.
                     samples = self.marginal_distributions_[var].cdf(samples)
             uniform_cond_samples[var] = samples
-            conditioning_vars = set(conditioning_vars)
 
-        return rng, conditioning_vars, conditioning_clean, uniform_cond_samples
+        return rng, set(conditioning_vars), conditioning_clean, uniform_cond_samples
 
     def _sampling_order(
         self, conditioning_vars: set[int] | None = None
-    ) -> list[tuple[RootNode | ChildNode, bool]]:
+    ) -> list[tuple[RootNode | ChildNode, bool | None]]:
         """
         Determine the optimal sampling order for the vine copula.
 
@@ -894,7 +902,6 @@ class VineCopula(BaseMultivariateDist):
             remaining = edges
             visited: set[Edge] = set()
             prev_visited: set[Edge] = set()
-            edge, is_left = None, None
             while remaining:
                 selected = []
                 costs = []
@@ -948,9 +955,11 @@ class VineCopula(BaseMultivariateDist):
         # Replace nodes with conditioning samples where applicable.
         if conditioning_vars:
             for i, (node, is_left) in enumerate(sampling_order):
-                node_var = node.get_var(is_left) if is_left is not None else node.ref
+                node_var = (
+                    node.ref if isinstance(node, RootNode) else node.get_var(is_left)
+                )
                 if node_var in conditioning_vars:
-                    sampling_order[i] = (self.trees_[0].nodes[node_var], None)
+                    sampling_order[i] = (self._root_nodes[node_var], None)
 
         sampling_order = sampling_order[::-1]
         if not (len(set(sampling_order)) == len(sampling_order) == n_assets):
@@ -1082,11 +1091,11 @@ class VineCopula(BaseMultivariateDist):
         for i, s in enumerate(subset):
             visible = True if i == 0 else "legendonly"
             color = colors[i % len(colors)]
-            asset = self.feature_names_in_[s]
+            asset = self.feature_names_in_[s]  # ty: ignore[invalid-argument-type]
 
             traces.append(
                 kde_trace(
-                    x=samples[:, s],
+                    x=samples[:, s],  # ty: ignore[invalid-argument-type]
                     sample_weight=None,
                     percentile_cutoff=percentile_cutoff,
                     name=f"{asset} Generated",
@@ -1101,7 +1110,7 @@ class VineCopula(BaseMultivariateDist):
             if X is not None:
                 traces.append(
                     kde_trace(
-                        x=X[:, s],
+                        x=X[:, s],  # ty: ignore[invalid-argument-type]
                         sample_weight=None,
                         percentile_cutoff=percentile_cutoff,
                         name=f"{asset} Empirical",
@@ -1173,7 +1182,7 @@ def _is_left_branch(
 
 def _propagate_samples(
     X_rand: FloatArray,
-    sampling_order: list[tuple[RootNode | ChildNode, bool]],
+    sampling_order: list[tuple[RootNode | ChildNode, bool | None]],
     conditioning_vars: set[int],
     uniform_cond_samples: dict[int, FloatArray],
 ) -> None:
@@ -1184,22 +1193,21 @@ def _propagate_samples(
     If `is_count_visits` is activated, we only record the number of Node visits in
     each Node. This count is used for optimally clearing cache during sampling.
     """
-    is_count = sampling_order[0][0].tree.is_count_visits
-
-    if not is_count:
-        X_rand = iter(X_rand)
+    tree = sampling_order[0][0].tree
+    is_count = tree is not None and tree.is_count_visits
+    rand_rows = iter(X_rand)
 
     # Initialize samples for each node according to the sampling order.
-    queue: deque[tuple[RootNode | ChildNode, bool]] = deque()
+    queue: deque[tuple[ChildNode, bool | None]] = deque()
     for node, is_left in sampling_order:
-        node_var = node.get_var(is_left) if is_left is not None else node.ref
+        node_var = node.ref if isinstance(node, RootNode) else node.get_var(is_left)
         if is_count:
             init_samples = np.array([np.nan])
         else:
             if node_var in conditioning_vars:
                 init_samples = uniform_cond_samples[node_var]
             else:
-                init_samples = next(X_rand)
+                init_samples = next(rand_rows)
 
         # Avoid Inf
         init_samples = np.clip(
@@ -1220,35 +1228,32 @@ def _propagate_samples(
     while queue:
         node, is_left = queue.popleft()
         edge = node.ref
-        if isinstance(edge.node1, RootNode):
+        node1, node2 = edge.node1, edge.node2
+        if isinstance(node1, RootNode) and isinstance(node2, RootNode):
             if is_left:
-                x = np.stack([node.u, edge.node2.pseudo_values]).T
-                edge.node1.pseudo_values = _inverse_partial_derivative(
-                    edge, x, is_count
-                )
+                x = np.stack([node.u, node2.pseudo_values]).T
+                node1.pseudo_values = _inverse_partial_derivative(edge, x, is_count)
             else:
-                x = np.stack([node.v, edge.node1.pseudo_values]).T
-                edge.node2.pseudo_values = _inverse_partial_derivative(
-                    edge, x, is_count
-                )
-        else:
-            is_left1, is_left2 = edge.node1.ref.shared_node_is_left(edge.node2.ref)
+                x = np.stack([node.v, node1.pseudo_values]).T
+                node2.pseudo_values = _inverse_partial_derivative(edge, x, is_count)
+        elif isinstance(node1, ChildNode) and isinstance(node2, ChildNode):
+            is_left1, is_left2 = node1.ref.shared_node_is_left(node2.ref)
             if is_left:
-                x = np.stack([node.u, edge.node2.v if is_left2 else edge.node2.u]).T
+                x = np.stack([node.u, node2.v if is_left2 else node2.u]).T
                 u = _inverse_partial_derivative(edge, x, is_count)
                 if is_left1:
-                    edge.node1.v = u
+                    node1.v = u
                 else:
-                    edge.node1.u = u
-                queue.appendleft((edge.node1, not is_left1))
+                    node1.u = u
+                queue.appendleft((node1, not is_left1))
             else:
-                x = np.stack([node.v, edge.node1.v if is_left1 else edge.node1.u]).T
+                x = np.stack([node.v, node1.v if is_left1 else node1.u]).T
                 u = _inverse_partial_derivative(edge, x, is_count)
                 if is_left2:
-                    edge.node2.v = u
+                    node2.v = u
                 else:
-                    edge.node2.u = u
-                queue.appendleft((edge.node2, not is_left2))
+                    node2.u = u
+                queue.appendleft((node2, not is_left2))
 
 
 def _inverse_partial_derivative(

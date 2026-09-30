@@ -14,6 +14,7 @@ optimization algorithms in skfolio should inherit from.
 
 from __future__ import annotations
 
+import numbers
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -112,12 +113,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
     """
 
-    weights_: FloatArray
+    weights_: FloatArray | None
     n_features_in_: int
     feature_names_in_: StrArray
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
-    error_: str | list[str] | None
+    error_: str | list[str | None] | None
 
     def __init__(
         self,
@@ -173,8 +174,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     self.weights_ = None
             return self
 
-        _wrapped_fit._fallback_wrapped = True
-        cls.fit = _wrapped_fit
+        _wrapped_fit._fallback_wrapped = True  # ty: ignore[unresolved-attribute]
+        cls.fit = _wrapped_fit  # ty: ignore[invalid-assignment]
 
     def _run_fallback_chain(
         self,
@@ -212,7 +213,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # Log the primary error in fallback_chain_ only when fallbacks are provided
         self.fallback_chain_ = [(str(self), str(primary_error))]
 
-        n_assets = X.shape[1]
+        n_assets = X.shape[1]  # ty: ignore[unresolved-attribute]
 
         if not isinstance(fallback, list | tuple):
             fallback = [fallback]
@@ -285,10 +286,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             weights = self._clean_previous_weights(n_assets=n_assets)
             self.weights_ = self._expand_weights_to_full_universe(weights=weights)
             self.fallback_ = _PREVIOUS_WEIGHTS
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))  # ty: ignore[unresolved-attribute]
 
         except Exception as error:
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))
+            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))  # ty: ignore[unresolved-attribute]
             raise
 
     @abstractmethod
@@ -335,7 +336,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         check_is_fitted(self, "weights_")
 
         if self.portfolio_params is None:
-            ptf_kwargs = {}
+            ptf_kwargs: dict[str, Any] = {}
         else:
             ptf_kwargs = self.portfolio_params.copy()
 
@@ -370,7 +371,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # If weights are None and raise_on_failure is False, we return a FailedPortfolio
         if self.weights_ is None:
             return FailedPortfolio(
-                name=name, optimization_error=self.error_, **ptf_kwargs
+                name=name,
+                optimization_error=self.error_,  # ty: ignore[invalid-argument-type]
+                **ptf_kwargs,
             )
 
         if not isinstance(X, ReturnDistribution):
@@ -580,7 +583,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         """
         if value is None:
             return fill_value
-        if np.isscalar(value):
+        if isinstance(value, numbers.Real):
             return float(value)
         return input_to_array(
             items=value,
@@ -615,8 +618,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             fill_value=0,
             name=_PREVIOUS_WEIGHTS,
         )
-        if np.isscalar(previous_weights):
-            previous_weights = np.full(n_assets, float(previous_weights))
+        if not isinstance(previous_weights, np.ndarray):
+            previous_weights = np.full(n_assets, previous_weights, dtype=float)
         return previous_weights
 
 

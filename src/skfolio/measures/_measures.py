@@ -44,12 +44,12 @@ def mean(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns, dtype=float)
     if sample_weight is None:
         # Ignore NaNs and suppress warnings for all-NaN slices
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=RuntimeWarning)
             return np.nanmean(returns, axis=0)
-    returns = np.asarray(returns, dtype=float)
     sample_weight = np.asarray(sample_weight, dtype=float)
     if returns.shape[0] == 0:
         return np.full(returns.shape[1:], np.nan)[()]
@@ -98,6 +98,7 @@ def mean_absolute_deviation(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
 
@@ -142,6 +143,7 @@ def first_lower_partial_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns, sample_weight=sample_weight)
 
@@ -183,6 +185,7 @@ def variance(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     if sample_weight is None:
         # Ignore NaNs and suppress warnings for all-NaN slices
         with warnings.catch_warnings():
@@ -232,6 +235,7 @@ def semi_variance(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns, dtype=float)
     if sample_weight is not None:
         return _weighted_variance(
             returns,
@@ -250,7 +254,6 @@ def semi_variance(
         return biased_semi_var
 
     # Apply the Bessel correction using each column's non-NaN count.
-    returns = np.asarray(returns, dtype=float)
     n_observations = np.count_nonzero(~np.isnan(returns), axis=0)
     correction = safe_divide(n_observations, n_observations - 1, fill_value=np.nan)
     return biased_semi_var * correction
@@ -367,6 +370,7 @@ def third_central_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 3,
         sample_weight=sample_weight,
@@ -437,6 +441,7 @@ def fourth_central_moment(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     return mean(
         (returns - mean(returns, sample_weight=sample_weight)) ** 4,
         sample_weight=sample_weight,
@@ -480,7 +485,7 @@ def kurtosis(
 
 
 def fourth_lower_partial_moment(
-    returns: ArrayLike, min_acceptable_return: float | None = None
+    returns: ArrayLike, min_acceptable_return: float | FloatArray | None = None
 ) -> float | FloatArray:
     """Compute the fourth lower partial moment.
 
@@ -494,7 +499,7 @@ def fourth_lower_partial_moment(
     returns : ndarray of shape (n_observations,) or (n_observations, n_assets)
         Array of return values.
 
-    min_acceptable_return : float, optional
+    min_acceptable_return : float or ndarray of shape (n_assets,), optional
         Minimum acceptable return. It is the return target to distinguish "downside" and
         "upside" returns.
         The default (`None`) is to use the returns mean.
@@ -512,6 +517,7 @@ def fourth_lower_partial_moment(
     NaN returns are excluded from each column's calculation. The result is
     NaN if no observations remain.
     """
+    returns = np.asarray(returns)
     if min_acceptable_return is None:
         min_acceptable_return = mean(returns)
     return mean(np.maximum(0, min_acceptable_return - returns) ** 4)
@@ -538,6 +544,7 @@ def worst_realization(returns: ArrayLike) -> float | FloatArray:
     NaN returns are excluded from each column's calculation. The result is
     NaN if no observations remain.
     """
+    returns = np.asarray(returns)
     with warnings.catch_warnings():
         # all-NaN slice warning
         warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -681,6 +688,7 @@ def entropic_risk_measure(
     weights are rescaled to sum to one. The result is NaN if no observations
     or no positive weight remain.
     """
+    returns = np.asarray(returns)
     return theta * np.log(
         mean(np.exp(-returns / theta), sample_weight=sample_weight) / (1 - beta)
     )
@@ -827,6 +835,7 @@ def get_drawdowns(returns: ArrayLike, compounded: bool = False) -> FloatArray:
     treated as neutral elements during accumulation, so they do not propagate to
     subsequent values.
     """
+    returns = np.asarray(returns)
     if np.isnan(returns).all():
         return np.full(returns.shape, np.nan, dtype=float)
 
@@ -1091,6 +1100,7 @@ def correlation(X: ArrayLike, sample_weight: FloatArray | None = None) -> FloatA
     corr : ndarray of shape (n_assets,)
        The correlation matrix.
     """
+    X = np.asarray(X)
     cov = np.cov(X, rowvar=False, aweights=sample_weight)
     std = np.sqrt(np.diag(cov))
     return cov / np.outer(std, std)
@@ -1183,7 +1193,7 @@ def _sums_to_one(total: float, n_observations: int) -> bool:
         True if :math:`|s - 1| \leq 4 n \epsilon`, where :math:`s` is `total`,
         :math:`n` is `n_observations` and :math:`\epsilon` is the machine epsilon.
     """
-    return abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps
+    return bool(abs(total - 1.0) <= 4 * n_observations * np.finfo(float).eps)
 
 
 def _weighted_variance(
@@ -1379,7 +1389,7 @@ def _tail_risk(
             return -values.min()
         if np.all(probs == probs[0]):
             # Preserve the unweighted empirical rank convention exactly.
-            return _unweighted(values)
+            return float(_unweighted(values))
         order = np.argsort(values)
         values, probs = values[order], probs[order]
         cumulative = np.cumsum(probs)

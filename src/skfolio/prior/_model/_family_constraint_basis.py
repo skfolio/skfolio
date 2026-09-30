@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -127,7 +127,9 @@ class FamilyConstraintBasis:
         if not np.all(np.isfinite(constraint_ratios)):
             raise ValueError("constraint_ratios must contain only finite values.")
 
-    def __getitem__(self, observation_key: int | slice) -> FamilyConstraintBasis:
+    def __getitem__(
+        self, observation_key: int | slice | IntArray
+    ) -> FamilyConstraintBasis:
         """Return a basis sliced along the observation axis."""
         if isinstance(observation_key, tuple):
             raise TypeError(
@@ -802,7 +804,7 @@ class FamilyConstraint:
 
 
 def compute_family_constraint_basis(
-    constrained_families: list[tuple[str, str | None]],
+    constrained_families: Sequence[tuple[str, str | None]],
     factor_exposures: FloatArray,
     benchmark_weights: FloatArray,
     factor_names: StrArray,
@@ -841,7 +843,7 @@ def compute_family_constraint_basis(
 
     Parameters
     ----------
-    constrained_families : list[tuple[str, str | None]]
+    constrained_families : sequence of tuple[str, str | None]
         `(family_name, factor_to_drop)` pairs. `factor_to_drop` may be `None` for
         automatic selection.
 

@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import sklearn.utils as sku
 
 from skfolio.distribution._base import BaseDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseMultivariateDist(BaseDistribution, ABC):
@@ -28,6 +28,8 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         Seed or random state to ensure reproducibility.
     """
 
+    n_features_in_: int
+    feature_names_in_: StrArray
     # Used for AIC and BIC
     _n_params: int
 

@@ -80,6 +80,7 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "ruff",
+    "ty",
     "pre-commit>=4.4.0",
 ]
 docs = [
@@ -198,22 +199,25 @@ convention = "numpy"
 checks = ["GL08"]
 exclude = ['\.__\w+__$']
 
+# Fix diagnostics that reveal a bug or a wrong annotation. When ty cannot follow code
+# that is already correct, add a line-level `# ty: ignore[<rule>]` rather than adding
+# checks or restructuring the code only to satisfy the checker.
 [tool.ty.src]
 include = ["src"]
 
-# Rules with existing diagnostics are downgraded to warnings so the gate starts
-# green; every other rule stays an error. Move a rule back to "error" once its
-# diagnostics are fixed (counts as of ty 0.0.84).
+[tool.ty.terminal]
+# Rules that ty reports as warnings by default also fail the check.
+error-on-warning = true
+
+# `invalid-method-override` requires an override to accept every call that the parent
+# method accepts. skfolio estimators declare only the `fit` inputs they use: `y` typed
+# as `None` or required, required keyword arguments such as `factors`, and no
+# `**fit_params` when no metadata is routed. Covariance estimators inherit
+# `mahalanobis` from both skfolio and scikit-learn bases, and `Population` restricts
+# the `list` methods to portfolios. Matching the parent signatures would add
+# parameters that these methods do not use, so the rule is disabled.
 [tool.ty.rules]
-invalid-argument-type = "warn"      # 421
-unresolved-attribute = "warn"       # 173
-not-subscriptable = "warn"          # 144
-unsupported-operator = "warn"       # 86
-invalid-return-type = "warn"        # 84
-invalid-assignment = "warn"         # 57
-invalid-method-override = "warn"    # 25
-no-matching-overload = "warn"       # 22
-not-iterable = "warn"               # 21
+invalid-method-override = "ignore"
 
 [tool.coverage.report]
 # Empty abstract bodies use ellipsis. Keep abstract methods with implementations

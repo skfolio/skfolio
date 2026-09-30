@@ -9,9 +9,8 @@
 
 from __future__ import annotations
 
-import numbers
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from collections.abc import Iterable, Iterator
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 import pandas as pd
@@ -400,6 +399,12 @@ class MultiPeriodPortfolio(BasePortfolio):
     def __len__(self) -> int:
         return len(self._portfolios)
 
+    @overload
+    def __getitem__(self, key: int) -> Portfolio: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> list[Portfolio]: ...
+
     def __getitem__(self, key: int | slice) -> Portfolio | list[Portfolio]:
         return self._portfolios[key]
 
@@ -466,33 +471,31 @@ class MultiPeriodPortfolio(BasePortfolio):
             [p1 - p2 for p1, p2 in zip(self, other, strict=True)]
         )
 
-    def __mul__(
-        self, other: numbers.Number | list[numbers.Number] | FloatArray
-    ) -> MultiPeriodPortfolio:
-        if np.isscalar(other):
-            portfolios = [p * other for p in self]
-        else:
+    def __mul__(self, other: float | list[float] | FloatArray) -> MultiPeriodPortfolio:
+        if isinstance(other, Iterable):
             portfolios = [p * a for p, a in zip(self, other, strict=True)]
+        else:
+            portfolios = [p * other for p in self]
         return self._create_from_child_portfolios(portfolios)
 
     __rmul__ = __mul__
 
     def __floordiv__(
-        self, other: numbers.Number | list[numbers.Number] | FloatArray
+        self, other: float | list[float] | FloatArray
     ) -> MultiPeriodPortfolio:
-        if np.isscalar(other):
-            portfolios = [p // other for p in self]
-        else:
+        if isinstance(other, Iterable):
             portfolios = [p // a for p, a in zip(self, other, strict=True)]
+        else:
+            portfolios = [p // other for p in self]
         return self._create_from_child_portfolios(portfolios)
 
     def __truediv__(
-        self, other: numbers.Number | list[numbers.Number] | FloatArray
+        self, other: float | list[float] | FloatArray
     ) -> MultiPeriodPortfolio:
-        if np.isscalar(other):
-            portfolios = [p / other for p in self]
-        else:
+        if isinstance(other, Iterable):
             portfolios = [p / a for p, a in zip(self, other, strict=True)]
+        else:
+            portfolios = [p / other for p in self]
         return self._create_from_child_portfolios(portfolios)
 
     # Private methods
@@ -746,7 +749,7 @@ class MultiPeriodPortfolio(BasePortfolio):
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
-    ) -> FloatArray | pd.DataFrame:
+    ) -> list[FloatArray] | pd.DataFrame:
         r"""Compute the contribution of each asset to a given measure for each
         portfolio.
 
@@ -774,8 +777,8 @@ class MultiPeriodPortfolio(BasePortfolio):
             for ptf in self
         ]
         if not to_df:
-            return contributions
-        df = pd.concat(contributions, axis=1)
+            return contributions  # ty: ignore[invalid-return-type]
+        df = pd.concat(contributions, axis=1)  # ty: ignore[no-matching-overload]
         df.columns = deduplicate_names(df.columns)
         # Leave columns of only NaNs untouched
         mask = ~df.isna().all(axis=0)

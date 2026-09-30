@@ -70,12 +70,13 @@ jobs:
         if: ${{ !cancelled() && steps.python.outcome == 'success' }}
         run: uvx ruff@latest format --check
 
-      # Run the pre-commit hooks except Ruff, which the steps above already run.
-      # `SKIP` lists hook ids from `.pre-commit-config.yaml`.
+      # Run the pre-commit hooks except Ruff, which the steps above already run, and
+      # ty, which runs in the type check job. `SKIP` lists hook ids from
+      # `.pre-commit-config.yaml`.
       - name: Pre-commit hooks
         if: ${{ !cancelled() && steps.python.outcome == 'success' }}
         env:
-          SKIP: ruff,ruff-format
+          SKIP: ruff,ruff-format,ty
         run: uvx pre-commit run --all-files --show-diff-on-failure
 
       - name: Check distribution contents
@@ -114,17 +115,20 @@ jobs:
         with:
           version: latest
 
-      # ty resolves third-party imports from this environment; pytest is needed
-      # for src/conftest.py.
+      # ty resolves third-party imports from this environment. `src/conftest.py`
+      # imports pytest.
       - name: Install package
         run: |
           uv venv --python "${{ steps.python.outputs.python-path }}"
           uv pip install --python .venv --editable . pytest
 
-      # ty is pre-1.0 and its diagnostics change between releases, so the
-      # version is pinned to keep the rule baseline in pyproject.toml stable.
+      # Type check with the latest ty release. ty is in beta, so a new release can
+      # report new diagnostics on unchanged code.
+      - name: ty version
+        run: uvx ty@latest --version
+
       - name: ty check
-        run: uvx ty@0.0.84 check --python .venv --output-format github --exit-zero-on-warning
+        run: uvx ty@latest check --python .venv --output-format github
 
 # -----------------------------------------------------------------------------
 # 2) Full test matrix on Linux

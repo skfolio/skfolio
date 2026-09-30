@@ -226,7 +226,7 @@ class TimeSeriesFactorModel(BasePrior):
             check_type=BaseLoadingMatrix,
         )
 
-        observations = X.index
+        observations = X.index  # ty: ignore[unresolved-attribute]
         factor_names = get_feature_names(factors)
 
         # Fitting prior estimator
@@ -294,16 +294,16 @@ class TimeSeriesFactorModel(BasePrior):
             returns=returns,
             sample_weight=factor_return_dist.sample_weight,
             factor_model=FactorModel(
-                observations=observations,
+                observations=observations,  # ty: ignore[invalid-argument-type]
                 asset_names=self.feature_names_in_,
-                factor_names=factor_names,
+                factor_names=factor_names,  # ty: ignore[invalid-argument-type]
                 factor_families=factor_families,
                 loading_matrix=loading_matrix,
                 exposures=None,
                 factor_covariance=factor_return_dist.covariance,
                 factor_mu=factor_return_dist.mu,
                 factor_returns=factors,
-                idio_covariance=idio_var,
+                idio_covariance=idio_var,  # ty: ignore[invalid-argument-type]
                 idio_variances=None,
                 idio_mu=None,
                 idio_returns=idio_returns,
@@ -450,7 +450,7 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
             _linear_regressor, n_jobs=self.n_jobs
         )
         self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
-        n_assets = X.shape[1]
+        n_assets = X.shape[1]  # ty: ignore[unresolved-attribute]
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
         )

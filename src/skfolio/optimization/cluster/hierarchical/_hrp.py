@@ -24,7 +24,7 @@ from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.tools import bisection, check_estimator
 
 
@@ -450,8 +450,8 @@ def _apply_weight_constraints_to_split_factor(
     max_weights: FloatArray,
     min_weights: FloatArray,
     weights: FloatArray,
-    left_cluster: FloatArray,
-    right_cluster: FloatArray,
+    left_cluster: IntArray,
+    right_cluster: IntArray,
 ) -> float:
     """
     Apply weight constraints to the split factor alpha of the ,Hierarchical Tree

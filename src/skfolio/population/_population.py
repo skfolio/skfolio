@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import inspect
 import warnings
-from typing import Any, SupportsIndex
+from collections.abc import Iterable
+from typing import Any, SupportsIndex, overload
 
 import numpy as np
 import pandas as pd
@@ -35,22 +36,26 @@ class Population(list):
 
     Parameters
     ----------
-    iterable : list[BasePortfolio]
-        The list of portfolios. Each item can be of type
+    iterable : iterable of BasePortfolio
+        The portfolios. Each item can be of type
         :class:`~skfolio.portfolio.Portfolio` and/or
         :class:`~skfolio.portfolio.MultiPeriodPortfolio`.
         Empty list are accepted.
     """
 
-    def __init__(self, iterable: list[BasePortfolio]) -> None:
+    def __init__(self, iterable: Iterable[BasePortfolio]) -> None:
         super().__init__(self._validate_item(item) for item in iterable)
 
     def __repr__(self) -> str:
         return "<Population(" + super().__repr__() + ")>"
 
-    def __getitem__(
-        self, indices: int | list[int] | slice
-    ) -> BasePortfolio | Population:
+    @overload
+    def __getitem__(self, indices: SupportsIndex) -> BasePortfolio: ...
+
+    @overload
+    def __getitem__(self, indices: slice) -> Population: ...
+
+    def __getitem__(self, indices: SupportsIndex | slice) -> BasePortfolio | Population:
         item = super().__getitem__(indices)
         if isinstance(item, list):
             return self.__class__(item)
@@ -74,7 +79,7 @@ class Population(list):
         """Append portfolio to the end of the population list."""
         super().append(self._validate_item(item))
 
-    def extend(self, other: BasePortfolio) -> None:
+    def extend(self, other: Iterable[BasePortfolio]) -> None:
         """Extend population list by appending elements from the iterable."""
         if isinstance(other, type(self)):
             super().extend(other)
@@ -327,19 +332,12 @@ class Population(list):
         if isinstance(tags, str):
             tags = [tags]
 
-        if tags is None:
-            return self.__class__(
-                [portfolio for portfolio in self if portfolio.name in names]
-            )
-        if names is None:
-            return self.__class__(
-                [portfolio for portfolio in self if portfolio.tag in tags]
-            )
         return self.__class__(
             [
                 portfolio
                 for portfolio in self
-                if portfolio.name in names and portfolio.tag in tags
+                if (names is None or portfolio.name in names)
+                and (tags is None or portfolio.tag in tags)
             ]
         )
 
@@ -379,7 +377,7 @@ class Population(list):
         value : float
             The mean of portfolios measures.
         """
-        return np.nanmean(self.measures(measure=measure), axis=0)
+        return float(np.nanmean(self.measures(measure=measure), axis=0))
 
     def measures_std(
         self,
@@ -398,7 +396,7 @@ class Population(list):
         value : float
             The standard-deviation of portfolios measures.
         """
-        return np.nanstd(self.measures(measure=measure), axis=0)
+        return float(np.nanstd(self.measures(measure=measure), axis=0))
 
     def sort_measure(self, measure: skt.Measure, reverse: bool = False) -> Population:
         """Sort the population by a given portfolio measure.
