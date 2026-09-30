@@ -155,6 +155,33 @@ class TestBaseCovarianceMethods:
         assert np.all(distances >= 0)
         assert np.all(np.isfinite(distances))
 
+    @pytest.mark.parametrize(
+        "estimator_class",
+        [EmpiricalCovariance, LedoitWolf, OAS, ShrunkCovariance, GraphicalLassoCV],
+    )
+    @pytest.mark.parametrize("single_observation", [False, True])
+    def test_mahalanobis_input_keywords(self, estimator_class, single_observation):
+        X = np.random.default_rng(0).normal(size=(100, 3))
+        model = estimator_class().fit(X)
+        X_test = X[0] if single_observation else X[:5]
+        expected = model.mahalanobis(X_test)
+
+        np.testing.assert_array_equal(model.mahalanobis(X=X_test), expected)
+        with pytest.warns(FutureWarning, match="`X_test` is deprecated"):
+            distances = model.mahalanobis(X_test=X_test)
+        np.testing.assert_array_equal(distances, expected)
+
+    def test_mahalanobis_conflicting_input_keywords(self):
+        X = np.random.default_rng(0).normal(size=(30, 3))
+        model = EmpiricalCovariance().fit(X)
+        with pytest.raises(ValueError, match="pass only `X`"):
+            model.mahalanobis(X=X, X_test=X)
+
+    def test_mahalanobis_missing_input(self):
+        model = EmpiricalCovariance().fit(np.random.default_rng(0).normal(size=(30, 3)))
+        with pytest.raises(TypeError, match="`X`"):
+            model.mahalanobis()
+
     def test_mahalanobis_single_observation(self, X):
         """Test mahalanobis with a single observation returns scalar."""
         model = EmpiricalCovariance()
@@ -174,7 +201,7 @@ class TestBaseCovarianceMethods:
 
         reordered = X[X.columns[::-1]]
         with pytest.raises(ValueError, match="feature names"):
-            model.mahalanobis(reordered)
+            model.mahalanobis(X=reordered)
 
     def test_mahalanobis_chi_squared_distribution(self, X):
         """Test that mahalanobis distances follow chi-squared distribution."""
@@ -2952,7 +2979,7 @@ class TestBaseCovarianceEdgeCases:
         X_test = np.full((2, X_small.shape[1]), np.nan)
         with pytest.raises(
             ValueError,
-            match="X_test has no row with any finite retained observation",
+            match="X has no row with any finite retained observation",
         ):
             model.mahalanobis(X_test)
 
