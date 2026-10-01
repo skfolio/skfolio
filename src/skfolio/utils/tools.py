@@ -373,7 +373,7 @@ def args_names(func: FunctionType | MethodType) -> list[str]:
     ]
 
 
-def _is_real_number(value: object) -> TypeGuard[float]:
+def _is_real_number(value: object) -> TypeGuard[Real]:
     """Return True for real-valued numbers, excluding booleans.
 
     Accepts Python and NumPy real numeric types, such as `int`, `float`, `np.integer`
@@ -392,7 +392,7 @@ def _is_real_number(value: object) -> TypeGuard[float]:
     return isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
 
 
-def _is_integer_number(value: object) -> TypeGuard[int]:
+def _is_integer_number(value: object) -> TypeGuard[Integral]:
     """Return True for integer-valued numbers, excluding booleans.
 
     Accepts Python and NumPy integer scalar types, such as `int` and `np.integer`.
@@ -459,7 +459,8 @@ def _validate_non_negative_integer(value: object, name: str) -> None:
 
 def _validate_unit_interval(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite real number in [0, 1]."""
-    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
+    # ty cannot resolve the reflected comparison between int and numbers.Real.
+    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:  # ty: ignore[unsupported-operator]
         raise ValueError(
             f"{name} must be a finite number between 0 and 1, got {value!r}"
         )

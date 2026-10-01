@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, overload
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -1043,23 +1043,6 @@ class Portfolio(BasePortfolio):
             The Portfolio variance from the assets covariance.
         """
         return float(self.weights @ assets_covariance @ self.weights.T)
-
-    @overload
-    def contribution(  # numpydoc ignore=GL08
-        self,
-        measure: skt.Measure,
-        spacing: float | None = None,
-        to_df: Literal[False] = False,
-    ) -> FloatArray: ...
-
-    @overload
-    def contribution(  # numpydoc ignore=GL08
-        self,
-        measure: skt.Measure,
-        spacing: float | None = None,
-        *,
-        to_df: Literal[True],
-    ) -> pd.DataFrame: ...
 
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = False
