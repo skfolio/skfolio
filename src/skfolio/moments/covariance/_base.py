@@ -224,7 +224,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         X: ArrayLike | None = None,
         *,
         X_test: ArrayLike | None = None,
-    ) -> FloatArray:
+    ) -> FloatArray | float:
         r"""Compute the squared Mahalanobis distance of observations.
 
         The squared Mahalanobis distance of an observation :math:`r` is defined as:
@@ -320,7 +320,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             covariance = self.covariance_
         if np.isfinite(X).all():
             distances = squared_mahalanobis_dist(X, covariance, mean=mean)
-            return float(distances[0]) if is_1d else distances
+            return float(distances[0]) if is_1d else distances  # ty: ignore[not-subscriptable]
 
         distances = _mahalanobis_observed_subspaces(X, covariance, mean)
         if np.all(np.isnan(distances)):

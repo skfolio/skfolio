@@ -348,7 +348,7 @@ def realized_factor_attribution(
 
     if idio_variances is not None:
         regression_weights, idio_variances = _prepare_uncertainty_inputs(
-            regression_weights=regression_weights,
+            regression_weights=regression_weights,  # ty: ignore[invalid-argument-type]
             idio_variances=idio_variances,
             inactive_mask=inactive_mask,
         )
@@ -613,7 +613,7 @@ def rolling_realized_factor_attribution(
 
     if idio_variances is not None:
         regression_weights, idio_variances = _prepare_uncertainty_inputs(
-            regression_weights=regression_weights,
+            regression_weights=regression_weights,  # ty: ignore[invalid-argument-type]
             idio_variances=idio_variances,
             inactive_mask=inactive_mask,
         )
@@ -664,7 +664,7 @@ def rolling_realized_factor_attribution(
             regression_weights=(
                 regression_weights[start:end] if has_uncertainty else None
             ),
-            idio_variances=(idio_variances[start:end] if has_uncertainty else None),
+            idio_variances=(idio_variances[start:end] if has_uncertainty else None),  # ty: ignore[not-subscriptable]
             family_constraint_basis=(
                 family_constraint_basis[start:end]
                 if family_constraint_basis is not None

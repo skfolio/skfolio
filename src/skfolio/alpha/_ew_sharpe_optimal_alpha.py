@@ -20,7 +20,7 @@ from skfolio._constants import (
 )
 from skfolio.alpha import ForecastUnit
 from skfolio.alpha._base import BaseAlpha, BaseAlphaDescriptorComposition
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.descriptor import BaseDescriptor
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import _forward_mean_return, safe_divide
@@ -466,7 +466,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             Historical alpha forecasts for the input panel.
         """
         self._reset()
-        return self._fit(X, y, method="fit", transform=True, **fit_params)
+        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
 
     def partial_fit(
         self, X: AssetPanel, y: None = None, **fit_params: Any
@@ -520,7 +520,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         alphas : ndarray of shape (n_observations, n_assets)
             Historical alpha forecasts for the new observations.
         """
-        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)
+        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
 
     def _fit(
         self,
@@ -592,9 +592,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 combined_obs_idx = n_buffered_obs + forecast_idx
                 coef_idx = combined_obs_idx - self._target_gap
                 if 0 <= coef_idx < n_trainable_obs:
-                    historical_alphas[forecast_idx] = self._compute_alpha(
+                    historical_alphas[forecast_idx] = self._compute_alpha(  # ty: ignore[invalid-assignment]
                         scores=X[_DESCRIPTOR_SCORES][combined_obs_idx],
-                        coefficient=historical_coefficients[coef_idx],
+                        coefficient=historical_coefficients[coef_idx],  # ty: ignore[not-subscriptable]
                         idio_variances=X[_IDIO_VARIANCES][combined_obs_idx],
                     )
 
@@ -611,7 +611,10 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         return historical_alphas
 
     def _update_ewls(
-        self, X: AssetPanel, forward_returns: FloatArray, return_historical: bool
+        self,
+        X: AssetPanel | AssetPanelView,
+        forward_returns: FloatArray,
+        return_historical: bool,
     ) -> FloatArray | None:
         """Update EWLS normal equations and optionally return coefficient history."""
         idio_variances = X[_IDIO_VARIANCES]
@@ -650,7 +653,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                     weights=weights[t, valid_t],
                 )
             if return_historical and coefficient is not None:
-                historical_coefficients[t] = coefficient
+                historical_coefficients[t] = coefficient  # ty: ignore[invalid-assignment]
 
         return historical_coefficients
 

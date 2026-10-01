@@ -217,7 +217,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
     """
 
     cv_results_: dict[str, FloatArray]
-    best_estimator_: skb.BaseEstimator
+    best_estimator_: Any
     best_score_: float
     best_params_: dict
     best_index_: int
@@ -269,7 +269,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         """Return the metric name used to select the best candidate."""
         if not self.multimetric_:
             return "score"
-        _check_refit_for_multimetric(self.refit, self.scoring)
+        _check_refit_for_multimetric(self.refit, self.scoring)  # ty: ignore[invalid-argument-type]
         if isinstance(self.refit, str):
             return self.refit
         return None
@@ -365,7 +365,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         }
 
         if self.multimetric_:
-            for name in self.scoring:
+            for name in self.scoring:  # ty: ignore[not-iterable]
                 scores = np.asarray(
                     [res["score"][name] for res in results],
                     dtype=np.float64,
@@ -1131,9 +1131,10 @@ def _select_best_index(
         best_index = refit(cv_results)
         if not isinstance(best_index, numbers.Integral):
             raise TypeError("best_index_ returned is not an integer")
+        best_index = int(best_index)
         if best_index < 0 or best_index >= len(cv_results["params"]):
             raise IndexError("best_index_ index out of range")
-        return int(best_index)
+        return best_index
     rank_key = "rank" if refit_metric == "score" else f"rank_{refit_metric}"
     return int(cv_results[rank_key].argmin())
 

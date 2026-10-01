@@ -124,7 +124,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         logprob : float
             The total log-likelihood (sum of log-pdf values).
         """
-        return np.sum(self.score_samples(X))
+        return float(np.sum(self.score_samples(X)))
 
     def aic(self, X: ArrayLike) -> float:
         r"""Compute the Akaike Information Criterion (AIC) for the model given data X.

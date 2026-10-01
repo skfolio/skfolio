@@ -304,18 +304,18 @@ class TimeSeriesFactorModel(BasePrior):
             returns=returns,
             sample_weight=factor_return_dist.sample_weight,
             factor_model=FactorModel(
-                observations=observations,
+                observations=observations,  # ty: ignore[invalid-argument-type]
                 asset_names=getattr(
                     self, "feature_names_in_", default_asset_names(n_assets)
                 ),
-                factor_names=factor_names,
+                factor_names=factor_names,  # ty: ignore[invalid-argument-type]
                 factor_families=factor_families,
                 loading_matrix=loading_matrix,
                 exposures=None,
                 factor_covariance=factor_return_dist.covariance,
                 factor_mu=factor_return_dist.mu,
                 factor_returns=factors,
-                idio_covariance=idio_var,
+                idio_covariance=idio_var,  # ty: ignore[invalid-argument-type]
                 idio_variances=None,
                 idio_mu=None,
                 idio_returns=idio_returns,

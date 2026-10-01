@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import numbers
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -295,7 +296,7 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
 
     def _clean_input(
         self,
-        value: float | dict | FloatArray | list,
+        value: skt.MultiInput | None,
         n_assets: int,
         fill_value: float,
         name: str,
@@ -326,8 +327,8 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         """
         if value is None:
             raise ValueError("Cannot convert None to array")
-        if np.isscalar(value):
-            return value * np.ones(n_assets)
+        if isinstance(value, numbers.Real):
+            return np.full(n_assets, float(value))
         return input_to_array(
             items=value,
             n_assets=n_assets,

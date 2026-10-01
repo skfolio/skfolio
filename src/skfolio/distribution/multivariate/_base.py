@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import sklearn.utils as sku
 
 from skfolio.distribution._base import BaseDistribution
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseMultivariateDist(BaseDistribution, ABC):
@@ -28,6 +28,8 @@ class BaseMultivariateDist(BaseDistribution, ABC):
         Seed or random state to ensure reproducibility.
     """
 
+    n_features_in_: int
+    feature_names_in_: StrArray
     # Used for AIC and BIC
     _n_params: int
 
@@ -86,7 +88,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     def sample(
         self,
         n_samples: int = 1,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
     ) -> FloatArray:
         """Generate random samples from the distribution model.
@@ -126,7 +128,7 @@ class BaseMultivariateDist(BaseDistribution, ABC):
     def plot_scatter_matrix(
         self,
         X: ArrayLike | None = None,
-        conditioning: dict[int | str : float | tuple[float, float] | ArrayLike]
+        conditioning: dict[int | str, float | tuple[float, float] | ArrayLike]
         | None = None,
         n_samples: int = 1000,
         title: str = "Scatter Matrix",

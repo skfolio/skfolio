@@ -390,7 +390,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -522,11 +522,11 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
         for i in range(n_observations):
             constraints.append(
-                cp.norm(-u[i] - a1 * w, np.inf) * self._scale_constraints
+                cp.norm(-u[i] - a1 * w, "inf") * self._scale_constraints
                 <= lb * self._scale_constraints
             )
             constraints.append(
-                cp.norm(-v[i] - a2 * w, np.inf) * self._scale_constraints
+                cp.norm(-v[i] - a2 * w, "inf") * self._scale_constraints
                 <= lb * self._scale_constraints
             )
 

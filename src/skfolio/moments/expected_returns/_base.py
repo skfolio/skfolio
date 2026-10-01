@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 
 import sklearn.base as skb
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseMu(skb.BaseEstimator, ABC):
@@ -27,6 +27,8 @@ class BaseMu(skb.BaseEstimator, ABC):
     """
 
     mu_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
     @abstractmethod
     def __init__(self) -> None: ...

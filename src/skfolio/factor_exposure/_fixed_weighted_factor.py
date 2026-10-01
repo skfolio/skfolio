@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import sklearn as sk
@@ -143,8 +143,8 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
 
     descriptors_: list[BaseDescriptor]
     named_descriptors_: dict[str, BaseDescriptor]
-    outlier_transformer_: skt.CSTransformer
-    scoring_transformer_: skt.CSTransformer
+    outlier_transformer_: BaseCSTransformer | Literal["passthrough"]
+    scoring_transformer_: BaseCSTransformer | Literal["passthrough"]
 
     def __init__(
         self,
@@ -297,9 +297,9 @@ class FixedWeightedFactor(BaseFactorExposure, BaseDescriptorComposition):
             np.multiply(score, weight, out=contribution, where=valid)
             np.add(weighted_scores, contribution, out=weighted_scores, where=valid)
 
-        scores = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
-        scores[w_sum < self.min_coverage] = np.nan
-        return scores
+        composite = safe_divide(weighted_scores, w_sum, fill_value=np.nan)
+        composite[w_sum < self.min_coverage] = np.nan
+        return composite
 
     def _reset(self) -> None:
         """Reset fitted descriptor state."""

@@ -35,3 +35,12 @@ repos:
         language: unsupported
         types_or: [python, pyi]
         require_serial: true
+      # ty type checks all of `src`, so it runs once per commit rather than per
+      # staged file. CI runs the latest ty release in the type check job.
+      - id: ty
+        name: ty
+        entry: uv run ty check
+        language: unsupported
+        files: ^(src/.*\.pyi?|pyproject\.toml)$
+        pass_filenames: false
+        require_serial: true

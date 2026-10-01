@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -14,7 +15,7 @@ from skfolio.typing import ObjArray, StrArray
 
 
 def _factor_name_maps(
-    factor_names: ObjArray, factor_families: ObjArray | None = None
+    factor_names: Iterable[str], factor_families: Iterable[str] | None = None
 ) -> tuple[dict[str, int], dict[str, list[int]]]:
     """Build lookup maps for factor names and factor families.
 
@@ -162,9 +163,6 @@ def _resolve_factor_subset(
     """
     factor_names = np.asarray(factor_names, dtype=str)
     all_names = factor_names.tolist()
-    if factor_names_to_keep is None and family_names_to_keep is None:
-        return slice(None), all_names
-
     if factor_names_to_keep is not None:
         missing = set(factor_names_to_keep) - set(all_names)
         if missing:
@@ -175,6 +173,9 @@ def _resolve_factor_subset(
             [all_names.index(factor) for factor in factor_names_to_keep],
             list(factor_names_to_keep),
         )
+
+    if family_names_to_keep is None:
+        return slice(None), all_names
 
     if factor_families is None:
         raise ValueError(

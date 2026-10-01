@@ -264,7 +264,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         """Identify training and test folds for each combinations by assigning `0` to
         training folds and `1` to test folds.
         """
-        folds_train_test = np.zeros((self.n_folds, self.n_splits))
+        folds_train_test = np.zeros((self.n_folds, self.n_splits), dtype=int)
         folds_train_test[
             self.test_set_index, np.arange(self.n_splits)[:, np.newaxis]
         ] = 1
@@ -353,7 +353,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         fold_index_num = np.arange(n_samples) // (n_samples // self.n_folds)
         fold_index_num[fold_index_num == self.n_folds] = self.n_folds - 1
 
-        index_train_test = np.zeros((n_samples, self.n_splits))
+        index_train_test = np.zeros((n_samples, self.n_splits), dtype=int)
         for i in range(self.n_splits):
             index_train_test[
                 np.argwhere([fold_index_num == j for j in test_set_index[i]])[:, 1], i
@@ -382,7 +382,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         }
         for i in range(self.n_splits):
             train_index = np.argwhere(index_train_test[:, i] == 0).reshape(-1)
-            test_index_list = [
+            test_index_list: list[IntArray] = [
                 fold_index[fold_id] for fold_id, _ in np.argwhere(recombine_paths == i)
             ]
             yield train_index, test_index_list
@@ -402,7 +402,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
             purge size, embargo size, average training size, number of test paths
             and number of training combinations.
         """
-        n_observations = X.shape[0]
+        n_observations = np.shape(X)[0]
         avg_train_size = _avg_train_size(
             n_observations=n_observations,
             n_folds=self.n_folds,
@@ -458,7 +458,7 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
         training, `1` to test and `-1` to both purge and embargo indices.
         """
         next(self.split(X))
-        n_samples = X.shape[0]
+        n_samples = np.shape(X)[0]
         cond = [
             self.index_train_test_ == -1,
             self.index_train_test_ == 0,

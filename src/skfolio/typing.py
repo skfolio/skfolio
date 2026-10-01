@@ -29,6 +29,7 @@ __all__ = [
     "ArrayLike",
     "BoolArray",
     "CSTransformer",
+    "ConstraintFunction",
     "CvxMeasure",
     "ExpressionFunction",
     "Factor",
@@ -75,8 +76,14 @@ Target = float | FloatArray
 ParametersValues = list[tuple[cp.Parameter, float | FloatArray]]
 Factor = cp.Variable | cp.Constant
 Result = FloatArray | tuple[float | tuple[float, float] | FloatArray, FloatArray]
-RiskResult = tuple[cp.Expression | cp.Variable, list[cp.Expression | cp.SOC | cp.PSD]]
-ExpressionFunction = Callable[[cp.Variable, Any], cp.Expression]
+RiskResult = tuple[cp.Expression, list[cp.Constraint]]
+ExpressionFunction = (
+    Callable[[cp.Variable], cp.Expression] | Callable[[cp.Variable, Any], cp.Expression]
+)
+ConstraintFunction = (
+    Callable[[cp.Variable], cp.Constraint | list[cp.Constraint]]
+    | Callable[[cp.Variable, Any], cp.Constraint | list[cp.Constraint]]
+)
 Figure = go.Figure
 Names = str | list[str]
 Tags = str | list[str]

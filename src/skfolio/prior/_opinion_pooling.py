@@ -269,15 +269,17 @@ class OpinionPooling(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.estimators))
 
-    def _validate_estimators(self) -> tuple[list[str], list[BasePrior]]:
+    def _validate_estimators(
+        self,
+    ) -> tuple[tuple[str, ...], tuple[BasePrior, ...]]:
         """Validate the `estimators` parameter.
 
         Returns
         -------
-        names : list[str]
-            The list of estimators names.
-        estimators : list[BaseOptimization
-            The list of optimization estimators.
+        names : tuple of str
+            The estimators names.
+        estimators : tuple of BasePrior
+            The prior estimators.
         """
         if self.estimators is None or len(self.estimators) == 0:
             raise ValueError(
@@ -459,7 +461,7 @@ class OpinionPooling(BasePrior, BaseComposition):
 
         self.opinion_probabilities_ = opinion_probabilities
         self.return_distribution_ = ReturnDistribution(
-            mu=sm.mean(returns, sample_weight=sample_weight),
+            mu=sm.mean(returns, sample_weight=sample_weight),  # ty: ignore[invalid-argument-type]
             covariance=np.cov(returns, rowvar=False, aweights=sample_weight),
             returns=returns,
             sample_weight=sample_weight,

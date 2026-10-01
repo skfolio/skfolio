@@ -302,7 +302,7 @@ def _group_key_midrank_percentile(
         np.int64
     )
 
-    stride = int(dense_rank.max()) + 2
+    stride = int(np.max(dense_rank)) + 2
     sorted_composite_keys = sorted_group_keys * stride + sorted_rank
     finite_composite_keys = finite_group_keys.astype(np.int64) * stride + finite_rank
 
