@@ -2,6 +2,30 @@
 
 <!-- version list -->
 
+## v1.4.11 (2026-10-03)
+
+### Bug Fixes
+
+- **optimization**: Correct BenchmarkTracker partial_fit
+  ([`918d77b`](https://github.com/skfolio/skfolio/commit/918d77b51dcb5debe0a639818d462cb1c5042420))
+
+- **optimization**: Correct MaximumDiversification partial_fit
+  ([`0e64bef`](https://github.com/skfolio/skfolio/commit/0e64bef929e7848a19bd831e57b7a1cb324efac8))
+
+- **optimization**: Prevent duplicate fallbacks in nested fit calls
+  ([`acd204d`](https://github.com/skfolio/skfolio/commit/acd204dca6315a9df2ed24227c1b140a81e37c19))
+
+### Continuous Integration
+
+- Enforce type checking with ty ([#364](https://github.com/skfolio/skfolio/pull/364),
+  [`5b657bd`](https://github.com/skfolio/skfolio/commit/5b657bda012deb44dedaaf1880fa2e69eb7cba1d))
+
+### Documentation
+
+- **optimization**: Clarify online failure handling and restarts
+  ([`d62d5a8`](https://github.com/skfolio/skfolio/commit/d62d5a82897ee54b063e78f7ed8f22efe552cc0c))
+
+
 ## v1.4.10 (2026-09-30)
 
 ### Bug Fixes
