@@ -3,11 +3,122 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn import config_context
+from sklearn import clone, config_context
 
 from skfolio.measures import RiskMeasure
+from skfolio.moments import EWCovariance, EWMu
 from skfolio.optimization import BenchmarkTracker, MeanRisk, ObjectiveFunction
-from skfolio.prior import TimeSeriesFactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
+
+
+@pytest.mark.parametrize("first_method", ["fit", "partial_fit"])
+@pytest.mark.parametrize("target_format", ["array", "column", "series", "dataframe"])
+def test_partial_fit_matches_benchmark_excess_returns(first_method, target_format):
+    rng = np.random.default_rng(17)
+    X = pd.DataFrame(rng.normal(0, 0.01, (120, 4)), columns=list("ABCD"))
+    y = rng.normal(0, 0.01, 120)
+    excess_returns = X.subtract(y, axis=0)
+    if target_format == "column":
+        y = y[:, None]
+    elif target_format == "series":
+        y = pd.Series(y)
+    elif target_format == "dataframe":
+        y = pd.DataFrame(y)
+    prior = EmpiricalPrior(mu_estimator=EWMu(), covariance_estimator=EWCovariance())
+    model = BenchmarkTracker(prior_estimator=prior)
+    reference = MeanRisk(
+        prior_estimator=clone(prior), risk_measure=RiskMeasure.STANDARD_DEVIATION
+    )
+    getattr(model, first_method)(X[:60], y[:60])
+    getattr(reference, first_method)(excess_returns[:60])
+    fitted_prior = model.prior_estimator_
+    model.partial_fit(X[60:], y[60:])
+    reference.partial_fit(excess_returns[60:])
+    assert model.prior_estimator_ is fitted_prior
+    np.testing.assert_array_equal(
+        fitted_prior.return_distribution_.returns, excess_returns
+    )
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-8)
+
+
+@pytest.mark.parametrize("invalid", ["missing_y", "length", "budget", "schema"])
+def test_partial_fit_rejects_invalid_benchmark_input_before_learning(invalid):
+    rng = np.random.default_rng(17)
+    X = pd.DataFrame(rng.normal(0, 0.01, (60, 4)), columns=list("ABCD"))
+    y = rng.normal(0, 0.01, 60)
+    model = BenchmarkTracker(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(), covariance_estimator=EWCovariance()
+        )
+    ).partial_fit(X, y)
+    distribution = model.prior_estimator_.return_distribution_
+    weights = model.weights_.copy()
+    if invalid == "missing_y":
+        y = None
+    elif invalid == "length":
+        y = y[:-1]
+    elif invalid == "budget":
+        model.budget = 0.5
+    else:
+        X = X.iloc[:, ::-1]
+    with pytest.raises(ValueError):
+        model.partial_fit(X, y)
+    assert model.prior_estimator_.return_distribution_ is distribution
+    np.testing.assert_array_equal(model.weights_, weights)
+    np.testing.assert_array_equal(model.feature_names_in_, list("ABCD"))
+    assert model.error_ is None
+
+
+@pytest.mark.parametrize("first_method", ["fit", "partial_fit"])
+def test_benchmark_tracker_dataframe_protocol(first_method):
+    class ProtocolFrame:
+        def __init__(self, frame):
+            self.frame = frame
+
+        def __dataframe__(self):
+            return self
+
+        def column_names(self):
+            return self.frame.columns
+
+        def __array__(self, dtype=None, copy=None):
+            return self.frame.to_numpy(dtype=dtype, copy=copy or False)
+
+    rng = np.random.default_rng(17)
+    X = pd.DataFrame(rng.normal(0, 0.01, (120, 4)), columns=list("ABCD"))
+    y = rng.normal(0, 0.01, 120)
+    model = BenchmarkTracker(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(), covariance_estimator=EWCovariance()
+        ),
+        max_weights={"A": 0.1},
+    )
+    getattr(model, first_method)(ProtocolFrame(X[:60]), y[:60])
+    model.partial_fit(ProtocolFrame(X[60:]), y[60:])
+
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    assert model.weights_[0] <= 0.1 + 1e-6
+    distribution = model.prior_estimator_.return_distribution_
+    np.testing.assert_array_equal(distribution.returns, X.subtract(y, axis=0))
+
+    weights = model.weights_.copy()
+    with pytest.raises(ValueError, match="feature names"):
+        model.partial_fit(ProtocolFrame(X.iloc[:, ::-1]), y)
+    assert model.prior_estimator_.return_distribution_ is distribution
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+    np.testing.assert_array_equal(model.weights_, weights)
+
+
+def test_benchmark_tracker_fallback_receives_original_returns():
+    rng = np.random.default_rng(17)
+    X = pd.DataFrame(rng.normal(0, 0.01, (60, 4)), columns=list("ABCD"))
+    y = rng.normal(0, 0.01, 60)
+    model = BenchmarkTracker(min_weights=1.0, fallback=MeanRisk()).fit(X, y)
+    assert isinstance(model.fallback_, MeanRisk)
+    np.testing.assert_array_equal(
+        model.fallback_.prior_estimator_.return_distribution_.returns, X
+    )
 
 
 @pytest.fixture
