@@ -80,6 +80,11 @@ class CustomOptimizationWithoutFallback(BaseOptimization):
         return self
 
 
+class DelegatingOptimization(CustomOptimization):
+    def fit(self, X, y=None, **fit_params):
+        return super().fit(X, y, **fit_params)
+
+
 class OptimizationFailingBeforeValidation(CustomOptimization):
     def fit(self, X, y=None):
         raise RuntimeError("Failure before input validation")
@@ -861,6 +866,71 @@ def test_subclass_without_fit_keeps_parent_wrapped_fit():
     assert ChildWithoutFit.fit is CustomOptimization.fit
     assert ChildReusingWrappedFit.fit is CustomOptimization.fit
     assert ChildWithoutFit.fit._fallback_wrapped is True
+
+
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_super_fit_attempts_fallback_once_per_call(X, raise_on_failure):
+    attempts = []
+
+    class FailingFallback(BaseOptimization):
+        def fit(self, X, y=None):
+            attempts.append(X)
+            raise RuntimeError("Fallback failed")
+
+    model = DelegatingOptimization(
+        fail=True, fallback=FailingFallback(), raise_on_failure=raise_on_failure
+    )
+    for n_calls in (1, 2):
+        if raise_on_failure:
+            with pytest.raises(RuntimeError, match="Fallback failed"):
+                model.fit(X)
+        else:
+            with pytest.warns(UserWarning, match="Fallback failed"):
+                assert model.fit(X) is model
+            assert model.weights_ is None
+
+        assert len(attempts) == n_calls
+        assert model.fallback_chain_ == [
+            (str(model), "CustomOptimization forced failure"),
+            ("FailingFallback()", "Fallback failed"),
+        ]
+        assert model.error_ == "Fallback failed"
+
+
+@pytest.mark.parametrize("initial_failure", [False, True])
+def test_super_fit_after_success_can_use_fallback(X, initial_failure):
+    model = DelegatingOptimization(fail=initial_failure, fallback=EqualWeighted()).fit(
+        X
+    )
+
+    model.set_params(fail=True)
+    assert model.fit(X) is model
+    assert isinstance(model.fallback_, EqualWeighted)
+    np.testing.assert_allclose(model.weights_, 1 / X.shape[1])
+    assert model.error_ is None
+
+
+def test_super_fit_fallback_receives_original_inputs(X):
+    class TransformingOptimization(CustomOptimization):
+        def fit(self, X, y=None):
+            return super().fit(X * 2, y * 2)
+
+    class RecordingFallback(CustomOptimization):
+        def fit(self, X, y=None):
+            self.input_X_ = X
+            self.input_y_ = y
+            return super().fit(X, y)
+
+    y = np.arange(len(X), dtype=float)
+    model = TransformingOptimization(
+        fail=True,
+        fallback=RecordingFallback(fail=True, fallback=EqualWeighted()),
+    ).fit(X, y)
+
+    assert model.fallback_.input_X_ is X
+    assert model.fallback_.input_y_ is y
+    assert isinstance(model.fallback_.fallback_, EqualWeighted)
+    assert model.error_ is None
 
 
 def test_fallback_empty_list_raises_primary_error(X):

@@ -120,6 +120,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
     error_: str | list[str | None] | None
+    _fit_in_progress: bool
 
     def __init__(
         self,
@@ -149,10 +150,18 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             **fit_params: Any,
         ) -> BaseOptimization:
             """Run `original_fit` and try the fallback chain if it fails."""
+            # Both subclass and parent fit methods are wrapped. Calls to
+            # super().fit() skip the parent's fallback handling so the outermost
+            # wrapper runs the fallback chain once, using the original inputs.
+            if getattr(self, "_fit_in_progress", False):
+                original_fit(self, X, y, **fit_params)
+                return self
+
             self.fallback_ = None
             self.fallback_chain_ = None
             self.error_ = None
 
+            self._fit_in_progress = True
             try:
                 original_fit(self, X, y, **fit_params)
             except Exception as primary_error:
@@ -173,6 +182,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                         stacklevel=2,
                     )
                     self.weights_ = None
+            finally:
+                del self._fit_in_progress
             return self
 
         _wrapped_fit._fallback_wrapped = True  # ty: ignore[unresolved-attribute]
