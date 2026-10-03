@@ -101,16 +101,28 @@ uv run ruff check --fix
 uv run ruff format
 ```
 
-The commit hook runs the same Ruff commands on staged files, checks that every
-module, class and function in `src` has a docstring, and checks YAML syntax and file
-endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
+The commit hook runs the same Ruff commands on staged files, type checks `src` with
+ty, checks that every module, class and function in `src` has a docstring, and checks
+YAML syntax and file endings. To run it on all files, as CI does, use `uv run pre-commit run --all-files`.
+
+Type check `src` with [ty](https://docs.astral.sh/ty/). Warnings also fail the check:
+
+```shell
+uv run ty check
+```
+
+Fix diagnostics that reveal a bug or a wrong annotation. When ty cannot follow code
+that is already correct, add a `# ty: ignore[<rule>]` comment on the reported line
+rather than adding checks or restructuring the code only to satisfy the checker.
+Unused ignore comments also fail the check.
 
 ### Dependency versions
 
 skfolio is a library that supports the dependency versions allowed by
 `pyproject.toml`, so `uv.lock` is not committed. CI tests this range, from the
-minimum supported versions to the latest releases, and lints with the latest Ruff
-release.
+minimum supported versions to the latest releases, lints with the latest Ruff
+release and type checks with the latest ty release. ty is in beta, so a new ty
+release can report diagnostics on code that has not changed.
 
 `uv sync` keeps the versions recorded in your local `uv.lock`. If CI reports a
 failure that you cannot reproduce locally, update your environment to the latest

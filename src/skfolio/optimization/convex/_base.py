@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from enum import auto
-from typing import Any
+from typing import Any, TypeVar
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
@@ -44,6 +45,8 @@ from skfolio.utils.tools import (
 )
 
 INSTALLED_SOLVERS = cp.installed_solvers()
+
+_ResultT = TypeVar("_ResultT")
 
 
 class ObjectiveFunction(AutoEnum):
@@ -579,7 +582,7 @@ class ConvexOptimization(BaseOptimization, ABC):
     _cvx_cache: dict
 
     problem_: cp.Problem
-    problem_values_: dict[str, float] | list[dict[str, float]]
+    problem_values_: dict[str, float] | list[dict[str, float] | None] | None
     prior_estimator_: BasePrior
     mu_uncertainty_set_estimator_: BaseMuUncertaintySet
     covariance_uncertainty_set_estimator_: BaseCovarianceUncertaintySet
@@ -626,7 +629,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -687,8 +690,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         self._clear_models_cache()
 
     def _call_custom_func(
-        self, func: skt.ExpressionFunction, w: cp.Variable, name: str = "custom_func"
-    ) -> cp.Expression | list[cp.Expression]:
+        self,
+        func: Callable[..., _ResultT],
+        w: cp.Variable,
+        name: str = "custom_func",
+    ) -> _ResultT:
         """Call a user specific function, infer arguments and perform validation.
 
         Parameters
@@ -707,7 +713,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             Result of calling the custom function.
         """
         try:
-            func_code = func.__code__
+            func_code = func.__code__  # ty: ignore[unresolved-attribute]
         except AttributeError as err:
             raise ValueError("Custom functions is invalid") from err
 
@@ -827,8 +833,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         is_mip = (
             (self.cardinality is not None and self.cardinality < n_assets)
             or (self.group_cardinalities is not None)
-            or self.threshold_long is not None
-            or self.threshold_short is not None
+            or threshold_long is not None
+            or threshold_short is not None
         )
 
         if is_mip and self.solver not in MI_SOLVERS:
@@ -879,8 +885,8 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         w: cp.Variable,
         factor: skt.Factor,
-        min_weights: FloatArray | None,
-        max_weights: FloatArray | None,
+        min_weights: float | FloatArray | None,
+        max_weights: float | FloatArray | None,
         allow_negative_weights: bool,
     ) -> list[cpc.Constraint]:
         """Constrain individual asset weights and total long and short exposure.
@@ -963,10 +969,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         n_assets: int,
         w: cp.Variable,
         factor: skt.Factor,
-        min_weights: FloatArray | None,
-        max_weights: FloatArray | None,
-        threshold_long: FloatArray | None,
-        threshold_short: FloatArray | None,
+        min_weights: float | FloatArray | None,
+        max_weights: float | FloatArray | None,
+        threshold_long: float | FloatArray | None,
+        threshold_short: float | FloatArray | None,
         groups: AnyArray | None,
     ) -> list[cpc.Constraint]:
         """Build cardinality and position-threshold constraints.
@@ -975,13 +981,13 @@ class ConvexOptimization(BaseOptimization, ABC):
         assets. All-zero thresholds must be converted to `None`. The caller checks
         that the solver supports mixed-integer problems.
         """
-        is_short = np.any(min_weights < 0)
-
         if max_weights is None or min_weights is None:
             raise ValueError(
                 "'max_weights' and 'min_weights' must be provided with cardinality "
                 "constraint"
             )
+        is_short = np.any(min_weights < 0)
+
         if np.all(min_weights > 0):
             raise ValueError(
                 "Cardinality and Threshold constraint can only be applied "
@@ -995,11 +1001,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "also provide 'groups'"
             )
 
-        if (
-            self.threshold_long is not None
-            and self.threshold_short is None
-            and is_short
-        ):
+        if threshold_long is not None and threshold_short is None and is_short:
             raise ValueError(
                 "When 'threshold_long' is provided and 'min_weights' can be negative "
                 "(short positions are allowed), then 'threshold_short' must also be "
@@ -1012,7 +1014,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 "provided"
             )
 
-        if self.threshold_short is not None and is_short:
+        if threshold_short is not None and is_short:
             return _mip_weight_constraints_threshold_short(
                 n_assets=n_assets,
                 w=w,
@@ -1023,7 +1025,7 @@ class ConvexOptimization(BaseOptimization, ABC):
                 max_weights=max_weights,
                 groups=groups,
                 min_weights=min_weights,
-                threshold_long=threshold_long,
+                threshold_long=threshold_long,  # ty: ignore[invalid-argument-type]
                 threshold_short=threshold_short,
             )
 
@@ -1222,7 +1224,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             func=self.add_objective, w=w, name="add_objective"
         )
 
-    def _get_custom_constraints(self, w: cp.Variable) -> list[cp.Expression]:
+    def _get_custom_constraints(self, w: cp.Variable) -> list[cpc.Constraint]:
         """Return the list of CVXPY expressions evaluated by calling the
         `add_constraint`s function if provided, otherwise returns an empty list.
 
@@ -1267,7 +1269,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         problem: cp.Problem,
         w: cp.Variable,
         factor: skt.Factor,
-        parameters_values: skt.ParametersValues = None,
+        parameters_values: skt.ParametersValues | None = None,
         expressions: dict[str, cp.Expression] | None = None,
     ) -> None:
         """Solve the CVXPY Problem and save the results in `weights_`, `problem_values_`
@@ -1303,26 +1305,30 @@ class ConvexOptimization(BaseOptimization, ABC):
         if expressions is None:
             expressions = {}
 
-        n_optimizations = 1
-        if len(parameters_values) != 0:
-            # If the parameter value is a list, each element is the parameter value of
-            # a distinct optimization. Therefore, each list must have same length.
-            sizes = [len(v) for p, v in parameters_values if not np.isscalar(v)]
-            if not np.all(sizes):
-                raise ValueError(
-                    "All list elements from `parameters_values` should have same length"
-                )
-            if len(sizes) != 0:
-                n_optimizations = sizes[0]
-            # Scalar parameter values will be used in each optimization, therefore we
-            # transform them to a list.
-            parameters_values = [
-                (p, [v] * n_optimizations) if np.isscalar(v) else (p, v)
-                for p, v in parameters_values
-            ]
+        # If the parameter value is a list, each element is the parameter value of
+        # a distinct optimization. Therefore, each list must have same length.
+        values_by_parameter = [
+            (parameter, np.asarray(values, dtype=float))
+            for parameter, values in parameters_values
+        ]
+        sizes = [len(values) for _, values in values_by_parameter if values.ndim != 0]
+        if not np.all(sizes):
+            raise ValueError(
+                "All list elements from `parameters_values` should have same length"
+            )
+        n_optimizations = sizes[0] if sizes else 1
+        # Scalar parameter values will be used in each optimization, therefore we
+        # broadcast them.
+        values_by_parameter = [
+            (
+                parameter,
+                np.full(n_optimizations, values) if values.ndim == 0 else values,
+            )
+            for parameter, values in values_by_parameter
+        ]
 
         if n_optimizations == 1:
-            for parameter, values in parameters_values:
+            for parameter, values in values_by_parameter:
                 parameter.value = values[0]
 
             weights, self.problem_values_ = _solve(
@@ -1343,7 +1349,7 @@ class ConvexOptimization(BaseOptimization, ABC):
             with warnings.catch_warnings():
                 warnings.simplefilter("once", UserWarning)
                 for i in range(n_optimizations):
-                    for parameter, values in parameters_values:
+                    for parameter, values in values_by_parameter:
                         parameter.value = values[i]
 
                     try:
@@ -1403,8 +1409,10 @@ class ConvexOptimization(BaseOptimization, ABC):
         expression : cvxpy Expression
             The CVXPY Expression of the uncertainty set of expected returns.
         """
+        # cvxpy annotates `p` as int or str but accepts any float, including inf.
         return mu_uncertainty_set.radius * cp.pnorm(
-            mu_uncertainty_set.geometry.T @ w, mu_uncertainty_set.dual_norm
+            mu_uncertainty_set.geometry.T @ w,
+            mu_uncertainty_set.dual_norm,  # ty: ignore[invalid-argument-type]
         )
 
     @cache_method("_cvx_cache")
@@ -1578,7 +1586,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> cp.Expression:
         """Expression of the portfolio Minimum Acceptable Returns.
 
@@ -1601,10 +1609,9 @@ class ConvexOptimization(BaseOptimization, ABC):
         """
         if min_acceptable_return is None:
             min_acceptable_return = return_distribution.mu
-        if not np.isscalar(min_acceptable_return) and min_acceptable_return.shape != (
-            len(min_acceptable_return),
-            1,
-        ):
+        if isinstance(
+            min_acceptable_return, np.ndarray
+        ) and min_acceptable_return.shape != (len(min_acceptable_return), 1):
             min_acceptable_return = min_acceptable_return[np.newaxis, :]
         mar = (return_distribution.returns - min_acceptable_return) @ w
         return mar
@@ -1615,7 +1622,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return_distribution: ReturnDistribution,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Variable, list[cp.Expression]]:
+    ) -> tuple[cp.Variable, list[cpc.Constraint]]:
         """Expression of the portfolio drawdown.
 
         Parameters
@@ -1660,7 +1667,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         return_distribution: ReturnDistribution,
         w: cp.Variable,
         factor: skt.Factor,
-    ) -> tuple[cp.Variable, list[cp.Expression]]:
+    ) -> tuple[cp.Variable, list[cpc.Constraint]]:
         """Expression of the portfolio drawdown.
         Wrapper around __cvx_drawdown to avoid re-adding the constraints when they
         have already been included in the problem.
@@ -1940,10 +1947,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         z1 = cp.vstack([x, w_reshaped.T])
         z2 = cp.vstack([w_reshaped, factor_reshaped])
 
+        # cvxpy annotates `p` as int or str but accepts any float, including inf.
         risk = covariance_uncertainty_set.radius * cp.pnorm(
             covariance_uncertainty_set.geometry.T
             @ (cp.vec(x, order="F") + cp.vec(y, order="F")),
-            covariance_uncertainty_set.dual_norm,
+            covariance_uncertainty_set.dual_norm,  # ty: ignore[invalid-argument-type]
         ) + cp.trace(return_distribution.covariance @ (x + y))
         constraints = [
             cp.hstack([z1, z2]) * self._scale_constraints >> 0,
@@ -1955,7 +1963,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Variance risk measure.
 
@@ -2001,7 +2009,7 @@ class ConvexOptimization(BaseOptimization, ABC):
         self,
         return_distribution: ReturnDistribution,
         w: cp.Variable,
-        min_acceptable_return: skt.Target = None,
+        min_acceptable_return: skt.Target | None = None,
     ) -> skt.RiskResult:
         """Expression and Constraints of the Semi Standard Deviation risk measure.
 
@@ -2500,11 +2508,11 @@ def _mip_weight_constraints_no_short_threshold(
     scale_constraints: cp.Constant,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    max_weights: FloatArray | None,
-    groups: FloatArray | None,
-    min_weights: FloatArray | None,
-    threshold_long: FloatArray | None,
-) -> list[cp.Expression]:
+    max_weights: float | FloatArray,
+    groups: AnyArray | None,
+    min_weights: float | FloatArray,
+    threshold_long: float | FloatArray | None,
+) -> list[cpc.Constraint]:
     """
     Create a list of MIP constraints for cardinality and threshold conditions
     when no short threshold is present. This only requires the creation of a single
@@ -2573,14 +2581,14 @@ def _mip_weight_constraints_threshold_short(
     w: cp.Variable,
     factor: skt.Factor,
     scale_constraints: cp.Constant,
-    max_weights: FloatArray,
-    min_weights: FloatArray,
-    threshold_long: FloatArray,
-    threshold_short: FloatArray,
+    max_weights: float | FloatArray,
+    min_weights: float | FloatArray,
+    threshold_long: float | FloatArray,
+    threshold_short: float | FloatArray,
     cardinality: int | None,
     group_cardinalities: dict[str, int] | None,
-    groups: FloatArray | None,
-) -> list[cp.Expression]:
+    groups: AnyArray | None,
+) -> list[cpc.Constraint]:
     """
     Create a list of MIP constraints for cardinality and threshold constraints
     when a short threshold is allowed. This requires the creation of two boolean
@@ -2679,7 +2687,7 @@ def _solve(
 
         weights = w.value / factor.value
         problem_values = {
-            name: expression.value / factor.value
+            name: expression.value / factor.value  # ty: ignore[unsupported-operator]
             if name != "factor"
             else expression.value
             for name, expression in expressions.items()
@@ -2690,7 +2698,7 @@ def _solve(
             risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
             and "risk" in problem_values
         ):
-            problem_values["risk"] /= factor.value
+            problem_values["risk"] /= factor.value  # ty: ignore[unsupported-operator]
 
         weights = np.array(weights, dtype=float)
         if not problem.status == cp.OPTIMAL:
@@ -2699,7 +2707,7 @@ def _solve(
                 " scale. For more details, set `solver_params=dict(verbose=True)`",
                 stacklevel=2,
             )
-        return weights, problem_values
+        return weights, problem_values  # ty: ignore[invalid-return-type]
     except (cp.SolverError, sla.ArpackNoConvergence):
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:

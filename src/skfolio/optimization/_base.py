@@ -14,6 +14,7 @@ optimization algorithms in skfolio should inherit from.
 
 from __future__ import annotations
 
+import numbers
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -24,6 +25,7 @@ import numpy as np
 import pandas as pd
 import sklearn as sk
 import sklearn.base as skb
+import sklearn.utils.metadata_routing as skm
 from sklearn.utils.validation import check_is_fitted, validate_data
 
 import skfolio.typing as skt
@@ -38,7 +40,7 @@ from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.prior import ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, StrArray
-from skfolio.utils.tools import input_to_array
+from skfolio.utils.tools import _filter_supported_params, input_to_array
 
 
 class BaseOptimization(skb.BaseEstimator, ABC):
@@ -112,12 +114,13 @@ class BaseOptimization(skb.BaseEstimator, ABC):
     `__init__` (no `*args` or `**kwargs`), following scikit-learn conventions.
     """
 
-    weights_: FloatArray
+    weights_: FloatArray | None
     n_features_in_: int
     feature_names_in_: StrArray
     fallback_: BaseOptimization | Literal["previous_weights"] | None
     fallback_chain_: list[tuple[str, str]] | None
-    error_: str | list[str] | None
+    error_: str | list[str | None] | None
+    _fit_in_progress: bool
 
     def __init__(
         self,
@@ -147,10 +150,18 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             **fit_params: Any,
         ) -> BaseOptimization:
             """Run `original_fit` and try the fallback chain if it fails."""
+            # Both subclass and parent fit methods are wrapped. Calls to
+            # super().fit() skip the parent's fallback handling so the outermost
+            # wrapper runs the fallback chain once, using the original inputs.
+            if getattr(self, "_fit_in_progress", False):
+                original_fit(self, X, y, **fit_params)
+                return self
+
             self.fallback_ = None
             self.fallback_chain_ = None
             self.error_ = None
 
+            self._fit_in_progress = True
             try:
                 original_fit(self, X, y, **fit_params)
             except Exception as primary_error:
@@ -171,10 +182,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                         stacklevel=2,
                     )
                     self.weights_ = None
+            finally:
+                del self._fit_in_progress
             return self
 
-        _wrapped_fit._fallback_wrapped = True
-        cls.fit = _wrapped_fit
+        _wrapped_fit._fallback_wrapped = True  # ty: ignore[unresolved-attribute]
+        cls.fit = _wrapped_fit  # ty: ignore[invalid-assignment]
 
     def _run_fallback_chain(
         self,
@@ -197,7 +210,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             The exception raised by the primary estimator.
 
         **fit_params : dict
-            Additional keyword arguments forwarded to each fallback's `fit`.
+            Additional keyword arguments routed separately to each fallback's `fit`.
 
         Raises
         ------
@@ -212,8 +225,6 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # Log the primary error in fallback_chain_ only when fallbacks are provided
         self.fallback_chain_ = [(str(self), str(primary_error))]
 
-        n_assets = X.shape[1]
-
         if not isinstance(fallback, list | tuple):
             fallback = [fallback]
 
@@ -225,7 +236,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             try:
                 fb = _validate_fallback(fb)
                 if fb == _PREVIOUS_WEIGHTS:
-                    self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+                    self._fallback_to_previous_weights_or_raise(n_assets=np.shape(X)[1])
+                    self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
                     return
 
                 fb_est = sk.clone(fb)
@@ -243,11 +255,24 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                         )
                     fb_est.set_params(previous_weights=self.previous_weights)
 
-                fb_est.fit(X, y, **fit_params)
+                params = _fallback_fit_params(
+                    fb_est, fit_params, owner=self.__class__.__name__
+                )
+                fb_est.fit(X, y, **params)
+
+                # A fallback with raise_on_failure=False can return without weights.
+                if fb_est.weights_ is None:
+                    raise RuntimeError(
+                        fb_est.error_ or "Fallback estimator returned no weights."
+                    )
 
                 # Success: copy learned artifacts back to self
-                for name in ("weights_", "n_features_in_", "feature_names_in_"):
+                for name in ("weights_", "n_features_in_"):
                     setattr(self, name, getattr(fb_est, name))
+                if hasattr(fb_est, "feature_names_in_"):
+                    self.feature_names_in_ = fb_est.feature_names_in_
+                elif hasattr(self, "feature_names_in_"):
+                    del self.feature_names_in_
 
                 self.fallback_ = fb_est
                 self.fallback_chain_.append((str(fb_est), "success"))
@@ -273,23 +298,17 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         RuntimeError
             If `previous_weights` is `None` when the fallback is requested.
         """
-        try:
-            if self.previous_weights is None:
-                raise RuntimeError(
-                    "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
-                    "Provide valid previous weights or remove this fallback."
-                )
-            investable_mask = getattr(self, "investable_mask_", None)
-            if investable_mask is not None:
-                n_assets = int(np.count_nonzero(investable_mask))
-            weights = self._clean_previous_weights(n_assets=n_assets)
-            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
-            self.fallback_ = _PREVIOUS_WEIGHTS
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
-
-        except Exception as error:
-            self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(error)))
-            raise
+        if self.previous_weights is None:
+            raise RuntimeError(
+                "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
+                "Provide valid previous weights or remove this fallback."
+            )
+        investable_mask = getattr(self, "investable_mask_", None)
+        if investable_mask is not None:
+            n_assets = int(np.count_nonzero(investable_mask))
+        weights = self._clean_previous_weights(n_assets=n_assets)
+        self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+        self.fallback_ = _PREVIOUS_WEIGHTS
 
     @abstractmethod
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseOptimization:
@@ -335,7 +354,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         check_is_fitted(self, "weights_")
 
         if self.portfolio_params is None:
-            ptf_kwargs = {}
+            ptf_kwargs: dict[str, Any] = {}
         else:
             ptf_kwargs = self.portfolio_params.copy()
 
@@ -370,7 +389,9 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # If weights are None and raise_on_failure is False, we return a FailedPortfolio
         if self.weights_ is None:
             return FailedPortfolio(
-                name=name, optimization_error=self.error_, **ptf_kwargs
+                name=name,
+                optimization_error=self.error_,  # ty: ignore[invalid-argument-type]
+                **ptf_kwargs,
             )
 
         if not isinstance(X, ReturnDistribution):
@@ -580,7 +601,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         """
         if value is None:
             return fill_value
-        if np.isscalar(value):
+        if isinstance(value, numbers.Real):
             return float(value)
         return input_to_array(
             items=value,
@@ -615,8 +636,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             fill_value=0,
             name=_PREVIOUS_WEIGHTS,
         )
-        if np.isscalar(previous_weights):
-            previous_weights = np.full(n_assets, float(previous_weights))
+        if not isinstance(previous_weights, np.ndarray):
+            previous_weights = np.full(n_assets, previous_weights, dtype=float)
         return previous_weights
 
 
@@ -653,6 +674,46 @@ def _validate_fallback(
             f"Fallback estimators must inherit from BaseOptimization (got {type(fallback).__name__})."
         )
     return fallback
+
+
+def _fallback_fit_params(
+    fallback: BaseOptimization, fit_params: dict[str, Any], owner: str
+) -> dict[str, Any]:
+    """Select the fit parameters forwarded to a fallback estimator.
+
+    With metadata routing enabled, or when the fallback routes metadata to
+    sub-estimators, the parameters follow its metadata requests. Otherwise, the
+    fallback receives the parameters accepted by its `fit` signature.
+
+    Parameters
+    ----------
+    fallback : BaseOptimization
+        The fallback estimator.
+
+    fit_params : dict
+        Fit parameters passed to the primary estimator.
+
+    owner : str
+        Name of the primary estimator, used in routing error messages.
+
+    Returns
+    -------
+    dict
+        Fit parameters for the fallback's `fit`.
+    """
+    if not fit_params:
+        return {}
+    routing = skm.get_routing_for_object(fallback)
+    if (
+        isinstance(routing, skm.MetadataRouter)
+        or sk.get_config()["enable_metadata_routing"]
+    ):
+        router = skm.MetadataRouter(owner=owner).add(
+            fallback=routing,
+            method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+        )
+        return router.route_params(caller="fit", params=fit_params).fallback.fit
+    return _filter_supported_params(fallback, "fit", **fit_params)
 
 
 def _has_transaction_cost(x: object) -> bool:

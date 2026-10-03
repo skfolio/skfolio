@@ -841,7 +841,7 @@ class MeanRisk(ConvexOptimization):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -953,6 +953,9 @@ class MeanRisk(ConvexOptimization):
 
         The optimization problem is solved fresh on each call using the updated
         moments from the prior estimator.
+
+        Each call receives only new observations. See :ref:`Updates and Failure
+        Handling <online_failure_handling>` for continuation and restart rules.
 
         Parameters
         ----------
@@ -1215,7 +1218,7 @@ class MeanRisk(ConvexOptimization):
         objective, objective_constraints = self._build_objective(
             return_distribution=return_distribution,
             expected_return=expected_return,
-            risk=risk,
+            risk=risk,  # ty: ignore[invalid-argument-type]
             regularization=regularization,
             custom_objective=custom_objective,
             factor=factor,
@@ -1242,7 +1245,7 @@ class MeanRisk(ConvexOptimization):
                 w=w,
                 factor=factor,
                 parameters_values=parameters_values,
-                expressions=expressions,
+                expressions=expressions,  # ty: ignore[invalid-argument-type]
             )
         except cp.SolverError as solver_error:
             if method != "partial_fit":
@@ -1329,16 +1332,16 @@ class MeanRisk(ConvexOptimization):
             portfolio_params=dict(annualization_factor=1),
         )
         model.fit(X, y, **fit_params)
-        min_return = model.problem_values_["expected_return"]
+        min_return = model.problem_values_["expected_return"]  # ty: ignore[invalid-argument-type, not-subscriptable]
         model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
         model.fit(X, y, **fit_params)
-        max_return = model.problem_values_["expected_return"]
+        max_return = model.problem_values_["expected_return"]  # ty: ignore[invalid-argument-type, not-subscriptable]
         if max_return <= 0:
             raise ValueError(
                 "Unable to compute the Efficient Frontier with only negative"
                 " expected returns"
             )
-        targets = np.linspace(
+        targets = np.linspace(  # ty: ignore[no-matching-overload]
             max(min_return, 1e-10) * 1.01,
             max_return,
             num=self.efficient_frontier_size,
@@ -1380,7 +1383,7 @@ class MeanRisk(ConvexOptimization):
                 else:
                     risk_func = getattr(self, f"_{r_m.value}_risk")
 
-                args = {}
+                args: dict[str, Any] = {}
                 for arg_name in args_names(risk_func):
                     if arg_name == "return_distribution":
                         args[arg_name] = return_distribution
@@ -1435,11 +1438,11 @@ class MeanRisk(ConvexOptimization):
         self,
         return_distribution: ReturnDistribution,
         expected_return: cp.Expression,
-        risk: cp.Expression | None,
+        risk: cp.Expression,
         regularization: cp.Expression,
         custom_objective: cp.Expression,
         factor: skt.Factor,
-    ) -> tuple[cp.Objective, list[cpc.Constraint]]:
+    ) -> tuple[cp.Minimize | cp.Maximize, list[cpc.Constraint]]:
         """Return the configured CVXPY objective and its supporting constraints.
 
         The constraint list is empty unless maximizing a ratio.
@@ -1470,7 +1473,7 @@ class MeanRisk(ConvexOptimization):
                 if (
                     self.overwrite_expected_return is None
                     and np.isscalar(self.min_weights)
-                    and self.min_weights >= 0
+                    and self.min_weights >= 0  # ty: ignore[unsupported-operator]
                     and np.max(return_distribution.mu) - self.risk_free_rate <= 0
                 ):
                     raise ValueError(
@@ -1578,12 +1581,14 @@ class MeanRisk(ConvexOptimization):
             try:
                 self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
             except Exception as fallback_error:
+                self.fallback_chain_.append((_PREVIOUS_WEIGHTS, str(fallback_error)))
                 self.error_ = str(fallback_error)
                 if self.raise_on_failure:
                     raise
                 warnings.warn(str(fallback_error), stacklevel=2)
                 self.weights_ = None
             else:
+                self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
                 self.error_ = None
             finally:
                 self.problem_values_ = None

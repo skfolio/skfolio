@@ -41,6 +41,62 @@ independent estimator clone. In the online setting, the estimator state is
 carried forward through time.
 
 
+.. _online_failure_handling:
+
+Updates and Failure Handling
+****************************
+
+For portfolio optimizers, `partial_fit` uses new observations to update the
+prior and other estimators, then computes portfolio weights. Each call builds
+on the estimates from previous calls. Use `fit` to start over.
+
+Solver Failures
+===============
+
+A solver failure can occur when portfolio constraints are infeasible. With
+`fallback=None` (the default), `raise_on_failure` controls the behavior:
+
+* `raise_on_failure=True` (the default) raises the error. Restart the model
+  before calling `partial_fit` or `predict` again, as shown below.
+* `raise_on_failure=False` emits a warning and sets `weights_` to `None`.
+  `predict` returns a :class:`~skfolio.portfolio.FailedPortfolio`. The same
+  model can continue learning through subsequent `partial_fit` calls.
+
+With `fallback="previous_weights"`, the optimizer first tries to reuse the
+holdings supplied in `previous_weights`. If this succeeds, the model can
+continue with either value of `raise_on_failure`. If the fallback fails,
+`raise_on_failure` determines the outcome as described above.
+
+With `raise_on_failure=False` or a successful `fallback="previous_weights"`,
+you can continue updating the same model after a solver failure. The prior has
+already used that call's data, so pass only new observations. For example,
+after a failed rebalance using Monday's returns, the next call should receive
+Tuesday's returns.
+
+With `raise_on_failure=True`, the solver error is raised after the prior has
+learned from the batch when `fallback=None` or the previous-weights fallback
+fails. `weights_` can still hold the previous allocation. Restart the model
+before calling `partial_fit` or `predict` again by creating a fresh estimator
+and training it on the desired history:
+
+.. code-block:: python
+
+    from sklearn.base import clone
+
+    model = clone(model)
+    model.partial_fit(X_history)
+
+`X_history` contains the observations for the new run. Supply any required
+targets or metadata as usual. Calling `fit(X_history, ...)` also starts fresh.
+
+Online fitting supports `fallback=None` and `fallback="previous_weights"`.
+Estimator fallbacks are available with batch `fit`, where each fallback trains
+on the supplied history.
+
+Errors other than solver failures always raise, regardless of
+`raise_on_failure` and `fallback`. They can leave the model partially updated.
+Restart it as described above.
+
 Non-Predictor Estimators Versus Portfolio Optimizers
 ****************************************************
 
@@ -174,12 +230,11 @@ This is useful when a portfolio estimator embeds incremental moment estimators s
 :class:`~skfolio.moments.EWMu` and
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
 
-During online portfolio evaluation, each rebalance is solved after the estimator has
-incorporated the observations available at that date. If the optimization problem cannot
-be solved and `raise_on_failure=False`, `online_predict` records that rebalance as a
-:class:`~skfolio.portfolio.FailedPortfolio` and continues with the next window. When the
-estimator uses previous weights, the last valid allocation remains the reference for
-later rebalances.
+During online portfolio evaluation, `online_predict` records a suppressed solver
+failure as a :class:`~skfolio.portfolio.FailedPortfolio` and continues with the
+next window. Raised errors interrupt evaluation. See
+:ref:`Updates and Failure Handling <online_failure_handling>` for data
+consumption, fallback, and restart rules.
 
 Pass `portfolio_params={"weight_drift": True, "compounded": True}` to
 `online_predict` to evaluate the path with drifted weights and compounded returns. The
@@ -203,10 +258,8 @@ resulting `MultiPeriodPortfolio`, these parameters can change the scores and the
 ranking of the parameter sets. When refitting is enabled, `weight_drift` is retained in
 `best_estimator_` because prediction requires it. The other parameters are not.
 
-To hold the last allocation instead of producing a failed rebalance, configure
-`fallback="previous_weights"`. Other fallback estimators are not available with
-`partial_fit`, because they would not have learned from the same sequence of past
-observations.
+To use those previous holdings instead of producing a failed rebalance after a
+solver failure, configure `fallback="previous_weights"`.
 
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`

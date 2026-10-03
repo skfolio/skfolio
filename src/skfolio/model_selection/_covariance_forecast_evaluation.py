@@ -567,23 +567,21 @@ class CovarianceForecastComparison:
     def __post_init__(self) -> None:
         if not self.evaluations:
             raise ValueError("evaluations must contain at least one entry.")
-        if self.names is not None:
-            if len(self.names) != len(self.evaluations):
-                raise ValueError(
-                    f"names has length {len(self.names)} but evaluations has "
-                    f"length {len(self.evaluations)}."
-                )
-            resolved = list(self.names)
-        else:
-            resolved = [
-                ev.name if ev.name is not None else f"Estimator {i}"
-                for i, ev in enumerate(self.evaluations)
-            ]
-        object.__setattr__(self, "_names", resolved)
+        if self.names is not None and len(self.names) != len(self.evaluations):
+            raise ValueError(
+                f"names has length {len(self.names)} but evaluations has "
+                f"length {len(self.evaluations)}."
+            )
 
     def _named_evaluations(self) -> Iterator[tuple[str, CovarianceForecastEvaluation]]:
         """Iterate over (name, evaluation) pairs."""
-        return zip(self._names, self.evaluations, strict=True)
+        names = self.names
+        if names is None:
+            names = [
+                ev.name if ev.name is not None else f"Estimator {i}"
+                for i, ev in enumerate(self.evaluations)
+            ]
+        return zip(names, self.evaluations, strict=True)
 
     def summary(self) -> pd.DataFrame:
         r"""Consolidated summary statistics for all estimators.

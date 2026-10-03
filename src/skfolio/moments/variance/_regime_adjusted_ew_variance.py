@@ -517,7 +517,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         self._obs_count = np.zeros(n_assets, dtype=int)
         self._kappa = scs.digamma(0.5) + np.log(2.0)
         self._expected_abs_z = np.sqrt(2.0 / np.pi)
-        self._regime_state = None
+        self._regime_state = 0.0
         self._n_regime_observations = 0
 
         if self.assume_centered:
@@ -639,7 +639,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
                 log_z2 = np.log(np.maximum(z2_valid, _NUMERICAL_THRESHOLD))
                 transformed = np.nanmean(log_z2) - self._kappa
 
-        if self._regime_state is None:
+        if self._n_regime_observations == 0:
             self._regime_state = transformed
         else:
             self._regime_state = (
@@ -677,7 +677,7 @@ class RegimeAdjustedEWVariance(BaseVariance):
         # Add lagged cross-products with Bartlett kernel weights
         # Treat NaN in past returns as 0 (no contribution from missing lagged values)
         for j, past_ret in enumerate(reversed(self._return_buffer), start=1):
-            w_j = 1.0 - j / (self.hac_lags + 1)
+            w_j = 1.0 - j / (self.hac_lags + 1)  # ty: ignore[unsupported-operator]
             past_ret_clean = np.nan_to_num(past_ret, nan=0.0)
             squared += 2.0 * w_j * ret * past_ret_clean
 

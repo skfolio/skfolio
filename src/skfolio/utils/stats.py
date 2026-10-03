@@ -14,6 +14,7 @@ import math
 import random
 import warnings
 from enum import auto
+from typing import overload
 
 import cvxpy as cp
 import numpy as np
@@ -105,9 +106,25 @@ class NBinsMethod(AutoEnum):
     KNUTH = auto()
 
 
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float, denominator: float, fill_value: float = 0.0, *, atol: float = 0.0
+) -> float: ...
+
+
+@overload
+def safe_divide(  # numpydoc ignore=GL08
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
+    fill_value: float = 0.0,
+    *,
+    atol: float = 0.0,
+) -> FloatArray: ...
+
+
 def safe_divide(
-    numerator: float | FloatArray,
-    denominator: float | FloatArray,
+    numerator: float | FloatArray | IntArray,
+    denominator: float | FloatArray | IntArray,
     fill_value: float = 0.0,
     *,
     atol: float = 0.0,
@@ -224,7 +241,7 @@ def n_bins_knuth(x: FloatArray) -> int:
     return min(round(n_bins), n)
 
 
-def rand_weights_dirichlet(n: int) -> np.array:
+def rand_weights_dirichlet(n: int) -> FloatArray:
     """Produces n random weights that sum to one from a Dirichlet distribution
     (uniform distribution over a simplex).
 
@@ -306,7 +323,7 @@ def is_positive_definite(x: FloatArray) -> bool:
     value : bool
         True if the matrix is positive definite, False otherwise.
     """
-    return np.all(np.linalg.eigvals(x) > 0)
+    return bool(np.all(np.linalg.eigvals(x) > 0))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -640,8 +657,7 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     gaps = np.roll(dispersion, -2) + dispersion - 2 * np.roll(dispersion, -1)
     gaps = gaps[:-2]
     # k=0 represents one cluster
-    k = np.argmax(gaps) + 2
-    return k
+    return int(np.argmax(gaps)) + 2
 
 
 def minimize_relative_weight_deviation(
@@ -1330,7 +1346,7 @@ def cs_pearson_correlation(
     b = np.broadcast_to(b, shape)
     if axis < -a.ndim or axis >= a.ndim:
         # AxisError moved under np.exceptions in NumPy 2.
-        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)
+        raise getattr(np, "exceptions", np).AxisError(axis, a.ndim)  # ty: ignore[unresolved-attribute]
     axis = axis % a.ndim
 
     valid = np.isfinite(a) & np.isfinite(b)

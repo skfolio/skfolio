@@ -219,15 +219,17 @@ class StackingOptimization(BaseOptimization, BaseComposition):
         """
         return sku.Bunch(**dict(self.estimators))
 
-    def _validate_estimators(self) -> tuple[list[str], list[BaseOptimization]]:
+    def _validate_estimators(
+        self,
+    ) -> tuple[tuple[str, ...], tuple[BaseOptimization, ...]]:
         """Validate the `estimators` parameter.
 
         Returns
         -------
-        names : list[str]
-            The list of estimators names.
-        estimators : list[BaseOptimization
-            The list of optimization estimators.
+        names : tuple of str
+            The estimators names.
+        estimators : tuple of BaseOptimization
+            The optimization estimators.
         """
         if self.estimators is None or len(self.estimators) == 0:
             raise ValueError(

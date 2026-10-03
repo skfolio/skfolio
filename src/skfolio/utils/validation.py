@@ -6,23 +6,50 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 import numpy as np
-import sklearn.base as skb
 import sklearn.utils.validation as skv
 from sklearn.utils._tags import get_tags
 
 from skfolio.typing import ArrayLike, BoolArray, FloatArray
 
 if TYPE_CHECKING:
-    from skfolio.containers import AssetPanel, AssetPanelView
+    from skfolio.containers._asset_panel._base import _BaseAssetPanel
 
 __all__ = ["validate_asset_panel", "validate_cross_sectional_data"]
 
+_PanelT = TypeVar("_PanelT", bound="_BaseAssetPanel")
+
+
+@overload
+def validate_cross_sectional_data(  # numpydoc ignore=GL08
+    _estimator: Any,  # noqa: ANN401  # estimator receiving fitted attributes
+    /,
+    X: ArrayLike,
+    y: Literal["no_validation"] | None = "no_validation",
+    cs_weights: ArrayLike | None = None,
+    *,
+    reset: bool = True,
+    copy: bool = False,
+) -> FloatArray: ...
+
+
+@overload
+def validate_cross_sectional_data(  # numpydoc ignore=GL08
+    _estimator: Any,  # noqa: ANN401  # estimator receiving fitted attributes
+    /,
+    X: ArrayLike,
+    y: ArrayLike,
+    cs_weights: ArrayLike | None = None,
+    *,
+    reset: bool = True,
+    copy: bool = False,
+) -> tuple[FloatArray, FloatArray, FloatArray]: ...
+
 
 def validate_cross_sectional_data(
-    _estimator: skb.BaseEstimator,
+    _estimator: Any,  # estimator receiving fitted attributes
     /,
     X: ArrayLike,
     y: ArrayLike | Literal["no_validation"] | None = "no_validation",
@@ -196,9 +223,9 @@ def validate_cross_sectional_data(
 
 
 def validate_asset_panel(
-    _estimator: skb.BaseEstimator,
+    _estimator: Any,  # noqa: ANN401  # estimator receiving fitted attributes
     /,
-    asset_panel: AssetPanel | AssetPanelView,
+    asset_panel: _PanelT,
     required_fields: list[str] | None = None,
     reserved_fields: list[str] | None = None,
     finite_or_nan: list[str] | None = None,
@@ -208,7 +235,7 @@ def validate_asset_panel(
     non_negative_or_nan: list[str] | None = None,
     reset: bool = True,
     copy: bool = False,
-) -> AssetPanel | AssetPanelView:
+) -> _PanelT:
     """Validate an AssetPanel and set estimator metadata attributes.
 
     This function validates that the panel contains required fields, doesn't contain
@@ -264,7 +291,8 @@ def validate_asset_panel(
     Returns
     -------
     AssetPanel or AssetPanelView
-        The validated panel, or a shallow copy if `copy=True`.
+        The validated panel, of the same type as `asset_panel`, or a shallow copy if
+        `copy=True`.
 
     Raises
     ------

@@ -204,7 +204,7 @@ class FieldCategorical(Field2D):
         Labels must be unique.
     """
 
-    levels: StrArray | list[str]
+    levels: StrArray
 
     def __post_init__(self) -> None:
         Field2D.__post_init__(self)
@@ -304,8 +304,8 @@ class Field3D(BaseField):
     """
 
     third_axis_name: str
-    third_axis_labels: StrArray | list[str]
-    third_axis_groups: StrArray | list[str] | None = None
+    third_axis_labels: StrArray
+    third_axis_groups: StrArray | None = None
 
     def __post_init__(self) -> None:
         BaseField.__post_init__(self)

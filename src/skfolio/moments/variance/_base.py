@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 
 import sklearn.base as skb
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, StrArray
 
 
 class BaseVariance(skb.BaseEstimator, ABC):
@@ -60,6 +60,8 @@ class BaseVariance(skb.BaseEstimator, ABC):
 
     variance_: FloatArray
     location_: FloatArray
+    n_features_in_: int
+    feature_names_in_: StrArray
 
     def __init__(self, assume_centered: bool = False) -> None:
         self.assume_centered = assume_centered

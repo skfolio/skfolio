@@ -43,7 +43,7 @@ import warnings
 from abc import abstractmethod
 from collections.abc import Callable
 from functools import partial
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -68,6 +68,9 @@ from skfolio.utils.tools import (
     format_measure,
     optimal_rounding_decimals,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 _ZERO_THRESHOLD = 1e-5
 _MEASURES = {
@@ -547,6 +550,7 @@ class BasePortfolio:
         self.edar_beta = edar_beta
 
         self.name = str(id(self)) if name is None else name
+        self._fitness_measures: list[skt.Measure]
         if fitness_measures is None:
             self._fitness_measures = [PerfMeasure.MEAN, RiskMeasure.VARIANCE]
         else:
@@ -592,7 +596,7 @@ class BasePortfolio:
             )
         return self.__eq__(other) or self.__gt__(other)
 
-    def __copy__(self) -> BasePortfolio:
+    def __copy__(self) -> Self:
         cls = self.__class__
         result = cls.__new__(cls)
         result._loaded = False
@@ -663,7 +667,7 @@ class BasePortfolio:
     @abstractmethod
     def contribution(
         self, measure: skt.Measure, spacing: float | None = None, to_df: bool = True
-    ) -> FloatArray | pd.DataFrame:
+    ) -> FloatArray | list[FloatArray] | pd.DataFrame:
         """Compute the contribution of each asset to a given measure."""
         ...
 
@@ -801,7 +805,7 @@ class BasePortfolio:
         return pd.DataFrame(res, index=idx, columns=["measures"])
 
     # Public methods
-    def copy(self) -> BasePortfolio:
+    def copy(self) -> Self:
         """Copy the Portfolio attributes without its measures values."""
         return self.__copy__()
 
@@ -922,7 +926,7 @@ class BasePortfolio:
             risk_measure = None
         elif measure.is_ratio:
             perf_measure = PerfMeasure.MEAN
-            risk_measure = non_annualized_measure.linked_risk_measure
+            risk_measure = non_annualized_measure.linked_risk_measure  # ty: ignore[unresolved-attribute]
         else:
             perf_measure = None
             risk_measure = non_annualized_measure
@@ -933,7 +937,7 @@ class BasePortfolio:
             if "drawdowns" in risk_func_args:
                 del risk_func_args["drawdowns"]
 
-                def meta_risk_func(returns: pd.Series) -> float:
+                def meta_risk_func(returns: FloatArray) -> float:
                     """Compute the drawdown-based risk measure on `returns`."""
                     drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
                     return risk_func(drawdowns=drawdowns, **risk_func_args)
@@ -941,14 +945,14 @@ class BasePortfolio:
             else:
                 del risk_func_args["returns"]
 
-                def meta_risk_func(returns: pd.Series) -> float:
+                def meta_risk_func(returns: FloatArray) -> float:
                     """Compute the returns-based risk measure on `returns`."""
                     return risk_func(returns=returns, **risk_func_args)
 
             if perf_measure is not None:
                 perf_func = getattr(mt, str(perf_measure.value))
 
-                def func(returns: pd.Series) -> float:
+                def func(returns: FloatArray) -> float:
                     """Compute the excess performance over risk on `returns`."""
                     return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
                         returns
@@ -957,16 +961,16 @@ class BasePortfolio:
             else:
                 func = meta_risk_func
         else:
-            perf_func = getattr(mt, str(perf_measure.value))
+            perf_func = getattr(mt, str(non_annualized_measure.value))
 
-            def func(returns: pd.Series) -> float:
+            def func(returns: FloatArray) -> float:
                 """Compute the performance measure on `returns`."""
                 return perf_func(returns)
 
         rolling = (
             pd.Series(self.returns, index=self.observations)
             .rolling(window=window)
-            .apply(func)
+            .apply(func, raw=True)
         )
         if measure.is_annualized:
             if measure in [
@@ -1008,7 +1012,7 @@ class BasePortfolio:
             e: skt.Measure
             try:
                 if e.is_ratio:
-                    base_measure = e.linked_risk_measure
+                    base_measure = e.linked_risk_measure  # ty: ignore[unresolved-attribute]
                 else:
                     base_measure = e
                 beta = getattr(self, f"{base_measure.value}_beta")
@@ -1278,7 +1282,7 @@ class BasePortfolio:
         plot : Figure
             The plotly Figure of assets contribution to the measure.
         """
-        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T
+        df = self.contribution(measure=measure, spacing=spacing, to_df=True).T  # ty: ignore[unresolved-attribute]
         fig = px.bar(df, x=df.index, y=df.columns)
         yaxis = {
             "title": "Contribution",

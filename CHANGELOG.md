@@ -2,6 +2,59 @@
 
 <!-- version list -->
 
+## v1.4.11 (2026-10-03)
+
+### Bug Fixes
+
+- **optimization**: Correct BenchmarkTracker partial_fit
+  ([`918d77b`](https://github.com/skfolio/skfolio/commit/918d77b51dcb5debe0a639818d462cb1c5042420))
+
+- **optimization**: Correct MaximumDiversification partial_fit
+  ([`0e64bef`](https://github.com/skfolio/skfolio/commit/0e64bef929e7848a19bd831e57b7a1cb324efac8))
+
+- **optimization**: Prevent duplicate fallbacks in nested fit calls
+  ([`acd204d`](https://github.com/skfolio/skfolio/commit/acd204dca6315a9df2ed24227c1b140a81e37c19))
+
+### Continuous Integration
+
+- Enforce type checking with ty ([#364](https://github.com/skfolio/skfolio/pull/364),
+  [`5b657bd`](https://github.com/skfolio/skfolio/commit/5b657bda012deb44dedaaf1880fa2e69eb7cba1d))
+
+### Documentation
+
+- **optimization**: Clarify online failure handling and restarts
+  ([`d62d5a8`](https://github.com/skfolio/skfolio/commit/d62d5a82897ee54b063e78f7ed8f22efe552cc0c))
+
+
+## v1.4.10 (2026-09-30)
+
+### Bug Fixes
+
+- Accept X keyword in Mahalanobis and scorer calls
+  ([`56fa99c`](https://github.com/skfolio/skfolio/commit/56fa99cd5fe7c2f65d8061220c730a2f6929e222))
+
+- **distribution**: Resolve marginal plot asset selectors
+  ([`98489b2`](https://github.com/skfolio/skfolio/commit/98489b2fdfdf5beb4669a9841b8d9efa5faa6d5b))
+
+- **optimization**: Consistently normalize position thresholds
+  ([`4962f27`](https://github.com/skfolio/skfolio/commit/4962f272bba5d4346c1e253ac2797a1ac4c7bf7d))
+
+- **optimization**: Fix fallback failures and duplicate error logging
+  ([`67a8e57`](https://github.com/skfolio/skfolio/commit/67a8e573c333aa04290c49e7c84fef5428566da7))
+
+- **optimization**: Retain the first Schur turning-point result
+  ([`e345c01`](https://github.com/skfolio/skfolio/commit/e345c019927c6f95b05b21b91c5dbb494883bd77))
+
+- **optimization**: Route fit parameters to fallback estimators
+  ([`88a816c`](https://github.com/skfolio/skfolio/commit/88a816c543d67eeeb8935e98883b85bce81b5102))
+
+- **optimization**: Validate mixed-integer weight bounds before comparison
+  ([`859ad9a`](https://github.com/skfolio/skfolio/commit/859ad9a0707c2fab4dbde72559435ec160356c64))
+
+- **prior**: Support array-like inputs in time-series factor models
+  ([`d95d297`](https://github.com/skfolio/skfolio/commit/d95d2971cf884df5b3006cfbd1207ebc391e0b67))
+
+
 ## v1.4.9 (2026-09-29)
 
 ### Bug Fixes

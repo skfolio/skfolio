@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import json
 import shutil
-from collections.abc import Generator, Iterable, Mapping
+from collections.abc import Collection, Generator, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -274,9 +274,10 @@ class AssetPanel(_BaseAssetPanel):
 
     fields: dict[str, BaseField]
     observations: AnyArray
-    asset_names: StrArray | list[str]
-    active_mask: BoolArray = None
-    estimation_mask: BoolArray = None
+    asset_names: StrArray
+    # `None` is replaced by a mask of ones in `__post_init__`.
+    active_mask: BoolArray = None  # ty: ignore[invalid-assignment]
+    estimation_mask: BoolArray = None  # ty: ignore[invalid-assignment]
 
     _validate_on_init: bool = True
 
@@ -327,6 +328,12 @@ class AssetPanel(_BaseAssetPanel):
     def __len__(self) -> int:
         """Return the number of observations."""
         return self.n_observations
+
+    @overload
+    def __getitem__(self, key: str) -> AnyArray: ...
+
+    @overload
+    def __getitem__(self, key: slice | ArrayLike) -> AssetPanelView: ...
 
     def __getitem__(self, key: str | slice | ArrayLike) -> AnyArray | AssetPanelView:
         """Return field values or an observation view. Slice selectors are zero-copy.
@@ -459,7 +466,7 @@ class AssetPanel(_BaseAssetPanel):
         """Number of fields."""
         return len(self.fields)
 
-    def keys(self) -> Iterable[str]:
+    def keys(self) -> Collection[str]:
         """Return field names.
 
         Returns
@@ -1078,7 +1085,7 @@ class AssetPanel(_BaseAssetPanel):
         cls,
         path: str | Path,
         *,
-        mmap_mode: str | None = None,
+        mmap_mode: Literal["r+", "r", "w+", "c"] | None = None,
         fields: list[str] | None = None,
     ) -> AssetPanel:
         """Load a panel saved with `save`.
@@ -1088,7 +1095,7 @@ class AssetPanel(_BaseAssetPanel):
         path : str or pathlib.Path
             Directory containing a saved panel.
 
-        mmap_mode : str or None, optional
+        mmap_mode : {"r+", "r", "w+", "c"} or None, optional
             Memory-mapping mode passed to `numpy.load` for field and mask arrays.
             Use `r` for read-only memory maps.
 
@@ -1438,9 +1445,9 @@ def _info_mask_lines(title: str, mask: BoolArray | None) -> list[str]:
         f"  ({coverage_percent:.1f}%)"
     )
     assets_per_observation = mask.sum(axis=1)
-    min_assets = int(assets_per_observation.min())
+    min_assets = int(np.min(assets_per_observation))
     median_assets = int(np.median(assets_per_observation))
-    max_assets = int(assets_per_observation.max())
+    max_assets = int(np.max(assets_per_observation))
     lines.append(
         f"Assets per obs       : min={min_assets:,}, "
         f"median={median_assets:,}, max={max_assets:,}"
@@ -1451,8 +1458,8 @@ def _info_mask_lines(title: str, mask: BoolArray | None) -> list[str]:
     lines.append(f"Assets in mask       : {assets_in_mask:,} / {n_assets:,}")
     if assets_in_mask > 0:
         median_duration = int(np.median(durations))
-        min_duration = int(durations.min())
-        max_duration = int(durations.max())
+        min_duration = int(np.min(durations))
+        max_duration = int(np.max(durations))
         lines.append(f"  median duration    : {median_duration:,} observations")
         lines.append(
             f"  shortest / longest : {min_duration:,} / {max_duration:,} observations"
@@ -1590,7 +1597,7 @@ def _info_categorical_lines(panel: AssetPanel) -> list[str]:
         lines.append("  Min number of assets per level (over time):")
         for lower, upper in buckets:
             if lower == 0:
-                in_bucket = min_assets_per_level < upper
+                in_bucket = min_assets_per_level < upper  # ty: ignore[unsupported-operator]
                 label = f"< {upper}"
             elif upper is not None:
                 in_bucket = (min_assets_per_level >= lower) & (

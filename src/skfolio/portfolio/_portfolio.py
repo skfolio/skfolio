@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import numbers
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
@@ -549,13 +550,13 @@ class Portfolio(BasePortfolio):
         weights_provided = weights is not None
         rets = _to_numpy_returns(X) if weights_provided else None
         # extract assets names from X
-        assets = None
+        assets: AnyArray | None = None
         observations = None
         if hasattr(X, "columns"):
             assets = np.asarray(X.columns, dtype=object)
-            observations = np.asarray(X.index)
+            observations = np.asarray(X.index)  # ty: ignore[unresolved-attribute]
 
-        shape = rets.shape if weights_provided else np.shape(X)
+        shape = rets.shape if weights_provided else np.shape(X)  # ty: ignore[unresolved-attribute]
         if len(shape) != 2:
             raise ValueError("`X` must be a 2D array-like")
 
@@ -640,11 +641,11 @@ class Portfolio(BasePortfolio):
         if np.isscalar(management_fees) and management_fees == 0:
             total_fee = 0
         else:
-            total_fee = (management_fees * weights).sum()
+            total_fee = (management_fees * weights).sum()  # ty: ignore[unresolved-attribute]
 
         ending_weights = weights.copy()
         if weights_provided:
-            rets_clean = _nan_to_zero(rets)
+            rets_clean = _nan_to_zero(rets)  # ty: ignore[invalid-argument-type]
             if weight_drift and n_observations > 0:
                 position_values, wealth = _position_values_and_wealth(
                     returns=rets_clean,
@@ -798,7 +799,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = self.weights - other.weights
         return self.__class__(**args)
 
-    def __mul__(self, other: numbers.Number) -> Portfolio:
+    def __mul__(self, other: float) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be multiplied by a number, but received a"
@@ -812,7 +813,7 @@ class Portfolio(BasePortfolio):
 
     __rmul__ = __mul__
 
-    def __floordiv__(self, other: numbers.Number) -> Portfolio:
+    def __floordiv__(self, other: float) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be floor divided by a number, but received a"
@@ -824,7 +825,7 @@ class Portfolio(BasePortfolio):
         args["weights"] = np.floor_divide(self.weights, other)
         return self.__class__(**args)
 
-    def __truediv__(self, other: numbers.Number) -> Portfolio:
+    def __truediv__(self, other: float) -> Portfolio:
         if not isinstance(other, numbers.Number):
             raise TypeError(
                 "Portfolio can only be divided by a number, but received a"
@@ -866,7 +867,7 @@ class Portfolio(BasePortfolio):
         """Dict mapping asset name to weight; includes zeros."""
         return {
             asset: float(weight)
-            for asset, weight in zip(self.assets, self.weights, strict=True)
+            for asset, weight in zip(self.assets.tolist(), self.weights, strict=True)
         }
 
     @property
@@ -874,7 +875,9 @@ class Portfolio(BasePortfolio):
         """Dict mapping asset name to previous weight; includes zeros."""
         return {
             asset: float(weight)
-            for asset, weight in zip(self.assets, self.previous_weights, strict=True)
+            for asset, weight in zip(
+                self.assets.tolist(), self.previous_weights, strict=True
+            )
         }
 
     @property
@@ -882,7 +885,9 @@ class Portfolio(BasePortfolio):
         """Dict mapping asset name to ending weight; includes zeros."""
         return {
             asset: float(weight)
-            for asset, weight in zip(self.assets, self.ending_weights, strict=True)
+            for asset, weight in zip(
+                self.assets.tolist(), self.ending_weights, strict=True
+            )
         }
 
     @property
@@ -1693,7 +1698,7 @@ def _compute_contribution(
     """
     contributions = []
     _assets = []
-    for i, (weight, asset) in enumerate(zip(weights, assets, strict=True)):
+    for i, (weight, asset) in enumerate(zip(weights, assets.tolist(), strict=True)):
         if weight == 0:
             if not drop_zero_weights:
                 _assets.append(asset)
@@ -1757,7 +1762,7 @@ def _get_group_labels(
 
 
 def _sum_by_node(
-    leaf_paths: list[tuple[str, ...]], leaf_values: FloatArray
+    leaf_paths: Sequence[tuple[str, ...]], leaf_values: FloatArray
 ) -> dict[tuple[str, ...], float]:
     """Sum the leaf values over each node of the tree.
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import operator
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from enum import Enum
 from typing import Any
 
@@ -153,7 +153,7 @@ def empirical_tail_concentration(X: ArrayLike, quantiles: ArrayLike) -> FloatArr
 
 
 def plot_tail_concentration(
-    tail_concentration_dict: dict[str, ArrayLike],
+    tail_concentration_dict: Mapping[str, ArrayLike],
     quantiles: ArrayLike,
     title: str = "Empirical Tail Dependencies",
     smoothing: float | None = 0.5,
@@ -273,7 +273,7 @@ def _select_rotation_itau(
     for rotation in CopulaRotation:
         X_rotated = _apply_copula_rotation(X, rotation=rotation)
         results[rotation] = func(X=X_rotated, theta=theta)
-    best_rotation = min(results, key=results.get)
+    best_rotation = min(results, key=results.get)  # ty: ignore[no-matching-overload]
     return best_rotation
 
 
@@ -343,10 +343,10 @@ def _select_theta_and_rotation_mle(
         raise RuntimeError("Optimization failed for all rotations")
 
     best = min(results, key=lambda d: d["neg_log_likelihood"])
-    return best["theta"], best["rotation"]
+    return best["theta"], best["rotation"]  # ty: ignore[invalid-return-type]
 
 
-def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray:
+def _apply_copula_rotation(X: FloatArray, rotation: CopulaRotation) -> FloatArray:
     r"""Apply a bivariate copula rotation using the standard (clockwise) convention.
 
     The transformations are defined as follows:
@@ -358,7 +358,7 @@ def _apply_copula_rotation(X: ArrayLike, rotation: CopulaRotation) -> FloatArray
 
     Parameters
     ----------
-    X : array-like of shape (n_observations, 2)
+    X : ndarray of shape (n_observations, 2)
         An array of bivariate inputs `(u, v)` where each row represents a
         bivariate observation.
 

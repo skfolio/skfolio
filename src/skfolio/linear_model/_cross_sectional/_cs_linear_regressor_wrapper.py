@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn as sk
 import sklearn.base as skb
@@ -96,7 +98,7 @@ class CSLinearRegressorWrapper(BaseCSLinearModel):
                 "CSLinearRegressorWrapper requires the wrapped regressor to "
                 "define `fit_intercept`."
             )
-        super().__init__(fit_intercept=regressor.fit_intercept)
+        super().__init__(fit_intercept=regressor.fit_intercept)  # ty: ignore[invalid-argument-type]
         self.regressor = regressor
         self.n_jobs = n_jobs
 
@@ -168,7 +170,7 @@ class CSLinearRegressorWrapper(BaseCSLinearModel):
 
 
 def _fit_regressor_for_observation(
-    regressor: skb.BaseEstimator,
+    regressor: Any,  # noqa: ANN401  # duck-typed estimator
     X: FloatArray,
     y: FloatArray,
     cs_weights: FloatArray,

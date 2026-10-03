@@ -25,8 +25,7 @@ from skfolio.containers._asset_panel._fields import (
 from skfolio.typing import AnyArray, ArrayLike, BoolArray, IntArray, StrArray
 
 if TYPE_CHECKING:
-    from skfolio.containers._asset_panel._panel import AssetPanel
-    from skfolio.containers._asset_panel._view import AssetPanelView
+    from skfolio.containers._asset_panel._base import _BaseAssetPanel
 
 
 _WINDOWS_RESERVED = frozenset(
@@ -371,7 +370,7 @@ def _format_observation_range(observations: AnyArray) -> str:
 
 
 def _to_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     fields: str | Iterable[str] | None,
     assets: str | Iterable[str] | None,
@@ -425,7 +424,7 @@ def _to_dataframe(
 
 
 def _field_to_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     name: str,
     asset_selector: slice | IntArray,
@@ -446,7 +445,7 @@ def _field_to_dataframe(
 
 
 def _to_long_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     field_names: list[str],
     asset_selector: slice | IntArray,
@@ -487,7 +486,7 @@ def _to_long_dataframe(
 
 
 def _to_wide_dataframe(
-    panel: AssetPanel | AssetPanelView,
+    panel: _BaseAssetPanel,
     *,
     field_names: list[str],
     asset_selector: slice | IntArray,

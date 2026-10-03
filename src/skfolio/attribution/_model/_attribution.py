@@ -29,7 +29,7 @@ from skfolio.attribution._utils import (
     _format_decimal,
     _format_percent,
 )
-from skfolio.typing import AnyArray, FloatArray
+from skfolio.typing import AnyArray, FloatArray, IntArray
 from skfolio.utils.figure import format_plot_label
 
 __all__ = ["Attribution"]
@@ -115,7 +115,7 @@ class Attribution:
         """Validate Attribution consistency after initialization."""
         # Rolling arrays add a leading window axis to their single-point shape.
         # Scalar and optional-field exceptions are handled by the validators.
-        window_shape = (len(self.observations),) if self.is_rolling else ()
+        window_shape = (len(self.observations),) if self.is_rolling else ()  # ty: ignore[invalid-argument-type]
 
         _validate_component("systematic", self.systematic, window_shape)
         _validate_component("idio", self.idio, window_shape)
@@ -249,7 +249,7 @@ class Attribution:
         if self.is_rolling:
             # Rolling: build MultiIndex DataFrame
             n_components = len(component_names)
-            n_windows = len(self.observations)
+            n_windows = len(self.observations)  # ty: ignore[invalid-argument-type]
             obs_repeated = np.repeat(self.observations, n_components)
             components_tiled = np.tile(component_names, n_windows)
             multi_index = pd.MultiIndex.from_arrays(
@@ -637,7 +637,7 @@ class Attribution:
                 layout_title = f"{title} Over Time"
 
             fig = _plot_rolling_lines(
-                observations=self.observations,
+                observations=self.observations,  # ty: ignore[invalid-argument-type]
                 names=names,
                 y=exposure,
                 colors=colors,
@@ -1008,7 +1008,7 @@ def _slice_window(
 
 def _compute_top_indices(
     sort_values: FloatArray, top_n: int | None
-) -> tuple[FloatArray, FloatArray | None]:
+) -> tuple[IntArray, IntArray | None]:
     """Compute indices for top_n selection and "Other" aggregation.
 
     Parameters
@@ -1093,7 +1093,7 @@ def _prepare_plot_data(
 
     top_idx, other_idx = _compute_top_indices(sort_values, top_n)
 
-    names = list(data.names[top_idx])
+    names = data.names[top_idx].tolist()
     values = {attr: _as_2d(getattr(data, attr))[:, top_idx] for attr in attrs}
 
     if other_idx is not None:
@@ -1131,7 +1131,7 @@ def _prepare_exposure_plot_data(
     sort_values = np.abs(exposure).mean(axis=0) if is_rolling else np.abs(exposure[0])
     top_idx, other_idx = _compute_top_indices(sort_values, top_n)
 
-    names = list(data.names[top_idx])
+    names = data.names[top_idx].tolist()
     exposure_values = exposure[:, top_idx]
 
     exposure_std_values = None
@@ -1477,7 +1477,7 @@ def _plot_rolling_lines(
 def _plot_contribution_chart(
     data: FactorBreakdown | FamilyBreakdown,
     idio: Component,
-    top_n: int,
+    top_n: int | None,
     include_idio: bool,
     is_rolling: bool,
     is_realized: bool,
@@ -1565,7 +1565,7 @@ def _plot_contribution_chart(
                     customdata = []
                 custom_data = np.column_stack([values[attr][:, i] for attr in attrs])
                 show_exposure = not np.all(np.isnan(custom_data[:, -1]))
-                customdata.append(custom_data)
+                customdata.append(custom_data)  # ty: ignore[unresolved-attribute]
                 hovertemplates.append(
                     _hover_template(name, contrib_names, show_exposure)
                 )
@@ -1579,8 +1579,8 @@ def _plot_contribution_chart(
         layout_title: str | dict[str, Any] = title_rolling
         if show_unc_band:
             band_width = np.where(
-                np.isfinite(se_matrix) & (se_matrix >= 0),
-                z * se_matrix,
+                np.isfinite(se_matrix) & (se_matrix >= 0),  # ty: ignore[unsupported-operator]
+                z * se_matrix,  # ty: ignore[unsupported-operator]
                 np.nan,
             )
             ci_pct = round(confidence_level * 100)

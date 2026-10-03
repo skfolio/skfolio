@@ -35,7 +35,7 @@ from skfolio.optimization.cluster.hierarchical._hrp import (
     _apply_weight_constraints_to_split_factor,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.stats import (
     cov_nearest,
     inverse_multiply,
@@ -442,13 +442,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
 def _compute_monotonic_weights(
     max_gamma: float,
-    sorted_assets: FloatArray,
+    sorted_assets: IntArray,
     covariance: FloatArray,
     max_weights: FloatArray,
     min_weights: FloatArray,
     step: float = 0.1,
     tol: float = 1e-4,
-) -> tuple[FloatArray, float]:
+) -> tuple[FloatArray | None, float]:
     """
     Finds the gamma value corresponding to the turning point where portfolio risk
     (variance) stops decreasing monotonically.
@@ -464,7 +464,7 @@ def _compute_monotonic_weights(
      max_gamma : float
         Maximum gamma value to sweep up to.
 
-     sorted_assets : FloatArray
+     sorted_assets : ndarray of shape (n_assets,)
         Array of ordered asset indices.
 
      covariance : FloatArray
@@ -485,8 +485,9 @@ def _compute_monotonic_weights(
 
     Returns
     -------
-     weights : FloatArray
-        Asset weights at the identified turning point.
+     weights : FloatArray or None
+        Asset weights at the identified turning point, or `None` if no weights can
+        be computed.
 
      effective_gamma : float
         Gamma value at which variance stops decreasing meaningfully.
@@ -536,7 +537,7 @@ def _compute_monotonic_weights(
                 # points (monotonically decreasing from 0.0). If in [0, gammas[1]],
                 # we find the exact turning point by binary search.
                 try:
-                    _binary_search(
+                    return _binary_search(
                         objective,
                         low_gamma=gammas[0],
                         high_gamma=gammas[1],
@@ -650,7 +651,7 @@ def _binary_search(
 
 def _compute_weights(
     gamma: float,
-    sorted_assets: FloatArray,
+    sorted_assets: IntArray,
     covariance: FloatArray,
     max_weights: FloatArray,
     min_weights: FloatArray,

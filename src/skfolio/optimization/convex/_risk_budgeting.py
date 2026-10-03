@@ -20,7 +20,7 @@ import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike
 from skfolio.utils.tools import args_names, check_estimator
 
 
@@ -516,7 +516,7 @@ class RiskBudgeting(ConvexOptimization):
     def __init__(
         self,
         risk_measure: RiskMeasure = RiskMeasure.VARIANCE,
-        risk_budget: FloatArray | None = None,
+        risk_budget: dict[str, float] | ArrayLike | None = None,
         prior_estimator: BasePrior | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -541,7 +541,7 @@ class RiskBudgeting(ConvexOptimization):
         save_problem: bool = False,
         raise_on_failure: bool = True,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
@@ -643,7 +643,7 @@ class RiskBudgeting(ConvexOptimization):
                 fill_value=1e-10,
                 name="risk_budget",
             )
-            risk_budget[risk_budget == 0] = 1e-10
+            risk_budget = np.where(risk_budget == 0, 1e-10, risk_budget)
 
         # Variables
         w = cp.Variable(n_assets)

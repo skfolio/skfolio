@@ -353,7 +353,7 @@ class ImpliedCovariance(BaseCovariance):
                     "volatility_risk_premium_adj must contain a value for each assets, "
                     f"received {self.volatility_risk_premium_adj}"
                 )
-            if np.any(volatility_risk_premium_adj <= 0):
+            if np.any(volatility_risk_premium_adj <= 0):  # ty: ignore[unsupported-operator]
                 raise ValueError(
                     "volatility_risk_premium_adj must be strictly positive, "
                     f"received {self.volatility_risk_premium_adj}"
@@ -472,7 +472,7 @@ def _compute_implied_vol(implied_vol: FloatArray, window_size: int) -> FloatArra
     ]
 
 
-def check_implied_vol(implied_vol: ArrayLike, X: ArrayLike) -> FloatArray:
+def check_implied_vol(implied_vol: ArrayLike, X: FloatArray) -> FloatArray:
     """Validate implied volatilities.
 
     Parameters
@@ -480,8 +480,8 @@ def check_implied_vol(implied_vol: ArrayLike, X: ArrayLike) -> FloatArray:
     implied_vol : array-like of shape (n_observations, n_assets)
         Implied volatilities of the assets.
 
-    X : array-like of shape (n_observations, n_assets)
-        Price returns of the assets.
+    X : ndarray of shape (n_observations, n_assets)
+        Validated price returns of the assets.
 
     Returns
     -------

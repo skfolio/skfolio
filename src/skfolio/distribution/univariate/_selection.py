@@ -83,5 +83,5 @@ def select_univariate_dist(
             case _:
                 raise ValueError(f"{selection_criterion} not implemented")
 
-    selected_dist = min(results, key=results.get)
+    selected_dist = min(results, key=results.get)  # ty: ignore[no-matching-overload]
     return selected_dist

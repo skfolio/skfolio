@@ -6,13 +6,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import scipy.stats as st
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import FloatArray
 
 
 def format_plot_label(name: str) -> str:
@@ -20,7 +23,7 @@ def format_plot_label(name: str) -> str:
     return str(name).replace("_", " ").title()
 
 
-def format_plot_labels(names: ArrayLike) -> list[str]:
+def format_plot_labels(names: Iterable[str]) -> list[str]:
     """Format component names for plot display."""
     return [format_plot_label(name) for name in names]
 
@@ -69,13 +72,13 @@ def plot_kde_distributions(
         are provided.
     """
     asset_names = X.columns.tolist()
-    X = X.values
+    values = X.to_numpy()
     colors = px.colors.qualitative.Plotly
 
     traces: list[go.Scatter] = []
 
     for i, asset in enumerate(asset_names):
-        x = X[:, i]
+        x = values[:, i]
         color = colors[i % len(colors)]
         visible = True if i == 0 else "legendonly"
 
@@ -121,7 +124,7 @@ def plot_kde_distributions(
 
 
 def kde_trace(
-    x: ArrayLike,
+    x: FloatArray,
     sample_weight: FloatArray | None,
     percentile_cutoff: float | None,
     name: str,
@@ -129,7 +132,7 @@ def kde_trace(
     fill_opacity: float,
     line_dash: str,
     line_width: float,
-    visible: bool,
+    visible: bool | Literal["legendonly"],
 ) -> go.Scatter:
     """
     Create a Plotly Scatter trace representing a Gaussian kernel density estimate (KDE),
@@ -165,8 +168,9 @@ def kde_trace(
     line_width : float
         Width of the line.
 
-    visible : bool
-        Initial visibility of the trace in the Plotly figure.
+    visible : bool or "legendonly"
+        Initial visibility of the trace in the Plotly figure. With "legendonly",
+        the trace is hidden and listed in the legend.
 
     Returns
     -------
@@ -174,7 +178,7 @@ def kde_trace(
         A Plotly Scatter trace with the KDE line and shaded area under the curve.
     """
     if percentile_cutoff is None:
-        lower, upper = x.min(), x.max()
+        lower, upper = np.min(x), np.max(x)
     else:
         lower = np.percentile(x, percentile_cutoff)
         upper = np.percentile(x, 100.0 - percentile_cutoff)

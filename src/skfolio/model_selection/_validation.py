@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import warnings
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import numpy as np
 import sklearn as sk
@@ -39,6 +39,8 @@ from skfolio.utils.tools import fit_and_predict, safe_split
 
 if TYPE_CHECKING:
     from skfolio.optimization._base import BaseOptimization
+
+_EstimatorT = TypeVar("_EstimatorT", bound=skb.BaseEstimator)
 
 
 def cross_val_predict(
@@ -257,6 +259,7 @@ def cross_val_predict(
             "strategies: `WalkForward`, `TimeSeriesSplit` and `MultipleRandomizedCV`."
         )
 
+    predictions: list[Any]
     if use_sequential_path and is_sequential_cv:
         if isinstance(cv, MultipleRandomizedCV):
             splits = list(cv.split(X, y, **routed_params.splitter.split))
@@ -329,8 +332,10 @@ def cross_val_predict(
         path_nb = np.max(path_ids) + 1
         portfolios = [[] for _ in range(path_nb)]
         if isinstance(cv, BaseCombinatorialCV):
+            # Combinatorial CV never runs the sequential path: each prediction is a
+            # list of portfolios.
             for i, prediction in enumerate(predictions):
-                for j, p in enumerate(prediction):
+                for j, p in enumerate(prediction):  # ty: ignore[invalid-argument-type]
                     path_id = path_ids[i, j]
                     portfolios[path_id].append(p)
         else:
@@ -351,7 +356,7 @@ def cross_val_predict(
         # CV generator.
         # Because the tests folds are not shuffled, we use the first index of each
         # fold to order them.
-        test_indices = [test for _, test in splits]
+        test_indices = [test for _, test in splits]  # ty: ignore[invalid-assignment]
         concat = np.concatenate(test_indices)
         if np.unique(concat, axis=0).shape[0] != concat.shape[0]:
             raise ValueError(
@@ -486,7 +491,7 @@ def _route_params(
 
 def _has_asset_names(X: ArrayLike) -> bool:
     """Return whether the optimizer's actual input carries string asset names."""
-    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)
+    return hasattr(X, "columns") and all(isinstance(name, str) for name in X.columns)  # ty: ignore[not-iterable]
 
 
 def _propagate_previous_weights(portfolios: list[Portfolio]) -> list[Portfolio]:
@@ -546,11 +551,11 @@ def _get_last_step(estimator: skb.BaseEstimator | Pipeline) -> skb.BaseEstimator
 
 
 def _resolve_evaluation_portfolio_params(
-    estimator: skb.BaseEstimator | Pipeline,
+    estimator: _EstimatorT,
     portfolio_params: dict | None,
     *,
     clone_estimator: bool = True,
-) -> tuple[skb.BaseEstimator | Pipeline, dict, set[str]]:
+) -> tuple[_EstimatorT, dict, set[str]]:
     """Resolve parameters for individual and multi-period portfolio evaluation.
 
     Settings listed in `_PORTFOLIO_MEASURE_PARAMS` configure every resulting
@@ -599,7 +604,7 @@ def _resolve_evaluation_portfolio_params(
 
     last_step = _get_last_step(estimator)
     estimator_portfolio_params = _normalize_annualization_factor_alias(
-        {} if last_step.portfolio_params is None else last_step.portfolio_params,
+        {} if last_step.portfolio_params is None else last_step.portfolio_params,  # ty: ignore[unresolved-attribute]
         stacklevel=5,
     )
     for param in _PORTFOLIO_MEASURE_PARAMS:
@@ -624,7 +629,7 @@ def _resolve_evaluation_portfolio_params(
         estimator = sk.clone(estimator)
     last_step = _get_last_step(estimator)
     individual_portfolio_params = (
-        {} if last_step.portfolio_params is None else last_step.portfolio_params.copy()
+        {} if last_step.portfolio_params is None else last_step.portfolio_params.copy()  # ty: ignore[unresolved-attribute]
     )
     individual_portfolio_params["weight_drift"] = weight_drift
     last_step.set_params(portfolio_params=individual_portfolio_params)
@@ -784,7 +789,7 @@ def _run_path(
         Portfolios predicted for each test fold in the path, in order.
     """
     predictions = []
-    prev_weights = _get_last_step(estimator).previous_weights
+    prev_weights = _get_last_step(estimator).previous_weights  # ty: ignore[unresolved-attribute]
     for i, (train, test, *column_indices) in enumerate(path_splits):
         est = sk.clone(estimator)
         last_step = _get_last_step(est)
