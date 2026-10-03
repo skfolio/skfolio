@@ -2242,6 +2242,83 @@ class TestPartialFit:
         assert model.fallback_ is None
         assert model.fallback_chain_ is None
 
+    @pytest.mark.parametrize("initial_success", [False, True])
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_handled_solver_failure_preserves_learning(
+        self, X_tiny, initial_success, fallback
+    ):
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+        )
+        batches = []
+        if initial_success:
+            model.partial_fit(X_tiny)
+            batches.append(X_tiny)
+        model.set_params(min_weights=1.0)
+        failed_batch = X_tiny * 1.1
+        if fallback is None:
+            with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+                model.partial_fit(failed_batch)
+            assert isinstance(model.predict(X_tiny), FailedPortfolio)
+        else:
+            model.partial_fit(failed_batch)
+            np.testing.assert_array_equal(model.weights_, model.previous_weights)
+            assert model.fallback_ == "previous_weights"
+        batches.append(failed_batch)
+
+        prior = model.prior_estimator_
+        model.set_params(min_weights=0.0)
+        next_batch = X_tiny * 0.9
+        model.partial_fit(next_batch)
+        batches.append(next_batch)
+
+        history = np.concatenate(batches)
+        reference = clone(model.prior_estimator).fit(history).return_distribution_
+        assert model.prior_estimator_ is prior
+        np.testing.assert_array_equal(prior.return_distribution_.returns, history)
+        np.testing.assert_allclose(prior.return_distribution_.mu, reference.mu)
+        np.testing.assert_allclose(
+            prior.return_distribution_.covariance, reference.covariance
+        )
+        assert model.error_ is None
+        assert model.fallback_chain_ is None
+
+    @pytest.mark.parametrize("error_type", [ValueError, cp.SolverError])
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_learner_failure_is_always_raised(
+        self, X_tiny, monkeypatch, error_type, fallback
+    ):
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+        ).partial_fit(X_tiny)
+        update_prior = model.prior_estimator_.partial_fit
+
+        def failing_update(X, y=None):
+            update_prior(X, y)
+            raise error_type("Learner failed after updating")
+
+        monkeypatch.setattr(model.prior_estimator_, "partial_fit", failing_update)
+        with pytest.raises(error_type, match="Learner failed after updating"):
+            model.partial_fit(X_tiny)
+
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_objective_failure_is_always_raised(self, X_tiny, fallback):
+        def failing_objective(w):
+            raise ValueError("Cannot build objective")
+
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+            add_objective=failing_objective,
+        )
+        with pytest.raises(TypeError, match="add_objective"):
+            model.partial_fit(X_tiny)
+
     def test_fallback_previous_weights(self, X):
         """partial_fit can fall back to previous weights after solver failure."""
         previous_weights = np.full(X.shape[1], 1 / X.shape[1])

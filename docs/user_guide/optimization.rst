@@ -991,6 +991,9 @@ incomplete. The only fallback supported by `partial_fit` is
 fallbacks are reserved for regular `fit`, where each fallback can be fitted on the
 complete training window.
 
+See :ref:`Updates and Failure Handling <online_failure_handling>` for the online
+continuation and restart rules.
+
 Example: proceed without raising and retrieve failure diagnostics
 
 .. code-block:: python

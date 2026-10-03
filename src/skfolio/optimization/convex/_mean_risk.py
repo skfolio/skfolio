@@ -954,6 +954,9 @@ class MeanRisk(ConvexOptimization):
         The optimization problem is solved fresh on each call using the updated
         moments from the prior estimator.
 
+        Each call receives only new observations. See :ref:`Updates and Failure
+        Handling <online_failure_handling>` for continuation and restart rules.
+
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
