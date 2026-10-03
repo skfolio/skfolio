@@ -265,3 +265,47 @@ See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`
 for an end-to-end online evaluation of
 :class:`~skfolio.optimization.MeanRisk`.
+
+Sequential portfolio policies
+-----------------------------
+
+:class:`~skfolio.optimization.ExponentiatedGradient` learns target weights directly
+from returns, without an expected-return or covariance estimator. ``fit`` resets
+its state; ``partial_fit`` continues and processes a block one observation at a
+time. After observing return at time ``t``, ``weights_`` is the target for the
+next period. ``initial_weights_`` records the feasible allocation before learning.
+
+.. code-block:: python
+
+    from skfolio.model_selection import online_predict
+    from skfolio.optimization import ExponentiatedGradient
+
+    model = ExponentiatedGradient(
+        learning_rate=0.05,
+        max_weights=0.4,  # Requires at least three assets.
+        portfolio_params={"weight_drift": True},
+    )
+    portfolio = online_predict(model, X, warmup_size=252, test_size=1)
+
+The estimator uses entropy mirror descent with a fixed rate or a pure callable
+schedule indexed by the number of observations processed, including warmup.
+Weight bounds are enforced with KL geometry and may be scalars, arrays or
+asset-name dictionaries. Bounds are fixed for a stream; call ``fit`` after
+changing them. The initial reference allocation is also projected into the bounds.
+
+Algorithm target weights are distinct from actual holdings: portfolio evaluation
+handles drift and passes held weights through ``previous_weights``. These holdings
+do not replace the algorithm's previous target. No trades are simulated during
+warmup. Online evaluation requires exactly one observation per test window;
+calendar windows that contain several observations are rejected too.
+
+This first implementation supports a fixed asset universe and finite simple
+returns strictly greater than -1. It has no prior estimator, risk constraints,
+turnover limit or fallback recovery. A failed numerical update leaves earlier
+successful observations in the block committed. Inherited ``predict`` holds the
+last target, and ``fit_predict`` is not a causal backtest: use ``online_predict``.
+
+The numerical reference weights are floored at ``1e-16`` before taking logarithms,
+matching the entropy-map convention used in Carlo Nicolini's online portfolio
+implementation. The mode is mirror descent, rather than his default FTRL mode;
+these need not agree for nonuniform initial allocations or varying learning rates.

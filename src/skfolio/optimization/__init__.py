@@ -19,14 +19,17 @@ from skfolio.optimization.convex import (
 )
 from skfolio.optimization.ensemble import StackingOptimization
 from skfolio.optimization.naive import EqualWeighted, InverseVolatility, Random
+from skfolio.optimization.online import BaseOnlineOptimization, ExponentiatedGradient
 
 __all__ = [
     "BaseHierarchicalOptimization",
+    "BaseOnlineOptimization",
     "BaseOptimization",
     "BenchmarkTracker",
     "ConvexOptimization",
     "DistributionallyRobustCVaR",
     "EqualWeighted",
+    "ExponentiatedGradient",
     "HierarchicalEqualRiskContribution",
     "HierarchicalRiskParity",
     "InverseVolatility",
