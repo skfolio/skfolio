@@ -37,6 +37,30 @@ def test_return_distribution_reports_investable_assets():
     assert distribution.n_investable_assets == 1
 
 
+@pytest.mark.parametrize("nonfinite", [np.nan, np.inf, -np.inf])
+def test_return_distribution_rejects_nonfinite_investable_covariance(nonfinite):
+    """The complete covariance block for investable assets must be finite."""
+    covariance = np.array([[0.04, nonfinite], [nonfinite, 0.09]])
+
+    with pytest.raises(
+        ValueError, match="investable assets must contain only finite values"
+    ):
+        _make_return_distribution(covariance=covariance)
+
+
+@pytest.mark.parametrize("nonfinite", [np.nan, np.inf, -np.inf])
+def test_return_distribution_allows_nonfinite_excluded_covariance(nonfinite):
+    """Covariance entries involving an excluded asset may remain nonfinite."""
+    covariance = np.array([[0.04, nonfinite], [nonfinite, 0.09]])
+    distribution = _make_return_distribution(
+        mu=np.array([0.01, np.nan]), covariance=covariance
+    )
+
+    subset = distribution.investable_subset()
+
+    np.testing.assert_array_equal(subset.covariance, [[0.04]])
+
+
 @pytest.mark.parametrize(
     ("overrides", "match"),
     [
