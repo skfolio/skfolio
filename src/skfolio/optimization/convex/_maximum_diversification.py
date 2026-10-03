@@ -6,18 +6,14 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import cvxpy as cp
 import numpy as np
-import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
-from skfolio.typing import ArrayLike
 
 
 class MaximumDiversification(MeanRisk):
@@ -553,47 +549,18 @@ class MaximumDiversification(MeanRisk):
             save_problem=save_problem,
             add_objective=add_objective,
             add_constraints=add_constraints,
+            overwrite_expected_return=_weighted_volatilities,
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
-    ) -> MaximumDiversification:
-        """Fit the Maximum Diversification Optimization estimator.
 
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, n_assets)
-           Price returns of the assets.
-
-        y : array-like of shape (n_observations, n_targets), optional
-            Price returns of factors or a target benchmark.
-            The default is `None`.
-
-        **fit_params : dict
-            Parameters to pass to the underlying estimators.
-            Only available if `enable_metadata_routing=True`, which can be
-            set by using `sklearn.set_config(enable_metadata_routing=True)`.
-            See :ref:`Metadata Routing User Guide <metadata_routing>` for
-            more details.
-
-        Returns
-        -------
-        self : MaximumDiversification
-           Fitted estimator.
-        """
-        # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
-
-        def func(w: cp.Variable, obj: MaximumDiversification) -> cp.Expression:
-            """Weighted volatilities."""
-            dist = obj.prior_estimator_.return_distribution_
-            if obj.investable_mask_ is not None:
-                dist = dist.investable_subset(slim=True)
-            return np.sqrt(np.diag(dist.covariance)) @ w
-
-        self.overwrite_expected_return = func
-        super().fit(X, y, **fit_params)
-        return self
+def _weighted_volatilities(
+    w: cp.Variable, estimator: MaximumDiversification
+) -> cp.Expression:
+    """Return the portfolio's weighted asset volatilities."""
+    return_distribution = estimator.prior_estimator_.return_distribution_
+    if estimator.investable_mask_ is not None:
+        return_distribution = return_distribution.investable_subset(slim=True)
+    return np.sqrt(np.diag(return_distribution.covariance)) @ w
