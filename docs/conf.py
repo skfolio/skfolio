@@ -613,6 +613,7 @@ TUTORIAL_ORDER = {
         "plot_factor_constrained_portfolio.py",
         "plot_alpha_factor_neutral_portfolio.py",
     ),
+    "parametric_portfolio_policy": ("plot_parametric_portfolio_policy.py",),
     "risk_budgeting": (
         "plot_1_risk_parity_variance.py",
         "plot_2_risk_budgeting_CVaR.py",
