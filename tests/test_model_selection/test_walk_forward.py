@@ -1059,3 +1059,57 @@ def test_walk_forward_get_n_splits_offset_train_window_leaves_no_test_window(
         ).get_n_splits(X_small)
         == 1
     )
+
+
+@pytest.mark.parametrize("train_size", [1, pd.DateOffset(months=1)])
+@pytest.mark.parametrize("previous", [False, True])
+@pytest.mark.parametrize("reduce_test", [False, True])
+@pytest.mark.parametrize("expand_train", [False, True])
+@pytest.mark.parametrize("purged_size", [0, 1])
+def test_walk_forward_offset_beyond_last_observation(
+    train_size, previous, reduce_test, expand_train, purged_size
+):
+    """An unaligned final boundary must not become a negative positional index."""
+    index = pd.bdate_range("2026-01-01", "2026-04-03")
+    X = pd.DataFrame({"returns": np.zeros(len(index))}, index=index)
+    cv = WalkForward(
+        test_size=1,
+        train_size=train_size,
+        freq="MS",
+        freq_offset=pd.offsets.BDay(5),
+        previous=previous,
+        reduce_test=reduce_test,
+        expand_train=expand_train,
+        purged_size=purged_size,
+    )
+
+    # The requested boundaries are Jan 8, Feb 6, Mar 6, and Apr 8.
+    # Apr 8 cannot align forward within X. With previous=True it still aligns
+    # backward to Apr 3, preserving the existing previous-observation policy.
+    windows = [("2026-02-06", "2026-03-05")]
+    train_starts = ["2026-01-08" if train_size == 1 else "2026-01-06"]
+    if previous:
+        windows.append(("2026-03-06", "2026-04-02"))
+        train_starts.append("2026-02-06")
+        if reduce_test:
+            windows.append(("2026-04-03", "2026-04-03"))
+            train_starts.append("2026-03-06")
+    elif reduce_test:
+        windows.append(("2026-03-06", "2026-04-03"))
+        train_starts.append("2026-02-06")
+
+    splits = list(cv.split(X))
+    assert len(splits) == cv.get_n_splits(X) == len(windows)
+    for (train, test), (test_start, test_end), train_start in zip(
+        splits, windows, train_starts, strict=True
+    ):
+        start = 0 if expand_train else index.get_loc(train_start)
+        end = index.get_loc(test_start) - purged_size
+        np.testing.assert_array_equal(train, np.arange(start, end))
+        np.testing.assert_array_equal(
+            test, np.flatnonzero((index >= test_start) & (index <= test_end))
+        )
+        assert len(train) > 0 and len(test) > 0
+        assert train.min() >= 0 and test.min() >= 0
+        assert train.max() < test.min()
+        assert test.max() < len(X)

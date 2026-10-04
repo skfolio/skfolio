@@ -98,6 +98,9 @@ class WalkForward(sks.BaseCrossValidator):
     freq_offset : pandas DateOffset | datetime timedelta, optional
         Only used if `freq` is provided. Offsets the `freq` by a pandas DateOffset or a
         datetime timedelta offset.
+        Shifted dates that cannot be aligned to an observation according to
+        `previous` are discarded. A final partial test window is included only
+        when `reduce_test=True`.
 
     previous : bool, default=False
         Only used if `freq` is provided. If set to `True`, and if the period start
@@ -410,6 +413,9 @@ class WalkForward(sks.BaseCrossValidator):
         idx = ts_index.get_indexer(
             date_range, method="ffill" if self.previous else "bfill"
         )
+        valid = idx >= 0
+        date_range = date_range[valid]
+        idx = idx[valid]
         n = len(idx)
 
         if isinstance(train_size, int):
@@ -609,6 +615,8 @@ def _split_from_period_without_train_offset(
         date_range += freq_offset
 
     idx = ts_index.get_indexer(date_range, method="ffill" if previous else "bfill")
+    # An unaligned shifted boundary is not a valid positional index.
+    idx = idx[idx >= 0]
     n = len(idx)
     i = 0
     while True:
@@ -700,6 +708,9 @@ def _split_from_period_with_train_offset(
         date_range += freq_offset
 
     idx = ts_index.get_indexer(date_range, method="ffill" if previous else "bfill")
+    valid = idx >= 0
+    date_range = date_range[valid]
+    idx = idx[valid]
     train_idx = ts_index.get_indexer(date_range - train_size, method="ffill")
 
     n = len(idx)
