@@ -931,47 +931,89 @@ class BasePortfolio:
             perf_measure = None
             risk_measure = non_annualized_measure
 
+        # Sample weights are aligned with the full sample, so they are sliced with each
+        # window rather than passed as a full-length argument.
+        weighted = self.sample_weight is not None
+
         if risk_measure is not None:
             risk_func, risk_func_args = self._get_measure_func(measure=risk_measure)
+            risk_func_args.pop("sample_weight", None)
+            supports_weight = "sample_weight" in args_names(risk_func)
 
             if "drawdowns" in risk_func_args:
                 del risk_func_args["drawdowns"]
 
-                def meta_risk_func(returns: FloatArray) -> float:
+                def meta_risk_func(
+                    returns: FloatArray, sample_weight: FloatArray | None = None
+                ) -> float:
                     """Compute the drawdown-based risk measure on `returns`."""
                     drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
+                    if supports_weight:
+                        return risk_func(
+                            drawdowns=drawdowns,
+                            sample_weight=sample_weight,
+                            **risk_func_args,
+                        )
                     return risk_func(drawdowns=drawdowns, **risk_func_args)
 
             else:
                 del risk_func_args["returns"]
 
-                def meta_risk_func(returns: FloatArray) -> float:
+                def meta_risk_func(
+                    returns: FloatArray, sample_weight: FloatArray | None = None
+                ) -> float:
                     """Compute the returns-based risk measure on `returns`."""
+                    if supports_weight:
+                        return risk_func(
+                            returns=returns,
+                            sample_weight=sample_weight,
+                            **risk_func_args,
+                        )
                     return risk_func(returns=returns, **risk_func_args)
 
             if perf_measure is not None:
                 perf_func = getattr(mt, str(perf_measure.value))
 
-                def func(returns: FloatArray) -> float:
+                def func(
+                    returns: FloatArray, sample_weight: FloatArray | None = None
+                ) -> float:
                     """Compute the excess performance over risk on `returns`."""
-                    return (perf_func(returns) - self.risk_free_rate) / meta_risk_func(
-                        returns
-                    )
+                    return (
+                        perf_func(returns, sample_weight=sample_weight)
+                        - self.risk_free_rate
+                    ) / meta_risk_func(returns, sample_weight)
 
             else:
                 func = meta_risk_func
         else:
             perf_func = getattr(mt, str(non_annualized_measure.value))
 
-            def func(returns: FloatArray) -> float:
+            def func(
+                returns: FloatArray, sample_weight: FloatArray | None = None
+            ) -> float:
                 """Compute the performance measure on `returns`."""
-                return perf_func(returns)
+                return perf_func(returns, sample_weight=sample_weight)
 
-        rolling = (
-            pd.Series(self.returns, index=self.observations)
-            .rolling(window=window)
-            .apply(func, raw=True)
-        )
+        if weighted:
+            returns = np.asarray(self.returns, dtype=float)
+            sample_weight = np.asarray(self.sample_weight, dtype=float)
+
+            def weighted_func(positions: FloatArray) -> float:
+                """Compute the measure on the window made of the given positions."""
+                window_slice = slice(int(positions[0]), int(positions[-1]) + 1)
+                return func(returns[window_slice], sample_weight[window_slice])
+
+            rolling = (
+                pd.Series(np.arange(len(returns)), index=self.observations)
+                .rolling(window=window)
+                .apply(weighted_func, raw=True)
+            )
+        else:
+            rolling = (
+                pd.Series(self.returns, index=self.observations)
+                .rolling(window=window)
+                .apply(func, raw=True)
+            )
         if measure.is_annualized:
             if measure in [
                 PerfMeasure.ANNUALIZED_MEAN,

@@ -573,6 +573,30 @@ def test_portfolio_rolling_measure(X, weights):
         np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
 
 
+def test_portfolio_rolling_measure_sample_weight(X, weights):
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(0).random(n)
+    sample_weight /= sample_weight.sum()
+    portfolio = Portfolio(
+        X=X[:n],
+        weights=weights,
+        annualization_factor=252,
+        sample_weight=sample_weight,
+    )
+    window_weight = sample_weight[n - window :]
+    ref = Portfolio(
+        X=X.iloc[n - window : n],
+        weights=weights,
+        annualization_factor=252,
+        sample_weight=window_weight / window_weight.sum(),
+    )
+
+    for measure in _MEASURES:
+        res = portfolio.rolling_measure(measure=measure, window=window)
+        np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
+
+
 def test_portfolio_expected_returns_from_assets(X, weights):
     portfolio = Portfolio(X=X, weights=weights)
     rets = X.to_numpy()
