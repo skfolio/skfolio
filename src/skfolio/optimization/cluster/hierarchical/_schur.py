@@ -449,48 +449,51 @@ def _compute_monotonic_weights(
     step: float = 0.1,
     tol: float = 1e-4,
 ) -> tuple[FloatArray | None, float]:
-    """
-    Finds the gamma value corresponding to the turning point where portfolio risk
+    """Find the gamma value corresponding to the turning point where portfolio risk
     (variance) stops decreasing monotonically.
 
-     This method exploits the smooth (i.e., continuously differentiable) functional
-     dependence of portfolio variance on the risk-aversion parameter gamma in a
-     Schur-complement-based optimization. It searches for the smallest gamma value
-     (up to `max_gamma`) beyond which further increases no longer yield significant
-     variance reduction, as defined by `tol`.
+    This method exploits the assumed smooth (i.e., continuously differentiable)
+    functional dependence of portfolio variance on the regularization parameter
+    gamma in Schur-complement-based optimization. It searches for the first gamma
+    value (up to `max_gamma`) beyond which variance no longer decreases. Within
+    the interval selected by the initial sweep, the search assumes a decrease
+    followed by stabilization or an increase.
 
     Parameters
     ----------
-     max_gamma : float
+    max_gamma : float
         Maximum gamma value to sweep up to.
 
-     sorted_assets : ndarray of shape (n_assets,)
+    sorted_assets : ndarray of shape (n_assets,)
         Array of ordered asset indices.
 
-     covariance : FloatArray
+    covariance : FloatArray
         Covariance matrix of asset returns.
 
-     max_weights : FloatArray
+    max_weights : FloatArray
         Maximum allowable weights for each asset.
 
-     min_weights : FloatArray
+    min_weights : FloatArray
         Minimum allowable weights for each asset.
 
-     step : float, default=0.1
+    step : float, default=0.1
         Step size for incrementing gamma during the initial sweep.
 
-     tol : float, default=1e-4
-        Tolerance for detecting when further variance reduction is negligible during
-        binary search.
+    tol : float, default=1e-4
+        Gamma interval tolerance after finding a decreasing point, also used as
+        the backward-difference step. Refinement continues below this tolerance
+        when no decreasing point has been found, up to the iteration limit.
 
     Returns
     -------
-     weights : FloatArray or None
+    weights : FloatArray or None
         Asset weights at the identified turning point, or `None` if no weights can
         be computed.
 
-     effective_gamma : float
-        Gamma value at which variance stops decreasing meaningfully.
+    effective_gamma : float
+        Estimated gamma value corresponding to the first variance turning point,
+        or `max_gamma` when variance keeps decreasing. The returned weights are
+        computed at this value.
     """
     if max_gamma == 0:
         weights = _compute_weights(
@@ -526,52 +529,45 @@ def _compute_monotonic_weights(
 
     # Initial sweep of the discrete gamma vector in [0, max_gamma] to find the range
     # of the variance turning point if any.
-    variance, weights_0 = objective(gammas[0])
+    variance, weights = objective(gammas[0])
     variances[0] = variance
+    previous_weights = weights
     for i in range(1, n):
+        # Retain the two preceding sweep allocations for the refinement interval.
+        lower_weights, previous_weights = previous_weights, weights
         variance, weights = objective(gammas[i])
         variances[i] = variance
         if variance >= variances[i - 1]:
-            if i == 1:
-                # Turning point either lies in [0, gammas[1]], or there is no turning
-                # points (monotonically decreasing from 0.0). If in [0, gammas[1]],
-                # we find the exact turning point by binary search.
-                try:
-                    return _binary_search(
-                        objective,
-                        low_gamma=gammas[0],
-                        high_gamma=gammas[1],
-                        low_variance=variances[0],
-                        tol=tol,
-                    )
-                except RuntimeError:
-                    return weights_0, 0.0
-            else:
-                # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
-                # turning point by binary search.
-                return _binary_search(
-                    objective,
-                    low_gamma=gammas[i - 2],
-                    high_gamma=gammas[i],
-                    low_variance=variances[i - 2],
-                    tol=tol,
-                )
+            # Refine the turning point in [gammas[i-2], gammas[i]], or
+            # [0, gammas[1]] on the first step. If variance is non-decreasing
+            # throughout the interval, retain the lower endpoint's allocation.
+            low_index = max(0, i - 2)
+            return _binary_search(
+                objective,
+                low_gamma=gammas[low_index],
+                high_gamma=gammas[i],
+                low_variance=variances[low_index],
+                low_weights=lower_weights,
+                tol=tol,
+            )
 
     # No turning point found in sweep
 
     # 1) Check local derivative at the terminal gamma
-    variance_h = objective(max_gamma - tol)[0]
+    # Keep the backward difference within [0, max_gamma], reusing variance at zero.
+    variance_h = variances[0] if max_gamma <= tol else objective(max_gamma - tol)[0]
     if variance <= variance_h:
         # monotonically decreasing up to max_gamma --> we return the terminal gamma
         return weights, max_gamma
 
-    # 2) Turning point lies between last two gammas, we find the exact turning point by
+    # 2) Turning point lies between last two gammas, we refine its location by
     # binary search
     return _binary_search(
         objective,
         low_gamma=gammas[-2],
         high_gamma=max_gamma,
         low_variance=variances[-2],
+        low_weights=previous_weights,
         tol=tol,
     )
 
@@ -581,22 +577,32 @@ def _binary_search(
     low_gamma: float,
     high_gamma: float,
     low_variance: float,
+    low_weights: FloatArray | None,
     tol: float = 1e-4,
-) -> tuple[FloatArray, float]:
-    """
-    Performs a binary search to locate the turning point in the interval
-    [low_gamma, high_gamma] where portfolio variance stops decreasing monotonically.
+) -> tuple[FloatArray | None, float]:
+    """Locate the variance turning point by binary search.
 
-    This method assumes that portfolio variance decreases smoothly with gamma up to
-    a point, after which it stabilizes or increases. It evaluates the `objective`
-    function (which returns variance and weights) at midpoints to identify this
-    transition with precision up to a specified tolerance.
+    Search the interval [low_gamma, high_gamma] for the point where portfolio
+    variance stops decreasing monotonically. This method assumes that variance
+    decreases smoothly with gamma up to a point, after which it stabilizes or
+    increases. It evaluates the objective at midpoints and estimates the local
+    slope with a backward difference to identify this transition with gamma
+    precision controlled by `tol`.
+
+    After accepting a decreasing point, stop at a feasible midpoint once the
+    interval width is at most `tol`. Return the last accepted lower endpoint and
+    its weights. If no decreasing point has been found, continue refining up to
+    the iteration limit to detect improvements near the initial lower endpoint.
+    If subsequent midpoints remain infeasible, return the accepted lower endpoint
+    when the iteration limit is reached. If no midpoint is accepted, return the
+    initial lower endpoint and its supplied weights.
 
     Parameters
     ----------
     objective : callable
         A function that takes a float gamma value and returns a tuple:
-        (variance: float, weights: FloatArray).
+        (variance: float, weights: FloatArray or None). Infeasible allocations
+        return infinite variance and None for the weights.
 
     low_gamma : float
         Lower bound of the gamma search interval.
@@ -607,46 +613,60 @@ def _binary_search(
     low_variance : float
         The variance value corresponding to `low_gamma`.
 
+    low_weights : FloatArray or None
+        Weights at `low_gamma`, or None if that allocation is infeasible.
+
     tol : float, default=1e-4
-        Tolerance level for stopping the search when the interval between
-        low and high gamma becomes sufficiently small.
+        Gamma interval tolerance after finding a decreasing point, also used as
+        the backward-difference step, bounded at zero.
 
     Returns
     -------
-    weights : FloatArray
-        Asset weights corresponding to the turning point gamma.
+    weights : FloatArray or None
+        Asset weights corresponding to the returned gamma, or None if neither
+        the initial lower endpoint nor any accepted midpoint is feasible.
 
     gamma : float
-        Gamma value at which the minimum (or lowest feasible) variance is achieved
-        before monotonic decrease ends.
-
-    Raises
-    ------
-    RuntimeError
-        If a suitable gamma cannot be found within the allowed number of iterations.
+        Gamma near the variance turning point or feasibility boundary within
+        the search interval. The returned weights are computed at this value.
     """
-    max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
-    is_decreasing = False
+    max_iter = max(1, math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1))
+    initial_gamma, initial_variance = low_gamma, low_variance
 
     for _ in range(max_iter):
         mid_gamma = 0.5 * (low_gamma + high_gamma)
         variance, weights = objective(mid_gamma)
-        variance_h = objective(mid_gamma - tol)[0]
+        # A midpoint with higher variance or an infeasible allocation already
+        # selects the left subinterval. Estimate the local derivative only when
+        # the midpoint passes the variance comparison.
+        is_decreasing = weights is not None and variance <= low_variance
+        if is_decreasing:
+            gamma_h = max(0.0, mid_gamma - tol)
+            variance_h = (
+                initial_variance if gamma_h == initial_gamma else objective(gamma_h)[0]
+            )
+            is_decreasing = variance <= variance_h
 
-        if variance <= low_variance and variance <= variance_h:
-            is_decreasing = True
+        if is_decreasing:
             low_gamma = mid_gamma
             low_variance = variance
+            low_weights = weights
         else:
             high_gamma = mid_gamma
 
-        if is_decreasing and weights is not None and (high_gamma - low_gamma) <= tol:
-            return weights, low_gamma
+        # Keep refining near the starting point until a new point is accepted,
+        # even when the interval is already below tol.
+        if (
+            low_gamma > initial_gamma
+            and weights is not None
+            and (high_gamma - low_gamma) <= tol
+        ):
+            return low_weights, low_gamma
 
-    raise RuntimeError(
-        "Unable to find a permissible regularization factor `gamma` for which "
-        "the portfolio variance decreases monotonically as a function of gamma."
-    )
+    # At a feasibility boundary, all subsequent midpoints can be infeasible.
+    # Retain the last accepted allocation, or the supplied starting allocation,
+    # after exhausting the refinement budget.
+    return low_weights, low_gamma
 
 
 def _compute_weights(
