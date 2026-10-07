@@ -6,15 +6,14 @@
 
 from __future__ import annotations
 
+import cvxpy as cp
 import numpy as np
-import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ObjectiveFunction
 from skfolio.optimization.convex._mean_risk import MeanRisk
 from skfolio.prior import BasePrior
-from skfolio.typing import ArrayLike
 
 
 class MaximumDiversification(MeanRisk):
@@ -298,7 +297,8 @@ class MaximumDiversification(MeanRisk):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     max_tracking_error : float, optional
@@ -385,21 +385,30 @@ class MaximumDiversification(MeanRisk):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules. When
+        computing multiple portfolios, setting `raise_on_failure=False` preserves
+        successful allocations and records each failure separately. See
+        :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -435,9 +444,11 @@ class MaximumDiversification(MeanRisk):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -509,11 +520,11 @@ class MaximumDiversification(MeanRisk):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
             risk_measure=RiskMeasure.STANDARD_DEVIATION,
@@ -549,47 +560,18 @@ class MaximumDiversification(MeanRisk):
             save_problem=save_problem,
             add_objective=add_objective,
             add_constraints=add_constraints,
+            overwrite_expected_return=_weighted_volatilities,
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
         )
 
-    def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
-    ) -> MaximumDiversification:
-        """Fit the Maximum Diversification Optimization estimator.
 
-        Parameters
-        ----------
-        X : array-like of shape (n_observations, n_assets)
-           Price returns of the assets.
-
-        y : array-like of shape (n_observations, n_targets), optional
-            Price returns of factors or a target benchmark.
-            The default is `None`.
-
-        **fit_params : dict
-            Parameters to pass to the underlying estimators.
-            Only available if `enable_metadata_routing=True`, which can be
-            set by using `sklearn.set_config(enable_metadata_routing=True)`.
-            See :ref:`Metadata Routing User Guide <metadata_routing>` for
-            more details.
-
-        Returns
-        -------
-        self : MaximumDiversification
-           Fitted estimator.
-        """
-        # `X` is unchanged and only `feature_names_in_` is performed
-        _ = skv.validate_data(self, X, skip_check_array=True)
-
-        def func(w, obj):
-            """Weighted volatilities."""
-            dist = obj.prior_estimator_.return_distribution_
-            if obj.investable_mask_ is not None:
-                dist = dist.investable_subset(slim=True)
-            return np.sqrt(np.diag(dist.covariance)) @ w
-
-        self.overwrite_expected_return = func
-        super().fit(X, y, **fit_params)
-        return self
+def _weighted_volatilities(
+    w: cp.Variable, estimator: MaximumDiversification
+) -> cp.Expression:
+    """Return the portfolio's weighted asset volatilities."""
+    return_distribution = estimator.prior_estimator_.return_distribution_
+    if estimator.investable_mask_ is not None:
+        return_distribution = return_distribution.investable_subset(slim=True)
+    return np.sqrt(np.diag(return_distribution.covariance)) @ w

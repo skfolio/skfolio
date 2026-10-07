@@ -574,7 +574,10 @@ class TestOnlinePredict:
     def test_uncertainty_set_without_partial_fit_raises(self, X, param_name, estimator):
         model = _make_online_estimator(**{param_name: estimator})
 
-        with pytest.raises(TypeError, match=param_name):
+        with pytest.raises(
+            TypeError,
+            match=f"{type(estimator).__name__} does not implement partial_fit",
+        ):
             online_predict(model, X, warmup_size=400, test_size=100)
 
     def test_bad_warmup_raises(self, X):
@@ -604,7 +607,9 @@ class TestOnlinePredict:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         model = _make_online_estimator()
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be less than the number of observations"
+        ):
             online_predict(model, X, warmup_size=X.shape[0], test_size=1)
 
     def test_freq(self, X):
@@ -811,7 +816,9 @@ class TestOnlineScore:
     def test_insufficient_data_raises(self, X):
         """Raises ValueError when data is too short."""
         est = EWCovariance(half_life=30)
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match="must be less than the number of observations"
+        ):
             online_score(est, X, warmup_size=X.shape[0], test_size=1)
 
     def test_float_warmup_raises(self, X):

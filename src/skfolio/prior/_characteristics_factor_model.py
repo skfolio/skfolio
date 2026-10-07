@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from graphlib import TopologicalSorter
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,12 @@ from skfolio.prior._model._family_constraint_basis import (
     FamilyConstraintBasis,
     compute_family_constraint_basis,
 )
-from skfolio.typing import AnyArray, BoolArray, FloatArray, ObjArray, StrArray
+from skfolio.typing import (
+    AnyArray,
+    BoolArray,
+    FloatArray,
+    StrArray,
+)
 from skfolio.utils._array_buffer import _ArrayBuffer, _update_buffer
 from skfolio.utils._factor_tools import (
     _expand_factor_names,
@@ -796,7 +801,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     factor_model_: FactorModel
     return_distribution_: ReturnDistribution
     factor_estimators_: dict[str, BaseFactorExposure]
-    currency_factor_estimator_: BaseFactorExposure | None
+    currency_factor_estimator_: BaseFactorExposure
 
     # Coverage universe from `characteristics`
     n_assets_: int
@@ -854,11 +859,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Fit the characteristics factor model.
 
@@ -893,7 +898,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             Currency excess returns. Required only when `currency_factor` is set.
             Columns must contain the unique currency factor names produced by
             `currency_factor`. Assets are mapped to these columns through the one-hot
-            currency exposures.
+            currency exposures. Values must be finite for the fitted observations.
+            Leading rows consumed by descriptor warmup and exposure lag are not used
+            and may contain NaN.
 
         **fit_params : dict
             Parameters passed to underlying estimators. Only available when
@@ -925,11 +932,11 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def partial_fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Incrementally fit the characteristics factor model.
 
@@ -966,7 +973,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             Currency excess returns. Required only when `currency_factor` is set.
             Columns must contain the unique currency factor names produced by
             `currency_factor`. Assets are mapped to these columns through the one-hot
-            currency exposures.
+            currency exposures. Values must be finite for the fitted observations.
+            Leading rows consumed by descriptor warmup and exposure lag are not used
+            and may contain NaN.
 
         **fit_params : dict
             Parameters passed to underlying estimators. Only available when
@@ -991,12 +1000,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
     def _fit(
         self,
         X: pd.DataFrame | None = None,
-        y=None,
+        y: None = None,
         *,
         characteristics: AssetPanel,
         currency_excess_returns: pd.DataFrame | None = None,
         method: str,
-        **fit_params,
+        **fit_params: Any,
     ) -> CharacteristicsFactorModel:
         """Core fitting logic shared by fit and partial_fit."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -1031,9 +1040,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                     method=method,
                 )
             )
-            currency_excess_returns = _validate_currency_excess_returns(
-                currency_excess_returns=currency_excess_returns,
-                observations=observations,
+            currency_excess_returns = _select_currency_excess_returns(
+                currency_excess_returns=currency_excess_returns,  # ty: ignore[invalid-argument-type]
                 currency_factor_names=ccy_factor_names,
             )
         else:
@@ -1153,7 +1161,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         # down-weighted, inflating R2).
         if self.regression_mcap_power != 0:
             lagged_market_cap, _, self._buffer_market_cap = _lag_with_buffer(
-                market_cap, self._buffer_market_cap, self.exposure_lag
+                market_cap,  # ty: ignore[invalid-argument-type]
+                self._buffer_market_cap,
+                self.exposure_lag,
             )
         else:
             lagged_market_cap = None
@@ -1225,14 +1235,8 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         _, n_reduced_factors = factor_returns_reduced.shape
 
         if ccy_exposures is not None:
-            ccy_factor_returns = currency_excess_returns.loc[
-                observations, ccy_factor_names
-            ].to_numpy(dtype=float, copy=False)
-            if not np.all(np.isfinite(ccy_factor_returns)):
-                raise ValueError(
-                    "`currency_excess_returns` must contain only finite values "
-                    "for the fitted observations and currency factors."
-                )
+            _validate_finite_currency_returns(currency_excess_returns)  # ty: ignore[invalid-argument-type]
+            ccy_factor_returns = currency_excess_returns.to_numpy(dtype=float)  # ty: ignore[unresolved-attribute]
             factor_returns_reduced_with_ccy = np.concatenate(
                 [factor_returns_reduced, ccy_factor_returns], axis=1
             )
@@ -1243,12 +1247,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                 [exposures_reduced[-1], ccy_exposures[-1]], axis=1
             )
             basis_with_ccy = (
-                basis.append_passthrough_factors(len(ccy_factor_names))
+                basis.append_passthrough_factors(len(ccy_factor_names))  # ty: ignore[invalid-argument-type]
                 if basis is not None
                 else None
             )
             lagged_basis_with_ccy = (
-                lagged_basis.append_passthrough_factors(len(ccy_factor_names))
+                lagged_basis.append_passthrough_factors(len(ccy_factor_names))  # ty: ignore[invalid-argument-type]
                 if lagged_basis is not None
                 else None
             )
@@ -1380,7 +1384,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             # @ factor_returns(t) + idio_returns(t) reproduces asset returns exactly.
             # Factor mu and covariance describe the next period (forcast) and use the
             # current loading matrix with the current (unlagged) ratios.
-            factor_returns = lagged_basis_with_ccy.expand_factor_returns(
+            factor_returns = lagged_basis_with_ccy.expand_factor_returns(  # ty: ignore[unresolved-attribute]
                 factor_returns_reduced_with_ccy
             )
             factor_mu = basis_with_ccy.expand_factor_mu(factor_mu_reduced_with_ccy)
@@ -1416,12 +1420,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         history = self._get_history()
 
         if self.constrained_families is not None:
-            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(
+            accumulated_basis = self._family_constraint_basis.with_constraint_ratios(  # ty: ignore[unresolved-attribute]
                 history["family_constraint_ratios"]
             )
             if ccy_exposures is not None:
                 accumulated_basis = accumulated_basis.append_passthrough_factors(
-                    len(ccy_factor_names)
+                    len(ccy_factor_names)  # ty: ignore[invalid-argument-type]
                 )
         else:
             accumulated_basis = None
@@ -1486,7 +1490,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """
         return sku.Bunch(**dict(self.factors))
 
-    def set_params(self, **params) -> CharacteristicsFactorModel:
+    def set_params(self, **params: Any) -> CharacteristicsFactorModel:
         """Set the parameters of this estimator.
 
         Valid parameter keys can be listed with `get_params()`. Note that you
@@ -1748,16 +1752,18 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
 
         return characteristics, currency_excess_returns
 
-    def _validate_factors(self) -> tuple[list[str], list[BaseFactorExposure]]:
+    def _validate_factors(
+        self,
+    ) -> tuple[tuple[str, ...], tuple[BaseFactorExposure, ...]]:
         """Validate the `factors` parameter.
 
         Returns
         -------
-        names : list[str]
-            The list of factor names.
+        names : tuple of str
+            The factor names.
 
-        estimators : list[BaseFactorExposure]
-            The list of factor estimators.
+        estimators : tuple of BaseFactorExposure
+            The factor estimators.
         """
         if self.factors is None or len(self.factors) == 0:
             raise ValueError(
@@ -1886,7 +1892,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             )
 
         n_fail = int(insufficient.sum())
-        min_count = int(failing_counts.min())
+        min_count = int(np.min(failing_counts))
 
         max_examples = 10
         examples = dict(
@@ -2029,7 +2035,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         # stores raw arrays (zero-copy for batch fit). On the second call, promotes to
         # _ArrayBuffer buffers for amortized O(1) appends (avoids O(N^2)
         # np.concatenate).
-        self._history: dict[str, AnyArray | _ArrayBuffer] | None = None
+        self._history: dict[str, AnyArray] | dict[str, _ArrayBuffer] | None = None
 
     def _attach_benchmark_weights(self, characteristics: AssetPanel) -> None:
         """Compute benchmark_weights and add it as a field in characteristics for
@@ -2064,32 +2070,27 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                 self._history = {k: v[-max_history:].copy() for k, v in arrays.items()}
             else:
                 self._history = arrays
-        else:
-            history = self._history
-            if not isinstance(next(iter(history.values())), _ArrayBuffer):
-                history = {k: _ArrayBuffer(v) for k, v in history.items()}
-                self._history = history
+            return
 
+        buffers = {
+            k: v if isinstance(v, _ArrayBuffer) else _ArrayBuffer(v)
+            for k, v in self._history.items()
+        }
+        for k, v in arrays.items():
+            if max_history is not None and v.shape[0] > max_history:
+                v = v[-max_history:]
+            buffers[k].append(v)
             if max_history is not None:
-                arrays = {
-                    k: v[-max_history:] if v.shape[0] > max_history else v
-                    for k, v in arrays.items()
-                }
-
-            for k, v in arrays.items():
-                history[k].append(v)
-
-            if max_history is not None:
-                for buf in history.values():
-                    buf.truncate_to_last(max_history)
+                buffers[k].truncate_to_last(max_history)
+        self._history = buffers
 
     def _get_history(self) -> dict[str, AnyArray]:
         """Return the accumulated history arrays."""
         if self._history is None:
             raise AttributeError("History has not been initialized.")
         if isinstance(next(iter(self._history.values())), _ArrayBuffer):
-            return {k: v.array for k, v in self._history.items()}
-        return self._history
+            return {k: v.array for k, v in self._history.items()}  # ty: ignore[invalid-return-type, unresolved-attribute]
+        return self._history  # ty: ignore[invalid-return-type]
 
     def _get_dependency_layers(self) -> list[list[str]]:
         """Return factors grouped by dependency layer for ordered fitting when the
@@ -2134,7 +2135,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         return layers
 
     def _compute_factor_exposures(
-        self, characteristics: AssetPanel, routed_params: dict, method: str
+        self, characteristics: AssetPanel, routed_params: sku.Bunch, method: str
     ) -> tuple[FloatArray, StrArray, StrArray]:
         """Compute factor exposures from asset characteristics.
 
@@ -2147,7 +2148,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         characteristics : AssetPanel
             Panel data for the coverage universe.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for each factor estimator.
 
         Returns
@@ -2173,14 +2174,9 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             for name in layer:
                 factor_estimator = self.named_factor_estimators_[name]
                 if isinstance(factor_estimator, DerivedFactor):
-                    try:
-                        source_exposure, _, _ = results_dict[factor_estimator.source]
-                    except KeyError:
-                        raise ValueError(
-                            f"DerivedFactor '{name}' depends on"
-                            f" '{factor_estimator.source}' which was not found."
-                            f" Available factors: {list(results_dict.keys())}"
-                        ) from None
+                    # The dependency layers validate the source and place it in an
+                    # earlier layer, so its exposure is already computed.
+                    source_exposure, _, _ = results_dict[factor_estimator.source]
                 else:
                     source_exposure = None
 
@@ -2236,7 +2232,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         return exposures, factor_names, factor_families
 
     def _compute_currency_exposure(
-        self, characteristics: AssetPanel, routed_params: dict, method: str
+        self, characteristics: AssetPanel, routed_params: sku.Bunch, method: str
     ) -> tuple[FloatArray, StrArray, StrArray]:
         """Compute one-hot currency factor exposures.
 
@@ -2250,7 +2246,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         characteristics : AssetPanel
             Panel data for the coverage universe.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for the currency factor estimator.
 
         Returns
@@ -2270,7 +2266,12 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
             fit_params=routed_params["currency_factor"][method],
             method=f"{method}_transform",
         )
-        factor_names = self.currency_factor_estimator_.factor_names_
+        factor_names = getattr(self.currency_factor_estimator_, "factor_names_", None)
+        if factor_names is None:
+            raise ValueError(
+                "`currency_factor` must be a multi-factor exposure estimator that sets "
+                "`factor_names_`, such as `OneHotCategoricalFactors`."
+            )
         factor_families = np.array([_CURRENCY] * len(factor_names))
 
         return exposures, factor_names, factor_families
@@ -2426,7 +2427,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         factor_returns: FloatArray,
         factor_names: StrArray,
         observations: AnyArray,
-        routed_params: dict,
+        routed_params: sku.Bunch,
         first_call: bool,
     ) -> ReturnDistribution:
         """Estimate the factor return distribution.
@@ -2447,7 +2448,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         observations : ndarray of shape (n_observations,)
             Observation labels used as the factor-return DataFrame index.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for the factor prior estimator.
 
         first_call : bool
@@ -2467,13 +2468,13 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """
         # Convert to Dataframe so that the factor prior estimator have access to factor
         # names if needed
-        factor_returns = pd.DataFrame(
+        factor_returns_df = pd.DataFrame(
             factor_returns, index=observations, columns=factor_names, copy=False
         )
 
         if first_call:
             self.factor_prior_estimator_.fit(
-                factor_returns, **routed_params.factor_prior_estimator.fit
+                factor_returns_df, **routed_params.factor_prior_estimator.fit
             )
         else:
             if not hasattr(self.factor_prior_estimator_, "partial_fit"):
@@ -2482,7 +2483,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
                     "provide a factor_prior_estimator that also implements `partial_fit`"
                 )
             self.factor_prior_estimator_.partial_fit(
-                factor_returns, **routed_params.factor_prior_estimator.partial_fit
+                factor_returns_df, **routed_params.factor_prior_estimator.partial_fit
             )
 
         return self.factor_prior_estimator_.return_distribution_
@@ -2492,7 +2493,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         idio_returns: FloatArray,
         estimation_mask: BoolArray,
         active_mask: BoolArray,
-        routed_params: dict,
+        routed_params: sku.Bunch,
     ) -> FloatArray:
         """Estimate idiosyncratic variances.
 
@@ -2513,7 +2514,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         active_mask : ndarray of shape (n_observations, n_assets)
             Boolean mask indicating active assets.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for the variance estimator.
 
         Returns
@@ -2542,7 +2543,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         idio_variances: FloatArray,
         estimation_mask: BoolArray,
         active_mask: BoolArray,
-        routed_params: dict,
+        routed_params: sku.Bunch,
         first_call: bool,
     ) -> FloatArray:
         """Compute the idiosyncratic covariance matrix.
@@ -2585,7 +2586,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         active_mask : ndarray of shape (n_observations, n_assets)
             Boolean mask indicating active assets.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for the correlation estimator.
 
         Returns
@@ -2667,7 +2668,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         exposures: FloatArray,
         factor_names: StrArray,
         factor_families: StrArray,
-        routed_params: dict,
+        routed_params: sku.Bunch,
         first_call: bool,
     ) -> FloatArray:
         """Compute the alpha forecast from the alpha estimator.
@@ -2710,7 +2711,7 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         factor_families : ndarray of shape (n_factors,)
             Factor family labels.
 
-        routed_params : dict
+        routed_params : Bunch
             Metadata-routed parameters for the alpha estimator.
 
         Returns
@@ -3010,24 +3011,31 @@ def _cap_weights_from_mask(
     return weights
 
 
-def _validate_currency_excess_returns(
-    currency_excess_returns: pd.DataFrame,
-    observations: AnyArray,
-    currency_factor_names: StrArray,
+def _select_currency_excess_returns(
+    currency_excess_returns: pd.DataFrame, currency_factor_names: StrArray
 ) -> pd.DataFrame:
-    """Validate and select direct currency factor returns."""
+    """Select the currency factor columns of `currency_excess_returns`."""
     missing = set(currency_factor_names) - set(currency_excess_returns.columns)
     if missing:
         raise ValueError(
             "`currency_excess_returns` is missing currency factor columns: "
             f"{sorted(missing)}."
         )
-    currency_excess_returns = currency_excess_returns.loc[
-        observations, currency_factor_names
-    ]
-    if not np.all(np.isfinite(currency_excess_returns.to_numpy(dtype=float))):
-        raise ValueError("`currency_excess_returns` must contain only finite values.")
-    return currency_excess_returns
+    return currency_excess_returns[currency_factor_names]
+
+
+def _validate_finite_currency_returns(currency_excess_returns: pd.DataFrame) -> None:
+    """Validate that currency excess returns are finite for the fitted observations."""
+    is_finite = np.isfinite(currency_excess_returns.to_numpy(dtype=float))
+    if is_finite.all():
+        return
+    currencies = currency_excess_returns.columns[~is_finite.all(axis=0)].tolist()
+    observation = currency_excess_returns.index[~is_finite.all(axis=1)][0]
+    raise ValueError(
+        "`currency_excess_returns` must contain only finite values for the fitted "
+        "observations (after descriptor warmup and exposure lag). Found non-finite "
+        f"values for {currencies}, first at observation {observation}."
+    )
 
 
 def _validate_covariance_readiness(
@@ -3143,8 +3151,8 @@ def _neutralize_exposures(
     neutralize_against: dict[str, list[str]],
     exposures: FloatArray,
     benchmark_weights: FloatArray,
-    factor_names: ObjArray,
-    factor_families: ObjArray,
+    factor_names: StrArray,
+    factor_families: StrArray,
 ) -> None:
     """Neutralize factor exposures against specified factors or families.
 

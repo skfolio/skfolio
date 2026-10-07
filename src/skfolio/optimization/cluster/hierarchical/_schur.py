@@ -18,6 +18,7 @@ from __future__ import annotations
 import math
 import warnings
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,8 @@ import skfolio.typing as skt
 from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.exceptions import OptimizationError
+from skfolio.optimization._base import _check_finite_weights
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
@@ -36,7 +39,7 @@ from skfolio.optimization.cluster.hierarchical._hrp import (
     _apply_weight_constraints_to_split_factor,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.stats import (
     cov_nearest,
     inverse_multiply,
@@ -87,6 +90,12 @@ class SchurComplementary(BaseHierarchicalOptimization):
     even in the presence of ill-conditioned covariance matrices. Additionally, you can
     apply shrinkage or other conditioning techniques via the `prior_estimator` parameter
     to improve numerical stability and estimation accuracy.
+
+    The estimator supports online learning through `partial_fit` when
+    `prior_estimator` and `distance_estimator` implement `partial_fit`, for example
+    :class:`~skfolio.prior.EmpiricalPrior` with exponentially weighted moments and
+    :class:`~skfolio.distance.CovarianceDistance` with
+    :class:`~skfolio.moments.EWCovariance`. See :ref:`online_learning`.
 
     Parameters
     ----------
@@ -192,30 +201,31 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
-    effective_gamma_ : float
+    effective_gamma_ : float or None
         If `keep_monotonic` is True, the highest permissible `gamma` that preserves
-        monotonic variance decrease; otherwise, equal to the input `gamma`.
+        monotonic variance decrease; otherwise, equal to the input `gamma`. None when
+        the primary fit fails or a fallback is used.
 
     distance_estimator_ : BaseDistance
         Fitted `distance_estimator`.
@@ -242,17 +252,11 @@ class SchurComplementary(BaseHierarchicalOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
-
-    Notes
-    -----
-    The estimator supports online learning through `partial_fit` when
-    `prior_estimator` and `distance_estimator` implement `partial_fit`, for example
-    :class:`~skfolio.prior.EmpiricalPrior` with exponentially weighted moments and
-    :class:`~skfolio.distance.CovarianceDistance` with
-    :class:`~skfolio.moments.EWCovariance`. See :ref:`online_learning`.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     References
     ----------
@@ -321,7 +325,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     [0.0323 0.0095 0.0234 ... 0.0402 0.0515 0.0605]
     """
 
-    effective_gamma_: float
+    effective_gamma_: float | None
 
     def __init__(
         self,
@@ -338,7 +342,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             prior_estimator=prior_estimator,
             distance_estimator=distance_estimator,
@@ -355,7 +359,8 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for batch and online fitting."""
         # noinspection PyTypeChecker
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -380,7 +385,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
         )
         return router
 
-    def fit(self, X: ArrayLike, y: None = None, **fit_params) -> SchurComplementary:
+    def fit(
+        self, X: ArrayLike, y: None = None, **fit_params: Any
+    ) -> SchurComplementary:
         """Fit the Schur Complementary Allocation estimator.
 
         Parameters
@@ -407,7 +414,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         return self._fit(X, y, method="fit", **fit_params)
 
     def partial_fit(
-        self, X: ArrayLike, y: None = None, **fit_params
+        self, X: ArrayLike, y: None = None, **fit_params: Any
     ) -> SchurComplementary:
         """Incrementally fit the Schur Complementary Allocation estimator.
 
@@ -441,7 +448,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         return self._fit(X, y, method="partial_fit", **fit_params)
 
     def _fit(
-        self, X: ArrayLike, y: None = None, method: str = "fit", **fit_params
+        self, X: ArrayLike, y: None = None, method: str = "fit", **fit_params: Any
     ) -> SchurComplementary:
         """Core fitting logic shared by `fit` and `partial_fit`.
 
@@ -464,6 +471,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self : SchurComplementary
             Fitted estimator.
         """
+        self.effective_gamma_ = None
         routed_params = skm.process_routing(self, method, **fit_params)
         first_call = not hasattr(self, _FITTED_ATTR)
 
@@ -518,7 +526,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )
 
-        X = skv.validate_data(self, X, reset=first_call)
+        n_assets = skv.validate_data(self, X, reset=first_call).shape[1]
 
         ordered_linkage_matrix = sch.optimal_leaf_ordering(
             self.hierarchical_clustering_estimator_.linkage_matrix_,
@@ -527,7 +535,6 @@ class SchurComplementary(BaseHierarchicalOptimization):
         sorted_assets = sch.leaves_list(ordered_linkage_matrix)
 
         # Prepare weight bounds
-        n_assets = X.shape[1]
         min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
 
         # Compute allocations
@@ -538,10 +545,15 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 min_weights=min_weights,
                 max_weights=max_weights,
             )
+            if weights is None:
+                raise OptimizationError(
+                    "Schur allocation could not produce valid weights."
+                )
+            _check_finite_weights(weights)
         except Exception as error:
             if method != "partial_fit":
                 raise
-            self._handle_partial_fit_failure(error=error, n_assets=n_assets)
+            self._handle_partial_fit_failure(error=error, X=X)
             return self
 
         self.weights_ = weights
@@ -559,7 +571,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         covariance: FloatArray,
         min_weights: FloatArray,
         max_weights: FloatArray,
-    ) -> tuple[FloatArray, float]:
+    ) -> tuple[FloatArray | None, float]:
         """Compute the Schur complementary weights and the effective gamma."""
         if self.keep_monotonic:
             return _compute_monotonic_weights(
@@ -617,14 +629,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
                     "`partial_fit`."
                 )
 
-    def _handle_partial_fit_failure(self, error: Exception, n_assets: int) -> None:
+    def _handle_partial_fit_failure(self, error: Exception, X: ArrayLike) -> None:
         """Handle an allocation failure after the online state has been updated."""
         self.fallback_ = None
         self.fallback_chain_ = None
         if self.fallback == _PREVIOUS_WEIGHTS:
-            self.fallback_chain_ = [(str(self), str(error))]
             try:
-                self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
+                self._run_fallback_chain(X, y=None, primary_error=error)
             except Exception as fallback_error:
                 self.error_ = str(fallback_error)
                 if self.raise_on_failure:
@@ -648,54 +659,58 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
 def _compute_monotonic_weights(
     max_gamma: float,
-    sorted_assets: FloatArray,
+    sorted_assets: IntArray,
     covariance: FloatArray,
     max_weights: FloatArray,
     min_weights: FloatArray,
     step: float = 0.1,
     tol: float = 1e-4,
-) -> tuple[FloatArray, float]:
-    """
-    Finds the gamma value corresponding to the turning point where portfolio risk
+) -> tuple[FloatArray | None, float]:
+    """Find the gamma value corresponding to the turning point where portfolio risk
     (variance) stops decreasing monotonically.
 
-     This method exploits the smooth (i.e., continuously differentiable) functional
-     dependence of portfolio variance on the risk-aversion parameter gamma in a
-     Schur-complement-based optimization. It searches for the smallest gamma value
-     (up to `max_gamma`) beyond which further increases no longer yield significant
-     variance reduction, as defined by `tol`.
+    This method exploits the assumed smooth (i.e., continuously differentiable)
+    functional dependence of portfolio variance on the regularization parameter
+    gamma in Schur-complement-based optimization. It searches for the first gamma
+    value (up to `max_gamma`) beyond which variance no longer decreases. Within
+    the interval selected by the initial sweep, the search assumes a decrease
+    followed by stabilization or an increase.
 
     Parameters
     ----------
-     max_gamma : float
+    max_gamma : float
         Maximum gamma value to sweep up to.
 
-     sorted_assets : FloatArray
+    sorted_assets : ndarray of shape (n_assets,)
         Array of ordered asset indices.
 
-     covariance : FloatArray
+    covariance : FloatArray
         Covariance matrix of asset returns.
 
-     max_weights : FloatArray
+    max_weights : FloatArray
         Maximum allowable weights for each asset.
 
-     min_weights : FloatArray
+    min_weights : FloatArray
         Minimum allowable weights for each asset.
 
-     step : float, default=0.1
+    step : float, default=0.1
         Step size for incrementing gamma during the initial sweep.
 
-     tol : float, default=1e-4
-        Tolerance for detecting when further variance reduction is negligible during
-        binary search.
+    tol : float, default=1e-4
+        Gamma interval tolerance after finding a decreasing point, also used as
+        the backward-difference step. Refinement continues below this tolerance
+        when no decreasing point has been found, up to the iteration limit.
 
     Returns
     -------
-     weights : FloatArray
-        Asset weights at the identified turning point.
+    weights : FloatArray or None
+        Asset weights at the identified turning point, or `None` if no weights can
+        be computed.
 
-     effective_gamma : float
-        Gamma value at which variance stops decreasing meaningfully.
+    effective_gamma : float
+        Estimated gamma value corresponding to the first variance turning point,
+        or `max_gamma` when variance keeps decreasing. The returned weights are
+        computed at this value.
     """
     if max_gamma == 0:
         weights = _compute_weights(
@@ -709,6 +724,10 @@ def _compute_monotonic_weights(
         return weights, 0.0
 
     def objective(x: float) -> tuple[float, FloatArray | None]:
+        """Return the portfolio variance and weights for `gamma=x`.
+
+        The variance is `inf` and the weights are `None` if no weights can be computed.
+        """
         w = _compute_weights(
             gamma=x,
             sorted_assets=sorted_assets,
@@ -727,52 +746,45 @@ def _compute_monotonic_weights(
 
     # Initial sweep of the discrete gamma vector in [0, max_gamma] to find the range
     # of the variance turning point if any.
-    variance, weights_0 = objective(gammas[0])
+    variance, weights = objective(gammas[0])
     variances[0] = variance
+    previous_weights = weights
     for i in range(1, n):
+        # Retain the two preceding sweep allocations for the refinement interval.
+        lower_weights, previous_weights = previous_weights, weights
         variance, weights = objective(gammas[i])
         variances[i] = variance
         if variance >= variances[i - 1]:
-            if i == 1:
-                # Turning point either lies in [0, gammas[1]], or there is no turning
-                # points (monotonically decreasing from 0.0). If in [0, gammas[1]],
-                # we find the exact turning point by binary search.
-                try:
-                    _binary_search(
-                        objective,
-                        low_gamma=gammas[0],
-                        high_gamma=gammas[1],
-                        low_variance=variances[0],
-                        tol=tol,
-                    )
-                except RuntimeError:
-                    return weights_0, 0.0
-            else:
-                # Turning point lies in [gammas[i-2], gammas[i]], we find the exact
-                # turning point by binary search.
-                return _binary_search(
-                    objective,
-                    low_gamma=gammas[i - 2],
-                    high_gamma=gammas[i],
-                    low_variance=variances[i - 2],
-                    tol=tol,
-                )
+            # Refine the turning point in [gammas[i-2], gammas[i]], or
+            # [0, gammas[1]] on the first step. If variance is non-decreasing
+            # throughout the interval, retain the lower endpoint's allocation.
+            low_index = max(0, i - 2)
+            return _binary_search(
+                objective,
+                low_gamma=gammas[low_index],
+                high_gamma=gammas[i],
+                low_variance=variances[low_index],
+                low_weights=lower_weights,
+                tol=tol,
+            )
 
     # No turning point found in sweep
 
     # 1) Check local derivative at the terminal gamma
-    variance_h = objective(max_gamma - tol)[0]
+    # Keep the backward difference within [0, max_gamma], reusing variance at zero.
+    variance_h = variances[0] if max_gamma <= tol else objective(max_gamma - tol)[0]
     if variance <= variance_h:
         # monotonically decreasing up to max_gamma --> we return the terminal gamma
         return weights, max_gamma
 
-    # 2) Turning point lies between last two gammas, we find the exact turning point by
+    # 2) Turning point lies between last two gammas, we refine its location by
     # binary search
     return _binary_search(
         objective,
         low_gamma=gammas[-2],
         high_gamma=max_gamma,
         low_variance=variances[-2],
+        low_weights=previous_weights,
         tol=tol,
     )
 
@@ -782,22 +794,32 @@ def _binary_search(
     low_gamma: float,
     high_gamma: float,
     low_variance: float,
+    low_weights: FloatArray | None,
     tol: float = 1e-4,
-) -> tuple[FloatArray, float]:
-    """
-    Performs a binary search to locate the turning point in the interval
-    [low_gamma, high_gamma] where portfolio variance stops decreasing monotonically.
+) -> tuple[FloatArray | None, float]:
+    """Locate the variance turning point by binary search.
 
-    This method assumes that portfolio variance decreases smoothly with gamma up to
-    a point, after which it stabilizes or increases. It evaluates the `objective`
-    function (which returns variance and weights) at midpoints to identify this
-    transition with precision up to a specified tolerance.
+    Search the interval [low_gamma, high_gamma] for the point where portfolio
+    variance stops decreasing monotonically. This method assumes that variance
+    decreases smoothly with gamma up to a point, after which it stabilizes or
+    increases. It evaluates the objective at midpoints and estimates the local
+    slope with a backward difference to identify this transition with gamma
+    precision controlled by `tol`.
+
+    After accepting a decreasing point, stop at a feasible midpoint once the
+    interval width is at most `tol`. Return the last accepted lower endpoint and
+    its weights. If no decreasing point has been found, continue refining up to
+    the iteration limit to detect improvements near the initial lower endpoint.
+    If subsequent midpoints remain infeasible, return the accepted lower endpoint
+    when the iteration limit is reached. If no midpoint is accepted, return the
+    initial lower endpoint and its supplied weights.
 
     Parameters
     ----------
     objective : callable
         A function that takes a float gamma value and returns a tuple:
-        (variance: float, weights: FloatArray).
+        (variance: float, weights: FloatArray or None). Infeasible allocations
+        return infinite variance and None for the weights.
 
     low_gamma : float
         Lower bound of the gamma search interval.
@@ -808,51 +830,65 @@ def _binary_search(
     low_variance : float
         The variance value corresponding to `low_gamma`.
 
+    low_weights : FloatArray or None
+        Weights at `low_gamma`, or None if that allocation is infeasible.
+
     tol : float, default=1e-4
-        Tolerance level for stopping the search when the interval between
-        low and high gamma becomes sufficiently small.
+        Gamma interval tolerance after finding a decreasing point, also used as
+        the backward-difference step, bounded at zero.
 
     Returns
     -------
-    weights : FloatArray
-        Asset weights corresponding to the turning point gamma.
+    weights : FloatArray or None
+        Asset weights corresponding to the returned gamma, or None if neither
+        the initial lower endpoint nor any accepted midpoint is feasible.
 
     gamma : float
-        Gamma value at which the minimum (or lowest feasible) variance is achieved
-        before monotonic decrease ends.
-
-    Raises
-    ------
-    RuntimeError
-        If a suitable gamma cannot be found within the allowed number of iterations.
+        Gamma near the variance turning point or feasibility boundary within
+        the search interval. The returned weights are computed at this value.
     """
-    max_iter = math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1)
-    is_decreasing = False
+    max_iter = max(1, math.ceil(math.log2((high_gamma - low_gamma) / tol) * 2 + 1))
+    initial_gamma, initial_variance = low_gamma, low_variance
 
     for _ in range(max_iter):
         mid_gamma = 0.5 * (low_gamma + high_gamma)
         variance, weights = objective(mid_gamma)
-        variance_h = objective(mid_gamma - tol)[0]
+        # A midpoint with higher variance or an infeasible allocation already
+        # selects the left subinterval. Estimate the local derivative only when
+        # the midpoint passes the variance comparison.
+        is_decreasing = weights is not None and variance <= low_variance
+        if is_decreasing:
+            gamma_h = max(0.0, mid_gamma - tol)
+            variance_h = (
+                initial_variance if gamma_h == initial_gamma else objective(gamma_h)[0]
+            )
+            is_decreasing = variance <= variance_h
 
-        if variance <= low_variance and variance <= variance_h:
-            is_decreasing = True
+        if is_decreasing:
             low_gamma = mid_gamma
             low_variance = variance
+            low_weights = weights
         else:
             high_gamma = mid_gamma
 
-        if is_decreasing and weights is not None and (high_gamma - low_gamma) <= tol:
-            return weights, low_gamma
+        # Keep refining near the starting point until a new point is accepted,
+        # even when the interval is already below tol.
+        if (
+            low_gamma > initial_gamma
+            and weights is not None
+            and (high_gamma - low_gamma) <= tol
+        ):
+            return low_weights, low_gamma
 
-    raise RuntimeError(
-        "Unable to find a permissible regularization factor `gamma` for which "
-        "the portfolio variance decreases monotonically as a function of gamma."
-    )
+    # At a feasibility boundary, all subsequent midpoints can be infeasible.
+    # Retain the last accepted allocation, or the supplied starting allocation,
+    # after exhausting the refinement budget.
+    return low_weights, low_gamma
 
 
 def _compute_weights(
     gamma: float,
-    sorted_assets: FloatArray,
+    sorted_assets: IntArray,
     covariance: FloatArray,
     max_weights: FloatArray,
     min_weights: FloatArray,
@@ -920,11 +956,11 @@ def _compute_weights(
                             a_aug = cov_nearest(a_aug)
                         if not is_cholesky_dec(d_aug):
                             d_aug = cov_nearest(d_aug)
-                except Exception:
-                    raise ValueError(
+                except (ValueError, FloatingPointError, np.linalg.LinAlgError) as error:
+                    raise OptimizationError(
                         f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
-                    ) from None
+                    ) from error
 
             # Subsequent splits must use the repaired blocks too.
             covariance[np.ix_(left_cluster, left_cluster)] = a_aug

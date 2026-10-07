@@ -8,10 +8,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import auto
+from typing import Any, Literal
 
 import numpy as np
 import sklearn as sk
 import sklearn.base as skb
+import sklearn.utils as sku
 from sklearn.utils import parallel as skp
 
 from skfolio import typing as skt
@@ -27,7 +29,7 @@ from skfolio.descriptor import BaseDescriptor
 from skfolio.descriptor._base import BaseDescriptorComposition
 from skfolio.linear_model._cross_sectional._utils import _cs_neutralize
 from skfolio.preprocessing import BaseCSTransformer, CSStandardScaler, CSWinsorizer
-from skfolio.typing import FloatArray, ObjArray
+from skfolio.typing import FloatArray, ObjArray, StrArray
 from skfolio.utils._factor_tools import _expand_factor_names, _factor_name_maps
 from skfolio.utils.tools import (
     AutoEnum,
@@ -53,12 +55,31 @@ class ForecastUnit(AutoEnum):
 class BaseAlpha(skb.BaseEstimator, ABC):
     """Base class for all Alpha estimators in skfolio."""
 
-    alpha_: FloatArray
+    alpha_: FloatArray | None
     n_assets_: int
     asset_names_: ObjArray
 
     @abstractmethod
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> BaseAlpha: ...
+    def fit(self, X: AssetPanel, y: None = None, **fit_params: Any) -> BaseAlpha:
+        """Fit the alpha estimator and store the latest alpha forecast in `alpha_`.
+
+        Parameters
+        ----------
+        X : AssetPanel
+            Input panel data.
+
+        y : None
+            Ignored. Present for compatibility with scikit-learn's API.
+
+        **fit_params : dict
+            Additional fit parameters passed to the sub-estimators.
+
+        Returns
+        -------
+        self : BaseAlpha
+            Fitted estimator.
+        """
+        ...
 
 
 class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
@@ -76,8 +97,8 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
 
     descriptors_: list[BaseDescriptor]
     named_descriptors_: dict[str, BaseDescriptor]
-    outlier_transformer_: skt.CSTransformer
-    scoring_transformer_: skt.CSTransformer
+    outlier_transformer_: BaseCSTransformer | Literal["passthrough"]
+    scoring_transformer_: BaseCSTransformer | Literal["passthrough"]
 
     def _validate_descriptor_params(self) -> None:
         """Validate common descriptor composition hyperparameters."""
@@ -114,7 +135,9 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
             check_type=BaseCSTransformer,
         )
 
-    def _compute_scores(self, X: AssetPanel, method: str, routed_params) -> FloatArray:
+    def _compute_scores(
+        self, X: AssetPanel, method: str, routed_params: sku.Bunch
+    ) -> FloatArray:
         """Compute transformed descriptor scores from the input panel."""
         cs_weights = X.estimation_mask.astype(float)
         cs_groups = (
@@ -150,6 +173,11 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
         # Score neutralization
         if self.neutralize_against is not None:
             field = X.fields[_EXPOSURES]
+            if not isinstance(field, Field3D):
+                raise TypeError(
+                    f'Field "{_EXPOSURES}" must be a Field3D to neutralize scores, '
+                    f"got {type(field).__name__}."
+                )
             scores = _neutralize_scores(
                 neutralize_against=self.neutralize_against,
                 scores=scores,
@@ -183,10 +211,10 @@ class BaseAlphaDescriptorComposition(BaseDescriptorComposition, ABC):
         panel[_DESCRIPTOR_SCORES] = Field3D(
             scores,
             third_axis_name="descriptor",
-            third_axis_labels=list(self.named_descriptors_),
+            third_axis_labels=list(self.named_descriptors_),  # ty: ignore[invalid-argument-type]
             inactive_policy=InactivePolicy.IGNORE,
         )
-        return panel
+        return panel  # ty: ignore[invalid-return-type]
 
     def _prepend_buffer(self, current: AssetPanel) -> AssetPanel:
         """Prepend pending rows to the current compact training panel."""
@@ -214,8 +242,8 @@ def _neutralize_scores(
     scores: FloatArray,
     exposures: FloatArray,
     cs_weights: FloatArray,
-    factor_names: ObjArray,
-    factor_families: ObjArray | None = None,
+    factor_names: StrArray,
+    factor_families: StrArray | None = None,
 ) -> FloatArray:
     """Neutralize descriptor scores against selected factor exposures.
 

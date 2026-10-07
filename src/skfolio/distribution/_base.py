@@ -42,7 +42,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         Seed or random state to ensure reproducibility.
     """
 
-    def __init__(self, random_state: int | None = None):
+    def __init__(self, random_state: int | None = None) -> None:
         self.random_state = random_state
 
     @property
@@ -58,7 +58,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         ...
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None) -> BaseDistribution:
+    def fit(self, X: ArrayLike, y: None = None) -> BaseDistribution:
         """Fit the univariate distribution model.
 
         Parameters
@@ -92,7 +92,8 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         """
         ...
 
-    def sample(self, n_samples: int = 1):
+    @abstractmethod
+    def sample(self, n_samples: int = 1) -> FloatArray:
         """Generate random samples from the fitted model.
 
         Parameters
@@ -105,9 +106,9 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         X : array-like of shape (n_samples, 1)
             List of samples.
         """
-        pass
+        ...
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: None = None) -> float:
         """Compute the total log-likelihood under the model.
 
         Parameters
@@ -123,7 +124,7 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         logprob : float
             The total log-likelihood (sum of log-pdf values).
         """
-        return np.sum(self.score_samples(X))
+        return float(np.sum(self.score_samples(X)))
 
     def aic(self, X: ArrayLike) -> float:
         r"""Compute the Akaike Information Criterion (AIC) for the model given data X.
@@ -201,5 +202,5 @@ class BaseDistribution(skb.BaseEstimator, ABC):
         .. [1]  "Estimating the dimension of a model", Schwarz, G. (1978).
         """
         log_likelihood = self.score(X)
-        n = X.shape[0]
+        n = np.shape(X)[0]
         return -2 * log_likelihood + self.n_params * np.log(n)

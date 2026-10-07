@@ -11,7 +11,7 @@ import operator
 import re
 import warnings
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import cvxpy as cp
 import numpy as np
@@ -448,7 +448,7 @@ class EntropyPooling(BasePrior):
         groups: skt.Groups | None = None,
         solver: str = "TNC",
         solver_params: dict | None = None,
-    ):
+    ) -> None:
         self.prior_estimator = prior_estimator
         self.mean_views = mean_views
         self.variance_views = variance_views
@@ -463,14 +463,23 @@ class EntropyPooling(BasePrior):
         self.solver = solver
         self.solver_params = solver_params
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `prior_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             prior_estimator=self.prior_estimator,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y=None, **fit_params) -> EntropyPooling:
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> EntropyPooling:
         """Fit the Entropy Pooling estimator.
 
         Parameters
@@ -549,7 +558,7 @@ class EntropyPooling(BasePrior):
             # Get mean from Step 1
             mean = sm.mean(self._returns, sample_weight=sample_weight)
             # Add new views and solve
-            self._add_variance_views(mean=mean)
+            self._add_variance_views(mean=mean)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         # Step 3: Mean, VaR, CVaR, Variance, Correlation, Skew and Kurtosis
@@ -564,9 +573,9 @@ class EntropyPooling(BasePrior):
                 self._returns, sample_weight=sample_weight, biased=True
             )
             # Add new views and solve
-            self._add_correlation_views(mean=mean, variance=variance)
-            self._add_skew_views(mean=mean, variance=variance)
-            self._add_kurtosis_views(mean=mean, variance=variance)
+            self._add_correlation_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_skew_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
+            self._add_kurtosis_views(mean=mean, variance=variance)  # ty: ignore[invalid-argument-type]
             sample_weight = self._solve_with_cvar()
 
         self.relative_entropy_ = float(
@@ -574,7 +583,7 @@ class EntropyPooling(BasePrior):
         )
         self.effective_number_of_scenarios_ = np.exp(sts.entropy(sample_weight))
         self.return_distribution_ = ReturnDistribution(
-            mu=sm.mean(self._returns, sample_weight=sample_weight),
+            mu=sm.mean(self._returns, sample_weight=sample_weight),  # ty: ignore[invalid-argument-type]
             covariance=np.cov(self._returns, rowvar=False, aweights=sample_weight),
             returns=self._returns,
             sample_weight=sample_weight,
@@ -599,7 +608,7 @@ class EntropyPooling(BasePrior):
         a : ndarray of shape (n_observations, n_constraints)
             Left matrix in `x @ a == b` or `x @ a <= b`.
 
-        a : ndarray of shape (n_observations, n_constraints)
+        b : ndarray of shape (n_constraints,)
             Right vector in `x @ a == b` or `x @ a <= b`.
 
         Returns
@@ -610,9 +619,11 @@ class EntropyPooling(BasePrior):
             return
 
         # Init constraints dict
-        if self._constraints[name] is None:
+        constraints: list[FloatArray] | None = self._constraints[name]
+        if constraints is None:
             n_observations, _ = self._returns.shape
-            self._constraints[name] = [np.empty((n_observations, 0)), np.empty(0)]
+            constraints = [np.empty((n_observations, 0)), np.empty(0)]
+            self._constraints[name] = constraints
 
         # Rescaling: views can be on different scales, by rescaling we avoid high
         # disparity, have better conditioning, uniform stopping criteria and slack
@@ -622,7 +633,7 @@ class EntropyPooling(BasePrior):
         b /= scales
 
         for i, x in enumerate([a, b]):
-            self._constraints[name][i] = np.hstack((self._constraints[name][i], x))
+            constraints[i] = np.hstack((constraints[i], x))
 
     def _add_mean_views(self) -> None:
         """Add mean view constraints to the optimization problem."""
@@ -1186,7 +1197,9 @@ class EntropyPooling(BasePrior):
                 "such as 'TNC'."
             ) from None
 
-    def _process_views(self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure):
+    def _process_views(
+        self, measure: PerfMeasure | RiskMeasure | ExtraRiskMeasure
+    ) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
         """Process and convert view equations into constraint matrices.
 
         This method uses the provided view strings and groups to generate the equality
@@ -1243,7 +1256,7 @@ class EntropyPooling(BasePrior):
 
         return a_eq, b_eq, a_ineq, b_ineq
 
-    def _fix_mean(self, fix: FloatArray, mean: FloatArray) -> None:
+    def _fix_mean(self, fix: BoolArray, mean: FloatArray) -> None:
         """Add constraints to fix the mean for assets where view constraints have been
         applied.
 
@@ -1266,7 +1279,7 @@ class EntropyPooling(BasePrior):
             self._is_fixed_mean |= fix
 
     def _fix_variance(
-        self, fix: FloatArray, mean: FloatArray, variance: FloatArray
+        self, fix: BoolArray, mean: FloatArray, variance: FloatArray
     ) -> None:
         """Add constraints to fix the variance for assets where view constraints have
         been applied.
@@ -1367,7 +1380,8 @@ def _replace_prior_views(
         r"(?:\s*\*\s*([0-9\.]+))?"  # Optional post-multiplier
     )
 
-    def repl(match) -> str:
+    def repl(match: re.Match[str]) -> str:
+        """Return the prior value times the multipliers of a matched pattern."""
         pre_multiplier = float(match.group(1)) if match.group(1) else 1.0
         asset = match.group(2)
         post_multiplier = float(match.group(3)) if match.group(3) else 1.0

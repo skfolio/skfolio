@@ -39,6 +39,8 @@ from skfolio.model_selection._validation import (
     _is_portfolio_optimization_estimator,
     _validate_entry_rebalancing_params,
 )
+from skfolio.population import Population
+from skfolio.portfolio import Portfolio
 from skfolio.typing import ArrayLike, FloatArray, IntArray
 
 __all__ = ["OnlineGridSearch", "OnlineRandomizedSearch"]
@@ -215,7 +217,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
     """
 
     cv_results_: dict[str, FloatArray]
-    best_estimator_: skb.BaseEstimator
+    best_estimator_: Any
     best_score_: float
     best_params_: dict
     best_index_: int
@@ -226,7 +228,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         estimator: skb.BaseEstimator,
         *,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -235,13 +237,13 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         self.estimator = estimator
         self.scoring = scoring
         self.warmup_size = warmup_size
@@ -267,7 +269,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         """Return the metric name used to select the best candidate."""
         if not self.multimetric_:
             return "score"
-        _check_refit_for_multimetric(self.refit, self.scoring)
+        _check_refit_for_multimetric(self.refit, self.scoring)  # ty: ignore[invalid-argument-type]
         if isinstance(self.refit, str):
             return self.refit
         return None
@@ -276,8 +278,8 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         self,
         X: ArrayLike,
         y: ArrayLike | None = None,
-        **fit_params,
-    ):
+        **fit_params: Any,
+    ) -> BaseOnlineSearch:
         """Run the online search over all candidate parameter combinations.
 
         Parameters
@@ -363,7 +365,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         }
 
         if self.multimetric_:
-            for name in self.scoring:
+            for name in self.scoring:  # ty: ignore[not-iterable]
                 scores = np.asarray(
                     [res["score"][name] for res in results],
                     dtype=np.float64,
@@ -415,7 +417,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
             else:
                 self.best_estimator_ = best_candidate
 
-    def predict(self, X: ArrayLike):
+    def predict(self, X: ArrayLike) -> Portfolio | Population:
         """Predict using the best estimator found during search.
 
         Parameters
@@ -430,7 +432,7 @@ class BaseOnlineSearch(skb.MetaEstimatorMixin, skb.BaseEstimator, ABC):
         skv.check_is_fitted(self, "best_estimator_")
         return self.best_estimator_.predict(X)
 
-    def score(self, X: ArrayLike, y=None):
+    def score(self, X: ArrayLike, y: None = None) -> float:
         """Score using the best estimator found during search.
 
         Parameters
@@ -677,7 +679,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         estimator: skb.BaseEstimator,
         param_grid: dict | list[dict],
         *,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -686,13 +688,13 @@ class OnlineGridSearch(BaseOnlineSearch):
         purged_size: int = 0,
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         super().__init__(
             estimator=estimator,
             scoring=scoring,
@@ -714,6 +716,7 @@ class OnlineGridSearch(BaseOnlineSearch):
         self.param_grid = param_grid
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return every parameter combination of `param_grid`."""
         return ParameterGrid(self.param_grid)
 
 
@@ -964,7 +967,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         param_distributions: dict,
         *,
         n_iter: int = 10,
-        scoring=None,
+        scoring: skt.Scoring = None,
         warmup_size: int = 252,
         test_size: int = 1,
         freq: str | pd.offsets.BaseOffset | None = None,
@@ -974,13 +977,13 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         reduce_test: bool = False,
         refit: bool | str | Callable[[dict[str, Any]], int] = True,
         random_state: int | None = None,
-        error_score=np.nan,
+        error_score: float | Literal["raise"] = np.nan,
         return_predictions: bool = False,
         portfolio_params: dict | None = None,
         entry_rebalancing_params: dict | None = None,
         n_jobs: int | None = None,
         verbose: int = 0,
-    ):
+    ) -> None:
         super().__init__(
             estimator=estimator,
             scoring=scoring,
@@ -1004,6 +1007,7 @@ class OnlineRandomizedSearch(BaseOnlineSearch):
         self.random_state = random_state
 
     def _get_candidate_params(self) -> Iterable[dict]:
+        """Return `n_iter` parameter settings sampled from `param_distributions`."""
         return ParameterSampler(
             self.param_distributions,
             n_iter=self.n_iter,
@@ -1127,9 +1131,10 @@ def _select_best_index(
         best_index = refit(cv_results)
         if not isinstance(best_index, numbers.Integral):
             raise TypeError("best_index_ returned is not an integer")
+        best_index = int(best_index)
         if best_index < 0 or best_index >= len(cv_results["params"]):
             raise IndexError("best_index_ index out of range")
-        return int(best_index)
+        return best_index
     rank_key = "rank" if refit_metric == "score" else f"rank_{refit_metric}"
     return int(cv_results[rank_key].argmin())
 

@@ -10,7 +10,6 @@ from abc import ABC
 from dataclasses import dataclass, field
 from dataclasses import fields as dataclass_fields
 from enum import auto
-from typing import Any
 
 import numpy as np
 
@@ -205,7 +204,7 @@ class FieldCategorical(Field2D):
         Labels must be unique.
     """
 
-    levels: StrArray | list[str]
+    levels: StrArray
 
     def __post_init__(self) -> None:
         Field2D.__post_init__(self)
@@ -305,8 +304,8 @@ class Field3D(BaseField):
     """
 
     third_axis_name: str
-    third_axis_labels: StrArray | list[str]
-    third_axis_groups: StrArray | list[str] | None = None
+    third_axis_labels: StrArray
+    third_axis_groups: StrArray | None = None
 
     def __post_init__(self) -> None:
         BaseField.__post_init__(self)
@@ -405,7 +404,7 @@ def _all_integer_like(values: AnyArray) -> bool:
     return all(_is_integer_number(value) for value in values)
 
 
-def _is_string_like(value: Any) -> bool:
+def _is_string_like(value: object) -> bool:
     """Return True when a value is string-like."""
     return isinstance(value, (str, np.str_))
 

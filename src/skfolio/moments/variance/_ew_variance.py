@@ -214,7 +214,7 @@ class EWVariance(BaseVariance):
     def fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWVariance:
@@ -248,7 +248,7 @@ class EWVariance(BaseVariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y: ArrayLike | None = None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
     ) -> EWVariance:
@@ -293,7 +293,7 @@ class EWVariance(BaseVariance):
 
         if active_mask is not None:
             for returns, active_row in zip(X, active_mask, strict=True):
-                self._process_return_row(returns, active_row)
+                self._process_return_row(returns, active_row)  # ty: ignore[invalid-argument-type]
         elif self.assume_centered and not np.isnan(X).any():
             self._process_batch_no_nan(X)
         else:

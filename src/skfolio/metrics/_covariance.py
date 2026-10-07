@@ -6,11 +6,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import scipy.stats as sst
 import sklearn.base as skb
 
-from skfolio.typing import ArrayLike, FloatArray
+from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.stats import inverse_volatility_weights, squared_mahalanobis_dist
 
 __all__ = [
@@ -31,7 +33,7 @@ _NUMERICAL_THRESHOLD = 1e-12
 def mahalanobis_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Mahalanobis calibration ratio.
 
@@ -101,7 +103,7 @@ def mahalanobis_calibration_ratio(
 def diagonal_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Diagonal calibration ratio based on marginal variances.
 
@@ -173,7 +175,7 @@ def diagonal_calibration_ratio(
 def portfolio_variance_calibration_ratio(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration ratio.
@@ -257,7 +259,7 @@ def portfolio_variance_calibration_ratio(
 def mahalanobis_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Mahalanobis calibration loss.
 
@@ -307,7 +309,7 @@ def mahalanobis_calibration_loss(
 def diagonal_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
 ) -> float:
     r"""Diagonal calibration loss.
 
@@ -354,7 +356,7 @@ def diagonal_calibration_loss(
 def portfolio_variance_calibration_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""Portfolio variance calibration loss.
@@ -414,7 +416,7 @@ def portfolio_variance_calibration_loss(
 def portfolio_variance_qlike_loss(
     estimator: skb.BaseEstimator,
     X_test: ArrayLike,
-    y=None,
+    y: None = None,
     portfolio_weights: ArrayLike | None = None,
 ) -> float:
     r"""QLIKE loss for a projected portfolio variance forecast [1]_.
@@ -610,7 +612,7 @@ def qlike_loss(
 def _resolve_weights(
     active_covariance: FloatArray,
     portfolio_weights: ArrayLike | None,
-    active_asset_indices: FloatArray,
+    active_asset_indices: IntArray,
 ) -> FloatArray:
     """Compute normalized weights on the active asset subset if portfolio weights are
     provided; otherwise, compute inverse-volatility weights.
@@ -690,7 +692,7 @@ def _aggregated_return_and_effective_covariance(
 def _prepare_active_subset(
     covariance: FloatArray,
     X_test: ArrayLike,
-) -> tuple[FloatArray, FloatArray, FloatArray, int] | None:
+) -> tuple[FloatArray, FloatArray, IntArray, int] | None:
     r"""Subset covariance and returns to jointly active assets.
 
     An asset is jointly active when its covariance diagonal is finite (available in the
@@ -734,7 +736,9 @@ def _prepare_active_subset(
     return active_cov, active_returns, active_asset_indices, n_active_assets
 
 
-def _get_covariance(estimator: skb.BaseEstimator) -> FloatArray:
+def _get_covariance(
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
+) -> FloatArray:
     """Extract the covariance matrix from a covariance or prior estimator.
 
     Supports :class:`~skfolio.moments.BaseCovariance` (`estimator.covariance_`)

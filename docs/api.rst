@@ -748,6 +748,26 @@ Classes
     distance.DistanceCorrelation
     distance.MutualInformation
 
+.. _seriation_ref:
+
+:mod:`skfolio.seriation`: Seriation Estimators
+==============================================
+
+.. automodule:: skfolio.seriation
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    seriation.BaseSeriation
+    seriation.HierarchicalSeriation
+    seriation.SpectralSeriation
+
 .. _cluster_ref:
 
 :mod:`skfolio.cluster`: Cluster Estimators
@@ -1311,3 +1331,29 @@ Enum
     :template: class.rst
 
     distribution.CopulaRotation
+
+.. _exceptions_ref:
+
+:mod:`skfolio.exceptions`: Exceptions
+=====================================
+
+.. automodule:: skfolio.exceptions
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    exceptions.SkfolioError
+    exceptions.OptimizationError
+    exceptions.ConvexOptimizationError
+    exceptions.SolverError
+    exceptions.DuplicateGroupsError
+    exceptions.EquationToMatrixError
+    exceptions.FactorNotFoundError
+    exceptions.GroupNotFoundError
+    exceptions.NonPositiveVarianceError

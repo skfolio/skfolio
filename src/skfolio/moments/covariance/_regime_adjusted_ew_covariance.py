@@ -540,7 +540,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,
@@ -599,7 +599,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     def partial_fit(
         self,
         X: ArrayLike,
-        y=None,
+        y: None = None,
         *,
         active_mask: ArrayLike | None = None,
         estimation_mask: ArrayLike | None = None,
@@ -812,7 +812,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         else:
             self._regime_portfolio_weights = None
 
-        self._regime_state = None
+        self._regime_state = 0.0
 
         self._decay = half_life_to_decay_factor(self.half_life)
 
@@ -1124,7 +1124,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
                 )
         transformed = float(np.mean(transformed_values))
 
-        if self._regime_state is None:
+        if self._n_regime_observations == 0:
             self._regime_state = transformed
         else:
             self._regime_state = (
@@ -1214,7 +1214,7 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
             return outer
 
         for j, past_ret in enumerate(reversed(self._return_buffer), start=1):
-            w_j = 1.0 - j / (self.hac_lags + 1)
+            w_j = 1.0 - j / (self.hac_lags + 1)  # ty: ignore[unsupported-operator]
             # Zero out NaN entries in lagged returns for pairwise HAC
             filled_past_ret = np.where(np.isnan(past_ret), 0.0, past_ret)
             cross = np.outer(ret, filled_past_ret)

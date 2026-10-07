@@ -539,7 +539,9 @@ class TestOnlineGridSearch:
             EWCovariance(),
             param_grid={"half_life": [20, 40]},
         )
-        with pytest.raises(NotFittedError):
+        with pytest.raises(
+            NotFittedError, match="This OnlineGridSearch instance is not fitted yet"
+        ):
             search.predict(X)
 
     def test_pipeline_raises(self, X):

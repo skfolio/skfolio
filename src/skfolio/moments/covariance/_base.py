@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import sklearn.base as skb
@@ -93,16 +94,35 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         nearest: bool = True,
         higham: bool = False,
         higham_max_iteration: int = 100,
-    ):
+    ) -> None:
         self.assume_centered = assume_centered
         self.nearest = nearest
         self.higham = higham
         self.higham_max_iteration = higham_max_iteration
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y=None, **fit_params): ...
+    def fit(self, X: ArrayLike, y: None = None, **fit_params: Any) -> BaseCovariance:
+        """Fit the covariance estimator.
 
-    def score(self, X_test: ArrayLike, y=None) -> float:
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : Ignored
+            Not used, present for API consistency by convention.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators, if any.
+
+        Returns
+        -------
+        self : BaseCovariance
+            Fitted estimator.
+        """
+        ...
+
+    def score(self, X_test: ArrayLike, y: None = None) -> float:
         r"""Compute the mean log-likelihood of observations under the estimated model.
 
         Evaluates how well the fitted covariance matrix explains new observations,
@@ -199,7 +219,12 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             raise ValueError("X_test has no row with any finite retained observation.")
         return float(np.nanmean(row_scores))
 
-    def mahalanobis(self, X_test: ArrayLike) -> FloatArray:
+    def mahalanobis(
+        self,
+        X: ArrayLike | None = None,
+        *,
+        X_test: ArrayLike | None = None,
+    ) -> FloatArray | float:
         r"""Compute the squared Mahalanobis distance of observations.
 
         The squared Mahalanobis distance of an observation :math:`r` is defined as:
@@ -219,7 +244,7 @@ class BaseCovariance(skb.BaseEstimator, ABC):
 
         Parameters
         ----------
-        X_test : array-like of shape (n_observations, n_assets) or (n_assets,)
+        X : array-like of shape (n_observations, n_assets) or (n_assets,)
             Observations for which to compute the squared Mahalanobis distance.
             Each row represents one observation. If 1D, treated as a single
             observation. Assets with non-finite fitted variance are excluded from
@@ -229,6 +254,10 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             different observation patterns, the returned distances follow
             :math:`\chi^2` distributions with different degrees of freedom.
             Rows with no finite retained observation return NaN.
+
+        X_test : array-like of shape (n_observations, n_assets) or (n_assets,), optional
+            Deprecated alias for `X`. It will be removed in version 2.0.
+            Use `X` instead.
 
         Returns
         -------
@@ -250,13 +279,27 @@ class BaseCovariance(skb.BaseEstimator, ABC):
         >>> print(distances.mean())
         2.9...
         """
+        # TODO remove deprecated X_test and the X default in v2.0
+        if X_test is not None:
+            if X is not None:
+                raise ValueError("`X_test` is deprecated; pass only `X`.")
+            warnings.warn(
+                "`X_test` is deprecated and will be removed in version 2.0. "
+                "Use `X` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            X = X_test
+        if X is None:
+            raise TypeError("Missing required argument: `X`.")
+
         skv.check_is_fitted(self, "covariance_")
 
-        is_1d = np.asarray(X_test).ndim == 1
-        X_test = np.atleast_2d(X_test) if is_1d else X_test
-        X_test = skv.validate_data(
+        is_1d = np.asarray(X).ndim == 1
+        X = np.atleast_2d(X) if is_1d else X
+        X = skv.validate_data(
             self,
-            X_test,
+            X,
             reset=False,
             dtype=float,
             ensure_all_finite="allow-nan",
@@ -269,19 +312,19 @@ class BaseCovariance(skb.BaseEstimator, ABC):
             raise ValueError("No finite fitted assets available for inference.")
 
         if not np.all(mask):
-            X_test = X_test[:, mask]
+            X = X[:, mask]
             covariance = self.covariance_[np.ix_(mask, mask)]
             if mean is not None:
                 mean = mean[mask]
         else:
             covariance = self.covariance_
-        if np.isfinite(X_test).all():
-            distances = squared_mahalanobis_dist(X_test, covariance, mean=mean)
-            return float(distances[0]) if is_1d else distances
+        if np.isfinite(X).all():
+            distances = squared_mahalanobis_dist(X, covariance, mean=mean)
+            return float(distances[0]) if is_1d else distances  # ty: ignore[not-subscriptable]
 
-        distances = _mahalanobis_observed_subspaces(X_test, covariance, mean)
+        distances = _mahalanobis_observed_subspaces(X, covariance, mean)
         if np.all(np.isnan(distances)):
-            raise ValueError("X_test has no row with any finite retained observation.")
+            raise ValueError("X has no row with any finite retained observation.")
         if is_1d:
             return float(distances[0])
         return distances

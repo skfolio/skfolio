@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,9 +25,10 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.exceptions import OptimizationError
 from skfolio.measures import RatioMeasure
 from skfolio.model_selection import BaseCombinatorialCV, cross_val_predict
-from skfolio.optimization._base import BaseOptimization
+from skfolio.optimization._base import BaseOptimization, _check_finite_weights
 from skfolio.optimization.convex import MeanRisk
 from skfolio.typing import ArrayLike
 from skfolio.utils.tools import check_estimator, fit_single_estimator
@@ -130,25 +132,25 @@ class NestedClustersOptimization(BaseOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets,), optional
         When `fallback="previous_weights"`, failures will fall back to these weights
         if provided.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
@@ -187,9 +189,11 @@ class NestedClustersOptimization(BaseOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -268,7 +272,7 @@ class NestedClustersOptimization(BaseOptimization):
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             portfolio_params=portfolio_params,
             fallback=fallback,
@@ -285,8 +289,17 @@ class NestedClustersOptimization(BaseOptimization):
         self.n_jobs = n_jobs
         self.verbose = verbose
 
-    def get_metadata_routing(self):
-        # noinspection PyTypeChecker
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `distance_estimator`,
+        `clustering_estimator` and `inner_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
             .add(
@@ -305,7 +318,7 @@ class NestedClustersOptimization(BaseOptimization):
         return router
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> NestedClustersOptimization:
         """Fit the Nested Clusters Optimization estimator.
 
@@ -353,7 +366,6 @@ class NestedClustersOptimization(BaseOptimization):
             check_type=BaseOptimization,
         )
 
-        # noinspection PyArgumentList
         self.distance_estimator_.fit(X, y, **routed_params.distance_estimator.fit)
         distance = self.distance_estimator_.distance_
         n_assets = distance.shape[0]
@@ -362,11 +374,9 @@ class NestedClustersOptimization(BaseOptimization):
         if isinstance(X, pd.DataFrame):
             distance = pd.DataFrame(distance, columns=X.columns)
 
-        # noinspection PyUnresolvedReferences
         self.clustering_estimator_.fit(
             X=distance, y=None, **routed_params.clustering_estimator.fit
         )
-        # noinspection PyUnresolvedReferences
         labels = self.clustering_estimator_.labels_
         n_clusters = max(labels) + 1
         clusters = [np.argwhere(labels == i).flatten() for i in range(n_clusters)]
@@ -375,7 +385,6 @@ class NestedClustersOptimization(BaseOptimization):
         # Fit the inner estimator on the whole training data. Those
         # base estimators will be used to retrieve the inner weights.
         # They are exposed publicly.
-        # noinspection PyCallingNonCallable
         fitted_inner_estimators = skp.Parallel(n_jobs=self.n_jobs)(
             skp.delayed(fit_single_estimator)(
                 sk.clone(_inner_estimator),
@@ -400,6 +409,10 @@ class NestedClustersOptimization(BaseOptimization):
             else:
                 fitted_inner_estimator = next(fitted_inner_estimators)
                 self.inner_estimators_.append(fitted_inner_estimator)
+                if fitted_inner_estimator.weights_ is None:
+                    raise OptimizationError(
+                        "An inner estimator returned no allocation weights."
+                    )
                 w[cluster_ids] = fitted_inner_estimator.weights_
             inner_weights.append(w)
         inner_weights = np.array(inner_weights)
@@ -420,7 +433,6 @@ class NestedClustersOptimization(BaseOptimization):
             cv = sks.check_cv(self.cv)
             if hasattr(cv, "random_state") and cv.random_state is None:
                 cv.random_state = np.random.RandomState()
-            # noinspection PyCallingNonCallable
             cv_predictions = skp.Parallel(n_jobs=self.n_jobs)(
                 skp.delayed(cross_val_predict)(
                     sk.clone(_inner_estimator),
@@ -479,5 +491,11 @@ class NestedClustersOptimization(BaseOptimization):
 
         fit_single_estimator(self.outer_estimator_, X_pred, y_pred, fit_params={})
         outer_weights = self.outer_estimator_.weights_
-        self.weights_ = outer_weights @ inner_weights
+        if outer_weights is None:
+            raise OptimizationError(
+                "The outer estimator returned no allocation weights."
+            )
+        weights = outer_weights @ inner_weights
+        _check_finite_weights(weights)
+        self.weights_ = weights
         return self

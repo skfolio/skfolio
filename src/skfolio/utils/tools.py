@@ -10,12 +10,13 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from enum import Enum
 from functools import wraps
 from inspect import signature
 from numbers import Integral, Real
-from typing import Any, Literal
+from types import FunctionType, MethodType
+from typing import Any, Literal, TypeGuard
 
 import numpy as np
 import pandas as pd
@@ -26,11 +27,13 @@ from sklearn.utils import Bunch
 
 from skfolio._constants import _PASSTHROUGH
 from skfolio.typing import (
+    AnyArray,
     ArrayLike,
     BoolArray,
     FloatArray,
     IntArray,
     MultiInput,
+    ObjArray,
     StrArray,
 )
 
@@ -83,7 +86,7 @@ class AutoEnum(str, Enum):
 
     @staticmethod
     def _generate_next_value_(
-        name: str, start: int, count: int, last_values: Any
+        name: str, start: int, count: int, last_values: list[Any]
     ) -> str:
         """Overriding `auto()`."""
         return name.lower()
@@ -109,22 +112,21 @@ class AutoEnum(str, Enum):
         return self.name
 
 
-# noinspection PyPep8Naming
 class cached_property_slots:
     """Cached property decorator for slots."""
 
-    def __init__(self, func):
+    def __init__(self, func: Callable) -> None:
         self.func = func
         self.public_name = None
         self.private_name = None
         self.__doc__ = func.__doc__
 
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner: type, name: str) -> None:
         """Set Name."""
         self.public_name = name
         self.private_name = f"_{name}"
 
-    def __get__(self, instance, owner=None):
+    def __get__(self, instance: object, owner: type | None = None) -> Any:  # noqa: ANN401  # any cached value
         """Getter."""
         if instance is None:
             return self
@@ -140,7 +142,7 @@ class cached_property_slots:
             setattr(instance, self.private_name, value)
         return value
 
-    def __set__(self, instance, owner=None):
+    def __set__(self, instance: object, value: object) -> None:
         """Setter."""
         raise AttributeError(
             f"'{type(instance).__name__}' object attribute '{self.public_name}' is"
@@ -150,7 +152,7 @@ class cached_property_slots:
     __class_getitem__ = classmethod(GenericAlias)
 
 
-def _make_key(args, kwds) -> int:
+def _make_key(args: tuple, kwds: dict[str, Any]) -> int:
     """Make a cache key from optionally typed positional and keyword arguments."""
     key = args
     if kwds:
@@ -159,7 +161,7 @@ def _make_key(args, kwds) -> int:
     return hash(key)
 
 
-def _make_indexable(iterable):
+def _make_indexable(iterable: Any) -> Any:  # noqa: ANN401  # sparse, pandas or array-like
     """Ensure iterable supports indexing or convert to an indexable variant.
 
     Convert sparse matrices to csr and other non-indexable iterable to arrays.
@@ -180,11 +182,11 @@ def _make_indexable(iterable):
 
 
 def _check_method_params(
-    X: ArrayLike,
+    X: Any,  # noqa: ANN401  # array, pandas or AssetPanel
     params: dict,
     indices: IntArray | slice | None = None,
     axis: int = 0,
-):
+) -> dict[str, Any]:
     """Check and validate the parameters passed to a specific method like `fit`.
 
     Parameters
@@ -224,15 +226,15 @@ def _check_method_params(
 
 
 def safe_indexing(
-    X: ArrayLike | pd.DataFrame,
+    X: Any,  # noqa: ANN401  # array, sparse matrix, pandas or AssetPanel
     indices: ArrayLike | slice | None,
     axis: int = 0,
-):
+) -> Any:  # noqa: ANN401  # same container family as X
     """Return rows, items or columns of X using indices.
 
     Parameters
     ----------
-    X : array-like
+    X : array-like, sparse matrix, DataFrame or AssetPanel
         Data from which to sample rows.
 
     indices : array-like, slice, or None
@@ -267,7 +269,7 @@ def safe_split(
     y: ArrayLike | None = None,
     indices: IntArray | slice | None = None,
     axis: int = 0,
-):
+) -> tuple[ArrayLike, ArrayLike | None]:
     """Create subset of dataset.
 
     Slice X, y according to indices for cross-validation.
@@ -321,9 +323,12 @@ def cache_method(cache_name: str) -> Callable:
     # To avoid memory leakage and proper garbage collection, self should not be part of
     # the cache key.
     # This is a known issue when we use functools.lru_cache on class methods.
-    def decorating_function(method):
+    def decorating_function(method: FunctionType) -> Callable:
+        """Wrap `method` so that its results are cached in `cache_name`."""
+
         @wraps(method)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self: object, *args: Any, **kwargs: Any) -> object:
+            """Return the cached result of `method`, computing it if missing."""
             func_name = method.__name__
             key = _make_key(args, kwargs)
             try:
@@ -350,12 +355,12 @@ def cache_method(cache_name: str) -> Callable:
     return decorating_function
 
 
-def args_names(func: object) -> list[str]:
+def args_names(func: FunctionType | MethodType) -> list[str]:
     """Returns the argument names of a function.
 
     Parameters
     ----------
-    func : object
+    func : function or method
         Function.
 
     Returns
@@ -368,7 +373,7 @@ def args_names(func: object) -> list[str]:
     ]
 
 
-def _is_real_number(value: object) -> bool:
+def _is_real_number(value: object) -> TypeGuard[Real]:
     """Return True for real-valued numbers, excluding booleans.
 
     Accepts Python and NumPy real numeric types, such as `int`, `float`, `np.integer`
@@ -387,7 +392,7 @@ def _is_real_number(value: object) -> bool:
     return isinstance(value, Real) and not isinstance(value, (bool, np.bool_))
 
 
-def _is_integer_number(value: object) -> bool:
+def _is_integer_number(value: object) -> TypeGuard[Integral]:
     """Return True for integer-valued numbers, excluding booleans.
 
     Accepts Python and NumPy integer scalar types, such as `int` and `np.integer`.
@@ -454,7 +459,8 @@ def _validate_non_negative_integer(value: object, name: str) -> None:
 
 def _validate_unit_interval(value: object, name: str) -> None:
     """Raise `ValueError` unless `value` is a finite real number in [0, 1]."""
-    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:
+    # ty cannot resolve the reflected comparison between int and numbers.Real.
+    if not _is_real_number(value) or not np.isfinite(value) or not 0 <= value <= 1:  # ty: ignore[unsupported-operator]
         raise ValueError(
             f"{name} must be a finite number between 0 and 1, got {value!r}"
         )
@@ -462,9 +468,9 @@ def _validate_unit_interval(value: object, name: str) -> None:
 
 def check_estimator(
     estimator: skb.BaseEstimator | Literal["passthrough"] | None,
-    default: skb.BaseEstimator | None,
-    check_type: Any,
-):
+    default: skb.BaseEstimator | Literal["passthrough"] | None,
+    check_type: type | tuple[type, ...],
+) -> Any:  # noqa: ANN401  # instance of check_type
     """Check the estimator type and return its cloned version if provided, otherwise
     return the default estimator.
 
@@ -473,10 +479,10 @@ def check_estimator(
     estimator : BaseEstimator | "passthrough", optional
         Estimator.
 
-    default : BaseEstimator, optional
+    default : BaseEstimator | "passthrough", optional
         Default estimator to return when `estimator` is `None`.
 
-    check_type : Any
+    check_type : type or tuple of type
         Expected type of the estimator to check against.
 
     Returns
@@ -528,12 +534,12 @@ def _validate_mask(
 def input_to_array(
     items: dict | ArrayLike,
     n_assets: int,
-    fill_value: Any,
+    fill_value: float | str,
     dim: int,
     assets_names: StrArray | None,
     name: str,
     investable_mask: BoolArray | None = None,
-) -> FloatArray:
+) -> AnyArray:
     """Convert a collection of items (array-like or dictionary) into
     a numpy array and verify its shape.
 
@@ -552,7 +558,7 @@ def input_to_array(
         Expected number of assets in the **output** array (i.e. the investable
         count when `investable_mask` is provided).
 
-    fill_value : Any
+    fill_value : float | str
         When `items` is a dictionary, elements that are not in `asset_names` are filled
         with `fill_value` in the converted array.
 
@@ -674,52 +680,58 @@ def _get_liquidation_turnover_and_cost(
     Raises
     ------
     ValueError
-        If an excluded position's weight is NaN or a transaction cost array cannot
-        provide rates for all liquidated assets.
+        If an excluded position's weight is non-finite or a transaction cost array
+        cannot provide rates for all liquidated assets.
     """
-    if assets_names is None:
-        if investable_mask is None:
-            return 0.0, 0.0
+    if assets_names is not None:
+        asset_ids: AnyArray = assets_names
+    elif investable_mask is not None:
         # Use column positions as identifiers when asset names are unavailable.
-        assets_names = np.arange(len(investable_mask))
+        asset_ids = np.arange(len(investable_mask))
+    else:
+        return 0.0, 0.0
 
-    if not isinstance(previous_weights, dict):
+    if isinstance(previous_weights, dict):
+        weights_by_asset = previous_weights
+    else:
         if investable_mask is None or previous_weights is None:
             return 0.0, 0.0
-        if np.isscalar(previous_weights):
-            previous_weights = np.full(len(assets_names), previous_weights)
-        if np.shape(previous_weights) != (len(assets_names),):
+        weights = np.asarray(previous_weights, dtype=float)
+        if weights.ndim == 0:
+            weights = np.full(len(asset_ids), weights)
+        if weights.shape != (len(asset_ids),):
             # Weights supplied only for the investable subset contain no exits.
             return 0.0, 0.0
-        previous_weights = dict(zip(assets_names, previous_weights, strict=True))
+        weights_by_asset = dict(zip(asset_ids, weights, strict=True))
 
     active_assets = set(
-        assets_names if investable_mask is None else assets_names[investable_mask]
+        asset_ids if investable_mask is None else asset_ids[investable_mask]
     )
     liquidated = {
         asset: abs(weight)
-        for asset, weight in previous_weights.items()
+        for asset, weight in weights_by_asset.items()
         if asset not in active_assets and weight != 0
     }
     turnover = float(sum(liquidated.values()))
     if not liquidated:
         return turnover, 0.0
-    if np.isnan(turnover):
-        raise ValueError("`previous_weights` contains NaN")
+    if not np.isfinite(turnover):
+        raise ValueError("previous_weights must be finite.")
     if transaction_costs is None:
         return turnover, 0.0
-    if np.isscalar(transaction_costs):
-        return turnover, float(transaction_costs * turnover)
-    if not isinstance(transaction_costs, dict):
-        if np.shape(transaction_costs) != (len(assets_names),) or not set(
-            liquidated
-        ).issubset(assets_names):
+    if isinstance(transaction_costs, dict):
+        costs_by_asset = transaction_costs
+    else:
+        costs = np.asarray(transaction_costs, dtype=float)
+        if costs.ndim == 0:
+            return turnover, float(costs) * turnover
+        if costs.shape != (len(asset_ids),) or not set(liquidated).issubset(asset_ids):
             raise ValueError(
                 "Transaction costs for liquidated assets are unavailable. "
                 "Use a scalar or an asset-name dictionary covering those assets."
             )
-        transaction_costs = dict(zip(assets_names, transaction_costs, strict=True))
-    cost = sum(transaction_costs.get(asset, 0.0) * w for asset, w in liquidated.items())
+        costs_by_asset = dict(zip(asset_ids, costs, strict=True))
+    cost = sum(costs_by_asset.get(asset, 0.0) * w for asset, w in liquidated.items())
     return turnover, float(cost)
 
 
@@ -779,7 +791,7 @@ def validate_input_list(
                     warnings.warn(f"{asset} not found in {assets_names}", stacklevel=2)
         else:
             if asset not in asset_indices:
-                raise ValueError(f"`central_assets` {asset} is not in {asset_indices}.")
+                raise ValueError(f"`{name}` {asset} is not in {asset_indices}.")
             res.append(int(asset))
     return res
 
@@ -833,7 +845,7 @@ def optimal_rounding_decimals(x: float) -> int:
     return min(6, max(int(-np.log10(abs(x))) + 2, 2))
 
 
-def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
+def bisection(x: list[IntArray]) -> Iterator[list[IntArray]]:
     """Generator to bisect a list of arrays.
 
     Parameters
@@ -854,14 +866,14 @@ def bisection(x: list[FloatArray]) -> Iterator[list[FloatArray]]:
 
 
 def fit_single_estimator(
-    estimator: Any,
+    estimator: skb.BaseEstimator,
     X: ArrayLike,
     y: ArrayLike | None,
     fit_params: dict,
     indices: IntArray | slice | None = None,
     axis: int = 0,
     method: str = "fit",
-):
+) -> skb.BaseEstimator:
     """Fit (or partial-fit) an estimator on a subset of the data.
 
     Parameters
@@ -903,7 +915,7 @@ def fit_single_estimator(
 
 
 def fit_and_predict(
-    estimator: Any,
+    estimator: Any,  # noqa: ANN401  # duck-typed estimator
     X: ArrayLike,
     y: ArrayLike | None,
     train: IntArray,
@@ -911,7 +923,7 @@ def fit_and_predict(
     fit_params: dict,
     method: str,
     column_indices: IntArray | None = None,
-) -> ArrayLike | list[ArrayLike]:
+) -> Any:  # noqa: ANN401  # output of the estimator method
     """Fit the estimator and predict values for a given dataset split.
 
     Parameters
@@ -943,11 +955,11 @@ def fit_and_predict(
 
     Returns
     -------
-    predictions : array-like or list of array-like
-        If `test` is an array, it returns the array-like result of calling
-        'estimator.method' on `test`.
-        Otherwise, if `test` is a list of arrays, it returns a list of array-like
-        results of calling 'estimator.method' on each test set in `test`.
+    predictions : object or list
+        If `test` is an array, the result of calling `estimator.method` on `test`
+        (e.g. a `Portfolio` for portfolio optimization estimators).
+        Otherwise, if `test` is a list of arrays, a list of results of calling
+        `estimator.method` on each test set in `test`.
     """
     fit_params = fit_params if fit_params is not None else {}
     if column_indices is not None:
@@ -992,7 +1004,7 @@ def default_asset_names(n_assets: int) -> StrArray:
     return np.asarray([f"x{i}" for i in range(n_assets)], dtype=object)
 
 
-def deduplicate_names(names: ArrayLike) -> list[str]:
+def deduplicate_names(names: Iterable[str]) -> list[str]:
     """Rename duplicated names by appending "_{duplicate_nb}" at the end.
 
     This function is inspired by the pandas function `_maybe_dedup_names`.
@@ -1017,7 +1029,7 @@ def deduplicate_names(names: ArrayLike) -> list[str]:
     return names
 
 
-def get_feature_names(X):
+def get_feature_names(X: Any) -> ObjArray | None:  # noqa: ANN401  # any array container
     """Get feature names from X.
 
     Support for other array containers should place its implementation here.
@@ -1111,7 +1123,7 @@ def half_life_to_decay_factor(half_life: float) -> float:
     return 2.0 ** (-1.0 / half_life)
 
 
-def apply_window_size(X: ArrayLike, window_size: int | None) -> ArrayLike:
+def apply_window_size(X: AnyArray, window_size: int | None) -> AnyArray:
     """Return the last `window_size` observations from the array X.
 
     Parameters
@@ -1167,19 +1179,19 @@ def apply_window_size(X: ArrayLike, window_size: int | None) -> ArrayLike:
 
 
 def _call_estimator(
-    estimator: Any,
+    estimator: object,
     method: str,
     X: ArrayLike,
     y: ArrayLike | None = None,
     *,
     routed_params: Bunch | None = None,
     extra_params: Mapping[str, Any] | None = None,
-) -> Any:
+) -> Any:  # noqa: ANN401  # estimator method result
     """Call an estimator method with routed and extra parameters.
 
     Parameters
     ----------
-    estimator : Any
+    estimator : object
         Estimator exposing the method named by `method`.
 
     method : str
@@ -1250,12 +1262,13 @@ def _call_estimator(
     return method_caller(X, y, **routed, **extra_params)
 
 
-def _filter_supported_params(estimator, method: str, **kwargs):
+def _filter_supported_params(
+    estimator: object, method: str, **kwargs: Any
+) -> dict[str, Any]:
     """Return keyword arguments accepted by an estimator method.
 
-    This helper is used for internally generated parameters that should be passed only
-    to estimators whose method signature explicitly accepts them. Parameters with value
-    `None` are omitted.
+    Use it to pass parameters only to estimators whose method signature explicitly
+    accepts them. Parameters with value `None` are omitted.
 
     Parameters
     ----------
@@ -1272,7 +1285,10 @@ def _filter_supported_params(estimator, method: str, **kwargs):
     -------
     filtered : dict
         Keyword arguments whose names are accepted by the estimator method and whose
-        values are not `None`.
+        values are not `None`. Empty if the estimator does not implement the method.
     """
-    params = signature(getattr(estimator, method)).parameters
+    method_caller = getattr(estimator, method, None)
+    if not callable(method_caller):
+        return {}
+    params = signature(method_caller).parameters
     return {k: v for k, v in kwargs.items() if k in params and v is not None}

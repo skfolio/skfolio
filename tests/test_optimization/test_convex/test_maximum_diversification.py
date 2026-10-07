@@ -2,13 +2,51 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from sklearn import config_context
+from sklearn import clone, config_context
 
-from skfolio.moments import ImpliedCovariance
+from skfolio.measures import RiskMeasure
+from skfolio.moments import EWCovariance, EWMu, ImpliedCovariance
 from skfolio.optimization.convex import (
     MaximumDiversification,
+    MeanRisk,
+    ObjectiveFunction,
 )
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
+
+
+@pytest.mark.parametrize("first_method", ["fit", "partial_fit"])
+def test_partial_fit_maximizes_diversification(first_method):
+    rng = np.random.default_rng(9)
+    X = rng.normal(-0.03, 0.01, (120, 4)) * [1, 2, 3, 4]
+    prior = EmpiricalPrior(mu_estimator=EWMu(), covariance_estimator=EWCovariance())
+    model = MaximumDiversification(prior_estimator=prior)
+    original_params = model.get_params()
+    original_callback = model.overwrite_expected_return
+
+    def weighted_volatilities(w, estimator):
+        covariance = estimator.prior_estimator_.return_distribution_.covariance
+        return np.sqrt(np.diag(covariance)) @ w
+
+    reference = MeanRisk(
+        prior_estimator=clone(prior),
+        objective_function=ObjectiveFunction.MAXIMIZE_RATIO,
+        risk_measure=RiskMeasure.STANDARD_DEVIATION,
+        overwrite_expected_return=weighted_volatilities,
+    )
+    getattr(model, first_method)(X[:60])
+    getattr(reference, first_method)(X[:60])
+    fitted_prior = model.prior_estimator_
+    model.partial_fit(X[60:])
+    reference.partial_fit(X[60:])
+    assert model.prior_estimator_ is fitted_prior
+    assert model.get_params() == original_params
+    assert model.overwrite_expected_return is original_callback
+    assert clone(model).overwrite_expected_return is original_callback
+    np.testing.assert_array_equal(fitted_prior.return_distribution_.returns, X)
+    np.testing.assert_allclose(model.weights_, reference.weights_, atol=1e-6)
+    covariance = fitted_prior.return_distribution_.covariance
+    numerator = np.sqrt(np.diag(covariance)) @ model.weights_
+    np.testing.assert_allclose(model.problem_values_["expected_return"], numerator)
 
 
 def test_maximum_diversification(X):
@@ -29,7 +67,7 @@ def test_maximum_diversification_factor(X, factors):
         model.problem_values_["expected_return"] / model.problem_values_["risk"]
     )
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="Arrays are not almost equal"):
         np.testing.assert_almost_equal(ptf.diversification, diversification, 3)
 
 
@@ -75,12 +113,11 @@ def test_metadata_routing(X, implied_vol):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X)
 
         model.fit(X, implied_vol=implied_vol)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import cvxpy as cp
 import pytest
 
 from skfolio import exceptions
@@ -31,3 +32,11 @@ def test_base_is_exported() -> None:
 def test_base_still_derives_from_exception() -> None:
     """Existing `except Exception` handlers must keep working."""
     assert issubclass(SkfolioError, Exception)
+
+
+def test_convex_allocation_error_compatibility():
+    error = exceptions.ConvexOptimizationError("Infeasible allocation")
+    assert isinstance(error, exceptions.OptimizationError)
+    assert isinstance(error, cp.SolverError)
+    assert not isinstance(error, exceptions.SolverError)
+    assert not issubclass(exceptions.OptimizationError, cp.SolverError)

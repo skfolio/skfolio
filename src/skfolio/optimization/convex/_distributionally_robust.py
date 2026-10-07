@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import cvxpy as cp
 import numpy as np
 import sklearn.utils.metadata_routing as skm
@@ -175,7 +177,8 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     add_constraints : Callable[[cp.Variable], cp.Expression | list[cp.Expression]], optional
@@ -262,25 +265,25 @@ class DistributionallyRobustCVaR(ConvexOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets,), optional
         When `fallback="previous_weights"`, failures will fall back to these weights if
         provided.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
@@ -316,9 +319,11 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -387,13 +392,13 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         previous_weights: skt.MultiInput | None = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=RiskMeasure.CVAR,
             prior_estimator=prior_estimator,
@@ -427,7 +432,7 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         self.wasserstein_ball_radius = wasserstein_ball_radius
 
     def fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> DistributionallyRobustCVaR:
         """Fit the Distributionally Robust CVaR Optimization estimator.
 
@@ -518,14 +523,12 @@ class DistributionallyRobustCVaR(ConvexOptimization):
         ]
 
         for i in range(n_observations):
-            # noinspection PyTypeChecker
             constraints.append(
-                cp.norm(-u[i] - a1 * w, np.inf) * self._scale_constraints
+                cp.norm(-u[i] - a1 * w, "inf") * self._scale_constraints
                 <= lb * self._scale_constraints
             )
-            # noinspection PyTypeChecker
             constraints.append(
-                cp.norm(-v[i] - a2 * w, np.inf) * self._scale_constraints
+                cp.norm(-v[i] - a2 * w, "inf") * self._scale_constraints
                 <= lb * self._scale_constraints
             )
 

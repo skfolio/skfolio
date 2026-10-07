@@ -9,17 +9,18 @@
 from __future__ import annotations
 
 import warnings
+from typing import Any
 
 import cvxpy as cp
 import cvxpy.constraints.constraint as cpc
 import numpy as np
 import pandas as pd
 import sklearn as sk
+import sklearn.utils as sku
 import sklearn.utils.metadata_routing as skm
 import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
-from skfolio._constants import _PREVIOUS_WEIGHTS
 from skfolio.measures import RiskMeasure
 from skfolio.optimization.convex._base import ConvexOptimization, ObjectiveFunction
 from skfolio.prior import BasePrior, EmpiricalPrior, ReturnDistribution
@@ -465,7 +466,8 @@ class MeanRisk(ConvexOptimization):
         constraint :math:`A \cdot w \leq b`.
 
     risk_free_rate : float, default=0.0
-        Risk-free interest rate.
+        Risk-free rate, expressed in the same frequency as the returns `X` (for
+        example, :math:`0.04 / 252` for a 4% annual rate with daily returns).
         The default value is `0.0`.
 
     max_tracking_error : float, optional
@@ -647,25 +649,30 @@ class MeanRisk(ConvexOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
-        With `partial_fit`, only `fallback="previous_weights"` is supported because
-        fallback estimators would not have accumulated the same online state.
+        and `fallback_chain_` stores each attempt with the associated outcome. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
-        With `partial_fit`, only solver failures are handled this way and failures
-        while updating stateful sub-estimators are always raised.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules. When
+        computing multiple portfolios, setting `raise_on_failure=False` preserves
+        successful allocations and records each failure separately. See
+        :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -707,9 +714,11 @@ class MeanRisk(ConvexOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -838,12 +847,12 @@ class MeanRisk(ConvexOptimization):
         scale_constraints: float | None = None,
         save_problem: bool = False,
         add_objective: skt.ExpressionFunction | None = None,
-        add_constraints: skt.ExpressionFunction | None = None,
+        add_constraints: skt.ConstraintFunction | None = None,
         overwrite_expected_return: skt.ExpressionFunction | None = None,
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
-    ):
+    ) -> None:
         super().__init__(
             risk_measure=risk_measure,
             prior_estimator=prior_estimator,
@@ -910,7 +919,9 @@ class MeanRisk(ConvexOptimization):
         self.max_ulcer_index = max_ulcer_index
         self.max_gini_mean_difference = max_gini_mean_difference
 
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None, **fit_params) -> MeanRisk:
+    def fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> MeanRisk:
         """Fit the Mean-Risk Optimization estimator.
 
         Parameters
@@ -938,7 +949,7 @@ class MeanRisk(ConvexOptimization):
         return self._fit(X, y, method="fit", **fit_params)
 
     def partial_fit(
-        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> MeanRisk:
         """Incrementally fit the Mean-Risk Optimization estimator.
 
@@ -948,6 +959,9 @@ class MeanRisk(ConvexOptimization):
 
         The optimization problem is solved fresh on each call using the updated
         moments from the prior estimator.
+
+        Each call receives only new observations. See :ref:`Updates and Failure
+        Handling <online_failure_handling>` for continuation and restart rules.
 
         Parameters
         ----------
@@ -972,7 +986,18 @@ class MeanRisk(ConvexOptimization):
         """
         return self._fit(X, y, method="partial_fit", **fit_params)
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Extends the parent routing: metadata passed to `fit` and `partial_fit` is also
+        routed to the matching method of `mu_uncertainty_set_estimator` and
+        `covariance_uncertainty_set_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = (
             super()
             .get_metadata_routing()
@@ -996,7 +1021,7 @@ class MeanRisk(ConvexOptimization):
         X: ArrayLike,
         y: ArrayLike | None = None,
         method: str = "fit",
-        **fit_params,
+        **fit_params: Any,
     ) -> MeanRisk:
         """Core fitting logic shared by fit and partial_fit.
 
@@ -1039,7 +1064,6 @@ class MeanRisk(ConvexOptimization):
 
         if method == "partial_fit":
             self._validate_partial_fit_fallback()
-            self._validate_partial_fit_estimators()
 
         # Fit or partial_fit the prior estimator
         _call_estimator(
@@ -1199,7 +1223,7 @@ class MeanRisk(ConvexOptimization):
         objective, objective_constraints = self._build_objective(
             return_distribution=return_distribution,
             expected_return=expected_return,
-            risk=risk,
+            risk=risk,  # ty: ignore[invalid-argument-type]
             regularization=regularization,
             custom_objective=custom_objective,
             factor=factor,
@@ -1217,24 +1241,17 @@ class MeanRisk(ConvexOptimization):
             "regularization": regularization,
             "factor": factor,
         }
-        self.error_ = None
-        self.fallback_ = None
-        self.fallback_chain_ = None
-        try:
+        # Online recovery starts after learning. Batch errors reach the outer
+        # fit wrapper, which runs fallback once with the original inputs.
+        with self._handle_optimization_errors(
+            X, y, method=method, enabled=method == "partial_fit"
+        ):
             self._solve_problem(
                 problem=problem,
                 w=w,
                 factor=factor,
                 parameters_values=parameters_values,
-                expressions=expressions,
-            )
-        except cp.SolverError as solver_error:
-            if method != "partial_fit":
-                raise
-            self._handle_partial_fit_solver_failure(
-                solver_error=solver_error,
-                n_assets=n_assets,
-                problem=problem,
+                expressions=expressions,  # ty: ignore[invalid-argument-type]
             )
 
         return self
@@ -1313,16 +1330,16 @@ class MeanRisk(ConvexOptimization):
             portfolio_params=dict(annualization_factor=1),
         )
         model.fit(X, y, **fit_params)
-        min_return = model.problem_values_["expected_return"]
+        min_return = model.problem_values_["expected_return"]  # ty: ignore[invalid-argument-type, not-subscriptable]
         model.set_params(objective_function=ObjectiveFunction.MAXIMIZE_RETURN)
         model.fit(X, y, **fit_params)
-        max_return = model.problem_values_["expected_return"]
+        max_return = model.problem_values_["expected_return"]  # ty: ignore[invalid-argument-type, not-subscriptable]
         if max_return <= 0:
             raise ValueError(
                 "Unable to compute the Efficient Frontier with only negative"
                 " expected returns"
             )
-        targets = np.linspace(
+        targets = np.linspace(  # ty: ignore[no-matching-overload]
             max(min_return, 1e-10) * 1.01,
             max_return,
             num=self.efficient_frontier_size,
@@ -1335,7 +1352,7 @@ class MeanRisk(ConvexOptimization):
         X: ArrayLike,
         y: ArrayLike | None,
         method: str,
-        routed_params,
+        routed_params: sku.Bunch,
         return_distribution: ReturnDistribution,
         n_assets: int,
         w: cp.Variable,
@@ -1364,7 +1381,7 @@ class MeanRisk(ConvexOptimization):
                 else:
                     risk_func = getattr(self, f"_{r_m.value}_risk")
 
-                args = {}
+                args: dict[str, Any] = {}
                 for arg_name in args_names(risk_func):
                     if arg_name == "return_distribution":
                         args[arg_name] = return_distribution
@@ -1419,11 +1436,11 @@ class MeanRisk(ConvexOptimization):
         self,
         return_distribution: ReturnDistribution,
         expected_return: cp.Expression,
-        risk: cp.Expression | None,
+        risk: cp.Expression,
         regularization: cp.Expression,
         custom_objective: cp.Expression,
         factor: skt.Factor,
-    ) -> tuple[cp.Objective, list[cpc.Constraint]]:
+    ) -> tuple[cp.Minimize | cp.Maximize, list[cpc.Constraint]]:
         """Return the configured CVXPY objective and its supporting constraints.
 
         The constraint list is empty unless maximizing a ratio.
@@ -1454,14 +1471,15 @@ class MeanRisk(ConvexOptimization):
                 if (
                     self.overwrite_expected_return is None
                     and np.isscalar(self.min_weights)
-                    and self.min_weights >= 0
+                    and self.min_weights >= 0  # ty: ignore[unsupported-operator]
                     and np.max(return_distribution.mu) - self.risk_free_rate <= 0
                 ):
                     raise ValueError(
                         "Cannot optimize for Maximum Ratio with your current "
                         "constraints and input. This is because your assets' "
                         "expected returns are all under-performing your risk-free "
-                        f"rate {self.risk_free_rate:.2%}."
+                        f"rate {self.risk_free_rate:.4%}. The risk-free rate must be "
+                        "expressed in the same frequency as the returns."
                     )
 
                 homogenization_factor = _optimal_homogenization_factor(
@@ -1542,72 +1560,8 @@ class MeanRisk(ConvexOptimization):
                     "`efficient_frontier_size` is not supported with `partial_fit`."
                 )
 
-    def _validate_partial_fit_fallback(self) -> None:
-        """Validate fallback support for `partial_fit`."""
-        if self.fallback is None or self.fallback == _PREVIOUS_WEIGHTS:
-            return
-        raise ValueError("`partial_fit` only supports fallback='previous_weights'.")
-
-    def _handle_partial_fit_solver_failure(
-        self, solver_error: cp.SolverError, n_assets: int, problem: cp.Problem
-    ) -> None:
-        """Handle solver failures after online state has been updated."""
-        error = str(solver_error)
-        self.fallback_ = None
-        self.fallback_chain_ = None
-
-        if self.fallback == _PREVIOUS_WEIGHTS:
-            self.fallback_chain_ = [(str(self), error)]
-            try:
-                self._fallback_to_previous_weights_or_raise(n_assets=n_assets)
-            except Exception as fallback_error:
-                self.error_ = str(fallback_error)
-                if self.raise_on_failure:
-                    raise
-                warnings.warn(str(fallback_error), stacklevel=2)
-                self.weights_ = None
-            else:
-                self.error_ = None
-            finally:
-                self.problem_values_ = None
-                if self.save_problem:
-                    self.problem_ = problem
-                self._clear_models_cache()
-            return
-
-        self.error_ = error
-        if self.raise_on_failure:
-            raise solver_error
-        warnings.warn(error, stacklevel=2)
-        self.weights_ = None
-        self.problem_values_ = None
-        if self.save_problem:
-            self.problem_ = problem
-        self._clear_models_cache()
-
-    def _validate_partial_fit_estimators(self) -> None:
-        """Validate incremental support for stateful sub-estimators."""
-        estimators = [
-            ("prior_estimator", self.prior_estimator_),
-            ("mu_uncertainty_set_estimator", self.mu_uncertainty_set_estimator_),
-            (
-                "covariance_uncertainty_set_estimator",
-                self.covariance_uncertainty_set_estimator_,
-            ),
-        ]
-
-        for name, estimator in estimators:
-            if estimator is None:
-                continue
-            method_caller = getattr(estimator, "partial_fit", None)
-            if method_caller is None or not callable(method_caller):
-                raise TypeError(
-                    "`MeanRisk.partial_fit` requires "
-                    f"`{name}={type(estimator).__name__}()` to implement "
-                    "`partial_fit`."
-                )
-
-    def _initialize(self):
+    def _initialize(self) -> None:
+        """Validate and clone the prior and uncertainty set sub-estimators."""
         self.prior_estimator_ = check_estimator(
             self.prior_estimator,
             default=EmpiricalPrior(),

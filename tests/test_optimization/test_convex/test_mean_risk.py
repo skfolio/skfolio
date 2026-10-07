@@ -15,6 +15,7 @@ from skfolio import (
     RatioMeasure,
     RiskMeasure,
 )
+from skfolio.exceptions import ConvexOptimizationError, OptimizationError
 from skfolio.model_selection import cross_val_predict
 from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
@@ -256,6 +257,27 @@ def test_mean_risk_minimize_risk(
     )
     np.testing.assert_almost_equal(
         p.mean, model.problem_values_["expected_return"], precision
+    )
+
+
+@pytest.mark.parametrize(
+    "risk_measure",
+    [
+        RiskMeasure.MAX_DRAWDOWN,
+        RiskMeasure.AVERAGE_DRAWDOWN,
+        RiskMeasure.CDAR,
+        RiskMeasure.ULCER_INDEX,
+    ],
+)
+def test_mean_risk_drawdown_from_first_observation(X, risk_measure):
+    # Every asset loses 20% on the first observation, so the deepest drawdown starts
+    # there.
+    X = X.iloc[-60:].copy()
+    X.iloc[0] = -0.2
+    model = MeanRisk(risk_measure=risk_measure)
+    p = model.fit_predict(X)
+    np.testing.assert_almost_equal(
+        getattr(p, risk_measure.value), model.problem_values_["risk"], 4
     )
 
 
@@ -605,12 +627,10 @@ def test_mean_risk_get_params():
 
 def test_mean_risk_set_params():
     model = MeanRisk()
-    with pytest.raises(AttributeError):
-        # noinspection PyTypeChecker
+    with pytest.raises(AttributeError, match="has no attribute 'set_params'"):
         model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     model = MeanRisk(prior_estimator=EmpiricalPrior(mu_estimator=EmpiricalMu()))
-    # noinspection PyTypeChecker
     model.set_params(prior_estimator__mu_estimator__window_size=30)
 
     params = model.get_params(deep=True)
@@ -885,7 +905,6 @@ def test_regularization(X, risk_measure, mean_risk_params_coef):
 
     # MAXIMIZE_RETURN
     risk = obj_ref * 1.2
-    # noinspection PyTypeChecker
     model.set_params(
         l1_coef=0,
         l2_coef=0,
@@ -952,7 +971,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -976,7 +994,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
             confidence_level=0.5
@@ -998,7 +1015,6 @@ def test_worst_case_mean_variance(X):
     model.fit(X)
     obj_ref = model.problem_values_["objective"]
     w_ref = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(
         scale_objective=1e-3,
         covariance_uncertainty_set_estimator=EmpiricalCovarianceUncertaintySet(
@@ -1060,7 +1076,6 @@ def test_transaction_costs(X, risk_measure):
     w_ref = model.weights_
     # uniform transaction_costs for all assets and empty prev_weight --> no impact on
     # weights
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=0.1 / 252, previous_weights=np.ones(n_assets) / n_assets
     )
@@ -1074,7 +1089,6 @@ def test_transaction_costs(X, risk_measure):
     asset_2 = p_ref.composition.index[1]
     above = 5e-2
     transaction_costs = {asset_1: 0.2, asset_2: 0.5}
-    # noinspection PyTypeChecker
     model.set_params(
         transaction_costs=transaction_costs,
         previous_weights=np.ones(n_assets) / n_assets,
@@ -1102,7 +1116,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     min_risk = model.problem_values_["risk"]
 
     risk = min_risk * 1.1
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         **{target_risk_arg: risk},
@@ -1111,7 +1124,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     p = model.fit_predict(X)
     ret = model.problem_values_["expected_return"]
     np.testing.assert_almost_equal(risk, getattr(p, risk_measure.value), precision)
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MINIMIZE_RISK,
         min_return=ret,
@@ -1121,7 +1133,6 @@ def test_mean_risk_methods(X, risk_measure, precisions):
     np.testing.assert_almost_equal(ret, p.mean, precision)
 
     risks = [risk, risk * 1.1]
-    # noinspection PyTypeChecker
     model.set_params(
         objective_function=ObjectiveFunction.MAXIMIZE_RETURN,
         min_return=None,
@@ -1183,7 +1194,7 @@ def test_groups(X, groups, linear_constraints):
     model.fit(X)
     w3 = model.weights_
     p3 = model.fit_predict(X)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="If `groups` is provided as a dictionary"):
         model.fit(np.array(X))
     np.testing.assert_almost_equal(w1, w3)
     np.testing.assert_almost_equal(p1.returns, p2.returns)
@@ -1321,12 +1332,11 @@ def test_metadata_routing(X_small, implied_vol_small):
             )
         )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`implied_vol` cannot be None"):
             model.fit(X_small)
 
         model.fit(X_small, implied_vol=implied_vol_small)
 
-    # noinspection PyUnresolvedReferences
     assert model.prior_estimator_.covariance_estimator_.r2_scores_.shape == (20,)
 
 
@@ -1457,7 +1467,6 @@ def test_scip_clarabel_convergence(X):
     )
     model.fit(X)
     w1 = model.weights_
-    # noinspection PyTypeChecker
     model.set_params(solver="SCIP")
     model.fit(X)
     w2 = model.weights_
@@ -1481,7 +1490,6 @@ def test_mip_threshold_constraints_long(X, objective_function):
 
     threshold_long = 0.05
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     model.fit(X)
     w2 = model.weights_
@@ -1512,14 +1520,12 @@ def test_mip_threshold_constraints_long_short(X, objective_function):
 
     assert np.any((w1 < threshold_long - 1e-8) & (w1 > 0 + 1e-8))
     assert np.any((w1 > threshold_short + 1e-8) & (w1 < 0 - 1e-8))
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long)
     with pytest.raises(
         ValueError,
         match=r"When 'threshold_long' is provided*",
     ):
         model.fit(X)
-    # noinspection PyTypeChecker
     model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
     model.fit(X)
     w2 = model.weights_
@@ -1566,7 +1572,6 @@ def test_mip_cardinality_and_threshold_constraints_long_short(X):
     assert np.any((w < threshold_long - 1e-8) & (w > 0 + 1e-8))
     assert np.any((w > threshold_short + 1e-8) & (w < 0 - 1e-8))
 
-    # noinspection PyTypeChecker
     model.set_params(
         cardinality=cardinality,
         threshold_long=threshold_long,
@@ -1853,7 +1858,7 @@ def test_fallback(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_weights=1.0)
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(cp.error.SolverError, match="Solver 'CLARABEL' failed"):
         model.fit(X)
 
     model = MeanRisk(
@@ -1997,7 +2002,9 @@ def test_raise_on_failure_on_multi_all_fail(X):
     # Force an error by using an impossible constraint configuration
     model = MeanRisk(min_return=[0.003, 0.004])
 
-    with pytest.raises(cp.error.SolverError):
+    with pytest.raises(
+        cp.error.SolverError, match="Solver 'CLARABEL' failed with parameters"
+    ):
         model.fit(X)
 
 
@@ -2204,13 +2211,41 @@ class TestPartialFit:
         with pytest.raises(TypeError, match="partial_fit"):
             model.partial_fit(np.asarray(X))
 
+    @pytest.mark.parametrize(
+        "name,estimator",
+        [
+            ("mu_uncertainty_set_estimator", EmpiricalMuUncertaintySet()),
+            (
+                "covariance_uncertainty_set_estimator",
+                EmpiricalCovarianceUncertaintySet(),
+            ),
+        ],
+    )
+    @pytest.mark.parametrize("fit_first", [False, True])
+    def test_batch_uncertainty_set_rejected_when_called(
+        self, X_tiny, name, estimator, fit_first
+    ):
+        model = _make_online_mean_risk(**{name: estimator}, raise_on_failure=False)
+        if fit_first:
+            model.fit(X_tiny)
+        with pytest.raises(
+            TypeError,
+            match=f"{type(estimator).__name__} does not implement partial_fit",
+        ):
+            model.partial_fit(X_tiny)
+        history = np.concatenate([X_tiny, X_tiny]) if fit_first else X_tiny
+        np.testing.assert_array_equal(
+            model.prior_estimator_.return_distribution_.returns, history
+        )
+
     def test_raise_on_failure_false(self, X):
         """partial_fit returns FailedPortfolio when solver failure is not raised."""
         model = _make_online_mean_risk(min_weights=1.0, raise_on_failure=False)
 
-        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+        with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed") as caught:
             model.partial_fit(X)
 
+        assert "The batch was consumed" in str(caught[0].message)
         assert model.weights_ is None
         assert model.problem_values_ is None
         assert model.fallback_ is None
@@ -2236,6 +2271,106 @@ class TestPartialFit:
         assert model.fallback_ is None
         assert model.fallback_chain_ is None
 
+    @pytest.mark.parametrize("initial_success", [False, True])
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_handled_solver_failure_preserves_learning(
+        self, X_tiny, initial_success, fallback
+    ):
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+        )
+        batches = []
+        if initial_success:
+            model.partial_fit(X_tiny)
+            batches.append(X_tiny)
+        model.set_params(min_weights=1.0)
+        failed_batch = X_tiny * 1.1
+        if fallback is None:
+            with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+                model.partial_fit(failed_batch)
+            assert isinstance(model.predict(X_tiny), FailedPortfolio)
+        else:
+            model.partial_fit(failed_batch)
+            np.testing.assert_array_equal(model.weights_, model.previous_weights)
+            assert model.fallback_ == "previous_weights"
+        batches.append(failed_batch)
+
+        prior = model.prior_estimator_
+        model.set_params(min_weights=0.0)
+        next_batch = X_tiny * 0.9
+        model.partial_fit(next_batch)
+        batches.append(next_batch)
+
+        history = np.concatenate(batches)
+        reference = clone(model.prior_estimator).fit(history).return_distribution_
+        assert model.prior_estimator_ is prior
+        np.testing.assert_array_equal(prior.return_distribution_.returns, history)
+        np.testing.assert_allclose(prior.return_distribution_.mu, reference.mu)
+        np.testing.assert_allclose(
+            prior.return_distribution_.covariance, reference.covariance
+        )
+        assert model.error_ is None
+        assert model.fallback_chain_ is None
+
+    @pytest.mark.parametrize(
+        "error_type",
+        [ValueError, cp.SolverError, OptimizationError, ConvexOptimizationError],
+    )
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_learner_failure_is_always_raised(
+        self, X_tiny, monkeypatch, error_type, fallback
+    ):
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+        ).partial_fit(X_tiny)
+        update_prior = model.prior_estimator_.partial_fit
+
+        def failing_update(X, y=None):
+            update_prior(X, y)
+            raise error_type("Learner failed after updating")
+
+        monkeypatch.setattr(model.prior_estimator_, "partial_fit", failing_update)
+        with pytest.raises(error_type, match="Learner failed after updating"):
+            model.partial_fit(X_tiny)
+
+    @pytest.mark.parametrize("fallback", [None, "previous_weights"])
+    def test_objective_failure_is_always_raised(self, X_tiny, fallback):
+        def failing_objective(w):
+            raise ValueError("Cannot build objective")
+
+        model = _make_online_mean_risk(
+            raise_on_failure=False,
+            fallback=fallback,
+            previous_weights=np.full(X_tiny.shape[1], 1 / X_tiny.shape[1]),
+            add_objective=failing_objective,
+        )
+        with pytest.raises(TypeError, match="add_objective"):
+            model.partial_fit(X_tiny)
+
+    def test_uncertainty_set_allocation_error_propagates(self, X_tiny, monkeypatch):
+        model = _make_online_mean_risk(
+            mu_uncertainty_set_estimator=EmpiricalMuUncertaintySet(),
+            fallback="previous_weights",
+            previous_weights=0.2,
+            raise_on_failure=False,
+        ).fit(X_tiny)
+
+        def fail_update(*args, **kwargs):
+            raise OptimizationError("Uncertainty estimation failed")
+
+        monkeypatch.setattr(
+            model.mu_uncertainty_set_estimator_,
+            "partial_fit",
+            fail_update,
+            raising=False,
+        )
+        with pytest.raises(OptimizationError, match="Uncertainty estimation failed"):
+            model.partial_fit(X_tiny)
+
     def test_fallback_previous_weights(self, X):
         """partial_fit can fall back to previous weights after solver failure."""
         previous_weights = np.full(X.shape[1], 1 / X.shape[1])
@@ -2251,6 +2386,7 @@ class TestPartialFit:
         assert model.error_ is None
         assert model.fallback_ == "previous_weights"
         assert model.fallback_chain_[-1] == ("previous_weights", "success")
+        assert len(model.fallback_chain_) == 2
         assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
 
         ptf = model.predict(X)
@@ -2304,7 +2440,7 @@ class TestPartialFit:
         assert model.problem_values_ is None
         assert "previous_weights" in model.error_
         assert "None" in model.error_
-        assert model.fallback_chain_[-1][0] == "previous_weights"
+        assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
         ptf = model.predict(X)
         assert isinstance(ptf, FailedPortfolio)
@@ -2455,13 +2591,76 @@ def test_annualized_risk_measure_is_converted():
     assert model.risk_measure == RiskMeasure.VARIANCE
 
 
-def test_zero_thresholds_are_ignored(X_tiny):
+@pytest.mark.parametrize("solver,cardinality", [("CLARABEL", None), ("SCIP", 3)])
+@pytest.mark.parametrize("min_weights", [0, -1])
+@pytest.mark.parametrize(
+    "threshold_long,threshold_short",
+    [
+        (0.0, None),
+        (None, 0.0),
+        (0.0, 0.0),
+        ([0.0] * 6, [0.0] * 6),
+        (np.zeros(6), np.zeros(6)),
+        ({"A": 0.0}, {"B": 0.0}),
+    ],
+)
+def test_zero_thresholds_are_ignored(
+    X_tiny, solver, cardinality, min_weights, threshold_long, threshold_short
+):
     model = MeanRisk(
-        solver="SCIP", cardinality=3, threshold_long=0.0, threshold_short=0.0
-    )
+        solver=solver,
+        cardinality=cardinality,
+        min_weights=min_weights,
+        save_problem=True,
+    ).fit(X_tiny)
+    expected_weights = model.weights_.copy()
+
+    model.set_params(threshold_long=threshold_long, threshold_short=threshold_short)
     model.fit(X_tiny)
-    assert np.sum(np.abs(model.weights_) > 1e-8) <= 3
+
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.problem_.is_mixed_integer() == (cardinality is not None)
+    if cardinality is not None:
+        assert np.sum(np.abs(model.weights_) > 1e-8) <= cardinality
     np.testing.assert_almost_equal(np.sum(model.weights_), 1.0)
+
+
+@pytest.mark.parametrize("threshold_short", [0.0, [0.0] * 6, np.zeros(6), {"A": 0.0}])
+def test_zero_short_threshold_with_long_threshold_raises(X_tiny, threshold_short):
+    model = MeanRisk(
+        min_weights=-1,
+        threshold_long=0.1,
+        threshold_short=threshold_short,
+        solver="SCIP",
+    )
+    with pytest.raises(ValueError, match="'threshold_short' must also be provided"):
+        model.fit(X_tiny)
+
+
+def test_thresholds_on_non_investable_assets_are_ignored(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+    model = MeanRisk(
+        prior_estimator=fixed_return_distribution_prior(mu=mu, covariance=covariance),
+        save_problem=True,
+    ).fit(X)
+    expected_weights = model.weights_.copy()
+
+    model.set_params(threshold_long={"C": 0.1}, threshold_short={"C": -0.05})
+    model.fit(X)
+
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.weights_[2] == 0.0
+    assert not model.problem_.is_mixed_integer()
+
+
+def test_zero_long_threshold_with_short_threshold_raises(X_tiny):
+    model = MeanRisk(
+        min_weights=-1, threshold_long=0.0, threshold_short=-0.05, solver="SCIP"
+    )
+    with pytest.raises(ValueError, match="'threshold_long' must also be provided"):
+        model.fit(X_tiny)
 
 
 def test_mip_constraints_require_mip_solver(X_tiny):
@@ -2482,6 +2681,14 @@ def test_mip_constraints_require_mip_solver(X_tiny):
         ),
         (
             dict(solver="SCIP", cardinality=2, max_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=None),
+            "'max_weights' and 'min_weights' must be provided",
+        ),
+        (
+            dict(solver="SCIP", cardinality=2, min_weights=None, max_weights=None),
             "'max_weights' and 'min_weights' must be provided",
         ),
         (
@@ -2512,7 +2719,7 @@ def test_mip_constraints_require_mip_solver(X_tiny):
             dict(left_inequality=np.ones((2, 6)), right_inequality=np.ones(1)),
             "must have same number of rows",
         ),
-        (dict(min_return=[]), "should have same length"),
+        (dict(min_return=[]), "must be nonempty and have the same length"),
         (dict(solver="NOT_A_SOLVER"), "The solver NOT_A_SOLVER is not installed"),
     ],
 )
@@ -2520,6 +2727,30 @@ def test_convex_optimization_input_validation(X_tiny, params, match):
     model = MeanRisk(**params)
     with pytest.raises(ValueError, match=match):
         model.fit(X_tiny)
+
+
+@pytest.mark.parametrize("lengths", [(2, 3), (3, 2), (1, 2), (2, 0)])
+def test_mismatched_parameter_lengths_raise_before_solving(
+    X_tiny, monkeypatch, lengths
+):
+    def unexpected_solve(*args, **kwargs):
+        pytest.fail("Invalid parameter lengths must be rejected before solving")
+
+    monkeypatch.setattr(cp.Problem, "solve", unexpected_solve)
+    model = MeanRisk(
+        min_return=np.full(lengths[0], -1.0),
+        max_variance=np.ones(lengths[1]),
+    )
+    with pytest.raises(ValueError, match="must be nonempty and have the same length"):
+        model.fit(X_tiny)
+
+
+@pytest.mark.parametrize("max_variance", [1.0, [1.0, 1.0]])
+def test_parameter_arrays_match_individual_allocations(X_tiny, max_variance):
+    model = MeanRisk(min_return=[-1.0, -0.5], max_variance=max_variance).fit(X_tiny)
+    for weights, min_return in zip(model.weights_, [-1.0, -0.5], strict=True):
+        reference = MeanRisk(min_return=min_return, max_variance=1.0).fit(X_tiny)
+        np.testing.assert_allclose(weights, reference.weights_, atol=1e-8)
 
 
 def test_linear_constraints_require_asset_names(X_tiny):
@@ -2597,6 +2828,7 @@ def test_non_default_solver(X_tiny):
 def test_unimplemented_fourth_moment_risks():
     model = MeanRisk()
     w = cp.Variable(2)
+    # Both methods raise a bare `NotImplementedError`, so there is no message to match.
     with pytest.raises(NotImplementedError):
         model._fourth_central_moment_risk(w=w, factor=cp.Constant(1))
     with pytest.raises(NotImplementedError):
@@ -2721,11 +2953,11 @@ def test_partial_fit_rejects_changed_invalid_objective(X_tiny):
 
 def test_partial_fit_solver_failure_raises(X_tiny):
     model = _make_online_mean_risk(min_weights=1.0)
-    with pytest.raises(cp.SolverError):
+    with pytest.raises(cp.SolverError, match="Solver 'CLARABEL' failed"):
         model.partial_fit(X_tiny)
     assert "Solver 'CLARABEL' failed" in model.error_
-    # The failed solve never reaches the point where problem values are recorded.
-    assert not hasattr(model, "problem_values_")
+    assert model.problem_values_ is None
+    assert model._cvx_cache == {}
 
 
 def test_partial_fit_solver_failure_saves_problem(X_tiny):
@@ -2744,7 +2976,7 @@ def test_partial_fit_previous_weights_fallback_failure_raises(X_tiny):
         model.partial_fit(X_tiny)
     assert "previous_weights" in model.error_
     assert model.problem_values_ is None
-    assert model.fallback_chain_[-1][0] == "previous_weights"
+    assert model.fallback_chain_[1:] == [("previous_weights", model.error_)]
 
 
 def test_partial_fit_previous_weights_fallback_saves_problem(X_tiny):
@@ -2759,6 +2991,81 @@ def test_partial_fit_previous_weights_fallback_saves_problem(X_tiny):
     np.testing.assert_array_equal(model.weights_, previous_weights)
     assert model.error_ is None
     assert isinstance(model.problem_, cp.Problem)
+
+
+def test_failed_frontier_row_covers_full_schema(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, mask = nan_investable_test_data
+    model = MeanRisk(
+        prior_estimator=fixed_return_distribution_prior(mu, covariance),
+        min_return=[0, 10],
+        raise_on_failure=False,
+    )
+    with pytest.warns(UserWarning, match="Solver 'CLARABEL' failed"):
+        model.fit(X)
+    assert np.isfinite(model.weights_[0]).all()
+    assert np.isnan(model.weights_[1]).all()
+    assert model.weights_[0, ~mask] == 0
+    assert model.error_[0] is None
+    assert model.error_[1] is not None
+    prediction = model.predict(X)
+    assert not isinstance(prediction[0], FailedPortfolio)
+    assert isinstance(prediction[1], FailedPortfolio)
+
+
+def test_previous_weights_fallback_validates_excluded_holdings(
+    nan_investable_test_data, fixed_return_distribution_prior
+):
+    X, mu, covariance, _ = nan_investable_test_data
+    model = MeanRisk(
+        prior_estimator=fixed_return_distribution_prior(mu, covariance),
+        min_return=10,
+        fallback="previous_weights",
+        previous_weights={"A": 0.25, "B": 0.25, "C": np.inf, "D": 0.25},
+    )
+    with pytest.raises(ValueError, match="previous_weights must be finite"):
+        model.fit(X)
+    assert not model.investable_mask_[2]
+    assert model.fallback_chain_[-1] == (
+        "previous_weights",
+        "previous_weights must be finite.",
+    )
+
+
+def test_nonfinite_frontier_point_is_recorded_individually(X_tiny, monkeypatch):
+    solve = cp.Problem.solve
+    calls = 0
+
+    def solve_with_nonfinite_point(problem, *args, **kwargs):
+        nonlocal calls
+        result = solve(problem, *args, **kwargs)
+        calls += 1
+        if calls == 1:
+            for variable in problem.variables():
+                if variable.shape == (X_tiny.shape[1],):
+                    variable.save_value(np.full(variable.shape, np.nan))
+        return result
+
+    monkeypatch.setattr(cp.Problem, "solve", solve_with_nonfinite_point)
+    model = MeanRisk(min_return=[-1, -0.5], raise_on_failure=False)
+    with pytest.warns(UserWarning, match="Allocation produced non-finite weights"):
+        model.fit(X_tiny)
+    assert calls == 2
+    assert np.isnan(model.weights_[0]).all()
+    assert np.isfinite(model.weights_[1]).all()
+    assert model.error_ == ["Allocation produced non-finite weights.", None]
+
+
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+def test_convex_failure_type_and_cause(X_tiny, method):
+    model = _make_online_mean_risk(min_weights=1.0, save_problem=True)
+    with pytest.raises(ConvexOptimizationError) as caught:
+        getattr(model, method)(X_tiny)
+    assert isinstance(caught.value.__cause__, cp.SolverError)
+    assert model.problem_values_ is None
+    assert isinstance(model.problem_, cp.Problem)
+    assert model._cvx_cache == {}
 
 
 @pytest.mark.parametrize(

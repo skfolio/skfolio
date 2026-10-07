@@ -15,6 +15,7 @@ import skfolio.typing as skt
 from skfolio.population import Population
 from skfolio.portfolio import Portfolio
 from skfolio.typing import ArrayLike, BoolArray
+from skfolio.utils.tools import _validate_positive_integer
 
 
 class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
@@ -40,9 +41,9 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         front. This is because all assets in the same front have the same rank.
         The default (`None`) is to select the first front.
 
-    threshold : float, default=0.0
+    threshold : float, default=-0.5
         Asset pairs with a correlation below this threshold are included in the
-        non-domination sorting. The default value is `0.0`.
+        non-domination sorting. The default value is `-0.5`.
 
     fitness_measures : list[Measure], optional
         A list of :ref:`measure <measures_ref>` used to compute the portfolio fitness.
@@ -76,12 +77,12 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         min_n_assets: int | None = None,
         threshold: float = -0.5,
         fitness_measures: list[skt.Measure] | None = None,
-    ):
+    ) -> None:
         self.min_n_assets = min_n_assets
         self.threshold = threshold
         self.fitness_measures = fitness_measures
 
-    def fit(self, X: ArrayLike, y=None):
+    def fit(self, X: ArrayLike, y: None = None) -> SelectNonDominated:
         """Run the Non Dominated transformer and get the appropriate assets.
 
         Parameters
@@ -97,9 +98,11 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         self : SelectNonDominated
             Fitted estimator.
         """
-        X = skv.validate_data(self, X)
+        if self.min_n_assets is not None:
+            _validate_positive_integer(self.min_n_assets, "min_n_assets")
         if not -1 <= self.threshold <= 1:
             raise ValueError("`threshold` must be between -1 and 1")
+        X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
         if self.min_n_assets is not None and self.min_n_assets >= n_assets:
@@ -107,12 +110,12 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
             return self
 
         # Build a population of portfolio
-        population = Population([])
+        portfolios: list[Portfolio] = []
         # Add single assets
         for i in range(n_assets):
             weights = np.zeros(n_assets)
             weights[i] = 1
-            population.append(
+            portfolios.append(
                 Portfolio(X=X, weights=weights, fitness_measures=self.fitness_measures)
             )
 
@@ -135,13 +138,13 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
                 weights = np.zeros(n_assets)
                 weights[i] = (var2 - cov) / (var1 + var2 - 2 * cov)
                 weights[j] = 1 - weights[i]
-                population.append(
+                portfolios.append(
                     Portfolio(
                         X=X, weights=weights, fitness_measures=self.fitness_measures
                     )
                 )
 
-        fronts = population.non_dominated_sort(
+        fronts = Population(portfolios).non_dominated_sort(
             first_front_only=self.min_n_assets is None
         )
         new_assets_idx = set()
@@ -149,15 +152,16 @@ class SelectNonDominated(skf.SelectorMixin, skb.BaseEstimator):
         while i < len(fronts):
             if (
                 self.min_n_assets is not None
-                and len(new_assets_idx) > self.min_n_assets
+                and len(new_assets_idx) >= self.min_n_assets
             ):
                 break
             for idx in fronts[i]:
-                new_assets_idx.update(population[idx].nonzero_assets_index)
+                new_assets_idx.update(portfolios[idx].nonzero_assets_index)
             i += 1
         self.to_keep_ = np.isin(np.arange(n_assets), list(new_assets_idx))
         return self
 
-    def _get_support_mask(self):
+    def _get_support_mask(self) -> BoolArray:
+        """Return the boolean mask of the selected assets `to_keep_`."""
         skv.check_is_fitted(self)
         return self.to_keep_

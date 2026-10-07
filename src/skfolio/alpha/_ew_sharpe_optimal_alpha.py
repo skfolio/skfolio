@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import sklearn.utils.metadata_routing as skm
 
@@ -18,7 +20,7 @@ from skfolio._constants import (
 )
 from skfolio.alpha import ForecastUnit
 from skfolio.alpha._base import BaseAlpha, BaseAlphaDescriptorComposition
-from skfolio.containers import AssetPanel
+from skfolio.containers import AssetPanel, AssetPanelView
 from skfolio.descriptor import BaseDescriptor
 from skfolio.typing import FloatArray
 from skfolio.utils.stats import _forward_mean_return, safe_divide
@@ -394,7 +396,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         forecast_scale: float = 1.0,
         normalize_weights: bool = True,
         n_jobs: int = 1,
-    ):
+    ) -> None:
         self.descriptors = descriptors
         self.half_life = half_life
         self.ridge_scale = ridge_scale
@@ -409,7 +411,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self.normalize_weights = normalize_weights
         self.n_jobs = n_jobs
 
-    def fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Fit the alpha model.
 
         Resets all internal state, processes the provided panel and stores the latest
@@ -436,7 +440,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="fit", **fit_params)
         return self
 
-    def fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Fit the alpha model and return historical alpha forecasts.
 
         The returned alpha at observation :math:`t` only uses coefficient updates whose
@@ -460,9 +466,11 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
             Historical alpha forecasts for the input panel.
         """
         self._reset()
-        return self._fit(X, y, method="fit", transform=True, **fit_params)
+        return self._fit(X, y, method="fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
 
-    def partial_fit(self, X: AssetPanel, y=None, **fit_params) -> EWSharpeOptimalAlpha:
+    def partial_fit(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> EWSharpeOptimalAlpha:
         """Incrementally fit the alpha model with new observations.
 
         This method supports streaming/online updates. It maintains internal buffers to
@@ -488,7 +496,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         self._fit(X, y, method="partial_fit", **fit_params)
         return self
 
-    def partial_fit_transform(self, X: AssetPanel, y=None, **fit_params) -> FloatArray:
+    def partial_fit_transform(
+        self, X: AssetPanel, y: None = None, **fit_params: Any
+    ) -> FloatArray:
         """Incrementally fit the alpha model and return new historical alpha forecasts.
 
         Only rows corresponding to the newly supplied observations are returned.
@@ -510,16 +520,16 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         alphas : ndarray of shape (n_observations, n_assets)
             Historical alpha forecasts for the new observations.
         """
-        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)
+        return self._fit(X, y, method="partial_fit", transform=True, **fit_params)  # ty: ignore[invalid-return-type]
 
     def _fit(
         self,
         X: AssetPanel,
-        y=None,
+        y: None = None,
         *,
         method: str,
         transform: bool = False,
-        **fit_params,
+        **fit_params: Any,
     ) -> FloatArray | None:
         """Fit the model state and optionally return historical alpha forecasts."""
         routed_params = skm.process_routing(self, method, **fit_params)
@@ -582,9 +592,9 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 combined_obs_idx = n_buffered_obs + forecast_idx
                 coef_idx = combined_obs_idx - self._target_gap
                 if 0 <= coef_idx < n_trainable_obs:
-                    historical_alphas[forecast_idx] = self._compute_alpha(
+                    historical_alphas[forecast_idx] = self._compute_alpha(  # ty: ignore[invalid-assignment]
                         scores=X[_DESCRIPTOR_SCORES][combined_obs_idx],
-                        coefficient=historical_coefficients[coef_idx],
+                        coefficient=historical_coefficients[coef_idx],  # ty: ignore[not-subscriptable]
                         idio_variances=X[_IDIO_VARIANCES][combined_obs_idx],
                     )
 
@@ -601,7 +611,10 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
         return historical_alphas
 
     def _update_ewls(
-        self, X: AssetPanel, forward_returns: FloatArray, return_historical: bool
+        self,
+        X: AssetPanel | AssetPanelView,
+        forward_returns: FloatArray,
+        return_historical: bool,
     ) -> FloatArray | None:
         """Update EWLS normal equations and optionally return coefficient history."""
         idio_variances = X[_IDIO_VARIANCES]
@@ -640,7 +653,7 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                     weights=weights[t, valid_t],
                 )
             if return_historical and coefficient is not None:
-                historical_coefficients[t] = coefficient
+                historical_coefficients[t] = coefficient  # ty: ignore[invalid-assignment]
 
         return historical_coefficients
 
@@ -689,7 +702,8 @@ class EWSharpeOptimalAlpha(BaseAlphaDescriptorComposition, BaseAlpha):
                 self._ew_target_cross_product
             )
 
-    def _reset(self):
+    def _reset(self) -> None:
+        """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
 

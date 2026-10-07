@@ -43,6 +43,96 @@ independent estimator clone. In the online setting, the estimator state is
 carried forward through time.
 
 
+.. _online_failure_handling:
+
+Updates and Failure Handling
+****************************
+
+For portfolio optimizers, each `partial_fit` call first updates the prior and other
+estimators from new observations, then computes portfolio weights. Each call builds on
+the estimates from previous calls. Calling `fit` starts estimation again from the
+supplied history.
+
+Online updates assume that estimation parameters, such as the `half_life` of an EW
+covariance estimator, remain unchanged. Changing these parameters requires a new `fit`
+on the desired history, because the existing estimates were computed with the previous
+settings.
+
+Optimization Failures
+=====================
+
+Once the prior and other estimators have been updated, the optimizer computes portfolio
+weights. This step can fail, for example when a convex solver does not converge or
+portfolio constraints become infeasible at a particular rebalancing. Such failures
+raise :class:`~skfolio.exceptions.OptimizationError` and are handled according to
+`fallback` and `raise_on_failure`.
+
+With `fallback=None` (the default):
+
+* If `raise_on_failure=True` (the default), the optimization error is raised. Further
+  updates or predictions require a fresh estimator or a new successful `fit`, as
+  illustrated below.
+* If `raise_on_failure=False`, the estimator emits a warning and sets `weights_` to
+  None. A subsequent `predict` returns a :class:`~skfolio.portfolio.FailedPortfolio`.
+  The same model can continue through subsequent `partial_fit` calls with new
+  observations.
+
+With `fallback="previous_weights"`, the model uses the allocation supplied in
+`previous_weights` if optimization fails. This allows the last valid allocation to be
+reused with either `raise_on_failure=True` or `raise_on_failure=False`.
+
+Assets outside the current investable universe receive zero weight. The remaining
+weights stay unchanged, without rescaling or checking them against the original
+optimization constraints, so part of the portfolio may remain in cash. In a manual
+update loop, the caller supplies the holdings to retain through `previous_weights`
+before each update.
+
+If the fallback also fails, for example because `previous_weights` was not supplied,
+`raise_on_failure=True` raises the fallback error. With `raise_on_failure=False`, the
+estimator emits a warning and sets `weights_` to None. Errors detected earlier during
+input validation are always raised, as described under Other Errors below.
+
+After an optimization failure handled by `raise_on_failure=False` or a successful
+fallback, the same model can continue with the next batch. The prior and other
+estimators have already used the current observations, so the next `partial_fit`
+receives only new observations. For example, if optimization fails after updating the
+prior with Monday's returns, the next update needs to contains Tuesday's returns.
+
+With `raise_on_failure=True`, an optimization failure is raised when `fallback=None`
+or the previous-weights fallback also fails. Some fitted attributes may already have
+changed, while `weights_` may still contain an earlier allocation. The model therefore
+needs to be fitted again before further updates or predictions. One way to restart is
+to create a fresh estimator and train it on the desired history.
+
+Other Errors
+============
+
+Errors caused by invalid parameters, malformed inputs, or failed updates of the prior
+or other estimators are always raised by `partial_fit`, regardless of
+`raise_on_failure` and `fallback`. These errors can leave some estimates updated
+and others unchanged, so further updates or predictions require a fresh estimator or a
+new successful `fit`.
+
+Optimization requires at least one investable asset. If none are investable,
+`partial_fit` raises `ValueError` without attempting fallback. The prior therefore
+needs enough warm-up history to estimate returns and risk for at least one asset in
+the active universe before allocation can begin.
+
+Batch Fitting
+=============
+
+During `fit`, fallbacks can be attempted after any fitting error, including errors in
+the parameters or failures while fitting the prior. Each fallback estimator is fitted
+independently on the supplied history. During `partial_fit`, only `fallback=None` and
+`fallback="previous_weights"` are supported, because a fallback estimator has not
+accumulated the primary model's online history.
+
+A batch fallback can produce valid weights even if the primary estimator did not
+finish fitting. The same incomplete state is possible when a batch error is suppressed
+with `raise_on_failure=False`. In both cases, subsequent online learning requires a
+fresh estimator or a successful `fit` of the primary model on the desired history.
+See :ref:`optimization_failure_handling` for exception types and batch diagnostics.
+
 Non-Predictor Estimators Versus Portfolio Optimizers
 ****************************************************
 
@@ -176,12 +266,11 @@ This is useful when a portfolio estimator embeds incremental moment estimators s
 :class:`~skfolio.moments.EWMu` and
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
 
-During online portfolio evaluation, each rebalance is solved after the estimator has
-incorporated the observations available at that date. If the optimization problem cannot
-be solved and `raise_on_failure=False`, `online_predict` records that rebalance as a
-:class:`~skfolio.portfolio.FailedPortfolio` and continues with the next window. When the
-estimator uses previous weights, the last valid allocation remains the reference for
-later rebalances.
+During online portfolio evaluation, `online_predict` records a suppressed solver
+failure as a :class:`~skfolio.portfolio.FailedPortfolio` and continues with the
+next window. Raised errors interrupt evaluation. See
+:ref:`Updates and Failure Handling <online_failure_handling>` for data
+consumption, fallback, and restart rules.
 
 Pass `portfolio_params={"weight_drift": True, "compounded": True}` to
 `online_predict` to evaluate the path with drifted weights and compounded returns. The
@@ -205,10 +294,8 @@ resulting `MultiPeriodPortfolio`, these parameters can change the scores and the
 ranking of the parameter sets. When refitting is enabled, `weight_drift` is retained in
 `best_estimator_` because prediction requires it. The other parameters are not.
 
-To hold the last allocation instead of producing a failed rebalance, configure
-`fallback="previous_weights"`. Other fallback estimators are not available with
-`partial_fit`, because they would not have learned from the same sequence of past
-observations.
+To use those previous holdings instead of producing a failed rebalance after a
+solver failure, configure `fallback="previous_weights"`.
 
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`

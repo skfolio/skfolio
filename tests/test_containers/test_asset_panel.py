@@ -570,19 +570,19 @@ class TestPanelConstruction:
             )
 
     @pytest.mark.parametrize(
-        "name",
+        "name,match",
         [
-            "",
-            "has space",
-            "path/sep",
-            "back\\slash",
-            "1starts_with_num",
-            "CON",
-            "x" * 201,
+            ("", "must be a non-empty string"),
+            ("has space", "contains invalid characters"),
+            ("path/sep", "contains invalid characters"),
+            ("back\\slash", "contains invalid characters"),
+            ("1starts_with_num", "contains invalid characters"),
+            ("CON", "conflicts with Windows reserved name"),
+            ("x" * 201, "Field name too long"),
         ],
     )
-    def test_invalid_field_names_raise_at_construction(self, name):
-        with pytest.raises(ValueError):
+    def test_invalid_field_names_raise_at_construction(self, name, match):
+        with pytest.raises(ValueError, match=match):
             AssetPanel(
                 fields={name: np.ones((3, 2))},
                 observations=np.arange(3),
@@ -774,7 +774,7 @@ class TestPanelAccessAndMutation:
     def test_getitem_missing_field_raises(self):
         panel = _make_panel()
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel["missing"]
 
     def test_getitem_tuple_selector_raises(self):
@@ -921,7 +921,7 @@ class TestPanelAccessAndMutation:
     def test_setitem_invalid_field_name_raises(self):
         panel = _make_panel()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="contains invalid characters"):
             panel["has space"] = np.ones((N_OBS, N_ASSETS))
 
     def test_delete_field_and_last_field_guard(self):
@@ -963,7 +963,7 @@ class TestPanelAccessAndMutation:
         with pytest.raises(ValueError, match="Duplicate"):
             panel.rename({"momentum": "x", "sector": "x"})
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="contains invalid characters"):
             panel.rename({"momentum": "has space"})
 
 
@@ -1130,13 +1130,13 @@ class TestSelectionAndDrop:
         with pytest.raises(TypeError, match="Field3D"):
             panel.sel_3d("momentum", labels="size")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel.sel_3d("exposures", labels="missing")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             panel.sel_3d("exposures", groups="missing")
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="Labels not found"):
             panel.sel_3d("exposures", groups=["style", "missing"])
 
     def test_sel_3d_groups_require_group_metadata(self):
@@ -1969,7 +1969,7 @@ class TestView:
         panel = _make_panel()
         view = panel[5:10]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="missing"):
             view["missing"]
 
     def test_view_tuple_selector_raises(self):
@@ -2201,6 +2201,19 @@ class TestConcat:
         with pytest.raises(ValueError, match="third_axis_labels"):
             concat([left, right])
 
+    def test_concat_requires_matching_3d_axis_name(self):
+        left = _make_full_panel()
+        right = _make_full_panel()
+        right.fields["exposures"] = Field3D(
+            right["exposures"],
+            third_axis_name="characteristic",
+            third_axis_labels=["mkt", "size", "value"],
+            third_axis_groups=["market", "style", "style"],
+        )
+
+        with pytest.raises(ValueError, match="different third_axis_name"):
+            concat([left, right])
+
     def test_concat_verify_observations_rejects_duplicates(self):
         left = _make_panel(observations=np.arange(N_OBS))
         right = _make_panel(observations=np.arange(N_OBS))
@@ -2361,7 +2374,9 @@ class TestPersistence:
         loaded = AssetPanel.load(tmp_path / "panel", mmap_mode="r")
 
         np.testing.assert_array_equal(loaded["momentum"], panel["momentum"])
-        with pytest.raises((TypeError, ValueError)):
+        with pytest.raises(
+            (TypeError, ValueError), match="assignment destination is read-only"
+        ):
             loaded["momentum"][0, 0] = 999.0
 
     def test_save_load_preserves_inactive_policy(self, tmp_path):
@@ -2489,6 +2504,24 @@ class TestEdgeCases:
         assert columns[2] == columns[3]
         assert columns[-1] == "0"
 
+    def test_info_without_2d_fields_omits_missing_summary(self):
+        panel = _make_full_panel()
+        del panel.fields["momentum"]
+        del panel.fields["sector"]
+
+        report = panel.info()
+
+        assert "Fields        : 1" in report
+        assert "Missing       :" not in report
+
+    def test_info_with_empty_active_mask_reports_zero_active_missing(self):
+        panel = _make_full_panel()
+        panel.active_mask = np.zeros_like(panel.active_mask)
+
+        report = panel.info()
+
+        assert "Missing       : 7.5% total, 0.0% in Active Mask" in report
+
     def test_info_truncates_long_categorical_level_lists(self):
         panel = _make_panel()
         levels = [f"L{i}" for i in range(8)]
@@ -2519,6 +2552,30 @@ class TestEdgeCases:
 
     def test_format_observation_range_empty_returns_empty_string(self):
         assert _format_observation_range(np.array([])) == ""
+
+    @pytest.mark.parametrize(
+        "observations, expected",
+        [
+            (np.array(["2020-01-01", "2020-01-03"]), "  (2020-01-01 -> 2020-01-03)"),
+            (np.array([3, 9]), "  (3 -> 9)"),
+            (np.array(["start", "end"]), "  (start -> end)"),
+            (np.array([True, False]), "  (True -> False)"),
+            (np.array(["99999999999999999999", "1"]), "  (99999999999999999999 -> 1)"),
+        ],
+        ids=["dates", "integers", "unparseable-strings", "booleans", "out-of-bounds"],
+    )
+    def test_format_observation_range(self, observations, expected):
+        assert _format_observation_range(observations) == expected
+
+    def test_format_observation_range_does_not_swallow_unrelated_errors(
+        self, monkeypatch
+    ):
+        def broken_timestamp(value):
+            raise RuntimeError("unexpected")
+
+        monkeypatch.setattr(pd, "Timestamp", broken_timestamp)
+        with pytest.raises(RuntimeError, match="unexpected"):
+            _format_observation_range(np.array(["2020-01-01", "2020-01-03"]))
 
     def test_load_rejects_newer_format_version(self, tmp_path):
         _make_panel().save(tmp_path / "panel")

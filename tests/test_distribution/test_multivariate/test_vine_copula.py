@@ -4,6 +4,7 @@ import gc
 import tracemalloc
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from skfolio.distribution import (
@@ -1677,3 +1678,51 @@ def test_vine_sampling_order_incomplete(small_model):
 def test_vine_plot_marginal_distributions_raise_ndim(small_model):
     with pytest.raises(ValueError, match="X should be an 2D array"):
         small_model.plot_marginal_distributions(X=np.zeros((2, 2, 3)))
+
+
+@pytest.mark.parametrize("named", [False, True])
+@pytest.mark.parametrize("with_history", [False, True])
+@pytest.mark.parametrize("selector", ["positions", "names", "mixed", "all"])
+def test_vine_marginal_plot_selectors(
+    small_model, small_returns, named, with_history, selector
+):
+    asset_names = ["A", "B", "C"] if named else ["x0", "x1", "x2"]
+    if named:
+        small_model.fit(pd.DataFrame(small_returns, columns=asset_names))
+    subsets = {
+        "positions": [2, 0],
+        "names": [asset_names[2], asset_names[0]],
+        "mixed": [asset_names[2], 0],
+        "all": None,
+    }
+    X = small_returns if with_history else None
+    reference = small_model.plot_marginal_distributions(X=X, n_samples=100)
+    figure = small_model.plot_marginal_distributions(
+        X=X, subset=subsets[selector], n_samples=100
+    )
+
+    positions = range(3) if selector == "all" else [2, 0]
+    stride = 2 if with_history else 1
+    expected = [
+        reference.data[stride * i + j] for i in positions for j in range(stride)
+    ]
+    assert [trace.name for trace in figure.data] == [trace.name for trace in expected]
+    for trace, expected_trace in zip(figure.data, expected, strict=True):
+        np.testing.assert_array_equal(trace.x, expected_trace.x)
+        np.testing.assert_array_equal(trace.y, expected_trace.y)
+    assert hasattr(small_model, "feature_names_in_") is named
+
+
+@pytest.mark.parametrize(
+    "subset,match",
+    [
+        (["missing"], "missing not found"),
+        ([-1], "`subset` -1 is not in"),
+        ([3], "`subset` 3 is not in"),
+        ([1.5], "`subset` 1.5 is not in"),
+        ([0, 0], "Duplicates found"),
+    ],
+)
+def test_vine_marginal_plot_invalid_selectors(small_model, subset, match):
+    with pytest.raises(ValueError, match=match):
+        small_model.plot_marginal_distributions(subset=subset)

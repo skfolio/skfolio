@@ -23,7 +23,7 @@ class _ArrayBuffer:
 
     __slots__ = ("_buffer", "_size")
 
-    def __init__(self, values: AnyArray | None = None):
+    def __init__(self, values: AnyArray | None = None) -> None:
         self._buffer: AnyArray | None = None
         self._size: int = 0
         if values is not None:
@@ -86,7 +86,7 @@ class _ArrayBuffer:
             raise ValueError(f"`n_rows` must be positive, got {n_rows}")
         if self._size > n_rows:
             new_buffer = np.empty_like(self._buffer)
-            new_buffer[:n_rows] = self._buffer[self._size - n_rows : self._size]
+            new_buffer[:n_rows] = self._buffer[self._size - n_rows : self._size]  # ty: ignore[not-subscriptable]
             self._buffer = new_buffer
             self._size = n_rows
 

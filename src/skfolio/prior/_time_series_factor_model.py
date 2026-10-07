@@ -14,6 +14,7 @@ from abc import ABC, abstractmethod
 from typing import Any, ClassVar
 
 import numpy as np
+import pandas as pd
 import sklearn.base as skb
 import sklearn.linear_model as skl
 import sklearn.multioutput as skmo
@@ -26,7 +27,7 @@ from skfolio.prior._empirical import EmpiricalPrior
 from skfolio.prior._model import FactorModel, ReturnDistribution
 from skfolio.typing import ArrayLike, FloatArray, StrArray
 from skfolio.utils.stats import cov_nearest
-from skfolio.utils.tools import check_estimator, get_feature_names
+from skfolio.utils.tools import check_estimator, default_asset_names, get_feature_names
 
 
 class TimeSeriesFactorModel(BasePrior):
@@ -145,14 +146,25 @@ class TimeSeriesFactorModel(BasePrior):
         factor_families: ArrayLike | None = None,
         higham: bool = False,
         max_iteration: int = 100,
-    ):
+    ) -> None:
         self.loading_matrix_estimator = loading_matrix_estimator
         self.factor_prior_estimator = factor_prior_estimator
         self.factor_families = factor_families
         self.higham = higham
         self.max_iteration = max_iteration
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Includes the metadata requested by this estimator and routes metadata passed
+        to `fit` to the `fit` method of `factor_prior_estimator` and
+        `loading_matrix_estimator`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         # route to factor_prior_estimator.fit
         router = (
             skm.MetadataRouter(owner=self.__class__.__name__)
@@ -172,10 +184,10 @@ class TimeSeriesFactorModel(BasePrior):
     def fit(
         self,
         X: ArrayLike,
-        y: Any = None,
+        y: None = None,
         *,
         factors: ArrayLike,
-        **fit_params,
+        **fit_params: Any,
     ) -> TimeSeriesFactorModel:
         """Fit the Time-series factor model estimator.
 
@@ -215,7 +227,12 @@ class TimeSeriesFactorModel(BasePrior):
             check_type=BaseLoadingMatrix,
         )
 
-        observations = X.index
+        if isinstance(X, pd.DataFrame):
+            observations = X.index
+        elif isinstance(factors, pd.DataFrame):
+            observations = factors.index
+        else:
+            observations = None
         factor_names = get_feature_names(factors)
 
         # Fitting prior estimator
@@ -234,8 +251,12 @@ class TimeSeriesFactorModel(BasePrior):
         # we validate and convert to numpy after all models have been fitted to keep
         # features names information.
         X, factors = skv.validate_data(self, X, factors, multi_output=True)
-        _, n_assets = X.shape
+        n_observations, n_assets = X.shape
         _, n_factors = factors.shape
+        if observations is None:
+            observations = np.arange(n_observations)
+        if factor_names is None:
+            factor_names = default_asset_names(n_factors)
         factor_families = None
 
         if self.factor_families is not None:
@@ -283,16 +304,18 @@ class TimeSeriesFactorModel(BasePrior):
             returns=returns,
             sample_weight=factor_return_dist.sample_weight,
             factor_model=FactorModel(
-                observations=observations,
-                asset_names=self.feature_names_in_,
-                factor_names=factor_names,
+                observations=observations,  # ty: ignore[invalid-argument-type]
+                asset_names=getattr(
+                    self, "feature_names_in_", default_asset_names(n_assets)
+                ),
+                factor_names=factor_names,  # ty: ignore[invalid-argument-type]
                 factor_families=factor_families,
                 loading_matrix=loading_matrix,
                 exposures=None,
                 factor_covariance=factor_return_dist.covariance,
                 factor_mu=factor_return_dist.mu,
                 factor_returns=factors,
-                idio_covariance=idio_var,
+                idio_covariance=idio_var,  # ty: ignore[invalid-argument-type]
                 idio_variances=None,
                 idio_mu=None,
                 idio_returns=idio_returns,
@@ -315,7 +338,32 @@ class BaseLoadingMatrix(skb.BaseEstimator, ABC):
     intercepts_: FloatArray
 
     @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params): ...
+    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params: Any) -> BaseLoadingMatrix:
+        """Fit the Loading Matrix estimator.
+
+        Sets `loading_matrix_` and `intercepts_`.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Price returns of the assets.
+
+        y : array-like of shape (n_observations, n_factors)
+            Price returns of the factors.
+
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
+        Returns
+        -------
+        self : BaseLoadingMatrix
+            Fitted estimator.
+        """
+        ...
 
 
 class LoadingMatrixRegression(BaseLoadingMatrix):
@@ -357,18 +405,29 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self,
         linear_regressor: skb.BaseEstimator | None = None,
         n_jobs: int | None = None,
-    ):
+    ) -> None:
         self.linear_regressor = linear_regressor
         self.n_jobs = n_jobs
 
-    def get_metadata_routing(self):
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Get metadata routing for this estimator.
+
+        Routes metadata passed to `fit` to the `fit` method of `linear_regressor`.
+
+        Returns
+        -------
+        routing : MetadataRouter
+            Metadata routing configuration.
+        """
         router = skm.MetadataRouter(owner=self.__class__.__name__).add(
             linear_regressor=self.linear_regressor,
             method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
         )
         return router
 
-    def fit(self, X: ArrayLike, y: ArrayLike, **fit_params):
+    def fit(
+        self, X: ArrayLike, y: ArrayLike, **fit_params: Any
+    ) -> LoadingMatrixRegression:
         """Fit the Loading Matrix Regression Estimator.
 
         Parameters
@@ -402,11 +461,8 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
         self.multi_output_regressor_ = skmo.MultiOutputRegressor(
             _linear_regressor, n_jobs=self.n_jobs
         )
-        self.multi_output_regressor_.fit(
-            X=y, y=X, **routed_params.factor_prior_estimator.fit
-        )
-        # noinspection PyUnresolvedReferences
-        n_assets = X.shape[1]
+        self.multi_output_regressor_.fit(X=y, y=X, **routed_params.linear_regressor.fit)
+        n_assets = np.shape(X)[1]
         self.loading_matrix_ = np.array(
             [self.multi_output_regressor_.estimators_[i].coef_ for i in range(n_assets)]
         )
@@ -416,3 +472,4 @@ class LoadingMatrixRegression(BaseLoadingMatrix):
                 for i in range(n_assets)
             ]
         )
+        return self

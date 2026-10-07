@@ -7,22 +7,26 @@ import sklearn as sk
 import sklearn.model_selection as sks
 import sklearn.utils.validation as skv
 from sklearn import config_context
+from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import Pipeline
 
 from skfolio.model_selection import cross_val_predict
+from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
     BaseOptimization,
+    BenchmarkTracker,
     EqualWeighted,
     HierarchicalRiskParity,
     InverseVolatility,
     MeanRisk,
     ObjectiveFunction,
+    Random,
 )
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.pre_selection import (
     SelectKExtremes,
 )
-from skfolio.prior import TimeSeriesFactorModel
+from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
 from skfolio.typing import FloatArray
 
 
@@ -75,6 +79,311 @@ class CustomOptimizationWithoutFallback(BaseOptimization):
         self.weights_ = np.arange(1, 1 + n_assets, dtype=float)
         self.weights_ /= np.sum(self.weights_)
         return self
+
+
+class DelegatingOptimization(CustomOptimization):
+    def fit(self, X, y=None, **fit_params):
+        return super().fit(X, y, **fit_params)
+
+
+class OptimizationFailingBeforeValidation(CustomOptimization):
+    def fit(self, X, y=None):
+        raise RuntimeError("Failure before input validation")
+
+
+class MetadataOptimization(BaseOptimization):
+    def fit(self, X, y=None, *, sample_weight=None):
+        X = skv.validate_data(self, X)
+        self.sample_weight_ = sample_weight
+        self.weights_ = np.average(np.abs(X), axis=0, weights=sample_weight)
+        self.weights_ /= self.weights_.sum()
+        return self
+
+
+def implied_vol_prior(request=True):
+    return EmpiricalPrior(
+        covariance_estimator=ImpliedCovariance(
+            annualization_factor=1, volatility_risk_premium_adj=1
+        ).set_fit_request(implied_vol=request)
+    )
+
+
+@pytest.fixture(params=["dataframe", "numpy", "list"])
+def fallback_data(request):
+    X = np.random.default_rng(0).normal(0, 0.01, (30, 4))
+    if request.param == "dataframe":
+        return pd.DataFrame(X, columns=["A", "B", "C", "D"])
+    if request.param == "list":
+        return X.tolist()
+    return X
+
+
+@pytest.mark.parametrize(
+    "optimizer", [CustomOptimization, OptimizationFailingBeforeValidation]
+)
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_array_like_input(fallback_data, optimizer, raise_on_failure):
+    model = optimizer(
+        fail=True, fallback=EqualWeighted(), raise_on_failure=raise_on_failure
+    )
+
+    assert model.fit(fallback_data) is model
+
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert model.n_features_in_ == 4
+    assert isinstance(model.fallback_, EqualWeighted)
+    assert model.fallback_chain_[-1] == ("EqualWeighted()", "success")
+    assert len(model.fallback_chain_) == 2
+    assert model.error_ is None
+    if isinstance(fallback_data, pd.DataFrame):
+        np.testing.assert_array_equal(model.feature_names_in_, fallback_data.columns)
+    else:
+        assert not hasattr(model, "feature_names_in_")
+    portfolio = model.predict(fallback_data)
+    assert isinstance(portfolio, Portfolio)
+    assert not isinstance(portfolio, FailedPortfolio)
+    np.testing.assert_allclose(portfolio.returns, np.mean(fallback_data, axis=1))
+
+
+def test_fallback_refit_clears_stale_feature_names():
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    model = OptimizationFailingBeforeValidation(fallback=EqualWeighted()).fit(X)
+    np.testing.assert_array_equal(model.feature_names_in_, X.columns)
+
+    X_array = X.iloc[:, :3].to_numpy()
+    model.fit(X_array)
+
+    assert not hasattr(model, "feature_names_in_")
+    assert model.n_features_in_ == 3
+    np.testing.assert_array_equal(model.weights_, np.full(3, 1 / 3))
+    np.testing.assert_allclose(model.predict(X_array).returns, X_array.mean(axis=1))
+
+
+@pytest.mark.parametrize("columns", [list("DCBA"), list("DCB")])
+def test_previous_weights_follow_current_schema_after_early_failure(columns):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    holdings = dict(zip("ABCD", [0.1, 0.2, 0.3, 0.4], strict=True))
+    model = BenchmarkTracker(
+        fallback="previous_weights", previous_weights=holdings
+    ).fit(X, np.zeros(len(X)))
+    # A missing benchmark fails before validation establishes the new schema.
+    model.fit(X[columns])
+    np.testing.assert_array_equal(model.feature_names_in_, columns)
+    np.testing.assert_allclose(model.weights_, [holdings[name] for name in columns])
+    assert model.n_features_in_ == len(columns)
+
+
+@pytest.mark.parametrize("failure", ["prior", "empty_universe"])
+def test_batch_previous_weights_ignore_previous_investable_mask(failure):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    masked = X.copy()
+    masked["A"] = np.nan
+    model = MeanRisk(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(min_observations=3),
+            covariance_estimator=EWCovariance(min_observations=3),
+        ),
+        fallback="previous_weights",
+        previous_weights=0.25,
+    ).fit(masked)
+    assert not model.investable_mask_[0]
+    if failure == "prior":
+        model.prior_estimator = EmpiricalPrior(mu_estimator=EmpiricalMu(window_size=-1))
+    else:
+        X = X * np.nan
+    model.fit(X)
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert model.fallback_ == "previous_weights"
+
+
+@pytest.mark.parametrize("holdings", [np.nan, [0.25, np.inf, 0.25, 0.25]])
+def test_previous_weights_reject_nonfinite_holdings(fallback_data, holdings):
+    model = OptimizationFailingBeforeValidation(
+        fallback="previous_weights", previous_weights=holdings
+    )
+    with pytest.raises(ValueError, match="previous_weights must be finite"):
+        model.fit(fallback_data)
+
+
+def test_terminal_batch_warning_points_to_caller(fallback_data):
+    with pytest.warns(UserWarning, match="CustomOptimization.fit failed") as caught:
+        CustomOptimization(fail=True, raise_on_failure=False).fit(fallback_data)
+    assert caught[0].filename == __file__
+
+
+@pytest.mark.parametrize("previous_weights", [None, [0.5, 0.5]])
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_previous_weights_failure_recorded_once(
+    fallback_data, previous_weights, raise_on_failure
+):
+    model = CustomOptimization(
+        fail=True,
+        fallback="previous_weights",
+        previous_weights=previous_weights,
+        raise_on_failure=raise_on_failure,
+    )
+    if raise_on_failure:
+        with pytest.raises((RuntimeError, ValueError), match="previous_weights"):
+            model.fit(fallback_data)
+    else:
+        with pytest.warns(UserWarning, match="previous_weights"):
+            model.fit(fallback_data)
+        assert model.weights_ is None
+
+    assert model.fallback_ is None
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        ("previous_weights", model.error_),
+    ]
+
+
+def test_fallback_previous_weights_failure_continues(fallback_data):
+    model = CustomOptimization(
+        fail=True, fallback=["previous_weights", EqualWeighted()]
+    ).fit(fallback_data)
+
+    assert len(model.fallback_chain_) == 3
+    assert model.fallback_chain_[1][0] == "previous_weights"
+    assert "'previous_weights' is None" in model.fallback_chain_[1][1]
+    assert model.fallback_chain_[2] == ("EqualWeighted()", "success")
+    assert model.error_ is None
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+
+
+def test_fallback_without_weights_continues(fallback_data):
+    failed_fallback = CustomOptimization(fail=True, raise_on_failure=False)
+    model = CustomOptimization(fail=True, fallback=[failed_fallback, EqualWeighted()])
+
+    with pytest.warns(UserWarning, match="CustomOptimization forced failure"):
+        model.fit(fallback_data)
+
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        (str(failed_fallback), "CustomOptimization forced failure"),
+        ("EqualWeighted()", "success"),
+    ]
+    assert isinstance(model.fallback_, EqualWeighted)
+    assert model.error_ is None
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert not isinstance(model.predict(fallback_data), FailedPortfolio)
+
+
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_fallback_without_weights_exhausted(fallback_data, raise_on_failure):
+    failed_fallback = CustomOptimization(fail=True, raise_on_failure=False)
+    model = CustomOptimization(
+        fail=True, fallback=failed_fallback, raise_on_failure=raise_on_failure
+    )
+
+    with pytest.warns(UserWarning, match="CustomOptimization forced failure"):
+        if raise_on_failure:
+            with pytest.raises(RuntimeError, match="CustomOptimization forced failure"):
+                model.fit(fallback_data)
+        else:
+            model.fit(fallback_data)
+            assert model.weights_ is None
+            assert isinstance(model.predict(fallback_data), FailedPortfolio)
+
+    assert model.fallback_ is None
+    assert model.error_ == "CustomOptimization forced failure"
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        (str(failed_fallback), "CustomOptimization forced failure"),
+    ]
+
+
+@pytest.mark.parametrize("fallback", [EqualWeighted(), Random(), InverseVolatility()])
+def test_fallback_ignores_primary_metadata(fallback_data, fallback):
+    with config_context(enable_metadata_routing=True):
+        model = MeanRisk(
+            min_return=10, prior_estimator=implied_vol_prior(), fallback=fallback
+        ).fit(fallback_data, implied_vol=np.full(np.shape(fallback_data), 0.2))
+
+    assert isinstance(model.fallback_, type(fallback))
+    assert len(model.fallback_chain_) == 2
+    assert "Solver 'CLARABEL' failed" in model.fallback_chain_[0][1]
+    assert model.fallback_chain_[1] == (str(fallback), "success")
+    assert model.error_ is None
+    assert model.weights_.shape == (4,)
+    np.testing.assert_allclose(model.weights_.sum(), 1)
+    assert isinstance(model.predict(fallback_data), Portfolio)
+
+
+@pytest.mark.parametrize("metadata_request", [True, "vols"])
+def test_fallback_routes_requested_metadata(fallback_data, metadata_request):
+    implied_vol = np.tile([0.1, 0.2, 0.3, 0.4], (30, 1))
+    key = "implied_vol" if metadata_request is True else metadata_request
+    with config_context(enable_metadata_routing=True):
+        fallback = InverseVolatility(
+            prior_estimator=implied_vol_prior(metadata_request)
+        )
+        model = CustomOptimization(fail=True, fallback=fallback).fit(
+            fallback_data, **{key: implied_vol, "unrelated": 123}
+        )
+
+    expected_weights = 1 / implied_vol[-1]
+    expected_weights /= expected_weights.sum()
+    np.testing.assert_allclose(model.weights_, expected_weights)
+    assert model.fallback_chain_[-1][1] == "success"
+
+
+@pytest.mark.parametrize(
+    "metadata_request", [True, False, "weights", "method", "enabled", "fit_params"]
+)
+def test_fallback_consumer_metadata_requests(fallback_data, metadata_request):
+    sample_weight = np.linspace(1, 2, len(fallback_data))
+    key = metadata_request if isinstance(metadata_request, str) else "sample_weight"
+    with config_context(enable_metadata_routing=True):
+        fallback = MetadataOptimization().set_fit_request(
+            sample_weight=metadata_request
+        )
+        model = CustomOptimization(fail=True, fallback=fallback).fit(
+            fallback_data, **{key: sample_weight, "unrelated": 123}
+        )
+
+    if metadata_request is False:
+        assert model.fallback_.sample_weight_ is None
+    else:
+        np.testing.assert_array_equal(model.fallback_.sample_weight_, sample_weight)
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_fallback_unset_metadata_request_raises(fallback_data, nested):
+    with config_context(enable_metadata_routing=True):
+        fallback = (
+            InverseVolatility(prior_estimator=implied_vol_prior(None))
+            if nested
+            else MetadataOptimization()
+        )
+        key = "implied_vol" if nested else "sample_weight"
+        model = CustomOptimization(fail=True, fallback=fallback)
+        with pytest.raises(UnsetMetadataPassedError, match=key):
+            model.fit(fallback_data, **{key: np.ones(30)})
+
+    assert model.fallback_ is None
+    assert len(model.fallback_chain_) == 2
+    assert key in model.fallback_chain_[1][1]
+
+
+def test_fallback_fit_parameters_without_metadata_routing(fallback_data):
+    sample_weight = np.linspace(1, 2, len(fallback_data))
+    with config_context(enable_metadata_routing=False):
+        model = CustomOptimization(fail=True, fallback=MetadataOptimization()).fit(
+            fallback_data, sample_weight=sample_weight, unrelated=123
+        )
+    np.testing.assert_array_equal(model.fallback_.sample_weight_, sample_weight)
+
+
+def test_primary_fit_still_rejects_unexpected_parameters(fallback_data):
+    with config_context(enable_metadata_routing=True):
+        with pytest.raises(TypeError, match="unexpected keyword argument 'unrelated'"):
+            EqualWeighted().fit(fallback_data, unrelated=123)
 
 
 def test_custom_optimization_no_fallback_param_in_init_still_works(X):
@@ -221,11 +530,13 @@ def test_predict_after_fallback_returns_portfolio(X):
     assert ptf.weights is not None and np.isclose(ptf.weights.sum(), 1.0)
 
 
-def test_fallback_factor_model(X, factors):
+@pytest.mark.parametrize("enable_metadata_routing", [False, True])
+def test_fallback_factor_model(X, factors, enable_metadata_routing):
     model = CustomOptimization(
         fail=True, fallback=MeanRisk(prior_estimator=TimeSeriesFactorModel())
     )
-    model.fit(X, factors=factors)
+    with config_context(enable_metadata_routing=enable_metadata_routing):
+        model.fit(X, factors=factors, unrelated=123)
     assert hasattr(model, "weights_")
     assert isinstance(model.fallback_, MeanRisk)
     assert model.fallback_chain_ == [
@@ -345,18 +656,22 @@ def test_cross_val_predict_failed_portfolio_when_raise_off(X):
     assert np.all(np.isnan(arr))
 
 
-def test_fallback_previous_weights_array(X):
-    n_assets = X.shape[1]
+def test_fallback_previous_weights_array(fallback_data):
+    n_assets = np.shape(fallback_data)[1]
     prev = np.arange(1, n_assets + 1, dtype=float)
     prev /= prev.sum()
     model = CustomOptimization(
         fail=True, fallback="previous_weights", previous_weights=prev
     )
-    model.fit(X)
+    model.fit(fallback_data)
     np.testing.assert_allclose(model.weights_, prev)
     assert model.fallback_ == "previous_weights"
+    assert model.fallback_chain_ == [
+        (str(model), "CustomOptimization forced failure"),
+        ("previous_weights", "success"),
+    ]
     assert model.error_ is None
-    ptf = model.predict(X)
+    ptf = model.predict(fallback_data)
     assert isinstance(ptf, Portfolio) and not isinstance(ptf, FailedPortfolio)
     assert ptf.fallback_chain == model.fallback_chain_
 
@@ -610,6 +925,71 @@ def test_subclass_without_fit_keeps_parent_wrapped_fit():
     assert ChildWithoutFit.fit is CustomOptimization.fit
     assert ChildReusingWrappedFit.fit is CustomOptimization.fit
     assert ChildWithoutFit.fit._fallback_wrapped is True
+
+
+@pytest.mark.parametrize("raise_on_failure", [True, False])
+def test_super_fit_attempts_fallback_once_per_call(X, raise_on_failure):
+    attempts = []
+
+    class FailingFallback(BaseOptimization):
+        def fit(self, X, y=None):
+            attempts.append(X)
+            raise RuntimeError("Fallback failed")
+
+    model = DelegatingOptimization(
+        fail=True, fallback=FailingFallback(), raise_on_failure=raise_on_failure
+    )
+    for n_calls in (1, 2):
+        if raise_on_failure:
+            with pytest.raises(RuntimeError, match="Fallback failed"):
+                model.fit(X)
+        else:
+            with pytest.warns(UserWarning, match="Fallback failed"):
+                assert model.fit(X) is model
+            assert model.weights_ is None
+
+        assert len(attempts) == n_calls
+        assert model.fallback_chain_ == [
+            (str(model), "CustomOptimization forced failure"),
+            ("FailingFallback()", "Fallback failed"),
+        ]
+        assert model.error_ == "Fallback failed"
+
+
+@pytest.mark.parametrize("initial_failure", [False, True])
+def test_super_fit_after_success_can_use_fallback(X, initial_failure):
+    model = DelegatingOptimization(fail=initial_failure, fallback=EqualWeighted()).fit(
+        X
+    )
+
+    model.set_params(fail=True)
+    assert model.fit(X) is model
+    assert isinstance(model.fallback_, EqualWeighted)
+    np.testing.assert_allclose(model.weights_, 1 / X.shape[1])
+    assert model.error_ is None
+
+
+def test_super_fit_fallback_receives_original_inputs(X):
+    class TransformingOptimization(CustomOptimization):
+        def fit(self, X, y=None):
+            return super().fit(X * 2, y * 2)
+
+    class RecordingFallback(CustomOptimization):
+        def fit(self, X, y=None):
+            self.input_X_ = X
+            self.input_y_ = y
+            return super().fit(X, y)
+
+    y = np.arange(len(X), dtype=float)
+    model = TransformingOptimization(
+        fail=True,
+        fallback=RecordingFallback(fail=True, fallback=EqualWeighted()),
+    ).fit(X, y)
+
+    assert model.fallback_.input_X_ is X
+    assert model.fallback_.input_y_ is y
+    assert isinstance(model.fallback_.fallback_, EqualWeighted)
+    assert model.error_ is None
 
 
 def test_fallback_empty_list_raises_primary_error(X):

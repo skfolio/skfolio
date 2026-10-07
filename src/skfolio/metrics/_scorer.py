@@ -10,7 +10,11 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
+from typing import Any
+
+import sklearn.base as skb
 
 import skfolio.typing as skt
 from skfolio.measures import BaseMeasure
@@ -29,7 +33,7 @@ class _BaseScorer:
         sign: int,
         kwargs: dict,
         response_method: str | None = "predict",
-    ):
+    ) -> None:
         self._score_func = score_func
         self._sign = sign
         self._kwargs = kwargs
@@ -60,7 +64,14 @@ class _PortfolioScorer(_BaseScorer):
     Created by :func:`make_scorer` with `response_method="predict"`.
     """
 
-    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
+    def __call__(
+        self,
+        estimator: Any,  # noqa: ANN401  # duck-typed estimator
+        X: ArrayLike | None = None,
+        y: None = None,
+        *,
+        X_test: ArrayLike | None = None,
+    ) -> float:
         """Compute the score of the estimator prediction on X.
 
         Parameters
@@ -69,18 +80,36 @@ class _PortfolioScorer(_BaseScorer):
             Trained Portfolio Optimization estimator to use for scoring (e.g.
             :class:`~skfolio.optimization.MeanRisk`).
 
-        X_test : array-like of shape (n_observations, n_assets)
+        X : array-like of shape (n_observations, n_assets)
             Test data that will be fed to `estimator.predict`.
 
         y : ignored
             Present for scikit-learn scorer protocol compatibility.
 
+        X_test : array-like of shape (n_observations, n_assets), optional
+            Deprecated alias for `X`. It will be removed in version 2.0.
+            Use `X` instead.
+
         Returns
         -------
         score : float
-            Score of the estimator prediction on X_test.
+            Score of the estimator prediction on X.
         """
-        pred = estimator.predict(X_test)
+        # TODO remove deprecated X_test and the X default in v2.0
+        if X_test is not None:
+            if X is not None:
+                raise ValueError("`X_test` is deprecated; pass only `X`.")
+            warnings.warn(
+                "`X_test` is deprecated and will be removed in version 2.0. "
+                "Use `X` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            X = X_test
+        if X is None:
+            raise TypeError("Missing required argument: `X`.")
+
+        pred = estimator.predict(X)
         return self._sign * self._score_func(pred, **self._kwargs)
 
 
@@ -89,12 +118,19 @@ class _EstimatorScorer(_BaseScorer):
 
     These estimators implement `fit` but not `predict`, so the scorer passes
     the fitted estimator and test data directly to
-    `score_func(estimator, X_test, **kwargs)`.
+    `score_func(estimator, X, **kwargs)`.
 
     Created by :func:`make_scorer` with `response_method=None`.
     """
 
-    def __call__(self, estimator, X_test: ArrayLike, y=None) -> float:
+    def __call__(
+        self,
+        estimator: skb.BaseEstimator,
+        X: ArrayLike | None = None,
+        y: None = None,
+        *,
+        X_test: ArrayLike | None = None,
+    ) -> float:
         """Score a fitted non-predictor estimator against test data.
 
         Parameters
@@ -105,26 +141,44 @@ class _EstimatorScorer(_BaseScorer):
             :class:`~skfolio.moments.EWMu`,
             :class:`~skfolio.prior.EmpiricalPrior`).
 
-        X_test : array-like of shape (n_observations, n_assets)
+        X : array-like of shape (n_observations, n_assets)
             Test data passed directly to `score_func` alongside
             `estimator`.
 
         y : ignored
             Present for scikit-learn scorer protocol compatibility.
 
+        X_test : array-like of shape (n_observations, n_assets), optional
+            Deprecated alias for `X`. It will be removed in version 2.0.
+            Use `X` instead.
+
         Returns
         -------
         score : float
-            Score of the estimator on `X_test`.
+            Score of the estimator on `X`.
         """
-        return self._sign * self._score_func(estimator, X_test, **self._kwargs)
+        # TODO remove deprecated X_test and the X default in v2.0
+        if X_test is not None:
+            if X is not None:
+                raise ValueError("`X_test` is deprecated; pass only `X`.")
+            warnings.warn(
+                "`X_test` is deprecated and will be removed in version 2.0. "
+                "Use `X` instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            X = X_test
+        if X is None:
+            raise TypeError("Missing required argument: `X`.")
+
+        return self._sign * self._score_func(estimator, X, **self._kwargs)
 
 
 def make_scorer(
     score_func: skt.Measure | Callable,
     greater_is_better: bool | None = None,
     response_method: str | None = "predict",
-    **kwargs,
+    **kwargs: Any,
 ) -> _PortfolioScorer | _EstimatorScorer:
     """Make a scorer from a :ref:`measure <measures_ref>`, a portfolio score
     function, or a non-predictor estimator score function.
@@ -166,8 +220,8 @@ def make_scorer(
 
         If `response_method=None`, `score_func` must be a score function
         (or loss function) with signature
-        `score_func(estimator, X_test, **kwargs)` where `estimator` is
-        the fitted non-predictor estimator and `X_test` the realized
+        `score_func(estimator, X, **kwargs)` where `estimator` is
+        the fitted non-predictor estimator and `X` the realized
         returns.
 
     greater_is_better : bool, optional
@@ -193,7 +247,7 @@ def make_scorer(
           :class:`~skfolio.portfolio.Portfolio` to `score_func`. Use for
           portfolio optimization estimators (e.g.
           :class:`~skfolio.optimization.MeanRisk`).
-        * `None`: pass `(estimator, X_test)` directly to `score_func`
+        * `None`: pass `(estimator, X)` directly to `score_func`
           without calling any response method. Use for non-predictor
           estimators (covariance, expected returns, prior).
 
@@ -205,6 +259,8 @@ def make_scorer(
     scorer : callable
         Callable object with signature `scorer(estimator, X, y=None)`
         that returns a scalar score (higher is better).
+        `X_test` is a deprecated keyword alias for `X` and will be removed
+        in version 2.0.
 
     Examples
     --------
@@ -257,6 +313,7 @@ def make_scorer(
                 greater_is_better = False
 
         def score_func(pred: Portfolio) -> float:
+            """Return the value of `measure` for the predicted portfolio."""
             return getattr(pred, measure.value)
 
         score_func.__name__ = repr(measure)
