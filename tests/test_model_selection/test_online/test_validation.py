@@ -574,7 +574,10 @@ class TestOnlinePredict:
     def test_uncertainty_set_without_partial_fit_raises(self, X, param_name, estimator):
         model = _make_online_estimator(**{param_name: estimator})
 
-        with pytest.raises(TypeError, match=param_name):
+        with pytest.raises(
+            TypeError,
+            match=f"{type(estimator).__name__} does not implement partial_fit",
+        ):
             online_predict(model, X, warmup_size=400, test_size=100)
 
     def test_bad_warmup_raises(self, X):

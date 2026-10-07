@@ -734,12 +734,12 @@ def minimize_relative_weight_deviation(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, scl.ArpackNoConvergence) as error:
         raise cp.SolverError(
             f"Solver '{solver}' failed. Try another"
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
-        ) from None
+        ) from error
 
     return w.value
 

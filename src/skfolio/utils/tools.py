@@ -1285,7 +1285,10 @@ def _filter_supported_params(
     -------
     filtered : dict
         Keyword arguments whose names are accepted by the estimator method and whose
-        values are not `None`.
+        values are not `None`. Empty if the estimator does not implement the method.
     """
-    params = signature(getattr(estimator, method)).parameters
+    method_caller = getattr(estimator, method, None)
+    if not callable(method_caller):
+        return {}
+    params = signature(method_caller).parameters
     return {k: v for k, v in kwargs.items() if k in params and v is not None}

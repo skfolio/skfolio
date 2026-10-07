@@ -24,20 +24,29 @@ never halt production runs while preserving full reproducibility and traceabilit
 Beyond safeguarding workflows, it can also be used to deliberately relax constraints in
 a controlled manner when strict convergence cannot be achieved.
 
+If every fallback fails, `raise_on_failure` determines whether the final error is raised
+or recorded. See :ref:`optimization_fallbacks`.
+
 Raise on Failure
 ================
 In research, cross-validation and hyperparameter tuning (e.g. walk-forward, multiple
 randomized cross-validation), it's often useful to let all runs complete while keeping
 a full record of failures instead of stopping on the first failed rebalancing.
 
-- Set `raise_on_failure=True` (default) to fail fast. This is useful in production when
-  the primary optimization or the fallback cascade is expected to succeed.
+- Set `raise_on_failure=True` (default) to fail fast after the configured
+  fallbacks are exhausted. This is useful in production when the primary optimization or
+  fallback chain is expected to succeed. If neither succeeds, the final error is raised.
 
-- Set `raise_on_failure=False` to continue uninterrupted. This is useful in research
-  and cross-validation. When a failure occurs, `predict` returns a
-  :class:`~skfolio.portfolio.FailedPortfolio` (think of it as an augmented NaN) that
-  carries diagnostics such as `optimization_error` and `fallback_chain`, while remaining
-  API-compatible with downstream analytics.
+- Set `raise_on_failure=False` to continue research and cross-validation after
+  failed fits. When no fallback succeeds, a warning is emitted and `weights_` is set to
+  None. `predict` returns a :class:`~skfolio.portfolio.FailedPortfolio` (think of it as
+  an augmented NaN) that carries diagnostics such as `optimization_error` and
+  `fallback_chain`, while remaining API-compatible with downstream analytics. Failed
+  periods remain visible in the evaluation timeline.
+
+See :ref:`optimization_failure_handling` for diagnostics and multiple-portfolio results.
+Online `partial_fit` handles only optimization failures after updating the prior and
+other estimators. See :ref:`online_failure_handling`.
 
 """
 
@@ -75,10 +84,9 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # Fallback
 # ========
 # Let's start with a simple example.
-# The primary model is a minimum-variance optimization made intentionally infeasible
-# (the assets' minimum weights are set to 10%, which exceeds the feasible upper bound
-# of 1/n_assets = 5%). As a fallback, we provide a feasible minimum-variance model
-# with a 2% minimum weight constraint:
+# For 20 assets, a 10% minimum weight per asset requires a total weight of at least
+# 200%, making a fully invested portfolio infeasible. The fallback uses a feasible
+# 2% minimum weight per asset:
 model = MeanRisk(
     min_weights=0.1,  # intentionally infeasible
     fallback=MeanRisk(min_weights=0.02),  # feasible fallback
@@ -103,7 +111,7 @@ assert portfolio.fallback_chain == model.fallback_chain_
 
 # %%
 # Falling back to another solver
-# -----------------------------
+# ------------------------------
 # A solver can encounter numerical difficulties even when a problem is feasible.
 # Here, entropy pooling concentrates scenario probabilities, making CVaR risk budgeting
 # difficult for CLARABEL. We use the full price history and configure a fallback that

@@ -1311,3 +1311,29 @@ Enum
     :template: class.rst
 
     distribution.CopulaRotation
+
+.. _exceptions_ref:
+
+:mod:`skfolio.exceptions`: Exceptions
+=====================================
+
+.. automodule:: skfolio.exceptions
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    exceptions.SkfolioError
+    exceptions.OptimizationError
+    exceptions.ConvexOptimizationError
+    exceptions.SolverError
+    exceptions.DuplicateGroupsError
+    exceptions.EquationToMatrixError
+    exceptions.FactorNotFoundError
+    exceptions.GroupNotFoundError
+    exceptions.NonPositiveVarianceError
