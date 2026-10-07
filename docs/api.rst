@@ -748,6 +748,26 @@ Classes
     distance.DistanceCorrelation
     distance.MutualInformation
 
+.. _seriation_ref:
+
+:mod:`skfolio.seriation`: Seriation Estimators
+==============================================
+
+.. automodule:: skfolio.seriation
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: skfolio
+
+.. autosummary::
+    :nosignatures:
+    :toctree: generated/
+    :template: class.rst
+
+    seriation.BaseSeriation
+    seriation.HierarchicalSeriation
+    seriation.SpectralSeriation
+
 .. _cluster_ref:
 
 :mod:`skfolio.cluster`: Cluster Estimators

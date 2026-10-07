@@ -74,6 +74,14 @@ def test_default_hierarchical_clustering(X):
     )
 
 
+@pytest.mark.parametrize("distance", [0.0, 0.5])
+def test_two_assets_default_cluster_count(distance):
+    model = HierarchicalClustering().fit([[0, distance], [distance, 0]])
+    assert model.linkage_matrix_.shape == (1, 4)
+    assert 1 <= model.n_clusters_ <= 2
+    np.testing.assert_array_equal(model.linkage_matrix_[0, :2], [0, 1])
+
+
 def test_hierarchical_clustering(X, max_clusters, linkage_method):
     model = HierarchicalClustering(
         max_clusters=max_clusters, linkage_method=linkage_method

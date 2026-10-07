@@ -181,6 +181,8 @@ cannot currently be applied in `skfolio` online learning workflows, because
 scikit-learn pipelines do not provide the required online update interface for
 pre-selection and imputation.
 
+.. _native_nan_aware:
+
 Native NaN-Aware Convention
 ===========================
 
