@@ -287,6 +287,149 @@ def test_schur_first_turning_point(monkeypatch, turning_gamma):
     np.testing.assert_allclose(weights, [0.5, 0.5], atol=1e-4)
 
 
+@pytest.mark.parametrize("turning_gamma", [1e-7, 1e-5, 0.025, 0.03])
+def test_binary_search_gamma_and_weights(turning_gamma):
+    def objective(gamma):
+        assert 0 <= gamma <= 0.1
+        return (gamma - turning_gamma) ** 2, np.array([gamma])
+
+    weights, gamma = _schur._binary_search(
+        objective,
+        low_gamma=0,
+        high_gamma=0.1,
+        low_variance=turning_gamma**2,
+        low_weights=np.array([0.0]),
+    )
+
+    # Retain small positive improvements even when the whole interval is below tol.
+    assert gamma > 0
+    assert abs(gamma - turning_gamma) <= min(1e-4, turning_gamma)
+    np.testing.assert_array_equal(weights, [gamma])
+
+
+@pytest.mark.parametrize("feasible", [True, False])
+def test_binary_search_skips_rejected_slope_probes(feasible):
+    calls = []
+
+    def objective(gamma):
+        calls.append(gamma)
+        assert 0 <= gamma <= 0.1
+        return (gamma**2, np.array([gamma])) if feasible else (np.inf, None)
+
+    initial_weights = np.array([0.0]) if feasible else None
+    weights, gamma = _schur._binary_search(
+        objective,
+        low_gamma=0,
+        high_gamma=0.1,
+        low_variance=0 if feasible else np.inf,
+        low_weights=initial_weights,
+    )
+    assert weights is initial_weights
+    assert gamma == 0
+
+    # The search keeps its refinement depth without evaluating a slope for each
+    # rejected midpoint. Previously this required 42 evaluations.
+    assert len(calls) <= 21
+
+
+@pytest.mark.parametrize("boundary", [0.025, 0.03, 0.034])
+def test_binary_search_feasibility_boundary(boundary):
+    def objective(gamma):
+        if gamma > boundary:
+            return np.inf, None
+        return (gamma - 0.08) ** 2, np.array([gamma])
+
+    weights, gamma = _schur._binary_search(
+        objective,
+        low_gamma=0,
+        high_gamma=0.1,
+        low_variance=0.08**2,
+        low_weights=np.array([0.0]),
+    )
+
+    assert 0 <= boundary - gamma <= 1e-4
+    np.testing.assert_array_equal(weights, [gamma])
+
+
+@pytest.mark.parametrize("max_gamma", [0.2, 0.3], ids=["terminal", "mid_sweep"])
+def test_schur_refinement_retains_lower_endpoint(monkeypatch, max_gamma):
+    def compute_weights(gamma, **kwargs):
+        # The sweep decreases through 0.2, but no refinement midpoint passes
+        # both the variance and slope checks. The lower endpoint is gamma=0.1.
+        t = (gamma - 0.1) / 0.1
+        if t < 0:
+            risk = 2 - 3 * t
+        elif t <= 1:
+            risk = 2 + t + 10 * t**2 - 30 * t**3 + 18 * t**4
+        else:
+            risk = 1 + 3 * (t - 1)
+        variance = 0.55 + 0.025 * risk
+        offset = np.sqrt((variance - 0.5) / 2)
+        return np.array([0.5 + offset, 0.5 - offset])
+
+    monkeypatch.setattr(_schur, "_compute_weights", compute_weights)
+    weights, gamma = _schur._compute_monotonic_weights(
+        max_gamma=max_gamma,
+        sorted_assets=np.arange(2),
+        covariance=np.eye(2),
+        min_weights=np.zeros(2),
+        max_weights=np.ones(2),
+    )
+
+    assert gamma == pytest.approx(0.1)
+    np.testing.assert_allclose(weights, compute_weights(gamma))
+
+
+@pytest.mark.parametrize("max_gamma", [1e-5, 1e-4])
+@pytest.mark.parametrize("turning_fraction", [0.0, 0.3, 2.0])
+def test_schur_small_gamma(monkeypatch, max_gamma, turning_fraction):
+    calls = []
+    turning_gamma = turning_fraction * max_gamma
+
+    def compute_weights(gamma, **kwargs):
+        calls.append(gamma)
+        assert 0 <= gamma <= max_gamma
+        offset = gamma - turning_gamma
+        return np.array([0.5 + offset, 0.5 - offset])
+
+    monkeypatch.setattr(_schur, "_compute_weights", compute_weights)
+    weights, gamma = _schur._compute_monotonic_weights(
+        max_gamma=max_gamma,
+        sorted_assets=np.arange(2),
+        covariance=np.eye(2),
+        min_weights=np.zeros(2),
+        max_weights=np.ones(2),
+    )
+
+    offset = gamma - turning_gamma
+    np.testing.assert_array_equal(weights, [0.5 + offset, 0.5 - offset])
+    if turning_fraction == 0:
+        assert gamma == 0
+    else:
+        assert gamma > 0
+        assert weights @ weights < 0.5 + 2 * turning_gamma**2
+    if turning_fraction == 2:
+        assert gamma == max_gamma
+        # The terminal slope check reuses the initial variance at gamma=0.
+        assert calls == [0, max_gamma]
+
+
+def test_schur_weights_match_effective_gamma(X):
+    model = SchurComplementary(
+        gamma=1,
+        prior_estimator=EmpiricalPrior(
+            covariance_estimator=EWCovariance(half_life=30, min_observations=20)
+        ),
+    ).fit(X.iloc[:252])
+    assert 0 < model.effective_gamma_ < model.gamma
+    weights = model.weights_.copy()
+
+    model.set_params(gamma=model.effective_gamma_, keep_monotonic=False).fit(
+        X.iloc[:252]
+    )
+    np.testing.assert_allclose(weights, model.weights_, rtol=1e-12, atol=1e-14)
+
+
 @pytest.fixture
 def non_spd_schur_inputs():
     # The covariance is positive definite, but nearly rank one. Its left Schur
