@@ -605,17 +605,6 @@ optimal leaf ordering. :class:`~skfolio.seriation.SpectralSeriation` orders a
 distance matrix using a spectral coordinate and aligns its orientation across
 `partial_fit` calls.
 
-.. figure:: /_static/seriation/distance_inputs.svg
-   :alt: The optimizer's input X goes to the prior and, optionally, the distance
-         estimator. One of three routes supplies distances for seriation: prior
-         return scenarios, prior covariance, or X. Allocation always uses the
-         prior's moments and return scenarios.
-   :width: 100%
-   :align: center
-
-   Choose one of the three routes to compute distances. The prior supplies the
-   allocation inputs in every case. Online compatibility is described below.
-
 The distance estimator can use three different inputs:
 
 * **Prior return scenarios (default).** With `distance_from_prior=True`, the
