@@ -573,7 +573,11 @@ def test_portfolio_rolling_measure(X, weights):
         np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
 
 
-def test_portfolio_rolling_measure_sample_weight(X, weights):
+@pytest.mark.parametrize("end", [29, 40, 49])
+def test_portfolio_rolling_measure_sample_weight(X, weights, end):
+    # Each rolling value must equal the measure of a portfolio built on that window
+    # with its slice of the weights, renormalized. Checking the first, a middle and
+    # the last window pins down the slice boundaries.
     window = 30
     n = 50
     sample_weight = np.random.default_rng(0).random(n)
@@ -584,9 +588,10 @@ def test_portfolio_rolling_measure_sample_weight(X, weights):
         annualization_factor=252,
         sample_weight=sample_weight,
     )
-    window_weight = sample_weight[n - window :]
+    start = end - window + 1
+    window_weight = sample_weight[start : end + 1]
     ref = Portfolio(
-        X=X.iloc[n - window : n],
+        X=X.iloc[start : end + 1],
         weights=weights,
         annualization_factor=252,
         sample_weight=window_weight / window_weight.sum(),
@@ -594,7 +599,25 @@ def test_portfolio_rolling_measure_sample_weight(X, weights):
 
     for measure in _MEASURES:
         res = portfolio.rolling_measure(measure=measure, window=window)
-        np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
+        np.testing.assert_almost_equal(res.iloc[end], getattr(ref, measure.value))
+
+
+@pytest.mark.parametrize(
+    "measure", [PerfMeasure.MEAN, RiskMeasure.STANDARD_DEVIATION, RiskMeasure.CVAR]
+)
+def test_portfolio_rolling_measure_sample_weight_is_used(X, weights, measure):
+    # With clearly non-uniform weights, a weight-aware measure must differ from the
+    # unweighted result, otherwise the weights are being ignored.
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(1).random(n) ** 4
+    sample_weight /= sample_weight.sum()
+    kwargs = {"X": X[:n], "weights": weights, "annualization_factor": 252}
+    weighted = Portfolio(sample_weight=sample_weight, **kwargs)
+    unweighted = Portfolio(**kwargs)
+    res_weighted = weighted.rolling_measure(measure=measure, window=window)
+    res_unweighted = unweighted.rolling_measure(measure=measure, window=window)
+    assert not np.allclose(res_weighted.dropna(), res_unweighted.dropna())
 
 
 def test_portfolio_expected_returns_from_assets(X, weights):
