@@ -192,7 +192,7 @@ class TestOnlineGridSearch:
 
         with config_context(enable_metadata_routing=True):
             routed_search = OnlineGridSearch(
-                EWCovariance().set_partial_fit_request(active_mask=True),
+                EWCovariance(),
                 param_grid={"half_life": [20, 40]},
                 warmup_size=WARMUP,
                 test_size=50,
@@ -213,12 +213,12 @@ class TestOnlineGridSearch:
         )
 
     def test_metadata_routing_requires_request(self, X):
-        """Grid search raises when metadata is passed without a request."""
+        """Grid search respects an explicit None request."""
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
             search = OnlineGridSearch(
-                EWCovariance(),
+                EWCovariance().set_partial_fit_request(active_mask=None),
                 param_grid={"half_life": [20, 40]},
                 warmup_size=WARMUP,
                 test_size=50,
@@ -577,7 +577,7 @@ class TestOnlineRandomizedSearch:
 
         with config_context(enable_metadata_routing=True):
             routed_search = OnlineRandomizedSearch(
-                EWCovariance().set_partial_fit_request(active_mask=True),
+                EWCovariance(),
                 param_distributions={"half_life": [20, 40, 60]},
                 n_iter=2,
                 warmup_size=WARMUP,
@@ -602,12 +602,12 @@ class TestOnlineRandomizedSearch:
         )
 
     def test_metadata_routing_requires_request(self, X):
-        """Randomized search raises when metadata is passed without a request."""
+        """Randomized search respects an explicit None request."""
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
             search = OnlineRandomizedSearch(
-                EWCovariance(),
+                EWCovariance().set_partial_fit_request(active_mask=None),
                 param_distributions={"half_life": [20, 40, 60]},
                 n_iter=2,
                 warmup_size=WARMUP,

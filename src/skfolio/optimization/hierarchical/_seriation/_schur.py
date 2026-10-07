@@ -2,6 +2,7 @@
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
+# Credits: Peter Cotto, Michal Kaszubski.
 # SPDX-License-Identifier: BSD-3-Clause
 # Implementation derived from:
 # Precise, Copyright (c) 2021, Peter Cotton.
@@ -20,23 +21,19 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
-import pandas as pd
-import scipy.cluster.hierarchy as sch
-import sklearn.utils.metadata_routing as skm
-import sklearn.utils.validation as skv
 
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
-from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.distance import BaseDistance
 from skfolio.exceptions import OptimizationError
-from skfolio.optimization._base import _check_finite_weights
-from skfolio.optimization.cluster.hierarchical._base import (
-    BaseHierarchicalOptimization,
+from skfolio.optimization.hierarchical._seriation._base import (
+    _BaseSeriatedOptimization,
 )
-from skfolio.optimization.cluster.hierarchical._hrp import (
+from skfolio.optimization.hierarchical._utils import (
     _apply_weight_constraints_to_split_factor,
 )
-from skfolio.prior import BasePrior, EmpiricalPrior
+from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.seriation import BaseSeriation
 from skfolio.typing import ArrayLike, FloatArray, IntArray
 from skfolio.utils.stats import (
     cov_nearest,
@@ -46,10 +43,10 @@ from skfolio.utils.stats import (
     symmetric_step_up_matrix,
     symmetrize,
 )
-from skfolio.utils.tools import bisection, check_estimator
+from skfolio.utils.tools import bisection
 
 
-class SchurComplementary(BaseHierarchicalOptimization):
+class SchurComplementary(_BaseSeriatedOptimization):
     r"""Schur Complementary Allocation estimator.
 
     Schur Complementary Allocation is a portfolio allocation method developed by Peter
@@ -116,15 +113,33 @@ class SchurComplementary(BaseHierarchicalOptimization):
     distance_estimator : BaseDistance, optional
         :ref:`Distance estimator <distance>`.
         The distance estimator is used to estimate the codependence and the distance
-        matrix needed for the computation of the linkage matrix.
+        matrix used by the seriation estimator.
         The default (`None`) is to use :class:`~skfolio.distance.PearsonDistance`.
 
     hierarchical_clustering_estimator : HierarchicalClustering, optional
-        :ref:`Hierarchical Clustering estimator <hierarchical_clustering>`.
-        The hierarchical clustering estimator is used to compute the linkage matrix
-        and the hierarchical clustering of the assets based on the distance matrix.
-        The default (`None`) is to use
-        :class:`~skfolio.cluster.HierarchicalClustering`.
+        Deprecated. Use `seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=...)`. Supplying both parameters is an error.
+        Will be removed in version 2.0.
+
+    seriation_estimator : BaseSeriation, optional
+        Asset ordering estimator. The default is
+        :class:`~skfolio.seriation.HierarchicalSeriation` with Ward linkage
+        and optimal leaf ordering. Use :class:`~skfolio.seriation.SpectralSeriation`
+        for spectral ordering with orientation carried across online updates.
+
+    distance_from_prior : bool, default=True
+        If True, fit the distance estimator on the return scenarios produced by
+        the prior. With `CovarianceDistance(covariance_estimator="precomputed")`,
+        use the prior's covariance instead.
+
+        If False, use the `X` argument supplied to this optimizer's `fit(X)` or
+        `partial_fit(X)`, before the prior processes it.
+
+        During online learning, True refits the distance estimator on the prior's
+        current scenarios or covariance at each update. False updates it from
+        the new observations in `X` and requires support for `partial_fit`.
+        Portfolio allocation always uses the prior's moments and return scenarios.
+        See :ref:`asset_seriation`.
 
     min_weights : float | dict[str, float] | array-like of shape (n_assets, ), default=0.0
         Minimum assets weights (weights lower bounds). The default is 0.0 (no short
@@ -196,7 +211,9 @@ class SchurComplementary(BaseHierarchicalOptimization):
         fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome. See
+        and `fallback_chain_` stores each attempt with the associated outcome. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
         :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
@@ -205,7 +222,11 @@ class SchurComplementary(BaseHierarchicalOptimization):
         and sets `weights_` to None, so subsequent calls to `predict` return a
         :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
         applies to any fitting error, including errors raised by the prior estimator.
-        See :ref:`optimization_failure_handling`.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules.
 
     Attributes
     ----------
@@ -214,14 +235,28 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     effective_gamma_ : float or None
         If `keep_monotonic` is True, the highest permissible `gamma` that preserves
-        monotonic variance decrease; otherwise, equal to the input `gamma`. None when
-        the primary fit fails or a fallback is used.
+        monotonic variance decrease. Otherwise, it equals the input `gamma`.
+        It is None after an optimization failure or when a fallback supplies the
+        allocation.
 
-    distance_estimator_ : BaseDistance
-        Fitted `distance_estimator`.
+    distance_estimator_ : BaseDistance or None
+        Fitted `distance_estimator`. None when `distance_from_prior=True` and
+        fewer than two assets are investable.
 
-    hierarchical_clustering_estimator_ : HierarchicalClustering
-        Fitted `hierarchical_clustering_estimator`.
+    seriation_estimator_ : BaseSeriation
+        Fitted ordering estimator. Its `ordering_` contains positions in the
+        full input schema. Hierarchical linkage diagnostics are available through
+        `seriation_estimator_.hierarchical_clustering_estimator_`.
+
+    hierarchical_clustering_estimator_ : HierarchicalClustering or None
+        Deprecated alias of `seriation_estimator_.hierarchical_clustering_estimator_`.
+        Access emits a FutureWarning. Will be removed in version 2.0.
+        Unavailable with spectral seriation.
+
+    investable_mask_ : ndarray of shape (n_assets,) or None
+        Mask of investable assets from the fitted prior. None when all assets are
+        investable. May be absent after batch fallback if fitting failed before
+        the prior's investable mask was determined.
 
     n_features_in_ : int
         Number of assets seen during `fit`.
@@ -278,6 +313,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
     For a full tutorial on Schur Complementary Allocation, see
     :ref:`sphx_glr_auto_examples_clustering_plot_6_schur.py`.
 
+    For online updates with spectral seriation, late listings, delistings,
+    holidays and asset warm-up, see
+    :ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
+
     >>> from skfolio import RiskMeasure
     >>> from skfolio.cluster import HierarchicalClustering, LinkageMethod
     >>> from skfolio.datasets import load_sp500_dataset
@@ -286,6 +325,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     >>> from skfolio.optimization import SchurComplementary
     >>> from skfolio.preprocessing import prices_to_returns
     >>> from skfolio.prior import EmpiricalPrior
+    >>> from skfolio.seriation import HierarchicalSeriation
     >>>
     >>> prices = load_sp500_dataset()
     >>> X = prices_to_returns(prices)
@@ -305,8 +345,10 @@ class SchurComplementary(BaseHierarchicalOptimization):
     ...     gamma=0.5,
     ...     prior_estimator=EmpiricalPrior(covariance_estimator=LedoitWolf()),
     ...     distance_estimator=KendallDistance(absolute=True),
-    ...     hierarchical_clustering_estimator=HierarchicalClustering(
-    ...         linkage_method=LinkageMethod.WARD,
+    ...     seriation_estimator=HierarchicalSeriation(
+    ...         hierarchical_clustering_estimator=HierarchicalClustering(
+    ...             linkage_method=LinkageMethod.WARD,
+    ...         ),
     ...     ),
     ... )
     >>> model.fit(X)
@@ -323,6 +365,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
         keep_monotonic: bool = True,
         prior_estimator: BasePrior | None = None,
         distance_estimator: BaseDistance | None = None,
+        # TODO remove deprecated hierarchical_clustering_estimator in v2.0
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
@@ -332,10 +375,14 @@ class SchurComplementary(BaseHierarchicalOptimization):
         portfolio_params: dict | None = None,
         fallback: skt.Fallback = None,
         raise_on_failure: bool = True,
+        *,
+        seriation_estimator: BaseSeriation | None = None,
+        distance_from_prior: bool = True,
     ) -> None:
         super().__init__(
             prior_estimator=prior_estimator,
             distance_estimator=distance_estimator,
+            # TODO remove deprecated hierarchical_clustering_estimator in v2.0
             hierarchical_clustering_estimator=hierarchical_clustering_estimator,
             min_weights=min_weights,
             max_weights=max_weights,
@@ -345,12 +392,14 @@ class SchurComplementary(BaseHierarchicalOptimization):
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
+            seriation_estimator=seriation_estimator,
+            distance_from_prior=distance_from_prior,
         )
         self.gamma = gamma
         self.keep_monotonic = keep_monotonic
 
     def fit(
-        self, X: ArrayLike, y: None = None, **fit_params: Any
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
     ) -> SchurComplementary:
         """Fit the Schur Complementary estimator.
 
@@ -359,76 +408,94 @@ class SchurComplementary(BaseHierarchicalOptimization):
         X : array-like of shape (n_observations, n_assets)
             Price returns of the assets.
 
-        y : Ignored
-            Not used, present for API consistency by convention.
+        y : array-like, optional
+            Targets passed to the prior and, when distance_from_prior=False,
+            to the distance estimator.
+
+        **fit_params : dict
+            Metadata routed to the underlying estimators. Metadata supplied to
+            a distance fitted on prior scenarios must align with those scenarios.
 
         Returns
         -------
         self : SchurComplementary
             Fitted estimator.
         """
-        # Publish gamma only after a successful primary allocation.
+        self._reset()
         self.effective_gamma_ = None
-        routed_params = skm.process_routing(self, "fit", **fit_params)
+        self._warn_deprecated_clustering_estimator(stacklevel=4)
+        return self._fit(X, y, method="fit", **fit_params)
 
+    def partial_fit(
+        self, X: ArrayLike, y: ArrayLike | None = None, **fit_params: Any
+    ) -> SchurComplementary:
+        """Update the prior and compute a Schur allocation.
+
+        The prior must support incremental learning. With
+        `distance_from_prior=False`, the distance must also support it.
+        Supply only new observations on each call. See
+        :ref:`online_failure_handling` for failure handling and restarts.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            New returns with the same full asset schema as previous calls.
+
+        y : array-like, optional
+            Targets passed to the prior and, when distance_from_prior=False,
+            to the distance estimator.
+
+        **fit_params : dict
+            Metadata routed to the underlying estimators. Requires metadata
+            routing to be enabled. Observation metadata is not forwarded to
+            distances fitted on the prior's return scenarios or covariance.
+
+        Returns
+        -------
+        self : SchurComplementary
+            Updated estimator.
+
+        Raises
+        ------
+        OptimizationError
+            If optimization fails with `raise_on_failure=True` and `fallback=None`.
+        """
+        self._warn_deprecated_clustering_estimator(stacklevel=3)
+        return self._fit(X, y, method="partial_fit", **fit_params)
+
+    def _fit(
+        self, X: ArrayLike, y: ArrayLike | None, method: str, **fit_params: Any
+    ) -> SchurComplementary:
+        """Publish gamma only for a successful primary Schur allocation."""
+        try:
+            super()._fit(X, y, method, **fit_params)
+        except OptimizationError:
+            self.effective_gamma_ = None
+            raise
+        if self.weights_ is None or self.fallback_ is not None:
+            self.effective_gamma_ = None
+        elif len(self.seriation_estimator_.ordering_) == 1:
+            self.effective_gamma_ = 0.0
+        return self
+
+    def _validate_params(self) -> None:
+        """Validate parameters."""
         if not 0.0 <= self.gamma <= 1.0:
             raise ValueError(f"gamma must be between 0 and 1. Got {self.gamma}")
 
-        # Validate
-        self.prior_estimator_ = check_estimator(
-            self.prior_estimator,
-            default=EmpiricalPrior(),
-            check_type=BasePrior,
-        )
-        self.distance_estimator_ = check_estimator(
-            self.distance_estimator,
-            default=PearsonDistance(),
-            check_type=BaseDistance,
-        )
-        self.hierarchical_clustering_estimator_ = check_estimator(
-            self.hierarchical_clustering_estimator,
-            default=HierarchicalClustering(),
-            check_type=HierarchicalClustering,
-        )
-
-        # Fit the estimators
-        self.prior_estimator_.fit(X, y, **routed_params.prior_estimator.fit)
-        return_distribution = self.prior_estimator_.return_distribution_
-        returns = return_distribution.returns
+    def _compute_weights(
+        self,
+        return_distribution: ReturnDistribution,
+        ordering: IntArray,
+        min_weights: FloatArray,
+        max_weights: FloatArray,
+    ) -> FloatArray:
+        """Allocate on the ordered covariance using the existing Schur recursion."""
         covariance = cov_nearest(return_distribution.covariance)
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            returns = pd.DataFrame(returns, columns=X.columns)
-
-        self.distance_estimator_.fit(returns, y, **routed_params.distance_estimator.fit)
-        distance = self.distance_estimator_.distance_
-
-        # To keep the asset_names
-        if isinstance(X, pd.DataFrame):
-            distance = pd.DataFrame(distance, columns=X.columns)
-
-        self.hierarchical_clustering_estimator_.fit(
-            X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
-        )
-
-        X = skv.validate_data(self, X)
-
-        ordered_linkage_matrix = sch.optimal_leaf_ordering(
-            self.hierarchical_clustering_estimator_.linkage_matrix_,
-            self.hierarchical_clustering_estimator_.condensed_distance_,
-        )
-        sorted_assets = sch.leaves_list(ordered_linkage_matrix)
-
-        # Prepare weight bounds
-        n_assets = X.shape[1]
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
-
-        # Compute allocations
         if self.keep_monotonic:
-            weights, effective_gamma = _compute_monotonic_weights(
+            weights, self.effective_gamma_ = _compute_monotonic_weights(
                 max_gamma=self.gamma,
-                sorted_assets=sorted_assets,
+                sorted_assets=ordering,
                 covariance=covariance,
                 min_weights=min_weights,
                 max_weights=max_weights,
@@ -436,20 +503,17 @@ class SchurComplementary(BaseHierarchicalOptimization):
         else:
             weights = _compute_weights(
                 gamma=self.gamma,
-                sorted_assets=sorted_assets,
+                sorted_assets=ordering,
                 covariance=covariance,
                 min_weights=min_weights,
                 max_weights=max_weights,
                 force_spd=True,
             )
-            effective_gamma = self.gamma
+            self.effective_gamma_ = self.gamma
 
         if weights is None:
             raise OptimizationError("Schur allocation could not produce valid weights.")
-        _check_finite_weights(weights)
-        self.weights_ = weights
-        self.effective_gamma_ = effective_gamma
-        return self
+        return weights
 
 
 def _compute_monotonic_weights(

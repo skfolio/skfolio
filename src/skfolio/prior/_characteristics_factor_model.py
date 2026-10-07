@@ -1010,6 +1010,16 @@ class CharacteristicsFactorModel(BasePrior, BaseComposition):
         """Core fitting logic shared by fit and partial_fit."""
         routed_params = skm.process_routing(self, method, **fit_params)
 
+        # Residual learners receive masks from the panel after observation alignment.
+        for name in ("idio_variance_estimator", "idio_corr_estimator"):
+            for params in routed_params[name].values():
+                if "active_mask" in params:
+                    raise ValueError(
+                        f"{name} receives active_mask from characteristics. "
+                        "Set its active_mask metadata request to False to route "
+                        "a separate mask to other estimators."
+                    )
+
         first_call = not hasattr(self, _FITTED_ATTR)
 
         characteristics, currency_excess_returns = self._validate_data(

@@ -10,9 +10,11 @@ import numbers
 import warnings
 from collections import deque
 from enum import auto
+from typing import ClassVar
 
 import numpy as np
 import scipy.special as scs
+import sklearn.utils as sku
 import sklearn.utils.validation as skv
 
 from skfolio.moments.covariance._base import BaseCovariance
@@ -211,6 +213,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
 
     For standard exponentially weighted covariance without regime adjustment,
     see :class:`EWCovariance`.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -502,6 +507,10 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
     """
 
     regime_multiplier_: float
+
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
 
     def __init__(
         self,
@@ -1226,3 +1235,9 @@ class RegimeAdjustedEWCovariance(BaseCovariance):
         """Reset fitted state."""
         if hasattr(self, _FITTED_ATTR):
             delattr(self, _FITTED_ATTR)
+
+    def __sklearn_tags__(self) -> sku.Tags:
+        """Declare support for missing observations and inactive assets."""
+        tags = super().__sklearn_tags__()
+        tags.input_tags.allow_nan = True
+        return tags

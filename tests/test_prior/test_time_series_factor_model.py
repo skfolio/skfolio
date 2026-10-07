@@ -4,7 +4,7 @@ import pytest
 from sklearn import config_context
 from sklearn.linear_model import LassoCV, LinearRegression
 
-from skfolio.moments import ImpliedCovariance
+from skfolio.moments import EWCovariance, EWMu, ImpliedCovariance
 from skfolio.prior import (
     BaseLoadingMatrix,
     BlackLitterman,
@@ -82,6 +82,34 @@ def test_factor_model_array_like_inputs(small_factor_data, asset_input, factor_i
     selected = factor_model.select_assets([asset_names[2], asset_names[0]])
     np.testing.assert_array_equal(
         selected.loading_matrix, factor_model.loading_matrix[[2, 0]]
+    )
+
+
+def test_factor_activity_mask_alias(small_factor_data):
+    X, factors = small_factor_data
+    active = np.ones(factors.shape, dtype=bool)
+    active[:20, 0] = False
+    with config_context(enable_metadata_routing=True):
+        model = TimeSeriesFactorModel(
+            factor_prior_estimator=EmpiricalPrior(
+                mu_estimator=EWMu(half_life=5).set_fit_request(
+                    active_mask="factor_active_mask"
+                ),
+                covariance_estimator=EWCovariance(half_life=5).set_fit_request(
+                    active_mask="factor_active_mask"
+                ),
+            ),
+            loading_matrix_estimator=LoadingMatrixRegression(
+                linear_regressor=LinearRegression()
+            ),
+        ).fit(X, factors=factors, factor_active_mask=active)
+    learned = model.factor_prior_estimator_.return_distribution_
+    np.testing.assert_allclose(
+        learned.mu, EWMu(half_life=5).fit(factors, active_mask=active).mu_
+    )
+    np.testing.assert_allclose(
+        learned.covariance,
+        EWCovariance(half_life=5).fit(factors, active_mask=active).covariance_,
     )
 
 

@@ -9,6 +9,7 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.datasets import (
     load_sp500_dataset,
 )
+from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import OptimizationError
 from skfolio.moments import EWCovariance
 from skfolio.optimization import (
@@ -16,10 +17,11 @@ from skfolio.optimization import (
     MeanRisk,
     SchurComplementary,
 )
-from skfolio.optimization.cluster.hierarchical import _schur
-from skfolio.optimization.cluster.hierarchical._schur import _compute_weights
+from skfolio.optimization.hierarchical._seriation import _schur
+from skfolio.optimization.hierarchical._seriation._schur import _compute_weights
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import EmpiricalPrior, TimeSeriesFactorModel
+from skfolio.seriation import SpectralSeriation
 
 
 @pytest.fixture(scope="module")
@@ -260,10 +262,24 @@ def test_hrp_weight_constraints_error(X):
     assert not np.any(np.isnan(model.weights_))
 
 
-def test_schur_invalid_gamma(X):
+@pytest.mark.parametrize("keep_monotonic", [True, False])
+def test_schur_allocation_failure(X, monkeypatch, keep_monotonic):
+    if keep_monotonic:
+        monkeypatch.setattr(
+            _schur, "_compute_monotonic_weights", lambda **kwargs: (None, 0.0)
+        )
+    else:
+        monkeypatch.setattr(_schur, "_compute_weights", lambda **kwargs: None)
+    model = SchurComplementary(keep_monotonic=keep_monotonic)
+    with pytest.raises(OptimizationError, match="Schur allocation"):
+        model.fit(X.iloc[:30, :4])
+
+
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+def test_schur_invalid_gamma(X, method):
     model = SchurComplementary(gamma=1.5)
     with pytest.raises(ValueError, match=r"gamma must be between 0 and 1\. Got 1\.5"):
-        model.fit(X)
+        getattr(model, method)(X)
 
 
 @pytest.mark.parametrize("turning_gamma", [0.0, 0.03])
@@ -417,10 +433,11 @@ def test_schur_small_gamma(monkeypatch, max_gamma, turning_fraction):
 
 def test_schur_weights_match_effective_gamma(X):
     model = SchurComplementary(
-        gamma=1,
         prior_estimator=EmpiricalPrior(
             covariance_estimator=EWCovariance(half_life=30, min_observations=20)
         ),
+        distance_estimator=CovarianceDistance("precomputed"),
+        seriation_estimator=SpectralSeriation(),
     ).fit(X.iloc[:252])
     assert 0 < model.effective_gamma_ < model.gamma
     weights = model.weights_.copy()
@@ -539,19 +556,6 @@ def test_compute_weights_uses_repaired_blocks_in_later_splits(monkeypatch):
     assert np.all(np.isfinite(weights))
     np.testing.assert_allclose(weights.sum(), 1.0)
     assert np.all((weights >= 0) & (weights <= 1))
-
-
-@pytest.mark.parametrize("keep_monotonic", [True, False])
-def test_schur_allocation_failure(X, monkeypatch, keep_monotonic):
-    if keep_monotonic:
-        monkeypatch.setattr(
-            _schur, "_compute_monotonic_weights", lambda **kwargs: (None, 0.0)
-        )
-    else:
-        monkeypatch.setattr(_schur, "_compute_weights", lambda **kwargs: None)
-    model = SchurComplementary(keep_monotonic=keep_monotonic)
-    with pytest.raises(OptimizationError, match="Schur allocation"):
-        model.fit(X.iloc[:30, :4])
 
 
 @pytest.mark.parametrize("fallback", [None, "previous_weights"])

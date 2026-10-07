@@ -21,6 +21,7 @@ from skfolio.optimization import (
     MeanRisk,
     ObjectiveFunction,
     Random,
+    SchurComplementary,
 )
 from skfolio.portfolio import FailedPortfolio, Portfolio
 from skfolio.pre_selection import (
@@ -177,14 +178,17 @@ def test_previous_weights_follow_current_schema_after_early_failure(columns):
     assert model.n_features_in_ == len(columns)
 
 
+@pytest.mark.parametrize(
+    "optimizer", [MeanRisk, HierarchicalRiskParity, SchurComplementary]
+)
 @pytest.mark.parametrize("failure", ["prior", "empty_universe"])
-def test_batch_previous_weights_ignore_previous_investable_mask(failure):
+def test_batch_previous_weights_ignore_previous_investable_mask(optimizer, failure):
     X = pd.DataFrame(
         np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
     )
     masked = X.copy()
     masked["A"] = np.nan
-    model = MeanRisk(
+    model = optimizer(
         prior_estimator=EmpiricalPrior(
             mu_estimator=EWMu(min_observations=3),
             covariance_estimator=EWCovariance(min_observations=3),

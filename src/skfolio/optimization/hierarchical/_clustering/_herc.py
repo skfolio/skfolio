@@ -1,15 +1,15 @@
-"""Hierarchical Risk Parity Optimization estimator."""
+"""Hierarchical Equal Risk Contribution estimator."""
 
 # Copyright (c) 2023-2026
 # Author: Hugo Delatte <hugo.delatte@skfoliolabs.com>
 # SPDX-License-Identifier: BSD-3-Clause
-# The risk measure generalization and constraint features are derived
-# from Riskfolio-Lib, Copyright (c) 2020-2023, Dany Cajas, Licensed under BSD 3 clause.
+# Weight constraints is a novel implementation, see docstring for more details.
 
 from __future__ import annotations
 
 from typing import Any
 
+import cvxpy as cp
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
@@ -19,40 +19,66 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
-from skfolio.exceptions import OptimizationError
+from skfolio.exceptions import ConvexOptimizationError
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
-from skfolio.optimization._base import _check_finite_weights
-from skfolio.optimization.cluster.hierarchical._base import (
-    BaseHierarchicalOptimization,
+from skfolio.optimization._base import BaseOptimization, _check_finite_weights
+from skfolio.optimization.hierarchical._utils import (
+    _PortfolioRiskMixin,
+    _convert_weight_bounds,
 )
 from skfolio.prior import BasePrior, EmpiricalPrior
-from skfolio.typing import ArrayLike, FloatArray, IntArray
-from skfolio.utils.tools import bisection, check_estimator
+from skfolio.typing import ArrayLike
+from skfolio.utils.stats import minimize_relative_weight_deviation
+from skfolio.utils.tools import check_estimator
 
 
-class HierarchicalRiskParity(BaseHierarchicalOptimization):
-    r"""Hierarchical Risk Parity estimator.
+class HierarchicalEqualRiskContribution(_PortfolioRiskMixin, BaseOptimization):
+    r"""Hierarchical Equal Risk Contribution estimator.
 
-    Hierarchical Risk Parity is a portfolio optimization method developed by Marcos
-    Lopez de Prado [1]_.
+    The Hierarchical Equal Risk Contribution is a portfolio optimization method
+    developed by Thomas Raffinot [2]_.
 
     This algorithm uses a distance matrix to compute hierarchical clusters using the
-    Hierarchical Tree Clustering algorithm. It then employs seriation to rearrange the
-    assets in the dendrogram, minimizing the distance between leaves.
+    Hierarchical Tree Clustering algorithm. It then computes, for each cluster, the
+    total cluster risk of an inverse-risk allocation.
 
-    The final step is the recursive bisection where each cluster is split between two
-    sub-clusters by starting with the topmost cluster and traversing in a top-down
-    manner. For each sub-cluster, we compute the total cluster risk of an inverse-risk
-    allocation. A weighting factor is then computed from these two sub-cluster risks,
-    which is used to update the cluster weight.
+    The final step is the top-down recursive division of the dendrogram, where the
+    assets weights are updated using a naive risk parity within clusters.
+
+    It differs from the Hierarchical Risk Parity by exploiting the dendrogram shape
+    during the top-down recursive division instead of bisecting it.
 
     .. note ::
-        The original paper uses the variance as the risk measure and the single-linkage
-        method for the Hierarchical Tree Clustering algorithm. Here we generalize it to
-        multiple risk measures and linkage methods.
-        The default linkage method is set to the Ward
-        variance minimization algorithm, which is more stable and has better properties
-        than the single-linkage method [2]_.
+
+        The default linkage method is set to the Ward variance minimization algorithm,
+        which is more stable and has better properties than the single-linkage
+        method [4]_.
+
+        Also, the initial paper does not provide an algorithm for handling weight
+        constraints, and no standard solution currently exists.
+        In contrast to HRP (Hierarchical Risk Parity), where weight constraints
+        can be applied to the split factor at each bisection step, HERC
+        (Hierarchical Equal Risk Contribution) cannot incorporate weight constraints
+        during the intermediate steps of the allocation. Therefore, in HERC, the
+        weight constraints must be enforced after the top-down allocation has been
+        completed.
+        In skfolio, we minimize the relative deviation of the final weights from
+        the initial weights. This is formulated as a convex optimization problem:
+
+        .. math::
+            \begin{cases}
+            \begin{aligned}
+            &\min_{w} & & \Vert \frac{w - w_{init}}{w_{init}} \Vert_{2}^{2} \\
+            &\text{s.t.} & & \sum_{i=1}^{N} w_{i} = 1 \\
+            & & & w_{min} \leq w_i \leq w_{max}, \quad \forall i
+            \end{aligned}
+            \end{cases}
+
+        The reason for minimizing the relative deviation (as opposed to the absolute
+        deviation) is that we want to limit the impact on the risk contribution of
+        each asset. Since HERC allocates inversely to risk, adjusting the weights
+        based on relative deviation ensures that the assets' risk contributions
+        remain proportionally consistent with the initial allocation.
 
     Parameters
     ----------
@@ -142,7 +168,8 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
         with :math:`c_{i}` the transaction cost of asset i, :math:`w_{i}` its weight
         and :math:`w\_prev_{i}` its previous weight (defined in `previous_weights`).
-        The float :math:`total\_cost` is impacting the portfolio expected return in the optimization:
+        The float :math:`total\_cost` is impacting the portfolio expected return in the
+        optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_cost
 
@@ -174,7 +201,8 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         .. math:: total\_fee = \sum_{i=1}^{N} f_{i} \times w_{i}
 
         with :math:`f_{i}` the management fee of asset i and :math:`w_{i}` its weight.
-        The float :math:`total\_fee` is impacting the portfolio expected return in the optimization:
+        The float :math:`total\_fee` is impacting the portfolio expected return in the
+        optimization:
 
         .. math:: expected\_return = \mu^{T} \cdot w - total\_fee
 
@@ -214,6 +242,19 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         The default (`None`) means no previous weights.
         Additionally, when `fallback="previous_weights"`, failures will fall back to
         these weights if provided.
+
+    solver : str, default="CLARABEL"
+        The solver used for the weights constraints optimization. The default is
+        "CLARABEL" which is written in Rust and has better numerical stability and
+        performance than ECOS and SCS.
+        For more details about available solvers, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#choosing-a-solver
+
+    solver_params : dict, optional
+        Solver parameters. For example, `solver_params=dict(verbose=True)`.
+        The default (`None`) is to use the CVXPY default.
+        For more details about solver arguments, check the CVXPY documentation:
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
 
     portfolio_params : dict, optional
         Portfolio parameters forwarded to the resulting `Portfolio` in `predict`.
@@ -282,25 +323,24 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
 
     References
     ----------
-    .. [1] "A robust estimator of the efficient frontier",
-        SSRN Electronic Journal,
-        Marcos López de Prado (2019).
+    .. [1]  "Hierarchical clustering-based asset allocation",
+        The Journal of Portfolio Management,
+        Thomas Raffinot  (2017).
 
-    .. [2] "A review of two decades of correlations, hierarchies, networks and
+    .. [2] "The hierarchical equal risk contribution portfolio",
+        Thomas Raffinot (2018).
+
+    .. [3] "Application of two-order difference to gap statistic".
+        Yue, Wang & Wei (2009).
+
+    .. [4] "A review of two decades of correlations, hierarchies, networks and
         clustering in financial markets",
         Gautier Marti, Frank Nielsen, Mikołaj Bińkowski, Philippe Donnat (2020).
-
-    .. [3] "Portfolio Optimization: Theory and Application", Chapter 12,
-        Daniel P. Palomar (2025)
-
-    .. [4] "Building diversified portfolios that outperform out of sample",
-        The Journal of Portfolio Management,
-        Marcos López de Prado (2016).
-
-    .. [5] "Machine Learning for Asset Managers",
-        Elements in Quantitative Finance. Cambridge University Press,
-        Marcos López de Prado (2020).
     """
+
+    prior_estimator_: BasePrior
+    distance_estimator_: BaseDistance
+    hierarchical_clustering_estimator_: HierarchicalClustering
 
     def __init__(
         self,
@@ -310,6 +350,8 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         hierarchical_clustering_estimator: HierarchicalClustering | None = None,
         min_weights: skt.MultiInput | None = 0.0,
         max_weights: skt.MultiInput | None = 1.0,
+        solver: str = "CLARABEL",
+        solver_params: dict | None = None,
         transaction_costs: skt.MultiInput = 0.0,
         management_fees: skt.MultiInput = 0.0,
         previous_weights: skt.MultiInput | None = None,
@@ -318,36 +360,63 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         raise_on_failure: bool = True,
     ) -> None:
         super().__init__(
-            risk_measure=risk_measure,
-            prior_estimator=prior_estimator,
-            distance_estimator=distance_estimator,
-            hierarchical_clustering_estimator=hierarchical_clustering_estimator,
-            min_weights=min_weights,
-            max_weights=max_weights,
-            transaction_costs=transaction_costs,
-            management_fees=management_fees,
             previous_weights=previous_weights,
             portfolio_params=portfolio_params,
             fallback=fallback,
             raise_on_failure=raise_on_failure,
         )
+        self.risk_measure = risk_measure
+        self.prior_estimator = prior_estimator
+        self.distance_estimator = distance_estimator
+        self.hierarchical_clustering_estimator = hierarchical_clustering_estimator
+        self.min_weights = min_weights
+        self.max_weights = max_weights
+        self.solver = solver
+        self.solver_params = solver_params
+        self.transaction_costs = transaction_costs
+        self.management_fees = management_fees
+
+    def get_metadata_routing(self) -> skm.MetadataRouter:
+        """Route fitting metadata to the prior, distance and clustering estimators."""
+        return (
+            skm.MetadataRouter(owner=type(self).__name__)
+            .add(
+                prior_estimator=self.prior_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                distance_estimator=self.distance_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+            .add(
+                hierarchical_clustering_estimator=self.hierarchical_clustering_estimator,
+                method_mapping=skm.MethodMapping().add(caller="fit", callee="fit"),
+            )
+        )
 
     def fit(
         self, X: ArrayLike, y: None = None, **fit_params: Any
-    ) -> HierarchicalRiskParity:
-        """Fit the Hierarchical Risk Parity Optimization estimator.
+    ) -> HierarchicalEqualRiskContribution:
+        """Fit the Hierarchical Equal Risk Contribution estimator.
 
         Parameters
         ----------
         X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
+           Price returns of the assets.
 
         y : Ignored
             Not used, present for API consistency by convention.
 
+        **fit_params : dict
+            Parameters to pass to the underlying estimators.
+            Only available if `enable_metadata_routing=True`, which can be
+            set by using `sklearn.set_config(enable_metadata_routing=True)`.
+            See :ref:`Metadata Routing User Guide <metadata_routing>` for
+            more details.
+
         Returns
         -------
-        self : HierarchicalRiskParity
+        self : HierarchicalEqualRiskContribution
             Fitted estimator.
         """
         routed_params = skm.process_routing(self, "fit", **fit_params)
@@ -361,7 +430,7 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
         if self.risk_measure in [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]:
             # Because Skew and Kurtosis can take negative values
             raise ValueError(
-                f"risk_measure {self.risk_measure} currently not supported in HRP"
+                f"risk_measure {self.risk_measure} currently not supported in HERC"
             )
 
         self.prior_estimator_ = check_estimator(
@@ -400,110 +469,111 @@ class HierarchicalRiskParity(BaseHierarchicalOptimization):
             X=distance, y=None, **routed_params.hierarchical_clustering_estimator.fit
         )
 
+        n_clusters = self.hierarchical_clustering_estimator_.n_clusters_
+        labels = self.hierarchical_clustering_estimator_.labels_
+        linkage_matrix = self.hierarchical_clustering_estimator_.linkage_matrix_
+
         X = skv.validate_data(self, X)
         n_assets = X.shape[1]
 
-        min_weights, max_weights = self._convert_weights_bounds(n_assets=n_assets)
-        assets_risks = self._unitary_risks(return_distribution=return_distribution)
-        if not np.isfinite(assets_risks).all() or np.any(assets_risks == 0):
-            raise OptimizationError(
-                "HRP cannot split assets with zero or nonfinite risk."
-            )
-
-        ordered_linkage_matrix = sch.optimal_leaf_ordering(
-            self.hierarchical_clustering_estimator_.linkage_matrix_,
-            self.hierarchical_clustering_estimator_.condensed_distance_,
+        min_weights, max_weights = _convert_weight_bounds(
+            min_weights=self._clean_input(
+                self.min_weights,
+                n_assets=n_assets,
+                fill_value=0,
+                name="min_weights",
+                apply_investable_mask=False,
+            ),
+            max_weights=self._clean_input(
+                self.max_weights,
+                n_assets=n_assets,
+                fill_value=1,
+                name="max_weights",
+                apply_investable_mask=False,
+            ),
+            n_assets=n_assets,
         )
-        sorted_assets = sch.leaves_list(ordered_linkage_matrix)
 
+        assets_risks = self._unitary_risks(return_distribution=return_distribution)
         weights = np.ones(n_assets)
-        items = [sorted_assets]
+        clusters_weights = np.ones(n_clusters)
 
-        while len(items) > 0:
-            new_items = []
-            for clusters_ids in bisection(items):
-                new_items += clusters_ids
-                risks = []
-                for ids in clusters_ids:
-                    inv_risk_w = np.zeros(n_assets)
-                    inv_risk_w[ids] = 1 / assets_risks[ids]
-                    inv_risk_w /= inv_risk_w.sum()
-                    risks.append(
-                        self._risk(
-                            weights=inv_risk_w, return_distribution=return_distribution
-                        )
-                    )
-                left_risk, right_risk = risks
-                left_cluster, right_cluster = clusters_ids
-                if not np.isfinite(risks).all() or left_risk + right_risk == 0:
-                    raise OptimizationError(
-                        "HRP cannot split clusters with zero total or nonfinite risk."
-                    )
-                alpha = 1 - left_risk / (left_risk + right_risk)
-                # Weights constraints
-                alpha = _apply_weight_constraints_to_split_factor(
-                    alpha=alpha,
-                    weights=weights,
-                    max_weights=max_weights,
-                    min_weights=min_weights,
-                    left_cluster=left_cluster,
-                    right_cluster=right_cluster,
-                )
-                weights[left_cluster] *= alpha
-                weights[right_cluster] *= 1 - alpha
-            items = new_items
+        clusters = [np.argwhere(labels == i).flatten() for i in range(n_clusters)]
+        clusters_sets = [set(cluster_ids) for cluster_ids in clusters]
 
+        # Compute cluster total risk based on inverse-risk allocation
+        cluster_risks = []
+        for cluster_ids in clusters:
+            inv_risk_w = np.zeros(n_assets)
+            inv_risk_w[cluster_ids] = 1 / assets_risks[cluster_ids]
+            inv_risk_w /= inv_risk_w.sum()
+            cluster_risks.append(
+                self._risk(weights=inv_risk_w, return_distribution=return_distribution)
+            )
+            weights[cluster_ids] = inv_risk_w[cluster_ids]
+        cluster_risks = np.array(cluster_risks)
+
+        # Compute the cluster weights using the dendrogram structure.
+        # Recurse from the root until each of the defined cluster is reached and
+        # update the weights using the naive risk parity.
+        def _recurse(node: sch.ClusterNode) -> None:
+            """Split the weight of `node` between its subtrees by naive risk parity."""
+            # Stop when the cluster is reached
+            if set(node.pre_order()) in clusters_sets:
+                return
+
+            left_node = node.get_left()
+            right_node = node.get_right()
+            left_cluster_tree = set(left_node.pre_order())
+            right_cluster_tree = set(right_node.pre_order())
+
+            left_cluster = []
+            right_cluster = []
+            for i, cluster_ids in enumerate(clusters_sets):
+                if cluster_ids.issubset(left_cluster_tree):
+                    left_cluster.append(i)
+                elif cluster_ids.issubset(right_cluster_tree):
+                    right_cluster.append(i)
+
+            if not left_cluster or not right_cluster:
+                raise ValueError("Corrupted")
+
+            left_cluster = np.array(left_cluster)
+            right_cluster = np.array(right_cluster)
+
+            left_risk = np.sum(cluster_risks[left_cluster])
+            right_risk = np.sum(cluster_risks[right_cluster])
+
+            alpha = 1 - left_risk / (left_risk + right_risk)
+
+            clusters_weights[left_cluster] *= alpha
+            clusters_weights[right_cluster] *= 1 - alpha
+
+            _recurse(left_node)
+            _recurse(right_node)
+
+        root = sch.to_tree(linkage_matrix)
+        _recurse(root)
+
+        # Combine intra-cluster weights with inter-cluster weights
+        for i, cluster_ids in enumerate(clusters):
+            weights[cluster_ids] *= clusters_weights[i]
+
+        # Apply weights constraints
         _check_finite_weights(weights)
+        try:
+            weights = minimize_relative_weight_deviation(
+                weights=weights,
+                min_weights=min_weights,
+                max_weights=max_weights,
+                solver=self.solver,
+                solver_params=self.solver_params,
+            )
+        except cp.SolverError as error:
+            raise ConvexOptimizationError(str(error)) from error
+
+        if not np.isfinite(weights).all():
+            raise ConvexOptimizationError("Allocation produced non-finite weights.")
         self.weights_ = weights
+
         return self
-
-
-def _apply_weight_constraints_to_split_factor(
-    alpha: float,
-    max_weights: FloatArray,
-    min_weights: FloatArray,
-    weights: FloatArray,
-    left_cluster: IntArray,
-    right_cluster: IntArray,
-) -> float:
-    """
-    Apply weight constraints to the split factor alpha of the ,Hierarchical Tree
-    Clustering algorithm.
-
-    Parameters
-    ----------
-    alpha : float
-        The split factor alpha of the Hierarchical Tree Clustering algorithm.
-
-    min_weights : ndarray of shape (n_assets,)
-        The weight lower bound 1D array.
-
-    max_weights : ndarray of shape (n_assets,)
-        The weight upper bound 1D array.
-
-    weights : FloatArray of shape (n_assets,)
-        The assets weights.
-
-    left_cluster : ndarray of shape (n_left_cluster,)
-        Indices of the left cluster weights.
-
-    right_cluster : ndarray of shape (n_right_cluster,)
-        Indices of the right cluster weights.
-
-    Returns
-    -------
-    value : float
-        The transformed split factor alpha incorporating the weight constraints.
-    """
-    alpha = min(
-        np.sum(max_weights[left_cluster]) / weights[left_cluster[0]],
-        max(np.sum(min_weights[left_cluster]) / weights[left_cluster[0]], alpha),
-    )
-    alpha = 1 - min(
-        np.sum(max_weights[right_cluster]) / weights[right_cluster[0]],
-        max(
-            np.sum(min_weights[right_cluster]) / weights[right_cluster[0]],
-            1 - alpha,
-        ),
-    )
-    return alpha

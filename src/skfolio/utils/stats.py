@@ -52,6 +52,7 @@ __all__ = [
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
+    "is_positive_semidefinite",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
@@ -324,6 +325,29 @@ def is_positive_definite(x: FloatArray) -> bool:
         True if the matrix is positive definite, False otherwise.
     """
     return bool(np.all(np.linalg.eigvals(x) > 0))
+
+
+def is_positive_semidefinite(x: FloatArray, *, atol: float = 0.0) -> bool:
+    """Return True if the matrix is positive semidefinite within a tolerance.
+
+    The caller must provide a finite, symmetric matrix.
+
+    Parameters
+    ----------
+    x : ndarray of shape (n, n)
+        Matrix to check.
+
+    atol : float, default=0.0
+        Nonnegative absolute tolerance. Eigenvalues greater than or equal to
+        `-atol` are accepted.
+
+    Returns
+    -------
+    value : bool
+        True if all eigenvalues are at least `-atol`, False otherwise.
+        Singular matrices are accepted.
+    """
+    return bool(np.all(np.linalg.eigvalsh(x) >= -atol))
 
 
 def assert_is_square(x: FloatArray) -> None:

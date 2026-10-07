@@ -14,14 +14,22 @@ Examples of supported estimators include
 :class:`~skfolio.moments.EWMu`, :class:`~skfolio.moments.EWCovariance`,
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`,
 :class:`~skfolio.prior.EmpiricalPrior` and portfolio
-optimizers such as :class:`~skfolio.optimization.MeanRisk` when they embed
+optimizers such as :class:`~skfolio.optimization.MeanRisk`,
+:class:`~skfolio.optimization.HierarchicalRiskParity` and
+:class:`~skfolio.optimization.SchurComplementary` when they embed
 incremental moment estimators through a prior estimator.
+
+For HRP and Schur distance and seriation settings, see :ref:`asset_seriation`.
+The :ref:`online Schur example
+<sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py>`
+illustrates late listings, delistings, holidays and asset warm-up.
 
 Online learning is also where native NaN-aware estimators are especially useful:
 they can update from available observations while preserving estimator state. Pipeline
 based pre-selection and imputation are not currently available in `skfolio` online
 learning workflows. See :ref:`Missing Data and Changing Universes <missing_data>`
-for details.
+for details and :ref:`fixed_asset_schema` for adding assets during an online
+learning run.
 
 
 How Online Evaluation Works
@@ -63,7 +71,8 @@ Once the prior and other estimators have been updated, the optimizer computes po
 weights. This step can fail, for example when a convex solver does not converge or
 portfolio constraints become infeasible at a particular rebalancing. Such failures
 raise :class:`~skfolio.exceptions.OptimizationError` and are handled according to
-`fallback` and `raise_on_failure`.
+`fallback` and `raise_on_failure`. Other examples include undefined risk splits
+in HRP and a failed numerical repair of Schur's augmented covariance blocks.
 
 With `fallback=None` (the default):
 
@@ -130,6 +139,7 @@ finish fitting. The same incomplete state is possible when a batch error is supp
 with `raise_on_failure=False`. In both cases, subsequent online learning requires a
 fresh estimator or a successful `fit` of the primary model on the desired history.
 See :ref:`optimization_failure_handling` for exception types and batch diagnostics.
+
 
 Non-Predictor Estimators Versus Portfolio Optimizers
 ****************************************************
@@ -264,7 +274,7 @@ This is useful when a portfolio estimator embeds incremental moment estimators s
 :class:`~skfolio.moments.EWMu` and
 :class:`~skfolio.moments.RegimeAdjustedEWCovariance`.
 
-During online portfolio evaluation, `online_predict` records a suppressed solver
+During online portfolio evaluation, `online_predict` records a suppressed optimization
 failure as a :class:`~skfolio.portfolio.FailedPortfolio` and continues with the
 next window. Raised errors interrupt evaluation. See
 :ref:`Updates and Failure Handling <online_failure_handling>` for data
@@ -292,8 +302,8 @@ resulting `MultiPeriodPortfolio`, these parameters can change the scores and the
 ranking of the parameter sets. When refitting is enabled, `weight_drift` is retained in
 `best_estimator_` because prediction requires it. The other parameters are not.
 
-To use those previous holdings instead of producing a failed rebalance after a
-solver failure, configure `fallback="previous_weights"`.
+To use those previous holdings instead of producing a failed rebalance after an
+optimization failure, configure `fallback="previous_weights"`.
 
 See the example
 :ref:`sphx_glr_auto_examples_online_learning_plot_3_online_portfolio_optimization_evaluation.py`

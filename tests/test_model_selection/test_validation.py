@@ -203,7 +203,7 @@ def test_route_params_partial_fit_error_message(X):
             match="online_score",
         ) as exc_info:
             _route_params(
-                EWCovariance(),
+                EWCovariance().set_partial_fit_request(active_mask=None),
                 params={"active_mask": active_mask},
                 owner="online_score",
                 callee="partial_fit",
@@ -240,7 +240,7 @@ def test_route_params_picklable_with_metadata(X):
 
     with config_context(enable_metadata_routing=True):
         routed_params = _route_params(
-            EWCovariance().set_partial_fit_request(active_mask=True),
+            EWCovariance(),
             params={"active_mask": active_mask},
             owner="online_score",
             callee="partial_fit",

@@ -67,7 +67,7 @@ The distance estimator determines which observations contribute to each matrix.
 
 
 Changing Asset Universes
-***********************
+************************
 
 Both estimators follow skfolio's :ref:`NaN-aware convention <native_nan_aware>`:
 non-investable assets remain present in the input arrays. For seriation, a NaN diagonal

@@ -529,7 +529,6 @@ by Marcos Lopez de Prado.
 This algorithm uses a distance matrix to compute hierarchical clusters using the
 Hierarchical Tree Clustering algorithm then employs seriation to rearrange the assets
 in the dendrogram, minimizing the distance between leaves.
-in the dendrogram, minimizing the distance between leaves.
 
 The final step is the recursive bisection where each cluster is split between two
 sub-clusters by starting with the topmost cluster and traversing in a top-down
@@ -592,6 +591,110 @@ mutual information as the distance estimator:
     print(portfolio.annualized_sharpe_ratio)
     print(portfolio.contribution(measure=RiskMeasure.SEMI_DEVIATION))
 
+
+.. _asset_seriation:
+
+Seriation for HRP and Schur
+***************************
+
+:class:`~skfolio.optimization.HierarchicalRiskParity` and
+:class:`~skfolio.optimization.SchurComplementary` accept a `seriation_estimator`
+to choose the asset order used by recursive allocation. The default,
+:class:`~skfolio.seriation.HierarchicalSeriation`, preserves Ward linkage and
+optimal leaf ordering. :class:`~skfolio.seriation.SpectralSeriation` orders a
+distance matrix using a spectral coordinate and aligns its orientation across
+`partial_fit` calls.
+
+The distance estimator can use three different inputs:
+
+* **Prior return scenarios (default).** With `distance_from_prior=True`, the
+  distance estimator is fitted on the return scenarios produced by the prior.
+  This accepts any distance estimator fitted from returns, such as `PearsonDistance`,
+  `SpearmanDistance` or `CovarianceDistance` configured with a covariance estimator.
+
+* **Prior covariance.** Set
+  `distance_estimator=CovarianceDistance(covariance_estimator="precomputed")`
+  to convert the prior's covariance into distances without estimating another
+  covariance. This configuration requires `distance_from_prior=True` for both
+  `fit` and `partial_fit`.
+
+* **Input returns.** Set `distance_from_prior=False` to fit the distance estimator
+  on the `X` argument supplied to the optimization estimator's `fit(X)` or
+  `partial_fit(X)`, before the prior processes it. In a pipeline, `X` is the output
+  of the earlier steps. For `fit`, the same distance estimators as in the prior
+  return scenarios option are supported. For `partial_fit`, the distance must
+  support incremental learning, as described below.
+
+In all three cases, portfolio allocation uses the prior's moments and return
+scenarios.
+
+For example, a factor-model prior can supply the allocation covariance while a
+separate covariance estimator measures dependence from input returns:
+
+.. code-block:: python
+
+    from skfolio.distance import CovarianceDistance
+    from skfolio.moments import EWCovariance
+    from skfolio.optimization import SchurComplementary
+    from skfolio.seriation import SpectralSeriation
+
+    model = SchurComplementary(
+        prior_estimator=factor_prior,
+        distance_estimator=CovarianceDistance(EWCovariance()),
+        distance_from_prior=False,
+        seriation_estimator=SpectralSeriation(),
+    )
+    model.fit(X)
+
+Here `factor_prior` is a separately configured factor model.
+
+Custom distances inherit from :class:`~skfolio.distance.BaseDistance`. Override
+its read-only `requires_covariance_input` property to return `True` when `X` must
+contain covariance. The property must reflect the current parameters before
+fitting. The base class derives the scikit-learn `pairwise` input tag from it.
+HRP and Schur supply the prior covariance to these distances, which require
+`distance_from_prior=True`.
+
+See :ref:`seriation` for the available algorithms, input requirements and online
+updates, and :ref:`seriation_turnover` for their potential effect on turnover.
+
+HERC and NCO use clustering estimators because their allocations require clusters.
+
+Online Learning
+===============
+
+HRP and Schur support `partial_fit` when their prior and its components support
+incremental learning. Each call updates the prior once from new observations, then
+computes distances, seriation and portfolio weights. Distance updates depend on the
+chosen input:
+
+* With `distance_from_prior=True`, a distance estimated from prior return scenarios
+  is fitted afresh on the current scenarios. This supports batch-only distances,
+  such as `PearsonDistance`, and priors that truncate or regenerate scenarios.
+* With `CovarianceDistance("precomputed")`, the optimizer calls the distance's `fit`
+  on the current prior covariance. No additional covariance is estimated, and the
+  distance itself does not need to support `partial_fit`.
+* With `distance_from_prior=False`, the distance must support `partial_fit`, for
+  example `CovarianceDistance(EWCovariance())`. It consumes each new batch once,
+  including observations for assets that are not yet investable. Batch-only
+  configurations, such as `PearsonDistance` and `CovarianceDistance()` with its
+  default `GerberCovariance`, require `distance_from_prior=True` during online
+  learning.
+
+The optimizer updates `SpectralSeriation` through `partial_fit` and refits
+`HierarchicalSeriation` through `fit`. Refitting the distance does not reset the
+spectral estimator's history. See :ref:`seriation` for their respective behavior.
+
+The prior needs enough warm-up observations to produce valid moments. A separate
+distance estimator must also provide the required distances for every investable
+asset.
+
+With the default `PearsonDistance`, update cost grows with the prior's stored history.
+For long runs, `CovarianceDistance("precomputed")` avoids repeated estimation, or the
+prior's `max_history` can limit the number of scenarios.
+
+For a worked example with late listings, delistings, holidays and asset warm-up,
+see :ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 
 Hierarchical Equal Risk Contribution
 ************************************

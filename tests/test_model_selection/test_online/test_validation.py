@@ -934,9 +934,7 @@ class TestOnlineScore:
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
-            routed_est = EWCovariance(half_life=30).set_partial_fit_request(
-                active_mask=True
-            )
+            routed_est = EWCovariance(half_life=30)
             scores_routed = online_score(
                 routed_est,
                 X_masked,
@@ -959,13 +957,15 @@ class TestOnlineScore:
         assert not np.allclose(scores_routed, scores_plain, equal_nan=True)
 
     def test_metadata_routing_requires_request(self, X):
-        """online_score raises when metadata is passed without a request."""
+        """online_score respects an explicit None request."""
         X_masked, active_mask = _make_inactive_block(X, start=420, stop=480)
 
         with config_context(enable_metadata_routing=True):
             with pytest.raises(UnsetMetadataPassedError, match="online_score"):
                 online_score(
-                    EWCovariance(half_life=30),
+                    EWCovariance(half_life=30).set_partial_fit_request(
+                        active_mask=None
+                    ),
                     X_masked,
                     warmup_size=400,
                     test_size=50,
