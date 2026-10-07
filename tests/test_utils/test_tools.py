@@ -755,11 +755,13 @@ class TestLiquidationTurnoverAndCost:
         )
         assert (turnover, cost) == (0.0, 0.0)
 
-    def test_nan_weight_raises(self):
-        with pytest.raises(ValueError, match="contains NaN"):
+    @pytest.mark.parametrize("weight", [np.nan, np.inf, -np.inf])
+    @pytest.mark.parametrize("transaction_costs", [None, 0.0, 0.01])
+    def test_nonfinite_weight_raises(self, weight, transaction_costs):
+        with pytest.raises(ValueError, match="previous_weights must be finite"):
             _get_liquidation_turnover_and_cost(
-                previous_weights={"a": 0.5, "z": np.nan},
-                transaction_costs=0.01,
+                previous_weights={"a": 0.5, "z": weight},
+                transaction_costs=transaction_costs,
                 assets_names=np.array(["a", "b"]),
             )
 

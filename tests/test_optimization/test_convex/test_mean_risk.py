@@ -3027,6 +3027,10 @@ def test_previous_weights_fallback_validates_excluded_holdings(
     with pytest.raises(ValueError, match="previous_weights must be finite"):
         model.fit(X)
     assert not model.investable_mask_[2]
+    assert model.fallback_chain_[-1] == (
+        "previous_weights",
+        "previous_weights must be finite.",
+    )
 
 
 def test_nonfinite_frontier_point_is_recorded_individually(X_tiny, monkeypatch):
