@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-10-07)
+
+### Features
+
+- **optimization**: Unify failure handling and fallback behavior
+  ([#406](https://github.com/skfolio/skfolio/pull/406),
+  [`3322df2`](https://github.com/skfolio/skfolio/commit/3322df27595590c6acec5d3f7cf6500e6dff296d))
+
+
 ## v1.4.12 (2026-10-06)
 
 ### Bug Fixes
