@@ -174,15 +174,25 @@ class BenchmarkTracker(MeanRisk):
         See :class:`~skfolio.optimization.MeanRisk` for details.
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
-        Fallback estimator or list of estimators.
-        Fallback estimators are fitted on the original asset returns and
-        benchmark returns. Use a `BenchmarkTracker` fallback to keep a
-        benchmark-relative objective.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
+        Fallback estimator, `"previous_weights"`, or a list of either. Fallback
+        estimators are fitted on the original asset returns and benchmark returns. Use a
+        `BenchmarkTracker` fallback to keep a benchmark-relative objective. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks` and :class:`~skfolio.optimization.MeanRisk` for
+        details.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        See :class:`~skfolio.optimization.MeanRisk` for details.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules.
 
     Attributes
     ----------
@@ -212,7 +222,8 @@ class BenchmarkTracker(MeanRisk):
         Sequence describing the optimization fallback attempts.
 
     error_ : str | None
-        Captured error message when `fit` fails.
+        The recorded error message. This is None after a successful allocation or
+        fallback.
 
     References
     ----------

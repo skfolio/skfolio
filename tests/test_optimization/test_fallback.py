@@ -11,9 +11,10 @@ from sklearn.exceptions import UnsetMetadataPassedError
 from sklearn.pipeline import Pipeline
 
 from skfolio.model_selection import cross_val_predict
-from skfolio.moments import ImpliedCovariance
+from skfolio.moments import EWCovariance, EWMu, EmpiricalMu, ImpliedCovariance
 from skfolio.optimization import (
     BaseOptimization,
+    BenchmarkTracker,
     EqualWeighted,
     HierarchicalRiskParity,
     InverseVolatility,
@@ -160,6 +161,62 @@ def test_fallback_refit_clears_stale_feature_names():
     np.testing.assert_allclose(model.predict(X_array).returns, X_array.mean(axis=1))
 
 
+@pytest.mark.parametrize("columns", [list("DCBA"), list("DCB")])
+def test_previous_weights_follow_current_schema_after_early_failure(columns):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    holdings = dict(zip("ABCD", [0.1, 0.2, 0.3, 0.4], strict=True))
+    model = BenchmarkTracker(
+        fallback="previous_weights", previous_weights=holdings
+    ).fit(X, np.zeros(len(X)))
+    # A missing benchmark fails before validation establishes the new schema.
+    model.fit(X[columns])
+    np.testing.assert_array_equal(model.feature_names_in_, columns)
+    np.testing.assert_allclose(model.weights_, [holdings[name] for name in columns])
+    assert model.n_features_in_ == len(columns)
+
+
+@pytest.mark.parametrize("failure", ["prior", "empty_universe"])
+def test_batch_previous_weights_ignore_previous_investable_mask(failure):
+    X = pd.DataFrame(
+        np.random.default_rng(0).normal(0, 0.01, (30, 4)), columns=list("ABCD")
+    )
+    masked = X.copy()
+    masked["A"] = np.nan
+    model = MeanRisk(
+        prior_estimator=EmpiricalPrior(
+            mu_estimator=EWMu(min_observations=3),
+            covariance_estimator=EWCovariance(min_observations=3),
+        ),
+        fallback="previous_weights",
+        previous_weights=0.25,
+    ).fit(masked)
+    assert not model.investable_mask_[0]
+    if failure == "prior":
+        model.prior_estimator = EmpiricalPrior(mu_estimator=EmpiricalMu(window_size=-1))
+    else:
+        X = X * np.nan
+    model.fit(X)
+    np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert model.fallback_ == "previous_weights"
+
+
+@pytest.mark.parametrize("holdings", [np.nan, [0.25, np.inf, 0.25, 0.25]])
+def test_previous_weights_reject_nonfinite_holdings(fallback_data, holdings):
+    model = OptimizationFailingBeforeValidation(
+        fallback="previous_weights", previous_weights=holdings
+    )
+    with pytest.raises(ValueError, match="previous_weights must be finite"):
+        model.fit(fallback_data)
+
+
+def test_terminal_batch_warning_points_to_caller(fallback_data):
+    with pytest.warns(UserWarning, match="CustomOptimization.fit failed") as caught:
+        CustomOptimization(fail=True, raise_on_failure=False).fit(fallback_data)
+    assert caught[0].filename == __file__
+
+
 @pytest.mark.parametrize("previous_weights", [None, [0.5, 0.5]])
 @pytest.mark.parametrize("raise_on_failure", [True, False])
 def test_fallback_previous_weights_failure_recorded_once(
@@ -276,7 +333,9 @@ def test_fallback_routes_requested_metadata(fallback_data, metadata_request):
     assert model.fallback_chain_[-1][1] == "success"
 
 
-@pytest.mark.parametrize("metadata_request", [True, False, "weights"])
+@pytest.mark.parametrize(
+    "metadata_request", [True, False, "weights", "method", "enabled", "fit_params"]
+)
 def test_fallback_consumer_metadata_requests(fallback_data, metadata_request):
     sample_weight = np.linspace(1, 2, len(fallback_data))
     key = metadata_request if isinstance(metadata_request, str) else "sample_weight"

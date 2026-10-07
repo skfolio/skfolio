@@ -17,7 +17,8 @@ from __future__ import annotations
 import numbers
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from functools import wraps
 from typing import Any, Literal
 
@@ -35,6 +36,7 @@ from skfolio._constants import (
     _RISK_FREE_RATE,
     _TRANSACTION_COSTS,
 )
+from skfolio.exceptions import OptimizationError
 from skfolio.measures import RatioMeasure
 from skfolio.population import Population
 from skfolio.portfolio import FailedPortfolio, Portfolio
@@ -59,12 +61,15 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. With
+        `partial_fit`, only None or `"previous_weights"` is supported because fallback
+        estimators have not accumulated the primary model's online history. See
+        :ref:`optimization_fallbacks`.
 
     previous_weights : float | dict[str, float] | array-like of shape (n_assets,), optional
         Previous asset weights. Some portfolio optimizers use this to compute costs or
@@ -72,13 +77,16 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         back to these weights if provided.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        During `partial_fit`, `raise_on_failure` applies only to optimization failures
+        after learning completes. Input validation failures and errors from the prior or
+        other learning estimators are always raised. See
+        :ref:`optimization_failure_handling` for batch recovery and
+        :ref:`online_failure_handling` for online continuation and restart rules.
 
     Attributes
     ----------
@@ -104,9 +112,11 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -157,37 +167,120 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                 original_fit(self, X, y, **fit_params)
                 return self
 
-            self.fallback_ = None
-            self.fallback_chain_ = None
-            self.error_ = None
+            # Batch fallback must not reuse the investable mask from a previous fit.
+            if hasattr(self, "investable_mask_"):
+                del self.investable_mask_
 
             self._fit_in_progress = True
             try:
-                original_fit(self, X, y, **fit_params)
-            except Exception as primary_error:
-                try:
-                    self._run_fallback_chain(
-                        X=X, y=y, primary_error=primary_error, **fit_params
-                    )
-                except Exception as last_error:
-                    self.error_ = str(last_error)
-                    if self.raise_on_failure:
-                        raise
-                    warnings.warn(
-                        (
-                            f"{self.__class__.__name__}.fit failed: {last_error}. "
-                            "Because raise_on_failure=False, weights_ is set to None. "
-                            "Inspect 'error_' and 'fallback_chain_' for details."
-                        ),
-                        stacklevel=2,
-                    )
-                    self.weights_ = None
+                with self._handle_optimization_errors(
+                    X, y, method="fit", fit_params=fit_params
+                ):
+                    original_fit(self, X, y, **fit_params)
             finally:
                 del self._fit_in_progress
             return self
 
         _wrapped_fit._fallback_wrapped = True  # ty: ignore[unresolved-attribute]
         cls.fit = _wrapped_fit  # ty: ignore[invalid-assignment]
+
+    @contextmanager
+    def _handle_optimization_errors(
+        self,
+        X: ArrayLike,
+        y: ArrayLike | None,
+        *,
+        method: str,
+        enabled: bool = True,
+        fit_params: dict[str, Any] | None = None,
+    ) -> Generator[None, None, None]:
+        """Handle fitting failures according to `fallback` and `raise_on_failure`.
+
+        During `fit`, this handler catches any `Exception` from fitting, including
+        errors raised by the prior estimator.
+
+        During `partial_fit`, update the prior and other estimators before entering this
+        handler. Errors from those updates are always raised, even when they are
+        `OptimizationError`. The handler then catches only `OptimizationError` from
+        computing and assigning portfolio weights.
+
+        If a fallback succeeds, `weights_` contains its allocation. If all attempts fail
+        and `raise_on_failure=False`, `weights_` is set to None. Assign primary weights
+        within the `with` statement so that this assignment is skipped after a failure
+        and cannot overwrite the fallback allocation.
+
+        After a suppressed optimization error or a successful online fallback, the prior
+        and other estimators retain their updates. The next `partial_fit` must receive
+        only new observations.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_observations, n_assets)
+            Returns passed to the fitting method.
+
+        y : array-like or None
+            Optional target data.
+
+        method : str
+            Either "fit" or "partial_fit".
+
+        enabled : bool, default=True
+            If False, do not reset diagnostics or handle errors here. During `fit`, the
+            wrapper around the fitting method handles fallback once using the original
+            inputs.
+
+        fit_params : dict, optional
+            Parameters routed to fallback estimators during `fit`. Passed as a
+            dictionary so metadata names cannot conflict with this handler's parameters.
+
+        Yields
+        ------
+        None
+            Runs the fitting or weight computation operation.
+        """
+        if not enabled:
+            yield
+            return
+
+        self.error_ = None
+        self.fallback_ = None
+        self.fallback_chain_ = None
+        error_type = Exception if method == "fit" else OptimizationError
+        try:
+            yield
+        except error_type as error:
+            try:
+                self._run_fallback_chain(
+                    X, y, primary_error=error, **(fit_params or {})
+                )
+            except Exception as last_error:
+                self.error_ = str(last_error)
+                if self.raise_on_failure:
+                    raise
+                message = (
+                    f"{self.__class__.__name__}.{method} failed: {last_error}. "
+                    "Because raise_on_failure=False, weights_ is set to None. "
+                    "Inspect 'error_' and 'fallback_chain_' for details."
+                )
+                if method == "partial_fit":
+                    message += (
+                        " The batch was consumed. Supply only new observations "
+                        "on the next partial_fit."
+                    )
+                # Skip contextlib.__exit__ and point to the batch caller or the
+                # with statement inside the internal _fit for online updates.
+                warnings.warn(message, stacklevel=4 if method == "fit" else 3)
+                self.weights_ = None
+            else:
+                self.error_ = None
+
+    def _validate_partial_fit_fallback(self) -> None:
+        """Restrict online fallbacks to reusing the supplied previous weights."""
+        if self.fallback is None or self.fallback == _PREVIOUS_WEIGHTS:
+            return
+        raise ValueError(
+            "`partial_fit` only supports fallback=None or fallback='previous_weights'."
+        )
 
     def _run_fallback_chain(
         self,
@@ -196,7 +289,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         primary_error: Exception,
         **fit_params: Any,
     ) -> None:
-        """Execute the configured fallback chain after a primary `fit` failure.
+        """Execute the configured fallback chain after an optimization failure.
 
         Parameters
         ----------
@@ -228,15 +321,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         if not isinstance(fallback, list | tuple):
             fallback = [fallback]
 
-        if len(fallback) == 0:
-            raise primary_error
-
         last_error: Exception = primary_error
         for fb in fallback:
             try:
                 fb = _validate_fallback(fb)
                 if fb == _PREVIOUS_WEIGHTS:
-                    self._fallback_to_previous_weights_or_raise(n_assets=np.shape(X)[1])
+                    self._fallback_to_previous_weights(X)
                     self.fallback_chain_.append((_PREVIOUS_WEIGHTS, "success"))
                     return
 
@@ -267,8 +357,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
                     )
 
                 # Success: copy learned artifacts back to self
-                for name in ("weights_", "n_features_in_"):
-                    setattr(self, name, getattr(fb_est, name))
+                self.weights_ = fb_est.weights_
+                self.n_features_in_ = fb_est.n_features_in_
                 if hasattr(fb_est, "feature_names_in_"):
                     self.feature_names_in_ = fb_est.feature_names_in_
                 elif hasattr(self, "feature_names_in_"):
@@ -280,34 +370,43 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             except Exception as err:  # try next fallback
                 last_error = err
                 self.fallback_chain_.append((str(fb), str(err)))
-                continue
 
         # All fallbacks failed. The caller decides based on raise_on_failure.
         raise last_error
 
-    def _fallback_to_previous_weights_or_raise(self, n_assets: int) -> None:
-        """Fallback to `previous_weights` or raise if unavailable/invalid.
+    def _fallback_to_previous_weights(self, X: ArrayLike) -> None:
+        """Reuse previous holdings aligned to the current asset schema.
 
         Parameters
         ----------
-        n_assets : int
-            Number of assets used to validate the shape of `previous_weights`.
+        X : array-like of shape (n_observations, n_assets)
+            Current returns, used to align holdings to the full asset schema.
 
         Raises
         ------
         RuntimeError
             If `previous_weights` is `None` when the fallback is requested.
+
+        ValueError
+            If supplied holdings have an invalid shape or contain non-finite values.
         """
         if self.previous_weights is None:
             raise RuntimeError(
                 "Fallback 'previous_weights' requested, but 'previous_weights' is None. "
                 "Provide valid previous weights or remove this fallback."
             )
+        # Align holdings to the current X, even if fit failed before setting asset names.
+        validate_data(self, X, reset=True, skip_check_array=True)
+        weights = self._clean_previous_weights(
+            n_assets=self.n_features_in_,
+            apply_investable_mask=False,
+        )
+        if not np.isfinite(weights).all():
+            raise ValueError("previous_weights must be finite.")
         investable_mask = getattr(self, "investable_mask_", None)
         if investable_mask is not None:
-            n_assets = int(np.count_nonzero(investable_mask))
-        weights = self._clean_previous_weights(n_assets=n_assets)
-        self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+            weights = np.where(investable_mask, weights, 0)
+        self.weights_ = weights
         self.fallback_ = _PREVIOUS_WEIGHTS
 
     @abstractmethod
@@ -383,7 +482,7 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         # If 'name' is not provided in the portfolio arguments, we use the first
         name = ptf_kwargs.pop("name", type(self).__name__)
 
-        # Add fallback chain (partial_fit doesn't set fallback_chain_)
+        # Forward the fallback attempts to the predicted portfolio.
         ptf_kwargs["fallback_chain"] = getattr(self, "fallback_chain_", None)
 
         # If weights are None and raise_on_failure is False, we return a FailedPortfolio
@@ -572,12 +671,13 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         n_assets: int,
         fill_value: float,
         name: str,
+        *,
+        apply_investable_mask: bool = True,
     ) -> float | FloatArray:
         """Convert input to a cleaned float or 1D ndarray.
 
-        When `investable_mask_` has been set (by `_prepare_investable_distribution`),
-        dictionary keys are resolved against the full-universe names and the result is
-        subsetted and array-like inputs sized for the full universe are sliced to match.
+        By default, dictionary keys are resolved against the full asset names and arrays
+        are restricted to `investable_mask_` when it is available.
 
         Parameters
         ----------
@@ -585,7 +685,8 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             Input value to clean.
 
         n_assets : int
-            Number of investable assets. Used to verify the shape of the converted array.
+            Expected number of assets in the output array. Use the full asset count when
+            `apply_investable_mask=False`.
 
         fill_value : float
             When `value` is a dictionary, keys not present in the asset names are filled
@@ -593,6 +694,10 @@ class BaseOptimization(skb.BaseEstimator, ABC):
 
         name : str
             Name used for error messages.
+
+        apply_investable_mask : bool, default=True
+            Whether to restrict arrays and resolved dictionaries to investable assets.
+            Set to False to keep all input assets.
 
         Returns
         -------
@@ -609,11 +714,17 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             fill_value=fill_value,
             dim=1,
             assets_names=getattr(self, "feature_names_in_", None),
-            investable_mask=getattr(self, "investable_mask_", None),
+            investable_mask=(
+                getattr(self, "investable_mask_", None)
+                if apply_investable_mask
+                else None
+            ),
             name=name,
         )
 
-    def _clean_previous_weights(self, n_assets: int) -> FloatArray:
+    def _clean_previous_weights(
+        self, n_assets: int, *, apply_investable_mask: bool = True
+    ) -> FloatArray:
         """Return validated previous weights as a 1D array of length `n_assets`.
 
         Converts `previous_weights` to a numpy array using `_clean_input`, accepting
@@ -623,7 +734,12 @@ class BaseOptimization(skb.BaseEstimator, ABC):
         Parameters
         ----------
         n_assets : int
-            Number of assets; used to validate shape and for broadcasting.
+            Number of assets used to validate shape and broadcast scalars. Use the full
+            asset count when `apply_investable_mask=False`.
+
+        apply_investable_mask : bool, default=True
+            Whether to restrict arrays and resolved dictionaries to investable assets.
+            Set to False to keep all input assets.
 
         Returns
         -------
@@ -635,10 +751,28 @@ class BaseOptimization(skb.BaseEstimator, ABC):
             n_assets=n_assets,
             fill_value=0,
             name=_PREVIOUS_WEIGHTS,
+            apply_investable_mask=apply_investable_mask,
         )
         if not isinstance(previous_weights, np.ndarray):
             previous_weights = np.full(n_assets, previous_weights, dtype=float)
         return previous_weights
+
+
+def _check_finite_weights(weights: FloatArray) -> None:
+    """Raise if computed allocation weights are non-finite.
+
+    Parameters
+    ----------
+    weights : ndarray
+        Computed allocation weights.
+
+    Raises
+    ------
+    OptimizationError
+        If any weight is non-finite.
+    """
+    if not np.isfinite(weights).all():
+        raise OptimizationError("Allocation produced non-finite weights.")
 
 
 def _validate_fallback(

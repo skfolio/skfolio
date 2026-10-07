@@ -28,6 +28,8 @@ import sklearn.utils.validation as skv
 import skfolio.typing as skt
 from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance, PearsonDistance
+from skfolio.exceptions import OptimizationError
+from skfolio.optimization._base import _check_finite_weights
 from skfolio.optimization.cluster.hierarchical._base import (
     BaseHierarchicalOptimization,
 )
@@ -189,30 +191,31 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`.
 
     Attributes
     ----------
     weights_ : ndarray of shape (n_assets,)
         Weights of the assets.
 
-    effective_gamma_ : float
+    effective_gamma_ : float or None
         If `keep_monotonic` is True, the highest permissible `gamma` that preserves
-        monotonic variance decrease; otherwise, equal to the input `gamma`.
+        monotonic variance decrease; otherwise, equal to the input `gamma`. None when
+        the primary fit fails or a fallback is used.
 
     distance_estimator_ : BaseDistance
         Fitted `distance_estimator`.
@@ -239,9 +242,11 @@ class SchurComplementary(BaseHierarchicalOptimization):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     References
     ----------
@@ -310,7 +315,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
     [0.0323 0.0095 0.0234 ... 0.0402 0.0515 0.0605]
     """
 
-    effective_gamma_: float
+    effective_gamma_: float | None
 
     def __init__(
         self,
@@ -362,6 +367,8 @@ class SchurComplementary(BaseHierarchicalOptimization):
         self : SchurComplementary
             Fitted estimator.
         """
+        # Publish gamma only after a successful primary allocation.
+        self.effective_gamma_ = None
         routed_params = skm.process_routing(self, "fit", **fit_params)
 
         if not 0.0 <= self.gamma <= 1.0:
@@ -419,7 +426,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
 
         # Compute allocations
         if self.keep_monotonic:
-            self.weights_, self.effective_gamma_ = _compute_monotonic_weights(
+            weights, effective_gamma = _compute_monotonic_weights(
                 max_gamma=self.gamma,
                 sorted_assets=sorted_assets,
                 covariance=covariance,
@@ -427,7 +434,7 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 max_weights=max_weights,
             )
         else:
-            self.weights_ = _compute_weights(
+            weights = _compute_weights(
                 gamma=self.gamma,
                 sorted_assets=sorted_assets,
                 covariance=covariance,
@@ -435,8 +442,13 @@ class SchurComplementary(BaseHierarchicalOptimization):
                 max_weights=max_weights,
                 force_spd=True,
             )
-            self.effective_gamma_ = self.gamma
+            effective_gamma = self.gamma
 
+        if weights is None:
+            raise OptimizationError("Schur allocation could not produce valid weights.")
+        _check_finite_weights(weights)
+        self.weights_ = weights
+        self.effective_gamma_ = effective_gamma
         return self
 
 
@@ -739,11 +751,11 @@ def _compute_weights(
                             a_aug = cov_nearest(a_aug)
                         if not is_cholesky_dec(d_aug):
                             d_aug = cov_nearest(d_aug)
-                except Exception:
-                    raise ValueError(
+                except (ValueError, FloatingPointError, np.linalg.LinAlgError) as error:
+                    raise OptimizationError(
                         f"Schur complement failed with gamma={gamma:0.4f}. Choose a "
                         "smaller gamma or set `keep_monotonic=True`"
-                    ) from None
+                    ) from error
 
             # Subsequent splits must use the repaired blocks too.
             covariance[np.ix_(left_cluster, left_cluster)] = a_aug

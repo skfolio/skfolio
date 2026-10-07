@@ -9,6 +9,7 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.datasets import (
     load_sp500_dataset,
 )
+from skfolio.exceptions import OptimizationError
 from skfolio.moments import EWCovariance
 from skfolio.optimization import (
     HierarchicalRiskParity,
@@ -457,7 +458,7 @@ def test_compute_weights_rejects_unrepairable_block(non_spd_schur_inputs):
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", RuntimeWarning)
         with pytest.raises(
-            ValueError, match=r"Schur complement failed with gamma=0\.5000"
+            OptimizationError, match=r"Schur complement failed with gamma=0\.5000"
         ):
             _compute_weights_from(non_spd_schur_inputs, force_spd=True)
     assert not [
@@ -495,12 +496,17 @@ def test_compute_weights_force_spd_repairs_blocks(monkeypatch, bad_left, bad_rig
 
 
 def test_compute_weights_force_spd_failure_raises(non_spd_schur_inputs, monkeypatch):
+    error = np.linalg.LinAlgError("cannot repair")
+
     def failing_cov_nearest(cov):
-        raise np.linalg.LinAlgError("cannot repair")
+        raise error
 
     monkeypatch.setattr(_schur, "cov_nearest", failing_cov_nearest)
-    with pytest.raises(ValueError, match=r"Schur complement failed with gamma=0\.5000"):
+    with pytest.raises(
+        OptimizationError, match=r"Schur complement failed with gamma=0\.5000"
+    ) as exc_info:
         _compute_weights_from(non_spd_schur_inputs, force_spd=True)
+    assert exc_info.value.__cause__ is error
 
 
 @pytest.mark.filterwarnings("error::RuntimeWarning")
@@ -533,3 +539,37 @@ def test_compute_weights_uses_repaired_blocks_in_later_splits(monkeypatch):
     assert np.all(np.isfinite(weights))
     np.testing.assert_allclose(weights.sum(), 1.0)
     assert np.all((weights >= 0) & (weights <= 1))
+
+
+@pytest.mark.parametrize("keep_monotonic", [True, False])
+def test_schur_allocation_failure(X, monkeypatch, keep_monotonic):
+    if keep_monotonic:
+        monkeypatch.setattr(
+            _schur, "_compute_monotonic_weights", lambda **kwargs: (None, 0.0)
+        )
+    else:
+        monkeypatch.setattr(_schur, "_compute_weights", lambda **kwargs: None)
+    model = SchurComplementary(keep_monotonic=keep_monotonic)
+    with pytest.raises(OptimizationError, match="Schur allocation"):
+        model.fit(X.iloc[:30, :4])
+
+
+@pytest.mark.parametrize("fallback", [None, "previous_weights"])
+def test_schur_failed_refit_clears_effective_gamma(X, monkeypatch, fallback):
+    X = X.iloc[:30, :4]
+    model = SchurComplementary(
+        fallback=fallback, previous_weights=0.25, raise_on_failure=False
+    ).fit(X)
+    assert model.effective_gamma_ is not None
+
+    monkeypatch.setattr(
+        _schur, "_compute_monotonic_weights", lambda **kwargs: (np.full(4, np.nan), 0.5)
+    )
+    if fallback is None:
+        with pytest.warns(UserWarning, match="non-finite weights"):
+            model.fit(X)
+        assert model.weights_ is None
+    else:
+        model.fit(X)
+        np.testing.assert_array_equal(model.weights_, np.full(4, 0.25))
+    assert model.effective_gamma_ is None
