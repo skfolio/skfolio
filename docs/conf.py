@@ -189,6 +189,9 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/online_learning/plot_3_online_portfolio_optimization_evaluation": (
         "Online evaluation of portfolio optimization"
     ),
+    "auto_examples/online_learning/plot_online_schur_changing_universe": (
+        "Online Schur allocation with late listings, delistings, holidays, and asset warm-up"
+    ),
 }
 
 USER_GUIDE_DESCRIPTIONS = {
@@ -647,6 +650,7 @@ TUTORIAL_ORDER = {
         "plot_1_online_covariance_forecast_evaluation.py",
         "plot_2_online_hyperparameter_tuning.py",
         "plot_3_online_portfolio_optimization_evaluation.py",
+        "plot_online_schur_changing_universe.py",
     ),
     "pre_selection": (
         "plot_1_drop_correlated.py",

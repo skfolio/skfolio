@@ -10,6 +10,7 @@ from typing import ClassVar
 
 import numpy as np
 import pytest
+from sklearn import config_context
 
 from skfolio._constants import (
     _BENCHMARK_WEIGHTS,
@@ -18,11 +19,13 @@ from skfolio._constants import (
     _IDIO_VARIANCES,
     _REGRESSION_WEIGHTS,
 )
+from skfolio.distance import CovarianceDistance
 from skfolio.exceptions import DuplicateGroupsError
 from skfolio.factor_exposure import BaseFactorExposure, DerivedFactor
 from skfolio.linear_model import CSLinearRegression
 from skfolio.moments import EWCovariance
 from skfolio.moments.variance import BaseVariance, EWVariance
+from skfolio.optimization import HierarchicalRiskParity
 from skfolio.prior import CharacteristicsFactorModel, EmpiricalPrior, ReturnDistribution
 from skfolio.prior._characteristics_factor_model import (
     _cap_weights_from_mask,
@@ -49,6 +52,62 @@ class WeightedEmpiricalPrior(EmpiricalPrior):
             sample_weight=sample_weight,
         )
         return self
+
+
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+@pytest.mark.parametrize("alias", [True, "external_activity"])
+@pytest.mark.parametrize(
+    "name,estimator",
+    [("idio_variance_estimator", EWVariance), ("idio_corr_estimator", EWCovariance)],
+)
+def test_external_activity_mask_cannot_override_panel(method, alias, name, estimator):
+    with config_context(enable_metadata_routing=True):
+        child = estimator()
+        if alias is not True:
+            child.set_fit_request(active_mask=alias)
+            child.set_partial_fit_request(active_mask=alias)
+        model = CharacteristicsFactorModel(factors=[], **{name: child})
+        metadata = {"active_mask" if alias is True else alias: np.ones((2, 3), bool)}
+        with pytest.raises(ValueError, match=f"{name} receives active_mask"):
+            getattr(model, method)(characteristics=None, **metadata)
+        assert not hasattr(model, "factor_model_")
+
+
+def test_residual_request_opt_out_preserves_panel_activity():
+    returns, exposures = _make_beta_data(n_obs=30)
+    active = np.ones(returns.shape, dtype=bool)
+    active[-3:, -1] = False
+    returns[~active] = np.nan
+    exposures[~active] = np.nan
+    panel, X = make_panel(
+        returns,
+        extra_fields={"beta": exposures},
+        market_cap=np.where(active, 1.0, np.nan),
+        active_mask=active,
+    )
+    with config_context(enable_metadata_routing=True):
+        prior = _make_beta_model(
+            idio_variance_estimator=EWVariance(
+                half_life=2, min_observations=1
+            ).set_partial_fit_request(active_mask=False),
+            idio_corr_estimator=EWCovariance(half_life=2, min_observations=1)
+            .set_fit_request(active_mask=False)
+            .set_partial_fit_request(active_mask=False),
+            idio_corr_threshold=0.1,
+        )
+        model = HierarchicalRiskParity(
+            prior_estimator=prior,
+            distance_estimator=CovarianceDistance(
+                EWCovariance(half_life=2, min_observations=1)
+            ),
+            distance_from_prior=False,
+        ).fit(X, characteristics=panel, active_mask=active)
+    assert model.weights_[-1] == 0
+    assert np.isnan(model.prior_estimator_.idio_variance_estimator_.variance_[-1])
+    assert np.isnan(model.prior_estimator_.idio_corr_estimator_.covariance_[-1]).all()
+    assert np.isnan(
+        model.distance_estimator_.covariance_estimator_.covariance_[-1]
+    ).all()
 
 
 class TestParameterValidation:

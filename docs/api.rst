@@ -302,12 +302,12 @@ Classes
     optimization.DistributionallyRobustCVaR
 
 
-.. _optimization_cluster_ref:
+.. _optimization_hierarchical_ref:
 
-:mod:`skfolio.optimization.cluster`: Clustering Optimization Estimators
-==========================================================================
+:mod:`skfolio.optimization.hierarchical`: Hierarchical Optimization Estimators
+==============================================================================
 
-.. automodule:: skfolio.optimization.cluster
+.. automodule:: skfolio.optimization.hierarchical
    :no-members:
    :no-inherited-members:
 
@@ -320,7 +320,6 @@ Classes
     :toctree: generated/
     :template: class.rst
 
-    optimization.BaseHierarchicalOptimization
     optimization.HierarchicalRiskParity
     optimization.HierarchicalEqualRiskContribution
     optimization.SchurComplementary
@@ -1127,6 +1126,7 @@ Functions
     stats.inverse_volatility_weights
     stats.safe_cholesky
     stats.is_cholesky_dec
+    stats.is_positive_semidefinite
     stats.minimize_relative_weight_deviation
     stats.multiply_by_inverse
     stats.n_bins_freedman

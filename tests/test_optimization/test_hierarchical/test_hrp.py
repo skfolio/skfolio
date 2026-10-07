@@ -7,7 +7,11 @@ from sklearn import clone, config_context
 from skfolio import ExtraRiskMeasure, RiskMeasure
 from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.moments import EWCovariance, ImpliedCovariance
-from skfolio.optimization import HierarchicalRiskParity
+from skfolio.optimization import (
+    HierarchicalEqualRiskContribution,
+    HierarchicalRiskParity,
+    SchurComplementary,
+)
 from skfolio.prior import EmpiricalPrior, EntropyPooling, TimeSeriesFactorModel
 from skfolio.typing import FloatArray
 
@@ -160,7 +164,9 @@ def test_transaction_costs(X, previous_weights, transaction_costs):
 def test_hrp_small_X(small_X):
     model = HierarchicalRiskParity()
     model.fit(small_X)
-    assert model.hierarchical_clustering_estimator_.n_clusters_ == 2
+    assert (
+        model.seriation_estimator_.hierarchical_clustering_estimator_.n_clusters_ == 2
+    )
 
 
 def test_metadata_routing(X_medium, implied_vol_medium):
@@ -512,21 +518,23 @@ def test_sample_weight(X, risk_measure, view_params, expected_weights):
     assert getattr(ref_ptf, risk_measure.value) > getattr(ptf, risk_measure.value)
 
 
-def test_hrp_invalid_risk_measure_type(small_X):
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
+def test_hrp_invalid_risk_measure_type(small_X, method):
     model = HierarchicalRiskParity().set_params(risk_measure="variance")
     with pytest.raises(
         TypeError, match="must be of type `RiskMeasure` or `ExtraRiskMeasure`"
     ):
-        model.fit(small_X)
+        getattr(model, method)(small_X)
 
 
+@pytest.mark.parametrize("method", ["fit", "partial_fit"])
 @pytest.mark.parametrize(
     "risk_measure", [ExtraRiskMeasure.SKEW, ExtraRiskMeasure.KURTOSIS]
 )
-def test_hrp_unsupported_risk_measure(small_X, risk_measure):
+def test_hrp_unsupported_risk_measure(small_X, risk_measure, method):
     model = HierarchicalRiskParity(risk_measure=risk_measure)
     with pytest.raises(ValueError, match="currently not supported in HRP"):
-        model.fit(small_X)
+        getattr(model, method)(small_X)
 
 
 def test_hrp_none_weight_bounds(small_X):
@@ -563,7 +571,12 @@ def test_hrp_weight_bounds_validation(small_X, params, error, match):
         model.fit(small_X)
 
 
-def test_hierarchical_clean_input_none():
-    model = HierarchicalRiskParity()
-    with pytest.raises(ValueError, match="Cannot convert None to array"):
-        model._clean_input(None, n_assets=3, fill_value=0, name="min_weights")
+@pytest.mark.parametrize(
+    "optimizer",
+    [HierarchicalRiskParity, HierarchicalEqualRiskContribution, SchurComplementary],
+)
+@pytest.mark.parametrize("bound", ["min_weights", "max_weights"])
+def test_hierarchical_finite_weight_bounds(small_X, optimizer, bound):
+    model = optimizer(**{bound: np.nan})
+    with pytest.raises(ValueError, match="Weight bounds must be finite"):
+        model.fit(small_X)

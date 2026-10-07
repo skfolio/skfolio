@@ -810,12 +810,10 @@ def test_mean_risk_with_ew_moments_and_active_mask_nan_assets():
             objective_function=ObjectiveFunction.MINIMIZE_RISK,
             risk_measure=RiskMeasure.VARIANCE,
             prior_estimator=EmpiricalPrior(
-                mu_estimator=EWMu(half_life=3, min_observations=1).set_fit_request(
-                    active_mask=True
-                ),
+                mu_estimator=EWMu(half_life=3, min_observations=1),
                 covariance_estimator=EWCovariance(
                     half_life=3, min_observations=1, nearest=False
-                ).set_fit_request(active_mask=True),
+                ),
             ),
         )
         model.fit(X, active_mask=active_mask)

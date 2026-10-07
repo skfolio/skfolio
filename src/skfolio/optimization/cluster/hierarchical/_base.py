@@ -12,7 +12,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-import numpy as np
 import sklearn.utils.metadata_routing as skm
 
 import skfolio.typing as skt
@@ -20,13 +19,20 @@ from skfolio.cluster import HierarchicalClustering
 from skfolio.distance import BaseDistance
 from skfolio.measures import ExtraRiskMeasure, RiskMeasure
 from skfolio.optimization._base import BaseOptimization
-from skfolio.portfolio import Portfolio
-from skfolio.prior import BasePrior, ReturnDistribution
+from skfolio.optimization.hierarchical._utils import (
+    _PortfolioRiskMixin,
+    _convert_weight_bounds,
+)
+from skfolio.prior import BasePrior
 from skfolio.typing import ArrayLike, FloatArray
 
 
-class BaseHierarchicalOptimization(BaseOptimization, ABC):
+# TODO remove BaseHierarchicalOptimization and its compatibility methods in v2.0
+class BaseHierarchicalOptimization(_PortfolioRiskMixin, BaseOptimization, ABC):
     r"""Base Hierarchical Clustering Optimization estimator.
+
+    Deprecated and scheduled for removal in version 2.0. Custom optimizers should
+    inherit from :class:`~skfolio.optimization.BaseOptimization`.
 
     Parameters
     ----------
@@ -292,98 +298,18 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         self.max_weights = max_weights
         self.transaction_costs = transaction_costs
         self.management_fees = management_fees
-        self._seriated = False
-
-    def _clean_input(
-        self,
-        value: skt.MultiInput | None,
-        n_assets: int,
-        fill_value: float,
-        name: str,
-        *,
-        apply_investable_mask: bool = True,
-    ) -> FloatArray:
-        """Clean inputs using the base implementation and broadcast scalars to arrays."""
-        if value is None:
-            raise ValueError("Cannot convert None to array")
-        value = super()._clean_input(
-            value,
-            n_assets=n_assets,
-            fill_value=fill_value,
-            name=name,
-            apply_investable_mask=apply_investable_mask,
-        )
-        if not isinstance(value, np.ndarray):
-            value = np.full(n_assets, value, dtype=float)
-        return value
-
-    def _risk(
-        self,
-        weights: FloatArray,
-        return_distribution: ReturnDistribution,
-    ) -> float:
-        """Compute the risk measure of a theoretical portfolio defined by the weights
-        vector.
-
-        Parameters
-        ----------
-        weights : ndarray of shape (n_assets,)
-           The vector of weights.
-
-        return_distribution : ReturnDistribution
-            The assets return distribution.
-
-        Returns
-        -------
-        risk: float
-            The risk measure of a theoretical portfolio defined by the weights
-            vector.
-        """
-        ptf = Portfolio(
-            X=return_distribution.returns,
-            sample_weight=return_distribution.sample_weight,
-            weights=weights,
-            transaction_costs=self.transaction_costs,
-            management_fees=self.management_fees,
-            previous_weights=self.previous_weights,
-        )
-        if self.risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.STANDARD_DEVIATION]:
-            risk = ptf.variance_from_assets(
-                assets_covariance=return_distribution.covariance
-            )
-            if self.risk_measure == RiskMeasure.STANDARD_DEVIATION:
-                risk = np.sqrt(risk)
-        else:
-            risk = getattr(ptf, str(self.risk_measure.value))
-        return risk
-
-    def _unitary_risks(self, return_distribution: ReturnDistribution) -> FloatArray:
-        """Compute the vector of risk measure for each single assets.
-
-        Parameters
-        ----------
-        return_distribution : ReturnDistribution
-            The asset returns distribution.
-
-        Returns
-        -------
-        values: ndarray of shape (n_assets,)
-            The risk measure of each asset.
-        """
-        n_assets = return_distribution.returns.shape[1]
-        risks = [
-            self._risk(weights=weights, return_distribution=return_distribution)
-            for weights in np.identity(n_assets)
-        ]
-        return np.array(risks)
 
     def _convert_weights_bounds(self, n_assets: int) -> tuple[FloatArray, FloatArray]:
-        """Convert the input weights lower and upper bounds to two 1D arrays.
+        """Convert weight bounds for the full input universe to two 1D arrays.
+
+        Online updates validate bounds for all input assets before updating the prior.
+        Allocation then uses the bounds for the currently investable assets.
+        Bound sums allow an absolute tolerance of 1e-8 around one.
 
         Parameters
         ----------
         n_assets : int
-            Number of assets.
+            Number of assets in the full input universe.
 
         Returns
         -------
@@ -392,47 +318,23 @@ class BaseHierarchicalOptimization(BaseOptimization, ABC):
         max_weights : ndarray of shape (n_assets,)
             The weight upper bound 1D array.
         """
-        if self.min_weights is None:
-            min_weights = np.zeros(n_assets)
-        else:
-            min_weights = self._clean_input(
+        return _convert_weight_bounds(
+            min_weights=self._clean_input(
                 self.min_weights,
                 n_assets=n_assets,
                 fill_value=0,
                 name="min_weights",
-            )
-            if np.any(min_weights < 0):
-                raise ValueError("`min_weights` must be strictly positive")
-            if min_weights.sum() >= 1.00001:
-                raise ValueError(
-                    f"Invalid `min_weights`: sum is {min_weights.sum():.4f}, "
-                    f"but it must be less than 1.0."
-                )
-
-        if self.max_weights is None:
-            max_weights = np.ones(n_assets)
-        else:
-            max_weights = self._clean_input(
+                apply_investable_mask=False,
+            ),
+            max_weights=self._clean_input(
                 self.max_weights,
                 n_assets=n_assets,
                 fill_value=1,
                 name="max_weights",
-            )
-            if np.any(max_weights > 1):
-                raise ValueError("`max_weights` must be less than or equal to 1.0")
-            if max_weights.sum() < 1:
-                raise ValueError(
-                    f"Invalid `max_weights`: sum is {max_weights.sum():.4f}, "
-                    f"but it must be at least 1.0."
-                )
-
-        if np.any(min_weights > max_weights):
-            raise NameError(
-                "Items of `min_weights` must be less than or equal to items of"
-                " `max_weights`"
-            )
-
-        return min_weights, max_weights
+                apply_investable_mask=False,
+            ),
+            n_assets=n_assets,
+        )
 
     def get_metadata_routing(self) -> skm.MetadataRouter:
         """Get metadata routing for this estimator.

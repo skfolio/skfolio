@@ -19,6 +19,9 @@ equal-weighted benchmark.
 
 Finally, we will use the :class:`~skfolio.model_selection.CombinatorialPurgedCV` to
 analyze the stability and distribution of both models.
+
+For online updates with HRP or Schur and a changing investment universe, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
 """
 
 # %%
@@ -45,6 +48,7 @@ from skfolio.optimization import (
     HierarchicalRiskParity,
 )
 from skfolio.preprocessing import prices_to_returns
+from skfolio.seriation import HierarchicalSeriation
 
 prices = load_ftse100_dataset()
 
@@ -57,7 +61,9 @@ X_train, X_test = train_test_split(X, test_size=0.33, shuffle=False)
 # We create two models: an HRP-CVaR and an HERC-CVaR:
 model_hrp = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
-    hierarchical_clustering_estimator=HierarchicalClustering(),
+    seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=HierarchicalClustering()
+    ),
 )
 
 model_herc = HierarchicalEqualRiskContribution(

@@ -16,7 +16,29 @@ from skfolio.distance import (
     PearsonDistance,
     SpearmanDistance,
 )
-from skfolio.moments import EWCovariance, GerberCovariance, ImpliedCovariance
+from skfolio.moments import GerberCovariance, ImpliedCovariance
+
+
+@pytest.mark.parametrize(
+    "estimator",
+    [PearsonDistance, KendallDistance, SpearmanDistance, CovarianceDistance],
+)
+@pytest.mark.parametrize(
+    "absolute,power",
+    [
+        (False, 0),
+        (True, 0),
+        (False, -1),
+        (True, -1),
+        (False, np.nan),
+        (True, np.inf),
+        (False, 0.5),
+    ],
+)
+def test_invalid_power(estimator, absolute, power):
+    X = np.random.default_rng(0).normal(size=(20, 3))
+    with pytest.raises(ValueError, match="power"):
+        estimator(absolute=absolute, power=power).fit(X)
 
 
 class TestPearsonDistance:
@@ -157,37 +179,6 @@ class TestCovarianceDistance:
 
         assert distance.covariance_estimator_.r2_scores_.shape == (20,)
         assert distance.distance_.shape == (20, 20)
-
-
-class TestCovarianceDistancePartialFit:
-    def test_partial_fit_matches_fit(self, X):
-        """Chunked partial_fit gives the same distance as a single fit."""
-        fitted = CovarianceDistance(
-            covariance_estimator=EWCovariance(half_life=40)
-        ).fit(X)
-        online = CovarianceDistance(covariance_estimator=EWCovariance(half_life=40))
-        n = len(X)
-        for start, stop in [(0, n // 2), (n // 2, n)]:
-            online.partial_fit(X.iloc[start:stop])
-        np.testing.assert_allclose(online.distance_, fitted.distance_, atol=1e-12)
-        np.testing.assert_allclose(
-            online.codependence_, fitted.codependence_, atol=1e-12
-        )
-        np.testing.assert_array_equal(online.feature_names_in_, X.columns)
-
-    def test_fit_resets_state(self, X):
-        online = CovarianceDistance(covariance_estimator=EWCovariance(half_life=40))
-        online.partial_fit(X.iloc[:100])
-        online.fit(X.iloc[100:])
-        expected = CovarianceDistance(
-            covariance_estimator=EWCovariance(half_life=40)
-        ).fit(X.iloc[100:])
-        np.testing.assert_allclose(online.distance_, expected.distance_)
-
-    def test_default_covariance_raises(self, X):
-        distance = CovarianceDistance()
-        with pytest.raises(TypeError, match="GerberCovariance"):
-            distance.partial_fit(X)
 
 
 class TestDistanceCorrelation:
