@@ -638,6 +638,9 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+    # Two assets have no second-order gap. Use the two singleton leaves.
+    if distance.shape[0] == 2:
+        return 2
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
     max_clusters = min(n, max(8, round(np.sqrt(n))))

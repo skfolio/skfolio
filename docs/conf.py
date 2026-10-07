@@ -270,6 +270,10 @@ USER_GUIDE_DESCRIPTIONS = {
         "Prior estimators provide the return distribution used by portfolio "
         "optimization models."
     ),
+    "user_guide/seriation": (
+        "Seriation estimators order assets from distance matrices using hierarchical "
+        "clustering or spectral coordinates."
+    ),
     "user_guide/uncertainty_set": (
         "Uncertainty-set estimators model estimation uncertainty in expected returns "
         "or covariance for worst-case portfolio optimization."
