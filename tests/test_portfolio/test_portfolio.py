@@ -757,7 +757,14 @@ def test_rolling_measure_min_periods_all_measures(weighted, compounded):
         result = portfolio.rolling_measure(measure, window=5, min_periods=2)
         assert result.iloc[:2].isna().all()
         for end, ref in references.items():
-            np.testing.assert_allclose(result.iloc[end], ref.get_measure(measure))
+            # Equivalent weight normalizations can differ by roundoff near zero.
+            np.testing.assert_allclose(
+                result.iloc[end],
+                ref.get_measure(measure),
+                rtol=1e-12,
+                atol=1e-15,
+                err_msg=f"{measure.value}, window ending at {end}",
+            )
         assert result.iloc[2:].notna().all()
 
 
