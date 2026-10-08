@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.7.1 (2026-10-08)
+
+### Bug Fixes
+
+- Correct weighted downside risk and prevent VaR from skipping rare losses
+  ([#410](https://github.com/skfolio/skfolio/pull/410),
+  [`ec062b6`](https://github.com/skfolio/skfolio/commit/ec062b63305a207f5dd2d821fe83eab54bde6f46))
+
+- **portfolio**: Correct weighted rolling measures and NaN handling
+  ([#404](https://github.com/skfolio/skfolio/pull/404),
+  [`40091bb`](https://github.com/skfolio/skfolio/commit/40091bbd08c13d4c0ea7d52a6e7087285b971229))
+
+### Documentation
+
+- Update parameter grids in the HRP vs HERC tutorial
+  ([#408](https://github.com/skfolio/skfolio/pull/408),
+  [`0d7c8f4`](https://github.com/skfolio/skfolio/commit/0d7c8f404459aad7bc700c422afae51ff5d7ac2f))
+
+
 ## v1.7.0 (2026-10-07)
 
 ### Features
