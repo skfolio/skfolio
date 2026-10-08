@@ -900,7 +900,11 @@ class BasePortfolio:
         return dominate(self.fitness[idx], other.fitness[idx])
 
     def rolling_measure(
-        self, measure: skt.Measure = RatioMeasure.SHARPE_RATIO, window: int = 30
+        self,
+        measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
+        window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> pd.Series:
         """Compute the measure over a rolling window.
 
@@ -912,6 +916,12 @@ class BasePortfolio:
         window : int, default=30
             The positive window size in observations. The default value is `30`.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         series : pandas Series
@@ -919,13 +929,23 @@ class BasePortfolio:
 
         Notes
         -----
-        Incomplete windows and windows containing non-finite returns produce NaN.
+        Windows with fewer than `min_periods` non-missing returns or any infinite
+        return produce NaN. Zero-weight observations count toward `min_periods`.
         Sample weights are sliced with the returns and normalized within each
         window by measures that support weighting. Measures without weight support
         retain their unweighted definition. Ratios use the weighted mean in the
         numerator, even when their risk measure is unweighted.
         """
         _validate_positive_integer(window, "window")
+        window = int(window)
+        if min_periods is None:
+            min_periods = window
+        _validate_positive_integer(min_periods, "min_periods")
+        if min_periods > window:
+            raise ValueError(
+                "min_periods must be less than or equal to window, "
+                f"got min_periods={min_periods!r} and window={window!r}"
+            )
 
         if measure.is_annualized:
             non_annualized_measure = measure.non_annualized_measure
@@ -970,30 +990,28 @@ class BasePortfolio:
                 mt.mean(returns, sample_weight=sample_weight) - self.risk_free_rate
             ) / value
 
+        returns = np.asarray(self.returns, dtype=float)
         if weights is not None:
-            # Match pandas' float64 windows in the unweighted path.
-            returns = np.asarray(self.returns, dtype=float)
             weights = np.asarray(weights, dtype=float)
-            rolling_values = np.arange(len(returns), dtype=float)
-            # Preserve pandas' full-window eligibility when rolling over positions.
-            rolling_values[~np.isfinite(returns)] = np.nan
 
-            def rolling_func(positions: FloatArray) -> float:
-                """Compute the measure on the window made of the given positions."""
-                window_slice = slice(int(positions[0]), int(positions[-1]) + 1)
-                return window_func(
-                    returns[window_slice], sample_weight=weights[window_slice]
-                )
-
-        else:
-            rolling_values = self.returns
-            rolling_func = window_func
-
-        rolling = (
-            pd.Series(rolling_values, index=self.observations)
-            .rolling(window=window)
-            .apply(rolling_func, raw=True)
+        ends = np.arange(1, len(returns) + 1)
+        starts = np.maximum(0, ends - window)
+        # Infinite returns invalidate a window regardless of min_periods.
+        valid_counts = np.r_[0, np.cumsum(np.isfinite(returns))]
+        infinite_counts = np.r_[0, np.cumsum(np.isinf(returns))]
+        eligible = (valid_counts[ends] - valid_counts[starts] >= min_periods) & (
+            infinite_counts[ends] == infinite_counts[starts]
         )
+        values = np.full(len(returns), np.nan)
+        for start, end in zip(
+            starts[eligible].tolist(), ends[eligible].tolist(), strict=True
+        ):
+            window_slice = slice(start, end)
+            values[end - 1] = window_func(
+                returns[window_slice],
+                sample_weight=None if weights is None else weights[window_slice],
+            )
+        rolling = pd.Series(values, index=self.observations)
         if measure.is_annualized:
             if measure in [
                 PerfMeasure.ANNUALIZED_MEAN,
@@ -1224,6 +1242,8 @@ class BasePortfolio:
         self,
         measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> go.Figure:
         """Plot the measure over a rolling window.
 
@@ -1235,12 +1255,20 @@ class BasePortfolio:
         window : int, default=30
            The window size.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        rolling = self.rolling_measure(measure=measure, window=window)
+        rolling = self.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
         rolling.name = f"{measure} {window} observations"
         fig = rolling.plot(backend="plotly")
         fig.add_hline(
