@@ -592,6 +592,10 @@ def value_at_risk(
     CVaR is the mean of the :math:`k` largest losses. For example, with 100
     observations and `beta=0.95`, the VaR is the sixth largest loss.
 
+    At a boundary between two loss values, VaR selects the lower loss. Rounding
+    differences in the confidence level and in probabilities are treated as ties
+    at that boundary.
+
     NaN handling:
     NaN returns are excluded from each column's calculation. Remaining sample
     weights are rescaled to sum to one. The result is NaN if no observations
@@ -1395,10 +1399,15 @@ def _tail_risk(
         cumulative = np.cumsum(probs)
         tail_mass = (1.0 - beta) * cumulative[-1]
         if not conditional:
-            # The tolerance absorbs the floating-point error of `tail_mass` and of
-            # the cumulative sum, which grows with the number of observations.
+            # Allow for rounding in beta and in the accumulated weights.
+            # Scale the weight tolerance by the tail mass: even a tiny probability
+            # can cover the whole tail when beta is close to one.
+            beta_tolerance = 0.5 * np.spacing(beta) * cumulative[-1]
+            weight_tolerance = 4 * eps * len(values) * tail_mass
             i = np.searchsorted(
-                cumulative, tail_mass + 4 * eps * len(values), side="right"
+                cumulative,
+                tail_mass + (beta_tolerance + weight_tolerance),
+                side="right",
             )
             return -values[min(i, len(values) - 1)]
         i = np.searchsorted(cumulative, tail_mass)

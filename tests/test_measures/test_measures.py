@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
+
 import numpy as np
 import pytest
 
@@ -925,6 +927,78 @@ def test_value_at_risk_sample_weight_tail_boundary(first_weight, expected):
     sample_weight = np.array([first_weight, 1 - first_weight])
     np.testing.assert_almost_equal(
         skm.value_at_risk(returns, beta=0.9375, sample_weight=sample_weight), expected
+    )
+
+
+@pytest.mark.parametrize("scale", [1e-10, 1.0, 1e10])
+@pytest.mark.parametrize("split", [1, 10, 1000])
+def test_value_at_risk_tiny_tail_probability(scale, split):
+    # This mass is small in absolute terms but covers the entire requested tail.
+    returns = np.r_[-np.ones(split), 0.0]
+    weights = np.r_[np.full(split, 5e-16 / split), 1 - 5e-16] * scale
+    assert (
+        skm.value_at_risk(returns, beta=np.nextafter(1.0, 0.0), sample_weight=weights)
+        == 1.0
+    )
+
+
+@pytest.mark.parametrize("beta", [0.9, 0.9999])
+@pytest.mark.parametrize("offset,expected", [(-1e-12, 0.0), (0.0, 0.0), (1e-12, 1.0)])
+@pytest.mark.parametrize("scale", [1e-10, 1.0, 1e10])
+def test_value_at_risk_equivalent_distributions(beta, offset, expected, scale):
+    n_observations = round(1 / (1 - beta))
+    expanded = np.r_[-1.0, np.zeros(n_observations - 1)]
+    aggregated = np.array([-1.0, 0.0])
+    assert skm.value_at_risk(expanded, beta=beta + offset) == expected
+    assert (
+        skm.value_at_risk(
+            expanded, beta=beta + offset, sample_weight=np.full(n_observations, scale)
+        )
+        == expected
+    )
+    assert (
+        skm.value_at_risk(
+            aggregated,
+            beta=beta + offset,
+            sample_weight=np.array([1.0, n_observations - 1]) * scale,
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize("beta", [0.9375, 1 - 2**-40, np.nextafter(1.0, 0.0)])
+@pytest.mark.parametrize("mass_ratio,expected", [(0.25, 0.0), (1.0, 0.0), (1.75, 1.0)])
+def test_value_at_risk_representable_tail_boundaries(beta, mass_ratio, expected):
+    tail_probability = 1 - beta
+    probability = mass_ratio * tail_probability
+    assert (
+        skm.value_at_risk(
+            np.array([-1.0, 0.0]),
+            beta=beta,
+            sample_weight=np.array([probability, 1 - probability]),
+        )
+        == expected
+    )
+
+
+@pytest.mark.parametrize("beta", [0.0, 0.5, 0.95, 0.9999, np.nextafter(1.0, 0.0), 1.0])
+def test_value_at_risk_exact_probability_reference(beta):
+    # These weights are represented exactly in binary. The interior confidence
+    # levels stay outside the rounding tolerance of any quantile boundary.
+    losses = np.array([5.0, 4.0, 3.0, 2.0, 1.0])
+    weights = np.array([2**-54, 3 * 2**-54, 0.125, 0.25, 0.625 - 2**-52])
+    cumulative = Fraction(0)
+    for loss, weight in zip(losses[::-1], weights[::-1], strict=True):
+        cumulative += Fraction(float(weight))
+        if cumulative >= Fraction(float(beta)):
+            expected = loss
+            break
+
+    # Missing returns and unsupported extreme losses must not enter the CDF.
+    returns = np.r_[-losses, np.nan, -100.0]
+    sample_weight = np.r_[weights, 10.0, 0.0]
+    assert (
+        skm.value_at_risk(returns, beta=beta, sample_weight=sample_weight) == expected
     )
 
 
