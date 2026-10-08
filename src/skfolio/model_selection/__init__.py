@@ -15,6 +15,10 @@ from skfolio.model_selection._covariance_forecast_evaluation import (
     covariance_forecast_evaluation,
 )
 from skfolio.model_selection._multiple_randomized_cv import MultipleRandomizedCV
+from skfolio.model_selection._multiple_testing import (
+    MultipleTestingResult,
+    multiple_testing_hurdle,
+)
 from skfolio.model_selection._online import (
     OnlineGridSearch,
     OnlineRandomizedSearch,
@@ -31,11 +35,13 @@ __all__ = [
     "CovarianceForecastComparison",
     "CovarianceForecastEvaluation",
     "MultipleRandomizedCV",
+    "MultipleTestingResult",
     "OnlineGridSearch",
     "OnlineRandomizedSearch",
     "WalkForward",
     "covariance_forecast_evaluation",
     "cross_val_predict",
+    "multiple_testing_hurdle",
     "online_covariance_forecast_evaluation",
     "online_predict",
     "online_score",
