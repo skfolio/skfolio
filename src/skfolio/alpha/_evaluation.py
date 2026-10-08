@@ -1572,21 +1572,27 @@ def _n_overlap_lags(horizon: int, evaluation_step: int) -> int:
 def _newey_west_t_stat(arr: FloatArray, n_lags: int) -> float:
     """t-statistic of the mean using a Bartlett-kernel (Newey-West) variance.
 
+    `arr` is indexed by evaluation date. Non-finite values are kept in place as
+    zero-weight gaps, so lag `k` only pairs dates that are exactly `k` evaluation
+    steps apart and pairs across a missing date are dropped rather than shifted.
+
     With `n_lags=0` this is the usual `mean / (std / sqrt(n))` with `ddof=1`.
     """
-    n = arr.size
+    valid = np.isfinite(arr)
+    n = int(np.sum(valid))
     if n < 2:
         return np.nan
-    centered = arr - np.mean(arr)
+    mean = float(np.mean(arr[valid]))
+    centered = np.where(valid, arr - mean, 0.0)
     long_run_var = float(np.dot(centered, centered)) / (n - 1)
-    for lag in range(1, min(n_lags, n - 1) + 1):
+    for lag in range(1, min(n_lags, arr.size - 1) + 1):
         weight = 1.0 - lag / (n_lags + 1)
         long_run_var += (
             2.0 * weight * float(np.dot(centered[lag:], centered[:-lag])) / (n - 1)
         )
     if not np.isfinite(long_run_var) or long_run_var <= 0:
         return np.nan
-    return float(np.mean(arr) / np.sqrt(long_run_var / n))
+    return float(mean / np.sqrt(long_run_var / n))
 
 
 def _correlation_stats(
@@ -1605,7 +1611,7 @@ def _correlation_stats(
         std = float(np.nanstd(arr, ddof=1))
     ratio = safe_divide(mean, std, fill_value=np.nan)
     if n_lags > 0:
-        t_stat = _newey_west_t_stat(arr[valid], n_lags)
+        t_stat = _newey_west_t_stat(arr, n_lags)
     else:
         t_stat = ratio * np.sqrt(n_observations)
     return {
