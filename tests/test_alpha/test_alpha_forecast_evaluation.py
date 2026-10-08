@@ -1039,6 +1039,42 @@ class TestOverlappingWindowTStat:
         # sqrt(10) is the factor predicted by full overlap.
         assert iid / hac == pytest.approx(np.sqrt(10), rel=0.3)
 
+    @staticmethod
+    def _bartlett_t_stat(arr, n_lags):
+        """Reference: Bartlett long-run variance from explicit autocovariances."""
+        valid = np.isfinite(arr)
+        n = int(valid.sum())
+        mean = arr[valid].mean()
+        centered = np.where(valid, arr - mean, 0.0)
+        gamma = [
+            np.dot(centered[k:], centered[: arr.size - k]) / (n - 1)
+            for k in range(n_lags + 1)
+        ]
+        var = gamma[0] + 2 * sum(
+            (1 - k / (n_lags + 1)) * gamma[k] for k in range(1, n_lags + 1)
+        )
+        return mean / np.sqrt(var / n)
+
+    def test_overlap_matches_bartlett_reference(self):
+        rng = np.random.default_rng(1)
+        noise = rng.normal(size=500)
+        arr = np.convolve(noise, np.ones(10) / 10, mode="valid") + 0.1
+        for n_lags in (1, 4, 9):
+            stats = _correlation_stats(arr, ratio_name="icir", n_lags=n_lags)
+            assert stats["t_stat"] == pytest.approx(self._bartlett_t_stat(arr, n_lags))
+
+    def test_overlap_keeps_missing_dates_as_gaps(self):
+        rng = np.random.default_rng(2)
+        arr = np.convolve(rng.normal(size=300), np.ones(5) / 5, mode="valid") + 0.1
+        arr[[40, 41, 150]] = np.nan
+        stats = _correlation_stats(arr, ratio_name="icir", n_lags=4)
+        assert stats["t_stat"] == pytest.approx(self._bartlett_t_stat(arr, 4))
+        # Dropping the NaN dates instead would pair dates more than k steps apart.
+        compacted = _correlation_stats(
+            arr[np.isfinite(arr)], ratio_name="icir", n_lags=4
+        )
+        assert stats["t_stat"] != pytest.approx(compacted["t_stat"], rel=1e-9)
+
     def test_overlap_ignores_non_finite_values(self):
         arr = np.array([0.1, np.nan, 0.2, 0.15, 0.05, 0.12, 0.08])
         stats = _correlation_stats(arr, ratio_name="icir", n_lags=2)
