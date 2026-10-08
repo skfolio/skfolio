@@ -609,7 +609,11 @@ class Population(list):
         return df
 
     def rolling_measure(
-        self, measure: skt.Measure = RatioMeasure.SHARPE_RATIO, window: int = 30
+        self,
+        measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
+        window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> pd.DataFrame:
         """Compute the measure over a rolling window for each portfolio in the
          population.
@@ -622,6 +626,12 @@ class Population(list):
         window : int, default=30
             The window size. The default value is `30` observations.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         dataframe : pandas DataFrame
@@ -630,7 +640,11 @@ class Population(list):
         rolling_measures = []
         names = []
         for ptf in self:
-            rolling_measures.append(ptf.rolling_measure(measure=measure, window=window))
+            rolling_measures.append(
+                ptf.rolling_measure(
+                    measure=measure, window=window, min_periods=min_periods
+                )
+            )
             names.append(_ptf_name_with_tag(ptf))
         df = pd.concat(rolling_measures, axis=1)
         df.columns = deduplicate_names(names)
@@ -1192,6 +1206,8 @@ class Population(list):
         self,
         measure: skt.Measure = RatioMeasure.SHARPE_RATIO,
         window: int = 30,
+        *,
+        min_periods: int | None = None,
     ) -> go.Figure:
         """Plot the measure over a rolling window for each portfolio in the population.
 
@@ -1203,12 +1219,20 @@ class Population(list):
         window : int, default=30
            The window size.
 
+        min_periods : int, optional
+            Minimum number of non-missing returns required in a window. Must be
+            between `1` and `window`. The default (`None`) uses `window`. A smaller
+            value evaluates leading partial windows and windows with missing returns.
+            Windows containing an infinite return produce NaN.
+
         Returns
         -------
         plot : Figure
             Returns the plot Figure object
         """
-        df = self.rolling_measure(measure=measure, window=window)
+        df = self.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
         fig = df.plot(backend="plotly")
         max_val = np.max(df)
         min_val = np.min(df)

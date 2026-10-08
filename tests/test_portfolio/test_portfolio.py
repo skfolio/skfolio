@@ -561,7 +561,8 @@ def test_portfolio_delete_attr(portfolio):
         delattr(portfolio, "dummy")
 
 
-def test_portfolio_rolling_measure(X, weights):
+@pytest.mark.parametrize("min_periods", [None, 30])
+def test_portfolio_rolling_measure(X, weights, min_periods):
     window = 30
     portfolio = Portfolio(X=X[:50], weights=weights, annualization_factor=252)
     ref = Portfolio(
@@ -569,8 +570,288 @@ def test_portfolio_rolling_measure(X, weights):
     )
 
     for measure in _MEASURES:
-        res = portfolio.rolling_measure(measure=measure, window=30)
+        res = portfolio.rolling_measure(
+            measure=measure, window=30, min_periods=min_periods
+        )
         np.testing.assert_almost_equal(res.iloc[-1], getattr(ref, measure.value))
+
+
+@pytest.mark.parametrize("min_periods", [None, 30])
+def test_portfolio_rolling_measure_sample_weight(X, weights, min_periods):
+    # Each rolling value must equal the measure of a portfolio built on that window
+    # with its slice of the weights, renormalized. Checking the first, a middle and
+    # the last window pins down the slice boundaries.
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(0).random(n)
+    sample_weight /= sample_weight.sum()
+    portfolio = Portfolio(
+        X=X[:n],
+        weights=weights,
+        annualization_factor=252,
+        sample_weight=sample_weight,
+    )
+    references = {}
+    for end in [29, 40, 49]:
+        start = end - window + 1
+        window_weight = sample_weight[start : end + 1]
+        references[end] = Portfolio(
+            X=X.iloc[start : end + 1],
+            weights=weights,
+            annualization_factor=252,
+            sample_weight=window_weight / window_weight.sum(),
+        )
+
+    for measure in _MEASURES:
+        res = portfolio.rolling_measure(
+            measure=measure, window=window, min_periods=min_periods
+        )
+        for end, ref in references.items():
+            np.testing.assert_almost_equal(res.iloc[end], getattr(ref, measure.value))
+
+
+@pytest.mark.parametrize(
+    "measure", [PerfMeasure.MEAN, RiskMeasure.STANDARD_DEVIATION, RiskMeasure.CVAR]
+)
+def test_portfolio_rolling_measure_sample_weight_is_used(X, weights, measure):
+    # With clearly non-uniform weights, a weight-aware measure must differ from the
+    # unweighted result, otherwise the weights are being ignored.
+    window = 30
+    n = 50
+    sample_weight = np.random.default_rng(1).random(n) ** 4
+    sample_weight /= sample_weight.sum()
+    kwargs = {"X": X[:n], "weights": weights, "annualization_factor": 252}
+    weighted = Portfolio(sample_weight=sample_weight, **kwargs)
+    unweighted = Portfolio(**kwargs)
+    res_weighted = weighted.rolling_measure(measure=measure, window=window)
+    res_unweighted = unweighted.rolling_measure(measure=measure, window=window)
+    assert not np.allclose(res_weighted.dropna(), res_unweighted.dropna())
+
+
+@pytest.mark.parametrize("missing", [np.nan, np.inf, -np.inf])
+@pytest.mark.parametrize("min_periods", [None, 2])
+@pytest.mark.parametrize("zero_missing_weight", [False, True])
+@pytest.mark.parametrize(
+    "measure",
+    [
+        PerfMeasure.MEAN,
+        RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+        RiskMeasure.CDAR,
+        RatioMeasure.CALMAR_RATIO,
+    ],
+)
+def test_rolling_measure_sample_weight_nonfinite_returns(
+    missing, min_periods, zero_missing_weight, measure
+):
+    returns = np.array([0.1, missing, -0.2, 0.3, -0.4, 0.5])
+    # Duplicate labels must not affect positional alignment after a skipped window.
+    observations = np.array([2, 2, 5, 7, 7, 11])
+    kwargs = {"returns": returns, "observations": observations}
+    unweighted = BasePortfolio(**kwargs)
+    sample_weight = np.ones(6)
+    if zero_missing_weight:
+        sample_weight[1] = 0
+    weighted = BasePortfolio(
+        sample_weight=sample_weight / sample_weight.sum(), **kwargs
+    )
+
+    # Windows containing infinities must not reach the drawdown calculation.
+    with np.errstate(invalid="raise"):
+        expected = unweighted.rolling_measure(
+            measure, window=3, min_periods=min_periods
+        )
+        result = weighted.rolling_measure(measure, window=3, min_periods=min_periods)
+
+    first_valid = 2 if np.isnan(missing) and min_periods == 2 else 4
+    np.testing.assert_array_equal(result.notna(), np.arange(6) >= first_valid)
+    pd.testing.assert_series_equal(result, expected)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("window", [0, -1, 1.5, True])
+def test_rolling_measure_invalid_window(weighted, window):
+    portfolio = BasePortfolio(
+        returns=[0.1, -0.2, 0.3],
+        observations=[0, 1, 2],
+        sample_weight=np.full(3, 1 / 3) if weighted else None,
+    )
+    with pytest.raises(ValueError, match="window must be a positive integer"):
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=window)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("window", [np.int64(1), 3, np.uint32(3), np.uint64(3), 5])
+@pytest.mark.parametrize("min_periods", [None, np.int64(1), np.uint64(1)])
+def test_rolling_measure_window_boundaries(weighted, window, min_periods):
+    returns = np.array([0.1, -0.2, 0.3])
+    sample_weight = np.array([0.2, 0.3, 0.5]) if weighted else None
+    portfolio = BasePortfolio(
+        returns=returns, observations=[4, 4, 9], sample_weight=sample_weight
+    )
+    expected = pd.Series(np.nan, index=portfolio.observations)
+    for end in range(window if min_periods is None else min_periods, len(returns) + 1):
+        start = max(0, end - int(window))
+        expected.iloc[end - 1] = np.average(
+            returns[start:end],
+            weights=sample_weight[start:end] if weighted else None,
+        )
+    pd.testing.assert_series_equal(
+        portfolio.rolling_measure(
+            PerfMeasure.MEAN, window=window, min_periods=min_periods
+        ),
+        expected,
+    )
+
+
+@pytest.mark.parametrize("min_periods", [0, -1, 4, 1.5, 2.0, True, np.bool_(False)])
+def test_rolling_measure_invalid_min_periods(min_periods):
+    portfolio = BasePortfolio(returns=[0.1, -0.2, 0.3], observations=[0, 1, 2])
+    with pytest.raises(ValueError, match="min_periods must be"):
+        portfolio.rolling_measure(window=3, min_periods=min_periods)
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize(
+    "returns", [[0.01, np.nan, 0.03], [np.nan, 0.01, 0.03], [0.01, 0.03, np.nan]]
+)
+def test_rolling_measure_min_periods_mean(returns, weighted):
+    returns = np.array(returns)
+    weights = np.array([0.2, 0.3, 0.5]) if weighted else None
+    portfolio = BasePortfolio(returns, [0, 1, 2], sample_weight=weights)
+    expected = np.full(3, np.nan)
+    for end in range(2, 4):
+        valid = ~np.isnan(returns[:end])
+        if valid.sum() >= 2:
+            expected[end - 1] = np.average(
+                returns[:end][valid],
+                weights=weights[:end][valid] if weighted else None,
+            )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=2), expected
+    )
+
+
+@pytest.mark.parametrize("weighted", [False, True])
+@pytest.mark.parametrize("compounded", [False, True])
+def test_rolling_measure_min_periods_all_measures(weighted, compounded):
+    returns = np.array([np.nan, -0.02, 0.01, np.nan, -0.03, 0.02, np.nan, 0.03])
+    weights = np.arange(1, 9, dtype=float) / 36 if weighted else None
+    returns.setflags(write=False)
+    if weights is not None:
+        weights.setflags(write=False)
+    kwargs = {"compounded": compounded, "risk_free_rate": 0.001, "cvar_beta": 0.6}
+    portfolio = BasePortfolio(returns, np.arange(8), sample_weight=weights, **kwargs)
+    references = {}
+    for end in range(3, 9):
+        start = max(0, end - 5)
+        window_weights = None if weights is None else weights[start:end]
+        if window_weights is not None:
+            window_weights = window_weights / window_weights.sum()
+        references[end - 1] = BasePortfolio(
+            returns[start:end],
+            portfolio.observations[start:end],
+            sample_weight=window_weights,
+            **kwargs,
+        )
+    for measure in _MEASURES:
+        result = portfolio.rolling_measure(measure, window=5, min_periods=2)
+        assert result.iloc[:2].isna().all()
+        for end, ref in references.items():
+            # Equivalent weight normalizations can differ by roundoff near zero.
+            np.testing.assert_allclose(
+                result.iloc[end],
+                ref.get_measure(measure),
+                rtol=1e-12,
+                atol=1e-15,
+                err_msg=f"{measure.value}, window ending at {end}",
+            )
+        assert result.iloc[2:].notna().all()
+
+
+@pytest.mark.parametrize("returns", [[], [np.nan] * 4])
+def test_rolling_measure_min_periods_no_observations(returns):
+    portfolio = BasePortfolio(returns, np.arange(len(returns)))
+    pd.testing.assert_series_equal(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=1),
+        pd.Series(np.nan, index=portfolio.observations),
+    )
+
+
+def test_rolling_measure_min_periods_zero_weights():
+    portfolio = BasePortfolio(
+        returns=[-0.1, np.nan, 0.3, -0.2, 0.4],
+        observations=np.arange(5),
+        sample_weight=[0, 0, 0, 0.25, 0.75],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3, min_periods=2),
+        [np.nan, np.nan, np.nan, -0.2, 0.25],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(RiskMeasure.VARIANCE, window=3, min_periods=2),
+        [np.nan, np.nan, np.nan, np.nan, 0.18],
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(RiskMeasure.MAX_DRAWDOWN, window=3, min_periods=2),
+        [np.nan, np.nan, 0.1, 0.2, 0.2],
+    )
+
+
+def test_rolling_measure_zero_weight_windows():
+    sample_weight = np.array([0.0, 0.0, 0.0, 0.2, 0.3, 0.5])
+    sample_weight.setflags(write=False)
+    portfolio = BasePortfolio(
+        returns=[-0.2, 0.1, -0.4, 0.3, -0.1, 0.2],
+        observations=np.arange(6),
+        sample_weight=sample_weight,
+    )
+    np.testing.assert_allclose(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3),
+        [np.nan, np.nan, np.nan, 0.3, 0.06, 0.13],
+    )
+    # A full-path extremum stays defined even when the local weight sum is zero.
+    drawdowns = portfolio.rolling_measure(RiskMeasure.MAX_DRAWDOWN, window=3)
+    assert drawdowns.iloc[2] == pytest.approx(0.5)
+    np.testing.assert_array_equal(sample_weight, [0.0, 0.0, 0.0, 0.2, 0.3, 0.5])
+
+
+def test_rolling_measure_uses_realized_returns_and_parameters():
+    X = np.array(
+        [[0.2, -0.1], [0.1, 0.4], [-0.3, 0.1], [0.05, -0.2], [0.1, 0.03], [-0.2, 0.3]]
+    )
+    sample_weight = np.arange(1, 7, dtype=float) / 21
+    portfolio = Portfolio(
+        X,
+        weights=[0.6, 0.4],
+        weight_drift=True,
+        sample_weight=sample_weight,
+        compounded=True,
+        risk_free_rate=0.003,
+        annualization_factor=12,
+        cvar_beta=0.6,
+    )
+    results = {
+        measure: portfolio.rolling_measure(measure, window=3)
+        for measure in [
+            RatioMeasure.ANNUALIZED_SHARPE_RATIO,
+            RatioMeasure.CALMAR_RATIO,
+            RiskMeasure.CVAR,
+        ]
+    }
+    for end in range(3, len(X) + 1):
+        returns = portfolio.returns[end - 3 : end]
+        weights = sample_weight[end - 3 : end]
+        excess_mean = np.average(returns, weights=weights) - 0.003
+        std = np.sqrt(np.cov(returns, aweights=weights))
+        wealth = np.r_[1.0, np.cumprod(1 + returns)]
+        max_drawdown = -np.min(wealth / np.maximum.accumulate(wealth) - 1)
+        expected = {
+            RatioMeasure.ANNUALIZED_SHARPE_RATIO: excess_mean / std * np.sqrt(12),
+            RatioMeasure.CALMAR_RATIO: excess_mean / max_drawdown,
+            RiskMeasure.CVAR: mt.cvar(returns, beta=0.6, sample_weight=weights),
+        }
+        for measure, value in expected.items():
+            assert results[measure].iloc[end - 1] == pytest.approx(value)
 
 
 def test_portfolio_expected_returns_from_assets(X, weights):
