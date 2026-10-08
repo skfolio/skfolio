@@ -248,12 +248,21 @@ class AlphaForecastEvaluation:
 
         Returns one row for Spearman IC and one row for Pearson IC. The `icir`
         column is :math:`\bar{IC} / \sigma_{IC}`. The `t_stat` column is the
-        date-level t-statistic of the mean IC.
+        date-level t-statistic of the mean IC. When `evaluation_step` is smaller
+        than `holding_period`, forward windows of consecutive evaluation dates
+        overlap and their ICs are serially correlated, so the t-statistic uses a
+        Newey-West variance with `ceil(holding_period / evaluation_step) - 1`
+        lags.
         """
+        n_lags = _n_overlap_lags(self.holding_period, self.evaluation_step)
         return pd.DataFrame(
             {
-                "spearman_ic": _correlation_stats(self.spearman_ic, ratio_name="icir"),
-                "pearson_ic": _correlation_stats(self.pearson_ic, ratio_name="icir"),
+                "spearman_ic": _correlation_stats(
+                    self.spearman_ic, ratio_name="icir", n_lags=n_lags
+                ),
+                "pearson_ic": _correlation_stats(
+                    self.pearson_ic, ratio_name="icir", n_lags=n_lags
+                ),
             }
         ).T
 
@@ -948,6 +957,7 @@ def alpha_forecast_evaluation(
         min_count=min_count,
     )
     holding_period_diagnostics = _compute_holding_period_diagnostics(
+        evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
@@ -960,6 +970,7 @@ def alpha_forecast_evaluation(
         min_count=min_count,
     )
     decay = _compute_decay(
+        evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
@@ -1361,6 +1372,7 @@ def _calibration_curve(alpha: FloatArray, target: FloatArray) -> pd.DataFrame:
 
 def _compute_holding_period_diagnostics(
     *,
+    evaluation_step: int,
     alpha: FloatArray,
     X: AssetPanel | AssetPanelView,
     target: str,
@@ -1382,6 +1394,7 @@ def _compute_holding_period_diagnostics(
         for period in range(1, n_forward_periods + 1)
     )
     return _compute_forward_window_diagnostics(
+        evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
@@ -1396,6 +1409,7 @@ def _compute_holding_period_diagnostics(
 
 def _compute_decay(
     *,
+    evaluation_step: int,
     alpha: FloatArray,
     X: AssetPanel | AssetPanelView,
     target: str,
@@ -1417,6 +1431,7 @@ def _compute_decay(
         for period in range(1, n_forward_periods + 1)
     )
     return _compute_forward_window_diagnostics(
+        evaluation_step=evaluation_step,
         alpha=alpha,
         X=X,
         target=target,
@@ -1431,6 +1446,7 @@ def _compute_decay(
 
 def _compute_forward_window_diagnostics(
     *,
+    evaluation_step: int,
     alpha: FloatArray,
     X: AssetPanel | AssetPanelView,
     target: str,
@@ -1463,7 +1479,7 @@ def _compute_forward_window_diagnostics(
         ]
         return pd.DataFrame.from_records(records).set_index(index_name)
 
-    for (index_value, _, _), target_forward in zip(windows, targets, strict=True):
+    for (index_value, horizon, _), target_forward in zip(windows, targets, strict=True):
         diagnostics = _compute_diagnostics(
             alpha=alpha[common_eval_idx],
             target=target_forward[common_eval_idx],
@@ -1477,6 +1493,7 @@ def _compute_forward_window_diagnostics(
                 index_name=index_name,
                 index_value=index_value,
                 diagnostics=diagnostics,
+                n_lags=_n_overlap_lags(horizon, evaluation_step),
             )
         )
     return pd.DataFrame.from_records(records).set_index(index_name)
@@ -1487,6 +1504,7 @@ def _forward_window_record(
     index_name: str,
     index_value: int,
     diagnostics: dict[str, Any] | None = None,
+    n_lags: int = 0,
 ) -> dict[str, float]:
     """Return one summary record for a forward target window."""
     record = {index_name: index_value}
@@ -1508,8 +1526,12 @@ def _forward_window_record(
         )
         return record
 
-    spearman_ic = _correlation_stats(diagnostics["spearman_ic"], ratio_name="icir")
-    pearson_ic = _correlation_stats(diagnostics["pearson_ic"], ratio_name="icir")
+    spearman_ic = _correlation_stats(
+        diagnostics["spearman_ic"], ratio_name="icir", n_lags=n_lags
+    )
+    pearson_ic = _correlation_stats(
+        diagnostics["pearson_ic"], ratio_name="icir", n_lags=n_lags
+    )
     rank_weighted_portfolio = _return_stats(
         diagnostics["rank_weighted_portfolio_return"]
     )
@@ -1537,8 +1559,44 @@ def _forward_window_record(
     return record
 
 
-def _correlation_stats(arr: FloatArray, *, ratio_name: str) -> dict[str, float]:
-    """Compute summary statistics for correlation values."""
+def _n_overlap_lags(horizon: int, evaluation_step: int) -> int:
+    """Return the number of serially overlapping evaluation dates.
+
+    Two evaluation dates `evaluation_step` apart share forward-return days when
+    `horizon > evaluation_step`. Their ICs are then serially correlated up to this
+    many lags.
+    """
+    return max(int(np.ceil(horizon / evaluation_step)) - 1, 0)
+
+
+def _newey_west_t_stat(arr: FloatArray, n_lags: int) -> float:
+    """t-statistic of the mean using a Bartlett-kernel (Newey-West) variance.
+
+    With `n_lags=0` this is the usual `mean / (std / sqrt(n))` with `ddof=1`.
+    """
+    n = arr.size
+    if n < 2:
+        return np.nan
+    centered = arr - np.mean(arr)
+    long_run_var = float(np.dot(centered, centered)) / (n - 1)
+    for lag in range(1, min(n_lags, n - 1) + 1):
+        weight = 1.0 - lag / (n_lags + 1)
+        long_run_var += (
+            2.0 * weight * float(np.dot(centered[lag:], centered[:-lag])) / (n - 1)
+        )
+    if not np.isfinite(long_run_var) or long_run_var <= 0:
+        return np.nan
+    return float(np.mean(arr) / np.sqrt(long_run_var / n))
+
+
+def _correlation_stats(
+    arr: FloatArray, *, ratio_name: str, n_lags: int = 0
+) -> dict[str, float]:
+    """Compute summary statistics for correlation values.
+
+    `n_lags` is the number of serially overlapping dates. When positive, the
+    t-statistic uses a Newey-West variance instead of assuming independent dates.
+    """
     valid = np.isfinite(arr)
     n_observations = int(np.sum(valid))
     with warnings.catch_warnings():
@@ -1546,11 +1604,15 @@ def _correlation_stats(arr: FloatArray, *, ratio_name: str) -> dict[str, float]:
         mean = float(np.nanmean(arr))
         std = float(np.nanstd(arr, ddof=1))
     ratio = safe_divide(mean, std, fill_value=np.nan)
+    if n_lags > 0:
+        t_stat = _newey_west_t_stat(arr[valid], n_lags)
+    else:
+        t_stat = ratio * np.sqrt(n_observations)
     return {
         "mean": mean,
         "std": std,
         ratio_name: ratio,
-        "t_stat": ratio * np.sqrt(n_observations),
+        "t_stat": t_stat,
         "hit_rate": _hit_rate(arr),
     }
 
