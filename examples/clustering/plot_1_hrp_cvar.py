@@ -28,6 +28,10 @@ which is used to update the cluster weight.
     than the single-linkage method.
 
 In this example, we will use the CVaR risk measure.
+
+For online updates with late listings, delistings, holidays and asset warm-up, see
+:ref:`sphx_glr_auto_examples_online_learning_plot_online_schur_changing_universe.py`.
+That example uses Schur, and the same online setup applies to HRP.
 """
 
 # %%
@@ -46,6 +50,7 @@ from skfolio.distance import KendallDistance
 from skfolio.optimization import EqualWeighted, HierarchicalRiskParity
 from skfolio.preprocessing import prices_to_returns
 from skfolio.prior import TimeSeriesFactorModel
+from skfolio.seriation import HierarchicalSeriation
 
 prices = load_sp500_dataset()
 factor_prices = load_factors_dataset()
@@ -81,7 +86,9 @@ ptf1.plot_contribution(measure=RiskMeasure.CVAR)
 # To analyze the clusters structure, we plot the dendrogram.
 # The blue lines represent distinct clusters composed of a single asset.
 # The remaining colors represent clusters of more than one asset:
-model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
+model1.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=False
+)
 
 # %%
 # The horizontal axis represents the assets. The links between clusters are represented
@@ -92,7 +99,7 @@ model1.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=False)
 # %%
 #  When `heatmap` is set to True, the heatmap of the reordered distance matrix is
 #  displayed below the dendrogram and clusters are outlined with yellow squares:
-fig = model1.hierarchical_clustering_estimator_.plot_dendrogram()
+fig = model1.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram()
 show(fig)
 
 # %%
@@ -112,14 +119,18 @@ show(fig)
 # To show this effect, let's create a second model with the single-linkage method:
 model2 = HierarchicalRiskParity(
     risk_measure=RiskMeasure.CVAR,
-    hierarchical_clustering_estimator=HierarchicalClustering(
-        linkage_method=LinkageMethod.SINGLE,
+    seriation_estimator=HierarchicalSeriation(
+        hierarchical_clustering_estimator=HierarchicalClustering(
+            linkage_method=LinkageMethod.SINGLE,
+        ),
     ),
     portfolio_params=dict(name="HRP-CVaR-Single-Pearson"),
 )
 model2.fit(X_train)
 
-model2.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model2.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # We can see that the clustering has been greatly affected by the change of the linkage
@@ -142,7 +153,9 @@ model3 = HierarchicalRiskParity(
 )
 model3.fit(X_train)
 
-model3.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model3.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # Prior Estimator
@@ -160,7 +173,9 @@ model4 = HierarchicalRiskParity(
 )
 model4.fit(X_train, factors=factors_train)
 
-model4.hierarchical_clustering_estimator_.plot_dendrogram(heatmap=True)
+model4.seriation_estimator_.hierarchical_clustering_estimator_.plot_dendrogram(
+    heatmap=True
+)
 
 # %%
 # To compare the models, we use an equal weighted benchmark using

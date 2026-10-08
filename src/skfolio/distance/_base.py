@@ -9,6 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import sklearn.base as skb
+import sklearn.utils as sku
 
 from skfolio.typing import ArrayLike, FloatArray
 
@@ -28,7 +29,7 @@ class BaseDistance(skb.BaseEstimator, ABC):
         Codependence matrix.
 
     distance_ : ndarray of shape (n_assets, n_assets)
-        Distance matrix.
+        Distance matrix with rows and columns in the input asset order.
     """
 
     codependence_: FloatArray
@@ -43,8 +44,9 @@ class BaseDistance(skb.BaseEstimator, ABC):
 
         Parameters
         ----------
-        X : array-like of shape (n_observations, n_assets)
-            Price returns of the assets.
+        X : array-like of shape (n_observations, n_assets) or (n_assets, n_assets)
+            Price returns of the assets, or a covariance matrix when
+            `requires_covariance_input` is `True`.
 
         y : Ignored
             Not used, present for API consistency by convention.
@@ -55,3 +57,20 @@ class BaseDistance(skb.BaseEstimator, ABC):
             Fitted estimator.
         """
         ...
+
+    @property
+    def requires_covariance_input(self) -> bool:
+        """Whether `X` must contain a covariance matrix.
+
+        Return-consuming distances use the default value of `False`. Subclasses
+        consuming covariance override this property. Its value must be available
+        before fitting and reflect parameter changes made through `set_params`.
+        The `pairwise` input tag is derived from this property.
+        """
+        return False
+
+    def __sklearn_tags__(self) -> sku.Tags:
+        """Declare the input representation required by the distance estimator."""
+        tags = super().__sklearn_tags__()
+        tags.input_tags.pairwise = self.requires_covariance_input
+        return tags

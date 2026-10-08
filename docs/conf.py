@@ -189,6 +189,9 @@ EXAMPLE_DESCRIPTIONS = {
     "auto_examples/online_learning/plot_3_online_portfolio_optimization_evaluation": (
         "Online evaluation of portfolio optimization"
     ),
+    "auto_examples/online_learning/plot_online_schur_changing_universe": (
+        "Online Schur allocation with late listings, delistings, holidays, and asset warm-up"
+    ),
 }
 
 USER_GUIDE_DESCRIPTIONS = {
@@ -269,6 +272,10 @@ USER_GUIDE_DESCRIPTIONS = {
     "user_guide/prior": (
         "Prior estimators provide the return distribution used by portfolio "
         "optimization models."
+    ),
+    "user_guide/seriation": (
+        "Seriation estimators order assets from distance matrices using hierarchical "
+        "clustering or spectral coordinates."
     ),
     "user_guide/uncertainty_set": (
         "Uncertainty-set estimators model estimation uncertainty in expected returns "
@@ -643,6 +650,7 @@ TUTORIAL_ORDER = {
         "plot_1_online_covariance_forecast_evaluation.py",
         "plot_2_online_hyperparameter_tuning.py",
         "plot_3_online_portfolio_optimization_evaluation.py",
+        "plot_online_schur_changing_universe.py",
     ),
     "pre_selection": (
         "plot_1_drop_correlated.py",

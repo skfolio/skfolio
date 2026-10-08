@@ -26,6 +26,7 @@ from skfolio._constants import (
     _MANAGEMENT_FEES,
     _TRANSACTION_COSTS,
 )
+from skfolio.exceptions import ConvexOptimizationError, OptimizationError
 from skfolio.measures import RiskMeasure, owa_gmd_weights
 from skfolio.optimization._base import BaseOptimization
 from skfolio.prior import BasePrior, ReturnDistribution
@@ -517,21 +518,23 @@ class ConvexOptimization(BaseOptimization, ABC):
 
     fallback : BaseOptimization | "previous_weights" | list[BaseOptimization | "previous_weights"], optional
         Fallback estimator or a list of estimators to try, in order, when the primary
-        optimization raises during `fit`. Alternatively, use `"previous_weights"`
-        (alone or in a list) to fall back to the estimator's `previous_weights`.
-        When a fallback succeeds, its fitted `weights_` are copied back to the primary
+        optimization raises during `fit`. Alternatively, use `"previous_weights"` (alone
+        or in a list) to fall back to the estimator's `previous_weights`. When a
+        fallback succeeds, its fitted `weights_` are copied back to the primary
         estimator so that `fit` still returns the original instance. For traceability,
         `fallback_` stores the successful estimator (or the string `"previous_weights"`)
-        and `fallback_chain_` stores each attempt with the associated outcome.
+        and `fallback_chain_` stores each attempt with the associated outcome. See
+        :ref:`optimization_fallbacks`.
 
     raise_on_failure : bool, default=True
-        Controls error handling when fitting fails.
-        If True, any failure during `fit` is raised immediately, no `weights_` are
-        set and subsequent calls to `predict` will raise a `NotFittedError`.
-        If False, errors are not raised; instead, a warning is emitted, `weights_`
-        is set to `None` and subsequent calls to `predict` will return a
-        `FailedPortfolio`. When fallbacks are specified, this behavior applies only
-        after all fallbacks have been exhausted.
+        Controls error handling when fitting fails and no fallback succeeds. If True,
+        the estimator raises the final error. If False, the estimator emits a warning
+        and sets `weights_` to None, so subsequent calls to `predict` return a
+        :class:`~skfolio.portfolio.FailedPortfolio`. During `fit`, `raise_on_failure`
+        applies to any fitting error, including errors raised by the prior estimator.
+        See :ref:`optimization_failure_handling`. When computing multiple portfolios,
+        setting `raise_on_failure=False` preserves successful allocations and records
+        each failure separately. See :ref:`optimization_multiple_results`.
 
     Attributes
     ----------
@@ -566,9 +569,11 @@ class ConvexOptimization(BaseOptimization, ABC):
         a valid solution, otherwise the stringified error message. For successful
         fits without any fallback, this is `None`.
 
-    error_ : str | list[str] | None
-        Captured error message(s) when `fit` fails. For multi-portfolio outputs
-        (`weights_` is 2D), this is a list aligned with portfolios.
+    error_ : str | list[str | None] | None
+        For a single portfolio, this is the recorded error message, or None after a
+        successful allocation or fallback. For multiple portfolios, it is a list with
+        one entry per row of `weights_`, containing an error message for each failed
+        portfolio and None for each successful portfolio.
 
     Notes
     -----
@@ -1283,18 +1288,18 @@ class ConvexOptimization(BaseOptimization, ABC):
         w : cvxpy Variable
             The CVXPY Variable representing assets weights.
 
+        factor : cvxpy Variable | cvxpy Constant
+            CVXPY Variable or Constant used for RatioMeasure optimization problems.
+
+        parameters_values : list[tuple[cvxpy Parameter, float | ndarray]], optional
+            CVXPY parameters and their values. Array values define one optimization per
+            element and must be nonempty with the same length. Scalars are reused for
+            every optimization.
+
         expressions : dict[str, cvxpy Expression] | None, optional
-            Dictionary of CVXPY Expressions from which values are retrieved and saved
-            in `expression_values_`. It is used to save additional information about
-            the problem.
-
-        parameters_values: list[tuple[cvxpy Parameter, float | ndarray]], optional
-            A list of tuple of CVXPY Parameter and their values.
-            If The values are ndarray instead of float, the optimization is solved for
-            each element in the array.
-
-        factor: cvxpy Variable | cvxpy Constant
-           CVXPY Variable or Constant used for RatioMeasure optimization problems.
+            Dictionary of CVXPY Expressions from which values are retrieved and saved in
+            `problem_values_`. It is used to save additional information about the
+            problem.
         """
         if self.solver not in INSTALLED_SOLVERS:
             raise ValueError(f"The solver {self.solver} is not installed.")
@@ -1312,11 +1317,11 @@ class ConvexOptimization(BaseOptimization, ABC):
             for parameter, values in parameters_values
         ]
         sizes = [len(values) for _, values in values_by_parameter if values.ndim != 0]
-        if not np.all(sizes):
-            raise ValueError(
-                "All list elements from `parameters_values` should have same length"
-            )
         n_optimizations = sizes[0] if sizes else 1
+        if n_optimizations == 0 or any(size != n_optimizations for size in sizes):
+            raise ValueError(
+                "Array values in `parameters_values` must be nonempty and have the same length."
+            )
         # Scalar parameter values will be used in each optimization, therefore we
         # broadcast them.
         values_by_parameter = [
@@ -1327,68 +1332,74 @@ class ConvexOptimization(BaseOptimization, ABC):
             for parameter, values in values_by_parameter
         ]
 
-        if n_optimizations == 1:
-            for parameter, values in values_by_parameter:
-                parameter.value = values[0]
+        self.problem_values_ = None
+        try:
+            if n_optimizations == 1:
+                for parameter, values in values_by_parameter:
+                    parameter.value = values[0]
 
-            weights, self.problem_values_ = _solve(
-                w=w,
-                factor=factor,
-                expressions=expressions,
-                problem=problem,
-                solver=self.solver,
-                solver_params=self._solver_params,
-                risk_measure=self.risk_measure,
-                scale_objective=self._scale_objective,
-            )
-            self.weights_ = self._expand_weights_to_full_universe(weights=weights)
-        else:
-            all_weights = []
-            all_problem_values = []
-            all_errors = []
-            with warnings.catch_warnings():
-                warnings.simplefilter("once", UserWarning)
-                for i in range(n_optimizations):
-                    for parameter, values in values_by_parameter:
-                        parameter.value = values[i]
-
-                    try:
-                        weights, problem_values = _solve(
-                            w=w,
-                            factor=factor,
-                            expressions=expressions,
-                            problem=problem,
-                            solver=self.solver,
-                            solver_params=self._solver_params,
-                            risk_measure=self.risk_measure,
-                            scale_objective=self._scale_objective,
-                        )
-                        error = None
-                    except cp.SolverError as solver_error:
-                        if self.raise_on_failure:
-                            raise
-                        error = str(solver_error)
-                        warnings.warn(error, stacklevel=2)
-                        problem_values = None
-                        weights = np.full(w.shape, np.nan, dtype=float)
-
-                    all_problem_values.append(problem_values)
-                    all_weights.append(weights)
-                    all_errors.append(error)
-
-            all_weights = np.array(all_weights, dtype=float)
-            if np.isnan(all_weights).all():
-                raise cp.SolverError(
-                    f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                weights, self.problem_values_ = _solve(
+                    w=w,
+                    factor=factor,
+                    expressions=expressions,
+                    problem=problem,
+                    solver=self.solver,
+                    solver_params=self._solver_params,
+                    risk_measure=self.risk_measure,
+                    scale_objective=self._scale_objective,
                 )
-            self.weights_ = self._expand_weights_to_full_universe(weights=all_weights)
-            self.problem_values_ = all_problem_values
-            self.error_ = all_errors
+                self.weights_ = self._expand_weights_to_full_universe(weights=weights)
+            else:
+                all_weights = []
+                all_problem_values = []
+                all_errors = []
+                with warnings.catch_warnings():
+                    warnings.simplefilter("once", UserWarning)
+                    for i in range(n_optimizations):
+                        for parameter, values in values_by_parameter:
+                            parameter.value = values[i]
 
-        if self.save_problem:
-            self.problem_ = problem
+                        try:
+                            weights, problem_values = _solve(
+                                w=w,
+                                factor=factor,
+                                expressions=expressions,
+                                problem=problem,
+                                solver=self.solver,
+                                solver_params=self._solver_params,
+                                risk_measure=self.risk_measure,
+                                scale_objective=self._scale_objective,
+                            )
+                            error = None
+                        except OptimizationError as optimization_error:
+                            if self.raise_on_failure:
+                                raise
+                            error = str(optimization_error)
+                            warnings.warn(error, stacklevel=2)
+                            problem_values = None
+                            weights = np.full(w.shape, np.nan, dtype=float)
 
-        self._clear_models_cache()
+                        all_problem_values.append(problem_values)
+                        all_weights.append(weights)
+                        all_errors.append(error)
+
+                all_weights = np.array(all_weights, dtype=float)
+                failed = np.array([error is not None for error in all_errors])
+                if failed.all():
+                    raise ConvexOptimizationError(
+                        f"All {n_optimizations} optimizations failed, with last optimization error {all_errors[-1]}"
+                    )
+                self.weights_ = self._expand_weights_to_full_universe(
+                    weights=all_weights
+                )
+                # Failed portfolios remain all-NaN, including unavailable assets.
+                self.weights_[failed] = np.nan
+                self.problem_values_ = all_problem_values
+                self.error_ = all_errors
+        finally:
+            if self.save_problem:
+                self.problem_ = problem
+            self._clear_models_cache()
 
     @cache_method("_cvx_cache")
     def _cvx_mu_uncertainty_set(
@@ -2674,7 +2685,7 @@ def _solve(
     Weights and expression values are divided by the homogenization `factor`, the
     objective by `scale_objective`, and the variance and semi-variance risks once more
     by `factor`. Warns when the solution is not optimal and raises a
-    `cvxpy.SolverError` when the solver fails.
+    `ConvexOptimizationError` when the solve fails or produces non-finite weights.
     """
     try:
         # We suppress cvxpy warning as it is redundant with our warning
@@ -2685,30 +2696,7 @@ def _solve(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-        weights = w.value / factor.value
-        problem_values = {
-            name: expression.value / factor.value  # ty: ignore[unsupported-operator]
-            if name != "factor"
-            else expression.value
-            for name, expression in expressions.items()
-        }
-        problem_values["objective"] = problem.value / scale_objective.value
-
-        if (
-            risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
-            and "risk" in problem_values
-        ):
-            problem_values["risk"] /= factor.value  # ty: ignore[unsupported-operator]
-
-        weights = np.array(weights, dtype=float)
-        if not problem.status == cp.OPTIMAL:
-            warnings.warn(
-                "Solution may be inaccurate. Try changing the solver params or the"
-                " scale. For more details, set `solver_params=dict(verbose=True)`",
-                stacklevel=2,
-            )
-        return weights, problem_values  # ty: ignore[invalid-return-type]
-    except (cp.SolverError, sla.ArpackNoConvergence):
+    except (cp.SolverError, sla.ArpackNoConvergence) as solver_error:
         params_string = " ".join([f"{p.value:0g}" for p in problem.parameters()])
         if len(params_string) != 0:
             params_string = f" with parameters {params_string}"
@@ -2717,4 +2705,30 @@ def _solve(
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
         )
-        raise cp.SolverError(error) from None
+        raise ConvexOptimizationError(error) from solver_error
+
+    weights = w.value / factor.value
+    if not np.isfinite(weights).all():
+        raise ConvexOptimizationError("Allocation produced non-finite weights.")
+    problem_values = {
+        name: expression.value / factor.value  # ty: ignore[unsupported-operator]
+        if name != "factor"
+        else expression.value
+        for name, expression in expressions.items()
+    }
+    problem_values["objective"] = problem.value / scale_objective.value
+
+    if (
+        risk_measure in [RiskMeasure.VARIANCE, RiskMeasure.SEMI_VARIANCE]
+        and "risk" in problem_values
+    ):
+        problem_values["risk"] /= factor.value  # ty: ignore[unsupported-operator]
+
+    weights = np.array(weights, dtype=float)
+    if not problem.status == cp.OPTIMAL:
+        warnings.warn(
+            "Solution may be inaccurate. Try changing the solver params or the"
+            " scale. For more details, set `solver_params=dict(verbose=True)`",
+            stacklevel=2,
+        )
+    return weights, problem_values  # ty: ignore[invalid-return-type]

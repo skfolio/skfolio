@@ -197,6 +197,7 @@ Available models
     * Ledoit-Wolf
     * Oracle Approximating Shrinkage
     * Shrunk Covariance
+    * Geodesic Shrinkage Covariance
     * Graphical Lasso CV
     * Implied Covariance
 
@@ -212,6 +213,10 @@ Available models
     * Covariance Distance (based on any of the above covariance estimators)
     * Distance Correlation
     * Variation of Information
+
+* Seriation Estimator:
+    * Hierarchical Seriation
+    * Spectral Seriation
 
 * Distribution Estimator:
     * Univariate:

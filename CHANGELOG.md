@@ -2,6 +2,50 @@
 
 <!-- version list -->
 
+## v1.7.0 (2026-10-07)
+
+### Features
+
+- **optimization**: Support online learning for HRP and Schur Complementary
+  ([#342](https://github.com/skfolio/skfolio/pull/342),
+  [`21e68be`](https://github.com/skfolio/skfolio/commit/21e68beda7d1f11914d333c9aec3478227dd947e))
+
+### Additional Release Information
+
+- **optimization**: HRP, HERC and Schur no longer inherit from BaseHierarchicalOptimization.
+  Existing custom subclasses remain supported through the deprecation period. Legacy public imports
+  and the HRP/Schur hierarchical_clustering_estimator parameter are deprecated for removal in 2.0.
+
+- CovarianceDistance rejects invalid covariance matrices.
+
+
+## v1.6.0 (2026-10-07)
+
+### Features
+
+- **seriation**: Add hierarchical and spectral seriation estimators
+  ([#407](https://github.com/skfolio/skfolio/pull/407),
+  [`3eeb7dc`](https://github.com/skfolio/skfolio/commit/3eeb7dc845d5af7c60103c17c0603ddb85d65562))
+
+
+## v1.5.0 (2026-10-07)
+
+### Features
+
+- **optimization**: Unify failure handling and fallback behavior
+  ([#406](https://github.com/skfolio/skfolio/pull/406),
+  [`3322df2`](https://github.com/skfolio/skfolio/commit/3322df27595590c6acec5d3f7cf6500e6dff296d))
+
+
+## v1.4.12 (2026-10-06)
+
+### Bug Fixes
+
+- **optimization**: Improve Schur gamma search accuracy and robustness
+  ([#405](https://github.com/skfolio/skfolio/pull/405),
+  [`99fa21e`](https://github.com/skfolio/skfolio/commit/99fa21ed764ccc6d252d461a7e8e43a5864fdb8f))
+
+
 ## v1.4.11 (2026-10-03)
 
 ### Bug Fixes

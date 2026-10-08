@@ -19,6 +19,28 @@ from skfolio.distance import (
 from skfolio.moments import GerberCovariance, ImpliedCovariance
 
 
+@pytest.mark.parametrize(
+    "estimator",
+    [PearsonDistance, KendallDistance, SpearmanDistance, CovarianceDistance],
+)
+@pytest.mark.parametrize(
+    "absolute,power",
+    [
+        (False, 0),
+        (True, 0),
+        (False, -1),
+        (True, -1),
+        (False, np.nan),
+        (True, np.inf),
+        (False, 0.5),
+    ],
+)
+def test_invalid_power(estimator, absolute, power):
+    X = np.random.default_rng(0).normal(size=(20, 3))
+    with pytest.raises(ValueError, match="power"):
+        estimator(absolute=absolute, power=power).fit(X)
+
+
 class TestPearsonDistance:
     def test_pearson_distance(self, X):
         distance = PearsonDistance()

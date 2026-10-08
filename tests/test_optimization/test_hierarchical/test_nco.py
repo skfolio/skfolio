@@ -12,8 +12,8 @@ from skfolio.cluster import HierarchicalClustering, LinkageMethod
 from skfolio.model_selection import CombinatorialPurgedCV
 from skfolio.moments import ImpliedCovariance
 from skfolio.optimization import EqualWeighted
-from skfolio.optimization.cluster import NestedClustersOptimization
 from skfolio.optimization.convex import MeanRisk, ObjectiveFunction
+from skfolio.optimization.hierarchical import NestedClustersOptimization
 from skfolio.population import Population
 from skfolio.prior import EmpiricalPrior
 

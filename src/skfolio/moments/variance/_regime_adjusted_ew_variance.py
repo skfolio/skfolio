@@ -9,6 +9,7 @@ from __future__ import annotations
 import numbers
 import warnings
 from collections import deque
+from typing import ClassVar
 
 import numpy as np
 import scipy.special as scs
@@ -96,6 +97,9 @@ class RegimeAdjustedEWVariance(BaseVariance):
     cross-sectional average of standardized squared returns: noisy or illiquid
     assets with unreliable variance estimates can inflate or deflate the
     statistic, distorting the regime multiplier applied to all variances.
+
+    With metadata routing enabled, `active_mask` is requested by default for
+    `fit` and `partial_fit`. See :ref:`default_metadata_requests`.
 
     Parameters
     ----------
@@ -274,6 +278,10 @@ class RegimeAdjustedEWVariance(BaseVariance):
     """
 
     regime_multiplier_: float
+
+    # Route universe membership to this estimator by default.
+    __metadata_request__fit: ClassVar[dict[str, bool]] = {"active_mask": True}
+    __metadata_request__partial_fit: ClassVar[dict[str, bool]] = {"active_mask": True}
 
     def __init__(
         self,

@@ -680,8 +680,8 @@ def _get_liquidation_turnover_and_cost(
     Raises
     ------
     ValueError
-        If an excluded position's weight is NaN or a transaction cost array cannot
-        provide rates for all liquidated assets.
+        If an excluded position's weight is non-finite or a transaction cost array
+        cannot provide rates for all liquidated assets.
     """
     if assets_names is not None:
         asset_ids: AnyArray = assets_names
@@ -715,8 +715,8 @@ def _get_liquidation_turnover_and_cost(
     turnover = float(sum(liquidated.values()))
     if not liquidated:
         return turnover, 0.0
-    if np.isnan(turnover):
-        raise ValueError("`previous_weights` contains NaN")
+    if not np.isfinite(turnover):
+        raise ValueError("previous_weights must be finite.")
     if transaction_costs is None:
         return turnover, 0.0
     if isinstance(transaction_costs, dict):
@@ -1285,7 +1285,10 @@ def _filter_supported_params(
     -------
     filtered : dict
         Keyword arguments whose names are accepted by the estimator method and whose
-        values are not `None`.
+        values are not `None`. Empty if the estimator does not implement the method.
     """
-    params = signature(getattr(estimator, method)).parameters
+    method_caller = getattr(estimator, method, None)
+    if not callable(method_caller):
+        return {}
+    params = signature(method_caller).parameters
     return {k: v for k, v in kwargs.items() if k in params and v is not None}

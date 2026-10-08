@@ -52,6 +52,7 @@ __all__ = [
     "inverse_multiply",
     "inverse_volatility_weights",
     "is_cholesky_dec",
+    "is_positive_semidefinite",
     "minimize_relative_weight_deviation",
     "multiply_by_inverse",
     "n_bins_freedman",
@@ -324,6 +325,29 @@ def is_positive_definite(x: FloatArray) -> bool:
         True if the matrix is positive definite, False otherwise.
     """
     return bool(np.all(np.linalg.eigvals(x) > 0))
+
+
+def is_positive_semidefinite(x: FloatArray, *, atol: float = 0.0) -> bool:
+    """Return True if the matrix is positive semidefinite within a tolerance.
+
+    The caller must provide a finite, symmetric matrix.
+
+    Parameters
+    ----------
+    x : ndarray of shape (n, n)
+        Matrix to check.
+
+    atol : float, default=0.0
+        Nonnegative absolute tolerance. Eigenvalues greater than or equal to
+        `-atol` are accepted.
+
+    Returns
+    -------
+    value : bool
+        True if all eigenvalues are at least `-atol`, False otherwise.
+        Singular matrices are accepted.
+    """
+    return bool(np.all(np.linalg.eigvalsh(x) >= -atol))
 
 
 def assert_is_square(x: FloatArray) -> None:
@@ -638,6 +662,9 @@ def compute_optimal_n_clusters(distance: FloatArray, linkage_matrix: FloatArray)
     .. [1] "Application of two-order difference to gap statistic".
         Yue, Wang & Wei (2009)
     """
+    # Two assets have no second-order gap. Use the two singleton leaves.
+    if distance.shape[0] == 2:
+        return 2
     cut_tree = sch.cut_tree(linkage_matrix)
     n = cut_tree.shape[1]
     max_clusters = min(n, max(8, round(np.sqrt(n))))
@@ -734,12 +761,12 @@ def minimize_relative_weight_deviation(
         if w.value is None:
             raise cp.SolverError("No solution found")
 
-    except (cp.SolverError, scl.ArpackNoConvergence):
+    except (cp.SolverError, scl.ArpackNoConvergence) as error:
         raise cp.SolverError(
             f"Solver '{solver}' failed. Try another"
             " solver, or solve with solver_params=dict(verbose=True) for more"
             " information"
-        ) from None
+        ) from error
 
     return w.value
 
