@@ -41,6 +41,7 @@ from skfolio.utils.equations import equations_to_matrix, group_cardinalities_to_
 from skfolio.utils.tools import (
     AutoEnum,
     _get_liquidation_turnover_and_cost,
+    _validate_positive_real,
     cache_method,
     input_to_array,
 )
@@ -2006,9 +2007,13 @@ class ConvexOptimization(BaseOptimization, ABC):
         if return_distribution.sample_weight is None:
             risk = cp.sum_squares(v) / (n_observations - 1)
         else:
-            risk = cp.sum_squares(
-                cp.multiply(np.sqrt(return_distribution.sample_weight), v)
+            sample_weight = return_distribution.sample_weight
+            # Match the sample correction used by the numerical semi-variance.
+            correction = 1 - sample_weight @ sample_weight
+            _validate_positive_real(
+                float(correction), "semi-variance correction 1 - sum(sample_weight**2)"
             )
+            risk = cp.sum_squares(cp.multiply(np.sqrt(sample_weight), v)) / correction
 
         constraints = [
             ptf_min_acceptable_return * self._scale_constraints
@@ -2052,8 +2057,14 @@ class ConvexOptimization(BaseOptimization, ABC):
         if return_distribution.sample_weight is None:
             risk = cp.norm(v, 2) / np.sqrt(n_observations - 1)
         else:
-            risk = cp.norm(
-                cp.multiply(np.sqrt(return_distribution.sample_weight), v), 2
+            sample_weight = return_distribution.sample_weight
+            # Match the sample correction used by the numerical semi-deviation.
+            correction = 1 - sample_weight @ sample_weight
+            _validate_positive_real(
+                float(correction), "semi-deviation correction 1 - sum(sample_weight**2)"
+            )
+            risk = cp.norm(cp.multiply(np.sqrt(sample_weight), v), 2) / np.sqrt(
+                correction
             )
 
         constraints = [
