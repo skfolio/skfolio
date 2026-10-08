@@ -41,8 +41,8 @@ from __future__ import annotations
 
 import warnings
 from abc import abstractmethod
-from collections.abc import Callable
 from functools import partial
+from types import FunctionType
 from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
@@ -63,6 +63,7 @@ from skfolio.measures import (
 from skfolio.typing import FloatArray, IntArray
 from skfolio.utils.sorting import dominate
 from skfolio.utils.tools import (
+    _validate_positive_integer,
     args_names,
     cached_property_slots,
     format_measure,
@@ -909,111 +910,90 @@ class BasePortfolio:
             The measure. The default measure is the Sharpe Ratio.
 
         window : int, default=30
-            The window size. The default value is `30` observations.
+            The positive window size in observations. The default value is `30`.
 
         Returns
         -------
         series : pandas Series
             The rolling measure Series.
+
+        Notes
+        -----
+        Incomplete windows and windows containing non-finite returns produce NaN.
+        Sample weights are sliced with the returns and normalized within each
+        window by measures that support weighting. Measures without weight support
+        retain their unweighted definition. Ratios use the weighted mean in the
+        numerator, even when their risk measure is unweighted.
         """
+        _validate_positive_integer(window, "window")
+
         if measure.is_annualized:
             non_annualized_measure = measure.non_annualized_measure
         else:
             non_annualized_measure = measure
 
-        if measure.is_perf:
-            perf_measure = non_annualized_measure
-            risk_measure = None
-        elif measure.is_ratio:
-            perf_measure = PerfMeasure.MEAN
-            risk_measure = non_annualized_measure.linked_risk_measure  # ty: ignore[unresolved-attribute]
-        else:
-            perf_measure = None
-            risk_measure = non_annualized_measure
+        is_ratio = measure.is_ratio
+        base_measure = (
+            non_annualized_measure.linked_risk_measure  # ty: ignore[unresolved-attribute]
+            if is_ratio
+            else non_annualized_measure
+        )
+        # Resolve fixed parameters only. Each window supplies its data and weights.
+        measure_func, measure_args = self._get_measure_func(
+            measure=base_measure,
+            exclude_args=("returns", "drawdowns", "sample_weight"),
+        )
+        measure_arg_names = args_names(measure_func)
+        uses_drawdowns = "drawdowns" in measure_arg_names
+        accepts_sample_weight = "sample_weight" in measure_arg_names
+        # Ratios use weights for their mean even if the risk measure is unweighted.
+        weights = self.sample_weight if accepts_sample_weight or is_ratio else None
 
-        # Sample weights are aligned with the full sample, so they are sliced with each
-        # window rather than passed as a full-length argument.
-        weighted = self.sample_weight is not None
-
-        if risk_measure is not None:
-            risk_func, risk_func_args = self._get_measure_func(measure=risk_measure)
-            risk_func_args.pop("sample_weight", None)
-            supports_weight = "sample_weight" in args_names(risk_func)
-
-            if "drawdowns" in risk_func_args:
-                del risk_func_args["drawdowns"]
-
-                def meta_risk_func(
-                    returns: FloatArray, sample_weight: FloatArray | None = None
-                ) -> float:
-                    """Compute the drawdown-based risk measure on `returns`."""
-                    drawdowns = mt.get_drawdowns(returns, compounded=self.compounded)
-                    if supports_weight:
-                        return risk_func(
-                            drawdowns=drawdowns,
-                            sample_weight=sample_weight,
-                            **risk_func_args,
-                        )
-                    return risk_func(drawdowns=drawdowns, **risk_func_args)
-
+        def window_func(
+            returns: FloatArray, sample_weight: FloatArray | None = None
+        ) -> float:
+            """Evaluate the measure on one window."""
+            values = (
+                mt.get_drawdowns(returns, compounded=self.compounded)
+                if uses_drawdowns
+                else returns
+            )
+            if accepts_sample_weight:
+                value = measure_func(
+                    values, sample_weight=sample_weight, **measure_args
+                )
             else:
-                del risk_func_args["returns"]
+                value = measure_func(values, **measure_args)
+            if not is_ratio:
+                return value
+            return (
+                mt.mean(returns, sample_weight=sample_weight) - self.risk_free_rate
+            ) / value
 
-                def meta_risk_func(
-                    returns: FloatArray, sample_weight: FloatArray | None = None
-                ) -> float:
-                    """Compute the returns-based risk measure on `returns`."""
-                    if supports_weight:
-                        return risk_func(
-                            returns=returns,
-                            sample_weight=sample_weight,
-                            **risk_func_args,
-                        )
-                    return risk_func(returns=returns, **risk_func_args)
-
-            if perf_measure is not None:
-                perf_func = getattr(mt, str(perf_measure.value))
-
-                def func(
-                    returns: FloatArray, sample_weight: FloatArray | None = None
-                ) -> float:
-                    """Compute the excess performance over risk on `returns`."""
-                    return (
-                        perf_func(returns, sample_weight=sample_weight)
-                        - self.risk_free_rate
-                    ) / meta_risk_func(returns, sample_weight)
-
-            else:
-                func = meta_risk_func
-        else:
-            perf_func = getattr(mt, str(non_annualized_measure.value))
-
-            def func(
-                returns: FloatArray, sample_weight: FloatArray | None = None
-            ) -> float:
-                """Compute the performance measure on `returns`."""
-                return perf_func(returns, sample_weight=sample_weight)
-
-        if weighted:
+        if weights is not None:
+            # Match pandas' float64 windows in the unweighted path.
             returns = np.asarray(self.returns, dtype=float)
-            sample_weight = np.asarray(self.sample_weight, dtype=float)
+            weights = np.asarray(weights, dtype=float)
+            rolling_values = np.arange(len(returns), dtype=float)
+            # Preserve pandas' full-window eligibility when rolling over positions.
+            rolling_values[~np.isfinite(returns)] = np.nan
 
-            def weighted_func(positions: FloatArray) -> float:
+            def rolling_func(positions: FloatArray) -> float:
                 """Compute the measure on the window made of the given positions."""
                 window_slice = slice(int(positions[0]), int(positions[-1]) + 1)
-                return func(returns[window_slice], sample_weight[window_slice])
+                return window_func(
+                    returns[window_slice], sample_weight=weights[window_slice]
+                )
 
-            rolling = (
-                pd.Series(np.arange(len(returns)), index=self.observations)
-                .rolling(window=window)
-                .apply(weighted_func, raw=True)
-            )
         else:
-            rolling = (
-                pd.Series(self.returns, index=self.observations)
-                .rolling(window=window)
-                .apply(func, raw=True)
-            )
+            rolling_values = self.returns
+            rolling_func = window_func
+
+        rolling = (
+            pd.Series(rolling_values, index=self.observations)
+            .rolling(window=window)
+            .apply(rolling_func, raw=True)
+        )
         if measure.is_annualized:
             if measure in [
                 PerfMeasure.ANNUALIZED_MEAN,
@@ -1341,8 +1321,10 @@ class BasePortfolio:
         )
         return fig
 
-    def _get_measure_func(self, measure: skt.Measure) -> tuple[Callable, dict]:
-        """Return the function and arguments of a given measure."""
+    def _get_measure_func(
+        self, measure: skt.Measure, *, exclude_args: tuple[str, ...] = ()
+    ) -> tuple[FunctionType, dict]:
+        """Return the measure function and resolve its non-excluded arguments."""
         if measure.is_annualized:
             func = getattr(mt, str(measure.non_annualized_measure.value))
         else:
@@ -1350,6 +1332,8 @@ class BasePortfolio:
 
         args = {}
         for arg in args_names(func):
+            if arg in exclude_args:
+                continue
             if arg in self._measure_global_args:
                 args[arg] = getattr(self, arg)
             elif arg == "biased":

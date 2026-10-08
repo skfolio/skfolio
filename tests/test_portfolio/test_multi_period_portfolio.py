@@ -728,6 +728,36 @@ def test_empty_constructor_sample_weight_error():
         MultiPeriodPortfolio(sample_weight=np.array([1.0]))
 
 
+@pytest.mark.parametrize("override", [False, True])
+def test_rolling_measure_sample_weight_failed_period(override):
+    X = pd.DataFrame(
+        {"asset": [0.1, 0.0, -0.2, 0.3, -0.4, 0.5, -0.6, 0.7]},
+        index=pd.date_range("2024-01-01", periods=8),
+    )
+    children = [
+        Portfolio(X.iloc[:1], weights=[1.0]),
+        FailedPortfolio(X.iloc[1:2]),
+        Portfolio(X.iloc[2:5], weights=[1.0], sample_weight=np.array([0.1, 0.3, 0.6])),
+        Portfolio(X.iloc[5:], weights=[1.0]),
+    ]
+    sample_weight = np.arange(1, 9, dtype=float) if override else None
+    if sample_weight is not None:
+        sample_weight /= sample_weight.sum()
+    portfolio = MultiPeriodPortfolio(children, sample_weight=sample_weight)
+    resolved_weights = portfolio.sample_weight
+
+    expected = pd.Series(np.nan, index=portfolio.observations)
+    for end in range(4, len(X)):
+        expected.iloc[end] = np.average(
+            portfolio.returns[end - 2 : end + 1],
+            weights=resolved_weights[end - 2 : end + 1],
+        )
+
+    pd.testing.assert_series_equal(
+        portfolio.rolling_measure(PerfMeasure.MEAN, window=3), expected
+    )
+
+
 def test_portfolio_read_only(portfolio, periods):
     for attr in MultiPeriodPortfolio._read_only_attrs:
         try:
