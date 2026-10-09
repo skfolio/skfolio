@@ -118,10 +118,17 @@ the prior's scenarios. If that distance uses an EW covariance estimator, setting
 `set_fit_request(active_mask=False)` allows the mask to reach the prior without
 forwarding it to the distance.
 
-Scenario distances use the prior's `sample_weight` when their configured `fit`
-supports it. For `CovarianceDistance`, this requires the covariance estimator's
-`sample_weight` metadata request. Otherwise, the distance remains unweighted even
-when portfolio risk uses weighted scenarios.
+With metadata routing enabled, scenario distances receive the prior's
+`sample_weight` only when they or their nested estimators request it. Without
+routing, the distance's `fit` must explicitly accept `sample_weight`. These
+probabilities replace weights routed from the optimizer's `fit` or `partial_fit`.
+A prior with `sample_weight=None` gives scenarios equal weight.
+
+Built-in distances fitted on scenario rows do not use `sample_weight`, even when
+portfolio risk uses weighted scenarios. To weight a `CovarianceDistance`, supply
+a covariance estimator that accepts weights and call
+`set_fit_request(sample_weight=True)` on it. A distance using the prior's covariance
+retains any weighting already incorporated into that covariance.
 
 With `distance_from_prior=False`, the distance receives targets and requested
 metadata aligned with the optimizer's input returns. An EW covariance estimator
@@ -129,5 +136,6 @@ requests `active_mask` by default. Precomputed covariance distances and seriatio
 receive no observation metadata, so `CovarianceDistance("precomputed")` needs no
 mask configuration.
 
-During batch `fit`, distances fitted on prior scenarios retain observation metadata
-routing. The caller is responsible for aligning that metadata with the scenarios.
+During batch `fit`, distances fitted on prior scenarios retain routing for metadata
+other than `sample_weight`. The caller is responsible for aligning that metadata
+with the scenarios.
