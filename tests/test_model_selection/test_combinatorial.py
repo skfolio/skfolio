@@ -444,3 +444,18 @@ def test_combinatorial_purged_cv_split_rejects_too_large_purge_and_embargo():
         match="sum of `purged_size` and `embargo_size` must be smaller than the size",
     ):
         list(cv.split(X))
+
+
+@pytest.mark.parametrize(
+    "n_samples, n_folds, n_test_folds",
+    [(13, 5, 2), (89, 10, 2), (14, 5, 3), (12, 4, 2), (23, 6, 2)],
+)
+def test_combinatorial_purged_cv_every_observation_is_tested(
+    n_samples, n_folds, n_test_folds
+):
+    cv = CombinatorialPurgedCV(n_folds=n_folds, n_test_folds=n_test_folds)
+    tested = set()
+    for _, test in cv.split(np.zeros((n_samples, 2))):
+        for fold in test:
+            tested.update(fold.tolist())
+    assert tested == set(range(n_samples))
