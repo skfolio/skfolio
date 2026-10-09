@@ -350,8 +350,9 @@ class CombinatorialPurgedCV(BaseCombinatorialCV):
                 f" size of a train fold which is {min_fold_size}"
             )
 
-        fold_index_num = np.arange(n_samples) // (n_samples // self.n_folds)
-        fold_index_num[fold_index_num == self.n_folds] = self.n_folds - 1
+        fold_index_num = np.minimum(
+            np.arange(n_samples) // min_fold_size, self.n_folds - 1
+        )
 
         index_train_test = np.zeros((n_samples, self.n_splits), dtype=int)
         for i in range(self.n_splits):
